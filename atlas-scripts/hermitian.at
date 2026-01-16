@@ -138,6 +138,9 @@ set KL_sum_at_s_to_ht_inter(int HT) = (Param p,int time) maybe_PP:
        in below.done_PP
   fi
 
+set twisted_KL_sum_at_s_to_ht(int N) = (Param p) ParamPol:
+  to_ht(N)(twisted_KL_sum_at_s(p))
+
 {set to_ht (ParamPol P,int N) = ParamPol:
   if N<0 then return P fi;
   let (below,)=height_split(P,N) in below}
@@ -173,6 +176,29 @@ set impure_height(KTypePol P) = int:
 	 in -1
      fi
 
+{
+set full_deform_to_ht_MvL_base(Param p, int height) = KTypePol:
+( if not {to_ht_over_u_flag} strict_low(p,height)
+  then return to_ht(full_deform(p),height)
+  fi;
+  let !empty_K=null_K_module(p.real_form), !empty=null_module(p)
+  then output = empty_K, def = empty
+  then P = empty +
+  { snap p down to a reducibility point, or tempered parameter }
+     (let rp = reducibility_points(p)
+       in if =#rp then output +:= p.K_type; [] else [p*rp~[0]] fi)
+       	  then () = while >#P
+       	    do set (def,P) :=
+               (let q=first_param(P) in block_deform(q,P next P:=empty,height))
+  	       ; let kt = for c@m in def if  =nu(m) do (c,m.K_type) fi od
+     	       	  ,   pp = for c@m in def if !=nu(m) do (c,m) fi od
+  	      in output := (output next output:=empty_K) + kt; P := (P next P:=empty) + pp
+  	    od
+  in output
+)
+}
+
+{
 set full_deform_to_ht_MvL_base(Param p, int height, int time) = maybe_KTP:
 ( if not ({to_ht_over_u_flag} strict_low(p,height))
   then return to_ht(full_deform(p,time),height)
@@ -200,8 +226,10 @@ set full_deform_to_ht_MvL_base(Param p, int height, int time) = maybe_KTP:
   	    od
   in {deformed_hash_flag := deformed_hash_flag_hold;} done(output)
 )
+}
 
-set full_deform_to_ht_MvL_alt(Param p, int height) = KTypePol:
+{
+set full_deform_to_ht_MvL_alt_old(Param p, int height) = KTypePol:
   let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p){,
       deformed_hash_flag_hold = deformed_hash_flag}
   {then () = if height >= 0
@@ -233,7 +261,7 @@ set full_deform_to_ht_MvL_alt(Param p, int height) = KTypePol:
   	    od
   in {deformed_hash_flag := deformed_hash_flag_hold;} output
 
-set full_deform_to_ht_MvL_alt(Param p, int height,int TIME) = maybe_KTP:
+set full_deform_to_ht_MvL_alt_old(Param p, int height,int TIME) = maybe_KTP:
   let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p){,
       deformed_hash_flag_hold = deformed_hash_flag}
   {then () = if height >= 0
@@ -267,26 +295,182 @@ set full_deform_to_ht_MvL_alt(Param p, int height,int TIME) = maybe_KTP:
   	      in output := (output next output:=empty_K) + kt; P := (P next P:=empty) + pp
   	    od
   in {deformed_hash_flag := deformed_hash_flag_hold;} done(output)
+}
 
-set full_deform_to_ht_MvL_base(Param p, int height) = KTypePol:
-( if not {to_ht_over_u_flag} strict_low(p,height)
-  then return to_ht(full_deform(p),height)
-  fi;
-  let !empty_K=null_K_module(p.real_form), !empty=null_module(p)
-  then output = empty_K, def = empty
+set alt_count = int: 0
+set alt_time = int:0
+
+set full_deform_to_ht_MvL_altA(Param p, int height) = KTypePol:
+  alt_count +:=1;
+  let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p){,
+      deformed_hash_flag_hold = deformed_hash_flag}
+  {then () = if height >= 0
+       	    then deformed_hash_flag:=true
+	    fi}
+  then output = empty_K, def = empty, time = interrupt_base_time
   then P = empty +
-  { snap p down to a reducibility point, or tempered parameter }
-     (let rp = reducibility_points(p)
-       in if =#rp then output +:= p.K_type; [] else [p*rp~[0]] fi)
-       	  then () = while >#P
-       	    do set (def,P) :=
+       	 { snap p down to a reducibility point, or tempered parameter }
+     	 (let rp = reducibility_points(p)
+      	  in if =#rp
+      	     then output +:= p.K_type; []
+	     else [p*rp~[0]]
+	     fi)
+      then () = while >#P
+       	    do if elapsed_ms() - start > time
+	       then {try full_deform}
+		    let try = full_deform(p,time)
+		    in case try
+		       |timed_out: time:=2*time; ()
+		       |done(r): alt_time +:= elapsed_ms() - start; return to_ht(r, height)
+		       esac
+		fi;
+		set (def,P) :=
                (let q=first_param(P) in block_deform(q,P next P:=empty,height))
-  	       ; let kt = for c@m in def if  =nu(m) do (c,m.K_type) fi od
+  	       ;  let kt = for c@m in def if  =nu(m) do (c,m.K_type) fi od
      	       	  ,   pp = for c@m in def if !=nu(m) do (c,m) fi od
   	      in output := (output next output:=empty_K) + kt; P := (P next P:=empty) + pp
   	    od
-  in output
-)
+  in {deformed_hash_flag := deformed_hash_flag_hold;} alt_time +:= elapsed_ms() - start; output
+
+set alt_time_int_fail = int:0
+set alt_time_int_pass = int:0
+
+{THIS is where all the time is spent! For Spin(6,4), it's 15.4 secs vs 2.2 for uninterrupted}
+set full_deform_to_ht_MvL_altA(Param p, int height,int TIME) = maybe_KTP:
+  let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p){,
+      deformed_hash_flag_hold = deformed_hash_flag}
+  {then () = if height >= 0
+       	    then deformed_hash_flag:=true
+	    fi}
+  then output = empty_K, def = empty, time = max(TIME\32,interrupt_base_time)
+  then P = empty +
+       	 { snap p down to a reducibility point, or tempered parameter }
+     	 (let rp = reducibility_points(p)
+      	  in if =#rp
+      	     then output +:= p.K_type; []
+	     else [p*rp~[0]]
+	     fi)
+      then () = while >#P
+       	    do if elapsed_ms() - start > TIME
+	       then alt_time_int_fail +:= elapsed_ms() - start; return timed_out()
+	       fi;
+	       if elapsed_ms() - start > time
+	       then {try full_deform}
+		    time:=2*time;
+		    let try = full_deform(p,time)
+		    in case try
+		       |timed_out: time:=2*time; ()
+		       |done(r): alt_count+:=1;
+		       		 alt_time_int_pass+:= elapsed_ms() - start;
+				 return done(to_ht(r, height))
+		       esac
+		fi;
+		set (def,P) :=
+               (let q=first_param(P) in block_deform(q,P next P:=empty,height))
+  	       ;  let kt = for c@m in def if  =nu(m) do (c,m.K_type) fi od
+     	       	  ,   pp = for c@m in def if !=nu(m) do (c,m) fi od
+  	      in output := (output next output:=empty_K) + kt; P := (P next P:=empty) + pp
+  	    od
+  in alt_count+:=1; alt_time_int_pass+:= elapsed_ms() - start; done(output)
+
+set alt_full = false
+set alt_time_guess = interrupt_base_time
+set START_TIME = int:0
+
+set full_deform_to_ht_MvL_alt(Param p, int height) = KTypePol:
+  START_TIME:=elapsed_ms();
+  alt_count+:=1;
+  if alt_full
+  then let try = full_deform(p,alt_time_guess)
+       in case try
+       	  |timed_out: alt_full:= false; ()
+       	  |done(r): alt_time_int_pass +:= elapsed_ms() - START_TIME; return to_ht(r, height)
+	  esac
+	  fi;
+  let !empty_K=null_K_module(p.real_form), !empty=null_module(p){,
+      deformed_hash_flag_hold = deformed_hash_flag}
+  {then () = if height >= 0
+       	    then deformed_hash_flag:=true
+	    fi}
+  then output = empty_K, def = empty, time = alt_time_guess
+  then P = empty +
+       	 { snap p down to a reducibility point, or tempered parameter }
+     	 (let rp = reducibility_points(p)
+      	  in if =#rp
+      	     then output +:= p.K_type; []
+	     else [p*rp~[0]]
+	     fi)
+      then () = while >#P
+       	    do if elapsed_ms() - START_TIME > time
+	       then {try full_deform}
+		    let try = full_deform(p,time)
+		    in case try
+		       |timed_out: time:=2*time; ()
+		       |done(r): alt_time_int_pass:= elapsed_ms() - START_TIME;
+		       		 alt_full := true;
+				 alt_time_guess := max(alt_time_guess, elapsed_ms() - START_TIME);
+				 return to_ht(r, height)
+		       esac
+		fi;
+		set (def,P) :=
+               (let q=first_param(P) in block_deform(q,P next P:=empty,height))
+  	       ;  let kt = for c@m in def if  =nu(m) do (c,m.K_type) fi od
+     	       	  ,   pp = for c@m in def if !=nu(m) do (c,m) fi od
+  	      in output := (output next output:=empty_K) + kt; P := (P next P:=empty) + pp
+  	    od
+  in {deformed_hash_flag := deformed_hash_flag_hold;}
+     alt_time_guess:= max(alt_time_guess,elapsed_ms() - START_TIME);
+     alt_time+:= elapsed_ms() - START_TIME;
+     alt_full:= false; output
+
+set full_deform_to_ht_MvL_alt(Param p, int height,int TIME) = maybe_KTP:
+  START_TIME:=elapsed_ms(); TIME:= max(TIME,alt_time_guess);
+  alt_count+:=1;
+  if alt_full
+  then let try = full_deform(p,alt_time_guess)
+       in case try
+       	  |timed_out: alt_full:= false; ()
+       	  |done(r): alt_time_int_pass+:= elapsed_ms() - START_TIME; return to_ht(r, height).done
+	  esac
+	  fi;
+  let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p){,
+      deformed_hash_flag_hold = deformed_hash_flag}
+  {then () = if height >= 0
+       	    then deformed_hash_flag:=true
+	    fi}
+  then output = empty_K, def = empty, time = max(TIME\32,interrupt_base_time)
+  then P = empty +
+       	 { snap p down to a reducibility point, or tempered parameter }
+     	 (let rp = reducibility_points(p)
+      	  in if =#rp
+      	     then output +:= p.K_type; []
+	     else [p*rp~[0]]
+	     fi)
+      then () = while >#P
+       	    do if elapsed_ms() - start > TIME
+	       then alt_time_int_fail +:= elapsed_ms() - start; return timed_out()
+	       fi;
+	       if elapsed_ms() - start > time
+	       then {try full_deform}
+		    time:=2*time;
+		    let try = full_deform(p,time)
+		    in case try
+		       |timed_out: time:=2*time; ()
+		       |done(r): alt_count+:=1;
+		       		 alt_time_int_pass+:= elapsed_ms() - start;
+				 return done(to_ht(r, height))
+		       esac
+		fi;
+		set (def,P) :=
+               (let q=first_param(P) in block_deform(q,P next P:=empty,height))
+  	       ;  let kt = for c@m in def if  =nu(m) do (c,m.K_type) fi od
+     	       	  ,   pp = for c@m in def if !=nu(m) do (c,m) fi od
+  	      in output := (output next output:=empty_K) + kt; P := (P next P:=empty) + pp
+  	    od
+  in alt_time_guess:= max(alt_time_guess,elapsed_ms() - START_TIME);
+     alt_time_int_pass+:= elapsed_ms() - start;
+     alt_full:=false; done(output)
+
 
 {should require number of -alphav*theta >= number of alphav}
 set red_coroots(KGBElt x) = [vec]:
@@ -1638,7 +1822,8 @@ set c_form_std_cut(int HT) = (Param p) KTypePol:
     let pc = alcove_center(p)
     in if deformed_hash_flag
        then deformedHash.entry(pc,HT)
-       else to_ht(full_deform(pc),HT)
+       else full_deform_to_ht_MvL_alt(pc,HT)
+       {to_ht(full_deform(pc),HT)}
        fi
 
 {p must be fixed by standard involution!}
@@ -1674,6 +1859,7 @@ in to_ht(map(cfsc, oriented_KL_sum),HT)
   no deformation is done, but orientation numbers are included;
   fixed contributions are already halved; for unfixed ones this needs to wait
 }
+
 {p must be fixed by standard involution!}
 set twisted_c_form_irreducible_contributions (Param p) =
     (ParamPol,ParamPol): { (fixed part, 2*unfixed part) }
@@ -1689,6 +1875,22 @@ set twisted_c_form_irreducible_contributions (Param p) =
          if twist(q)!=q do (c*orientation_nr_term(ori_nr_p,q),q) fi
       od
   )
+
+set twisted_c_form_irreducible_contributions_cut (Param p, int HT) =
+    (ParamPol,ParamPol): { (fixed part, 2*unfixed part) }
+  let G=p.real_form, ori_nr_p = orientation_nr(p)
+  then formula = (1+s)*KL_sum_at_s_to_ht(HT)(p) + (1-s)*twisted_KL_sum_at_s_to_ht(HT)(p)
+  in { two value-producing loops can be a lot more efficient than one: }
+  ( to_ht(HT)(G.null_module +
+      for c@q in formula
+         if twist(q)=q do (half(c)*orientation_nr_term(ori_nr_p,q),q) fi
+      od)
+   , to_ht(HT)(G.null_module +
+      for c@q in formula
+         if twist(q)!=q do (c*orientation_nr_term(ori_nr_p,q),q) fi
+      od)
+  )
+
 
 { The following function implements algorithm from Vogan in email 9/22/16:
   * for each delta-fixed term q add c_form_std(q) (fully twisted-deformed)
