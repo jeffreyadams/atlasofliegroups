@@ -255,7 +255,7 @@ set maxdex ((T,T->bool)leq) = ([T] a) int:
     for i:l-1 from 1 do if not leq(a[i],m) then set (p,m):=(i,a[i]) fi od; p
   fi
 
-set reverse ([T] r) = [T]: for x in r do x ~od
+set reverse ([T] r) = [T]: r~[:]
 end
 
 
