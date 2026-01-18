@@ -7,6 +7,49 @@
 <FPP_faces_geom {for herm_center}{get charTime!}
 <writeFiles {for write commands}
 
+{will be modified to name of local test being run}
+set test_string = string: ""
+
+{global variable to be locally set to starting time of an (x,lambda) pair}
+set startxlGLOB = int: 0
+
+set xGLOB = KGBElt: x_open(U(1,0))
+set lambdaGLOB = ratvec: [0/1]
+
+{meant to hold (x,lambda) pairs that took too long}
+set undone = Hash<KGBratvec>: make_xlambda_hash()
+
+{for each undone (x,lambda), the guilty method}
+set undone_methods = [string]: []
+
+{whether to interrupt if one (x,lambda) takes too long}
+set kill_for_long_time_flag = false
+
+{time in milliseconds after which to interrupt if one (x,lambda) takes too long}
+set kill_for_long_time_bound = int: -1
+
+set activate_kill_for_long_time(int T) = void:
+    let () = kill_for_long_time_flag :=  true
+    in kill_for_long_time_bound:= T;
+       undone.clear();
+       undone_methods:=[]
+
+set kill_for_long_time() = void:
+    {
+    prints("timeout bound = ", print_time_string(kill_for_long_time_bound));
+    prints("time so far on (",xGLOB,",",lambdaGLOB,") is ",
+    		print_time_string(elapsed_ms() -startxlGLOB));
+    }
+    if (kill_for_long_time_flag)
+       and (kill_for_long_time_bound.>)
+       and ((elapsed_ms() - startxlGLOB)> kill_for_long_time_bound)
+    then prints(new_line,"I can't live...if living takes so damned long");
+    	 undone.match(xGLOB,lambdaGLOB);
+	 undone_methods#:=test_string;
+	 prints(new_line,"uncompleted (x,lambda) in 'undone.list()'",new_line);
+	 error()
+    fi
+
 set deformLookupCounter = make_counter()
 set deformCalcCounter = make_counter()
 set twistedDeformLookupCounter = make_counter()
@@ -1086,9 +1129,6 @@ set DBTcount = int: 0
 
 set next_heightC_time = int: 0
 
-{will be modified to name of local test being run}
-set test_string = string: ""
-
 {whether to report on slow is_unitary and is_unitary_to_ht}
 set drain_plug_flag = bool: false
 
@@ -1729,6 +1769,7 @@ set show_unitary_time() = void: prints("Time so far for is_unitary = ",
 {.Hermitian form on a irreducible module, normalization from its initial term.}
 set hermitian_form_irreducible(Param p) = KTypePol:
   {unitary_test_counter.use();}
+  kill_for_long_time();
   let start_time = elapsed_ms()
   then answer = if is_equal_rank(real_form(p))
        	      	then c_form_irreducible(p) { not twisted, in equal rank case this is faster }
@@ -1933,6 +1974,7 @@ set twisted_c_form_irreducible (Param p,int time) = maybe_KTP:
 
 set hermitian_form_irreducible (Param p, int time) = maybe_KTP:
    {unitary_test_counter.use();}
+   kill_for_long_time();
    let start_time = elapsed_ms()
    then answer = case if is_equal_rank(real_form(p))
                	      then c_form_irreducible(p,time)

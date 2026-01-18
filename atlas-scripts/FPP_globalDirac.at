@@ -23,21 +23,6 @@ small values are faster. Too small a value cannot lead to wrong
 answers, but only to running more is_unitary tests .}
 set chop_bound = int: 6
 
-set kill_for_big_uTime_flag = false
-
-set kill_for_big_uTime_bound = int: -1
-
-set activate_kill_for_big_uTime(int T) = void:
-    let () = kill_for_big_uTime_flag :=  true
-    in kill_for_big_uTime_bound:= T
-
-set kill_for_big_uTime() = void:
-    if (kill_for_big_uTime_flag)
-       and (kill_for_big_uTime_bound.>=)
-       and (unitaryTime > kill_for_big_uTime_bound)
-    then prints("I can't live...if living is without U")
-    fi
-
 set UFast() = void:
     prints("Setting old_test_interrupt_flag:=false, deformed_hash_flag:=true");
     old_test_interrupt_flag:=false;
@@ -576,7 +561,7 @@ then coh_ind_unip_few(G,Uhash)}
 						      time_verbose := old_time_verbose;
 			       			      test_verbose :=old_test_verbose;
 						      test_slightly_verbose := old_test_slightly_verbose
-			  			  fi;
+			  			  fi; startxlGLOB := elapsed_ms(); xGLOB:=x; lambdaGLOB:=lambda;
 			  			  let answer =
 						      if revert_steve_flag
 			      	       		      then edge_offset:=2{1};
@@ -652,7 +637,7 @@ then coh_ind_unip_few(G,Uhash)}
        	    prints("Number of FPP-unitary faces = ",Uhash.size(), ", number found on this run = ", Uhash.size() - oldUhash)
 	fi {FPP_report_flag}
        in () fi {#xlambdasW = 0}
-     in kill_for_big_uTime(); ()
+     in {kill_for_long_time();} ()
 
 set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_tester,
     (KGBElt, ratvec, LocalVertexData,[[FaceVertsIndex]],
@@ -862,7 +847,8 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 			 		   in if (not revert_steve_flag) and (#LF = 0 or #LF[0] = 0)
 					      then none_count +:=1;
 					      	   finish(x, lambda); []
-			    		      else let answer =
+			    		      else startxlGLOB:=elapsed_ms(); xGLOB:=x; lambdaGLOB:=lambda;
+						   let answer =
 						       if revert_steve_flag
 			      	       		       then edge_offset:=2{1};
 						       	    steve_graph_flag:=false {true};
@@ -986,7 +972,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
        	      ", number found on this run = ", Uhash.size() - oldUhash);
 	    report_tested("CUMULATIVE TOTALS")
       fi {FPP_report_flag}
-   in kill_for_big_uTime(); ()
+   in {kill_for_long_time();} ()
 
 set FPP_unitary_hash_general(RealForm G,Param_hash Uhash, (Param->bool) fancy_tester,
     (KGBElt,ratvec, LocalVertexData, [[FaceVertsIndex]],
@@ -1140,7 +1126,8 @@ then coh_ind_unip_few(G,Uhash)}
 		 then UParams = [Param]:
 		      if TNU
 		      then []
-		      else local_test_GEO_hash_steve(x, lambda, Lvd, Uhash, fancy_tester)
+		      else startxlGLOB:=elapsed_ms(); xGLOB:=x; lambdaGLOB:=lambda;
+		      	   local_test_GEO_hash_steve(x, lambda, Lvd, Uhash, fancy_tester)
 		      fi
 		 then () = finish(x,lambda)
 		 then () = if #UParams = 0
@@ -1224,7 +1211,7 @@ then coh_ind_unip_few(G,Uhash)}
        	    prints("Number of FPP-unitary faces = ",Uhash.size(), ", number found on this run = ", Uhash.size() - oldUhash)
 	fi {FPP_report_flag}
        in () fi {#xlambdasW = 0}
-     in kill_for_big_uTime(); ()
+     in {kill_for_long_time();} ()
 
 set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_tester) = void:
     if #xs = 0
@@ -1407,7 +1394,8 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 					       then UParams = [Param]:
 					       	    if TNU
 						    then []
-						    else local_test_GEO_hash_steve(x, lambda, Lvd, Uhash, fancy_tester)
+						    else startxlGLOB:=elapsed_ms(); xGLOB:=x; lambdaGLOB:=lambda;
+						    	 local_test_GEO_hash_steve(x, lambda, Lvd, Uhash, fancy_tester)
 						    fi
 					       then () = finish(x,lambda)
 					       then () = if #UParams = 0
@@ -1518,7 +1506,7 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 	    report_tested("CUMULATIVE TOTALS");
 	    report_steve_graph()
       fi {FPP_report_flag}
-   in kill_for_big_uTime(); ()
+   in {kill_for_long_time();} ()
 
 set FPP_unitary_hash_steve(RealForm G,Param_hash Uhash, (Param->bool) fancy_tester) = void:
     if is_compact(G)
@@ -1850,7 +1838,8 @@ fancy_tester) = void:
 			 in if disconn_flag
 			    then finish(x,lambda)
 			    fi; ()
-		    else let answer = if revert_steve_flag {and lambda_sc!=Gsc.rho}
+		    else startxlGLOB:=elapsed_ms(); xGLOB:=x; lambdaGLOB:=lambda;
+		    	 let answer = if revert_steve_flag {and lambda_sc!=Gsc.rho}
 			     	      then edge_offset:=1;
 				      	   steve_graph_flag:=true;
 					   local_test_GEO_hash_steve(x_sc, lambda_sc, Lvd, Uhash,
@@ -1972,7 +1961,7 @@ fancy_tester) = void:
        	    prints("Number of FPP-unitary faces = ",UhashG.size(), ", number found on this run = ", UhashG.size() - oldUhash);
 	    report_tested("CUMULATIVE TOTALS")
 	    fi {FPP_report_flag}
-     in kill_for_big_uTime(); () 
+     in {kill_for_long_time();} () 
 
 
 set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, (Param -> bool) fancy_tester) = void:
@@ -2201,7 +2190,8 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 		       in if not revert_steve_flag and (#LF = 0 or #LF[0] = 0)
 			  then none_count+:=1;
 			       finish(x,lambda); []
-			  else let answer = [Param]:
+			  else startxlGLOB:=elapsed_ms(); xGLOB:=x; lambdaGLOB:=lambda;
+			       let answer = [Param]:
 			       	      if revert_steve_flag
 			       	      then edge_offset:=1;
 				      	   steve_graph_flag:=true;
@@ -2369,7 +2359,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
        	      ", number found on this run = ", UhashG.size() - oldUhash);
 	    report_tested("CUMULATIVE TOTALS")
       fi {FPP_report_flag}
-     in kill_for_big_uTime(); ()
+     in {kill_for_long_time();} ()
 
 set FPP_unitary_hash_bottom_layer([KGBElt] xs, (Param->bool) fancy_tester) = void:
     FPP_unitary_hash_bottom_layer(xs, big_unitary_hash.uhash(xs[0].real_form),fancy_tester)
