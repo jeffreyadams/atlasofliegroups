@@ -1,0 +1,15 @@
+
+set all=##(##(for a:5 do for b:5 do for c:5 do [[a,b],[c]] od od od))
+
+set all=##(##(for a:5 do for b:5 do for c:5 do [[a,b],[c]] od od od)) 
+set valid_all=for P in all do if is_valid(P) then [P] else [] fi od.##
+set P=[[0,0,0,0,0,0,0,0],[0,0,1,1],[2,1,1],[3,3],[0],[1],[0]]
+set Q=[[3,0,0,0,0],[3,0,0,0,0],[0,1,2,0,0]]
+
+set A=[[0,3],[0],[3]]
+set B=[[0,1,2],[0],[1],[1]]
+set label="B+"
+
+set Z=(A,B,"B+")
+
+set X=[[0,0,0,0,0],[0,0,0,1],[0,0,0],[0]]

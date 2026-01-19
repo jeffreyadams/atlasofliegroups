@@ -1,0 +1,60 @@
+set make_dominant(KType mu)=
+let (x,lambda_rho)=%mu {lambda_rho= is a vec} then
+rf=mu.real_form then 
+lambda=lambda_rho+rf.rho then
+(w,lambda_dom)=to_dominant(rf,lambda) then
+lambda_dom_rho=lambda_dom - rf.rho in
+K_type(cross(w,x),ratvec_as_vec(lambda_dom_rho))
+
+set trivial_K_type(RealForm G)=KType:LKT(G.trivial)
+
+set P_roots_restricted_to_H_theta (KGBElt x) = mat:
+let G=x.real_form then
+K=K_0(G) then
+dim_P=dimension(G)-dimension(K) then 
+non_real=columns_with((vec alpha)bool: is_noncompact_imaginary(alpha,x) ,x.root_datum.roots) ##makeS(x)##(-makeS(x))
+then
+(real_pos_roots,)=positive_real_roots_and_coroots(x) then
+split_rank=split_rank(Cartan_class(x)) in
+non_real##real_pos_roots##null(rank(G),split_rank)
+
+
+set sums_P_roots_wedge_k_restricted_to_H_theta (int k) =(KGBElt -> [vec]):
+     (KGBElt x) [vec]:  sums_of_size_k(P_roots_restricted_to_H_theta(x),k)
+
+set tensor_product_long(KType t,(KGBElt -> [vec]) weights)=
+let pairs=add_weights_to_KType_formula(t,weights) {[(Split,KType)]} in
+{let ()=prints("t=",t,new_line, " pairs=",pairs) in}
+   let bound=max(for (,P) in pairs do height(P) od) in 
+   if =-1
+       then
+          {prints("returning null_K_module");}(pairs,null_K_module(t.real_form))
+       else
+          (pairs,sum(t.real_form,for (c,mu) in pairs do branch_std(c*mu,bound) od))
+   fi
+
+set tensor_product(KType t,(KGBElt -> [vec]) weights)=KTypePol:
+ let (,t)=tensor_product_long(t,weights) in t
+
+set tensor_product_wedge_P(KType mu, int k)=KTypePol:
+ tensor_product(mu,sums_P_roots_wedge_k_restricted_to_H_theta(k))
+
+set tpw(KType mu, int k)=tensor_product_wedge_P(mu,k)
+
+set wedge_P(KType mu, int k)=tensor_product_wedge_P(trivial_K_type(mu.real_form),k)
+set wedge_P(RealForm G,int k)=wedge_P(trivial_K_type(G),k)
+
+set dimension_Hom_K_trivial_wedge_P(RealForm G,int k)=
+let V=wedge_P(G,k) in split_as_int(V[trivial_K_type(G)])
+
+set dimensions_Hom_K_trivial_wedge_P(RealForm G)=
+for k: dimension(G)-dimension(K_0(G))+1 do dimension_Hom_K_trivial_wedge_P(G,k) od
+
+set cohomology(RealForm G)=
+let pars=theta_stable_parabolics(G) then
+levis=for P in pars do Levi(P) od in
+for L in levis do
+ let shift=rat_as_int((dimension(G)-dimension(L))/2) then
+ dims=dimensions_Hom_K_trivial_wedge_P(L) in
+ prints(L," ", shift, " ", dims);(L,shift,dims) od
+ 

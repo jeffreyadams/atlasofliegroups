@@ -1,0 +1,10 @@
+set coherent_family_std(Param p)=(ratvec->ParamPol):(ratvec target):
+assert(is_integer(p.infinitesimal_character-target), "lambda-inf_char(p) not in X^*");
+let shift=p.infinitesimal_character-target in 
+finalize(parameter(p.x, p.lambda-shift,p.nu-shift))
+
+set coherent_family_std(ParamPol P)=(ratvec->ParamPol):(ratvec target):
+null_module(P.real_form) + for (c,p) in %P do c*coherent_family_std(p)(target) od
+
+set coherent_family_irr(Param p)=(ratvec->ParamPol):(ratvec target):
+composition_series(coherent_family_std(character_formula(p))(target))
