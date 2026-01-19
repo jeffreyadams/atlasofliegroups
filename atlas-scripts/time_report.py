@@ -47,31 +47,30 @@ def main(argv):
     print("reading files: ", files,"\nwriting to file: ", outputfile)
     outputfiletmp=outputfile + "_tmp"
     #grep_arg= "grep  -h \"^" + line_start_string + "\" " + files + ">>" + outputfiletmp
+    #run grep once to make a single _tmp file of all lines with "add" from all output *.at files
     grep_arg= "grep  -h  add " + files + ">>" + outputfiletmp
     print("running: ", grep_arg)
     data=subprocess.run(grep_arg,shell=True,stdout=subprocess.PIPE)
     print("finished running ", grep_arg)
+    #write output file; starting with 3 lines of initialization
     output_file_handle=open(outputfile,'w')
     output_file_handle.write("<" + init_file + "\n" + "rA:=make_report(G_temp)\n")
     output_file_handle.write("set add(reportDatum rd)=void:rA[rd.xl_pair_number]:=rd\n")
     output_file_handle.close()
+    #sort the _tmp file by time in seconds, and write >> main output file
     sort_arg="sort -r -n -t ',' -k 12  " + outputfiletmp +  ">>" + outputfile
     print("sort_arg: ", sort_arg)
     data=subprocess.run(sort_arg,shell=True,stdout=subprocess.PIPE)
     print("finished sorting")
-    # number_lines_string=str(number_lines+1)
-    # short_arg="head -n " + number_lines_string  +  " " + outputfile + ">" + outputfile_short
-    # print("short_arg: ", short_arg)
-    # data=subprocess.run(short_arg,shell=True,stdout=subprocess.PIPE)
-    # print("finshed writing short file")
     if os.path.exists(outputfiletmp):
         print("removing " + outputfiletmp)
         os.remove(outputfiletmp)
     else:
         print("not removing " + outputfiletmp + "?")
+        d=data.stdout.splitlines()
     exit()
-    d=data.stdout.splitlines()
-    total_time=0
+    #do the summary reporting in atlas
+    #previously did some summary reporting in python; keeping this code here in case I need it
     #|job_number|round|restart|pair number|x|lambda|time
     #  |0|1||1|26170|978|[ 1, 3, 2, 0, 2, 1 ]/1|0:00:01
     print("processing lines")
@@ -95,7 +94,7 @@ def main(argv):
             else:
                 time=days_and_time
             file_name=file_name.split("/")[-1]
-            verbose=False
+            verbose=True
             if verbose:
                 print("file_name: ", file_name)
                 print("job_number: ", job_number)
@@ -124,11 +123,13 @@ def main(argv):
             total_seconds = h * 3600 + m * 60 + s
             total_time+=total_seconds
             if total_seconds>int(cutoff):
+                print("in total_seconds")
                 number_of_pairs+=1
                 output_file_tmp.write(days_and_time + "|" + file_name + "|" + line_number + "|" + job_number + "|" + restart + "|" + round + "|" + pair_number + "|" + x + "|" + lambda_ +   "\n")
             else:
                 excluded+=1
-    output_file_tmp.close()
+    #output_file_tmp.close()
+    exit()
     print("finished processing lines")
     average=total_time/int(number_processors)
     print("total time: ", total_time)

@@ -329,6 +329,7 @@ set reportDatumFieldNames=
 ["time"]
 )
 
+set xl_pairs_not_done(reportArray rA)=[int]:for rd@i in rA do if rd.xl_pair_number=-1 then [i] else [] fi od.##
 set show(reportDatum d)=void:
 let (int_fields,rat_fields, ratvec_fields, string_fields)=reportDatumFields then
 (int_names,rat_names,ratvec_names,string_names)=reportDatumFieldNames in
@@ -343,10 +344,13 @@ set number_jobs(reportArray rA)=max(for rd in rA do rd.file_number od)+1
 set total_time(reportArray rA)=int:sum(for rd in rA do rd.x_lambda_total_time od)
 set max_time(reportArray rA)=int:max(for rd in rA do rd.x_lambda_total_time od)
 set average_time_per_pair(reportArray rA)=total_time(rA)\#rA
+set zero_entries(reportArray rA)=[int]:for rd@i in rA do if rd.xl_pair_number=-1 then [i] else [] fi od.##
+set number_nonzero_entries(reportArray rA)=int:sum(for rd in rA do if rd.xl_pair_number=-1 then 0 else 1 fi od)
 set summary(reportArray rA,int number_jobs)=void:
 let t=total_time(rA) then
 m=max_time(rA) 
-in prints("#pairs: ", #rA,new_line,"total time: ", t, " seconds; ", nice_time(t),
+in prints("#pairs: ", #rA,new_line,"number actual pairs: ", number_nonzero_entries,new_line,
+"remaining: ", #rA-number_nonzero_entries(rA),new_line,"total time: ", t, " seconds; ", nice_time(t),
 new_line,"avg time/job: ", t\number_jobs, " seconds; ", nice_time(t\number_jobs),new_line,
 "longest pair time: ", m, " ", nice_time(m))
 set summary(reportArray rA)=void:summary(rA,number_jobs(rA))
