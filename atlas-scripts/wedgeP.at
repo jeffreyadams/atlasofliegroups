@@ -1,6 +1,6 @@
-<tensor_product.at
+ <tensor_product.at
 
-set wedgeP_verbose=false {set to true/false  for more/less extra diagnostic information}
+set wedgeP_verbose=true {set to true/false  for more/less extra diagnostic information}
 
 {computing the K-module wedge(P)
  primary application: computing H^i(\g,K,\pi)
@@ -45,16 +45,22 @@ given:
  weights: KGBElt->[vec] representing a finite dimensional representation F of K
 return the KTypePol representing \sum a_i I(p_i)\otimes F}
 set add_weights (KTypePol P,(KGBElt ->[vec]) weights) = KTypePol:
+   let ()=if wedgeP_verbose then prints("in add weights with:  P=", P) fi in
    P.null_K_module +
    for coef@t in P do
-   if wedgeP_verbose then prints("c,t", coef, " ", t) fi;
+   if wedgeP_verbose then prints(new_line,"c=", coef, " t=", t) fi;
    let (x,lr)=%t in
-   if wedgeP_verbose then prints("x=",x, " ", x.real_form, " lr=",lr) fi;
+   if wedgeP_verbose then prints(" x=",x, " ", x.real_form, " lr=",lr) fi;
    for H in weights(x) do
-   if wedgeP_verbose then prints("coeff:", coef, "x: ", x, "lr", lr,"H=",H) fi;
+   let ()=if wedgeP_verbose then prints("weights(x): ", weights(x)) fi in
+   if wedgeP_verbose then prints("coeff:", coef, " x: ", x, " lr=", lr," H=",H) fi;
    let mu=K_type(x,lr+H) then
-   mu_dom=make_dominant(mu) in 
-   (coef,mu_dom) od
+   ()=if wedgeP_verbose then prints("mu=", mu) fi then
+{    mu_dom=make_dominant(mu) then NO: should finalize it}
+   mu_dom=K_type_pol(finalize(parameter(mu)*0)) then
+   ()=if wedgeP_verbose then prints("mu_dom=", mu_dom) fi in
+{   (coef,mu_dom) od}
+   coef*mu_dom od
    od.##
 
 {\g = \k\oplus \p  (Cartan decomposition of \g=Lie(G) with respect to theta (\g,\k,\p are complex vector spaces)
@@ -98,8 +104,8 @@ let ()=if wedgeP_verbose then prints("t=",t,new_line, " Q=",Q) fi in
    fi
 
 {compute mu\otimes \wedge^k(\p) as a sum of K-types}
-set tensor_product_wedge_P(KType mu, int k)=
- KTypePol:   tensor_product(mu,sums_P_roots_wedge_k_restricted_to_H_theta(k))
+set tensor_product_wedge_P(KType mu, int k)=KTypePol:
+tensor_product(mu,sums_P_roots_wedge_k_restricted_to_H_theta(k))
 
 {abbreviation}
 set tpw(KType mu, int k)=tensor_product_wedge_P(mu,k)
