@@ -1,0 +1,93 @@
+{Nilpotent orbits via Barbasch-Ma-Sun-Zhu}
+
+{labels=["A","A~", "B","D","C","C~","C*","D*"]}
+
+set is_in(string S,[string] list)=bool:first(for x in list do S=x od)!=-1
+
+{shorthand for rat_as_int(n/2), with check that n is even}
+set h(int n)=int:
+assert(is_even(n),"trying to take half of odd integer");n\2 
+
+set is_good_parity(Partition P, string label)=bool:
+if label="A"
+ then all(for row in P do is_even(row-size(P)) od)
+elif label="A!"
+ then all(for row in P do is_odd(row-size(P)) od)
+elif is_in(label,["C","C*","D","D*"])  
+ then all(for row in P do is_odd(row) od)
+elif is_in(label,["B","C~"]) 
+ then all(for row in P do is_even(row) od)
+else true fi
+
+set all_partitions(int n,string label)=[Partition]:
+if is_in(label,["B","D","D*"]) then BD_partitions(n)
+elif is_in(label,["C","C~","C*"]) then C_partitions(n)
+else
+error("missing case")
+fi
+
+set good_parity_partitions(int n, string label)=
+if is_in(label,["B","D","D*"]) then
+ for P in  BD_partitions(n) do if is_good_parity(P,label) then [P] else [] fi od.##
+elif is_in(label,["C","C~","C*"]) then
+ for P in  C_partitions(n) do if is_good_parity(P,label) then [P] else [] fi od.##
+else
+ error("missing case")
+fi
+
+{numerology of extracting all rows with even/odd index (not the length of the row)
+Suppose for example  n=#P=6 =[a0,a1,...,a5]
+ even index rows: 1,3,5:  {2i+1 | i=0,1,2} i.e. i=0,1,...(n-1)\2=(n-2)\2
+ odd index rows:  0,2,4   {2i   | i=0,1,2} i.e. i=0,1,...(n-1)\2
+
+Suppose for example n=#P=7 = [a0,a1,...,a6]
+ Even index rows: 1,3,5:   {2i+1| i=0,1,2}   i.e. i=0,1,..,(n-2)\2
+ odd index rows:  0,2,4,6: {2i  | i=0,1,2,3} i.e. i=0,1,..,(n-1)\2
+}
+
+{rows are numbered 0,1,2,...,#P-1
+ odd_index_rows are rows #0,2,...
+ even_index_rows are rows #1,3,5,...
+}
+set even_index_rows(Partition P)=Partition:for i:(#P-2)\2+1 do P[2*i+1] od
+set odd_index_rows(Partition P)=Partition:for i:(#P-1)\2+1 do P[2*i] od
+
+{Definition 3.7: dual orbit -> pair of partitions <-> Weyl group representation}
+set left_diagram(Partition P, string label)=Partition:
+if label="B" then  {P has even rows}
+ for row in even_index_rows(P) do h(row) od
+elif label="C~" then  {P has even rows}
+ for row in odd_index_rows(P) do h(row) od
+elif is_in(label,["C","C*"]) then  {P has odd rows}
+ for row in even_index_rows(P) do h(row+1) od
+elif is_in(label,["D","D*"]) then {P has odd rows}
+ if #P=0 then [0]
+  else for row in even_index_rows(P) do h(row+1) od
+ fi
+else
+ error("case not found")
+fi
+
+set right_diagram(Partition P, string label)=Partition:
+if label="B" then  {P has even rows}
+ for row in odd_index_rows(P) do h(row) od
+elif label="C~" then  {P has even rows}
+ for row in even_index_rows(P) do h(row) od
+elif is_in(label,["C","C*"]) then  {P has odd rows}
+ {all odd index rows except the last row if n=#P is odd,
+  last row is row #n (odd) which = P[n-1], n-1 is even,
+  so this is an even_index_row}
+ let temp=for row in even_index_rows(P) do h(row+1) od in
+ if is_odd(#P) then temp[:#temp-1] else temp fi
+elif is_in(label,["D","D*"]) then {P has odd rows}
+ if #P=0 then [0]
+  else for row in even_index_rows(P) do h(row-1) od
+ fi
+else
+ error("case not found")
+fi
+
+set diagram_pair(Partition P,string label)=(Partition,Partition):
+(left_diagram(P,label),right_diagram(P,label))
+ 
+ 

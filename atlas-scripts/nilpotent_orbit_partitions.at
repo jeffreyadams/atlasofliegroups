@@ -23,13 +23,13 @@ set type_number (LieType t) = int:
 { same as previous applied to a RootDatum }
 set type_number (RootDatum rd) = int: type_number(Lie_type(rd))
 
+set C_partitions=(int->[Partition]):parity_restricted_partitions(true)  { odd restricted }
+set BD_partitions=(int->[Partition]):parity_restricted_partitions(false)  { odd restricted } 
+
 { (complex) nilpotent orbits, partition-type classification,
   for simple group of type A-D
 }
-set nilpotent_orbit_partitions =
-  let C_partitions = parity_restricted_partitions(true)  { odd restricted }
-  ,  BD_partitions = parity_restricted_partitions(false) { even restricted }
-  in (LieType t) [Partition]:
+set nilpotent_orbit_partitions =(LieType->[Partition]):(LieType t):
   let n=semisimple_rank(t) in
   case type_number(t) { this only lets simple types through }
   in  partitions(n+1), BD_partitions(2*n+1)
