@@ -138,8 +138,12 @@ set KL_sum_at_s_to_ht_inter(int HT) = (Param p,int time) maybe_PP:
        in below.done_PP
   fi
 
-set twisted_KL_sum_at_s_to_ht(int N) = (Param p) ParamPol:
-  to_ht(N)(twisted_KL_sum_at_s(p))
+set twisted_KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol:
+    if HT < 0 then return twisted_KL_sum_at_s(p)
+    else let (below,) = height_split(twisted_KL_sum_at_s(p),HT)
+    	 in below
+    fi
+  {to_ht(N)(twisted_KL_sum_at_s(p))}
 
 {set to_ht (ParamPol P,int N) = ParamPol:
   if N<0 then return P fi;
@@ -1976,16 +1980,24 @@ set twisted_c_form_irreducible_contributions_cut (Param p, int HT) =
   let G=p.real_form, ori_nr_p = orientation_nr(p)
   then formula = (1+s)*KL_sum_at_s_to_ht(HT)(p) + (1-s)*twisted_KL_sum_at_s_to_ht(HT)(p)
   in { two value-producing loops can be a lot more efficient than one: }
-  ( to_ht(HT)(G.null_module +
-      for c@q in formula
+     let (first,second) = ( (
+      	 G.null_module +
+      	 for c@q in formula
          if twist(q)=q do (half(c)*orientation_nr_term(ori_nr_p,q),q) fi
-      od)
-   , to_ht(HT)(G.null_module +
+      	    	       od)
+   , (G.null_module +
       for c@q in formula
          if twist(q)!=q do (c*orientation_nr_term(ori_nr_p,q),q) fi
-      od)
-  )
-
+      od))
+      in if HT<0 then (first,second)
+      	 else let (first_low,) = height_split(first,HT)
+	      then (second_low,) = height_split(second,HT)
+	      in (first_low,second_low)
+	 fi
+    {if HT < 0 then return twisted_KL_sum_at_s(p)
+    else let (below,) = height_split(twisted_KL_sum_at_s(p),HT)
+    	 in below
+    fi}
 
 { The following function implements algorithm from Vogan in email 9/22/16:
   * for each delta-fixed term q add c_form_std(q) (fully twisted-deformed)
