@@ -12,6 +12,9 @@
   after the fact how this could have been done as an atlas script
 }
 
+{this is defined in hermitian.at, which maybe isn't yet loaded}
+set_type maybe_KTP = (void timed_out | KTypePol done)
+
 { this function is now obsolete, as |partial_KL_block| now condenses internally }
 set compress { output from old |partial_KL_block| to a more useful form } (
     [Param] B, mat KL_mat, [i_poly] polys, vec stops, vec survivors, mat map) =
@@ -284,6 +287,36 @@ set recursive_deform_scr (Param p, int HT) = KTypePol:
     ; at_nu0
     end
   fi { apply that recursive function to the initial argument: } (1,p,HT)
+
+{same as built-in full_deform interruptible}
+set recursive_deform_scr (Param p, int HT, int TIME) = maybe_KTP:
+  {if d_verbose then prints("recursive_deform to height with:", p) fi;}
+  if not is_final(p) then error("improper parameter") fi;
+  let empty=null_module(real_form(p)), expiration = elapsed_ms() + TIME
+  {if d_verbose} { choose verbose or non-verbose version of the function }
+  in (rec_fun full_def_scr (Split sc,Param p, int HT, int expiration) maybe_KTP:
+	 { |sc| will simply scale the coefficients of resulting KTypePol }
+    begin
+      p := alcove_center(p);
+      assert(@:is_standard(p),"non standard parameter in deformation");
+      let acc=empty, at_nu0=KTypePol: sc*(p.K_type) { fully deformed |p| } in
+      for factor in reducibility_points_scr(p,HT)
+      ~ { direction of deformation is down, towards 0; this is not essential }
+      do acc+:={deform(p*factor)}
+      	 deformation_terms_by_dual_scr(Finalize(p*factor),HT)
+      od
+    ; for k@q in acc { traverse the sum of the deformation terms spun off }
+      do at_nu0 +:= case full_def_scr(sc*k,q,HT,expiration)
+      	 	    	 | timed_out: 0*at_nu0
+			 | done(P): P
+		    esac
+      od
+    ; if expiration < elapsed_ms()  then timed_out()
+      else (at_nu0).done
+      fi
+    end)(1,p,HT,elapsed_ms() + TIME)
+  { apply that recursive function to the initial argument: } 
+
 
 {same as built-in full_deform}
 set recursive_deform_old (Param p, int HT) = KTypePol:

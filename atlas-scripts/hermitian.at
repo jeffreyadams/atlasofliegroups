@@ -6,6 +6,7 @@
 <cohom_reductionND {for derived_factor_params}
 <FPP_faces_geom {for herm_center}{get charTime!}
 <writeFiles {for write commands}
+<deform.at {for script full_deform}
 
 set deformLookupCounter = make_counter()
 set deformCalcCounter = make_counter()
@@ -303,6 +304,7 @@ set full_deform_to_ht_MvL_alt_old(Param p, int height,int TIME) = maybe_KTP:
 
 set alt_count = int: 0
 set alt_time = int:0
+set deform_script_flag = false
 
 set full_deform_to_ht_MvL_altA(Param p, int height) = KTypePol:
   alt_count +:=1;
@@ -322,7 +324,10 @@ set full_deform_to_ht_MvL_altA(Param p, int height) = KTypePol:
       then () = while >#P
        	    do if elapsed_ms() - start > time
 	       then {try full_deform}
-		    let try = full_deform(p,time)
+		    let try = if deform_script_flag
+		    	      then recursive_deform_scr(p, height, time)
+		    	      else full_deform(p,time)
+			      fi
 		    in case try
 		       |timed_out: time:=2*time; ()
 		       |done(r): alt_time +:= elapsed_ms() - start; return to_ht(r, height)
@@ -359,9 +364,11 @@ set full_deform_to_ht_MvL_altA(Param p, int height,int TIME) = maybe_KTP:
 	       then alt_time_int_fail +:= elapsed_ms() - start; return timed_out()
 	       fi;
 	       if elapsed_ms() - start > time
-	       then {try full_deform}
-		    time:=2*time;
-		    let try = full_deform(p,time)
+	       then time:=2*time;
+		    let try = if deform_script_flag {try full_deform}
+		    	      then recursive_deform_scr(p, height, time)
+		    	      else full_deform(p,time)
+			      fi
 		    in case try
 		       |timed_out: time:=2*time; ()
 		       |done(r): alt_count+:=1;
@@ -436,7 +443,10 @@ set full_deform_to_ht_MvL_alt(Param p, int height) = KTypePol:
 		    then prints(new_line,"starting loop try_full after ",print_time_string(elapsed_ms() - START_TIME),
        	      	    " for ", print_time_string(time))
 		    fi;
-		    let try = full_deform(p,time)
+		    let try = if deform_script_flag
+		    	      then recursive_deform_scr(p, height, time)
+			      else full_deform(p,time)
+			      fi
 		    in start_to_ht:=elapsed_ms(); {starting a new round of deform_to_ht}
 		       case try
 		       |timed_out: if alt_verbose
@@ -529,7 +539,10 @@ set full_deform_to_ht_MvL_alt(Param p, int height,int TIME) = maybe_KTP:
 		    then prints(new_line,"starting loop try_full after ",print_time_string(elapsed_ms() - START_TIME),
        	      	    " for ", print_time_string(time))
 		    fi;
-		    let try = full_deform(p,time)
+		    let try = if deform_script_flag
+		    	      then recursive_deform_scr(p, height, time)
+			      else full_deform(p,time)
+			      fi
 		    in start_to_ht:=elapsed_ms();
 		       case try
 		       |timed_out: if alt_verbose
