@@ -1,4 +1,5 @@
 {Nilpotent orbits via Barbasch-Ma-Sun-Zhu}
+{type Orbit=Partition=[int]}
 
 {labels=["A","A~", "B","D","C","C~","C*","D*"]}
 
@@ -8,7 +9,14 @@ set is_in(string S,[string] list)=bool:first(for x in list do S=x od)!=-1
 set h(int n)=int:
 assert(is_even(n),"trying to take half of odd integer");n\2 
 
-set is_good_parity(Partition P, string label)=bool:
+{G: group of type label=B,C,D
+ P: partition for orbit of DUAL group: C,B,D
+ G   G^v   condition
+ B   C     even rows
+ C   B     odd rows
+ D   D     odd rows
+} 
+set is_good_parity(Orbit P, string label)=bool:
 if label="A"
  then all(for row in P do is_even(row-size(P)) od)
 elif label="A!"
@@ -19,7 +27,7 @@ elif is_in(label,["B","C~"])
  then all(for row in P do is_even(row) od)
 else true fi
 
-set all_partitions(int n,string label)=[Partition]:
+set all_partitions(int n,string label)=[Orbit]:
 if is_in(label,["B","D","D*"]) then BD_partitions(n)
 elif is_in(label,["C","C~","C*"]) then C_partitions(n)
 else
@@ -27,10 +35,16 @@ error("missing case")
 fi
 
 set good_parity_partitions(int n, string label)=
-if is_in(label,["B","D","D*"]) then
- for P in  BD_partitions(n) do if is_good_parity(P,label) then [P] else [] fi od.##
-elif is_in(label,["C","C~","C*"]) then
- for P in  C_partitions(n) do if is_good_parity(P,label) then [P] else [] fi od.##
+ {(n,C) -> G=Sp(2n) -> orbits for  G^v=SO(2n+1) -> BD_partitions(2*n+1)
+  (n,D) -> G=SO(2n) -> orbits for G^v=SO(2n) -> BD_partitions(2n)
+  (n,B) -> G=SO(2n+1) -> orbits for G^v=Sp(2n) -> C_partitions(2n)
+  }
+if is_in(label,["C","C*"]) then
+ for P in  BD_partitions(2*n+1) do if is_good_parity(P,label) then [P] else [] fi od.##
+elif is_in(label,["D","D*"]) then
+ for P in  BD_partitions(2*n) do if is_good_parity(P,label) then [P] else [] fi od.##
+elif is_in(label,["B","C~"]) then
+ for P in  C_partitions(2*n) do if is_good_parity(P,label) then [P] else [] fi od.##
 else
  error("missing case")
 fi
@@ -49,17 +63,23 @@ Suppose for example n=#P=7 = [a0,a1,...,a6]
  odd_index_rows are rows #0,2,...
  even_index_rows are rows #1,3,5,...
 }
-set even_index_rows(Partition P)=Partition:for i:(#P-2)\2+1 do P[2*i+1] od
-set odd_index_rows(Partition P)=Partition:for i:(#P-1)\2+1 do P[2*i] od
+set even_index_rows(Orbit P)=Orbit:for i:(#P-2)\2+1 do P[2*i+1] od
+set odd_index_rows(Orbit P)=Orbit:for i:(#P-1)\2+1 do P[2*i] od
 
 {Definition 3.7: dual orbit -> pair of partitions <-> Weyl group representation}
-set left_diagram(Partition P, string label)=Partition:
+set left_diagram(Orbit P, string label)=Orbit:
+let left=
 if label="B" then  {P has even rows}
  for row in even_index_rows(P) do h(row) od
 elif label="C~" then  {P has even rows}
  for row in odd_index_rows(P) do h(row) od
 elif is_in(label,["C","C*"]) then  {P has odd rows}
- for row in even_index_rows(P) do h(row+1) od
+ {all odd index rows except the last row if n=#P is odd,
+  last row is row #n (odd) which = P[n-1], n-1 is even,
+  so this is an even_index_row}
+ let temp=for row in even_index_rows(P) do h(row+1) od in
+ if 2*#temp-1=#P then temp[:#temp-1] else temp fi
+{ if is_odd(#P) then temp[:#temp-1] else temp fi}
 elif is_in(label,["D","D*"]) then {P has odd rows}
  if #P=0 then [0]
   else for row in even_index_rows(P) do h(row+1) od
@@ -67,18 +87,16 @@ elif is_in(label,["D","D*"]) then {P has odd rows}
 else
  error("case not found")
 fi
+in transpose(left)
 
-set right_diagram(Partition P, string label)=Partition:
+set right_diagram(Orbit P, string label)=Orbit:
+let right=
 if label="B" then  {P has even rows}
  for row in odd_index_rows(P) do h(row) od
 elif label="C~" then  {P has even rows}
  for row in even_index_rows(P) do h(row) od
 elif is_in(label,["C","C*"]) then  {P has odd rows}
- {all odd index rows except the last row if n=#P is odd,
-  last row is row #n (odd) which = P[n-1], n-1 is even,
-  so this is an even_index_row}
- let temp=for row in even_index_rows(P) do h(row+1) od in
- if is_odd(#P) then temp[:#temp-1] else temp fi
+ for row in odd_index_rows(P) do h(row-1) od
 elif is_in(label,["D","D*"]) then {P has odd rows}
  if #P=0 then [0]
   else for row in even_index_rows(P) do h(row-1) od
@@ -86,8 +104,37 @@ elif is_in(label,["D","D*"]) then {P has odd rows}
 else
  error("case not found")
 fi
+in transpose(right)
 
-set diagram_pair(Partition P,string label)=(Partition,Partition):
+set diagram_pair(Orbit P,string label)=(Partition,Partition):
 (left_diagram(P,label),right_diagram(P,label))
- 
- 
+
+{label: type of G, orbit is for G^v}
+set complex_group(Orbit O_v,string label)=RootDatum:
+if is_in(label,["B","C~"]) then SO(2*#O_v+1)
+elif is_in(label,["C","C*"]) then Sp(2*#O_v-1)
+elif is_in(label,["D","D*"]) then SO(2*#O_v)
+else
+error("case not implemented yet")
+fi
+
+{(O_v,label) -> diagram_pair (Left,Right)
+-> painted bi partions (P,Q,label) with partition(P)=Left, partition(Q)=right}
+set painted_bi_partitions(Orbit O_v, string label)=
+let (left,right)=diagram_pair(O_v,label) in
+let n=
+if is_in(label,["C","C*"]) then {G=Sp(2n),G_v=SO(2n+1) size(O_v)=2n+1}
+ h(size(O_v)-1)
+elif is_in(label,["B","C~"]) then {G=SO(2n+1) G_v=Sp(2n) 2n=size(O_v)}
+ h(size(O_v))
+elif is_in(label,["D","D*"]) then {SO(2n)}
+ h(size(O_v))
+else
+error("case not implemented yet")
+fi
+in let ()=prints("n=", n)  then
+all = painted_bipartitions(n,label) in
+for Z in all do if partition(Z.P)=left and partition(Z.Q)=right then [Z] else [] fi od.##
+
+
+

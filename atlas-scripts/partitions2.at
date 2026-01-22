@@ -44,7 +44,7 @@ fi
 set painted_partitions(int n)=
 let rec_fun f(int n)=[PaintedPartition]:
 if n=0
- then []
+ then [[]]
 elif n=1 then
   [ [[0]],[[1]],[[2]],[[3]],[[4]] ]
 else
@@ -59,9 +59,13 @@ set right_valid_painted_partitions(int n,string label)=
 for P in painted_partitions(n) do
  if is_valid_right(P,label) then [P] else [] fi od.##
 
-set painted_bipartitions(int n, string label)=
-let left=left_valid_painted_partitions(n,label) then
-right=right_valid_painted_partitions(n,label) in
+set painted_bipartitions(int left,int right, string label)=
+let left=left_valid_painted_partitions(left,label) then
+right=right_valid_painted_partitions(right,label) in
 ##for P in left do
  ##for Q in right do
   if is_valid(P,Q,label) then [(P,Q,label)] else [] fi od od
+
+set painted_bipartitions(int n, string label)=
+for i:n+1 do painted_bipartitions(i,n-i,label) od.##
+
