@@ -582,6 +582,17 @@ set red_coroots(KGBElt x) = [vec]:
 	  fi
        od.##
 
+{this version guarantees that the range function in steve.at produces NONNEGATIVE integers, allowing
+the value to be stored as a bitset}
+set red_coroots_DV(KGBElt x, ratvec lambda) = [vec]:
+   let rd = x.root_datum
+in for alpha_v@j in rd.poscoroots
+   {retain real poscoroots and complex descents nonneg on d_lambda}
+      if coroot_index(rd,alpha_v*x.involution).< and (alpha_v*((1+x.involution)*lambda)).>=
+      do alpha_v
+      fi
+   od
+
 set MvL_alcove_time = int:0
 {This vec characterizes the half-open alcove in which Marc puts p}
 set MvL_alcove(Param p) = vec:

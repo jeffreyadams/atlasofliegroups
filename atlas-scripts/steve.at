@@ -11,33 +11,32 @@ from int to int inclusive}
 set range(KGBElt x, ratvec lambda, vec av) = (int, int):
     let lfe = local_FPP_extrema(x,lambda)
     then vals = for w in lfe do av*w od
-    in (floor(min(vals)), ceil(max(vals)))
+    in (floor(av*(1+x.involution)*lambda), ceil(max(vals)))
 
 {avL is meant to be a coroot in Lmin}
 set rangeL(KGBElt x, ratvec lambda, vec avL) = (int, int):
     let (,pL0) = theta_stable_quasi_data(parameter(x,lambda,0*lambda))
     then lfe = local_FPP_extrema(x,lambda)
-    then valsL = for w in lfe
-    	       	 do let (,pwL) = theta_stable_quasi_data(parameter(x,lambda,w))
-		    in avL*(pwL.infinitesimal_character)
+    then pwLs = for w in lfe
+    	      	do let (,pwL) = theta_stable_quasi_data(parameter(x,lambda,w))
+    	      	   in pwL
+		od
+    then valsL = for pwL in pwLs
+    	       	 do avL*(pwL.infinitesimal_character)
 		 od
-    in (floor(min(valsL)), ceil(max(valsL)))
+    in (floor(avL*pwLs[0].d_lambda), ceil(max(valsL)))
 
-set ranges(KGBElt x, ratvec lambda) = [(vec, int, int)]:
-    let rc = red_coroots(x)
-    then lfe = local_FPP_extrema(x,lambda)
+set ranges(KGBElt x, ratvec lambda) = [(vec, (int, int))]:
+    let rc = red_coroots_DV(x,lambda)
     in for av in rc
-       do let vals = for w in lfe do av*w od
-       	  in (av, floor(min(vals)), ceil(max(vals)))
+       do (av,range(x, lambda, av))
        od
 
-set rangesL(KGBElt x, ratvec lambda) = [(vec, int, int)]:
+set rangesL(KGBElt x, ratvec lambda) = [(vec, (int, int))]:
     let (,pL0) = theta_stable_quasi_data(parameter(x,lambda,0*lambda))
-    then rcL = red_coroots(pL0.x)
-    then lfe = local_FPP_extrema(x,lambda)
+    then rcL = red_coroots_DV(pL0.x,pL0.lambda)
     in for avL in rcL
-       do let (lowL,highL) = rangeL(x,lambda,avL)
-       	  in (avL,lowL,highL)
+       do (avL,rangeL(x, lambda, avL))
        od
 
 {root datum from all coroots restricting to A as multiple of av}
@@ -111,7 +110,7 @@ set red_points_time = int:0
      	ans}
 
 set red_points(KGBElt x,ratvec lambda, int HT) = [[int]]:
-    for av in red_coroots(x)
+    for av in red_coroots_DV(x,lambda)
     do red_points_scr(x,lambda,av,HT)
     od
 
@@ -129,7 +128,7 @@ set red_pointsL(KGBElt x, ratvec lambda, vec avL, int HTL) = [int]:
 
 set red_pointsL(KGBElt x,ratvec lambda, int HTL) = [[int]]:
     let (,pL0) = theta_stable_quasi_data(parameter(x,lambda,0*lambda))
-    in for avL in red_coroots(pL0.x)
+    in for avL in red_coroots_DV(pL0.x, pL0.lambda)
     do red_pointsL(x,lambda,avL,HTL)
     od
 
@@ -151,7 +150,7 @@ set location(KGBElt x, ratvec lambda, vec av,int HT, rat t) = int:
     in location(rp,t)
 
 set thruple(KGBElt x, ratvec lambda,int HT, ratvec gamma) = vec:
-    for av in red_coroots(x)
+    for av in red_coroots_DV(x,lambda)
     do location(x,lambda,av,HT,av*gamma)
     od
 
@@ -467,7 +466,7 @@ set make_steve_hash() = steve_hash_table:
 	 {rfnum, xlnum, htnum, vecnum; statuses[rfnum][xlnum][htnum][vecnum] is the result}
     then SHthruple_plain_indexed(int rfnum, int xlnum, int htnum, ratvec gamma) = int:
 	 let (x,lambda) = xlhashes[rfnum].index(xlnum), HT = heights[rfnum][xlnum][htnum]
-	 then rcor = red_coroots(x)
+	 then rcor = red_coroots_DV(x,lambda)
     	 then rp = for M in redpoints[rfnum][xlnum][htnum]
 		   do set_bit_positions(M) {this is [int]}
 		   od {this is [[int]]}
@@ -508,7 +507,7 @@ set make_steve_hash() = steve_hash_table:
 	 then return SHthruple_plain_indexed(rfnum, xlnum, htnum, gamma)
 	 fi;
 	 let (x,lambda) = xlhashes[rfnum].index(xlnum), HT = heights[rfnum][xlnum][htnum]
-	 then rcor = red_coroots(x)
+	 then rcor = red_coroots_DV(x,lambda)
     	 then rp = for M in redpoints[rfnum][xlnum][htnum]
 		   do set_bit_positions(M) {this is [int]}
 		   od {this is [[int]]}
@@ -565,7 +564,7 @@ set make_steve_hash() = steve_hash_table:
 	 then return SHthruple_plain_indexed(rfnum, xlnum, htnum, gamma)
 	 fi;
 	 let (x,lambda) = xlhashes[rfnum].index(xlnum), HT = heights[rfnum][xlnum][htnum]
-	 then rcor = red_coroots(x)
+	 then rcor = red_coroots_DV(x,lambda)
     	 then rp = for M in redpoints[rfnum][xlnum][htnum]
 		   do set_bit_positions(M) {this is [int]}
 		   od {this is [[int]]}
@@ -638,7 +637,7 @@ set make_steve_hash() = steve_hash_table:
 	 then return SHthruple_plain_indexed(rfnum, xlnum, htnum, gamma)
 	 fi;
 	 let (x,lambda) = xlhashes[rfnum].index(xlnum), HT = heights[rfnum][xlnum][htnum]
-	 then rcor = red_coroots(x)
+	 then rcor = red_coroots_DV(x,lambda)
     	 then rp = for M in redpoints[rfnum][xlnum][htnum]
 		   do set_bit_positions(M) {this is [int]}
 		   od {this is [[int]]}
@@ -664,7 +663,7 @@ set make_steve_hash() = steve_hash_table:
 	 then return SHthruple_plain_indexed(rfnum, xlnum, htnum, gamma)
 	 fi;
 	 let (x,lambda) = xlhashes[rfnum].index(xlnum), HT = heights[rfnum][xlnum][htnum]
-	 then rcor = red_coroots(x)
+	 then rcor = red_coroots_DV(x,lambda)
     	 then rp = for M in redpoints[rfnum][xlnum][htnum]
 		   do set_bit_positions(M) {this is [int]}
 		   od {this is [[int]]}
@@ -1175,7 +1174,7 @@ set make_steve_hash_small() = steve_hash_small_table:
     in dlSHS := (1+xSHS.involution)*(lambdaSHS.numer);
        let (wm,) = from_dominant(rfSHS, dlSHS)
        in wmin:=wm.inverse;
-       rcor := red_coroots(x);
+       rcor := red_coroots_DV(x,lambda);
        SL := to_bitset(for av@j in rcor do if (av*dlSHS).= then [j] else [] fi od.##);
        rcorL := (for j in set_bit_positions(SL) do rcor[j]*wmin od){*wmin}; {outside fails?}
        htSHS := HT;
@@ -1213,7 +1212,7 @@ set make_steve_hash_small() = steve_hash_small_table:
        min_flag:= steve_min_flag and
        		   x.number > (#KGB(rfSHS))/3 and
 		   (height(p0) > 0) and (min_ht_max > height(p0));
-       rcor := red_coroots(x);
+       rcor := red_coroots_DV(x,lambda);
        SL := to_bitset(for av@j in rcor do if (av*dlSHS).= then [j] else [] fi od.##);
        rcorL := (for j in set_bit_positions(SL) do rcor[j]*wmin od){*wmin}; {outside fails?}
        htSHS := HT;
@@ -1243,7 +1242,7 @@ set make_steve_hash_small() = steve_hash_small_table:
        in wmin:=wm.inverse;
        min_flag := (height(p0) > 0) and (min_ht_max > height(p0));
        {min_height := min_ht_max;}
-       rcor := red_coroots(x);
+       rcor := red_coroots_DV(x,lambda);
        SL := to_bitset(for av@j in rcor do if (av*dlSHS).= then [j] else [] fi od.##);
        rcorL := (for j in set_bit_positions(SL) do rcor[j]*wmin od){*wmin};
        {rcorL := red_coroots(p0L.x);}
@@ -1339,7 +1338,7 @@ set location_finder_add_Kchar(KGBElt x, ratvec lambda, int HT, LocalVertexData L
     {then () = prints("in location_finder, start with lambda = ",lambda, ", lochash.size() = ",
     lochash.size(), ", KCvlist = ", KCvlist)}
     	{for each location in lochash, vec of size 2 [index of Kchar, #LQ's]}
-    then red_co = red_coroots(x)
+    then red_co = red_coroots_DV(x,lambda)
     then red_pts = if steve_small_flag
 	 	   then steve_hash_small.red_points(HT)
 	 	   else steve_hash.red_points(x, lambda, HT)
@@ -1403,7 +1402,7 @@ set location_finder(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [FaceV
     {then () = prints("in location_finder, start with lambda = ",lambda, ", lochash.size() = ",
     lochash.size(), ", KCvlist = ", KCvlist)}
     	{for each location in lochash, vec of size 2 [index of Kchar, #LQ's]}
-    then red_co = red_coroots(x)
+    then red_co = red_coroots_DV(x,lambda)
     then red_pts = if steve_small_flag
 	 	   then steve_hash_small.red_points(HT)
 	 	   else steve_hash.red_points(x, lambda, HT)
