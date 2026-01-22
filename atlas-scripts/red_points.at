@@ -21,7 +21,7 @@ set range_scr(KGBElt x, ratvec lambda, vec av) = (int, int):
     let upval = av*(x.root_datum.rho)
     , thplus = 1+x.involution
     then downval = av*(thplus*lambda)/2 {value at nu = 0}
-    in (floor(downval), ceil(upval))
+    in (ceil(downval), floor(upval))
 
 {avbd is a bound for the value of av on the infinitesimal character}
 set range_scr(KGBElt x, ratvec lambda, vec av, rat avbd) = (int, int):
@@ -244,8 +244,6 @@ set reducibility_points_scr_rho(Param p, int HT) = [rat]:
     in rp_scr_time+:= elapsed_ms() - start;
        for r in long do if r>0 and r<=1 do r fi od.##
 
-set rp_scr_time_avbd = int:0
-
 {Works for any infl char}
 set reducibility_points_scr(Param p, int HT) = [rat]:
     let gamma = p.infinitesimal_character, rc = red_coroots_scr(p.x), start = elapsed_ms()
@@ -256,5 +254,5 @@ set reducibility_points_scr(Param p, int HT) = [rat]:
 	{ints where av*gamma' = int is bad}
 	   in for m in rp do (m - av*(p.d_lambda))/den od
         od.##.sort_u
-    in rp_scr_time_avbd+:= elapsed_ms() - start;
+    in rp_scr_time+:= elapsed_ms() - start;
        for r in long do if r>0 and r<=1 do r fi od.##

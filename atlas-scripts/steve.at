@@ -3,45 +3,8 @@
 < FPP_faces_herm.at {for unitarity tests}
 < hash.at {for hash tables}
 < FPP_localDirac.at { for |unipotents_to_hash| }
-{<K_types.at {for branch_std}}
-set red_coroots(Param p) = [vec]:
-    let G = p.real_form, gamma = p.infinitesimal_character
-    then pos_co = G.poscoroots
-    then theta = p.x.involution
-    in for alphav@j in pos_co
-       do let gammaj = gamma*alphav
-       	  in if is_integer(gammaj) and gammaj.>
-       	     then if alphav*theta = -alphav and Cayley((G.posroots)[j],p) != p
-   	     	  then [alphav] {parity real root}
-	       	  else []
-	       	  fi
-	     elif ((theta*(gamma.numer))*alphav).<
-	     then [alphav] {complex}
-	     else []
-	     fi
-       od.##
-
-set move_theta(WeylElt w) = ((KGBElt,ratvec) -> (KGBElt,ratvec)):
- (KGBElt x, ratvec lambda) (KGBElt,ratvec):
- let G = w.root_datum, x1 = cross(w,x) {added to next 7.29.25}
- then lambda_shift = rho_C(G,x1.involution) - w*rho_C(G, x.involution)
-  then rhow = rho(G) - w*rho(G)
- then p1 = parameter(x1, w*lambda + rhow - lambda_shift, 0*lambda)
- in (p1.x, p1.lambda)
-
-
-{should require number of -alphav*theta >= number of alphav}
-{defined in hermitian.at}
-{set red_coroots(KGBElt x) = [vec]:
-    let G = x.real_form,  theta = x.involution
-    then rho = G.rho, pos_co = G.poscoroots
-    in for alphav@j in pos_co
-       do if (alphav*theta*rho).< and poscoroot_index(G, -alphav*theta) >= j
-       	  then [alphav]
-	  else []
-	  fi
-       od.##
-}
+< red_points.at {for red_points}
+{still need to fix this to allow deformed parameters NOT in FPP!}
 
 {need to study reducibility along av at int values
 from int to int inclusive}
@@ -101,178 +64,6 @@ set Levix(KGBElt x, vec av) = (RealForm,KGBElt):
      then xL = KGB_elt(rdL, theta, x.torus_factor)
     in (real_form(xL),xL)
 
-{given a matrix of roots and a matrix of coroots, choose a maximal set of orthogonal ones}
-set orthogonal(mat roots, mat coroots) = ([vec],[vec]):
-    let r = #(roots.^) {number of columns in root matrix}
-    then entry(int p, int q) = int: 0
-    then oroots = [vec]:[], perproots = [vec]: roots
-    then ocoroots = oroots, perpcoroots = [vec]: coroots
-    in while (#perproots).>
-       do let tester = perproots~[0], cotester = perpcoroots~[0]
-       	  {then () = prints("tester = ",tester,", cotester = ",cotester)}
-       	  in oroots#:= tester;
-       	  ocoroots#:= cotester;
-	  perproots := for alpha in perproots do if (alpha*cotester).= then [alpha] else [] fi od.##;
-	  perpcoroots := for av in perpcoroots do if (tester*av).= then [av] else [] fi od.##
-       od;
-       (oroots, ocoroots)
-
-{given a matrix of roots and a matrix of coroots, choose sets of positive ones}
-set pos_choice(mat roots, mat coroots) = ([vec],[vec]):
-    let (O,cO) = orthogonal(roots,coroots)
-    then levels = [int]: for alpha in roots
-    	 	  	 do first(for cotester in cO
-			    	  do (alpha*cotester).!=
-				  od)
-			 od
-    in (for alpha@j in roots
-       do if (alpha*cO[levels[j]]).>
-       	  then [alpha]
-	  else []
-	  fi
-       od.##,
-       for av@j in coroots
-       do if (av*O[levels[j]]).>
-       	  then [av]
-	  else []
-	  fi
-       od.##)
-
-{given a matrix of roots and a matrix of coroots, sets of simple ones}
-set simp_choice(mat roots, mat coroots) = ([vec],[vec]):
-    if #roots = 0 then return ([],[]) fi;
-    let (PR,cPR) = pos_choice(roots,coroots)
-    then tworhocheck = sum(#cPR[0],cPR)
-    then simplejs = for alpha@j in PR
-       	 	    do if alpha*tworhocheck = 2
-       	  	       then [j]
-	  	       else []
-	  	       fi
-       		    od.##
-    in (for j in simplejs
-       	do PR[j]
-	od,
-	for j in simplejs
-       	do cPR[j]
-	od)
-
-{assume x.involution has maximal -1 eigenspace a; construct restricted root datum on a}
-set res_stuff(KGBElt x) = ([vec],[vec]):
-    let theta = x.involution, G = x.real_form
-    then () = assert(@:rank(1-theta) = split_rank(G), "x was not on max split Cartan")
-    then T_lower_star = mat: eigen_lattice(theta.^,-1)
-    then res_coroot_hash = make_vec_hash()
-    then res_root_hash = make_vec_hash()
-    then () = for av@j in G.coroots
-    	      do let avres = av - av*theta
-		 in if avres = 2*av
-		    then let resav= required_solution(T_lower_star,av) {real coroots}
-		    	 in res_coroot_hash.match(resav);
-		    	    res_root_hash.match(G.roots[j]*T_lower_star)
-		    elif avres.= or is_coroot(G,avres) {omit imaginary and half of real}
-		    then -1
-		    else let resav= required_solution(T_lower_star,avres) {complex coroots}
-		    	 in res_coroot_hash.match(resav);
-			    res_root_hash.match(G.roots[j]*T_lower_star)
-		    fi
-	       od
-     in (res_root_hash.list(), res_coroot_hash.list())
-
-set res_root_old_flag = false {the hashed version below is just uniformly faster}
-
-set res_root_datum_old(KGBElt x) = RootDatum:
-    let (roo,coroo) = res_stuff(x)
-    then (sroo,scoroo) = simp_choice(roo,coroo)
-    in root_datum(sroo, scoroo, x.real_form.prefers_coroots)
-
-set res_root_datum = (KGBElt -> RootDatum):
-    let rfhash = make_RealForm_hash()
-    then KGBhashes = [KGBElt_hash]: [] {one hash for each real form}
-    then answerhash = make_RootDatum_hash()
-    then answer_indices = [vec]: [] {one list of rd indices for each real form,
-    	 		  	     size = KGBhash[i].size()}
-    in (KGBElt -> RootDatum): (KGBElt x) RootDatum:
-       if res_root_old_flag then return res_root_datum_old(x) fi;
-       let I = rfhash.size()
-       then i = rfhash.match(x.real_form)
-       then () = if i = I {haven't seen G before}
-       	       	 then KGBhashes #:=make_KGBElt_hash();
-	       	      answer_indices #:= null(0)
-	  	 fi
-       then J = KGBhashes[i].size(), K = answerhash.size()
-       then j = KGBhashes[i].match(x)
-       then () = if j = J {haven't seen x before}
-       	       	 then let (roo,coroo) = res_stuff(x)
-    		      then (sroo,scoroo) = simp_choice(roo,coroo)
-    		      then k = answerhash.match(root_datum(sroo, scoroo, x.real_form.prefers_coroots))
-		      in answer_indices[i] #:= k
-		 fi
-       in answerhash.index(answer_indices[i][j])
-
-set res_root_datum(RealForm G) = RootDatum:
-    res_root_datum(x_open(G))
-
-set simpTimer = int:0
-
-{assume roots for L are rational linearly closed in roots for G, and
-L-positive are G-positive; conjugate L to standard Levi}
-
-{Result (w,xi). Assume is L is Levi of nonstandard REAL P at x,
-carried by w from standard real Levi at z1}
-set simplifier_theta(RootDatum L, KGBElt x) = (WeylElt, KGBElt):
-    {if old_simplifier_theta_flag then return simplifier_theta_old(L,x) fi;}
-    let start = elapsed_ms(), rd = x.root_datum,  thetamin = (1 - x.involution)
-    then S = for a in L.simple_coroots do coroot_index(rd,a) od
-    then T = maximize_Levi(rd,S)
-    then A = (Levi_simple_coroots(rd,T)), k = #S
-    then wt_theta = thetamin*((A,vector(rd.semisimple_rank,(int i)int:#(i>=k)*2^i)/1).required_solution.numer)
-    {The powers of two are just a garbage way to make it usually work. Don't know how actually to
-    fix it.}
-    then (w,wt_theta_dom) = from_dominant(rd,wt_theta)
-    then x1 = cross(w.inverse,x)
-    in simpTimer+:= elapsed_ms() - start;
-       (w,x1)
-
-{Result (w,xi). Assume is L is Levi of nonstandard REAL P at x,
-carried by w from standard real Levi at z1}
-{w needs to account for difference between xL and xLo??}
-set simplifier_theta_res(RealForm L, KGBElt x) = (WeylElt, KGBElt):
-    {if old_simplifier_theta_flag then return simplifier_theta_old(L,x) fi;}
-    let start = elapsed_ms(), rd = x.root_datum,  thetamin = (1 - x.involution), G = x.real_form
-    then xL = inverse_embed_KGB(x,L)
-    then xLo = x_open(L)
-    then xo = embed_KGB(xLo,G)
-    then thetao  = xo.involution
-    then M = eigen_lattice(thetao.^,-1)
-    then rdo = res_root_datum(xo)
-    then rdoL = res_root_datum(xLo)
-    then S = for a in rdoL.simple_coroots do coroot_index(rdo,a) od
-    then T = maximize_Levi(rdo,S)
-    then A = (Levi_simple_coroots(rdo,T)), k = #S
-    then wt_theta_res = ((A,vector(rdo.semisimple_rank,(int i)int:#(i>=k))/1).required_solution.numer)
-    then wt_thetao = (1-thetao)*(required_solution(M.^, wt_theta_res)) {guaranteed to cut out L}
-    then (w,) = from_dominant(G,wt_thetao)
-    then {x1 = cross(w.inverse,xo),} L1 = (w.inverse)*L
-    then xL1 = KGB(L1, xL.number)
-    then x1 = embed_KGB(xL1,G)
-    in simpTimer+:= elapsed_ms() - start;
-       (w,x1)
-
-set simplifier_res_flag = true
-
-set standardize(KGBElt x, ratvec lambda, vec av) = (KGBElt, ratvec, vec):
-    let (L,) = Levix(x,av), G = x.real_form
-    then (y,x1) = if simplifier_res_flag
-    	 	  then simplifier_theta_res(L,x)
-		  else simplifier_theta(L,x)
-		  fi
-    {then () = prints("y = ",y)}
-    in let (x1m,lambda1) = move_theta(y.inverse)(x,lambda)
-        {then () = assert(x1m = x1,"problem with move in standardize")
-       then () = assert(1*parameter(x,lambda,0*lambda) = 1*parameter(x1,lambda1,0*lambda1),
-       	       	 "problem with x1 and lambda1 in standardize")}
-       in (x1,lambda1, av*y)
-
 {parameter on nonstandard Levi L}
 set pL(KGBElt x, ratvec lambda, vec av, rat t) = Param:
     let (L,xL) = Levix(x,av), G = x.real_form, theta = x.involution
@@ -282,35 +73,13 @@ set pL(KGBElt x, ratvec lambda, vec av, rat t) = Param:
     then nu1 = (a-theta*a)
     then wt = av*nu1, shift = av*(lambdaL+theta*lambdaL)/2
     in parameter(xL,lambdaL, ((t-shift)/wt)*nu1)
-{inf char = (lambdaL + theta*lambdaL)/2 + (t-shift)/wt)*nu1)}
-{value on av is shift + (t-shift)}
-{shift adjusts so pairing of av with L infl char is t}
-
-{ rep on minimal real Levi through complex coroot av}
-set pL1(KGBElt x, ratvec lambda, vec av, rat t) = Param:
-    {if steve_old_flag then return pL1_old(x, lambda, av, t) fi;}
-    let (x1,lambda1, av1) = standardize(x,lambda,av)
-    in pL(x1,lambda1,av1,t)
 
 set std_quo(Param p) = ParamPol:
     1*p-character_formula(1*p)
 
-set steve_new_flag = true
-
-set ind_quo_new(KGBElt x, ratvec lambda, vec av, rat t) = KTypePol:
+set ind_quo(KGBElt x, ratvec lambda, vec av, rat t) = KTypePol:
     let pL = pL(x,lambda,av,t)
     in K_type_pol(std_quo(pL))
-
-set ind_quo(KGBElt x, ratvec lambda, vec av, rat t) = KTypePol:
-    if steve_new_flag
-    then return ind_quo_new(x,lambda,av,t)
-    fi;
-    let pL1 = pL1(x,lambda,av,t)
-    {then () = assert(dominant(x.real_form,pL.infinitesimal_character) =
-    	 dominant(x.real_form, pL1.infinitesimal_character),"bad infl char for pL1")
-    then () = assert(#character_formula(1*pL) = (#character_formula(1*pL1)),
-    "bad char for pL1")}
-    in real_induce_standard(K_type_pol(std_quo(pL1)), x.real_form)
 
 set to_ht_G(RealForm G, KTypePol QL, int HT) = KTypePol:
     if HT.< then return QL fi;
@@ -322,48 +91,35 @@ set to_ht_G(RealForm G, KTypePol QL, int HT) = KTypePol:
 	   fi
 	od)
 
-set test_new(KGBElt x, ratvec lambda, vec av, rat t, int HT) = bool:
-    let QL = ind_quo_new(x,lambda,av,t)
-    in to_ht_G(x.real_form, QL,HT).!=
-
-{given a reducibility coroot av, take generic point on hyperplane
-av*gamma = t, corresponding Q(t) = std/Langlands quotient, and ask
-whether Q(t) has terms of height at most HT}
-{works for HT < 0, telling whether Q(t).!=}
 set test(KGBElt x, ratvec lambda, vec av, rat t, int HT) = bool:
-    if steve_new_flag
-    then return test_new(x,lambda,av,t,HT)
-    fi;
-    let Q = ind_quo(x, lambda, av, t) {probably on L1}
-    {then QL = std_quo(pL(x,lambda,av,t))
-    then () = assert((Q.=) = (QL.=),"bad induction!")}
-    in to_ht(Q,HT).!=
+    let QL = ind_quo(x,lambda,av,t)
+    in to_ht_G(x.real_form, QL,HT).!=
 
 set red_points_time = int:0
 
 {works for HT < 0, giving all reducibility points}
 {omitting the singular real roots gives 2 too many unitary in Sp(6,R)}
-set red_points(KGBElt x, ratvec lambda, vec av, int HT) = [int]:
-    let start = elapsed_ms(), (m,M) = range(x,lambda,av), thetapl = x.involution+1
+{set red_points(KGBElt x, ratvec lambda, vec av, int HT) = [int]:
+    let start = elapsed_ms(), (m,M) = range(x,lambda,av)
     then ans = for j:M-m+1 from m
-       	       do if test(x,lambda,av,j,HT) {or ((av*thetapl).= and j.=)}
+       	       do if test_scr(x,lambda,av,j,HT)
        	       	  then [j]
 	  	  else []
 	  	  fi
        	       od.##
      in red_points_time +:= elapsed_ms() - start;
-     	ans
+     	ans}
 
 set red_points(KGBElt x,ratvec lambda, int HT) = [[int]]:
     for av in red_coroots(x)
-    do red_points(x,lambda,av,HT)
+    do red_points_scr(x,lambda,av,HT)
     od
 
 set red_pointsL(KGBElt x, ratvec lambda, vec avL, int HTL) = [int]:
     let (,pL0) = theta_stable_quasi_data(parameter(x,lambda,0*lambda))
-    then start = elapsed_ms(), (mL,ML) = rangeL(x,lambda,avL){, thetapl = x.involution+1}
+    then start = elapsed_ms(), (mL,ML) = rangeL(x,lambda,avL)
     then ans = for j:ML-mL+1 from mL
-       	       do if test(pL0.x, pL0.lambda, avL, j, HTL) {or ((av*thetapl).= and j.=)}
+       	       do if test_scr(pL0.x, pL0.lambda, avL, j, HTL)
        	       	  then [j]
 	  	  else []
 	  	  fi
@@ -378,7 +134,7 @@ set red_pointsL(KGBElt x,ratvec lambda, int HTL) = [[int]]:
     od
 
 {record location of rat t with respect to strictly increasing
-sequence of M ints red_pts by integer from -1 to 2M.
+sequence of M ints red_pts by integer from 0 to 2M.
 0 means red_pts is empty; 0 means smaller than any, 2M means larger than any;
 2j}
 { range [0..2*#a]; a[i]=r -> 2i+1; even number: r absent }
@@ -391,7 +147,7 @@ set location([int] a,rat t) = int:
        fi
 
 set location(KGBElt x, ratvec lambda, vec av,int HT, rat t) = int:
-    let rp = red_points(x,lambda,av,HT)
+    let rp = red_points_scr(x,lambda,av,HT)
     in location(rp,t)
 
 set thruple(KGBElt x, ratvec lambda,int HT, ratvec gamma) = vec:
@@ -410,19 +166,6 @@ set is_def_thr(vec base_thr, vec def_thr) = bool:
         do @bool: (is_odd(x) and def_thr[j] = x)
 	   	  or(is_even(x) and abs(def_thr[j] - x) <= 1)
 	od)
-
-{set is_def_testerA(vec thruple) = (vec -> bool):
-    (vec v): bool:
-    let def_tests = is_def_testers(thruple)
-    in all(for y@i in v do @bool: def_tests[i](y) od)}
-
-{seems to be about half as fast as def_testerA}
-{set is_def_testerB(vec thruple) = (vec -> bool):
-    (vec v): bool:
-    let def_ints = is_def_intervals(thruple)
-    in all(for def_int@i in  is_def_intervals(thruple)
-       	   do @bool: is_member_sorted(def_int)(v[i])
-	   od)}
 
 {This is 30% faster than commented out def_testerA above}
 set is_def_tester(vec thruple) = (vec -> bool):
@@ -702,6 +445,7 @@ set make_steve_hash() = steve_hash_table:
 		 then rprxl = redpoints[rfnum][xlnum], rpr = redpoints[rfnum]
 		 then () = rprxl #:= for list in red_points(x,lambda,HT) do to_bitset(list) od
 		      {add a new [int]}
+		      {red_points can include NEGATIVE ints; bitset won't do}
 		 then () = rpr[xlnum]:=rprxl
 		 then () = redpoints[rfnum]:=rpr
 		 then vhsxl = vechashes[rfnum][xlnum], vhsr = vechashes[rfnum]
@@ -2821,7 +2565,6 @@ set localFD_lookDownSteveU\
 	      fi
     in LFKH
 )
-
 
 {impose unitary to HT on a collection of faces, sorted by dimension}
 set test_Steve(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [[FaceVertsKHash]] LFKH) =
