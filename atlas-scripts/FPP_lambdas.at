@@ -1,7 +1,8 @@
 <FPP_faces_geom.at
 <K_highest_weights.at
-<hermitian.at { for |is_hermitian| }
+{<hermitian.at} { for |is_hermitian| }
 <goodroots.at { for |anti_finalize| }
+<cohom_reductionND.at
 {CREATE LAMBDA TABLES}
 {This was separated from FPP_faces_herm.at 7/28/25 to avoid circular
 dependencies in function ranges in red_count.at}
@@ -94,7 +95,7 @@ set maxPR_cowts(Param p) = [vec]:
 
 {result is tuples ([pL]) with  p \subset Ind_P^G(pL); so p is unitary if pL is}
 set ind_cand_params(Param p) = [[Param]]:
-    if not is_hermitian(p) then return [] fi;
+    if not equivalent(p,twist(p)){is_hermitian(p)} then return [] fi;
     let G = p.real_form
     then (Q1, pL1) = theta_stable_quasi_data(p)
     then L1 = Q1.Levi
@@ -152,7 +153,8 @@ set ind_cand_params(Param p) = [[Param]]:
        do for p2Lw in tempL_hash.list()
        	  do let q2Lws = monomials(finalize(p2Lw))
 	     then k = first(for q2Lw in q2Lws
-		       	    do is_hermitian(q2Lw) and
+		       	    do {is_hermitian(q2Lw}
+			       equivalent(q2Lw,twist(q2Lw)) and
 		       	 	  real_induce_standard(1*q2Lw,G)[p].!=
 			    od)
 	     in if k.>=

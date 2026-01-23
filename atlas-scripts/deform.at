@@ -1,6 +1,7 @@
 <basic.at
 <polynomial.at { for type |i_poly| and function |eval| }
 <convert_c_form.at { final part of unitarity computation }
+<red_points.at
 
 { this file defines commands that are equivalent to the |full_deform| command
   that is now built-in; it therefore serves mainly documentation (and
@@ -10,6 +11,9 @@
   the library, and used through the |deform| atlas command, in order to show
   after the fact how this could have been done as an atlas script
 }
+
+{this is defined in hermitian.at, which maybe isn't yet loaded}
+set_type maybe_KTP = (void timed_out | KTypePol done)
 
 { this function is now obsolete, as |partial_KL_block| now condenses internally }
 set compress { output from old |partial_KL_block| to a more useful form } (
@@ -32,7 +36,7 @@ set compress { output from old |partial_KL_block| to a more useful form } (
   , survivor_lengths { length mapping }
   )
 
-set deformation_terms (Param p) = ParamPol:
+set deformation_terms_scr (Param p) = ParamPol:
   let (B,KL_mat,length) = ([Param],mat,vec):
     let (block,M,polys) = partial_KL_block(p:=normal(p))
     then l = vec: for q in block do q.length od, n=#block
@@ -72,7 +76,7 @@ set deformation_terms (Param p) = ParamPol:
     od
   fi
 
-set deformation_terms_by_dual (Param p) = ParamPol:
+set deformation_terms_by_dual_scr (Param p) = ParamPol:
   assert(@:p.is_final,"deformation requires a final parameter");
   let (block,KL_mat,P_polys) = partial_KL_block(p)
   , (full_block,start,dual_KL_mat,dual_polys) = dual_KL_block(p)
@@ -100,12 +104,13 @@ in null_module(p) +
      ( orientation_nr_term(on_p,q)*solution[i]*one_minus_s , q )
    od
 
-set deformation_terms_by_dual (Param p,int max_height) = ParamPol:
+set deformation_terms_by_dual_scr (Param p,int HT) = ParamPol:
 (  assert(@:p.is_final,"deformation requires a final parameter")
-;  assert(@:p.height<=max_height,"height bound kills term to deform")
+;  if HT < 0 then return deformation_terms_by_dual_scr(p) fi
+;  assert(@:p.height<=HT,"height bound kills term to deform")
 ;  let (full_block,start,dual_KL_mat,polys) = dual_KL_block(p)
    then subset = [int]:
-     for q@i in full_block if q.height<=max_height do i fi od
+     for q@i in full_block if q.height<=HT do i fi od
    , ev = for P in polys do eval(P,minus_1) od
    , Q_col = vec:[] { vector variable to be assigned below }
    then Q_mat = mat: { transpose, select rows/cols from |subset|, set $q:=-1$ }
@@ -133,22 +138,31 @@ in null_module(p) +
 )
 
 { go to next reducibility point (move even if at reducibility point) }
-set reduction_at (Param p) = Maybe<Param>:
+set reduction_at_to_ht (Param p,int HT) = Maybe<Param>:
+   let rp=(0/1)#reducibility_points_scr(p,HT)
+in if rp~[0]=1 then none() else some(p*rp~[0]) fi
+
+set next_down (Param p,int HT) = Param:
+   let rp=(0/1)#reducibility_points_scr(p,HT)
+in assert(@:rp~[0]=1,"Not a reducibility: "+p.to_string); p*rp~[1]
+
+{ go to next reducibility point (move even if at reducibility point) }
+set reduction_at_to_ht_old (Param p,int HT) = Maybe<Param>:
    let rp=(0/1)#reducibility_points(p)
 in if rp~[0]=1 then none() else some(p*rp~[0]) fi
 
-set next_down (Param p) = Param:
+set next_down_old (Param p,int HT) = Param:
    let rp=(0/1)#reducibility_points(p)
 in assert(@:rp~[0]=1,"Not a reducibility: "+p.to_string); p*rp~[1]
 
 { use |deformation_terms_by dual| for a full deformation, in which we try to
   group all successive deformations involving a same block together }
-set deform_to_height (Param p,int max_height) = KTypePol:
-(  assert(@:p.height<=max_height,"height bound kills term to deform")
+set deform_to_height_scr (Param p,int HT) = KTypePol: {same as full_deform_to_ht...}
+(  assert(@:p.height<=HT,"height bound kills term to deform")
 ;  let G=real_form(p)
    then !K_empty=null_K_module(G), !empty=null_module(G)
 in { first ensure there is a potential deformation at |p| }
-   case reduction_at(p) | some(q): p:=q | none(): () { keep p } esac
+   case reduction_at_to_ht(p,HT) | some(q): p:=q | none(): () { keep p } esac
 ;  let queue = ParamPol: p, result = KTypePol: K_empty, lower = ParamPol:empty
 in while >#queue or
        if >#lower else false
@@ -159,11 +173,44 @@ in while >#queue or
       let (c0,q):term = first_term(queue)
    in queue:= (queue next queue:=empty) - term
    ;  if =nu(q) then result := (result next result:=K_empty) + (c0,q.K_type)
-      else lower:= (lower next lower:=empty) + (c0,next_down(q))
+      else lower:= (lower next lower:=empty) + (c0,next_down(q,HT))
       fi
-   ;  let terms = deformation_terms_by_dual(q,max_height)
+   ;  let terms = deformation_terms_by_dual_scr(q,HT)
    in for c@r in terms
-      do case reduction_at(r)
+      do case reduction_at_to_ht(r,HT)
+         | none():
+	    queue:= (queue next queue:=empty) + (c0*c,r)
+         | some(qq): { element of initial block, but no further deformation }
+	    lower:= (lower next lower:=empty) + (c0*c,qq)
+         esac
+      od
+   od
+;  result
+)
+
+{ use |deformation_terms_by dual| for a full deformation, in which we try to
+  group all successive deformations involving a same block together }
+set deform_to_height_old (Param p,int HT) = KTypePol: {same as full_deform_to_ht...}
+(  assert(@:p.height<=HT,"height bound kills term to deform")
+;  let G=real_form(p)
+   then !K_empty=null_K_module(G), !empty=null_module(G)
+in { first ensure there is a potential deformation at |p| }
+   case reduction_at_to_ht_old(p,HT) | some(q): p:=q | none(): () { keep p } esac
+;  let queue = ParamPol: p, result = KTypePol: K_empty, lower = ParamPol:empty
+in while >#queue or
+       if >#lower else false
+       then set (queue,lower) := height_split(lower,height(first_param(lower)))
+       ; true
+       fi
+   do { invariant of the loop: all terms in |queue| have potential deformation }
+      let (c0,q):term = first_term(queue)
+   in queue:= (queue next queue:=empty) - term
+   ;  if =nu(q) then result := (result next result:=K_empty) + (c0,q.K_type)
+      else lower:= (lower next lower:=empty) + (c0,next_down_old(q,HT))
+      fi
+   ;  let terms = deformation_terms_by_dual_scr(q,HT)
+   in for c@r in terms
+      do case reduction_at_to_ht_old(r,HT)
          | none():
 	    queue:= (queue next queue:=empty) + (c0*c,r)
          | some(qq): { element of initial block, but no further deformation }
@@ -179,62 +226,119 @@ in while >#queue or
 set d_verbose=false
 
 { if at reducibility point stay there, otherwise go to next lower one }
-set weak_lower (Param p) = Param:
-  let (x,lambda,gamma)=%p, rp=reducibility_points(p)
+set weak_lower_scr (Param p,int HT) = Param:
+  let (x,lambda,gamma)=%p, rp=reducibility_points_scr(p,HT)
   then lim = #rp
   in param(x,lambda,gamma*if lim=0 then 0 else rp[lim-1] fi)
 
 { go to next reducibility point (move even if at reducibility point) }
-set lower (Param p) = Param:
-  let (x,lambda,gamma)=%p, rp=reducibility_points(p)
+set lower_scr (Param p,int HT) = Param:
+  let (x,lambda,gamma)=%p, rp=reducibility_points_scr(p,HT)
   then lim = let nrp=#rp in if nrp>0 and rp[nrp-1]=1/1 then nrp-1 else nrp fi
   in  param(x,lambda,gamma*if lim=0 then 0 else rp[lim-1] fi)
 
-set deformation (Param p) = (Param,ParamPol): { deformed Param and new terms }
-  (lower(p),deform(p)) { here |deform| may be replaced by |deformation_terms| }
+set deformation_scr (Param p, int HT) = (Param,ParamPol): { deformed Param and new terms }
+  (lower_scr(p,HT), deformation_terms_by_dual_scr(p,HT))
+ { deform(p))} { here |deform| may be replaced by |deformation_terms| }
 
-set recursive_deform (Param p) = KTypePol:
-  if d_verbose then prints("recursive_deform with:", p) fi;
+{same as built-in full_deform}
+set recursive_deform_scr (Param p, int HT) = KTypePol:
+  if d_verbose then prints("recursive_deform to height with:", p) fi;
   if not is_final(p) then error("improper parameter") fi;
   let empty=null_module(real_form(p)) in
   if d_verbose { choose verbose or non-verbose version of the function }
-  then rec_fun full_def (Split sc,Param p) KTypePol:
+  then rec_fun full_def_scr (Split sc,Param p, int HT) KTypePol:
 	 { |sc| will simply scale the coefficients of resulting KTypePol }
     begin
       p := alcove_center(p);
-      prints("full_def with: sc=", sc, ", p=", p, p.infinitesimal_character);
+      prints("full_def_scr with: sc=", sc, ", p=", p, p.infinitesimal_character);
       assert(@:is_standard(p)
 	    ,"non standard parameter encountered in deformation");
       let acc=empty, at_nu0=KTypePol: sc*(p.K_type) { fully deformed |p| } in
-      for factor in reducibility_points(p)
+      for factor in reducibility_points_scr(p,HT)
       ~do
-	let p_def=p*factor { next deformation of |p| }
-	then def=deform(p_def) { bypass built-in |deform| here }
+	let p_def=Finalize(p*factor) { next deformation of |p| }
+	then def= {deform(p_def)} { bypass built-in |deform| here }
+	     	  deformation_terms_by_dual_scr(p_def,HT)
         in
 	  prints("adding deformation term: p=", p_def, new_line,"adding:", def)
       ; acc+:=def
       od
     ; for k@q in acc { traverse the sum of the deformation terms spun off }
-      do { apply |full_def| recursively to all those terms }
-        at_nu0 +:= full_def(sc*k,q) { gather harvest from those deformations }
+      do { apply |full_def_scr| recursively to all those terms }
+        at_nu0 +:= full_def_scr(sc*k,q,HT) { gather harvest from those deformations }
       od
-    ; prints("full_def complete, result:",at_nu0)
+    ; prints("full_def_scr complete, result:",at_nu0)
     ; at_nu0
     end
-  else rec_fun full_def (Split sc,Param p) KTypePol:
+  else rec_fun full_def_scr (Split sc,Param p, int HT) KTypePol:
 	 { |sc| will simply scale the coefficients of resulting KTypePol }
     begin
       p := alcove_center(p);
       assert(@:is_standard(p),"non standard parameter in deformation");
       let acc=empty, at_nu0=KTypePol: sc*(p.K_type) { fully deformed |p| } in
-      for factor in reducibility_points(p)
+      for factor in reducibility_points_scr(p,HT)
       ~ { direction of deformation is down, towards 0; this is not essential }
-      do acc+:=deform(p*factor) od
+      do acc+:={deform(p*factor)}
+      	 deformation_terms_by_dual_scr(Finalize(p*factor),HT)
+      od
     ; for k@q in acc { traverse the sum of the deformation terms spun off }
-      do at_nu0 +:= full_def(sc*k,q) od
+      do at_nu0 +:= full_def_scr(sc*k,q,HT) od
     ; at_nu0
     end
-  fi { apply that recursive function to the initial argument: } (1,p)
+  fi { apply that recursive function to the initial argument: } (1,p,HT)
+
+{same as built-in full_deform interruptible}
+set recursive_deform_scr (Param p, int HT, int TIME) = maybe_KTP:
+  {if d_verbose then prints("recursive_deform to height with:", p) fi;}
+  if not is_final(p) then error("improper parameter") fi;
+  let empty=null_module(real_form(p)), expiration = elapsed_ms() + TIME
+  {if d_verbose} { choose verbose or non-verbose version of the function }
+  in (rec_fun full_def_scr (Split sc,Param p, int HT, int expiration) maybe_KTP:
+	 { |sc| will simply scale the coefficients of resulting KTypePol }
+    begin
+      p := alcove_center(p);
+      assert(@:is_standard(p),"non standard parameter in deformation");
+      let acc=empty, at_nu0=KTypePol: sc*(p.K_type) { fully deformed |p| } in
+      for factor in reducibility_points_scr(p,HT)
+      ~ { direction of deformation is down, towards 0; this is not essential }
+      do acc+:={deform(p*factor)}
+      	 deformation_terms_by_dual_scr(Finalize(p*factor),HT)
+      od
+    ; for k@q in acc { traverse the sum of the deformation terms spun off }
+      do at_nu0 +:= case full_def_scr(sc*k,q,HT,expiration)
+      	 	    	 | timed_out: 0*at_nu0
+			 | done(P): P
+		    esac
+      od
+    ; if expiration < elapsed_ms()  then timed_out()
+      else (at_nu0).done
+      fi
+    end)(1,p,HT,elapsed_ms() + TIME)
+  { apply that recursive function to the initial argument: } 
+
+
+{same as built-in full_deform}
+set recursive_deform_old (Param p, int HT) = KTypePol:
+  if d_verbose then prints("recursive_deform to height with:", p) fi;
+  if not is_final(p) then error("improper parameter") fi;
+   let empty=null_module(real_form(p))
+   in (rec_fun full_def_old (Split sc,Param p, int HT) KTypePol:
+	 { |sc| will simply scale the coefficients of resulting KTypePol }
+    begin
+      p := alcove_center(p);
+      assert(@:is_standard(p),"non standard parameter in deformation");
+      let acc=empty, at_nu0=KTypePol: sc*(p.K_type) { fully deformed |p| } in
+      for factor in reducibility_points_scr(p,-1)
+      ~ { direction of deformation is down, towards 0; this is not essential }
+      do acc+:={deform(p*factor)}
+      	 deformation_terms_by_dual_scr(Finalize(p*factor),HT)
+      od
+    ; for k@q in acc { traverse the sum of the deformation terms spun off }
+      do at_nu0 +:= full_def_old(sc*k,q,HT) od
+    ; at_nu0
+    end) (1,p,HT)
+  { apply that recursive function to the initial argument: } 
 
 { code that follows is adapted from hermitian.at to do unitarity computation
   in terms of the above functions rather than built-ins
@@ -245,19 +349,19 @@ set oriented_KL_sum (Param p) = ParamPol:
    for c@q in KL_sum_at_s(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
 
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
-set c_form_irreducible (Param p) = KTypePol:
+set c_form_irreducible_scr (Param p) = KTypePol:
   let P=oriented_KL_sum(p), count=0 then nP=#P
   then
     f(Param p) = if count<11 or count%10=0 or nP-count<=10
                  then prints("Term ",count,": ",p)
-		 fi; count+:=1; recursive_deform(p)
+		 fi; count+:=1; recursive_deform_scr(p,-1)
   in prints("Fully deforming ",nP," terms"); map(f, P)
 
 { utility: compute fixed and unfixed contributions to c-form on irreducible(p)
   no deformation is done, but orientation numbers are included;
   fixed contributions are already halved; for unfixed ones this needs to wait
 }
-set twisted_c_form_irreducible_contributions (Param p) =
+set twisted_c_form_irreducible_contributions_scr (Param p) =
     (ParamPol,ParamPol): { (fixed part, 2*unfixed part) }
   let G=p.real_form, ori_nr_p = orientation_nr(p)
   then fixed_terms=G.null_module, unfixed_terms=G.null_module
@@ -270,8 +374,8 @@ set twisted_c_form_irreducible_contributions (Param p) =
   od; (fixed_terms,unfixed_terms)
 
 { for now we do not have any script for the twisted deformation; use built-in }
-set twisted_c_form_irreducible (Param p) = KTypePol:
-( let (fixed,unfixed)=twisted_c_form_irreducible_contributions(p)
+set twisted_c_form_irreducible_scr (Param p) = KTypePol:
+( let (fixed,unfixed)=twisted_c_form_irreducible_contributions_scr(p)
 { |1+s| divides |unfixed|, no need for |scale_extended|; take half at |nu=0| }
   , count=0
   then nf=#fixed
@@ -284,18 +388,18 @@ set twisted_c_form_irreducible (Param p) = KTypePol:
 )
 
 {.whether J(p) admits an invariant Hermitian form.}
-set is_hermitian (Param p) = bool: equivalent(twist(p),p)
+set is_hermitian_scr (Param p) = bool: equivalent(twist(p),p)
 
-set check_hermitian (Param p) = void:
-  assert(@:p.is_hermitian
+set check_hermitian_scr (Param p) = void:
+  assert(@:p.is_hermitian_scr
         ,"Irreducible module does not admit any invariant Hermitian form"
 	)
-set hermitian_form_irreducible (Param p) = KTypePol:
+set hermitian_form_irreducible_scr (Param p) = KTypePol:
   if is_equal_rank(real_form(p))
-  then c_form_irreducible(p) { not twisted, in equal rank case this is faster }
-  else check_hermitian(p); twisted_c_form_irreducible(p)
+  then c_form_irreducible_scr(p) { not twisted, in equal rank case this is faster }
+  else check_hermitian_scr(p); twisted_c_form_irreducible_scr(p)
   fi.convert_cform_hermitian
 
 { compute Hermitian form on p, and report if it is unitary }
-set is_unitary (Param p) = bool:
-  p.is_hermitian and hermitian_form_irreducible(p).is_pure
+set is_unitary_scr (Param p) = bool:
+  p.is_hermitian_scr and hermitian_form_irreducible_scr(p).is_pure
