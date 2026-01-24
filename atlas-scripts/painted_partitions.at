@@ -71,19 +71,22 @@ set no_holes([int] row)=bool:let f=first(for j:#row do row[j]=-1 od) in
 if f=-1 then true else row[f:]=-ones(#row-f) fi
 set no_holes_by_rows(PaintedPartition P)=bool:all(for row in P do no_holes(row) od)
 set no_holes_by_columns(PaintedPartition P)=bool:all(for row in transpose_of(P) do no_holes(row) od)
+{*,s,r,c,d}
+{0,1,2,3,4}
 
 set is_valid(PaintedPartition P)=bool:
 is_valid(partition(P)) and
-all(for row:number_rows(P) do count_in_row(P,row,1)<=1 od) and  {1=r}
-all(for row:number_rows(P) do count_in_row(P,row,2)<=1 od) and  {2=s}
-all(for column:number_columns(P) do count_in_column(P,column,3)<=1 od) and  {3=c}
-all(for column:number_columns(P) do count_in_column(P,column,4)<=1 od)  and {4=d}
-all(for S in [[4],[3,4],[1,3,4],[1,2,3,4]] do
+all(for row:number_rows(P) do count_in_row(P,row,1)<=1 od)and  {1=s}
+all(for row:number_rows(P) do count_in_row(P,row,2)<=1 od)and  {2=r}
+all(for column:number_columns(P) do count_in_column(P,column,3)<=1 od)and  {3=c}
+all(for column:number_columns(P) do count_in_column(P,column,4)<=1 od) and {4=d}
+all(for S in [[4],[3,4],[2,3,4],[1,2,3,4]] do
  let Q=delete_by_symbols(P,S) in no_holes_by_rows(Q) and no_holes_by_columns(Q) od)
 
 set locations(PaintedPartition P,int i)=
-##for row@i in P do
- ##for c@j in row do if c=i then [(i,j)] else [] fi od od
+##for row@j in P do
+ ##for c@k in row do if c=i then [(j,k)] else [] fi od od
+
 
 set same_zeroes(PaintedPartition P,PaintedPartition Q)=bool:
 let loc_P=locations(P,0) then loc_Q=locations(Q,0) in
@@ -94,6 +97,8 @@ set_type PaintedBiPartition=(PaintedPartition P,PaintedPartition Q,string bi_lab
 set size(PaintedBiPartition (P,Q,))=int:size(P)+size(Q)
 set count(PaintedBiPartition (P,Q,),int symbol)=int:count(P,symbol)+count(Q,symbol)
 
+{*,s,r,c,d}
+{0,1,2,3,4}
 set is_valid_left(PaintedPartition P, string label)=
 let S=symbols(P) then
 excluded=[int]:
@@ -153,7 +158,42 @@ fi
 set dim_tau(PaintedBiPartition Z)=int:
 if Z.bi_label="B+" or Z.bi_label="B-" then 2*size(Z)+1 else 2*size(Z) fi
 
+{O=Orbit=Partition  O=[O[0],...,O[n-2],O[n-1]]
+ see Definition 3.5
+ condition: parity condition on i and
+ O[i-1]-O[i] is even (O[i-1] is the i^th entry of O)
+ i=1 -> O[0]-O[1] is even...
+ i=n-1 -> O[n-2]-O[n-1] is even
+ i=n -> O[n-1] is even
+}
+set is_primitive_parity(int i, string label)=bool:
+if is_in(label,["C","C~","C*"])
+ then is_odd(i)
+elif is_in(label,["B","D","D*"]
+ then is_even(i)
+else
+ error("missing case in is_primitive_parity")
+fi
 
+set is_primitive(Orbit O,int i)=bool:
+assert(i>0 and i<=#O, "i out of range");
+if i<#O 
+ then
+   if is_in(label,["C","C~","C*"]
+     then
+
+   elif is_in(label,["B","D","D*"]
+     then
+
+    else
+        error("missing case")
+   fi
+ else
+is_even(O[i-1])
+fi
+
+set number_primitive(Orbit O)=int:count(for i:#O-1 from 1 do is_primitive(O,i) od)
+ 
 set show_partition(PaintedPartition P)=void:show_partition(partition(P))
 
 set show_painted_partition(PaintedPartition P)=void:

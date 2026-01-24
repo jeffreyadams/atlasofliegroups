@@ -1,3 +1,5 @@
+<painted_partitions_2.at
+
 {Nilpotent orbits via Barbasch-Ma-Sun-Zhu}
 {type Orbit=Partition=[int]}
 
@@ -132,9 +134,50 @@ elif is_in(label,["D","D*"]) then {SO(2n)}
 else
 error("case not implemented yet")
 fi
-in let ()=prints("n=", n)  then
+{in let ()=prints("n=", n)  then} in let
 all = painted_bipartitions(n,label) in
 for Z in all do if partition(Z.P)=left and partition(Z.Q)=right then [Z] else [] fi od.##
 
+set number_unipotent(Orbit O_v,string label)=int:
+let pbp=#painted_bi_partitions(O_v,label) then
+pp=2^number_primitive(O_v) in pbp*pp
 
+set report(Orbit O_v,string label)=void:
+let pbp=#painted_bi_partitions(O_v,label) then
+pp=number_primitive(O_v)+1 in
+prints("Orbit: ", O_v, new_line,
+"#painted bipartitions: ", pbp, new_line,
+"#primitive+1: ", pp, new_line,
+"#unipotents: ", pbp*pp)
+
+set report([Orbit] orbits,string label)=void:
+prints("pbp=#painted bipartitions",new_line,"pp= #primitive indices+1");
+tabulate(
+["orbit","pbp","pp","#unip"]#for orbit@i in orbits do
+let pbp=#painted_bi_partitions(orbit,label) then
+number=number_primitive(orbit)+1 in 
+[to_string(orbit),to_string(pbp), to_string(number), to_string(number*pbp)] od)
+
+set bmsz_report(int n,string label)=void:
+let orbits=good_parity_partitions(n,label) in report(orbits,label)
+
+set show_short(  ([ComplexNilpotent] orbits,[([([Param],[WCell])],[(int,int,Param)])] blocks_and_cells_and_packets))=void:
+let packets=for (,packet) in blocks_and_cells_and_packets do packet od then
+grand_total=0 then
+blocks=blocks(packets) then
+cells=cells(packets) then
+m=mult(packets) in
+tabulate(
+ ["orbit","partition","gamma","|packet|"]#
+ ##for i:#packets do
+  let total=sum(for b in blocks do sum(for c in cells do m(i,b,c) od) od)
+ in if total!=0 then grand_total+:=total;[[i.to_string,partition_of_orbit_B(orbits[i]).to_string,(orbits[i].H/2).to_string,total.to_string]] else [] fi
+od
+#["Total","","",grand_total.to_string]
+);prints()
+
+set show_short(RealForm G)=void:
+let orbits=dual_orbits(G) then
+wp=weak_packets(G) in
+show_short(orbits,wp)
 

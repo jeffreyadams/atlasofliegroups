@@ -50,7 +50,7 @@ set centralizer_roots (ComplexNilpotent O)=([vec],[vec]):
    let rd=O.root_datum, L=O.Bala_Carter_Levi
    then roots_G =
       for alpha in nilrad_roots(rd,un_datum(rd,L))
-      do let m=m(O,alpha) in assert(m=0 or m=1,"m is not 0 or 1")
+      do let m=m(O,alpha) in prints("m=1",m);assert(m=0 or m=1,"m is not 0 or 1")
       ;  if m=1 do alpha fi
       od.##
    then T=L.radical_basis
