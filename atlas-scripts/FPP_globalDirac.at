@@ -437,7 +437,11 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     	 old_test_verbose = test_verbose, old_test_slightly_verbose = test_slightly_verbose
     then startLPmss = elapsed_ms()
     then LPmss = for (x,lambda) in xlambdasW
-    	       	 do LPm_table.LPm_entry(G,x.involution, ratvec_as_vec(lambda+x.involution*lambda))
+    	       	 do if FPP_def_flag
+		    then deform_trim(LPm_table.LPm_entry(G,x.involution,
+				ratvec_as_vec(lambda+x.involution*lambda)), x, lambda)
+		    else LPm_table.LPm_entry(G,x.involution, ratvec_as_vec(lambda+x.involution*lambda))
+		    fi
               	 od
     then () = if every_lambda_deets_flag and FPP_report_flag
     	      then prints("time for LPmss = ",print_time_string(elapsed_ms() - startLPmss))
@@ -835,7 +839,12 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 		    	  	       		  fi
 		       		    	       od
 					  else let lamthlam = ((1+xW.involution)*lambdaW).numer
-		      		      	       then (Lvd, Perm2{, mapAct}) = LPm_table.LPm_entry(G,xW.involution,lamthlam)
+		      		      	       then (Lvd, Perm2) = if FPP_def_flag
+					       	    	  	   then deform_trim(LPm_table.LPm_entry(
+						G,xW.involution,lamthlam),xW,lambdaW)
+								   else LPm_table.LPm_entry(
+						G,xW.involution,lamthlam)
+								   fi
 		      		      	       then  startlambda = elapsed_ms(), startUhash = Uhash.size(),
 					       	     startUcounter = unitary_test_counter.use_count(),
 						     startUtime = unitaryTime, startCcounter =
@@ -1036,7 +1045,11 @@ set FPP_unitary_hash_steve([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     	 old_test_verbose = test_verbose, old_test_slightly_verbose = test_slightly_verbose
     then startLPmss = elapsed_ms()
     then LPmss = for (x,lambda) in xlambdasW
-    	       	 do LPm_table.LPm_entry(G,x.involution, ratvec_as_vec(lambda+x.involution*lambda))
+    	       	 do if FPP_def_flag
+		    then deform_trim(LPm_table.LPm_entry(G,x.involution,
+		    	 ratvec_as_vec(lambda+x.involution*lambda)), x, lambda)
+		    else LPm_table.LPm_entry(G,x.involution, ratvec_as_vec(lambda+x.involution*lambda))
+		    fi
               	 od
     then () = if every_lambda_deets_flag and FPP_report_flag
     	      then prints("time for LPmss = ",print_time_string(elapsed_ms() - startLPmss))
@@ -1397,7 +1410,11 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 		    	  	       		  fi
 		       		    	       od
 					  else let lamthlam = ((1+xW.involution)*lambdaW).numer
-		      		      	       then (Lvd, Perm2) = LPm_table.LPm_entry(G,xW.involution,lamthlam)
+		      		      	       then (Lvd, Perm2) = if FPP_def_flag
+					       	    	  	   then deform_trim(LPm_table.LPm_entry(G,
+								   	xW.involution,lamthlam),x,lambda)
+								   else LPm_table.LPm_entry(G, xW.involution,lamthlam)
+								   fi
 		      		      	       then  startlambda = elapsed_ms(), startUhash = Uhash.size(),
 					       	     startUcounter = unitary_test_counter.use_count(),
 						     startUtime = unitaryTime, startCcounter =
@@ -1709,7 +1726,11 @@ fancy_tester) = void:
     then xnums = for (x,) in xlambdas do let (,m) = %x in m od
     {then lambdas = for (,lambda) in xlambdas do lambda od}
     then LPmss = for (x,lambda) in xlambdas_sc
-    	       	 do LPm_table.LPm_entry(Gsc,x.involution, ratvec_as_vec(lambda+x.involution*lambda))
+    	       	 do if FPP_def_flag
+		    then deform_trim(LPm_table.LPm_entry(Gsc,x.involution,
+		    	 ratvec_as_vec(lambda+x.involution*lambda)),x,lambda)
+		    else LPm_table.LPm_entry(Gsc,x.involution, ratvec_as_vec(lambda+x.involution*lambda))
+		    fi
 		 od
     then old_face_verbose = face_verbose, old_time_verbose = time_verbose,
     	 old_test_verbose = test_verbose, old_test_slightly_verbose = test_slightly_verbose
@@ -1818,7 +1839,7 @@ fancy_tester) = void:
 				   startCcounter = char_counter.use_count(), startCtime = charTime,
 				   startCTime = charTime, startmorebad = more_bad_hash.size()
 				   {startUparamhash = Uparamhash.size(),} 
-		 		 then (Lvd, Perm2{, mapAct}) = LPmss[k] {already lives on Gsc}
+		 		 then (Lvd, Perm2) = LPmss[k] {already lives on Gsc}
 		 		 then () = if every_lambda_flag and FPP_report_flag
       	      	   	      then prints("     start #", k, " = (",x,",",lambda,"), Uhash.size() = ",
 			      Uhash.size(), ", runtime = ", print_time_string(elapsed_ms() - start),
@@ -2157,7 +2178,10 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
         	   fi
 	 then () = for lambda@index in lambdas {ought to look at contragredient(x,lambda) here!}
 	      	   do let lamthlam = ((1+x.involution)*lambda).numer
-		      then (Lvd1, Perm2{, mapAct}) = LPm_table.LPm_entry(G,x.involution,lamthlam)
+		      then (Lvd1, Perm2) = if FPP_def_flag
+		      	   	  	   then deform_trim(LPm_table.LPm_entry(G,x.involution,lamthlam),x,lambda)
+		      	   	  	   else LPm_table.LPm_entry(G,x.involution,lamthlam)
+					   fi
 		      then Lvd = if disconn_flag
 		      	       	 then to_vertex_data(for v in Lvd1.list do M*v od, Lvd1.pair_start)
 			   	 else Lvd1

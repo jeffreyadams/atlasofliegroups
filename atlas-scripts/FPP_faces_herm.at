@@ -4340,6 +4340,8 @@ set localFD_Lvd2 \
     in (Lvd, Perm2{, mapAct})
 )
 
+set FPP_def_edge_flag=false
+
 set localFD_Lvd2 \
   (KGBElt x, ratvec lambda, {VertexData vd,} (vec->int) FlippedEdgeLookup) = (LocalVertexData, PermOrderTwo{, vec}):
   localFD_Lvd2(x.inner_class, x.involution, lambda, {vd,} FlippedEdgeLookup)
@@ -4447,6 +4449,8 @@ set localFD_1Dirac2\
 		then [] {from now on p is pos_on_LKTs}
 		elif Q(nu,nu) > DiracBD
 		then DTcount +:=1; {prints("GOT HERE!");} []
+		elif FPP_def_edge_flag and not FPP_def_test_wk_final(p)
+	        then []
 		elif red_count_flag
 		then [v#red_count(p,HT)]
 		else [v]
@@ -4492,6 +4496,7 @@ vertex "belongs" (either "is" or "is vertex of the edge")}
 3) tetrahedron in FPP, two pairs of verts exchanged by involution}
 
 {If red_count_flag, add an extra coordinate recording red_count(p, next_heights[edge_offset])}
+{if FPP_def_flag, impose FPP_def_test}
 set localFD_1Dirac2_by_zero\
   ( KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, PermOrderTwo Perm2) =
     [[FaceVertsIndex]]:
@@ -4670,6 +4675,8 @@ set localFD_1Dirac2_by_zero\
 	       if not (fewer_reducible_unitary_flag or all(for q in monomials(p)
 			    do @bool: is_pos_on_LKTs(q)
 			    od))
+	       then []
+	       elif FPP_def_edge_flag and not FPP_def_test_wk_final(p)
 	       then []
 	       elif red_count_flag
 	       then [v#red_count(p,HT)]
@@ -4981,8 +4988,7 @@ set localFD_1Dirac2_by_zero_old\
 
 {takes local data and low global faces and computes local vertices, imposing
 hermitian, pos on LKTs. Subspace is fixed points of affine involution of
-h*. Perm records involution action on FPP verts. mapAct records local vertex to which an FPP
-vertex "belongs" (either "is" or "is vertex of the edge")}
+h*. Perm records involution action on FPP verts.}
 set localFD_1Steve\
   ( KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2) =
     [FaceVertsIndex]:
@@ -5157,6 +5163,8 @@ set localFD_2Steve\
 	       	      	    do @bool: is_pos_on_LKTs(q)
 			    od))
 	       then []
+	       elif FPP_def_edge_flag and not FPP_def_test_wk_final(p)
+	       then []
 	       else [v]
 	       fi
 	 od.##
@@ -5208,7 +5216,9 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_has
 		      then P = finalize(p0)
 		      then KCF = K_type_pol(character_formula(P))
 		      then m = ktp_hash.match(KCF)
-		      in if (not temp_Dirac_best_flag) or (Q(gamma,gamma) <= DiracBestBD)
+		      in if FPP_def_edge_flag and not FPP_def_test_wk_final(p0)
+	       	      	 then []
+			 elif (not temp_Dirac_best_flag) or (Q(gamma,gamma) <= DiracBestBD)
 			    or DiracBestTest(p0,KCF)
 			 then [v##[m,#monomials(P)]]
 			 else []
