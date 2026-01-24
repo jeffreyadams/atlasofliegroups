@@ -1,9 +1,9 @@
 < basic {for infinitesimal character}
 < hash.at {for hash tables}
 <kl.at {for rho_C}
-
+<K.at {for parameter@KType}
 {should require number of -alphav*theta >= number of alphav}
-set red_coroots_scr(KGBElt x) = [vec]:
+{set red_coroots_scr(KGBElt x) = [vec]:
     let G = x.real_form,  theta = x.involution
     then rho = G.rho, pos_co = G.poscoroots
     in for alphav@j in pos_co
@@ -11,29 +11,38 @@ set red_coroots_scr(KGBElt x) = [vec]:
        	  then [alphav]
 	  else []
 	  fi
-       od.##
+       od.##}
+
+set red_coroots_rp(KGBElt x, ratvec lambda) = [vec]:
+   let rd = x.root_datum
+in for alpha_v@j in rd.poscoroots
+   {retain real poscoroots and complex descents nonneg on d_lambda}
+      if coroot_index(rd,alpha_v*x.involution).< and (alpha_v*((1+x.involution)*lambda)).>=
+      do alpha_v
+      fi
+   od
 
 {need to study reducibility along av at int values
 from int to int inclusive}
 {This version works only for infinitesimal characters in the convex hull of W*rho
 For a different (dominant) bound, replace rho by the bound}
-set range_scr(KGBElt x, ratvec lambda, vec av) = (int, int):
+{set range_rp(KGBElt x, ratvec lambda, vec av) = (int, int):
     let upval = av*(x.root_datum.rho)
     , thplus = 1+x.involution
     then downval = av*(thplus*lambda)/2 {value at nu = 0}
-    in (ceil(downval), floor(upval))
+    in (ceil(downval), floor(upval))}
 
 {avbd is a bound for the value of av on the infinitesimal character}
-set range_scr(KGBElt x, ratvec lambda, vec av, rat avbd) = (int, int):
+set range_rp(KGBElt x, ratvec lambda, vec av, rat avbd) = (int, int):
     let thplus = 1+x.involution
     then downval = av*(thplus*lambda)/2 {value at nu = 0}
     in (floor(downval), ceil(avbd))
 
-set ranges_scr(KGBElt x, ratvec lambda) = [(vec, (int, int))]:
-    let rc = red_coroots_scr(x)
+{set ranges_rp(KGBElt x, ratvec lambda) = [(vec, (int, int))]:
+    let rc = red_coroots_rp(x)
     in for av in rc
-       do (av, range_scr(x,lambda,av))
-       od
+       do (av, range_rp(x,lambda,av))
+       od}
 
 {root datum from all coroots restricting to A as multiple of av}
 set Levix_scr(KGBElt x, vec av) = (RealForm,KGBElt):
@@ -101,158 +110,121 @@ set test_scr(KGBElt x, ratvec lambda, vec av, rat t, int HT) = bool:
        fi
     {to_ht_G(x.real_form, QL,HT).!=}
 
-set red_points_scr_time = int:0
+set red_points_rp_time = int:0
 
-{works for HT < 0, giving all reducibility points}
-{omitting the singular real roots gives 2 too many unitary in Sp(6,R)}
-{Needs to be applied to deformations of an FPP parameter, which are no longer FPP!}
-set red_points_scr_base(KGBElt x, ratvec lambda, vec av, int HT) = [int]:
-    let start = elapsed_ms(), (m,M) = range_scr(x,lambda,av) {, thetapl = x.involution+1}
+set red_points_rp_base(KGBElt x, ratvec lambda, vec av, int HT, rat avbd) = [int]:
+    let start = elapsed_ms(), (m,M) = range_rp(x,lambda,av, avbd)
     then ans = for j:M-m+1 from m
        	       do if test_scr(x,lambda,av,j,HT) {or ((av*thetapl).= and j.=)}
        	       	  then [j]
 	  	  else []
 	  	  fi
        	       od.##
-     in red_points_scr_time +:= elapsed_ms() - start;
+     in red_points_rp_time +:= elapsed_ms() - start;
      	ans
 
-{works for HT < 0, giving all reducibility points}
-{omitting the singular real roots gives 2 too many unitary in Sp(6,R)}
-{Needs to be applied to deformations of an FPP parameter, which are no longer FPP!}
-set red_points_scr_base(KGBElt x, ratvec lambda, vec av, int HT, rat avbd) = [int]:
-    let start = elapsed_ms(), (m,M) = range_scr(x,lambda,av, avbd)
-    then ans = for j:M-m+1 from m
-       	       do if test_scr(x,lambda,av,j,HT) {or ((av*thetapl).= and j.=)}
-       	       	  then [j]
-	  	  else []
-	  	  fi
-       	       od.##
-     in red_points_scr_time +:= elapsed_ms() - start;
-     	ans
-
-set red_points_scr_hash_time = int:0
-
-{lists integers j so gamma*av = j implies reducibility to ht}
-{this version requires gamma in convex hull of W*rho}
-set red_points_scr = ((KGBElt, ratvec, vec, int) -> [int]):
-    let xl_hash = make_xlambda_hash()
-    then av_hashes = [vec_hash]: [] {one hash table of red coroots at each (x,lambda)}
-    then hts = [[int]]: []  {one max HT for each ((x,lambda),av)}
-    then answers = [[[int]]]: [] 
-    in ((KGBElt, ratvec, vec, int) -> [int]): (KGBElt x, ratvec lambda, vec av, int HT) [int]:
-    let N = xl_hash.size(), start = elapsed_ms()
-    then n = xl_hash.match(x,lambda)
-    then m = -1
-    in if n=N {haven't seen (x,lambda) before}
-       then av_hashes #:= make_vec_hash([av]);
-       	    hts #:= [HT];
-       	    answers #:= [red_points_scr_base(x,lambda,av,HT)];
-	    m:=0
-       else let M = av_hashes[n].size()
-	    in  m := av_hashes[n].match(av);
-	       if m = M {haven't seen av before}
-	       then hts[n]#:=HT;
-	       	    answers[n] #:= red_points_scr_base(x,lambda,av,HT)
-	       else let htsn = hts[n], ansn = answers[n]
-	       	    in if htsn[m] >= 0 and
-		    	  (HT  < 0 or HT >= 0 and htsn[m] < HT)
-		       then ansn[m] := red_points_scr_base(x,lambda,av,HT);
-			      htsn[m]:=HT
-		       fi;
-	     	       hts[n]:=htsn;
-	     	       answers[n]:=ansn
-               fi {now we've updated the stored data}
-	fi;
-	red_points_scr_hash_time +:= elapsed_ms() - start;
-    	answers[n][m]
-
-set red_points_scr_hash_avbd_time = int:0
+set red_points_rp_hash_avbd_time = int:0
 
 {lists integers j so gamma*av = j implies reducibility}
-set red_points_scr_avbd = ((KGBElt, ratvec, vec, int, rat) -> [int]):
+set (red_points_rp_avbd, report_rpavbd) = (((KGBElt, ratvec, vec, int, rat) -> [int]),
+    (void->([[int]],[[rat]],[[[[int]]]]))):
     let xl_hash = make_xlambda_hash()
     then av_hashes = [vec_hash]: [] {one hash table of considered coroots at each (x,lambda)}
     then hts = [[int]]: []  {one list of computed HTs for each (x,lambda)}
     then avbds = [[rat]]: [] {one largest avbd for each ((x,lambda),av); nth list has size av_hashes[n].size()}
     then answers = [[[[int]]]]: [] {one list of computed reducibility hyperplanes for each ((x,lambda),av,HT)}
-    in ((KGBElt, ratvec, vec, int, rat) -> [int]): (KGBElt x, ratvec lambda, vec av, int HT, rat avbd) [int]:
+    in (((KGBElt, ratvec, vec, int, rat) -> [int]): (KGBElt x, ratvec lambda, vec av, int HT, rat avbd) [int]:
     let N = xl_hash.size(), start = elapsed_ms()
     then n = xl_hash.match(x,lambda)
     then m = -1 {location of av in av_hashes[n]}
     then h = -1 {location of HT in hts[n]}
-    then all_av_flag = false {whether need to update answers for all coroots}
+    then new_ht_flag = false {whether this is a new HT, need to add answers for all coroots}
     in if n=N {haven't seen (x,lambda) before}
-       then av_hashes #:= make_vec_hash([av]);
+       then av_hashes #:= make_vec_hash(red_coroots_rp(x,lambda));
        	    hts #:= [HT];
-	    avbds #:= [avbd];
-       	    answers #:= [[red_points_scr_base(x,lambda,av,HT,avbd)]];
-	    m:=0;
+	    m := av_hashes[n].match(av);
+	    avbds #:= (let add = for av0 in av_hashes[n].list()
+	    	      	      	 do x.real_form.rho*av
+				 od
+	    	       in add[m]:=avbd;
+		      	  add);
+       	    answers #:= for av0 in av_hashes[n].list()
+	    	    	do [red_points_rp_base(x,lambda,av0,HT,avbds[n][m])]
+			od;
 	    h:=0
-       else h:= first(for H in hts[n] do H=HT od); {saw (x,lambda) before}
-       	    	if h < 0 {haven't seen this HT before at (x,lambda)}
-	    	then h:= #hts[n];
-		     hts[n]#:=HT;
-		     all_av_flag :=true
-		     {can't yet update answers, because don't have all av's}
-		fi; {now h is location of HT in hts[n]}
-	    let M = av_hashes[n].size()
-	    in  m := av_hashes[n].match(av);
-	        if m = M {haven't seen av before at (x,lambda)}
-	        then avbds[n]#:=avbd;
-		     answers[n] #:= for H0 in hts[n] do red_points_scr_base(x,lambda,av,H0,avbd) od
-		   {in else, if all_av_flag, need to add an answer at HT for eact av0}
-	        else let ansn = answers[n] {type [[[int]]]}, avbdsn = avbds[n] {saw ((x,lambda),av) before, m < M}
-	       	     in if avbd > avbdsn[m] {need to increase avbd, recompute answers for av at (x,lambda) #n}
-		        then avbdsn[m] := avbd;
-			     let ansnm = ansn[m]
-			     in ansnm[h]:= red_points_scr_base(x,lambda,av,HT,avbd);
-			     	ansn[m]:=ansnm
-			fi;
-			if all_av_flag {means HT is last in hts[n]}
-			then for av0@m0 in av_hashes[n].list()[:M]
-			     do ansn[m0] #:= red_points_scr_base(x,lambda,av0,HT,avbdsn[m0])
-			     od
-			fi;
-	     	        avbds[n]:=avbdsn;
-	     	       	answers[n]:=ansn
-                fi
+       else m := av_hashes[n].match(av);
+       	    h := first(for H in hts[n] do H=HT od); {saw (x,lambda) before}
+       	    if h < 0 {haven't seen this HT before at (x,lambda)}
+	    then h:= #hts[n];
+		 hts[n]#:=HT;
+		 new_ht_flag :=true
+		 {can't yet update answers, because don't have all av's}
+	    fi; {now h is location of HT in hts[n]}
+	        {saw ((x,lambda) before, just need to adjust avbds[n][m]}
+	    if avbd > avbds[n][m] {need to increase avbd, recompute answers for av at (x,lambda) #n}
+	    then let ansn = answers[n], {type [[[int]]], one list for each av and ht}
+		     avbdsn = avbds[n]
+		 in avbdsn[m] := avbd;
+		    ansn[m]:= for H in hts[n]
+			      do red_points_rp_base(x,lambda,av,H,avbd)
+			      od;
+		    answers[n]:=ansn;
+		    avbds[n]:=avbdsn
+	     fi;
+	     if new_ht_flag {means HT is last in hts[n]}
+	     then let ansn = answers[n] {type [[[int]]], one list for each av and ht}
+		  in for av0@m0 in av_hashes[n].list()
+		     do if #ansn[m0] < #hts[n]
+		     	then ansn[m0] #:= red_points_rp_base(x,lambda,av0,HT,avbds[n][m0])
+		     	fi
+		     od; {now each ansn[m0] has length #hts[n]}
+		     answers[n]:=ansn
+	      fi;
+	      assert(@:all(for m:av_hashes[n].size() do #answers[n][m] = #hts[n] od));
+	      let N1 = xl_hash.size()
+		in assert(@:(#hts = N1) and (#av_hashes = N1) and
+			 (#avbds = N1));
+		   assert(@:all(for n0:N1 do let M = av_hashes[n0].size()
+		   		    	   in #avbds[n0] = M and #answers[n0] = M od));
+		   for n0:N1 do for m0:av_hashes[n0].size()
+		       	        do if #answers[n0][m0] != #hts[n0]
+		       	       	   then prints(new_line,"n = ",n0,", m = ",m0);
+		       	    	        prints("hts[n] = ",hts[n0]);
+			    	        prints("answers[n][m] = ",answers[n0][m0])
+				   fi
+		       	        od
+		             od;
+		   assert(@:all(for n0:N1 do let M = av_hashes[n0].size()
+		   		    	   in all(for m0:M do #answers[n0][m0] = #hts[n0] od) od))
 	fi; {now we've updated the stored data}
-	red_points_scr_hash_avbd_time +:= elapsed_ms() - start;
+	red_points_rp_hash_avbd_time +:= elapsed_ms() - start;
     	answers[n][m][h]
+, @: {report_rpavbd}
+  (hts, avbds, answers))
 
-set red_points_scr(KGBElt x,ratvec lambda, int HT) = [[int]]:
-    for av in red_coroots_scr(x)
+{just good out in convex hull of W*rho}
+set red_points_scr(KGBElt x,ratvec lambda, vec av, int HT) = [int]:
+    red_points_rp_avbd(x,lambda,av,HT,(x.root_datum).rho*av)
+
+set red_points_scr(KGBElt x, ratvec lambda, int HT) = [[int]]:
+    for av in red_coroots_rp(x, lambda)
     do red_points_scr(x,lambda,av,HT)
     od
 
 {deforming by r changes infl char to (1+th)gamma/2 + r(1-th)gamma/2}
 {So solve m = av*((1+th)gamma/2) +  av*r(1-th)gamma/2)}
 
-set rp_scr_time = int:0
-
-{Need infinitesimal_character(p) in convex hull of W*rho + center}
-set reducibility_points_scr_rho(Param p, int HT) = [rat]:
-    let gamma = p.infinitesimal_character, rc = red_coroots_scr(p.x), start = elapsed_ms()
-    then for_gamma_rc = for av@j in rc do if (av*(p.nu)).!= do (av,av*(p.nu)) fi od.##
-    then long = [rat]:
-    	for (av,den) in for_gamma_rc
-    	do let rp = red_points_scr(p.x, p.lambda, av, HT)
-	{ints where av*gamma' = int is bad}
-	   in for m in rp do (m - av*(p.d_lambda))/den od
-        od.##.sort_u
-    in rp_scr_time+:= elapsed_ms() - start;
-       for r in long do if r>0 and r<=1 do r fi od.##
+set rp_time = int:0
 
 {Works for any infl char}
-set reducibility_points_scr(Param p, int HT) = [rat]:
-    let gamma = p.infinitesimal_character, rc = red_coroots_scr(p.x), start = elapsed_ms()
+set reducibility_points_rp(Param p, int HT) = [rat]:
+    let gamma = p.infinitesimal_character, rc = red_coroots_rp(p.x,p.lambda), start = elapsed_ms()
     then for_gamma_rc = for av@j in rc do if (av*(p.nu)).!= do (av,av*(p.nu)) fi od.##
     then long = [rat]:
     	for (av,den) in for_gamma_rc
-    	do let rp = red_points_scr_avbd(p.x, p.lambda, av, HT, av*gamma)
+    	do let rp = red_points_rp_avbd(p.x, p.lambda, av, HT, av*gamma)
 	{ints where av*gamma' = int is bad}
 	   in for m in rp do (m - av*(p.d_lambda))/den od
         od.##.sort_u
-    in rp_scr_time+:= elapsed_ms() - start;
+    in rp_time+:= elapsed_ms() - start;
        for r in long do if r>0 and r<=1 do r fi od.##
