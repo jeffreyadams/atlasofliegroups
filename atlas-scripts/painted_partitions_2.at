@@ -51,21 +51,3 @@ else
  for P in f(n-1) do  add_one_to_first_column(P)##add_one_to_last_row(P) od.##
 fi in f(n)
 
-set left_valid_painted_partitions(int n,string label)=
-for P in painted_partitions(n) do
- if is_valid_left(P,label) then [P] else [] fi od.##
-
-set right_valid_painted_partitions(int n,string label)=
-for P in painted_partitions(n) do
- if is_valid_right(P,label) then [P] else [] fi od.##
-
-set painted_bipartitions(int left,int right, string label)=
-let left=left_valid_painted_partitions(left,label) then
-right=right_valid_painted_partitions(right,label) in
-##for P in left do
- ##for Q in right do
-  if is_valid(P,Q,label) then [(P,Q,label)] else [] fi od od
-
-set painted_bipartitions(int n, string label)=
-for i:n+1 do painted_bipartitions(i,n-i,label) od.##
-

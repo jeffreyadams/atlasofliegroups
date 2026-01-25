@@ -1,15 +1,8 @@
 <painted_partitions_2.at
+<weak_packets.at
 
 {Nilpotent orbits via Barbasch-Ma-Sun-Zhu}
 {type Orbit=Partition=[int]}
-
-{labels=["A","A~", "B","D","C","C~","C*","D*"]}
-
-set is_in(string S,[string] list)=bool:first(for x in list do S=x od)!=-1
-
-{shorthand for rat_as_int(n/2), with check that n is even}
-set h(int n)=int:
-assert(is_even(n),"trying to take half of odd integer");n\2 
 
 {G: group of type label=B,C,D
  P: partition for orbit of DUAL group: C,B,D
@@ -25,9 +18,11 @@ elif label="A!"
  then all(for row in P do is_odd(row-size(P)) od)
 elif is_in(label,["C","C*","D","D*"])  
  then all(for row in P do is_odd(row) od)
-elif is_in(label,["B","C~"]) 
+elif is_in(label,["B","B+","B-","C~"]) 
  then all(for row in P do is_even(row) od)
-else true fi
+else
+ error("missing case")
+fi
 
 set all_partitions(int n,string label)=[Orbit]:
 if is_in(label,["B","D","D*"]) then BD_partitions(n)
@@ -45,10 +40,10 @@ if is_in(label,["C","C*"]) then
  for P in  BD_partitions(2*n+1) do if is_good_parity(P,label) then [P] else [] fi od.##
 elif is_in(label,["D","D*"]) then
  for P in  BD_partitions(2*n) do if is_good_parity(P,label) then [P] else [] fi od.##
-elif is_in(label,["B","C~"]) then
+elif is_in(label,["B","B+","B-","C~"]) then
  for P in  C_partitions(2*n) do if is_good_parity(P,label) then [P] else [] fi od.##
 else
- error("missing case")
+ error("missing case in good_parity_partitions")
 fi
 
 {numerology of extracting all rows with even/odd index (not the length of the row)
@@ -111,6 +106,46 @@ in transpose(right)
 set diagram_pair(Orbit P,string label)=(Partition,Partition):
 (left_diagram(P,label),right_diagram(P,label))
 
+set left_valid_painted_partitions(int n,string label)=
+for P in painted_partitions(n) do
+ if is_valid_left(P,label) then [P] else [] fi od.##
+
+set right_valid_painted_partitions(int n,string label)=
+for P in painted_partitions(n) do
+ if is_valid_right(P,label) then [P] else [] fi od.##
+
+set painted_bi_partitions(int left,int right, string bi_label)=[PaintedBiPartition]:
+let left=left_valid_painted_partitions(left,bi_label) then
+right=right_valid_painted_partitions(right,bi_label) then
+label=label_of(bi_label) in
+##for P in left do
+ ##for Q in right do
+  if is_valid(P,Q,bi_label) then [(P,Q,bi_label)] else [] fi od od
+
+set painted_bi_partitions(int n, string bi_label)=[PaintedBiPartition]:
+for i:n+1 do painted_bi_partitions(i,n-i,bi_label) od.##
+
+{(O_v,label) -> diagram_pair (Left,Right)
+-> painted bi partions (P,Q,label) with partition(P)=Left, partition(Q)=right}
+set painted_bi_partitions(Orbit O_v, string bi_label)=[PaintedBiPartition]:
+let label=label_of(bi_label) then
+(left,right)=diagram_pair(O_v,label) in
+let n=
+if is_in(bi_label,["C","C*"]) then {G=Sp(2n),G_v=SO(2n+1) size(O_v)=2n+1}
+ h(size(O_v)-1)
+elif is_in(bi_label,["B+","B-","C~"]) then {G=SO(2n+1) G_v=Sp(2n) 2n=size(O_v)}
+ h(size(O_v))
+elif is_in(bi_label,["D","D*"]) then {SO(2n)}
+ h(size(O_v))
+else
+error("case not implemented yet")
+fi
+{in let ()=prints("n=", n)  then} in let
+all = painted_bi_partitions(n,bi_label) in
+for Z in all do if partition(Z.P)=left and partition(Z.Q)=right then [Z] else [] fi od.##
+
+
+
 {label: type of G, orbit is for G^v}
 set complex_group(Orbit O_v,string label)=RootDatum:
 if is_in(label,["B","C~"]) then SO(2*#O_v+1)
@@ -120,9 +155,10 @@ else
 error("case not implemented yet")
 fi
 
+{
 {(O_v,label) -> diagram_pair (Left,Right)
 -> painted bi partions (P,Q,label) with partition(P)=Left, partition(Q)=right}
-set painted_bi_partitions(Orbit O_v, string label)=
+set painted_bi_partitions(Orbit O_v, string label)=[PaintedBiPartition]:
 let (left,right)=diagram_pair(O_v,label) in
 let n=
 if is_in(label,["C","C*"]) then {G=Sp(2n),G_v=SO(2n+1) size(O_v)=2n+1}
@@ -135,33 +171,66 @@ else
 error("case not implemented yet")
 fi
 {in let ()=prints("n=", n)  then} in let
-all = painted_bipartitions(n,label) in
+all = painted_bi_partitions(n,label) in
 for Z in all do if partition(Z.P)=left and partition(Z.Q)=right then [Z] else [] fi od.##
+}
+
+set find = find(=@(GroupDatum,GroupDatum))
+{assume each PaintedBiPartition has same label and size;
+ ->  [GroupData]=[G_0,...,G_n] 
+ return [int]: #times G_i occurs as group_datum
+ for example if list=[PaintedBiPartition] each of type C* and rank 2
+ then [GroupData]=[("Sp",2,0),("Sp",1,1),("Sp",0,2)]
+ return value [a,b,c] gives the number of times each GroupDatum occurs}
+set collated_group_data([PaintedBiPartition] list)=([GroupDatum],[int]):
+if #list=0 then ([],[]) else
+ let rank=rank_of(list[0]) then
+ label=label_of(list[0].bi_label) then
+ group_data=all_group_data(rank,label) then
+ rv=null(#group_data) in
+ for Z in list do
+  let j=find(group_data,group_datum(Z)) in
+  rv[j]+:=1
+ od;(group_data,rv)
+fi
 
 set number_unipotent(Orbit O_v,string label)=int:
 let pbp=#painted_bi_partitions(O_v,label) then
-pp=2^number_primitive(O_v) in pbp*pp
+pp=2^number_primitive(O_v,label) in pbp*pp
 
 set report(Orbit O_v,string label)=void:
 let pbp=#painted_bi_partitions(O_v,label) then
-pp=number_primitive(O_v)+1 in
+pp=number_primitive(O_v,label)+1 in
 prints("Orbit: ", O_v, new_line,
-"#painted bipartitions: ", pbp, new_line,
+"#painted bi_partitions: ", pbp, new_line,
 "#primitive+1: ", pp, new_line,
 "#unipotents: ", pbp*pp)
 
 set report([Orbit] orbits,string label)=void:
-prints("pbp=#painted bipartitions",new_line,"pp= #primitive indices+1");
+prints("pbp=#painted bi_partitions",new_line,"pp= #primitive indices+1");
 tabulate(
 ["orbit","pbp","pp","#unip"]#for orbit@i in orbits do
 let pbp=#painted_bi_partitions(orbit,label) then
-number=number_primitive(orbit)+1 in 
+number=2^number_primitive(orbit,label) in 
 [to_string(orbit),to_string(pbp), to_string(number), to_string(number*pbp)] od)
+
+set report(GroupDatum G,[Orbit] orbits,string label)=void:
+prints("pbp=#painted bi_partitions",new_line,"pp= #primitive indices+1");
+tabulate(
+["orbit","pbp","pp","#unip"]#for orbit@i in orbits do
+let pbp_all=painted_bi_partitions(orbit,label) then
+pbp=for Z in pbp_all do if group_datum(Z)=G then [Z] else [] fi od.##  then
+number=2^number_primitive(orbit,label) in
+[to_string(orbit),to_string(#pbp), to_string(number), to_string(number*#pbp)] od)
 
 set bmsz_report(int n,string label)=void:
 let orbits=good_parity_partitions(n,label) in report(orbits,label)
 
-set show_short(  ([ComplexNilpotent] orbits,[([([Param],[WCell])],[(int,int,Param)])] blocks_and_cells_and_packets))=void:
+set bmsz_report(GroupDatum G,int n,string label)=void:
+let ()=prints("G: ", group_name(G) ) then
+orbits=good_parity_partitions(n,label) in report(G,orbits,label)
+
+set show_short(([ComplexNilpotent] orbits,[([([Param],[WCell])],[(int,int,Param)])] blocks_and_cells_and_packets,(ComplexNilpotent->Partition) partition_function))=void:
 let packets=for (,packet) in blocks_and_cells_and_packets do packet od then
 grand_total=0 then
 blocks=blocks(packets) then
@@ -171,13 +240,14 @@ tabulate(
  ["orbit","partition","gamma","|packet|"]#
  ##for i:#packets do
   let total=sum(for b in blocks do sum(for c in cells do m(i,b,c) od) od)
- in if total!=0 then grand_total+:=total;[[i.to_string,partition_of_orbit_B(orbits[i]).to_string,(orbits[i].H/2).to_string,total.to_string]] else [] fi
+ in if total!=0 then grand_total+:=total;[[i.to_string,partition_function(orbits[i]).to_string,(orbits[i].H/2).to_string,total.to_string]] else [] fi
 od
 #["Total","","",grand_total.to_string]
 );prints()
 
-set show_short(RealForm G)=void:
+set show_short(RealForm G,(ComplexNilpotent->Partition) partition_function)=void:
 let orbits=dual_orbits(G) then
 wp=weak_packets(G) in
-show_short(orbits,wp)
+show_short(orbits,wp,partition_function)
+
 
