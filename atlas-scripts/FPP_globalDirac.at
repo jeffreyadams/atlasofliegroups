@@ -124,13 +124,18 @@ set test_more_flag = true
 set more_shift_frac = rat:2/3
 
 set more_bound = rat: 1/4
-{Very large suggested values of more_shift in E8_s lead to very slow more_bottom calculations. Need to bound somehow.
-Try size of lambda/4???}
+{Very large suggested values of more_shift in E8_s lead to very slow more_bottom calculations.
+Need to bound somehow. Try size of lambda/4???}
 
 set KGB_frac_flag =true
 
 {if KGB_frac_flag and x is less than this fraction of KGB, then switch from bottom_layer to one_level}
 set KGB_frac = rat:1/3
+
+{if KGB_frac_flag and x is greater than this fraction of KGB, then turn on FPP_def_flag}
+set KGB_def_test_frac_flag = true
+
+set KGB_def_test_frac = rat: 1/4
 
 {if x is greater than this fraction of KGB, then turn on predictor_flag}
 set adjust_frac = rat: 2/3
@@ -144,7 +149,7 @@ set end_more_KGB_frac = rat: 49/50
 {if true, use test_bl to decide about bottom_layer}
 set hard_test_flag = false
 
-{if true, and hard_test_flag is false, then use easy_test_flag}
+{if true, and hard_test_flag is false, then use easy_test}
 set easy_test_flag = true
 
 {If one_level_frac_flag and x exceeds this fraction of KGB, then make one_level_revert_flag true}
@@ -163,21 +168,29 @@ set bl_shift(KGBElt x, ratvec lambda, LocalVertexData Lvd) = int:
 {Meant to be the biggest useful more-shift??}
 set most_more(RealForm G) = (G.semisimple_rank - 3)*(G.semisimple_rank - 3)
 
+set FPP_def_adjust(KGBElt x) = void:
+    let G = x.real_form
+    then N = #KGB(G), n = x.number, r = semisimple_rank(G)
+    in if KGB_def_test_frac_flag
+       then FPP_def_flag := (n > N*KGB_def_test_frac and N-n > 2*r)
+       fi{;
+       prints("At x = ",x,", FPP_def_flag = ",FPP_def_flag)}
+
 {returning "true" means bottom layer ought to be used}
 {start messing again 11/5/25. This version  sets more_shift to be zero
 unless x.number >= (#KGB)*start_more_KGB_frac, and L(x,lambda) is not maximal.}
 set hard_test_bl(KGBElt x, ratvec lambda) = bool:
-    if semisimple_rank(x.real_form) < 7 then return false fi;
-    if KGB_frac_flag and x.number < KGB_frac*(#KGB(x.real_form)) then return false fi;
-    if not test_more_flag then return true fi;
-    let start = elapsed_ms(), G=x.real_form,
-        N = #KGB(x.real_form), n = x.number
-    then () = if n < start_more_KGB_frac*N
-    	      then more_shift(0);
-	      	   test_bl_time +:= elapsed_ms() - start;
-	      	   return true
-	      else more_shift(most_more(G))
-	      fi
+       if x.real_form.semisimple_rank < 7 then return false fi;
+       if KGB_frac_flag and x.number < KGB_frac*(#KGB(x.real_form)) then return false fi;
+       if not test_more_flag then return true fi;
+       let start = elapsed_ms(), G=x.real_form,
+           N = #KGB(x.real_form), n = x.number
+       then () = if n < start_more_KGB_frac*N
+    	       	 then more_shift(0);
+	      	      test_bl_time +:= elapsed_ms() - start;
+	      	      return true
+	      	 else more_shift(most_more(G))
+	      	 fi
     then p = parameter(x,lambda,0*lambda)
     then (Q,) = theta_stable_quasi_data(p)
     then L = Q.Levi
@@ -187,11 +200,12 @@ set hard_test_bl(KGBElt x, ratvec lambda) = bool:
        test_bl_time +:= elapsed_ms() - start;
        true
 
+{1/25/27: include FPP_def_frac adjustment} 
 {returning "true" means bottom layer ought to be used}
 set easy_test_bl(KGBElt x) = bool:
     let G = x.real_form
-    then N = #KGB(G), n = x.number
-    in if semisimple_rank(x.real_form) < 7
+    then N = #KGB(G), n = x.number, r = semisimple_rank(G)
+    in if r < 7
        then false
        elif KGB_frac_flag and n < KGB_frac*N
        then false
@@ -437,11 +451,11 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     	 old_test_verbose = test_verbose, old_test_slightly_verbose = test_slightly_verbose
     then startLPmss = elapsed_ms()
     then LPmss = for (x,lambda) in xlambdasW
-    	       	 do if FPP_def_flag
+    	       	 do {if FPP_def_flag
 		    then deform_trim(LPm_table.LPm_entry(G,x.involution,
 				ratvec_as_vec(lambda+x.involution*lambda)), x, lambda)
-		    else LPm_table.LPm_entry(G,x.involution, ratvec_as_vec(lambda+x.involution*lambda))
-		    fi
+		    else} LPm_table.LPm_entry(G,x.involution, ratvec_as_vec(lambda+x.involution*lambda))
+		    {fi}
               	 od
     then () = if every_lambda_deets_flag and FPP_report_flag
     	      then prints("time for LPmss = ",print_time_string(elapsed_ms() - startLPmss))
@@ -527,7 +541,8 @@ then coh_ind_unip_few(G,Uhash)}
 				    finish(x,lambda)
 			       fi
 	      	     in if tw.< {still have work to do close 482}
-		     	then if every_lambda_deets_flag
+		     	then FPP_def_adjust(x);
+			if every_lambda_deets_flag
 			     then face_verbose := old_face_verbose; time_verbose := old_time_verbose;
     	 			  test_verbose := old_test_verbose; test_slightly_verbose :=
 				  old_test_slightly_verbose
@@ -788,7 +803,8 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 		       	 big_unitary_hash.finishx(x)
 		     fi
 	  then () = if {C} skipx = false
-	       	    then let lambdas = FPP_lambdas(x)
+	       	    then FPP_def_adjust(x);
+		    	 let lambdas = FPP_lambdas(x)
     	 	    	 then Ncases = #lambdas
 	          	 then tempanswerCards = null(Ncases)
 	 	  	 then templambdatimes = null(Ncases)
@@ -1134,9 +1150,10 @@ then coh_ind_unip_few(G,Uhash)}
 				    finish(x,lambda)
 			       fi
 	      	     in if tw.< {still have work to do}
-		     	then let startxl = elapsed_ms(), startUhash = Uhash.size(),
-		     		   startUcounter = unitary_test_counter.use_count(),
-				   startCcounter = char_counter.use_count(),
+		     	then FPP_def_adjust(x);
+			     let startxl = elapsed_ms(), startUhash = Uhash.size(),
+		     		 startUcounter = unitary_test_counter.use_count(),
+				 startCcounter = char_counter.use_count(),
 				   startUTime = unitaryTime, startCTime = charTime, theta = x.involution,
 				   startminxl = good_hash.size(), startmorexl = more_good_hash.size()
 		 then p0 = parameter(x,lambda,zeroNu)
@@ -1362,7 +1379,8 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 		       	 big_unitary_hash.finishx(x)
 		     fi
 	  then () = if {C} skipx = false
-	       	    then let lambdas = FPP_lambdas(x)
+	       	    then FPP_def_adjust(x);
+		    	 let lambdas = FPP_lambdas(x)
     	 	    	 then Ncases = #lambdas
 	          	 then tempanswerCards = null(Ncases)
 	 	  	 then templambdatimes = null(Ncases)
@@ -1770,6 +1788,7 @@ fancy_tester) = void:
 	       fi
     then () = for (x,lambda)@k in xlambdas
     	      do {xlambdas}
+	      	FPP_def_adjust(x);
 	        predictor_flag:= x.number > adjust_frac*#KGB(G);
 		test_next(x);
 		test_edge(x);
@@ -2160,7 +2179,8 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 		       	 big_unitary_hash.finishx(x)
 		     fi
 	 then () = if {C} skipx = false
-	 then let lambdas = FPP_lambdas(x)
+	 then FPP_def_adjust(x);
+	      let lambdas = FPP_lambdas(x)
 	      then local_test_bl_flag =
 	      	   if easy_test_flag and not hard_test_flag
 		   then easy_test_bl(x)

@@ -195,10 +195,9 @@ set FPP_parabolic(Param p) = (FPP_coroots(p),p.x)
 {false means nonunitary, true means don't know}
 {Lucas Mason-Brown proved 1/23/26 that false implies nonunitary}
 set FPP_def_test(Param p) = bool:
-    let G =p.real_form, start = elapsed_ms()
-    then N = #KGB(G), n = p.x.number
-    then () = if n < N/4 or N-n <= 2*G.rank then return true fi
-    then rp1 = reducibility_points(p)#(1/1)
+    {let G =p.real_form,} let start = elapsed_ms(), rp1 = reducibility_points(p)#(1/1)
+    {then N = #KGB(G), n = p.x.number
+    then () = if n < N/4 or N-n <= 2*G.rank then FPP_def_time +:= elapsed_ms() - start; return true fi}
     then defps = for r in rp1 do Finalize(p*r) od
     then ans = all(for q in defps
        	       	   do @: let Q = FPP_parabolic(q), thmin = 1-q.x.involution
@@ -407,19 +406,20 @@ set make_Lvd_Perm2_table() = Lvd_Perm2_table:
 
 set LPm_table = make_Lvd_Perm2_table()
 
-{set Lvd(KGBElt x, ratvec lambda) = LocalVertexData:
-    let theta = x.involution, ic = x.inner_class
-    then lamthlam = ratvec_as_vec((1+theta)*lambda)
-    in LPm_table.Lvd(ic,theta,lamthlam)}
-
 set Lvd(KGBElt x, ratvec lambda) = LocalVertexData:
     let theta = x.involution, ic = x.inner_class
     then lamthlam = ratvec_as_vec((1+theta)*lambda)
+    in LPm_table.Lvd(ic,theta,lamthlam)
+
+{set Lvd(KGBElt x, ratvec lambda) = LocalVertexData:
+    let theta = x.involution, ic = x.inner_class
+    then lamthlam = ratvec_as_vec((1+theta)*lambda)
+    in LPm_table.Lvd(ic, theta, lamthlam)
     then (Lvd,) = if FPP_def_flag
     	 	  then deform_trim(LPm_table.LPm_entry(ic,theta,lamthlam),x,lambda)
 		  else LPm_table.LPm_entry(ic,theta,lamthlam)
 		  fi
-    in Lvd
+    in Lvd}
 
 {this is the list of all possible lambda + theta*lambda for ic and theta}
 set FPP_lamthlams(InnerClass ic, mat theta) = [vec]:

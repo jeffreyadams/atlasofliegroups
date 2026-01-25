@@ -4385,6 +4385,8 @@ set localFD_1Dirac2\
 			    do @bool: is_pos_on_LKTs(q)
 			    od))
 	       then []
+	       elif FPP_def_flag and not FPP_def_test_wk_final(p)
+	       then []
 	       elif red_count_flag
 	       then [[j, red_count(p,HT)]]
 	       else [[j]]
@@ -4531,6 +4533,8 @@ set localFD_1Dirac2_by_zero\
 	       elif not (fewer_reducible_unitary_flag or all(for q in monomials(finalize(p))
 			    do @bool: is_pos_on_LKTs(q)
 			    od))
+	       then []
+	       elif FPP_def_flag and not FPP_def_test_wk_final(p)
 	       then []
 	       elif red_count_flag
 	       then [[j, red_count(p,HT)]]
@@ -4906,6 +4910,8 @@ set localFD_1Dirac2_by_zero_old\
 			    do @bool: is_pos_on_LKTs(q)
 			    od))
 	       then []
+	       elif FPP_def_flag and not FPP_def_test_wk_final(p)
+	       then []
 	       else [[j]]
 	       fi
 	 od.##{list of j for which vertex j is a candidate}
@@ -4970,6 +4976,8 @@ set localFD_1Dirac2_by_zero_old\
 			    do @bool: is_pos_on_LKTs(q)
 			    od))
 	       then []
+	       elif FPP_def_edge_flag and not FPP_def_test_wk_final(p)
+	       then []
 	       else [v]
 	       fi
 	  od.##
@@ -5008,6 +5016,8 @@ set localFD_1Steve\
 	  in if not (fewer_reducible_unitary_flag or all(for q in monomials(finalize(p))
 	       	      	    do @bool: is_pos_on_LKTs(q)
 			    od))
+	     then []
+	     elif FPP_def_flag and not FPP_def_test_wk_final(p)
 	     then []
 	     else [[j]]
 	     fi
