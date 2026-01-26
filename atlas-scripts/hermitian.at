@@ -4,7 +4,7 @@
 <count.at {for unitary_test_counter}
 <time.at {for print_time_string}
 <cohom_reductionND {for derived_factor_params}
-<FPP_faces_geom {for herm_center}{get charTime!}
+<FPP_faces_geom {for herm_center}{get charTime!}{FPP_def_count}
 <writeFiles {for write commands}
 <deform.at {for script full_deform}
 
@@ -181,16 +181,24 @@ set impure_height(KTypePol P) = int:
 	 in -1
      fi
 
-{
+{whether to use the script full_deform}
+set deform_script_flag = false
+
+{whether to use reducibility_points_rp}
+set deform_rp_flag = false
+
 set full_deform_to_ht_MvL_base(Param p, int height) = KTypePol:
-( if not {to_ht_over_u_flag} strict_low(p,height)
+( {if not {to_ht_over_u_flag} strict_low(p,height)
   then return to_ht(full_deform(p),height)
-  fi;
+  fi;}
   let !empty_K=null_K_module(p.real_form), !empty=null_module(p)
   then output = empty_K, def = empty
   then P = empty +
   { snap p down to a reducibility point, or tempered parameter }
-     (let rp = reducibility_points(p)
+     (let rp =  if deform_rp_flag
+	      	then reducibility_points_rp(p,height)
+		else reducibility_points(p)
+		fi
        in if =#rp then output +:= p.K_type; [] else [p*rp~[0]] fi)
        	  then () = while >#P
        	    do set (def,P) :=
@@ -201,22 +209,19 @@ set full_deform_to_ht_MvL_base(Param p, int height) = KTypePol:
   	    od
   in output
 )
-}
 
-{
 set full_deform_to_ht_MvL_base(Param p, int height, int time) = maybe_KTP:
-( if not ({to_ht_over_u_flag} strict_low(p,height))
+( {if not ({to_ht_over_u_flag} strict_low(p,height))
   then return to_ht(full_deform(p,time),height)
-  fi;
-  let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p){,
-      deformed_hash_flag_hold = deformed_hash_flag}
-  {then () = if height >= 0
-       	    then deformed_hash_flag:=true
-	    fi}
+  fi;}
+  let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p)
   then output = empty_K, def = empty, expiration = elapsed_ms() + time
   then P = empty +
   { snap p down to a reducibility point, or tempered parameter }
-     (let rp = reducibility_points(p)
+     (let rp = if deform_rp_flag
+	      	then reducibility_points_rp(p,height)
+		else reducibility_points(p)
+		fi
        in
         if =#rp then output +:= p.K_type; [] else [p*rp~[0]] fi)
   then () = while >#P
@@ -231,7 +236,7 @@ set full_deform_to_ht_MvL_base(Param p, int height, int time) = maybe_KTP:
   	    od
   in {deformed_hash_flag := deformed_hash_flag_hold;} done(output)
 )
-}
+
 
 {
 set full_deform_to_ht_MvL_alt_old(Param p, int height) = KTypePol:
@@ -304,19 +309,17 @@ set full_deform_to_ht_MvL_alt_old(Param p, int height,int TIME) = maybe_KTP:
 
 set alt_count = int: 0
 set alt_time = int:0
-set deform_script_flag = false
 
 set full_deform_to_ht_MvL_altA(Param p, int height) = KTypePol:
   alt_count +:=1;
-  let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p){,
-      deformed_hash_flag_hold = deformed_hash_flag}
-  {then () = if height >= 0
-       	    then deformed_hash_flag:=true
-	    fi}
+  let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p)
   then output = empty_K, def = empty, time = interrupt_base_time
   then P = empty +
        	 { snap p down to a reducibility point, or tempered parameter }
-     	 (let rp = reducibility_points(p)
+     	 (let rp = if deform_rp_flag
+	      	   then reducibility_points_rp(p,height)
+		   else reducibility_points(p)
+		   fi
       	  in if =#rp
       	     then output +:= p.K_type; []
 	     else [p*rp~[0]]
@@ -324,10 +327,11 @@ set full_deform_to_ht_MvL_altA(Param p, int height) = KTypePol:
       then () = while >#P
        	    do if elapsed_ms() - start > time
 	       then {try full_deform}
-		    let try = if deform_script_flag
+		    let try = full_deform(p,time)
+		    {if deform_script_flag
 		    	      then recursive_deform_scr(p, height, time)
 		    	      else full_deform(p,time)
-			      fi
+			      fi}
 		    in case try
 		       |timed_out: time:=2*time; ()
 		       |done(r): alt_time +:= elapsed_ms() - start; return to_ht(r, height)
@@ -339,7 +343,7 @@ set full_deform_to_ht_MvL_altA(Param p, int height) = KTypePol:
      	       	  ,   pp = for c@m in def if !=nu(m) do (c,m) fi od
   	      in output := (output next output:=empty_K) + kt; P := (P next P:=empty) + pp
   	    od
-  in {deformed_hash_flag := deformed_hash_flag_hold;} alt_time +:= elapsed_ms() - start; output
+  in alt_time +:= elapsed_ms() - start; output
 
 set alt_time_int_fail = int:0
 set alt_time_int_pass = int:0
@@ -354,7 +358,10 @@ set full_deform_to_ht_MvL_altA(Param p, int height,int TIME) = maybe_KTP:
   then output = empty_K, def = empty, time = max(TIME\32,interrupt_base_time)
   then P = empty +
        	 { snap p down to a reducibility point, or tempered parameter }
-     	 (let rp = reducibility_points(p)
+     	 (let rp = if deform_rp_flag
+	      	   then reducibility_points_rp(p,height)
+		   else reducibility_points(p)
+		   fi
       	  in if =#rp
       	     then output +:= p.K_type; []
 	     else [p*rp~[0]]
@@ -365,10 +372,11 @@ set full_deform_to_ht_MvL_altA(Param p, int height,int TIME) = maybe_KTP:
 	       fi;
 	       if elapsed_ms() - start > time
 	       then time:=2*time;
-		    let try = if deform_script_flag {try full_deform}
+		    let try = full_deform(p,time) {try full_deform}
+		    {if deform_script_flag {try full_deform}
 		    	      then recursive_deform_scr(p, height, time)
 		    	      else full_deform(p,time)
-			      fi
+			      fi}
 		    in case try
 		       |timed_out: time:=2*time; ()
 		       |done(r): alt_count+:=1;
@@ -396,38 +404,15 @@ set full_deform_to_ht_MvL_alt(Param p, int height) = KTypePol:
   if alt_verbose
   then prints(new_line,"starting full_deform_to_ht_MvL_alt(",p,",",height,")")
   fi;
-{  if alt_full
-  then start_full = 0;
-       if alt_verbose
-       then prints("starting initial try_full after ",print_time_string(elapsed_ms() - START_TIME),
-       	      " for ", print_time_string(alt_time_guess))
-       fi;
-       let try = full_deform(p,time)
-       in used_full+= elapsed_ms() - start_full;
-       	  case try
-       	  |timed_out: alt_full:= false ;
-	   if alt_verbose
-	   then prints("failed after ",print_time_string(used_full))
-	   fi;
-	   ()
-       	  |done(r): alt_time +:= elapsed_ms() - START_TIME;
-	   if alt_verbose
-	   then prints("succeeded after ",print_time_string(elapsed_ms() - START_TIME))
-	   fi;
-	   return to_ht(r, height)
-	  esac
-	fi;
-}
-  let !empty_K=null_K_module(p.real_form), !empty=null_module(p),  start_to_ht = elapsed_ms(){,
-      deformed_hash_flag_hold = deformed_hash_flag}
-  {then () = if height >= 0
-       	    then deformed_hash_flag:=true
-	    fi}
+  let !empty_K=null_K_module(p.real_form), !empty=null_module(p),  start_to_ht = elapsed_ms()
   then output = empty_K, def = empty, time = alt_time_guess
   {time will increase as we fail}
   then P = empty +
        	 { snap p down to a reducibility point, or tempered parameter }
-     	 (let rp = reducibility_points(p)
+     	 (let rp = if deform_rp_flag
+	      	   then reducibility_points_rp(p, height)
+		   else reducibility_points(p)
+		   fi
       	  in if =#rp
       	     then output +:= p.K_type; []
 	     else [p*rp~[0]]
@@ -443,10 +428,11 @@ set full_deform_to_ht_MvL_alt(Param p, int height) = KTypePol:
 		    then prints(new_line,"starting loop try_full after ",print_time_string(elapsed_ms() - START_TIME),
        	      	    " for ", print_time_string(time))
 		    fi;
-		    let try = if deform_script_flag
+		    let try = full_deform(p,time)
+		    	      {if deform_script_flag
 		    	      then recursive_deform_scr(p, height, time)
 			      else full_deform(p,time)
-			      fi
+			      fi}
 		    in start_to_ht:=elapsed_ms(); {starting a new round of deform_to_ht}
 		       case try
 		       |timed_out: if alt_verbose
@@ -469,12 +455,6 @@ set full_deform_to_ht_MvL_alt(Param p, int height) = KTypePol:
   	       ;  let kt = for c@m in def if  =nu(m) do (c,m.K_type) fi od
      	       	  ,   pp = for c@m in def if !=nu(m) do (c,m) fi od
   	      in output +:= kt; P +:= pp;
-{
-		(let q=first_param(P) in block_deform(q,P next P:=empty,height))
-  	       ;  let kt = for c@m in def if  =nu(m) do (c,m.K_type) fi od
-     	       	  ,   pp = for c@m in def if !=nu(m) do (c,m) fi od
-  	      in output := (output next output:=empty_K) + kt; P := (P next P:=empty) + pp;
-}
 	      	 if alt_verbose
 		 then prints("completed loop (def,P), P = ",P," after ",print_time_string(elapsed_ms() - START_TIME))
 		 fi
@@ -493,34 +473,15 @@ set full_deform_to_ht_MvL_alt(Param p, int height,int TIME) = maybe_KTP:
   if alt_verbose
   then prints(new_line,"starting full_deform_to_ht_MvL_alt(",p,",",height,",",TIME,")")
   fi;
-  {if alt_full
-  then if alt_verbose
-       then prints("starting initial try_full after ",print_time_string(elapsed_ms() - START_TIME),
-       	      " for ", print_time_string(alt_time_guess))
-       fi;
-       let try = full_deform(p,alt_time_guess)
-       in case try
-       	  |timed_out: alt_full:= false;
-	  	      if alt_verbose
-	   	      then prints("failed after ",print_time_string(elapsed_ms() - START_TIME))
-	   	      fi;
-		      ()
-       	  |done(r): alt_time_int_pass+:= elapsed_ms() - START_TIME;
-	   if alt_verbose
-	   then prints("succeeded after ",print_time_string(elapsed_ms() - START_TIME))
-	   fi;
-	   return to_ht(r, height).done
-	  esac
-	  fi;}
-  let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p), start_to_ht = elapsed_ms() {,
-      deformed_hash_flag_hold = deformed_hash_flag}
-  {then () = if height >= 0
-       	    then deformed_hash_flag:=true
-	    fi}
+  let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p),
+      start_to_ht = elapsed_ms()
   then output = empty_K, def = empty, time = max(TIME\32,interrupt_base_time)
   then P = empty +
        	 { snap p down to a reducibility point, or tempered parameter }
-     	 (let rp = reducibility_points(p)
+     	 (let rp = if deform_script_flag
+	      	   then reducibility_points_rp(p, height)
+		   else reducibility_points(p)
+		   fi
       	  in if =#rp
       	     then output +:= p.K_type; []
 	     else [p*rp~[0]]
@@ -528,7 +489,6 @@ set full_deform_to_ht_MvL_alt(Param p, int height,int TIME) = maybe_KTP:
   then () = if alt_verbose
        	    then prints("working P = ",P," after ",print_time_string(elapsed_ms() - START_TIME))
 	    fi
-  {then () = used_to_ht +:= elapsed_ms() - start_to_ht}
   then () = while >#P
        	    do if elapsed_ms() - START_TIME > TIME
 	       then alt_time_int_fail +:= elapsed_ms() - start; return timed_out()
@@ -539,10 +499,11 @@ set full_deform_to_ht_MvL_alt(Param p, int height,int TIME) = maybe_KTP:
 		    then prints(new_line,"starting loop try_full after ",print_time_string(elapsed_ms() - START_TIME),
        	      	    " for ", print_time_string(time))
 		    fi;
-		    let try = if deform_script_flag
+		    let try = full_deform(p,time)
+		    {if deform_script_flag
 		    	      then recursive_deform_scr(p, height, time)
 			      else full_deform(p,time)
-			      fi
+			      fi}
 		    in start_to_ht:=elapsed_ms();
 		       case try
 		       |timed_out: if alt_verbose
@@ -1639,8 +1600,9 @@ set report_tested(string label) = void:
 {    prints("...",label,"...",DTcount," Dirac elim, ",DBTcount," best-Dirac elim; predictor_time = ",
     	  print_time_string(predictor_time));}
     prints("...",label,"...",DTcount + DBTcount," Dirac elim; status_time = ",
-    	   print_time_string(status_time), " for ", status_count," reports, predictor_time = ",
-	   print_time_string(predictor_time));
+    	   print_time_string(status_time), " for ", status_count," reports");
+   prints("FPP_def_time = ",print_time_string(FPP_def_time), " for ",FPP_def_count, " eliminations");
+   	   {predictor_time = ", print_time_string(predictor_time));}
     {edge_offset = ",edge_offset);}
     {next_heightC_time = ",}
            {print_time_string(next_heightC_time));}
@@ -1759,8 +1721,9 @@ set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(v
 	 ct:=charTime;
 	 cu:= char_counter.use_count();
     prints("...",running_label,"...",DTcount + DBTcount," Dirac elim; status_time = ",
-    	   print_time_string(status_time), " for ", status_count," reports, predictor_time = ",
-	   print_time_string(predictor_time));
+    	   print_time_string(status_time), " for ", status_count," reports");
+    prints("FPP_def_time = ",print_time_string(FPP_def_time), " for ",FPP_def_count, " eliminations");
+	   		{predictor_time = ", print_time_string(predictor_time));}
     prints(new_line,tph," pos is_unitary tests, in time = ", print_time_string(tpt),"; ",tnh,
 	" neg is_unitary tests, in time = ",print_time_string(tnt));
     prints(tic, " interrupted is_unitary tests, of ",tih, " different parameters, in time ",

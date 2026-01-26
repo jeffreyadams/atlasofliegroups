@@ -3,6 +3,7 @@
 {<hermitian.at} { for |is_hermitian| }
 <goodroots.at { for |anti_finalize| }
 <cohom_reductionND.at
+
 {CREATE LAMBDA TABLES}
 {This was separated from FPP_faces_herm.at 7/28/25 to avoid circular
 dependencies in function ranges in red_count.at}
@@ -173,19 +174,62 @@ set ind_cand_paramsD(Param p) = [[Param]]:
        do derived_factor_params0(pL)
        od
 
-set_type Lvd_Perm2{_mapAct} = (LocalVertexData Lvd, PermOrderTwo Perm2{, vec mapAct})
+{if true, then use the FPP_def_test function to rule out vertices in Lvd(x,lambda)}
+set FPP_def_flag = false
 
-set Perm2_to_LPm(InnerClass ic, PermOrderTwo Perm2) = Lvd_Perm2{_mapAct}:
+{following functions added 1/23/26 from FPP_test.at}
+{coroots on which infinitesimal character is <= 1}
+set FPP_coroots(Param p) = [int]:
+    let gamma = p.infinitesimal_character, scr = p.root_datum.simple_coroots
+    {then ans =}
+    in for av@j in scr
+       do if gamma*av <= 1 do j fi od.##
+    {in if #ans < #scr then L_count+:=1 else G_count+:=1 fi;
+       ans}
+
+{The FPP conjecture says that if p is unitary, then this parabolic is theta-stable. In that case
+p is good range cohomologically induced from pL on the Levi, so p is unitary iff pL is.}
+set FPP_parabolic(Param p) = (FPP_coroots(p),p.x)
+
+{see if some deformation of final p is non-FPP and defines non-theta-stable parabolic}
+{false means nonunitary, true means don't know}
+{Lucas Mason-Brown proved 1/23/26 that false implies nonunitary}
+set FPP_def_test(Param p) = bool:
+    {let G =p.real_form,} let start = elapsed_ms(), rp1 = reducibility_points(p)#(1/1)
+    {then N = #KGB(G), n = p.x.number
+    then () = if n < N/4 or N-n <= 2*G.rank then FPP_def_time +:= elapsed_ms() - start; return true fi}
+    then defps = for r in rp1 do Finalize(p*r) od
+    then ans = all(for q in defps
+       	       	   do @: let Q = FPP_parabolic(q), thmin = 1-q.x.involution
+	      	      	 in (thmin*rho_u(Q)).=
+	   	   od)
+     in if not ans then FPP_def_count +:=1 fi;
+     	FPP_def_time +:= elapsed_ms() - start;
+     	ans
+
+set FPP_def_test_wk_final(Param p) = bool:
+    let qs = monomials(finalize(p))
+    in all(for q in qs
+       	   do @: FPP_def_test(q)
+	   od)
+
+set_type Lvd_Perm2 = (LocalVertexData Lvd, PermOrderTwo Perm2)
+
+set Perm2_to_LPm(InnerClass ic, PermOrderTwo Perm2) = Lvd_Perm2:
     let verts = FPP_vertices(ic)
     then FEs = FPP_flippable_edges(ic)
     then vlist = (for f in Perm2.fixed do verts[f] od)## (for (p,q) in Perm2.trans do face_bary(verts,[p,q]) od)
     then Lvd = to_vertex_data(vlist,#Perm2.fixed)
-    {then mapAct = vec: for j:#verts do minus_1 od
-    {maps FPP vertex indices from vd to local indices from Lvd}
-    then () = for f@k in Perm2.fixed do mapAct[f]:= k od
-    then () = for (p,q)@ell in Perm2.trans do mapAct[p]:=#Perm2.fixed + ell;
-					      mapAct[q]:=#Perm2.fixed + ell od}
-    in (Lvd, Perm2{, mapAct})
+    in (Lvd, Perm2)
+
+{assume that list is local FPP_vertices for (x,lambda); discard those failing FPP_def_test}
+set deform_trim(Lvd_Perm2 (Lvd,Perm2), KGBElt x, ratvec lambda) = Lvd_Perm2:
+    let (list,,pair_start) =Lvd, (fixed,trans) = Perm2
+    then ps = for v in list do parameter(x,lambda,v) od
+    then js_new_fixed = for p@j in ps[:pair_start] do if FPP_def_test_wk_final(p) do j fi od.##
+    then ks_new_pairs = for p@k in ps[pair_start:] do  if FPP_def_test_wk_final(p) do k fi od.##
+    then Perm2_new = PermOrderTwo: (for j in js_new_fixed do fixed[j] od, for k in ks_new_pairs do trans[k] od)
+    in Perm2_to_LPm(x.inner_class, Perm2_new)
 
 {Record for each inner class a list of some involutions in inner class; and for each such involution,
  some possible lambdas; and for each such lambda, a list of (local vertex data, Perm2, mapAct)}
@@ -213,7 +257,7 @@ set_type
   , ((InnerClass, mat) -> [(ratvec, Lvd_Perm2{_mapAct})]) LPm_entries {allowed lambda mod twists, corr entry}
 				    {like output of old FPP_lambdas_big_new}
   , ((InnerClass, mat, vec) -> LocalVertexData) Lvd {local vertex data, one for each theta and lambda+theta*lambda}
-  , ((InnerClass, mat, vec) -> Lvd_Perm2{_mapAct}) LPm_entry {one for each theta and lambda+theta*lambda}
+  , ((InnerClass, mat, vec) -> Lvd_Perm2) LPm_entry {one for each theta and lambda+theta*lambda}
 {  , ((InnerClass, mat, vec) -> ) append {just compute, don't report LPm entry}}
   , (int -> InnerClass) inner_class_index
   , (int -> VertexData) vd_index {vertex data for inner class}
@@ -240,7 +284,6 @@ set make_Lvd_Perm2_table() = Lvd_Perm2_table:
 	 then () = vertex_datas := []
 	 then () = FELs := []
 	 then () = FPP_local_verts := []
-{	 then () = cands := []}
 	 then () = lamthlam_hashess := []
 	 then () = Perm2s := []
 	 then () = entries := []
@@ -276,7 +319,8 @@ set make_Lvd_Perm2_table() = Lvd_Perm2_table:
 	 then entriesi = entries[i]
 	 then () = if {#cands[i][j] > 0} lamthlam_hashess[i][j].size() > 0
 		   then return (i,j)
-		   else let Perm2cands = cands_hash(ic,theta, lamthlam_hashess[i][j]) {this  writes to the hash table the possible lamthlam}
+		   else let Perm2cands = cands_hash(ic,theta, lamthlam_hashess[i][j])
+		   {this  writes to the hash table the possible lamthlam}
 			then () = tempPerm2si[j] := Perm2cands
 			then () = entriesi[j] := for lamthlam@k in lamthlam_hashess[i][j].list()
 					    do let Perm2 = Perm2cands[k]
@@ -319,9 +363,6 @@ set make_Lvd_Perm2_table() = Lvd_Perm2_table:
     , (InnerClass -> [ratvec]): {FPP_local_vertices} (InnerClass ic)  [ratvec]:
       let i = add_inner_class(ic)
        in FPP_local_verts[i]
-{    , ((InnerClass, mat) -> [vec]): {cands} (InnerClass ic, mat theta) [vec]:
-      let (i,j) = add_cands(ic,theta)
-      in cands[i][j]}
     , ((InnerClass, mat) -> [vec]): {lamthlams} (InnerClass ic, mat theta) [vec]:
       let (i,j) = add_cands(ic,theta)
       in lamthlam_hashess[i][j].list()
@@ -339,7 +380,7 @@ set make_Lvd_Perm2_table() = Lvd_Perm2_table:
       then k = lamthlam_hashess[i][j].lookup(lamthlam)
       in Perm2s[i][j][k]
     , ((InnerClass, mat) -> [(ratvec, Lvd_Perm2{_mapAct})]): {LPm_entries} (InnerClass ic, mat theta)
-      [(ratvec, Lvd_Perm2{_mapAct})]:
+      [(ratvec, Lvd_Perm2)]:
       let (i,j) = add_cands{lamthlam_hash}(ic,theta), th1 = theta+1
       in for lamthlam@k in lamthlam_hashess[i][j].list()
 	 do let lr = required_solution(th1,lamthlam - ratvec_as_vec(th1*ic.rho))
@@ -351,14 +392,14 @@ set make_Lvd_Perm2_table() = Lvd_Perm2_table:
       then k = lamthlam_hashess[i][j].lookup(lamthlam)
       in entries[i][j][k].Lvd
       {the next function FAILS in U(3,3), called inside FPP_unitary_hash(U(3,3))}
-    , ((InnerClass, mat, vec) -> Lvd_Perm2{_mapAct}): {LPm_entry} (InnerClass ic, mat theta, vec lamthlam)
-    Lvd_Perm2{_mapAct}:
+    , ((InnerClass, mat, vec) -> Lvd_Perm2): {LPm_entry} (InnerClass ic, mat theta, vec lamthlam)
+    Lvd_Perm2:
       let (i,j) = add_cands(ic,theta), th1 = theta+1
       then k = lamthlam_hashess[i][j].lookup(lamthlam)
       in entries[i][j][k]
     , (int -> InnerClass): {inner_class_index} (int i) InnerClass: inner_class_hash.index(i)
     , (int -> VertexData): {vd_index} (int i) VertexData: vertex_datas[i]
-    , ((int,int,int) -> Lvd_Perm2{_mapAct}): {Lvd_Perm2_index} (int i, int j, int k): Lvd_Perm2{_mapAct}:
+    , ((int,int,int) -> Lvd_Perm2): {Lvd_Perm2_index} (int i, int j, int k): Lvd_Perm2{_mapAct}:
       entries[i][j][k]
 )
 )
@@ -369,6 +410,16 @@ set Lvd(KGBElt x, ratvec lambda) = LocalVertexData:
     let theta = x.involution, ic = x.inner_class
     then lamthlam = ratvec_as_vec((1+theta)*lambda)
     in LPm_table.Lvd(ic,theta,lamthlam)
+
+{set Lvd(KGBElt x, ratvec lambda) = LocalVertexData:
+    let theta = x.involution, ic = x.inner_class
+    then lamthlam = ratvec_as_vec((1+theta)*lambda)
+    in LPm_table.Lvd(ic, theta, lamthlam)
+    then (Lvd,) = if FPP_def_flag
+    	 	  then deform_trim(LPm_table.LPm_entry(ic,theta,lamthlam),x,lambda)
+		  else LPm_table.LPm_entry(ic,theta,lamthlam)
+		  fi
+    in Lvd}
 
 {this is the list of all possible lambda + theta*lambda for ic and theta}
 set FPP_lamthlams(InnerClass ic, mat theta) = [vec]:

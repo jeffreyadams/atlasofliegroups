@@ -426,8 +426,6 @@ set fundamental_vertices (SimpleAffine affd) = [ratvec]:
     (let labs=affd.labels[1:] in
      for lab@j in labs do fundamental_weight(affd,j)/lab od)
 
-
-
 {. select vertices of fund. alcove for aff. simple coroots nonzero on |gamma0|.}
 set face_verts0(SimpleAffine affd, FaceBary gamma0) = FaceVerts:
     let vert=fundamental_vertices(affd) in
@@ -1081,7 +1079,7 @@ set order_two_perms_FA(SimpleAffine Affd) = [PermOrderTwo]:
     let FVs = fundamental_vertices(Affd)
     then FVlookup = index_in(FVs)
     then ((ZM,Zorder),) = Z_hat(Affd) {(mat, vec) cols of mat are reps of X^*/roots, entries of
-    	 	       		     vec give orders of reps}
+    	 	       		    vec give orders of reps}
     then boxZ = box(Zorder)
     then Zshifts = for b in boxZ do ZM*b od
     then Perms = [[int]]:
@@ -1939,3 +1937,9 @@ set facet_deformed_new(Param p) = [Param]:
        else []
        fi
     od.##
+
+{how often FPP_def_test finds a nonunitary p. Placed here so report()
+can access it in hermitian.at}
+set FPP_def_count = int:0
+
+set FPP_def_time = int:0
