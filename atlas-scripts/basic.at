@@ -2598,7 +2598,6 @@ set find = find(=@(vec,vec))
 set find = find(=@(ratvec,ratvec))
 set find = find(=@(KGBElt,KGBElt))
 set find = find(=@(Param,Param))
-set find = find(=@(string,string))
 
 set delete (vec v, int i) = vec: v[:i] ## v[i+1:]
 set delete (mat M, int j) = mat: M[:j] ## M[j+1:]

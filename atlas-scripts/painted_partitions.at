@@ -9,12 +9,11 @@ Groups: Construction and Unitarity"; arXiv:1712:05552v6 18 Feb 2025}
 set h(int n)=int:
 assert(is_even(n),"trying to take half of odd integer");n\2 
 
-
 set labels=["A","A~", "B","D","C","C~","C*","D*"]
 set bi_labels=["B+","B-", "C","D","C~","C*","D*"]  {for PaintedBiPartitions see Def 3.3}
 
-set is_in(string S,[string] list)=bool:first(for x in list do S=x od)!=-1
-
+set find(string S,[string] list)=int:first(for x in list do S=x od)
+set is_in(string S,[string] list)=bool:find(S,list)!=-1
 
 set is_descending([int] list)=bool:first(for i:#list-1 do list[i] < list[i+1] od)=-1
 set is_strongly_descending([int] list)=bool:first(for i:#list-1 do list[i] <= list[i+1] od)=-1
@@ -41,6 +40,7 @@ set partition(PaintedPartition P)=Partition:for row in P do #row od
 set number_rows(PaintedPartition P)=int:#P
 set number_columns(PaintedPartition P)=int:#transpose(partition(P))
 set rank_of(PaintedPartition P)=int:size(partition(P))  {need rank_of since rank would be ambiguous}
+set size(PaintedPartition P)=int:size(partition(P))  
 
 set equal(PaintedPartition P,PaintedPartition Q)=bool:
 number_rows(P)=number_rows(Q) and all(for row@i in P do row=Q[i] od)
@@ -130,7 +130,7 @@ let S=symbols(Q) then
 excluded=[int]:
  if label="B" then [3]
  elif label="C" then [2,3,4]
- elif label="D" then []
+ elif label="D" then [1,2,3,4]
  elif label="C~" then [1,3]
  elif label="C*" then [3,4]
  elif label="D*" then [1,3,4]
@@ -171,6 +171,7 @@ elif label="C" then [("Sp",2*rank,-1)]
 elif label="C*" then 
  for i:rank+1 do ("Sp",rank-i,i) od
 elif label="D*" then [("SO*",2*rank,0)]
+elif label="C~" then [("Mp",2*rank,0)]
 else error("incorrect data")
 fi
  
@@ -179,7 +180,7 @@ set group_name(GroupDatum G)=string:
 if G.name="SO" 
  then "SO("+G.p+","+G.q+")"
 elif G.name="Sp" and G.q=-1
- then "Sp("+2*G.p+"+R)"
+ then "Sp("+2*G.p+",R)"
 elif G.name="Sp" and G.q>=0
  then "Sp("+G.p+","+G.q+")"
 elif G.name="SO*" 
@@ -198,6 +199,8 @@ if is_in(Z.bi_label,["B+","B-","D"]) then
     ("Sp",h(p(Z)),h(q(Z)))
  elif Z.bi_label="D*" then
     ("SO*",2*p(Z),0)
+ elif Z.bi_label="C~" then
+    ("Mp*",2*rank_of(Z),0)
 else
   error("incorrect bi_label")
 fi
@@ -207,11 +210,13 @@ set group_name(PaintedBiPartition Z)=string:
 if is_in(Z.bi_label,["B+","B-","D"]) 
  then "SO("+p(Z)+","+q(Z)+")"
 elif Z.bi_label="C"
- then "Sp("+2*rank_of(Z)+"+R)"
+ then "Sp("+2*rank_of(Z)+",R)"
 elif Z.bi_label="C*" then
  "Sp("+rat_as_int(p(Z)/2)+","+ rat_as_int(q(Z)/2)+")"
 elif Z.bi_label="D*" then 
  "SO*("+2*rank_of(Z)+")"
+elif Z.bi_label="C~" then 
+ "Mp("+2*rank_of(Z)+")"
 else
  prints("incorrect bi_label");""
 fi
@@ -245,7 +250,11 @@ if i<#O
  else is_even(O[i-1])
 fi
 
-set number_primitive(Orbit O,string label)=int:count(for i:#O-1 from 1 do is_primitive(O,i,label) od)
+set primitive_pairs(Orbit O,string label)=[int]:##for i:#O-1 from 1 do if is_primitive(O,i,label) then [i] else [] fi od
+
+set number_primitive(Orbit O,string label)=int:#primitive_pairs(O,label)
+set A_bar_rank(Orbit O,string label)=int:number_primitive(O,label)
+set A_bar_order(Orbit O,string label)=int:2^A_bar_rank(O,label)
  
 set show_partition(PaintedPartition P)=void:show_partition(partition(P))
 
@@ -255,3 +264,10 @@ for row in P do prints(symbol_string(row)) od
 set show(PaintedBiPartition (P,Q,bi_label))=void:
 prints("P:");show_painted_partition(P);
 prints("---------",new_line,"Q:");show_painted_partition(Q)
+
+set show_short(PaintedBiPartition (P,Q,bi_label))=void:
+prints(P, " ", Q, " ", bi_label, " ", group_name(P,Q,bi_label))
+
+set show_short([PaintedBiPartition] list)=void:
+tabulate(for (P,Q,bi_label) in list do
+ [P.to_string,Q.to_string,bi_label,group_name(P,Q,bi_label)] od)
