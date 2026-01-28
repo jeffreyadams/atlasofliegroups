@@ -188,9 +188,9 @@ set deform_script_flag = false
 set deform_rp_flag = false
 
 set full_deform_to_ht_MvL_base(Param p, int height) = KTypePol:
-( {if not {to_ht_over_u_flag} strict_low(p,height)
+( if not {to_ht_over_u_flag} strict_low(p,height)
   then return to_ht(full_deform(p),height)
-  fi;}
+  fi;
   let !empty_K=null_K_module(p.real_form), !empty=null_module(p)
   then output = empty_K, def = empty
   then P = empty +
@@ -201,7 +201,8 @@ set full_deform_to_ht_MvL_base(Param p, int height) = KTypePol:
 		fi
        in if =#rp then output +:= p.K_type; [] else [p*rp~[0]] fi)
        	  then () = while >#P
-       	    do set (def,P) :=
+       	    do {prints("At A, q = ",first_param(P), ", height = ",height,", #P = ",#P);}
+	       set (def,P) :=
                (let q=first_param(P) in block_deform(q,P next P:=empty,height))
   	       ; let kt = for c@m in def if  =nu(m) do (c,m.K_type) fi od
      	       	  ,   pp = for c@m in def if !=nu(m) do (c,m) fi od
@@ -211,9 +212,9 @@ set full_deform_to_ht_MvL_base(Param p, int height) = KTypePol:
 )
 
 set full_deform_to_ht_MvL_base(Param p, int height, int time) = maybe_KTP:
-( {if not ({to_ht_over_u_flag} strict_low(p,height))
+( if not ({to_ht_over_u_flag} strict_low(p,height))
   then return to_ht(full_deform(p,time),height)
-  fi;}
+  fi;
   let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p)
   then output = empty_K, def = empty, expiration = elapsed_ms() + time
   then P = empty +
@@ -225,7 +226,8 @@ set full_deform_to_ht_MvL_base(Param p, int height, int time) = maybe_KTP:
        in
         if =#rp then output +:= p.K_type; [] else [p*rp~[0]] fi)
   then () = while >#P
-       	    do set (def,P) :=
+       	    do {prints("At B, q = ",first_param(P), ", height = ",height,", #P = ",#P);}
+	       set (def,P) :=
                (let q=first_param(P) in block_deform(q,P next P:=empty,height))
   	       ; if elapsed_ms() > expiration
 	       	 then {deformed_hash_flag := deformed_hash_flag_hold;}
@@ -337,6 +339,7 @@ set full_deform_to_ht_MvL_altA(Param p, int height) = KTypePol:
 		       |done(r): alt_time +:= elapsed_ms() - start; return to_ht(r, height)
 		       esac
 		fi;
+		{prints("At C, q = ",first_param(P), ", height = ",height,", #P = ",#P);}
 		set (def,P) :=
                (let q=first_param(P) in block_deform(q,P next P:=empty,height))
   	       ;  let kt = for c@m in def if  =nu(m) do (c,m.K_type) fi od
@@ -384,6 +387,7 @@ set full_deform_to_ht_MvL_altA(Param p, int height,int TIME) = maybe_KTP:
 				 return done(to_ht(r, height))
 		       esac
 		fi;
+		{prints("At D, q = ",first_param(P), ", height = ",height,", #P = ",#P);}
 		set (def,P) :=
                (let q=first_param(P) in block_deform(q,P next P:=empty,height))
   	       ;  let kt = for c@m in def if  =nu(m) do (c,m.K_type) fi od
@@ -450,6 +454,7 @@ set full_deform_to_ht_MvL_alt(Param p, int height) = KTypePol:
 		if alt_verbose
 		then prints(new_line, "starting loop (def,P), P = ",P," after ",print_time_string(elapsed_ms() - START_TIME))
 		fi;
+		{prints("At E, q = ",first_param(P), ", height = ",height,", #P = ",#P);}
 		set (def,P) :=
 		(let q=first_param(P) in block_deform(q,P,height))
   	       ;  let kt = for c@m in def if  =nu(m) do (c,m.K_type) fi od
@@ -520,6 +525,7 @@ set full_deform_to_ht_MvL_alt(Param p, int height,int TIME) = maybe_KTP:
 		if alt_verbose
 		then prints(new_line,"starting loop (def,P), P = ",P," after ",print_time_string(elapsed_ms() - START_TIME))
 		fi;
+		{prints("At F, q = ",first_param(P), ", height = ",height,", #P = ",#P);}
 		set (def,P) :=
 	       (let q=first_param(P) in block_deform(q,P,height))
   	       ;  let kt = for c@m in def if  =nu(m) do (c,m.K_type) fi od
@@ -1807,14 +1813,14 @@ set worst_so_far(Param p, int H) = int:
 
 {predicted time in milliseconds to complete is_unitary{to_ht}(p,{HT})}
 set u_predictor(Param p, int HT) = int:
-    let WSF = max(100*(p.real_form.semisimple_rank)^2, worst_so_far(p,HT)),
+    let WSF = max(5*(p.real_form.semisimple_rank)^2, worst_so_far(p,HT)),
     	start_pred = elapsed_ms()
     in if not (deformed_hash_flag and predictor_flag)
        then WSF
        else {push_deform_flag:=true;}
        	    let delta = p.real_form.distinguished_involution,
 	    	list = {is_unitary runs over terms in KL_sum_to_ht(p,HT)}
-	    if HT < 0  {will do full_deform(q,HT) on each term}
+	    if HT < 0  {will do full_deform(q) on each term}
     	    then sort_by_height(partial_block(p)) {INCREASING height: get easier}
 	    else if low_diff_char(p,HT)
 	    	 then monomials(KL_sum_at_s_to_ht(HT)(p)) {INtCREASING height: get easier}
@@ -1861,7 +1867,8 @@ set u_predictor(Param p, int HT) = int:
 				  then prints("chosen random time ",
 					       print_time_string(RT))
 				  fi;
-				  max((N-1)*RT, 10*N*interrupt_base_time)
+				  {max((N-1)*(RT+1), N*interrupt_base_time\2)}
+				  (N-1)*(RT+1)
 			       {deformedHash.maybe_entry(q,HT,2*WSF)}
 		  	       {in case Q
 		     	       	  | timed_out: max(2*N*WSF, interrupt_base_time)
@@ -1872,8 +1879,8 @@ set u_predictor(Param p, int HT) = int:
 						fi;
 						max(N*deform_times[j0], interrupt_base_time)
 		     		  esac}
-			   else (N-n)*max(times) {N-n deforms to compute, estimated time}
-			   	+ 10*n*interrupt_base_time {n lookups}
+			   else (N-n)*(max(times)+1) {N-n deforms to compute, estimated time}
+			   	+ 2*n*interrupt_base_time {n lookups}
 			   fi
 		 in if predictor_verbose
 		    then prints("prediction ",print_time_string(ans), " in time ",

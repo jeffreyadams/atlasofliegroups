@@ -205,7 +205,7 @@ set hard_test_bl(KGBElt x, ratvec lambda) = bool:
 set easy_test_bl(KGBElt x) = bool:
     let G = x.real_form
     then N = #KGB(G), n = x.number, r = semisimple_rank(G)
-    in if r < 7
+    in if r < 6
        then false
        elif KGB_frac_flag and n < KGB_frac*N
        then false

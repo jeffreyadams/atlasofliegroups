@@ -956,12 +956,14 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd, {def 3}
     	is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(p, ht))
      in local_testK_hash(x, lambda, Lvd, FVKH, eq, gr, classListByFace, tester,
      ht, Uhash, fancy_tester)
+{which is_unitary_to_ht above???}
 
 set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     [[FaceVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFace,
     int ht, Param_hash Uhash) = [[FaceVertsKHash]]:
     let tester = ((Param->bool): (Param p) bool: is_unitary_to_ht_big_SIMPLE(p, ht))
      in local_testK_hash(x, lambda, Lvd, FVKH, eq, gr, classListByFace, tester, ht, Uhash)
+{which is_unitary_to_ht above???}
 
 {test candidate classes with (new) tester. Assume know_lower_flag is true,
  and use that to get rid of some candidates. Delete
@@ -1182,6 +1184,7 @@ set local_testK_hash_know_lower(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     (Param->bool) tester, Param_hash Uhash) = [[FaceVertsKHash]]:
     local_testK_hash_know_lower(x, lambda, Lvd, FVKH, eq, gr, classListByFace,
     tester, Uhash, is_unitary_hash_big_SIMPLE@Param)
+{which is_unitary_hash above???}
 
 set tell_all = false
 
