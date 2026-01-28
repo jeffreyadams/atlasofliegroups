@@ -1274,6 +1274,7 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
 				     in if any(for q in pdef1
 						   do height(q) > hts[0] and
 						      not is_unitary_to_hts_big_SIMPLE(q,hts[1:ONE+1])
+{which is_unitary_to_hts above???}
 						   od)
 					then newStatuses:= updateNUclassesB(newStatuses, gr, k);
 						 newStatuses[k] := "F"
@@ -3634,6 +3635,7 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, {VertexData vd,} LocalV
     then () = ICPNU_flag:=false
     then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF, (Param->bool):(Param p):
     is_unitary_to_hts_big_SIMPLE(p, hts[:edge_offset+1]), hts[edge_offset], Uhash)
+    {which is_unitary_to_hts above???}
 	 {now have vert/edges unitary to hts[edge_offset]}
     then () = if test_verbose then prints("unitary to ht ",hts[edge_offset],
                         " face counts to dim 1: ",for list in LFDKH do #list od) fi
@@ -3649,7 +3651,7 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, {VertexData vd,} LocalV
 		   then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,pol_hash,hts[Dlast])
 		   then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF,
 		   	(Param->bool): (Param p): is_unitary_to_hts_big_SIMPLE(p,hts[1:Dlast+1])
-		      , hts[Dlast], Uhash)
+		      , hts[Dlast], Uhash)  {which is_unitary_to_hts above???}
     {list hts[Dlast+1:] is automatically empty ???}
     {is_unitary_test_big_SIMPLE_interrupt(p,1) is equivalent}
                    in if test_verbose
@@ -3673,6 +3675,7 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, {VertexData vd,} LocalV
 		 then () = LFDKH := local_testK_hash(x,lambda,Lvd,
                       LFDKH, eq, gr, CLBF, (Param->bool): (Param p):
 		      is_unitary_to_hts_big_SIMPLE(p,hts[:D+edge_offset+1]), hts[D+edge_offset], Uhash)
+		      {which is_unitary_to_ht above???}
                  then () = if test_verbose
 			   then prints("unitary to ht ",hts[D+edge_offset],
 		      	      		" face counts to dim ",D+1,

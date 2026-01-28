@@ -128,7 +128,7 @@ set strict_low_diff(Param p, int N) = bool:
 set low_diff_char(Param p, int N) = bool:
     if N < 0 then return  false fi;
     let (LAM, , GAM) = low(p)
-    in (N >= 0) and ((GAM - LAM)*diff_char_frac > N)
+    in (GAM - LAM)*diff_char_frac > N
 
 {bad experiences Jan 26 suggested this version}
 set low_lam(Param p, int HT) = bool:
@@ -175,18 +175,15 @@ set low(Param p, int N) = bool:
     fi
 
 set character_formula_to_height(Param p, int HT) = ParamPol:
-    if HT.< then return s_to_1(KL_sum_at_s(p)) fi;
+    if HT.< then return character_formula(p) fi;
+    if not low_diff_char(p,HT) then let (below,) = height_split(character_formula(p),HT) in return below fi;
     let start = elapsed_ms()
-    then answer = if low_diff_char(p,HT)
-    	 	  then s_to_1(KL_sum_at_s_to_height(p,HT))
-		  else let (below,) = height_split(KL_sum_at_s(p),HT)
-       	    	       in s_to_1(below)
-       		  fi
-     then () = charTime+:= elapsed_ms() - start
-     then () = char_counter.use()
+    then answer = s_to_1(KL_sum_at_s_to_height(p,HT))
+    in charTime+:= elapsed_ms() - start;
+       char_counter.use();
      {then () = if CF_flag then prints("CFTH((",p.x.number,",",p.lambda,",",
        p.nu,"),",N,"), CTime = ",print_time_string(CharFormTime)) fi}
-     in answer
+       answer
 
 set character_formula_to_height (ParamPol P, int HT) = ParamPol:
     map(((Param->ParamPol): (Param p): character_formula_to_height(p, HT)), P)

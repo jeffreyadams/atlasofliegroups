@@ -309,10 +309,13 @@ set full_deform_to_ht_MvL_alt_old(Param p, int height,int TIME) = maybe_KTP:
   in {deformed_hash_flag := deformed_hash_flag_hold;} done(output)
 }
 
+{whether to use _alt versions of full_deform_to_ht_MvL}
+set alt_flag = false
 set alt_count = int: 0
 set alt_time = int:0
 
 set full_deform_to_ht_MvL_altA(Param p, int height) = KTypePol:
+  if not alt_flag then return full_deform_to_ht_MvL_base(p,height) fi;
   alt_count +:=1;
   let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p)
   then output = empty_K, def = empty, time = interrupt_base_time
@@ -353,6 +356,7 @@ set alt_time_int_pass = int:0
 
 {THIS is where all the time is spent! For Spin(6,4), it's 15.4 secs vs 2.2 for uninterrupted}
 set full_deform_to_ht_MvL_altA(Param p, int height,int TIME) = maybe_KTP:
+  if not alt_flag then return full_deform_to_ht_MvL_base(p,height,TIME) fi;
   let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p){,
       deformed_hash_flag_hold = deformed_hash_flag}
   {then () = if height >= 0
@@ -399,10 +403,12 @@ set full_deform_to_ht_MvL_altA(Param p, int height,int TIME) = maybe_KTP:
 set alt_verbose = false
 set alt_full = false
 set alt_time_guess = interrupt_base_time
+
 set START_TIME = int:0
 {set used_to_ht = int:0}
 
 set full_deform_to_ht_MvL_alt(Param p, int height) = KTypePol:
+  if not alt_flag then return full_deform_to_ht_MvL_base(p,height) fi;
   START_TIME:=elapsed_ms(); {used_to_ht:=0}
   alt_count+:=1;
   if alt_verbose
@@ -474,6 +480,7 @@ set full_deform_to_ht_MvL_alt(Param p, int height) = KTypePol:
      {alt_full:= false;} output
 
 set full_deform_to_ht_MvL_alt(Param p, int height,int TIME) = maybe_KTP:
+  if not alt_flag then return full_deform_to_ht_MvL_base(p,height,TIME) fi;
   START_TIME:=elapsed_ms(); {TIME:= max(TIME,alt_time_guess);}
   if alt_verbose
   then prints(new_line,"starting full_deform_to_ht_MvL_alt(",p,",",height,",",TIME,")")
@@ -1607,7 +1614,8 @@ set report_tested(string label) = void:
     	  print_time_string(predictor_time));}
     prints("...",label,"...",DTcount + DBTcount," Dirac elim; status_time = ",
     	   print_time_string(status_time), " for ", status_count," reports");
-   prints("FPP_def_time = ",print_time_string(FPP_def_time), " for ",FPP_def_count, " eliminations");
+   prints("FPP_def_time = ",print_time_string(FPP_def_time), " for ",
+   FPP_use_count, " tests, ",FPP_def_count, " eliminations");
    	   {predictor_time = ", print_time_string(predictor_time));}
     {edge_offset = ",edge_offset);}
     {next_heightC_time = ",}
@@ -1728,7 +1736,8 @@ set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(v
 	 cu:= char_counter.use_count();
     prints("...",running_label,"...",DTcount + DBTcount," Dirac elim; status_time = ",
     	   print_time_string(status_time), " for ", status_count," reports");
-    prints("FPP_def_time = ",print_time_string(FPP_def_time), " for ",FPP_def_count, " eliminations");
+    prints("FPP_def_time = ",print_time_string(FPP_def_time)," for ",
+    	    FPP_use_count, " tests, ",FPP_def_count, " eliminations");
 	   		{predictor_time = ", print_time_string(predictor_time));}
     prints(new_line,tph," pos is_unitary tests, in time = ", print_time_string(tpt),"; ",tnh,
 	" neg is_unitary tests, in time = ",print_time_string(tnt));

@@ -121,7 +121,6 @@ set deformation_terms_scr (Param p, int HT) = ParamPol:
     od
   fi
 
-
 set deformation_terms_by_dual_scr (Param p) = ParamPol:
   assert(@:p.is_final,"deformation requires a final parameter");
   let (block,KL_mat,P_polys) = partial_KL_block(p)
@@ -156,6 +155,7 @@ set deformation_terms_by_dual_scr (Param p,int HT) = ParamPol:
 (  assert(@:p.is_final,"deformation requires a final parameter")
 ;  if HT < 0 then return deformation_terms_by_dual_scr(p) fi
 ;  assert(@:p.height<=HT,"height bound kills term to deform")
+{;  let (block,KL_mat,P_polys) = partial_KL_block(p)}
 ;  let (full_block,start,dual_KL_mat,polys) = dual_KL_block(p)
    then subset = [int]:
      for q@i in full_block if q.height<=HT do i fi od
@@ -168,7 +168,7 @@ set deformation_terms_by_dual_scr (Param p,int HT) = ParamPol:
      od
    , block = [Param]: for i in subset do full_block[i] od
    then signed_P_mat = { $(-1)^{l(x,y)}P_{x,y}[q:=-1]$ for $x,y$ in |block| }
-      inverse(Q_mat)
+      inverse(Q_mat) {THIS IS A POSSIBLE KILLER! Q_mat can be very large}
    , lp_parity=p.length%2 { parity of length that is excluded below }
    then solution = vec:
       { compute more efficiently: |signed_P_mat*diagonal(odd_levels)*Q_col|,

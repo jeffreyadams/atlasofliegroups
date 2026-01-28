@@ -187,14 +187,18 @@ set FPP_coroots(Param p) = [int]:
     {in if #ans < #scr then L_count+:=1 else G_count+:=1 fi;
        ans}
 
+{KGP for set of simple coroots = K orbits on "G/P", parabolics of complex type <-> coroots}
+{atlas real parabolic is an element of some KGP; set of simple coroots is well-defined, KGBElt
+is defined up to Cayley/cross by those simple coroots}
 {The FPP conjecture says that if p is unitary, then this parabolic is theta-stable. In that case
 p is good range cohomologically induced from pL on the Levi, so p is unitary iff pL is.}
-set FPP_parabolic(Param p) = (FPP_coroots(p),p.x)
+set FPP_parabolic(Param p) = (FPP_coroots(p),p.x) {real parabolic; FPP_coroots <-> Levi}
 
 {see if some deformation of final p is non-FPP and defines non-theta-stable parabolic}
 {false means nonunitary, true means don't know}
-{Lucas Mason-Brown proved 1/23/26 that false implies nonunitary}
+{Lucas Mason-Brown and Dougal Davis proved 1/23/26 that false implies nonunitary}
 set FPP_def_test(Param p) = bool:
+    FPP_use_count +:=1;
     {let G =p.real_form,} let start = elapsed_ms(), rp1 = reducibility_points(p)#(1/1)
     {then N = #KGB(G), n = p.x.number
     then () = if n < N/4 or N-n <= 2*G.rank then FPP_def_time +:= elapsed_ms() - start; return true fi}
@@ -202,7 +206,9 @@ set FPP_def_test(Param p) = bool:
     then ans = all(for q in defps
        	       	   do @: let Q = FPP_parabolic(q), thmin = 1-q.x.involution
 	      	      	 in (thmin*rho_u(Q)).=
-	   	   od)
+	   	   od) {if fails, D/MB says q is not unitary; form indef on 0 level of Hodge}
+		   {Davis/Mason-Brown: indef on 0 level persists in positive deformation, so at p}
+		   {zeroth level of Hodge only GROWS in positive deformation (Davis-Vilonen}
      in if not ans then FPP_def_count +:=1 fi;
      	FPP_def_time +:= elapsed_ms() - start;
      	ans
