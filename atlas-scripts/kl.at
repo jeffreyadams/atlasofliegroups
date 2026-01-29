@@ -119,15 +119,15 @@ set low_diff(Param p, int HT) = bool:
     let (LAM, , GAM) = low(p)
     in ((GAM - LAM)*diff_frac > (HT-LAM))
 
-set strict_low_diff(Param p, int N) = bool:
-    if N < 0 then return  false fi;
+set strict_low_diff(Param p, int HT) = bool:
+    if HT < 0 then return  false fi;
     let (LAM, , GAM) = low(p)
-    in (N >= 0) and (strict_factor*(GAM - LAM)*diff_frac > N)
+    in (HT >= 0) and (strict_factor*(GAM - LAM)*diff_frac > (HT-LAM))
 
-set low_diff_char(Param p, int N) = bool:
-    if N < 0 then return  false fi;
+set low_diff_char(Param p, int HT) = bool:
+    if HT < 0 then return  false fi;
     let (LAM, , GAM) = low(p)
-    in (GAM - LAM)*diff_char_frac > N
+    in ((GAM - LAM)*diff_char_frac) > (HT - LAM)
 
 {bad experiences Jan 26 suggested this version}
 set low_lam(Param p, int HT) = bool:
