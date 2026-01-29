@@ -199,9 +199,7 @@ set FPP_parabolic(Param p) = (FPP_coroots(p),p.x) {real parabolic; FPP_coroots <
 {Lucas Mason-Brown and Dougal Davis proved 1/23/26 that false implies nonunitary}
 set FPP_def_test(Param p) = bool:
     FPP_use_count +:=1;
-    {let G =p.real_form,} let start = elapsed_ms(), rp1 = reducibility_points(p)#(1/1)
-    {then N = #KGB(G), n = p.x.number
-    then () = if n < N/4 or N-n <= 2*G.rank then FPP_def_time +:= elapsed_ms() - start; return true fi}
+    let start = elapsed_ms(), rp1 = reducibility_points(p)#(1/1)
     then defps = for r in rp1 do Finalize(p*r) od
     then ans = all(for q in defps
        	       	   do @: let Q = FPP_parabolic(q), thmin = 1-q.x.involution
@@ -212,6 +210,13 @@ set FPP_def_test(Param p) = bool:
      in if not ans then FPP_def_count +:=1 fi;
      	FPP_def_time +:= elapsed_ms() - start;
      	ans
+
+set short_test(Param p) = bool:
+    let rp = reducibility_points(p)
+    then defps = for r in rp do Finalize(p*r) od
+    in  all(for q in defps
+    	    do @: ((1-q.x.involution)*rho_u(FPP_parabolic(q))).=
+	    od)
 
 set FPP_def_test_wk_final(Param p) = bool:
     let qs = monomials(finalize(p))

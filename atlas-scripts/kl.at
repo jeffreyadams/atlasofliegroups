@@ -36,12 +36,10 @@ set charTime = int:0
 
 set character_formula (Param p) = ParamPol:
     let start = elapsed_ms()
-    then answer = s_to_1(KL_sum_at_s(p))
-    then () = charTime+:= elapsed_ms() - start
-    then () = char_counter.use()
+    in s_to_1(KL_sum_at_s(p)) next charTime+:= elapsed_ms() - start;
+       char_counter.use()
     {then () = if CF_flag then prints("CF(",p.x.number,",",p.lambda,",",
        p.nu,"), charTime = ",print_time_string(CharFormTime)) fi}
-    in answer
 
 {set character_formula (Param p) = ParamPol: s_to_1(KL_sum_at_s(p))}
 
@@ -108,17 +106,18 @@ set strict_low_nu(Param p, int N) = bool:
 set low_gamma(Param p, int N) = bool:
     if N < 0 then return  false fi;
     let (,,GAM) = low(p)
-    in (N >= 0) and (GAM*gamma_frac > N)
+    in (GAM*gamma_frac) > N
 
 set strict_low_gamma(Param p, int N) = bool:
     if N < 0 then return  false fi;
     let (,,GAM) = low(p)
     in (strict_factor*GAM*gamma_frac > N)
 
-set low_diff(Param p, int N) = bool:
-    if N < 0 then return  false fi;
+{Note HT must be in [LAM,GAM) This condition says it's near the bottom of that range: small HT.}
+set low_diff(Param p, int HT) = bool:
+    if HT < 0 then return  false fi;
     let (LAM, , GAM) = low(p)
-    in (N >= 0) and ((GAM - LAM)*diff_frac > N)
+    in ((GAM - LAM)*diff_frac > (HT-LAM))
 
 set strict_low_diff(Param p, int N) = bool:
     if N < 0 then return  false fi;
@@ -178,12 +177,9 @@ set character_formula_to_height(Param p, int HT) = ParamPol:
     if HT.< then return character_formula(p) fi;
     if not low_diff_char(p,HT) then let (below,) = height_split(character_formula(p),HT) in return below fi;
     let start = elapsed_ms()
-    then answer = s_to_1(KL_sum_at_s_to_height(p,HT))
-    in charTime+:= elapsed_ms() - start;
-       char_counter.use();
+    in s_to_1(KL_sum_at_s_to_height(p,HT)) next charTime+:= elapsed_ms() - start; char_counter.use()
      {then () = if CF_flag then prints("CFTH((",p.x.number,",",p.lambda,",",
        p.nu,"),",N,"), CTime = ",print_time_string(CharFormTime)) fi}
-       answer
 
 set character_formula_to_height (ParamPol P, int HT) = ParamPol:
     map(((Param->ParamPol): (Param p): character_formula_to_height(p, HT)), P)

@@ -584,18 +584,15 @@ set MvL_alcove_time = int:0
 {This vec characterizes the half-open alcove in which Marc puts p}
 set MvL_alcove(Param p) = vec:
     let start = elapsed_ms(), theta1= 1+p.x.involution, p0 = p*0
-    then answer = vec:
-    	 for alphav in red_coroots(p.x)
-    	 do if (alphav*theta1).=
-       	    then if is_parity(root(p.root_datum,alphav), p0)
-       	    	 then floor((alphav*p.infinitesimal_character)\2)
-	    	 else floor((alphav*p.infinitesimal_character - 1)\2)
-	    	 fi
-       	    else floor(alphav*p.infinitesimal_character)
-       	    fi
-    	 od
-     in MvL_alcove_time +:= elapsed_ms() - start;
-     	answer
+    in for alphav in red_coroots(p.x)
+       do if (alphav*theta1).=
+       	  then if is_parity(root(p.root_datum,alphav), p0)
+       	       then floor((alphav*p.infinitesimal_character)\2)
+	       else floor((alphav*p.infinitesimal_character - 1)\2)
+	       fi
+       	  else floor(alphav*p.infinitesimal_character)
+       	  fi
+       od next MvL_alcove_time +:= elapsed_ms() - start
 
 { table of full_deform to ht, indexed by Param. MODIFY 11/22/25: NEG HEIGHT MEANS NO CUTOFF. {OLD: Height zero means no cutoff.}}
 {since untwisted is not used for unequal rank, store only twisted in that case.}
@@ -1831,12 +1828,14 @@ set u_predictor(Param p, int HT) = int:
 	    	list = {is_unitary runs over terms in KL_sum_to_ht(p,HT)}
 	    if HT < 0  {will do full_deform(q) on each term}
     	    then sort_by_height(partial_block(p)) {INCREASING height: get easier}
-	    else if low_diff_char(p,HT)
-	    	 then monomials(KL_sum_at_s_to_ht(HT)(p)) {INtCREASING height: get easier}
+	    else monomials(KL_sum_at_s_to_ht(HT)(p))
+	    fi
+		 {if low_diff_char(p,HT)
+	    	 then monomials(KL_sum_at_s_to_ht(HT)(p))
+		 {INCREASING height: get easier}
 		 else let (below,) = height_split(KL_sum_at_s(p),HT)
 		      in monomials(below)
-		 fi
-	    fi
+		 fi}
 	    then () = list := for q in list
 	    	 	    do if is_fixed(delta,q)
 			       do q
