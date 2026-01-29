@@ -1,0 +1,152 @@
+<nilpotent_orbits_bmsz.at
+
+
+{labels=["A","A~", "B","D","C","C~","C*","D*"]}
+{symbols=["*","s","r","c","d"]}
+
+set dual_labels=["*","*","C~","C","D","B","D*","C*"]
+set dual_howe_label(string label)=string:dual_labels[find(label,labels)]
+
+{formula (3.11)}
+set dual_howe_bi_label(PaintedBiPartition Z)=string:
+if Z.label="C~" then
+ if size(Z.P)>0 then 
+  let column=transpose_of(Z.P)[0] then
+  c=find(column,3) in {does c occur in first column}
+  if c=-1 then "B+" else "B-" fi
+ else "B-" fi
+else
+  dual_howe_label(Z.label)
+fi
+
+set row_descent_naive(Partition P)=Partition:
+if size(P)=0 then P else P[1:] fi
+
+set row_descent(Partition P,string label)=Partition:
+if is_in(label,["D","D*"]) and size(P)=0 then [1] else row_descent_naive(P) fi
+
+set row_descent_naive(PaintedPartition P)=PaintedPartition:
+if rank_of(P)=0 then P else P[1:] fi
+
+set row_descent(PaintedPartition P,string label)=PaintedPartition:
+if is_in(label,["D","D*"]) and rank_of(P)=0 then [[1]] else row_descent_naive(P) fi
+
+set column_descent_naive(Partition P)=Partition:transpose(row_descent_naive(transpose(P)))
+{caution: tranpose(P) is wrong, need transpose_of(P)}
+set column_descent_naive(PaintedPartition P)=PaintedPartition:transpose_of(row_descent_naive(transpose_of(P)))
+
+
+
+{change every box with symbol a to symbol b}
+
+set change(PaintedPartition P,int a, int b)=PaintedPartition:
+for row in P do
+ for j in row do if j=a then b else j fi od
+od
+
+{case a of Lemma 3.7: label  B,C,C* => new label C~,D,D*}
+{algorithm:
+ cut off first column of Q
+ in Q: every s->*
+ in P: if * in P doesn't match * in Q then *->s
+  doesn't match has 2 cases: Qnew[i][j] makes sense but != 0, or the box Qnew[i][j]  doesn't exist
+}
+set descent_naive_case_a(PaintedBiPartition Z)=
+let Qnew=change(column_descent_naive(Z.Q),1,0) then
+Pnew=for row@i in Z.P do 
+      for entry@j in row do
+       if entry=0
+        then
+	 if i<number_columns(Qnew) and j<#Qnew[i] and Qnew[i][j] !=0 then 1
+	 elif i>=number_columns(Qnew) or j>=#Qnew[i]  then 1
+	  else entry
+	 fi
+       else entry
+       fi
+      od
+     od
+in (Pnew,Qnew,dual_howe_bi_label(Z))
+
+{case b of Lemma 3.7: label  C~,D,D* => new label B,C,C*}
+{algorithm:
+ cut off first column of P
+ in P: every s->*
+ in Q: if * in Q doesn't match * in P then *->s
+}
+set descent_naive_case_b(PaintedBiPartition Z)=
+let Pnew=change(column_descent_naive(Z.P),1,0) then
+()=print("Pnew", Pnew) then
+Qnew=for row@i in Z.Q do 
+      for entry@j in row do
+       if entry=0
+        then
+	 if i<number_columns(Pnew) and j<#Pnew[i] and Pnew[i][j] !=0 then 1
+	 elif i>=number_columns(Pnew) or j>=#Pnew[i]  then 1
+	  else entry
+	 fi
+       else entry
+       fi
+      od
+     od
+in (Pnew,Qnew,dual_howe_bi_label(Z))
+
+set descent_naive(PaintedBiPartition Z)=PaintedBiPartition:
+if rank_of(Z)=0 then Z else
+if is_in(label(Z),["B","C","C*"]) then descent_naive_case_a(Z)  else descent_naive_case_b(Z) fi fi
+
+set descent(PaintedBiPartition Z)=PaintedBiPartition:
+let dZ=descent_naive(Z) in
+if (Z.bi_label="B+" and
+    number_rows(Z.Q)>=2 and
+    find([2,3],Z.Q~[0][0])!=-1) and
+    size(dZ.P)>0  {extra case, nothing to do} then
+ let ()=prints("special case 1") in 
+ let Pnew=dZ.P then
+  row=Pnew~[0] in
+  row[0]:=1;
+  Pnew~[0]:=row; (Pnew,dZ.Q,dZ.bi_label)
+elif
+    Z.bi_label="D" and
+    number_rows(Z.Q)>=3 and
+    #Z.Q[1]=#Z.Q[2] and  {columns 2 and 3}
+    column_of(Z.P)(0)[#column_of(Z.P)(1)-1]=2 and
+    column_of(Z.P)(1)~[0]=3 and
+    find([2,4],column_of(Z.P)(0)~[0])!=-1
+ then
+  let ()=prints("special case 2") in
+  let Pnew=dZ.P then 
+  row=Pnew~[0] in
+  row[0]:=2;
+  Pnew~[0]:=row;(Pnew,dZ.Q,dZ.bi_label)
+else
+ dZ
+fi
+
+set descent([PaintedBiPartition] list)=[PaintedBiPartition]:for Z in list do descent(Z) od
+
+set iterate(PaintedBiPartition Z)=
+[Z]##while rank_of(Z)>0 do prints(Z); Z:=descent(Z) od
+
+set iterations(int n,string label)=
+for Z in painted_bi_partitions(n,label) do iterate(Z) od
+
+set show_short([[PaintedBiPartition]] list)=void:
+for Z@i in list do prints(new_line,i);show_short(Z) od
+
+{See (3.10}
+set descent_naive(Orbit O_v)=Orbit: row_descent_naive(O_v)
+
+set descent(Orbit O_v,string label)=Orbit:
+if is_in(label,["D","D*"]) and size(O_v)=0 then [1] else
+row_descent_naive(O_v) fi
+
+{See (3.15)}
+set descent(Orbit O_v,[int] S,string label)=(Orbit,[int]):
+ let O_v_prime=descent(O_v,label) then
+ pp_prime=pp(O_v_prime,label) in 
+(O_v_prime,##for i in pp(O_v,label) do if i>1 and is_member(pp_prime)(i-1) then [i] else [] fi  od)
+
+set descent(ExtendedPaintedBiPartition (O_v,Z,S))=ExtendedPaintedBiPartition:
+let (O_v_prime,S_prime)=descent(O_v,S,label(Z)) in 
+(O_v_prime,descent(Z),S_prime)
+ 

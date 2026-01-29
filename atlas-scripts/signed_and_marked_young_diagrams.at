@@ -1,0 +1,149 @@
+<nilpotent_orbits_bmsz.at
+
+set_type SignedYoungDiagram=([(int,int)] signs,string label)
+{the integers (p,q) are required to be non-negative
+to avoid headaches: the first entry is always (0,0) and is ignored.
+ Y=[(0,0),(p_1,q_1),(p_2,q_2),...]
+ corresponds to a Young diagram with p_i + q_i rows of length i
+ each row has alternating signs in its boxes
+   p_i of the rows start with +, q_i start with -
+Example:
+ Y=[(0,0),(1,1),(2,0),(2,1)] ->
+ +-+
+ +-+
+ -+-
+ +-
+ +-
+ +
+ -
+
+Note: starting with (0,0) gives:
+the rows of even length are those Y[i] with i even
+rather than vice-versa
+}
+ 
+set p(SignedYoungDiagram (signs,label))=(int->int):(int i):let (p,)= signs[i] in p
+set q(SignedYoungDiagram (signs,label))=(int->int):(int i):let (,q)= signs[i] in q
+
+set even_integers([int] list)=[int]: ##for i:#list-1 from 1 do if is_even(i) then [i] else [] fi od
+set odd_integers([int] list)=[int]: ##for i:#list-1 from 1  do if is_odd(i) then [i] else [] fi od
+
+{array v=[a,b,c,d,...] of any type, we ignore the first entry and write it
+       v=[*,a,b,c,d,...]
+ the even indices are 2,4,6,... the odd indices are 1,3,5,...
+} 
+any_type S,T begin
+set even_indices([T]a) = even_integers(#(#a))  
+set odd_indices([T]a) =  odd_integers(#(#a))
+set even_entries([T]a) = for i in even_indices(a) do a[i] od
+set odd_entries([T]a) = for i in odd_indices(a) do a[i] od
+end
+
+set is_valid(SignedYoungDiagram Y)=bool:
+all (for (p,q) in Y.signs do p>=0 and q>=0 od) and
+if is_in(Y.label,["B","D"]) then
+ all(for (p,q) in even_entries(Y.signs) do p=q od)
+elif is_in(Y.label,["C","C~"]) then
+ all(for (p,q) in odd_entries(Y.signs) do p=q od)
+elif Y.label="C*" then
+ all(for (p,q) in odd_entries(Y.signs) do is_even(p) and is_even(q) od) and
+ all(for (p,q) in even_entries(Y.signs) do p=q od)
+elif Y.label="D*" then
+ all(for (p,q) in odd_entries(Y.signs) do p=q od) and
+ all(for (p,q) in even_entries(Y.signs) do is_even(p) and is_even(q) od)
+else
+ error("missing case")
+fi
+
+set signature(SignedYoungDiagram Y)=
+let
+P=sum(for i in even_indices(Y.signs) do let (p,q)=Y.signs[i] in i\2*(p+q) od)
+ +sum(for i in odd_indices(Y.signs) do let (p,q)=Y.signs[i] in ((i+1)\2)*p + ((i-1)\2)*q od)
+then
+Q=sum(for i in even_indices(Y.signs) do let (p,q)=Y.signs[i] in i\2*(p+q) od)
+ +sum (for i in odd_indices(Y.signs) do let (p,q)=Y.signs[i] in ((i-1)\2)*p + ((i+1)\2)*q od)
+in (P,Q)
+
+{remove first column, i.e. remove first pair (p_1,q_1) not including (0,0):
+ so remove first two entries, and tack (0,0) back on}
+set descent_naive(SignedYoungDiagram Y)=SignedYoungDiagram:
+let signs=Y.signs in ((0,0)#signs[2:],Y.label)
+
+{Lemma 9.2
+ Y=(signs,label)
+ theta(p',q',Y) =  (new_signs,howe_dual(label))  if (p_prime,q_prime)=signature(descent_naive(Y))>=(0,0)
+                   undefined otherwise
+} 
+set theta(int p_prime,int q_prime,SignedYoungDiagram Y)=SignedYoungDiagram:
+let Y_naive=descent_naive(Y) then
+signs=Y_naive.signs then
+(p_naive,q_naive)=signature(Y_naive) then
+p_0=p_prime-p_naive then
+q_0=q_prime-q_naive in
+if p_0>=0 and q_0>=0 then
+ let (p_2,q_2)=signs[2] in
+ signs[1]:=(p_2+p_0, q_2+q_0);
+ (signs,Y_naive.label)
+else Y
+fi
+
+set plus(int parity)=string:if is_even(parity) then "+" else "-" fi
+set minus(int parity)=string:if is_odd(parity) then "+" else "-" fi
+
+{alt_string(0,n)="+-+-..." (n terms)
+ alt_string(1,n)="-+-+..." (n terms)
+} 
+set alt_string(int starting_plus_minus, int length)=
+let rv="" in 
+ if is_even(starting_plus_minus)
+   then
+     for i:length do rv+:=plus(i) od;rv
+    else
+     for i:length do rv+:=minus(i) od;rv
+ fi
+
+set show(SignedYoungDiagram Y)=void:
+let signs=Y.signs in
+for i:#signs-1 downto 1 do
+let (p,q)=signs[i] in 
+ for j:p do prints(alt_string(0,i+1)) od;
+ for j:q do prints(alt_string(1,i+1)) od
+od
+
+{-------------------------marked young diagrams--------------------}
+
+{same as Signed except values in ZxZ not NxN
+set_type MarkedYoungDiagram=([(int,int)] signs,string label)
+
+some functions apply to both 
+}
+
+set_type MarkedYoungDiagram=([(int,int)] signs,string label)
+
+set signed_young_diagram(MarkedYoungDiagram M)=SignedYoungDiagram:
+(for (p,q) in M.signs do (abs(p),abs(q)) od,M.label)
+
+{same as for SignedYoungDiagram except to positivity condition}
+
+set is_valid_marked(MarkedYoungDiagram M)=bool:
+is_valid(signed_young_diagram(M))
+
+{Definition 9.4(i)}
+set sign_twist(MarkedYoungDiagram (signs,label), (int eplus,int eminus))=
+assert(is_in(label,["B","D"]), "sign twist only defined in types B,D");
+ (for (p,q)@i in signs do
+  if is_odd(i) then ((-1)^( (i+1)\2*eplus+(i-1)\2*eminus)*p,(-1)^( (i-1)\2*eplus+(i+1)\2*eminus)*q) else
+  (p,q) fi od,label)
+
+{Definition 9.4(ii)}
+set involution(MarkedYoungDiagram (signs,label))=MarkedYoungDiagram:
+assert(is_in(label,["C","C~"]), "involution only defined in types C,C~");
+(for (p,q)@i in signs do if i%4=2 then (-p,-q) else (p,q) fi od,label)
+
+{Definition 9.4(iii)}
+set augmentation(MarkedYoungDiagram (signs,label),int p_0,int q_0)=MarkedYoungDiagram:
+((0,0)#(for i:#signs from 1 do
+ if i=1 then (p_0,q_0) else signs[i-1] fi od),label)
+
+
+				  

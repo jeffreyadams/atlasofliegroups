@@ -32,6 +32,30 @@ for r in P do prints(star_string(r)) od
 set symbols=[string]:["*","s","r","c","d"]
 set symbol(int k)=string:assert(k>=0 and k<=4,"k out of range");symbols[k]
 
+{generate partitions recursively}
+{[a_1,...,a_n] ->
+  [[a_1,...,a_n,1]] if a_{n-1}=a_n         if a_{n-1}=a_n
+  [[a_1,...,a_n,1],[a_1,...,a_{n-1},a_n+1] otherwise
+}
+set add_one([int] P)=[[int]]:
+if (#P>1 and P~[0]<P~[1]) or #P=1 then
+[P#1,P~[0]+:=1;P] else [P#1] fi
+
+{recursively compute partitions of n:
+ [for each partition Q of n-1 do add_one(Q) od]
+}
+set par(int n)=
+let rec_fun f(int n)=[[int]]:
+  if n=0
+     then [[int]]:[]
+  elif n=1
+     then [[int]]:[[1]]
+  else
+     for P in f(n-1) do add_one(P)  od.##
+  fi in f(n)
+
+
+
 {P[i]=[a0,a1,...,an] means:
  row i has length n+1, j^th entry has color symbols[a_j]  (0<=a_j<=#symbols-1=4)}
 set_type PaintedPartition=[[int]]
@@ -98,6 +122,35 @@ set locations(PaintedPartition P,int i)=
 set same_zeroes(PaintedPartition P,PaintedPartition Q)=bool:
 let loc_P=locations(P,0) then loc_Q=locations(Q,0) in
 #loc_P=#loc_Q and all(for i:#loc_P do loc_P[i]=loc_Q[i] od)
+
+{add single box to first column of P}
+{brute force version}
+set add_one_to_first_column(PaintedPartition P)=[PaintedPartition]:
+for i:5 do if is_valid(P#[i]) then [P#[i]] else [] fi od.##
+
+set add_one_to_last_row(PaintedPartition P)=[PaintedPartition]:
+if #P=0
+ then [ [[0]],[[1]],[[2]],[[3]],[[4]] ]
+elif #P=1
+ then
+ for i:5 do let Q=[P[0]#i] in
+   if is_valid(Q) then [Q] else [] fi od.##
+elif #P~[0]<#P~[1]
+ then
+ for i:5 do let Q=P then ()=Q~[0]:=Q~[0]#i in if is_valid(Q) then [Q] else [] fi od.##
+else
+ []
+fi
+
+set painted_partitions(int n)=
+let rec_fun f(int n)=[PaintedPartition]:
+if n=0
+ then [[]]
+elif n=1 then
+  [ [[0]],[[1]],[[2]],[[3]],[[4]] ]
+else
+ for P in f(n-1) do  add_one_to_first_column(P)##add_one_to_last_row(P) od.##
+fi in f(n)
 
 set_type PaintedBiPartition=(PaintedPartition P,PaintedPartition Q,string bi_label)
 
@@ -180,7 +233,7 @@ set group_name(GroupDatum G)=string:
 if G.name="SO" 
  then "SO("+G.p+","+G.q+")"
 elif G.name="Sp" and G.q=-1
- then "Sp("+2*G.p+",R)"
+ then "Sp("+G.p+",R)"
 elif G.name="Sp" and G.q>=0
  then "Sp("+G.p+","+G.q+")"
 elif G.name="SO*" 
@@ -250,12 +303,16 @@ if i<#O
  else is_even(O[i-1])
 fi
 
+{set of integers}
 set primitive_pairs(Orbit O,string label)=[int]:##for i:#O-1 from 1 do if is_primitive(O,i,label) then [i] else [] fi od
-
+set pp(Orbit O,string label)=[int]:primitive_pairs(O,label)
 set number_primitive(Orbit O,string label)=int:#primitive_pairs(O,label)
-set A_bar_rank(Orbit O,string label)=int:number_primitive(O,label)
-set A_bar_order(Orbit O,string label)=int:2^A_bar_rank(O,label)
- 
+
+{A_bar is the set of subset of pp(O,label)}
+set A_bar(Orbit O, string label)=[[int]]:power_set(pp(O,label))
+set A_bar_rank(Orbit O,string label)=int:#pp(O,label)
+set A_bar_order(Orbit O,string label)=int:#A_bar(O,label)
+
 set show_partition(PaintedPartition P)=void:show_partition(partition(P))
 
 set show_painted_partition(PaintedPartition P)=void:
@@ -271,3 +328,4 @@ prints(P, " ", Q, " ", bi_label, " ", group_name(P,Q,bi_label))
 set show_short([PaintedBiPartition] list)=void:
 tabulate(for (P,Q,bi_label) in list do
  [P.to_string,Q.to_string,bi_label,group_name(P,Q,bi_label)] od)
+
