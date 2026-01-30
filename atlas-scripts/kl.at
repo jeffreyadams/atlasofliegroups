@@ -68,7 +68,7 @@ set gamma_frac = 1/4
 {if target height < (GAM - LAM)*diff_frac, then figure
 is_unitary_to_ht could be faster. So largest reasonable target height
 is (GAM-LAM)*diff_frac. INCREASE to use to_ht more often}
-set diff_frac = rat: 3/4
+set diff_frac = rat: 1/4
 
 {if target height < (GAM - LAM)*diff_frac, then figure
 is_unitary_to_ht could be faster. So largest reasonable target height
@@ -122,7 +122,7 @@ set low_diff(Param p, int HT) = bool:
 set strict_low_diff(Param p, int HT) = bool:
     if HT < 0 then return  false fi;
     let (LAM, , GAM) = low(p)
-    in (HT >= 0) and (strict_factor*(GAM - LAM)*diff_frac > (HT-LAM))
+    in (strict_factor*(GAM - LAM)*diff_frac > (HT-LAM))
 
 set low_diff_char(Param p, int HT) = bool:
     if HT < 0 then return  false fi;
@@ -135,11 +135,11 @@ set low_lam(Param p, int HT) = bool:
     let (LAM, , GAM) = low(p)
     in  (LAM < lam_frac*GAM)
 
-set prefer_lam_flag = true
+set prefer_lam_flag = false
 
 set prefer_gamma_flag = false
 
-set prefer_diff_flag = false
+set prefer_diff_flag = true
 
 {set low_test_flag = false
 
@@ -164,6 +164,11 @@ set strict_low(Param p, int N) = bool:
     else strict_low_nu(p,N)
     fi
 
+{whether to replace full_deform_to_ht by full_deform}
+set def_low(Param p,int HT) = bool:
+    let (LAM, , GAM) = low(p)
+    in strict_low(p,HT) and 2*LAM <= GAM
+
 set low(Param p, int N) = bool:
     if N < 0 then return  false fi;
     if prefer_gamma_flag
@@ -173,13 +178,22 @@ set low(Param p, int N) = bool:
     else low_nu(p,N)
     fi
 
+{KL_sum_to_height never saves data, so in large computations this is just better}
 set character_formula_to_height(Param p, int HT) = ParamPol:
+    if HT.< then return character_formula(p) fi;
+    let (below,) = height_split(character_formula(p),HT)
+    in return below
+ {
     if HT.< then return character_formula(p) fi;
     if not low_diff_char(p,HT) then let (below,) = height_split(character_formula(p),HT) in return below fi;
     let start = elapsed_ms()
-    in s_to_1(KL_sum_at_s_to_height(p,HT)) next charTime+:= elapsed_ms() - start; char_counter.use()
+    in s_to_1(KL_sum_at_s_to_height(p,HT)) next charTime+:= elapsed_ms() - start; char_counter.use();
+       if elapsed_ms() - start > 1000 then prints(p,"  ",HT) fi
+
+
      {then () = if CF_flag then prints("CFTH((",p.x.number,",",p.lambda,",",
        p.nu,"),",N,"), CTime = ",print_time_string(CharFormTime)) fi}
+}
 
 set character_formula_to_height (ParamPol P, int HT) = ParamPol:
     map(((Param->ParamPol): (Param p): character_formula_to_height(p, HT)), P)
