@@ -125,10 +125,10 @@ set strict_low_nu(Param p, int N) = bool:
 
 {true means GAM big compared to HT, so is_unitary_to_ht could be better}
 {If N>= GAM, then to_ht gives answer to unitarity.}
-set low_gamma(Param p, int N) = bool:
-    if N < 0 then return  false fi;
+set low_gamma(Param p, int HT) = bool:
+    if HT < 0 then return  false fi;
     let (,,GAM) = low(p)
-    in (GAM*gamma_frac) > N
+    in (GAM*gamma_frac) > HT
 
 set strict_low_gamma(Param p, int N) = bool:
     if N < 0 then return  false fi;
@@ -139,17 +139,18 @@ set strict_low_gamma(Param p, int N) = bool:
 set low_diff(Param p, int HT) = bool:
     if HT < 0 then return  false fi;
     let (LAM, , GAM) = low(p)
-    in ((GAM - LAM)*diff_frac > (HT-LAM))
+    in ((GAM - LAM)*diff_frac) > HT {(HT-LAM))}
 
 set strict_low_diff(Param p, int HT) = bool:
     if HT < 0 then return  false fi;
     let (LAM, , GAM) = low(p)
-    in (strict_factor*(GAM - LAM)*diff_frac > (HT-LAM))
+    in (strict_factor*(GAM - LAM)*diff_frac) > HT {(HT-LAM))}
 
 set low_diff_char(Param p, int HT) = bool:
     if HT < 0 then return  false fi;
     let (LAM, , GAM) = low(p)
-    in ((GAM - LAM)*diff_char_frac) > (HT - LAM)
+    in ((GAM - LAM)*diff_char_frac) > HT {(HT - LAM)}
+{Switching to HT -LAM 1/26 didn't work well}
 
 {bad experiences Jan 26 suggested this version}
 set low_lam(Param p, int HT) = bool:
@@ -157,9 +158,12 @@ set low_lam(Param p, int HT) = bool:
     let (LAM, , GAM) = low(p)
     in  (LAM < lam_frac*GAM)
 
-set prefer_lam_flag = true
+set prefer_diff_flag = true {true used to give true for parameter(E7_s,773,[0,1,1,1,1,1,0]/1,
+    [-3,0,0,0,6,-6,0]/2) and HT 327, leading to a very slow is_unitary_to_ht}
 
 set prefer_gamma_flag = false
+
+set prefer_lam_flag = false
 
 set prefer_diff_flag = false {true gives true for parameter(E7_s,773,[0,1,1,1,1,1,0]/1,
     [-3,0,0,0,6,-6,0]/2) and HT 327, leading to a very slow is_unitary_to_ht}
@@ -178,12 +182,12 @@ set strict_low(Param p, int N) = bool:
     if not strict_low_flag
     then return true
     fi;
-    if prefer_lam_flag
-    then low_lam(p,N) and low_diff(p,N)
+    if prefer_diff_flag
+    then strict_low_diff(p,N)
     elif prefer_gamma_flag
     then strict_low_gamma(p,N)
-    elif prefer_diff_flag
-    then strict_low_diff(p,N)
+    elif prefer_lam_flag
+    then low_lam(p,N) and low_diff(p,N)
     else strict_low_nu(p,N)
     fi
 
