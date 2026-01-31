@@ -64,7 +64,9 @@ set partition(PaintedPartition P)=Partition:for row in P do #row od
 set number_rows(PaintedPartition P)=int:#P
 set number_columns(PaintedPartition P)=int:#transpose(partition(P))
 set rank_of(PaintedPartition P)=int:size(partition(P))  {need rank_of since rank would be ambiguous}
-set size(PaintedPartition P)=int:size(partition(P))  
+set size(PaintedPartition P)=int:size(partition(P))
+
+set null_painted_partition=PaintedPartition:[]
 
 set equal(PaintedPartition P,PaintedPartition Q)=bool:
 number_rows(P)=number_rows(Q) and all(for row@i in P do row=Q[i] od)
