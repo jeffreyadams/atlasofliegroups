@@ -146,18 +146,20 @@ set make_KL_sum_hash_table() = KL_sum_hash_table:
   then add_param(Param p, int HT) = int: {index in Param_hash; HT MUST be >= 0}
        let N = paramhash.size()
        then n = paramhash.match(p)
-       in if n=N
-       	  then max_hts #:=HT;
-	       KL_sums #:=KL_sum_at_s_to_height(p,HT)
-	  elif HT < max_hts[n]
-	  then max_hts[n]:=HT;
-	       KL_sums[n]:=KL_sum_at_s_to_height(p,HT)
+       in if n=N or max_hts[n] < HT
+       	  then let PP = KL_sum_at_s_to_height(p,HT)
+	       in if n=N
+	       	  then max_hts #:=HT;
+	       	  KL_sums #:=PP
+	     	  else max_hts[n]:=HT;
+	       	  KL_sums[n]:=PP
+	     	  fi
 	  fi;
 	  n
   then maybe_add_param(Param p, int HT, int time) = int: {index in Param_hash; HT >= 0}
        let N = paramhash.size()
        then n = paramhash.lookup(p)
-       in if n<0 or HT < max_hts[n]
+       in if n<0 or max_hts[n] < HT
        	  then let mPP = KL_sum_at_s_to_height(p,HT,time)
 	       in case mPP
 	       	  | timed_out_PP: -1

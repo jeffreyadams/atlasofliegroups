@@ -82,7 +82,9 @@ set every_KGB_flag = false
 set steve_tester_flag = true
 
 {whether to switch to _steve when x = x_open}
-set prefer_steve_long_flag = true
+{since I fixed the unjustified assumption that it was OK only to look
+at FPP reducibility points, steve has been slower than one_level. Sigh.}
+set prefer_steve_long_flag = false
 
 set revert_steve_flag(KGBElt x) = bool:
     let G = x.real_form
@@ -133,9 +135,20 @@ set KGB_frac_flag =true
 set KGB_frac = rat:1/3
 
 {if KGB_frac_flag and x is greater than this fraction of KGB, then turn on FPP_def_flag}
-set KGB_def_test_frac_flag = true
+set KGB_def_test_frac_flag = false
 
 set KGB_def_test_frac = rat: 1/4
+
+set always_use_FPP_def_test() = void:
+    KGB_def_test_frac_flag:=false;
+    FPP_def_flag:=true
+ 
+set use_FPP_def_test() = void:
+    KGB_def_test_frac_flag:=true
+
+set never_use_FPP_def_test() = void:
+    KGB_def_test_frac_flag:=false;
+    FPP_def_flag:=false
 
 {if x is greater than this fraction of KGB, then turn on predictor_flag}
 set adjust_frac = rat: 2/3

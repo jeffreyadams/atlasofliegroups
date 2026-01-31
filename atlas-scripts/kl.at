@@ -1,7 +1,7 @@
 <basic.at { for |s_to_1| and many others }
 <count.at { for |char_counter| }
 <parameters.at { for |dual_inner_class| }
-
+<hash.at {for hashed low function}
 { KL stuff, including character formulas and composition series
   This implementation seeks to avoid using KL_block, and instead uses
   KL_sum_at_s, as this function stores earlier results
@@ -45,6 +45,7 @@ set character_formula (Param p) = ParamPol:
 
 set character_formula (ParamPol P) = ParamPol: map(character_formula@Param,P)
 
+set low_count= int:0
 {for predicting whether to_ht or is_unitary is faster}
 set low(Param p) = (int,int,int):
     let ic = p.inner_class, theta = p.x.involution, gamma = p.infinitesimal_character
@@ -53,7 +54,28 @@ set low(Param p) = (int,int,int):
     then NU = (dominant(ic, (1-theta)*gamma) *ic.two_rho_check)\2 {size of nu}
     then GAM = (p.infinitesimal_character* ic.two_rho_check)\1 {this is max height at infl char}
     	 {is_unitary_to_ht(p,GAM) means unitary}
-    in (LAM,NU,GAM)
+    in (LAM,NU,GAM) next low_count+:=1
+
+set low_hash_size = int:0
+{should add a real_form hash, separate stuff for each real form. This is OK as long
+ as same G is always used}
+ {computing hashcode has more or less the same cost as low, so this is useless}
+set low_hash = (Param -> (int,int,int)):
+    let hashcode((mat theta, ratvec gamma), int mod) = int:
+    	let (denom,num) = %gamma
+    	then datavec = vec: ((theta.##)##denom)#num
+	in hash_code(datavec,mod)
+    then equal((mat theta0, ratvec gamma0),(mat theta1,ratvec gamma1)) = bool:
+    	 theta0 = theta1 and gamma0 = gamma1
+    then hash = Hash<(mat,ratvec)>: make_hash(hashcode,equal)
+    then answers = [(int,int,int)]: []
+    in (Param -> (int,int,int)): (Param p):
+       let theta=p.x.involution, gamma = p.infinitesimal_character
+       then N =hash.size(), n = hash.match(theta,gamma)
+       in if n = N
+       	  then low_hash_size:=N; answers#:= low(p)
+	  fi;
+	  answers[n]
 
 {If NU (nu part) > LAM (lambda part) *nu_frac, then figure to_ht could work better}
 set nu_frac = 1/1
@@ -76,8 +98,8 @@ is (GAM-LAM)*diff_frac. INCREASE to use to_ht more often}
 set diff_char_frac = rat: 1/10 {1/8 and 1/12 used a bit more memory and time in
     		     	       spherical E7_s}
 
-{if LAM < lam_frac*GAM (big }
-set lam_frac = rat: 2/3
+{if LAM < lam_frac*GAM (big nu), don't try to_ht }
+set lam_frac = rat: 1/6 {2/3}
 
 { strict_factor is how much to DISLIKE trunctating character
     formula; increase to truncate LESS often}
@@ -135,11 +157,12 @@ set low_lam(Param p, int HT) = bool:
     let (LAM, , GAM) = low(p)
     in  (LAM < lam_frac*GAM)
 
-set prefer_lam_flag = false
+set prefer_lam_flag = true
 
 set prefer_gamma_flag = false
 
-set prefer_diff_flag = true
+set prefer_diff_flag = false {true gives true for parameter(E7_s,773,[0,1,1,1,1,1,0]/1,
+    [-3,0,0,0,6,-6,0]/2) and HT 327, leading to a very slow is_unitary_to_ht}
 
 {set low_test_flag = false
 
@@ -156,7 +179,7 @@ set strict_low(Param p, int N) = bool:
     then return true
     fi;
     if prefer_lam_flag
-    then low_lam(p,N)
+    then low_lam(p,N) and low_diff(p,N)
     elif prefer_gamma_flag
     then strict_low_gamma(p,N)
     elif prefer_diff_flag
