@@ -83,7 +83,7 @@ set check_pols(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]] 
        for list@d in LFDKH
        do for v in list
 	  do let p = parameter(x,lambda,face_bary(Lvd,v[:d+1]))
-	     then P = K_type_pol(character_formula_to_height(1*p,HT))
+	     then P = K_type_pol(character_formula_to_ht(1*p,HT))
 	     in assert(@:P = to_ht(pol_hash.index(v[d+red_shift+1]),HT), "wrong K_char")
 	  od
        od
@@ -1437,7 +1437,7 @@ set print_xl_pair(RealForm G,int j)=void:
   let (x,lambda)=xl_pair(G,j) in prints(x.number,":", lambda)
 {uses the results stored in big_unitary_hash.}
 set branch_irr_hash(Param p, int D) = KTypePol:
-    let CF = character_formula_to_height(p,D)
+    let CF = character_formula_to_ht(p,D)
     in big_unitary_hash.branch(K_type_pol(CF),D)
 
 {. The next family of functions all need simple derived group. Always
@@ -1653,7 +1653,7 @@ set next_heightC = ((Param,int) -> int):
     then current_bound = height(current_tau_bound)
     then current_height = int: -1
     then taus_so_far = KTypePol: null_K_module(p.real_form) {meant to be all branch_irr UP TO current height}
-    then KCF = KTypePol: K_type_pol(character_formula_to_height(1*p,current_bound)) {meant to be K-char(p)
+    then KCF = KTypePol: K_type_pol(character_formula_to_ht(1*p,current_bound)) {meant to be K-char(p)
     	 to current_bound MINUS formulas of taus_so_far}
 	 {need 1*p in case p is not final}
     then new_taus = KTypePol: null_K_module(p.real_form) {most recent additions to taus_so_far}
@@ -1672,7 +1672,7 @@ set next_heightC = ((Param,int) -> int):
 	 fi;
     	 if next_heightC_verbose
 	 then prints("about to compute K-char to height ",current_bound) fi;
-    	 KCF:=  K_type_pol(character_formula_to_height(1*p,current_bound));
+    	 KCF:=  K_type_pol(character_formula_to_ht(1*p,current_bound));
 	 current_height:=height(q)-1;
 	 taus_so_far:= null_K_module(q.real_form);
 	 new_taus := null_K_module(q.real_form)
@@ -1687,7 +1687,7 @@ set next_heightC = ((Param,int) -> int):
        current_bound := height(current_tau_bound);
        if next_heightC_verbose
        then prints("about to compute K-char to height ",current_bound) fi;
-       KCF := K_type_pol(character_formula_to_height(1*p,current_bound));
+       KCF := K_type_pol(character_formula_to_ht(1*p,current_bound));
        if next_heightC_verbose
        then prints("about to correct KCF by taus_so_far") fi;
        KCF -:= for c@tau in taus_so_far
@@ -2050,7 +2050,7 @@ set print_int_flag = false
 set hermitian_form_irreducible_to_ht_big_SIMPLE(Param p,int HT) = KTypePol:
   let GAM = (p.infinitesimal_character* p.inner_class.two_rho_check)\1
   in if (HT >= GAM) or (HT < 0) then return hermitian_form_irreducible_big_SIMPLE(p) fi;
-  {if status(p,HT) > 0 then return K_type_pol(character_formula_to_height(p,HT)) fi;}{#7}
+  {if status(p,HT) > 0 then return K_type_pol(character_formula_to_ht(p,HT)) fi;}{#7}
   {save nothing in Spin(4,4)}
   let G = p.real_form
   then FPP_flag = is_FPP(G,p.infinitesimal_character)
@@ -2178,7 +2178,7 @@ set is_unitary_to_ht_wiggle_big_SIMPLE(KGBElt x, ratvec lambda, vec verts,
     if #verts <= 1 then return true fi;
     let p=parameter(x,lambda,face_bary(Lvd,verts)), d = #verts
     then H0 = height(p), short_verts = for i:d+1 do delete(verts,i) od
-    then CF = character_formula_to_height(1*p,HT)
+    then CF = character_formula_to_ht(1*p,HT)
     then pdef1 = for sv in short_verts
 		 do monomials(composition_series_to_ht(wiggle(CF, face_bary(Lvd,sv)), HT {- 1}))
 		 od.##
@@ -3793,7 +3793,7 @@ set wiggle_flag = false
 {set nu_wiggle(KGBElt x, ratvec lambda, vec verts, LocalVertexData Lvd, int HT) = bool:
     if #verts = 1 then return [] fi;
     let p = parameter(x,lambda,face_bary(Lvd,verts)), d = #verts -1
-    then CF = character_formula_to_height(1*p,HT)
+    then CF = character_formula_to_ht(1*p,HT)
     then qs = monomials(composition_series_to_ht(( sum(x.real_form,
 						for k:d+1
 						do wiggle(CF, face_bary(Lvd,verts[:k]##verts[k+1:]))
@@ -3819,7 +3819,7 @@ set known_non_unitaries_wiggle_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	  do let pdef =
 		 if not is_final(p) or d=0
 		 then monomials(p)
-		 else let CF = character_formula_to_height(1*p,HT)
+		 else let CF = character_formula_to_ht(1*p,HT)
 		      then verts = LFDKH[d][j][:d+1]
 		      in  monomials(composition_series_to_ht((sum(x.real_form,
 					    for k:d+1
@@ -3845,7 +3845,7 @@ set wiggle_test(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]]
     if d = 0 then return true fi;
     let p = parameter(x,lambda,face_bary(Lvd, v[:d+1]))
     then lookup = lookups(LFDKH)[d-1], HT HTs~[0]
-    then CF = character_formula_to_height(1*p,HT)
+    then CF = character_formula(1*p,HT)
     then verts = LFDKH[d][j][:d+1]
     then short_verts = for k:d+1
 		       do verts[:k]##verts[k+1:]
@@ -3908,7 +3908,7 @@ set known_non_unitaries_wiggle(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		     then answer[d]#:= j
 		     fi
 	     else {now p is final and d > 0}
-		  let CF = character_formula_to_height(1*p,HT)
+		  let CF = character_formula_to_ht(1*p,HT)
 		  then verts = LFDKH[d][j][:d+1]
 		  then short_verts = for k:d+1
 				     do verts[:k]##verts[k+1:]
@@ -4276,7 +4276,7 @@ set DiracBestTest(Param p, KTypePol Kchar) = bool:
 
 {here p must be irr for branch_irr to work}
 set DiracBestTest(int steps, Param p, int HT) = bool:
-    DiracBestTest(steps, p, HT, K_type_pol(character_formula_to_height(1*p,HT)))
+    DiracBestTest(steps, p, HT, K_type_pol(character_formula_to_ht(1*p,HT)))
 
 {here p must be irr for branch_irr to work}
 set DiracBestTest(int steps, Param p) = bool:
@@ -4284,7 +4284,7 @@ set DiracBestTest(int steps, Param p) = bool:
 
 {here p must be irr for branch_irr to work}
 set DiracBestTest(Param p, int HT) = bool:
-    DiracBestTest(Dirac_best_steps, p, HT, K_type_pol(character_formula_to_height(1*p,HT)))
+    DiracBestTest(Dirac_best_steps, p, HT, K_type_pol(character_formula_to_ht(1*p,HT)))
 
 set DiracBestTest(Param p) = bool:
     DiracBestTest(Dirac_best_steps, p, K_type_pol(character_formula(1*p)))
@@ -5322,7 +5322,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 		      then P = finalize(p0)
 		      then KCF = K_type_pol(if to_htB_flag
 					    then composition_series_to_heightB(P,HT)
-					    else character_formula_to_height(P,HT)
+					    else character_formula_to_ht(P,HT)
 					    fi)
 		      then m = ktp_hash.match(KCF)
 		      in if (Q(gamma,gamma) > DiracBestBD)
@@ -5362,7 +5362,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 				 else let KCF = K_type_pol(
 				      	   if to_htB_flag
 				      	   then composition_series_to_heightB(P,HT)
-					   else character_formula_to_height(P,HT)
+					   else character_formula_to_ht(P,HT)
 					   fi)
 				      then m = ktp_hash.match(KCF)
 		      		      in if (Q(nu,nu) > DiracBestBD)
@@ -5515,7 +5515,7 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT
 	    then PC = finalize(pC)
 	    then KCF = if to_htB_flag
 		       then K_type_pol(composition_series_to_heightB(PC,HT))
-		       else K_type_pol(character_formula_to_height(PC,HT))
+		       else K_type_pol(character_formula_to_ht(PC,HT))
 		       fi
 	    in if (not temp_Dirac_best_flag) or (Q(gamma,gamma) <= DiracBestBD)
 		  or DiracBestTest(pC,HT)
@@ -5784,7 +5784,7 @@ set localFD_KHashbt_lookDownGEO \
 					      else let m = ktp_hash.match(
 						       if to_htB_flag
 						       then K_type_pol(composition_series_to_heightB(P,HT))
-						       else K_type_pol(character_formula_to_height(P,HT))
+						       else K_type_pol(character_formula_to_ht(P,HT))
 						       fi)
 						   in [actual##midreds##[m, #ms]]
 					       fi {K-char matches a face}
@@ -5863,7 +5863,7 @@ set extend_K_characters(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		 then P = finalize(p0)
 		 then m = ktp_hash.match(if to_htB_flag
 					 then K_type_pol(composition_series_to_heightB(P,HT))
-					 else K_type_pol(character_formula_to_height(P,HT))
+					 else K_type_pol(character_formula_to_ht(P,HT))
 					 fi)
 		 then () = w[d+red_shift+1] := m
 		 then () = if red_count_flag
@@ -5925,7 +5925,7 @@ set extend_K_characters_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	  then PC = finalize(pC)
 	  then m = ktp_hash.match(if to_htB_flag
 				  then K_type_pol(composition_series_to_heightB(PC,HT))
-				  else K_type_pol(character_formula_to_height(PC,HT))
+				  else K_type_pol(character_formula_to_ht(PC,HT))
 				  fi)
 	  in m
        od {C in eq}

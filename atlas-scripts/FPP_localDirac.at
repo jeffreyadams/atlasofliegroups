@@ -587,7 +587,7 @@ set local_testK_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 				    then let short_verts = for i:d+1
 							   do verts[:i]##verts[i+1:]
 							   od {list of vertex sets for faces}
-					 then CF = character_formula_to_height(1*pC,HT)
+					 then CF = character_formula_to_ht(1*pC,HT)
 					 then pdef1 = for sv in short_verts
 						      do monomials(composition_series_to_ht(wiggle(CF,
 								face_bary(Lvd,sv)), HT {- 1}))
@@ -649,7 +649,7 @@ set local_testK_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 					       then let short_verts = for i:d+1
 								      do verts[:i]##verts[i+1:]
 								      od {list of vertex sets for faces}
-						    then CF = character_formula_to_height(1*pC,HT)
+						    then CF = character_formula_to_ht(1*pC,HT)
 						    then pdef1 = for sv in short_verts
 								 do monomials(composition_series_to_ht(wiggle(CF,
 								face_bary(Lvd,sv)), HT {- 1}))
@@ -802,7 +802,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 				    then let short_verts = for i:d+1
 							   do verts[:i]##verts[i+1:]
 							   od {list of vertex sets for faces}
-					 then CF = character_formula_to_height(1*pC,HT)
+					 then CF = character_formula_to_ht(1*pC,HT)
 					 then pdef1 = for sv in short_verts
 						      do monomials(composition_series_to_ht(wiggle(CF,
 								face_bary(Lvd,sv)), HT {- 1}))
@@ -870,7 +870,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 					       then let short_verts = for i:d+1
 								      do verts[:i]##verts[i+1:]
 								      od {list of vertex sets for faces}
-						    then CF = character_formula_to_height(1*pC,HT)
+						    then CF = character_formula_to_ht(1*pC,HT)
 						    then pdef1 = for sv in short_verts
 								 do monomials(composition_series_to_ht(wiggle(CF,
 								face_bary(Lvd,sv)), HT {- 1}))

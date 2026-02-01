@@ -200,9 +200,18 @@ set KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol:
     if HT < 0 then return KL_sum_at_s(p) fi;
     if low_diff_char(p,HT)
     then KLsumhash.entry(p,HT)
-    else let (below,) = height_split(KL_sum_at_s(p),HT)
-       	 in below
+    else let (below,) = height_split(KL_sum_at_s(p),HT), middle = elapsed_ms()
+    	 in below
     fi
+{
+	 then notoht = middle - start
+	 then other = KL_sum_at_s_to_height(p,HT)
+	 then toht = elapsed_ms() - middle 
+       	 in if toht < notoht - 5
+	    then prints("At ",p," ",HT,"toht = ",toht,", notoht = ",notoht)
+	    fi;
+	    below
+}
   {let P = KL_sum_at_s_to_height(p,N) in}
 {
   if low_diff_char(p,HT)
@@ -219,6 +228,16 @@ set KL_sum_at_s_to_ht_inter(int HT) = (Param p,int time) maybe_PP:
     else let (below,) = height_split(KL_sum_at_s(p),HT)
     	 in below.done_PP
     fi
+{
+let start = elapsed_ms()
+    	 then (below,) = height_split(KL_sum_at_s(p),HT), middle = elapsed_ms()
+	 then other = KL_sum_at_s_to_height(p,HT)
+	 then toht = elapsed_ms() - middle 
+    	 in if toht < notoht - 5
+	    then prints("At ",p," ",HT,"toht = ",toht,", notoht = ",notoht)
+	    fi;
+	    below.done_PP
+}
 
 set twisted_KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol:
     if HT < 0 then return twisted_KL_sum_at_s(p)
@@ -230,6 +249,19 @@ set twisted_KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol:
 {set to_ht (ParamPol P,int N) = ParamPol:
   if N<0 then return P fi;
   let (below,)=height_split(P,N) in below}
+
+
+set character_formula_to_ht(Param p, int HT) = ParamPol:
+    if HT.< then return character_formula(p) fi; 
+    if not low_diff_char(p,HT)
+    then let (below,) = height_split(character_formula(p),HT)
+    	 in return below  {again this counts and records time}
+    else let start = elapsed_ms()
+    	 in s_to_1(KL_sum_at_s_to_ht(HT)(p)) next charTime+:= elapsed_ms() - start; char_counter.use()
+    fi
+
+set character_formula_to_ht (ParamPol P, int HT) = ParamPol:
+    map(((Param->ParamPol): (Param p): character_formula_to_ht(p, HT)), P)
 
 {take a KTypePol _apparently_ attached to G and make it _actually_ attached
 to G. Need this to use looked-up deformations.}

@@ -247,7 +247,7 @@ set pos_tester_Kchar(KGBElt x, ratvec lambda,int HT,ratvec gamma) = (bool, vec):
        	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT)
 	       	 else is_unitary_test_big_SIMPLE_interrupt(q)
 	       	 fi od),
-       	    [Kpol_hash.match(K_type_pol(character_formula_to_height(1*p,HT))),#qs])
+       	    [Kpol_hash.match(K_type_pol(character_formula_to_ht(1*p,HT))),#qs])
        else (all (for q in qs do @bool:
        	    	 if HT >= 0
        	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT)
@@ -295,7 +295,7 @@ set pos_tester_Kchar_min(KGBElt x, ratvec lambda,int HT,ratvec gamma) =
        {stat in stats do stat > 0}
        od)
        then return (true, if extra_coord_flag
-       	    	   	  then [Kpol_hash.match(K_type_pol(character_formula_to_height(1*p,HT))),#qs]
+       	    	   	  then [Kpol_hash.match(K_type_pol(character_formula_to_ht(1*p,HT))),#qs]
 			  else []
 			  fi)
        elif any(for q in qs
@@ -303,14 +303,14 @@ set pos_tester_Kchar_min(KGBElt x, ratvec lambda,int HT,ratvec gamma) =
 		{stat in stats do stat < 0}
        	    	od)
        then return (false, if extra_coord_flag
-       	    	   	   then [Kpol_hash.match(K_type_pol(character_formula_to_height(1*p,HT))),#qs]
+       	    	   	   then [Kpol_hash.match(K_type_pol(character_formula_to_ht(1*p,HT))),#qs]
 			   else []
 			   fi)
        fi;
        if not all(for q in qs do @bool: min_bottom_elim_factors(q,p,HT) od)
        then {prints("...and bottom worked!");}
        	    return if extra_coord_flag
-       	    	   then (false,[Kpol_hash.match(K_type_pol(character_formula_to_height(1*p,HT))),#qs])
+       	    	   then (false,[Kpol_hash.match(K_type_pol(character_formula_to_ht(1*p,HT))),#qs])
 		   else (false,[])
 		   fi
        fi;
@@ -320,7 +320,7 @@ set pos_tester_Kchar_min(KGBElt x, ratvec lambda,int HT,ratvec gamma) =
        	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT)
 	       	 else is_unitary_test_big_SIMPLE_interrupt(q)
 	       	 fi od),
-       	    [Kpol_hash.match(K_type_pol(character_formula_to_height(1*p,HT))),#qs])
+       	    [Kpol_hash.match(K_type_pol(character_formula_to_ht(1*p,HT))),#qs])
        else (all (for q in qs do @bool:
        	    	 if HT >= 0
        	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT)
@@ -334,7 +334,7 @@ set Kchar_vec(KGBElt x, ratvec lambda, int HT, ratvec gamma) = vec:
     let start = elapsed_ms(), p = parameter(x,lambda,gamma), G = x.real_form
     then qs = monomials(1*p)
     then answer = if extra_coord_flag
-       	 	  then [Kpol_hash.match(K_type_pol(character_formula_to_height(1*p,HT))),#qs]
+       	 	  then [Kpol_hash.match(K_type_pol(character_formula_to_ht(1*p,HT))),#qs]
        		  else []
        		  fi
     in Kchar_vec_time +:= elapsed_ms() - start;
@@ -1372,8 +1372,8 @@ set location_finder_add_Kchar(KGBElt x, ratvec lambda, int HT, LocalVertexData L
 	 	   		 {else steve_hash.extra_coord(x, lambda, HT, gamma)
 	 	   		 fi}
 			      {[Kpol_hash.match(K_type_pol(
-			      character_formula_to_height(1*p,HT))),v[d+2]]}
-			      in  assert(@:Kpol_hash.match(K_type_pol(character_formula_to_height(1*p,HT)))
+			      character_formula_to_ht(1*p,HT))),v[d+2]]}
+			      in  assert(@:Kpol_hash.match(K_type_pol(character_formula_to_ht(1*p,HT)))
 						= extra[0],"bad extra")
 			 fi;
 			 facelist[locnum]#:=N;
@@ -1436,8 +1436,8 @@ set location_finder(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [FaceV
 	 	   		 {else steve_hash.extra_coord(x, lambda, HT, gamma)
 	 	   		 fi}
 			      {[Kpol_hash.match(K_type_pol(
-			      character_formula_to_height(1*p,HT))),v[d+2]]}
-			      in  assert(@:Kpol_hash.match(K_type_pol(character_formula_to_height(1*p,HT)))
+			      character_formula_to_ht(1*p,HT))),v[d+2]]}
+			      in  assert(@:Kpol_hash.match(K_type_pol(character_formula_to_ht(1*p,HT)))
 						= extra[0],"bad extra")
 			 fi;
 			 facelist[locnum]#:=N;
