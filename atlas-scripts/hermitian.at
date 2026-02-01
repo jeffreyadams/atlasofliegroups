@@ -1922,12 +1922,6 @@ set u_predictor(Param p, int HT) = int:
     	    then sort_by_height(partial_block(p)) {INCREASING height: get easier}
 	    else monomials(KL_sum_at_s_to_ht(HT)(p))
 	    fi
-		 {if low_diff_char(p,HT)
-	    	 then monomials(KL_sum_at_s_to_ht(HT)(p))
-		 {INCREASING height: get easier}
-		 else let (below,) = height_split(KL_sum_at_s(p),HT)
-		      in monomials(below)
-		 fi}
 	    then () = list := for q in list
 	    	 	    do if is_fixed(delta,q)
 			       do q
