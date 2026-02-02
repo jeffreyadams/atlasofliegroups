@@ -63,7 +63,6 @@ set_type PaintedPartition=[[int]]
 set partition(PaintedPartition P)=Partition:for row in P do #row od
 set number_rows(PaintedPartition P)=int:#P
 set number_columns(PaintedPartition P)=int:#transpose(partition(P))
-set rank_of(PaintedPartition P)=int:size(partition(P))  {need rank_of since rank would be ambiguous}
 set size(PaintedPartition P)=int:size(partition(P))
 
 set null_painted_partition=PaintedPartition:[]
@@ -159,7 +158,7 @@ set_type PaintedBiPartition=(PaintedPartition P,PaintedPartition Q,string bi_lab
 set label_of(string bi_label)=string:if is_in(bi_label,["B+","B-"]) then "B" else bi_label fi
 set label(PaintedBiPartition Z)=string:label_of(bi_label(Z))
 
-set rank_of(PaintedBiPartition (P,Q,))=int:rank_of(P)+rank_of(Q)
+set size(PaintedBiPartition (P,Q,))=int:size(P)+size(Q)
 set count(PaintedBiPartition (P,Q,),int symbol)=int:count(P,symbol)+count(Q,symbol)
 
 {*,s,r,c,d}
@@ -202,7 +201,7 @@ if is_in(Z.bi_label,["B+","B-","D","C*"]) then
  let extra= if Z.bi_label="B+" then 1 else 0 fi in 
  count(Z,0) + 2*count(Z,2) + count(Z,3) + count(Z,4) + extra
 else
- rank_of(Z)
+ size(Z)
 fi
 
 set q(PaintedBiPartition Z)=int:
@@ -210,7 +209,7 @@ if is_in(Z.bi_label,["B+","B-","D","C*"]) then
  let extra= if Z.bi_label="B-" then 1 else 0 fi in 
  count(Z,0) + 2*count(Z,1) + count(Z,3) + count(Z,4) + extra
 else
- rank_of(Z)
+ size(Z)
 fi
 
 set_type GroupDatum=(string name,int p,int q)
@@ -255,7 +254,7 @@ if is_in(Z.bi_label,["B+","B-","D"]) then
  elif Z.bi_label="D*" then
     ("SO*",2*p(Z),0)
  elif Z.bi_label="C~" then
-    ("Mp*",2*rank_of(Z),0)
+    ("Mp*",2*size(Z),0)
 else
   error("incorrect bi_label")
 fi
@@ -265,19 +264,19 @@ set group_name(PaintedBiPartition Z)=string:
 if is_in(Z.bi_label,["B+","B-","D"]) 
  then "SO("+p(Z)+","+q(Z)+")"
 elif Z.bi_label="C"
- then "Sp("+2*rank_of(Z)+",R)"
+ then "Sp("+2*size(Z)+",R)"
 elif Z.bi_label="C*" then
  "Sp("+rat_as_int(p(Z)/2)+","+ rat_as_int(q(Z)/2)+")"
 elif Z.bi_label="D*" then 
- "SO*("+2*rank_of(Z)+")"
+ "SO*("+2*size(Z)+")"
 elif Z.bi_label="C~" then 
- "Mp("+2*rank_of(Z)+")"
+ "Mp("+2*size(Z)+")"
 else
  prints("incorrect bi_label");""
 fi
 
 set dim_tau(PaintedBiPartition Z)=int:
-if Z.bi_label="B+" or Z.bi_label="B-" then 2*rank_of(Z)+1 else 2*rank_of(Z) fi
+if Z.bi_label="B+" or Z.bi_label="B-" then 2*size(Z)+1 else 2*size(Z) fi
 
 {O=Orbit=Partition  O=[O[0],...,O[n-2],O[n-1]]
  see Definition 3.5

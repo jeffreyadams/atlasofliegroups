@@ -26,10 +26,10 @@ set row_descent(Partition P,string label)=Partition:
 if is_in(label,["D","D*"]) and size(P)=0 then [1] else row_descent_naive(P) fi
 
 set row_descent_naive(PaintedPartition P)=PaintedPartition:
-if rank_of(P)=0 then P else P[1:] fi
+if size(P)=0 then P else P[1:] fi
 
 set row_descent(PaintedPartition P,string label)=PaintedPartition:
-if is_in(label,["D","D*"]) and rank_of(P)=0 then [[1]] else row_descent_naive(P) fi
+if is_in(label,["D","D*"]) and size(P)=0 then [[1]] else row_descent_naive(P) fi
 
 set column_descent_naive(Partition P)=Partition:transpose(row_descent_naive(transpose(P)))
 {caution: tranpose(P) is wrong, need transpose_of(P)}
@@ -91,7 +91,7 @@ Qnew=for row@i in Z.Q do
 in (Pnew,Qnew,dual_howe_bi_label(Z))
 
 set descent_naive(PaintedBiPartition Z)=PaintedBiPartition:
-if rank_of(Z)=0 then Z else
+if size(Z)=0 then Z else
 if is_in(label(Z),["B","C","C*"]) then descent_naive_case_a(Z)  else descent_naive_case_b(Z) fi fi
 
 set descent(PaintedBiPartition Z)=PaintedBiPartition:
@@ -125,7 +125,7 @@ fi
 set descent([PaintedBiPartition] list)=[PaintedBiPartition]:for Z in list do descent(Z) od
 
 set iterate(PaintedBiPartition Z)=
-[Z]##while rank_of(Z)>0 do prints(Z); Z:=descent(Z) od
+[Z]##while size(Z)>0 do prints(Z); Z:=descent(Z) od
 
 set iterations(int n,string label)=
 for Z in painted_bi_partitions(n,label) do iterate(Z) od

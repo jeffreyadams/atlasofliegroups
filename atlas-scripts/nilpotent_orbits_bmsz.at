@@ -190,7 +190,7 @@ set find = find(=@(GroupDatum,GroupDatum))
  return value [a,b,c] gives the number of times each GroupDatum occurs}
 set collated_group_data([PaintedBiPartition] list)=([GroupDatum],[int]):
 if #list=0 then ([],[]) else
- let rank=rank_of(list[0]) then
+ let rank=size(list[0]) then
  label=label_of(list[0].bi_label) then
  group_data=all_group_data(rank,label) then
  rv=null(#group_data) in

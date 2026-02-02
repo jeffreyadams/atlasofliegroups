@@ -1,8 +1,14 @@
 <nilpotent_orbits_bmsz.at
+<bmsz_descent.at
 
+set theta_verbose=true
 set_type ClassicalSignature=(string label, Split z)
 set p(ClassicalSignature S)=int: int_part(S.z)
 set q(ClassicalSignature S)=int: s_part(S.z)
+set size(ClassicalSignature S)=int:p(S)+q(S)
+
+set p(Split z)=int:int_part(z)
+set q(Split z)=int:s_part(z)
 
 {Section 4.1 classical signatures}
 set is_valid(ClassicalSignature S)=bool:
@@ -37,6 +43,14 @@ rather than vice-versa
 }
 set p(SignedYoungDiagram (signs,label))=(int->int):(int i):int_part(signs[i])
 set q(SignedYoungDiagram (signs,label))=(int->int):(int i):s_part(signs[i])
+set size(SignedYoungDiagram Y)=int:sum(for z@i in signs(Y) do (p(z)+q(z))*i  od)
+set partition(SignedYoungDiagram (signs,))=
+let rv=[[int]]:[] in 
+ for z@i in signs do
+   if !=z then
+     rv#:=for j:p(z)+q(z) do i od
+   fi
+ od;reverse(##rv)
 
 set =(SignedYoungDiagram A,SignedYoungDiagram B)=A.label=B.label and
 #A.signs=#B.signs and
@@ -95,9 +109,9 @@ in (P,Q)}
     z_j -> ((j+1)/2+ s(j-1)/2) z_j
 conclusion:  z_j -> j/2(1+s)z_j (j even) or ((j+1)/2 + s(j-1)/2)z_j  (j odd)
 }  
-set signature(SignedYoungDiagram Y)=
-sum(for z@j in even_indices(Y.signs) do (j\2)*(1+s)*z od) +
-sum(for z@j in odd_indices(Y.signs) do ((j+1)\2 + s*((j-1)\2))*z od)
+set signature(SignedYoungDiagram Y)=Split:
+sum(for j in even_indices(Y.signs) do (j\2)*(1+s)*Y.signs[j] od) +
+sum(for j in odd_indices(Y.signs) do ((j+1)\2 + s*((j-1)\2))*Y.signs[j] od)
 
 {remove first column, i.e. remove first pair (p_1,q_1) not including (0,0):
  so remove first two entries, and tack (0,0) back on}
@@ -108,20 +122,31 @@ let signs=Y.signs in ((0*s)#signs[2:],Y.label)
  Y=(signs,label)
  theta(p',q',Y) =  (new_signs,howe_dual(label))  if (p_prime,q_prime)=signature(descent_naive(Y))>=(0,0)
                    undefined otherwise
-} 
-set Delta(SignedYoungDiagram Y, ClassicalSignature S)=SignedYoungDiagram:
-{int p_prime,int q_prime,SignedYoungDiagram Y)=SignedYoungDiagram:}
+}
+set theta_non_zero(SignedYoungDiagram Y,ClassicalSignature S_prime)=bool:
 let Y_naive=descent_naive(Y) then
-()=assert(S.label=Y_naive.label, "Wrong classical signature in Delta") then
-z_prime=S.z then
-signs=Y_naive.signs then
+()=assert(S_prime.label=dual_howe_label(Y.label), "Wrong classical signature in Delta") then
+z_prime=S_prime.z then
 sig_naive=signature(Y_naive) then
 sig_0=z_prime-sig_naive in
-if int_part(sig_0)>=0 and s_part(sig_0)>=0 then
- let z_2=signs[2] in
- signs[1]:=signs[2]+sig_0;
- (signs,S.label)
-else null_signed_young_diagram(dual_howe_label(Y.label))
+if int_part(sig_0)>=0 and s_part(sig_0)>=0 then true else false fi
+
+{Lemma 9.2}
+set Delta(SignedYoungDiagram Y, ClassicalSignature S_prime)=SignedYoungDiagram:
+let ()=assert(theta_non_zero(Y,S_prime), "theta lift of orbit is 0");
+assert(S_prime.label=dual_howe_label(Y.label), "Wrong classical signature in Delta") then
+z_0=S_prime.z-signature(descent_naive(Y)) in
+if int_part(z_0)>=0 and s_part(z_0)>=0
+ then
+  let signs=Y.signs then
+  signs_new=
+  if #signs=2 {single column}
+    then [0*s,z_0]
+  else
+    [0*s,signs[2]+z_0]##for i:#signs-3 from 3 do signs[i] od
+  fi
+ in (signs_new,S_prime.label)
+else null_signed_young_diagram(S_prime.label)
 fi
 
 set plus(int parity)=string:if is_even(parity) then "+" else "-" fi
@@ -140,10 +165,11 @@ let rv="" in
  fi
 
 set show(SignedYoungDiagram Y)=void:
+prints(new_line,partition(Y));
 let signs=Y.signs in
 for i:#signs-1 downto 1 do
- for j:int_part(signs[i]) do prints(alt_string(0,i+1)) od;
- for j:s_part(signs[i]) do prints(alt_string(0,i+1)) od
+ for j:int_part(signs[i]) do prints(alt_string(0,i)) od;
+ for j:s_part(signs[i]) do prints(alt_string(1,i)) od
  od
 
 {-------------------------marked young diagrams--------------------}
@@ -159,7 +185,7 @@ set_type MarkedYoungDiagram=([Split] signs,string label)
 set signed_young_diagram(MarkedYoungDiagram M)=SignedYoungDiagram:
 (for z in M.signs do abs(int_part(z)) + abs(s_part(z))*2 od,M.label)
 
-{same as for SignedYoungDiagram except to positivity condition}
+{same as for SignedYoungDiagram except for positivity condition}
 
 set is_valid_marked(MarkedYoungDiagram M)=bool:
 is_valid(signed_young_diagram(M))
@@ -175,7 +201,8 @@ set box_contained(Split z,MarkedYoungDiagram M)=bool:box_contained(int_part(z), 
 
 {(9.19)}
 set truncation(MarkedYoungDiagram M,Split w)=MarkedYoungDiagram:
-assert((is_in(M.label,["B","D"]) or is_valid(M.label,w)) and (box_contained(w,M)), "augmentation not defined in this case");
+let ()=if  theta_verbose then prints("truncation: ", new_line, "M=", M,new_line, "w=", w) fi in
+assert((is_in(M.label,["B","D"]) or is_valid(M.label,w)) and (box_contained(w,M)), "truncation not defined in this case");
 ((0*s)#(for i:#M.signs from 1 do
  if i=1 then M.signs[i] - w
         else M.signs[i]
@@ -197,14 +224,22 @@ set involution(MarkedYoungDiagram (signs,label))=MarkedYoungDiagram:
 assert(is_in(label,["C","C~"]), "involution only defined in types C,C~");
 (for z@i in signs do if i%4=2 then z else z fi od,label)
 
-{Definition 9.4(iii)}
-set augmentation(MarkedYoungDiagram (signs,label),Split w)=MarkedYoungDiagram:
-assert(is_in(label,["B","D"]) or is_valid(label,w), "augmentation not defined in this case");
-((0*s)#(for i:#signs from 1 do
- if i=1 then w else signs[i-1] fi od),label)
+set involution_power(MarkedYoungDiagram M,int n)=MarkedYoungDiagram:
+if is_even(n) then involution(M) else M fi
 
-
-
+{Definition 9.4(iii) AND 9.23
+p_0,q_0\in \frac 12\Z}
+set augmentation(MarkedYoungDiagram (signs,label),rat p_0,rat q_0)=MarkedYoungDiagram:
+if is_in(label,["B","D"]) or
+ is_integer(p_0) and is_integer(q_0) and is_valid(label,rat_as_int(p_0)+s*rat_as_int(q_0))
+ then
+ ((0*s)#(for i:#signs from 1 do
+ if i=1 then rat_as_int(p_0)+s*rat_as_int(q_0)
+   else signs[i-1]
+  fi od),label)
+else
+  null_signed_young_diagram(label)
+fi
 
 set_type ZMYD=[(int,MarkedYoungDiagram)]
 
@@ -245,7 +280,7 @@ set involution(ZMYD A)=ZMYD:
 for (mult,M) in A do (mult,involution(M)) od
 
 set truncation(ZMYD A,Split w)=ZMYD:
-for (mult,M) in A do (mult,truncation(M,w)) od
+for (mult,M) in A do (mult,truncation(M,w)) od
 
 {Section 9.5}
 {Recall (Lemma 9.2) Theta lifting takes a K-orbit for G to one for G'
@@ -256,19 +291,67 @@ Section 9.5: enhance this to a map
 
 The notation in Section 9.5 goes from G' -> G, but we'll turn this around}
 
+set l_sign(MarkedYoungDiagram (signs,))=Split:
+sum(for i:#signs do s^(i+1)*signs[i] od)
+
 set theta(MarkedYoungDiagram M, ClassicalSignature S_prime)=
-assert(dual_howe_label(M.label)=S_prime.label,"Types don't match in theta lifting for MYD");
-let M_prime=Delta(M,S_prime) in
+assert(theta_non_zero(signed_young_diagram(M),S_prime), "theta lift of underlying orbit is 0");
+let Y=signed_young_diagram(M) then
+Y_prime=Delta(Y,S_prime) then
+z=signature(M) then
+z_prime=S_prime.z then
+delta=size(Y_prime) - size(Y) then
+()=if theta_verbose then prints("S'=",S_prime,new_line,"M=",M,new_line,"Y_prime=",Y_prime,new_line,"z=",z,new_line,"z'=",z_prime,new_line,"delta=",delta) fi then
+()=assert(delta>=0,"delta <0") in
+if S_prime.label="B"then
+      {(p',q')-(p,q) - l_sign(O) + (delta/2,delta/2)}
+ let z_0=z_prime-z -l_sign(M) + h(delta)*(1+s) then
+ truncation=truncation(M,h(delta)*(1+s)) then
+ involution=involution_power(truncation,h(p(z)-q(z)+1)) then
+ twisted=sign_twist(involution,z_0) in
+ twisted
+elif S_prime.label="D" then
+      {(p',q')-(p,q) - l_sign(O) + (delta/2,delta/2)}
+ let z_0=z_prime-z -l_sign(M) + h(delta)*(1+s) then
+ truncation=truncation(M,h(delta)*(1+s)) then
+ involution=involution_power(truncation,h(p(z)-q(z))) then
+ twisted=sign_twist(involution,z_0) in
+ twisted
+elif S_prime.label="C*" then {delta might be odd}
+ if is_odd(delta) then null_signed_young_diagram(S_prime.label)
+ else
+  let truncation=truncation(M,h(delta)*(1+s)) then  {this will fail if delta \not\in Z}
+  z_0=z_prime-z -l_sign(M) + h(delta)*(1+s) then
+  twisted=sign_twist(truncation,z_0)
+  in twisted
+ fi
+fi
 
 
+{----------generating orbits-------------}
 
+set join([[Split]] list)=[[Split]]:
+let rv=[list[0]] in
+for i:#list-1 from 1 do
+ let row=list[i] in
+  rv:=##for a in rv do for b in row do a#b od od od;
+ rv
+ 
+set rows_by_length(Partition P)=[int]:
+for i:max(P)+1 do count(P,i) od
 
+set K_orbits(Orbit O, string label)=[SignedYoungDiagram]:
+let possible_signs_by_row_length=
+for mult@i in rows_by_length(O) do
+   if is_odd(i) 
+     then [h(mult)*(1+s)]
+   else  {is_even(i)}
+     for i:mult+1 do  i+s*(mult-i) od
+   fi
+od in
+for signs in join(possible_signs_by_row_length) do (signs,label) od
 
+set K_orbits(int rank, string label)=
+for orbit in all_partitions(rank,label) do K_orbits(orbit,label) od
 
-
-
-
-
-
-
-				  
+ 
