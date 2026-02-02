@@ -131,6 +131,8 @@ set_type
   , (Param->int) max_ht {largest height to which KL_sum_at_s is hashed}
   , ((Param,int)->ParamPol) entry {KL_sum_at_s_to_height}
   , ((Param,int,int)->maybe_PP) maybe_entry {KL_sum_at_s_to_height}
+  , (->Param_hash) paramhash
+  , (->vec) max_hts
   , (->) clear
 )
 ]
@@ -190,6 +192,8 @@ set make_KL_sum_hash_table() = KL_sum_hash_table:
      	then timed_out_PP()
      	else KL_sums[n].done_PP
 	fi
+   , (->Param_hash): {paramhash} @:paramhash
+   , (->vec): {max_hts} @:max_hts
    , (->): {clear} clearKLSH
    )
 )
@@ -257,7 +261,7 @@ set character_formula_to_ht(Param p, int HT) = ParamPol:
     then let (below,) = height_split(character_formula(p),HT)
     	 in return below  {again this counts and records time}
     else let start = elapsed_ms()
-    	 in s_to_1(KL_sum_at_s_to_ht(HT)(p)) next charTime+:= elapsed_ms() - start; char_counter.use()
+    	 in s_to_1(KL_sum_at_s_to_ht(HT)(p)) next charTimeToHt+:= elapsed_ms() - start; char_counter_to_ht.use()
     fi
 
 set character_formula_to_ht (ParamPol P, int HT) = ParamPol:
@@ -1734,8 +1738,9 @@ set report_tested(string label) = void:
    	    hash_def_dumbCounter.use_count(), ", #hash = ",
     	    hashCounter.use_count(), ", #hash2 = ",
     	    hash2Counter.use_count(), ", #steve = ",hash_steveCounter.use_count());
-    prints(print_time_string(unitaryTime)," for ",unitary_test_counter.use_count()," unitarity tests; ",
-    print_time_string(charTime), " for ",char_counter.use_count(), " char calculations.");
+    prints(print_time_string(unitaryTime)," for ",unitary_test_counter.use_count()," utests; ",
+    print_time_string(charTime), " for ",char_counter.use_count(), " char calcs; ",
+    print_time_string(charTimeToHt), " for ",char_counter_to_ht.use_count(), " char_to_ht calcs.");
     {prints("time for up_mu = ",print_time_string(up_mu_time), ", mu_time_mult = ",mu_time_mult,
     	   ", shift_frac = ",shift_frac, ", min_ht_mult = ", min_ht_mult);}
     {prints({"LAGAmax = ",LAGAmax,", GARLAGmin = ",GARLAGmin, ", GARmin = ", GARmin,}
@@ -1767,7 +1772,7 @@ set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(v
     let tph = int: 0, tpt = int:0, tnh = int: 0, tnt = int:0, oth = int:0, otc = int:0, ott = int:0
     then tic = int: 0, tih = int: 0, tit = int:0, tphh = int: 0, tpht = int:0, tnhh = int: 0, tnht = int: 0,
     	 tihc = int: 0, tihh = int:0, tiht = int:0,
-    	 utc = int: 0, utt = int: 0, ct = int:0, cu = int: 0, DTc = int:0, DBTc = int: 0, nhtC_time = int:0
+    	 utc = int: 0, utt = int: 0, ct = int:0, ctth = int: 0, cu = int: 0, cuth = int:0, DTc = int:0, DBTc = int: 0, nhtC_time = int:0
     in (((string,string)->void): (string local_label, string running_label) void:
     prints("  ----------------");
     prints("...",local_label,"...",DTcount - DTc," Dirac elim, ",DBTcount - DBTc,
@@ -1816,13 +1821,15 @@ set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(v
     	    hashCounter.use_count(), ", #hash2 = ",
     	    hash2Counter.use_count(), ", #steve = ",hash_steveCounter.use_count());
     prints(print_time_string(unitaryTime - utt)," for ",unitary_test_counter.use_count() -utc,
-    					 " unitarity tests; ",
+    					 " utests; ",
     			     print_time_string(charTime - ct), " for ",char_counter.use_count() -cu,
-			     " char calculations.");
+			     " char calcs, ",
+			     print_time_string(charTimeToHt - ctth), " for ",char_counter_to_ht.use_count() -cuth,
+			     " char to ht calcs");
 	 utt:= unitaryTime;
 	 utc:=unitary_test_counter.use_count();
-	 ct:=charTime;
-	 cu:= char_counter.use_count();
+	 ct:=charTime; ctth:=charTimeToHt;
+	 cu:= char_counter.use_count(); cuth:=char_counter_to_ht.use_count();
     prints("...",running_label,"...",DTcount + DBTcount," Dirac elim; status_time = ",
     	   print_time_string(status_time), " for ", status_count," reports");
     prints("FPP_def_time = ",print_time_string(FPP_def_time)," for ",
@@ -1848,14 +1855,15 @@ set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(v
    	    hash_def_dumbCounter.use_count(), ", #hash = ",
     	    hashCounter.use_count(), ", #hash2 = ",
     	    hash2Counter.use_count(), ", #steve = ",hash_steveCounter.use_count());
-    prints(print_time_string(unitaryTime)," for ",unitary_test_counter.use_count()," unitarity tests; ",
-    print_time_string(charTime), " for ",char_counter.use_count(), " char calculations.");
+    prints(print_time_string(unitaryTime)," for ",unitary_test_counter.use_count()," utests; ",
+    print_time_string(charTime), " for ",char_counter.use_count(), " char calcs; ",
+    print_time_string(charTimeToHt), " for ",char_counter_to_ht.use_count(), " char_to_ht calcs");
     prints("  ----------------")
     , @: {clear_report_tested_cum}
      tph := 0; tpt := 0; tnh := 0; tnt :=0; oth :=0; otc :=0; ott :=0;
      tic := 0; tih := 0; tit :=0; tphh := 0; tpht :=0; tnhh := 0; tnht := 0;
      tihc:=0; tihh:=0; tiht:=0;
-     utc := 0; utt := 0; ct :=0; cu := 0; DTc:=0; DBTc:=0; nhtC_time:=0)
+     utc := 0; utt := 0; ct :=0; cu := 0; ctth := 0; cuth :=0; DTc:=0; DBTc:=0; nhtC_time:=0)
 
 set report_tested_cum() = report_tested_cum("","")
 

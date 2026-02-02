@@ -34,6 +34,8 @@ set to_ht_over_u_flag = true
 {set CF_flag = false}
 set charTime = int:0
 
+set charTimeToHt = int:0
+
 set character_formula (Param p) = ParamPol:
     let start = elapsed_ms()
     in s_to_1(KL_sum_at_s(p)) next charTime+:= elapsed_ms() - start;
@@ -220,7 +222,7 @@ set character_formula_to_height(Param p, int HT) = ParamPol:
     then let (below,) = height_split(character_formula(p),HT)
     	 in return below  {again this counts and records time}
     else let start = elapsed_ms()
-    	 in s_to_1(KL_sum_at_s_to_height(p,HT)) next charTime+:= elapsed_ms() - start; char_counter.use()
+    	 in s_to_1(KL_sum_at_s_to_height(p,HT)) next charTimeToHt+:= elapsed_ms() - start; char_counter_to_ht.use()
     fi
 
 set character_formula_to_height (ParamPol P, int HT) = ParamPol:
