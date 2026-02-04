@@ -9,24 +9,9 @@ labelling others as "new"}
 {If HT < 0, then use full version}
 set herm_report = bool: false
 
-{defined in hermitian.at}
-set to_ht (int N) = (ParamPol->ParamPol): (ParamPol P):
-  if N < 0 then P
-  else let (below,)=height_split(P,N) in below
-  fi
-
-{
-set to_ht(maybe_KTP P,int N) = maybe_KTP:
-    if N < 0 then return P fi;
-    case P
-    | timed_out: timed_out()
-    | done(r): done(to_ht(r,N))
-    esac
-}
-
-{
 { possibly should make height < 0 return full deform? }
-set deform_to_height_hash = ((ParamPol P, int height) -> KTypePol):
+{
+set deform_to_height_hash = ((ParamPol P, int HT) -> KTypePol):
 ( let !empty_K=null_K_module(P.real_form), !empty=null_module(P)
   then output = empty_K, def = empty
   in
@@ -38,7 +23,7 @@ set deform_to_height_hash = ((ParamPol P, int height) -> KTypePol):
     od.##
 ; while >#P
   do set (def,P) :=
-        (let p=first_param(P) in block_deform(p,P next P:=empty,height))
+        (let p=first_param(P) in block_deform(p,P next P:=empty,HT))
   ;  let kt = for c@q in def if  =nu(q) do (c,q.K_type) fi od
      ,   pp = for c@q in def if !=nu(q) do (c,q) fi od
   in output := (output next output:=empty_K) + kt; P := (P next P:=empty) + pp

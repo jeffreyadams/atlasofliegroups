@@ -124,6 +124,11 @@ set to_ht(maybe_KTP P,int N) = maybe_KTP:
     | done(r): done(to_ht(r,N))
     esac
 
+set to_ht (int N) = (ParamPol->ParamPol): (ParamPol P):
+  if N < 0 then P
+  else let (below,)=height_split(P,N) in below
+  fi
+
 {Each KL_sum_at_s(Param) will be hashed only to some maximum height; full KL_sum_at_s is hashed by library}
 set_type
 [KL_sum_hash_table =
@@ -1975,24 +1980,24 @@ set u_predictor(Param p, int HT) = int:
 					      " of ",N,": ",q)
 					 fi
 			       then start_def = elapsed_ms()
-	    	 	       then Q = deformedHash.entry(q,HT)
+	    	 	       then Q = {deformedHash.entry(q,HT)
 			       then RT = elapsed_ms() - start_def
 			       in if predictor_verbose
 				  then prints("chosen random time ",
 					       print_time_string(RT))
 				  fi;
 				  {max((N-1)*(RT+1), N*interrupt_base_time\2)}
-				  (N-1)*(RT+1)
-			       {deformedHash.maybe_entry(q,HT,2*WSF)}
-		  	       {in case Q
-		     	       	  | timed_out: max(2*N*WSF, interrupt_base_time)
+				  (N-1)*(RT+1)}
+			       deformedHash.maybe_entry(q,HT,100*interrupt_base_time)
+		  	       in case Q
+		     	       	  | timed_out: 200*N*interrupt_base_time
 		 	  	  | done(r): let j0 = deformedHash.lookup(q)
 				    	     in if predictor_verbose
 					     	then prints("chosen random time ",
 						     print_time_string(deform_times[j0]))
 						fi;
 						max(N*deform_times[j0], interrupt_base_time)
-		     		  esac}
+		     		  esac
 			   else (N-n)*(max(times)+1) {N-n deforms to compute, estimated time}
 			   	+ 2*n*interrupt_base_time {n lookups}
 			   fi

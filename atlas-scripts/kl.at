@@ -211,10 +211,12 @@ set low_diff_char(Param p, int HT) = bool: {false {ALWAYS use KL_sum_at_s}}
     ans
 
 set low_KL_char(Param p, int HT) = bool:
+    p.x.number > diff_KGB_char_frac*#KGB(p.real_form) and
     KL_predictor_up_to_ht(p,HT) < KL_predictor(p)
 
 {this is true MORE often, making to_ht more common}
 set strict_low_KL_char(Param p, int HT) = bool:
+    p.x.number > diff_KGB_char_frac*#KGB(p.real_form) and
     KL_predictor_up_to_ht(p,HT) < strict_factor*KL_predictor(p)
 
 {Switching to HT -LAM 1/26 didn't work well; adding the small LAM condition is meant to alleviate??}
@@ -246,11 +248,10 @@ set low_test(Param p, int N) = bool:
 set strict_low_flag = true
 
 set strict_low(Param p, int HT) = bool:
-    if HT < 0 then return false fi;
-    if not strict_low_flag
+    if HT < 0 then return false
+    elif not strict_low_flag
     then return true
-    fi;
-    if prefer_diff_flag
+    elif prefer_diff_flag
     then {strict_}low_diff(p,HT)
     elif prefer_gamma_flag
     then strict_low_gamma(p,HT)

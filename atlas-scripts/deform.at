@@ -160,9 +160,10 @@ set deformation_terms_by_dual_scr (Param p,int HT) = ParamPol:
 ;  if HT < 0 then return deformation_terms_by_dual_scr(p) fi
 ;  assert(@:p.height<=HT,"height bound kills term to deform")
 {;  let (block,KL_mat,P_polys) = partial_KL_block(p)}
-;  let (full_block,start,dual_KL_mat,polys) = dual_KL_block(p)
+;  let (full_block,start,dual_KL_mat,polys) = dual_KL_block(p), h0 = height(p)
    then subset = [int]:
-     for q@i in full_block if q.height<=HT do i fi od
+     for q@i in full_block if (q.height<=HT) and (q.height)>=h0 do i fi od
+     {should only select i in partial_block(p)}
    , ev = for P in polys do eval(P,minus_1) od
    , Q_col = vec:[] { vector variable to be assigned below }
    then Q_mat = mat: { transpose, select rows/cols from |subset|, set $q:=-1$ }
@@ -173,6 +174,9 @@ set deformation_terms_by_dual_scr (Param p,int HT) = ParamPol:
    , block = [Param]: for i in subset do full_block[i] od
    then signed_P_mat = { $(-1)^{l(x,y)}P_{x,y}[q:=-1]$ for $x,y$ in |block| }
       inverse(Q_mat) {THIS IS A POSSIBLE KILLER! Q_mat can be very large}
+      {if p is large height (discrete series) then the height bound in subset
+      is useless; subset is almost all of full_block}
+      {large height case: partial_block(p) small}
    , lp_parity=p.length%2 { parity of length that is excluded below }
    then solution = vec:
       { compute more efficiently: |signed_P_mat*diagonal(odd_levels)*Q_col|,
@@ -186,7 +190,7 @@ in null_module(p) +
    for q@i in block
    do { twist (1-s)*solution according to orientation numbers of its terms }
      ( orientation_nr_term(on_p,q)*solution[i]*one_minus_s , q )
-   od
+   od {will be nonzero only for q in partial_block(p)}
 )
 
 { go to next reducibility point (move even if at reducibility point) }
