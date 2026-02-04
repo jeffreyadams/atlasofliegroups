@@ -154,8 +154,9 @@ set make_KL_sum_hash_table() = KL_sum_hash_table:
        let N = paramhash.size()
        then n = paramhash.match(p)
        in if n=N or max_hts[n] < HT
-       	  then let PP = KL_sum_at_s_to_height(p,HT)
-	       in if n=N
+       	  then let start = elapsed_ms(), PP = KL_sum_at_s_to_height(p,HT)
+	       in charTime+:= elapsed_ms() - start; char_counter.use();
+	       	  if n=N
 	       	  then max_hts #:=HT;
 	       	  KL_sums #:=PP
 	     	  else max_hts[n]:=HT;
@@ -167,10 +168,11 @@ set make_KL_sum_hash_table() = KL_sum_hash_table:
        let N = paramhash.size()
        then n = paramhash.lookup(p)
        in if n<0 or max_hts[n] < HT
-       	  then let mPP = KL_sum_at_s_to_height(p,HT,time)
+       	  then let start = elapsed_ms(), mPP = KL_sum_at_s_to_height(p,HT,time)
 	       in case mPP
 	       	  | timed_out_PP: -1
-	     	  | done_PP(PP): if n < 0
+	     	  | done_PP(PP): charTime+:= elapsed_ms() - start; char_counter.use();
+			 if n < 0
 	       		 then max_hts #:=HT;
 			      KL_sums #:=PP;
 			      n:=N

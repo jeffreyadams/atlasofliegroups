@@ -75,25 +75,31 @@ set KLrate = int:
     in m^2\time
 
 {predicted time in milliseconds to compute KL in block of p}
-set KL_predictor_full(Param p) = int: (#full_block(p))^2\KLrate
+set KL_predictor_full(Param p) = int: (#full_block(p))^2\KLrate next prints("we're in KL_pred_full at ",p)
+{maybe better? use number of extremal pairs in full block??
+ROUGHLY: (x,y) so tau(x) not contained?? SO: how many pairs of [bool] order
+rank have this. This is some function of rank?}
 
 {this one is relevant to KL_sum_at_s_to_height, I think?}
 {predicted time in milliseconds to compute KL to height HT in block of p}
-set KL_predictor_up_to_ht(Param p, int HT) = int: (#full_block_to_ht(p,HT))^2\KLrate
+set KL_predictor_up_to_ht(Param p, int HT) = int: (#full_block_to_ht(p,HT))^2\KLrate next prints("we're in KL_pred_up at ",p)
 
 {relevant to KL_sum_at_s for p}
-set KL_predictor(Param p) = int: (#partial_block(p))^2\KLrate
+set KL_predictor(Param p) = int: (#partial_block(p))^2\KLrate next prints("we're in KL_pred at ",p)
 
 set low_count= int:0
+set low_time = int:0
 {for predicting whether to_ht or is_unitary is faster}
 set low(Param p) = (int,int,int):
-    let ic = p.inner_class, theta = p.x.involution, gamma = p.infinitesimal_character
+    let start = elapsed_ms(), ic = p.inner_class, theta = p.x.involution, gamma = p.infinitesimal_character
     then LAM = (dominant(ic,(1+theta)*gamma)*ic.two_rho_check)\2 {this is
     height(p); size of lambda}
     then NU = (dominant(ic, (1-theta)*gamma) *ic.two_rho_check)\2 {size of nu}
     then GAM = (p.infinitesimal_character* ic.two_rho_check)\1 {this is max height at infl char}
     	 {is_unitary_to_ht(p,GAM) means unitary}
-    in (LAM,NU,GAM) next low_count+:=1
+    in (LAM,NU,GAM) next low_count+:=1; low_time +:= elapsed_ms() - start
+
+set GAM(Param p) = int: (p.infinitesimal_character*p.inner_class.two_rho_check)\1
 
 set low_hash_size = int:0
 {should add a real_form hash, separate stuff for each real form. This is OK as long
@@ -169,48 +175,69 @@ set strict_low_nu(Param p, int HT) = bool:
 {If N>= GAM, then to_ht gives answer to unitarity.}
 set low_gamma(Param p, int HT) = bool:
     if HT < 0 then return  false fi;
-    let (,,GAM) = low(p)
-    in (GAM*gamma_frac) > HT
+    {let (,,GAM) = low(p)
+    in} (GAM(p)*gamma_frac) > HT
 
 set strict_low_gamma(Param p, int N) = bool:
     if N < 0 then return  false fi;
-    let (,,GAM) = low(p)
-    in (strict_factor*GAM*gamma_frac > N)
+    {let (,,GAM) = low(p)
+    in} (strict_factor*GAM(p)*gamma_frac > N)
 
 {Note HT must be in [LAM,GAM) This condition says it's near the bottom of that range: small HT.}
 set low_diff(Param p, int HT) = bool:
-    if HT < 0 then return  false fi;
-    let (LAM, , GAM) = low(p)
-    in (LAM < lam_frac*GAM) and (HT < diff_frac*GAM)
+    if (HT < 0) then return  false fi;
+    let LAM = p.height, GAM = GAM(p) {(LAM, , GAM) = low(p)}
+    in (LAM < lam_frac*GAM) and (HT < diff_char_frac*GAM)
     {(LAM < lam_frac*GAM) and ((GAM - LAM)*diff_frac) > HT {(HT-LAM)}}
 
 set strict_low_diff(Param p, int HT) = bool:
     if HT < 0 then return  false fi;
-    let (LAM, , GAM) = low(p)
+    let LAM = p.height, GAM = GAM(p)  {(LAM, ,GAM) = low(p)}
     in (LAM < lam_frac*GAM) and HT < diff_frac*strict_factor*GAM
     {(strict_factor*(GAM - LAM)*diff_frac) > HT} {(HT-LAM))}
 
-set low_diff_char_true_count = int:0
-set low_diff_char_use_count = int:0
+set KGB_hash = (RealForm -> [KGBElt]):
+    let rf_hash = make_RealForm_hash()
+    then data = [[KGBElt]]: [] {one list for each real form in rf_hash}
+    in (RealForm -> [KGBElt]): (RealForm rf) [KGBElt]:
+       let N = rf_hash.size()
+       then n = rf_hash.match(rf)
+       in if n=N
+       	  then data#:= KGB(rf)
+	  fi;
+	  data[n]
 
-set trueDiffCharHash = make_Param_hash()
-set falseDiffCharHash = make_Param_hash()
+set KGB(RealForm rf) = [KGBElt]: KGB_hash(rf)
+set KGB(RealForm rf, int n) = KGBElt:
+    let list = KGB(rf)
+    in if n>= #list do error("Inexistent KGB element "+to_string(n)) fi;
+       list[n]
+
+{set low_diff_char_true_count = int:0
+set low_diff_char_use_count = int:0}
+set low_diff_char_time = int:0
+
+{set trueDiffCharHash = make_Param_hash()
+set falseDiffCharHash = make_Param_hash()}
+
 
 {if true, allow KL_sum_at_s_to_height}
 set low_diff_char(Param p, int HT) = bool: {false {ALWAYS use KL_sum_at_s}}
-    low_diff_char_use_count +:=1;
-    if HT < 0 then return  false fi;
-    let ({LAM}, , GAM) = low(p)
+    if (HT < 0) then return  false fi;
+    {low_diff_char_use_count +:=1;}
+    let start = elapsed_ms(){, ({LAM}, , GAM) = low(p)}
     then {ans = {(LAM < lam_frac*GAM) and} (((GAM - LAM)*diff_char_frac) > HT {HT - LAM)})}
     	 ans = p.x.number > diff_KGB_char_frac*#KGB(p.real_form)
-	       and (HT < diff_char_frac*GAM) {forces LAM < diff_char_frac*GAM}
-    in if ans
-       then low_diff_char_true_count +:=1; trueDiffCharHash.match(p)
-       else falseDiffCharHash.match(p)
+	       and (HT < diff_char_frac*GAM(p)) {forces LAM < diff_char_frac*GAM}
+    in ans next low_diff_char_time +:= elapsed_ms() - start
+    {if ans
+       then low_diff_char_true_count +:=1{; trueDiffCharHash.match(p)}
+       {else falseDiffCharHash.match(p)}
        fi;
-    ans
+    ans next low_diff_char_time +:= elapsed_ms() - start}
 
 set low_KL_char(Param p, int HT) = bool:
+    prints("we're in low_KL_char at ",p);
     p.x.number > diff_KGB_char_frac*#KGB(p.real_form) and
     KL_predictor_up_to_ht(p,HT) < KL_predictor(p)
 
@@ -224,8 +251,8 @@ set strict_low_KL_char(Param p, int HT) = bool:
 {bad experiences Jan 26 suggested this version}
 set low_lam(Param p, int HT) = bool:
     if HT < 0 then return  false fi;
-    let (LAM, , GAM) = low(p)
-    in  (LAM < lam_frac*GAM)
+    {let (LAM, , GAM) = low(p)
+    in}  (p.height < lam_frac*GAM(p))
 
 set prefer_KL_flag = false
 
@@ -262,8 +289,8 @@ set strict_low(Param p, int HT) = bool:
 
 {whether to replace full_deform_to_ht by full_deform}
 set def_low(Param p,int HT) = bool:
-    let (LAM, , GAM) = low(p)
-    in strict_low(p,HT) and LAM < lam_frac*GAM{2*LAM <= GAM}
+    {let (LAM, , GAM) = low(p)
+    in} strict_low(p,HT) and p.height < lam_frac*GAM(p){2*LAM <= GAM}
 
 set low(Param p, int HT) = bool:
     if prefer_diff_flag
@@ -288,12 +315,16 @@ set low_char(Param p, int HT) = bool:
 {KL_sum_to_height never saves data, so in large computations this is just better}
 set character_formula_to_height(Param p, int HT) = ParamPol:
     if HT.< then return character_formula(p) fi;
+    let (below,) = height_split(character_formula(p),HT)
+    in below  {again this counts and records time}
+{
     if not low_char(p,HT)
     then let (below,) = height_split(character_formula(p),HT)
     	 in return below  {again this counts and records time}
     else let start = elapsed_ms()
     	 in s_to_1(KL_sum_at_s_to_height(p,HT)) next charTimeToHt+:= elapsed_ms() - start; char_counter_to_ht.use()
     fi
+}
 
 set character_formula_to_height (ParamPol P, int HT) = ParamPol:
     map(((Param->ParamPol): (Param p): character_formula_to_height(p, HT)), P)
