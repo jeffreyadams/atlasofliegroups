@@ -47,6 +47,43 @@ set character_formula (Param p) = ParamPol:
 
 set character_formula (ParamPol P) = ParamPol: map(character_formula@Param,P)
 
+{ Block of p, including zero parameters. Relevant because that's where
+KL calculations need to happen }
+set full_block(Param p) = [Param]:
+    let tworho = two_rho(p.real_form)
+    then q0 = parameter(p.x,p.lambda +tworho, p.nu+tworho)
+    in for q in block_of(q0)
+       do parameter(q.x,q.lambda-tworho, q.nu-tworho)
+       od
+
+{in is_unitary_to_ht(HT), KL calculations live in this subset of
+full_block}
+set full_block_to_ht(Param p, int HT) = [Param]:
+    for q in full_block(p)
+    do if height(q) <= HT
+       then q
+       else break
+       fi
+    od
+
+{need to compute on loading; if it's repeated,
+the second invocation will be too fast}
+set KLrate = int:
+    let start = elapsed_ms()
+    then  (,m,,) = KL_block(E6_s.trivial) {size of E6_s block above trivial}
+    then time = elapsed_ms() - start
+    in m^2\time
+
+{predicted time in milliseconds to compute KL in block of p}
+set KL_predictor_full(Param p) = int: (#full_block(p))^2\KLrate
+
+{this one is relevant to KL_sum_at_s_to_height, I think?}
+{predicted time in milliseconds to compute KL to height HT in block of p}
+set KL_predictor_up_to_ht(Param p, int HT) = int: (#full_block_to_ht(p,HT))^2\KLrate
+
+{relevant to KL_sum_at_s for p}
+set KL_predictor(Param p) = int: (#partial_block(p))^2\KLrate
+
 set low_count= int:0
 {for predicting whether to_ht or is_unitary is faster}
 set low(Param p) = (int,int,int):
@@ -92,13 +129,16 @@ set gamma_frac = 1/4
 {if target height < (GAM - LAM)*diff_frac, then figure
 is_unitary_to_ht could be faster. So largest reasonable target height
 is (GAM-LAM)*diff_frac. INCREASE to use to_ht more often}
-set diff_frac = rat: 1/4
+set diff_frac = rat: 1/8
 
-{if target height < (GAM - LAM)*diff_frac, then figure
+{if target height < GAM*diff_char_frac, then figure
+{formerly (GAM - LAM)*diff_frac}
 is_unitary_to_ht could be faster. So largest reasonable target height
 is (GAM-LAM)*diff_frac. INCREASE to use to_ht more often}
-set diff_char_frac = rat: 1/10 {1/10} {1/8 and 1/12 used a bit more memory and time in
+set diff_char_frac = rat: {1/6} 1/10 {1/8 and 1/12 used a bit more memory and time in
     		     	       spherical E7_s}
+
+set diff_KGB_char_frac = rat: 9/10
 
 {if LAM < lam_frac*GAM (big nu), don't try to_ht }
 set lam_frac = rat: 1/6 {2/3}
@@ -107,8 +147,8 @@ set lam_frac = rat: 1/6 {2/3}
     formula; increase to truncate LESS often}
 set strict_factor = rat: 2/1
 
-{strict versions mean harder be false: they are used to prevent the
-code from EVER using to_ht, they should be false RARELY. Otherwise the
+{strict versions mean harder be false/more often true: they are used to prevent the
+code from using to_ht so much. Otherwise the
 caller of is_unitary_to_ht can make a local decision about whether to
 use it.}
 
@@ -120,10 +160,10 @@ set low_nu(Param p, int N) = bool:
     let (,NU,) = low(p)
     in (N >= 0) and (NU > N*nu_frac)
 
-set strict_low_nu(Param p, int N) = bool:
-    if N < 0 then return  false fi;
+set strict_low_nu(Param p, int HT) = bool:
+    if HT < 0 then return  false fi;
     let (,NU,) = low(p)
-    in (N >= 0) and (strict_factor*NU > N*nu_frac)
+    in (strict_factor*NU > HT*nu_frac)
 
 {true means GAM big compared to HT, so is_unitary_to_ht could be better}
 {If N>= GAM, then to_ht gives answer to unitarity.}
@@ -141,23 +181,42 @@ set strict_low_gamma(Param p, int N) = bool:
 set low_diff(Param p, int HT) = bool:
     if HT < 0 then return  false fi;
     let (LAM, , GAM) = low(p)
-    in (LAM < lam_frac*GAM) and (LAM < lam_frac*GAM) and ((GAM - LAM)*diff_frac) > HT {(HT-LAM))}
+    in (LAM < lam_frac*GAM) and (HT < diff_frac*GAM)
+    {(LAM < lam_frac*GAM) and ((GAM - LAM)*diff_frac) > HT {(HT-LAM)}}
 
 set strict_low_diff(Param p, int HT) = bool:
     if HT < 0 then return  false fi;
     let (LAM, , GAM) = low(p)
-    in (LAM < lam_frac*GAM) and (strict_factor*(GAM - LAM)*diff_frac) > HT {(HT-LAM))}
+    in (LAM < lam_frac*GAM) and HT < diff_frac*strict_factor*GAM
+    {(strict_factor*(GAM - LAM)*diff_frac) > HT} {(HT-LAM))}
 
 set low_diff_char_true_count = int:0
 set low_diff_char_use_count = int:0
 
-set low_diff_char(Param p, int HT) = bool:
+set trueDiffCharHash = make_Param_hash()
+set falseDiffCharHash = make_Param_hash()
+
+{if true, allow KL_sum_at_s_to_height}
+set low_diff_char(Param p, int HT) = bool: {false {ALWAYS use KL_sum_at_s}}
     low_diff_char_use_count +:=1;
     if HT < 0 then return  false fi;
-    let (LAM, , GAM) = low(p)
-    then ans = {(LAM < lam_frac*GAM) and} (((GAM - LAM)*diff_char_frac) > HT {HT - LAM)})
-    in if ans then low_diff_char_true_count +:=1 fi;
+    let ({LAM}, , GAM) = low(p)
+    then {ans = {(LAM < lam_frac*GAM) and} (((GAM - LAM)*diff_char_frac) > HT {HT - LAM)})}
+    	 ans = p.x.number > diff_KGB_char_frac*#KGB(p.real_form)
+	       and (HT < diff_char_frac*GAM) {forces LAM < diff_char_frac*GAM}
+    in if ans
+       then low_diff_char_true_count +:=1; trueDiffCharHash.match(p)
+       else falseDiffCharHash.match(p)
+       fi;
     ans
+
+set low_KL_char(Param p, int HT) = bool:
+    KL_predictor_up_to_ht(p,HT) < KL_predictor(p)
+
+{this is true MORE often, making to_ht more common}
+set strict_low_KL_char(Param p, int HT) = bool:
+    KL_predictor_up_to_ht(p,HT) < strict_factor*KL_predictor(p)
+
 {Switching to HT -LAM 1/26 didn't work well; adding the small LAM condition is meant to alleviate??}
 
 {bad experiences Jan 26 suggested this version}
@@ -165,6 +224,10 @@ set low_lam(Param p, int HT) = bool:
     if HT < 0 then return  false fi;
     let (LAM, , GAM) = low(p)
     in  (LAM < lam_frac*GAM)
+
+set prefer_KL_flag = false
+
+set prefer_strict_KL_flag = false
 
 set prefer_diff_flag = true {true used to give true for parameter(E7_s,773,[0,1,1,1,1,1,0]/1,
     [-3,0,0,0,6,-6,0]/2) and HT 327, leading to a very slow is_unitary_to_ht}
@@ -202,7 +265,6 @@ set def_low(Param p,int HT) = bool:
     in strict_low(p,HT) and LAM < lam_frac*GAM{2*LAM <= GAM}
 
 set low(Param p, int HT) = bool:
-    if HT < 0 then return  false fi;
     if prefer_diff_flag
     then low_diff(p,HT)
     elif prefer_gamma_flag
@@ -212,13 +274,20 @@ set low(Param p, int HT) = bool:
     else low_nu(p,HT)
     fi
 
+set low_char(Param p, int HT) = bool:
+    if prefer_strict_KL_flag
+    then strict_low_KL_char(p,HT)
+    elif prefer_KL_flag
+    then low_KL_char(p,HT)
+    elif prefer_diff_flag
+    then low_diff_char(p,HT)
+    else strict_low_KL_char(p,HT) {more often true; lots of to_ht}
+    fi
+
 {KL_sum_to_height never saves data, so in large computations this is just better}
 set character_formula_to_height(Param p, int HT) = ParamPol:
-{    if HT.< then return character_formula(p) fi; 
-    let (below,) = height_split(character_formula(p),HT)
-    in return below}
     if HT.< then return character_formula(p) fi;
-    if not low_diff_char(p,HT)
+    if not low_char(p,HT)
     then let (below,) = height_split(character_formula(p),HT)
     	 in return below  {again this counts and records time}
     else let start = elapsed_ms()
@@ -239,7 +308,7 @@ set composition_series(ParamPol P) = ParamPol:
 
 set composition_series (Param p) = ParamPol: composition_series(ParamPol: p)
 
-set composition_series_to_ht(ParamPol P, int HT) = ParamPol:
+set composition_series_to_height(ParamPol P, int HT) = ParamPol:
   if HT.< then return composition_series(P) fi;
   let (PHT,) = height_split(P,HT)
   in null_module(P)+
@@ -249,8 +318,7 @@ set composition_series_to_ht(ParamPol P, int HT) = ParamPol:
      ; term
   od
 
-set composition_series_to_ht (Param p,int H) = ParamPol: composition_series_to_ht(ParamPol: p, H)
-
+set composition_series_to_height (Param p,int H) = ParamPol: composition_series_to_height(ParamPol: p, H)
 {---------------------------}
 {same using dual}
 

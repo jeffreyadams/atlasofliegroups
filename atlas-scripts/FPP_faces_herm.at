@@ -2731,6 +2731,7 @@ set is_unitary_test_big_SIMPLE_interrupted(Param p, int time) = int:
 set old_testing_flag = false
 
 set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst_old(Param p, int HT) = bool:
+   if (HT>=0) and (HT < height(p)) then return true fi;
   {if (stat_holder:=status(p,HT)).!= then return stat_holder > 0 fi;} {#13} {nothing in Spin(4,4)}
   if old_testing_flag then return is_unitary_to_ht_big_SIMPLE(p,HT) fi;
   if (not is_hermitian(p)) then return false fi;
@@ -2813,6 +2814,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst_old(Param p, int HT) = bool:
 
 
 set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
+   if (HT>=0) and (HT < height(p)) then return true fi;
   {if (stat_holder:=status(p,HT)).!= then return stat_holder > 0 fi;} {#13} {nothing in Spin(4,4)}
   if old_testing_flag then return is_unitary_to_ht_big_SIMPLE(p,HT) fi;
   if (not is_hermitian(p)) then return false fi;
@@ -2973,6 +2975,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
       fi}
 
 set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
+  if (HT>=0) and (HT < height(p)) then return true fi;
   if (stat_holder:=status(p,HT)).!= then return stat_holder > 0 fi;{C}
   {removing saves 100/7200 in Spin(4,4); but keeping helps in higher rank.}
   if old_testing_flag then return is_unitary_to_ht_big_SIMPLE(p,HT) fi;
@@ -3175,6 +3178,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
 
 set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
   if (stat_holder:=status(p,HTs~[0])).!= then return stat_holder > 0 fi; {D}
+  HTs:= for HT in HTs do if HT>=height(p) do HT fi od.##;
   {remove  status saves 200/7200 Spin(4,4), but requires repeating tests in Spin(5,5).
   Better kept: avoids 17 negative is_unitary retests in Spin(6,6), savve 2 mb/300, 1.8 sec/360}
   if old_testing_flag then return is_unitary_to_hts{_big_SIMPLE}(p,HTs) fi; {should reorder to use big_simple}

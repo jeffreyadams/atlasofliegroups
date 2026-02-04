@@ -185,12 +185,12 @@ set make_KL_sum_hash_table() = KL_sum_hash_table:
 	else max_hts[n]
 	fi
    , ((Param,int)->ParamPol): {entry} (Param p, int HT):
-     KL_sums[add_param(p,HT)]
+     to_ht(HT)(KL_sums[add_param(p,HT)])
    , ((Param,int,int)->maybe_PP): {maybe_entry} (Param p, int HT, int time):
      let n = maybe_add_param(p,HT,time)
      in if n < 0
      	then timed_out_PP()
-     	else KL_sums[n].done_PP
+     	else to_ht(HT)(KL_sums[n]).done_PP
 	fi
    , (->Param_hash): {paramhash} @:paramhash
    , (->vec): {max_hts} @:max_hts
@@ -202,7 +202,7 @@ set KLsumhash = make_KL_sum_hash_table()
 
 set KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol:
     if HT < 0 then return KL_sum_at_s(p) fi;
-    if low_diff_char(p,HT)
+    if low_char(p,HT)
     then KLsumhash.entry(p,HT)
     else let (below,) = height_split(KL_sum_at_s(p),HT), middle = elapsed_ms()
     	 in below
@@ -218,7 +218,7 @@ set KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol:
 }
   {let P = KL_sum_at_s_to_height(p,N) in}
 {
-  if low_diff_char(p,HT)
+  if low_char(p,HT)
   then KL_sum_at_s_to_height(p,HT)
   else let (below,) = height_split(KL_sum_at_s(p),HT)
        in below
@@ -227,7 +227,7 @@ set KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol:
 
 set KL_sum_at_s_to_ht_inter(int HT) = (Param p,int time) maybe_PP:
     if  HT < 0 then return KL_sum_at_s(p).done_PP fi;
-    if low_diff_char(p,HT)
+    if low_char(p,HT)
     then KLsumhash.maybe_entry(p,HT,time)
     else let (below,) = height_split(KL_sum_at_s(p),HT)
     	 in below.done_PP
@@ -257,7 +257,7 @@ set twisted_KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol:
 
 set character_formula_to_ht(Param p, int HT) = ParamPol:
     if HT.< then return character_formula(p) fi; 
-    if not low_diff_char(p,HT)
+    if not low_char(p,HT)
     then let (below,) = height_split(character_formula(p),HT)
     	 in return below  {again this counts and records time}
     else let start = elapsed_ms()
@@ -266,6 +266,18 @@ set character_formula_to_ht(Param p, int HT) = ParamPol:
 
 set character_formula_to_ht (ParamPol P, int HT) = ParamPol:
     map(((Param->ParamPol): (Param p): character_formula_to_ht(p, HT)), P)
+
+set composition_series_to_ht(ParamPol P, int HT) = ParamPol:
+  if HT.< then return composition_series(P) fi;
+  let (PHT,) = height_split(P,HT)
+  in null_module(P)+
+  while !=PHT { non null module }
+  do let (coef,p):term=first_term(PHT)
+     in PHT -:= coef*character_formula_to_ht(p,HT)
+     ; term
+  od
+
+set composition_series_to_ht (Param p,int H) = ParamPol: composition_series_to_ht(ParamPol: p, H)
 
 {take a KTypePol _apparently_ attached to G and make it _actually_ attached
 to G. Need this to use looked-up deformations.}

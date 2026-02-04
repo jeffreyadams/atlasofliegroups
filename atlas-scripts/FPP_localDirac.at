@@ -246,19 +246,6 @@ set approxDiffA(Param p) = int:
 {meant to store bottom layer K-types}
 set bl_KHash = make_KType_hash()
 
-{ Block of p, including zero parameters. Relevant because that's where
-KL calculations need to happen }
-set full_block(Param p) = [Param]:
-let G = p.real_form
-in for q in block_of(translate_param_by(p, G.two_rho))
-   do translate_param_by(q, -G.two_rho)
-   od
-{in is_unitary_to_ht(N), KL calculations live in this subset of
-full_block}
-set full_block_to_ht(Param p, int N) = [Param]:
-    for q in full_block(p)
-    do if height(q) <= N then [q] else [] fi od.##
-
 set ht_saving(Param p, int N) = rat:
     #full_block_to_ht(p,N)/#full_block(p)
 
@@ -497,8 +484,12 @@ set wiggle_flag0 = false
 {set this to true to use wiggle tests in in local_test_hash (end)}
 set final_wiggle_flag = false
 
-{set this to true to use wiggle tests in local_testK_hash (beginning and middle)}
-set wiggle_flag1 = false
+{set this to true to use wiggle tests in local_testK_hash (beginning
+and middle), just doing lookup; since that's fast, safe to default to true?}
+set wiggle_flag1 = true
+
+{set this also to true to do unitarity tests if lookup fails}
+set wiggle_flag2 = false
 
 {if true, just do first LFDKH pass on red_count equiv classes: more is_unitary, but less character formula}
 set dry_flag = false
@@ -593,7 +584,8 @@ set local_testK_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 								face_bary(Lvd,sv)), HT {- 1}))
 						      od.##
 					 in if any(for q in pdef1
-						   do height(q) > H0 and not tester(q)
+						   do @bool: height(q) > H0 and (status(q,HT) <0)
+						      or (status(q,HT) = 0 and wiggle_flag2 and not tester(q))
 						   od)
 					    then newStatuses:= updateNUclassesB(newStatuses, gr, k);
 						 newStatuses[k] := "F"
@@ -655,7 +647,8 @@ set local_testK_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 								face_bary(Lvd,sv)), HT {- 1}))
 								  od.##
 						     in if any(for q in pdef1
-							       do height(q) > H0 and not tester(q)
+							       do @bool: height(q) > H0 and (status(q,HT) <0)
+						      		 or (wiggle_flag2 and status(q,HT) = 0 and not tester(q))
 							       od)
 							then newStatuses[K] := "F"
 							fi
@@ -808,7 +801,8 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 								face_bary(Lvd,sv)), HT {- 1}))
 						      od.##
 					 in if any(for q in pdef1
-						   do height(q) > H0 and not tester(q)
+						   do @bool: height(q) > H0 and (status(q,HT) <0)
+						      or (wiggle_flag2 and status(q,HT) = 0 and not tester(q))
 						   od)
 					    then newStatuses:= updateNUclassesB(newStatuses, gr, k);
 						 newStatuses[k] := "F"
@@ -876,7 +870,9 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 								face_bary(Lvd,sv)), HT {- 1}))
 								  od.##
 						     in if any(for q in pdef1
-							       do height(q) > H0 and not tester(q)
+							       do @bool: height(q) > H0 and (status(q,HT) <0)
+						      		or (status(q,HT) = 0 and wiggle_flag2 and
+								not tester(q))
 							       od)
 							then newStatuses[K] := "F"
 							fi
@@ -1201,7 +1197,7 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
     KTypePol_hash pol_hash, Param_hash Uhash, (Param -> bool) fancy_tester) = [[FaceVertsKHash]]:
     let newStatuses = for j:#eq do "?" od,  NumClasses = #eq, p0 = parameter(x,lambda,0*lambda)
     then hts = [int]: (for mu in monomials(branch_std(p0,HT)) do height(mu) od).sort_u
-    then ONE = min(edge_offset,#hts-1)
+    then ONE = min(edge_offset,#hts-1), H0 = height(parameter(x,lambda,0*lambda))
     then printInterval = int: {1} max(1,NumClasses\10), red_shift = if red_count_flag then 1 else 0 fi
     {Find all Param's in Uhash with (x,lambda). For each, compute corresponding Face.
      Use function known_unitaries from FPP_faces_herm
@@ -1248,8 +1244,6 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
 			    for str@i in newStatuses do if str[0] = "F" then [i] else [] fi od.##)
 		       fi
 		  fi
-
-
 		fi {KNU_flag}
 {next if possible label classes known to be nonunitary because they finalize or deform to nonunitary}
     then () = for k:NumClasses
@@ -1271,14 +1265,12 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
 						  do monomials(composition_series_to_ht(wiggle(CF,
 								face_bary(Lvd,sv)),HT))
 						  od.##
-				     in if any(for q in pdef1
-						   do height(q) > hts[0] and
-						      not is_unitary_to_hts_big_SIMPLE(q,hts[1:ONE+1])
-{which is_unitary_to_hts above???}
-						   od)
-					then newStatuses:= updateNUclassesB(newStatuses, gr, k);
-						 newStatuses[k] := "F"
-					fi {any q}
+		in if any(for q in pdef1 do @bool: height(q) > H0 and (status(q,HT) < 0)
+			      or (wiggle_flag2 and status(q,HT) = 0 and
+			      not is_unitary_to_hts_big_SIMPLE(q,hts[1:ONE+1]))
+					od)
+		   then newStatuses:= updateNUclassesB(newStatuses, gr, k); newStatuses[k] := "F"
+		   fi {any q}
 				fi {wiggle_flag0}
 		      then pCdef = monomials(pC)
 		      in if newStatuses[k] = "?" and not is_final(pC)
@@ -2108,7 +2100,9 @@ in  if test_verbose
 			 do monomials(composition_series(wiggle(CF,
 					face_bary(Lvd,sv))))
 			 od.##
-       in if any(for q in pdef1 do height(q) > H0 and not tester(q) od)
+       in if any(for q in pdef1 do (height(q) > H0) and (status(q,-1) <0)
+       	     	       	  	   or (status(q,-1) = 0 and not tester(q))
+				od)
 	  then newStatuses:= updateNUclassesB(newStatuses, gr, m)
 	  ;     newStatuses[m] := "F"
 	  fi {any q}

@@ -127,7 +127,11 @@ set deformation_terms_by_dual_scr (Param p) = ParamPol:
   , (full_block,start,dual_KL_mat,dual_polys) = dual_KL_block(p)
   {column j of dual_KL_mat gives multipliciticies of irr full_block[j]
    in Jantzen filts of various standard}
-  then pol_eval =  for P in P_polys do eval(P,minus_1) od
+  then subset = [int]: {parameters above p}
+       let j0 = first(for q in full_block do height(q)>=height(p) od)
+       in for q@i in full_block[j0:] do if find(block,q) >=0 do i fi od.##
+   {want to cut down to rows and columns in subset...}
+  then pol_eval =  for P in P_polys do eval(P,minus_1) od, Q_col = vec:[]
   , dual_pol_eval = for P in dual_polys do eval(P,minus_1) od
   , l_sg = for q in block do minus_1^length(q) od
   , to_full = (int->int):
