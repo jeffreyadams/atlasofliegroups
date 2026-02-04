@@ -75,17 +75,17 @@ set KLrate = int:
     in m^2\time
 
 {predicted time in milliseconds to compute KL in block of p}
-set KL_predictor_full(Param p) = int: (#full_block(p))^2\KLrate next prints("we're in KL_pred_full at ",p)
+set KL_predictor_full(Param p) = int: (#full_block(p))^2\KLrate {next prints("we're in KL_pred_full at ",p)}
 {maybe better? use number of extremal pairs in full block??
 ROUGHLY: (x,y) so tau(x) not contained?? SO: how many pairs of [bool] order
 rank have this. This is some function of rank?}
 
 {this one is relevant to KL_sum_at_s_to_height, I think?}
 {predicted time in milliseconds to compute KL to height HT in block of p}
-set KL_predictor_up_to_ht(Param p, int HT) = int: (#full_block_to_ht(p,HT))^2\KLrate next prints("we're in KL_pred_up at ",p)
+set KL_predictor_up_to_ht(Param p, int HT) = int: (#full_block_to_ht(p,HT))^2\KLrate {next prints("we're in KL_pred_up at ",p)}
 
 {relevant to KL_sum_at_s for p}
-set KL_predictor(Param p) = int: (#partial_block(p))^2\KLrate next prints("we're in KL_pred at ",p)
+set KL_predictor(Param p) = int: (#partial_block(p))^2\KLrate {next prints("we're in KL_pred at ",p)}
 
 set low_count= int:0
 set low_time = int:0
@@ -237,7 +237,7 @@ set low_diff_char(Param p, int HT) = bool: {false {ALWAYS use KL_sum_at_s}}
     ans next low_diff_char_time +:= elapsed_ms() - start}
 
 set low_KL_char(Param p, int HT) = bool:
-    prints("we're in low_KL_char at ",p);
+    {prints("we're in low_KL_char at ",p);}
     p.x.number > diff_KGB_char_frac*#KGB(p.real_form) and
     KL_predictor_up_to_ht(p,HT) < KL_predictor(p)
 
