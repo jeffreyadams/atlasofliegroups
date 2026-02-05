@@ -1488,15 +1488,17 @@ set is_finished_old(KGBElt x, ratvec lambda) = bool:
 
 {check whether a bit in xl_known is set}
 set is_finished(KGBElt x, ratvec lambda) = bool:
-    let start = elapsed_ms(), M = big_unitary_hash.xl_known(x.real_form)[x.number]
+    let start = elapsed_ms(), M = big_unitary_hash.x_known(x.real_form)
     {then () = prints("Mx_known = ",Mx_known,", Mx_partial = ",Mx_partial,", M = ",M)}
-    then answer = let pos = FPP_lam_table.position(x,lambda)
-		  in if pos.>=
-		     then is_member_bitset(pos,M)
-		     else false
-		     fi
-    in is_finished_time +:= elapsed_ms() - start;
-       answer
+    in if is_member_bitset(x.number,M)
+       then true
+       else let pos = FPP_lam_table.position(x,lambda)
+	    in if pos.>=
+	       then let Mx = big_unitary_hash.xl_known(x.real_form)[x.number]
+		    in is_member_bitset(pos,Mx)
+	       else false
+	       fi
+       fi next is_finished_time +:= elapsed_ms() - start
 
 {requires G is in big_unitary_hash and cumulative_sizes is set}
 set is_finished(RealForm G,[int] cumulative_sizes,int j)=bool:

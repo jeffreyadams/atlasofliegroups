@@ -2,6 +2,8 @@
 <count.at { for |char_counter| }
 <parameters.at { for |dual_inner_class| }
 <hash.at {for hashed low function}
+<polynomial.at {for eval}
+
 { KL stuff, including character formulas and composition series
   This implementation seeks to avoid using KL_block, and instead uses
   KL_sum_at_s, as this function stores earlier results
@@ -144,9 +146,9 @@ set diff_frac = rat: 1/8
 {formerly (GAM - LAM)*diff_frac}
 is_unitary_to_ht could be faster. So largest reasonable target height
 is (GAM-LAM)*diff_frac. INCREASE to use to_ht more often}
-set diff_char_frac = rat: {1/6} 1/10 {1/8 and 1/12 used a bit more memory and time in
+set diff_char_frac = rat: 1/5 {1/8 and 1/12 used a bit more memory and time in
     		     	       spherical E7_s}
-
+		{2/5/26: for Spin(6,6), .20 was faster than .15 or .25}
 set diff_KGB_char_frac = rat: 9/10
 
 {if LAM < lam_frac*GAM (big nu), don't try to_ht }
@@ -190,7 +192,7 @@ set strict_low_gamma(Param p, int N) = bool:
 set low_diff(Param p, int HT) = bool:
     if (HT < 0) then return  false fi;
     let LAM = p.height, GAM = GAM(p) {(LAM, , GAM) = low(p)}
-    in (LAM < lam_frac*GAM) and (HT < diff_char_frac*GAM)
+    in (LAM < lam_frac*GAM) and (HT < diff_frac*GAM)
     {(LAM < lam_frac*GAM) and ((GAM - LAM)*diff_frac) > HT {(HT-LAM)}}
 
 set strict_low_diff(Param p, int HT) = bool:
@@ -337,16 +339,16 @@ set character_formula_to_height (ParamPol P, int HT) = ParamPol:
 
 { composition series }
 
-set composition_series(ParamPol P) = ParamPol:
+set composition_series_old(ParamPol P) = ParamPol:
   null_module(P)+
   while !=P { non null module }
   do let (coef,p):term=first_term(P) in P -:= coef*character_formula(p); term
   od
 
-set composition_series (Param p) = ParamPol: composition_series(ParamPol: p)
+set composition_series_old (Param p) = ParamPol: composition_series_old(ParamPol: p)
 
-set composition_series_to_height(ParamPol P, int HT) = ParamPol:
-  if HT.< then return composition_series(P) fi;
+set composition_series_to_height_old(ParamPol P, int HT) = ParamPol:
+  if HT.< then return composition_series_old(P) fi;
   let (PHT,) = height_split(P,HT)
   in null_module(P)+
   while !=PHT { non null module }
@@ -355,7 +357,23 @@ set composition_series_to_height(ParamPol P, int HT) = ParamPol:
      ; term
   od
 
-set composition_series_to_height (Param p,int H) = ParamPol: composition_series_to_height(ParamPol: p, H)
+set composition_series_to_height_old (Param p,int HT) = ParamPol:
+    composition_series_to_height_old(ParamPol: p, HT)
+
+set composition_series(Param p) = ParamPol:
+    let (B,m,M,polys) = dual_KL_block(p)
+    in sum(p.real_form,for q@j in B do eval(polys[M[m,j]],1)*q od)
+
+set composition_series(ParamPol P) = ParamPol:
+    sum(P.real_form, for c@q in P do c*composition_series(q) od)
+
+set composition_series_to_height(Param p, int HT) = ParamPol:
+    if HT < 0 then return composition_series(p) fi;
+    let (B,m,M,polys) = dual_KL_block(p)
+    in sum(p.real_form, for q@j in B do if height(q) > HT then break fi; eval(polys[M[m,j]],1)*q od)
+
+set composition_series_to_height (ParamPol P,int HT) = ParamPol:
+    sum(P.real_form, for c@q in P do composition_series_to_height(q, HT) od)
 {---------------------------}
 {same using dual}
 

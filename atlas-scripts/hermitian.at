@@ -2767,7 +2767,7 @@ set strong_test (Param p)=bool:
 set branch_c_form_irreducible(Param p, int N) = KTypePol:
   branch(c_form_irreducible(p),N)
 
-
+{
 {table of is_unitary results, indexed by Param}
 {this type is not used}
 set_type 
@@ -2846,6 +2846,7 @@ set make_unitarity_bool_hash () = unitarity_bool_hash:
    , (int -> bool): {data_index} (int j): bool_data[j]
   )
 )
+}
 
 {smallest theta-stable Q from which p is good range cohomologically induced, and the inducing parameter}
 set good_Q(Param p) = (KGPElt, Param):
@@ -2886,6 +2887,7 @@ set wkgood_Q(Param p) = (KGPElt, Param):
     in (wkgoodQ,wkgoodpL)
 
 {these functions are not used; subsumed by big_unitary_hash}
+{
 set unitarity_hash = make_unitarity_bool_hash()
 
 set is_unitary_hash(Param p) = bool:
@@ -2912,3 +2914,4 @@ set do_you_know_is_unitary(Param p) = bool:
 
 set attest_is_unitary(Param p, bool answer) = void:
     unitarity_hash.attest(p,answer)
+}
