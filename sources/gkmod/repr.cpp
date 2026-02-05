@@ -11,6 +11,7 @@
 
 #include <memory> // for |std::unique_ptr|
 #include <cstdlib> // for |std::abs|
+#include <algorithm> // for |std::fill|
 #include <cassert>
 #include <map> // used in computing |reducibility_points|
 #include <iostream> // for progress reports and easier debugging
@@ -2154,15 +2155,19 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
     for (const BlockElt z : retained)
       odd_length.set_to(i++,block.length(z)%2!=0);
   }
+  const BitMap even_length = ~odd_length;
 
   matrix::Vector<Split_integer> coef(signed_P.n_rows()); // working array
   auto pos = result.size()-1; // distance from |it| to final element of |result|
   for (auto it=result.begin(); not result.at_end(it); ++it,--pos)
     if (not it->second.is_zero())
-    { coef.assign(pos,Split_integer(0));
-      // compute into |coef| the product of columns of |signed_P| with parity
-      // opposite to |pos| with corresponding entries of column |pos| of |Q_mat|
-      for (auto j : (odd_length.isMember(pos) ? ~odd_length : odd_length))
+    { // incorporate deformation terms from |*it|
+      std::fill(&coef[0],&coef[pos],Split_integer(0)); // clear range to be used
+    /* compute into |coef| the matrix product of extracted columns of |signed_P|
+       up to |pos| and with parity opposite it, with vector extracted from
+       column |pos| of |Q_mat| at the corresponding (row) positions  */
+      for (auto j : // values with opposite bit as |pos| in |odd_length|
+	     (odd_length.isMember(pos) ? even_length : odd_length))
       { if (j>=pos)
 	  break;
 	for (unsigned i=0; i<=j; ++i)

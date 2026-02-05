@@ -1221,6 +1221,8 @@ set is_posroot ((RootDatum,vec)(rd,):p) = bool:
   let ri=root_index(p) in ri>=0 and ri<nr_of_posroots(rd)
 set is_poscoroot ((RootDatum,vec)(rd,):p) = bool:
   let cri=coroot_index(p) in cri>=0 and cri<nr_of_posroots(rd)
+set is_negroot ((RootDatum,vec)(rd,):p) = bool:   root_index(p)<0
+set is_negcoroot ((RootDatum,vec)(rd,):p) = bool: coroot_index(p)<0
 
 set posroot_index ((RootDatum,vec)p) = int: { fold roots to positive }
   let i=root_index(p) in if i<0 then ~i else i fi
