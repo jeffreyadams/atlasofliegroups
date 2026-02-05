@@ -2087,6 +2087,7 @@ sl_list<std::pair<StandardRepr,int> > Rep_table::deformation_terms
 // a function trying to take advantage of a height bound; its milage varies
 sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
   (StandardRepr p, SR_poly& queue, level height_bound)
+// we assume that |queue| contains no terms of height exceeding |height_bound|
 {
   BlockElt start; block_modifier bm;
   const auto& block = lookup_full_block(p,start,bm); // also makes |p| dominant
@@ -2096,19 +2097,23 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
   kl::KL_table& kl_tab = dual_block.kl_tab(nullptr,1);
   // create KL table only minimally filled
 
-  // now fill remainder up to height; prepare for restriction to this subset
-  BitMap retained(block.size());
+  // record heights for the block, and extract block terms fro; |queue|
+  std::vector<level> heights(block.size());
+  level low_mark = height_bound+1; // lowest height of term in |queue|
   sl_list<SR_poly::value_type> result;
   // where that |value_type| is |std::pair<const StandardRepr,Split_integer>|
   for (BlockElt z=0; z<block.size(); ++z)
   { StandardRepr q = sr(block.representative(z),bm,gamma);
-    if (retained.set_to(z,q.height()<=height_bound))
+    heights[z] = q.height();
+    if (heights[z]<=height_bound)
     {
       auto it = queue.find(q);
       if (it==queue.end()) // then ensure a term for any |retained| is present
 	result.emplace_back(std::move(q),Split_integer(0));
       else
       {
+	if (q.height()<low_mark)
+	  low_mark = q.height();
 	result.emplace_back(std::move(q),it->second); // push |(q,queue[q])|
 	queue.erase(it); // and remove that term it from the |queue|
       }
@@ -2127,22 +2132,24 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
     value_at_minus_1.push_back(val);
   }
 
+  BitMap retained(block.size());
   const RankFlags singular = block.singular(bm,gamma); // singular simple coroots
   auto it = result.begin();
-  for (auto elt: retained) // don't increment |it| here
+  for (BlockElt z=0; z<block.size(); ++z)
+    if (heights[z]<=height_bound) // skip block element not recorded in |result|
     // now |it->first == sr(block.representative(elt),bm,gamma)|
-    if (block.survives(elt,singular))
-      ++it; // leave survivors at |gamma|
-    else
-    { retained.remove(elt);
-      assert(it->second.is_zero()); // |queue| cannot have non final parameter
-      result.erase(it); // drop term; |it| now points to next term
+    { if (retained.set_to(z,heights[z]>=low_mark and block.survives(z,singular)))
+	++it; // leave survivors at |gamma|
+      else
+      { assert(it->second.is_zero()); // |queue| cannot have non final parameter
+	result.erase(it); // drop term; |it| now points to next term
+      }
     }
   result.reverse(); // we shall need to traverse elements downwards in |block|
 
   // viewed from |block|, the |kl_tab| is lower triangular
   // build its transpose, restricted to |retained|, and evaluated at $q=-1$
-  int_Matrix Q_mat (result.size()); // initialise to identity matrix
+  int_Matrix Q_mat (retained.size()); // initialise to identity matrix
   unsigned int i=0,j;
   unsigned int const top=block.size()-1;
   for (auto it=retained.begin(); it(); ++it,++i)
@@ -2173,7 +2180,8 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
 	for (unsigned i=0; i<=j; ++i)
 	  coef[i] += signed_P(i,j)*Q_mat(j,pos);
       }
-      { auto our_orient = orientation_number(it->first);
+      { // now add contributions computed in |coef| to |result| beyond |it|
+	auto our_orient = orientation_number(it->first);
 	auto j = pos-1;
 	for (auto jt = std::next(it); not result.at_end(jt); ++jt,--j)
 	{ coef[j] *= it->second;
