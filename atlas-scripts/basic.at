@@ -313,7 +313,7 @@ set from_stops ([int] stops) = (int->int):
 
 {                               Integers                                }
 
-set abs (int k)= int: if <k then -k else k fi
+set abs (int k)= int: if k<0 then -k else k fi
 set sign (int k)= int: case k then -1 in 0 else 1 esac
 
 set is_odd  (int n) = bool: !=n%2
@@ -553,7 +553,7 @@ set * = (string,int->string): { repeat string; use recursive doubling }
     else let (q,r)=n\%2 then half=rep(s,q) in
       half + if =r then half else half+s fi
     fi
-  in (string s,int n) string: if <=n then "" else rep(s,n) fi
+  in (string s,int n) string: if n<=0 then "" else rep(s,n) fi
 set * (int n,string s) = string: s*n { allow factor to come first }
 
 set + (string s, int i)= string: s + int_format(i)
@@ -566,16 +566,16 @@ set plural (int n,string s) = string: n + if n=1 then s else s+"s" fi
 
 set concat = ##@[string]
 set join ([string] elts, string sep, string unit) = string:
-   if =#elts then unit
+   if #elts=0 then unit
    else elts[0] ## for elt in elts[1:] do sep ## elt od.##
    fi
 
 set l_adjust (int w, string s) = string:
-  let d=w-#s in if <=d then s else s##(" "*d) fi
+  let d=w-#s in if d<=0 then s else s##(" "*d) fi
 set r_adjust (int w, string s) = string:
-  let d=w-#s in if <=d then s else (" "*d)##s fi
+  let d=w-#s in if d<=0 then s else (" "*d)##s fi
 set c_adjust (int w, string s) = string:
-  let d=w-#s in if <=d then s else let h=d\2 in (" "*h) ## s ## (" "*(d-h)) fi
+  let d=w-#s in if d<=0 then s else let h=d\2 in (" "*h) ## s ## (" "*(d-h)) fi
 
 set width (int n) = int: #int_format(n)
 
@@ -869,7 +869,7 @@ set cokernel (mat M) = ^kernel(^M) { minimal matrix wose kernel is our image }
 
 set saturated_span (mat M) = bool: { whether columns span saturated sublattice }
   let inv_f = inv_fact(M) in
-  =#inv_f or inv_f~[0]=1 { all invariant factors are 1? test last one, if any }
+  #inv_f=0 or inv_f~[0]=1 { all invariant factors are 1? test last one, if any }
 
 { test all vectors in a list }
 
@@ -1218,14 +1218,14 @@ set is_root ((RootDatum,vec) (rd,):p) = bool:
 set is_coroot ((RootDatum,vec) (rd,):p) = bool:
   coroot_index(p)<nr_of_posroots(rd)
 set is_posroot ((RootDatum,vec)(rd,):p) = bool:
-  let ri=root_index(p) in >=ri and ri<nr_of_posroots(rd)
+  let ri=root_index(p) in ri>=0 and ri<nr_of_posroots(rd)
 set is_poscoroot ((RootDatum,vec)(rd,):p) = bool:
-  let cri=coroot_index(p) in >=cri and cri<nr_of_posroots(rd)
+  let cri=coroot_index(p) in cri>=0 and cri<nr_of_posroots(rd)
 
 set posroot_index ((RootDatum,vec)p) = int: { fold roots to positive }
-  let i=root_index(p) in if <i then ~i else i fi
+  let i=root_index(p) in if i<0 then ~i else i fi
 set poscoroot_index ((RootDatum,vec)p) = int: { fold coroots to positive }
-  let i=coroot_index(p) in if <i then ~i else i fi
+  let i=coroot_index(p) in if i<0 then ~i else i fi
 
 
 set Cartan_matrix (RootDatum rd,[int] simples) = mat: { NB strange convention }
@@ -1253,13 +1253,13 @@ in (rd.rank # for pos@i in map do coroot(rd,simples[pos])*v[i] od).sum
 
 { these functions assume the vec alpha or alphav is a root resp. coroot }
 set is_positive_root (RootDatum rd) = (vec->bool):
-  let rc = rho_check(rd) in (vec alpha) bool: >rc*alpha
+  let rc = rho_check(rd) in (vec alpha) bool: rc*alpha>0
 set is_positive_coroot (RootDatum rd) = (vec->bool):
-  let rho = rho(rd) in (vec alphav) bool: >alphav*rho
+  let rho = rho(rd) in (vec alphav) bool: alphav*rho>0
 set is_negative_root (RootDatum rd) = (vec->bool):
-  let rc = rho_check(rd) in (vec alpha) bool: <rc*alpha
+  let rc = rho_check(rd) in (vec alpha) bool: rc*alpha<0
 set is_negative_coroot (RootDatum rd) = (vec->bool):
-  let rho = rho(rd) in (vec alphav) bool: <alphav*rho
+  let rho = rho(rd) in (vec alphav) bool: alphav*rho<0
 
 { uncurried versions of the previous four; again being root/coroot is assumed }
 set is_positive_root (RootDatum rd,vec alpha) = bool:
@@ -1765,7 +1765,7 @@ set print_Cartan_info (CartanClass cc) = void:
   in
   ( "compact: ",cr,", complex: ",Cr,", split: ",sr, new_line
   , "canonical twisted involution: "
-  ,  if =#ww then "e"
+  ,  if #ww=0 then "e"
      else to_string(ww[0]+1, for s in ww[1:] do to_string(",",s+1) od.##)
      fi
   , new_line
@@ -1857,7 +1857,7 @@ set torus(CartanClass C) = RealForm:
 
 set is_compatible (RealForm f, RealForm g) = bool:
   let ic = inner_class(f) in
-  inner_class(g)=dual(ic) and >block_sizes(ic)[form_number(f),form_number(g)]
+  inner_class(g)=dual(ic) and block_sizes(ic)[form_number(f),form_number(g)]>0
 
 set is_compact (RealForm G) = bool: { real form 0 in equal rank inner class }
   KGB_size(G)=1 and distinguished_involution(G)=1
@@ -2028,14 +2028,14 @@ set no_Cplus_roots (KGBElt x) = bool:
 set blocks (RealForm rf) = [Block]:
    let ic=InnerClass:rf then sizes=row(block_sizes(ic),rf.form_number)
 in for drf in dual_real_forms(ic)
-     if >sizes[drf.form_number] do block(rf,drf) fi
+     if sizes[drf.form_number]>0 do block(rf,drf) fi
    od
 
 set blocks (InnerClass ic) = [Block]:
    let sizes=block_sizes(ic)
 in for rf@i in real_forms(ic)
       for drf@j in dual_real_forms(ic)
-	 if >sizes[i,j]
+	 if sizes[i,j]>0
 	 do block(rf,drf)
 	 fi
       od
@@ -2117,7 +2117,7 @@ set sum = (RealForm,[KTypePol]->KTypePol):
   let rec_fun s([KTypePol] Ps) = KTypePol: { |Ps| has at least one term }
         let h = (#Ps)\2 in if =h then Ps[0] else s(Ps[:h])+s(Ps[h:]) fi
   in (RealForm G,[KTypePol] Ps) KTypePol:
-  if =#Ps then G.null_K_module else s(Ps) fi
+  if #Ps=0 then G.null_K_module else s(Ps) fi
 
 set + (KTypePol P,[KTypePol] Ps) = KTypePol: P+sum(P.real_form,Ps)
 set - (KTypePol P,[KTypePol] Ps) = KTypePol: P-sum(P.real_form,Ps)
@@ -2181,7 +2181,7 @@ set non_integrally_dominant_simples (Param p) = [vec]:
   od
 
 { whether gamma integrally dominant }
-set is_integrally_dominant (Param p) = bool: =#p.non_integrally_dominant_simples
+set is_integrally_dominant (Param p) = bool: #p.non_integrally_dominant_simples=0
 
 { questions about status of x component with respect to full datum simple root }
 set is_noncompact_imaginary (int i,Param p) = bool:
@@ -2302,7 +2302,7 @@ set is_ascent ((int,Param) ip) = bool: not is_descent(ip)
 set is_ascent ((vec,Param) ap) = bool: not is_descent(ap)
 
 set lookup (Param p, [Param] block) = int:
-  let i=#block-1 in while >=i and block[i]!=p do i-:=1 od; i
+  let i=#block-1 in while i>=0 and block[i]!=p do i-:=1 od; i
 
 { (moved from hermitian.at) orientation_number_term(orientation_nr(p),q) =
   s^{[\ell_0(p)-\ell_0(q)]/2} which should be defined and gives 1 or s
@@ -2405,7 +2405,7 @@ set sum = (RealForm,[ParamPol]->ParamPol):
   let rec_fun s([ParamPol] Ps) = ParamPol: { |Ps| has at least one term }
         let h = (#Ps)\2 in if =h then Ps[0] else s(Ps[:h])+s(Ps[h:]) fi
   in (RealForm G,[ParamPol] Ps) ParamPol:
-  if =#Ps then G.null_module else s(Ps) fi
+  if #Ps=0 then G.null_module else s(Ps) fi
 
 set + (ParamPol P,[ParamPol] Ps) = ParamPol: P+sum(P.real_form,Ps)
 set - (ParamPol P,[ParamPol] Ps) = ParamPol: P-sum(P.real_form,Ps)
@@ -2441,9 +2441,9 @@ set deform_to_height (ParamPol P, int height) = KTypePol:
   { snap every term down to a reducibility point, or tempered parameter }
     for c@p in P
     do let rp = reducibility_points(p) in
-       if =#rp then output +:= (c,p.K_type); [] else [(c,p*rp~[0])] fi
+       if #rp=0 then output +:= (c,p.K_type); [] else [(c,p*rp~[0])] fi
     od.##
-; while >#P
+; while #P>0
   do set (def,P) :=
         (let p=first_param(P) in block_deform(p,P next P:=empty,height))
   ;  let kt = for c@q in def if  =nu(q) do (c,q.K_type) fi od
@@ -2513,7 +2513,7 @@ set purity (KTypePol P) = (int,int,int):
 set index_in = ([vec]->(vec->int)):
    let limit = [30].to_bitset { $2^{30}$ } in
    ([vec] L) { equal size vectors } (vec->int):
-  if =#L then (vec .)int: -1 { search in empty list always fails }
+  if #L=0 then (vec .)int: -1 { search in empty list always fails }
   else
      let n=#L[0] then R=null(n,0)
      then G = inner_class(root_datum(R,R),id_mat(n)).quasicompact_form
@@ -2530,7 +2530,7 @@ set index_in = ([vec]->(vec->int)):
   fi
 
 set index_in ([ratvec] L) { equal size vectors } = (ratvec->int):
-  if =#L then (ratvec .)int: -1 { search in empty list always fails }
+  if #L=0 then (ratvec .)int: -1 { search in empty list always fails }
   else
      let n=#L[0] then R=null(n,0)
      then G = inner_class(root_datum(R,R),-id_mat(n)).quasisplit_form
@@ -2540,7 +2540,7 @@ set index_in ([ratvec] L) { equal size vectors } = (ratvec->int):
   fi
 
 set index_in ([Param] L) = (Param->int): { an efficiency hack: }
-  if =#L then (Param .)int: -1 { search in empty list always fails }
+  if #L=0 then (Param .)int: -1 { search in empty list always fails }
   else
      let G=L[0].real_form
      then P = G.null_module + for q@i in L do (i+1,q) od
@@ -2617,7 +2617,7 @@ set height (ParamPol P) = int: max(-1)(for @p in P do height(p) od)
 {. Convert a list of KTypePol into the list of distinct parameters occurring;
    careful: don't let terms cancel! .}
 set monomials([KTypePol] list) = [KType]:
-   if =#list then []
+   if #list=0 then []
    else
       let sum = list[0].null_K_module +
 	  for P in list for @p in P do (split_1,p) od od
@@ -2625,7 +2625,7 @@ set monomials([KTypePol] list) = [KType]:
    fi
 
 set monomials([ParamPol] list) = [Param]:
-   if =#list then []
+   if #list=0 then []
    else
       let sum = list[0].null_module +
 	  for P in list for @p in P do (split_1,p) od od

@@ -2088,7 +2088,7 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
   (StandardRepr p, SR_poly& queue, level height_bound)
 {
   BlockElt start; block_modifier bm;
-  auto& block = lookup_full_block(p,start,bm); // also makes |p| dominant
+  const auto& block = lookup_full_block(p,start,bm); // also makes |p| dominant
   const auto& gamma = p.gamma();
   assert(is_dominant_ratweight(root_datum(),gamma));
   auto dual_block = blocks::Bare_block::dual(block);
@@ -2097,13 +2097,14 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
 
   // now fill remainder up to height; prepare for restriction to this subset
   BitMap retained(block.size());
-  sl_list<std::pair<const StandardRepr,Split_integer> > result;
+  sl_list<SR_poly::value_type> result;
+  // where that |value_type| is |std::pair<const StandardRepr,Split_integer>|
   for (BlockElt z=0; z<block.size(); ++z)
   { StandardRepr q = sr(block.representative(z),bm,gamma);
     if (retained.set_to(z,q.height()<=height_bound))
     {
       auto it = queue.find(q);
-      if (it==queue.end())
+      if (it==queue.end()) // then ensure a term for any |retained| is present
 	result.emplace_back(std::move(q),Split_integer(0));
       else
       {
@@ -2118,7 +2119,7 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
 
   int_Vector value_at_minus_1;
   value_at_minus_1.reserve(kl_tab.pol_store().size());
-  for (auto& entry : kl_tab.pol_store())
+  for (const auto& entry : kl_tab.pol_store())
   { int val = 0;
     for (unsigned d=entry.size(); d-->0;)
       val = static_cast<int>(entry[d])-val; // Horner evaluate polynomial at -1
@@ -2128,8 +2129,9 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
   const RankFlags singular = block.singular(bm,gamma); // singular simple coroots
   auto it = result.begin();
   for (auto elt: retained) // don't increment |it| here
+    // now |it->first == sr(block.representative(elt),bm,gamma)|
     if (block.survives(elt,singular))
-      ++it;
+      ++it; // leave survivors at |gamma|
     else
     { retained.remove(elt);
       assert(it->second.is_zero()); // |queue| cannot have non final parameter
@@ -2153,8 +2155,8 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
       odd_length.set_to(i++,block.length(z)%2!=0);
   }
 
-  matrix::Vector<Split_integer> coef(signed_P.n_rows());
-  auto pos = result.size()-1;
+  matrix::Vector<Split_integer> coef(signed_P.n_rows()); // working array
+  auto pos = result.size()-1; // distance from |it| to final element of |result|
   for (auto it=result.begin(); not result.at_end(it); ++it,--pos)
     if (not it->second.is_zero())
     { coef.assign(pos,Split_integer(0));
@@ -2175,7 +2177,7 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
 	  coef[j].times_1_s();
 	  if (diff%4!=0)
 	    coef[j].times_s(); // equivalently |coef[j].negate|
-	  jt->second += coef[j]; // contribute coefficient to result
+	  jt->second += coef[j]; // deformation contribution within block
 	}
       }
   }
