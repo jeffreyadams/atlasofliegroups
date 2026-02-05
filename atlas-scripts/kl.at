@@ -8,6 +8,9 @@
   Also (compared to old implementation) no regular/singular case distinction
 }
 
+{convention: "to_height" always computes with a to height algorithm. "to_ht" may
+choose whether "to height" or "to infinity" algorithm is faster.}
+
 {<time.at {for print_time_string}}
 {
   Basic object: column of KL matrix (P-matrix), of polynomials evaluated as s,
@@ -229,7 +232,7 @@ set low_diff_char(Param p, int HT) = bool: {false {ALWAYS use KL_sum_at_s}}
     then {ans = {(LAM < lam_frac*GAM) and} (((GAM - LAM)*diff_char_frac) > HT {HT - LAM)})}
     	 ans = p.x.number > diff_KGB_char_frac*#KGB(p.real_form)
 	       and (HT < diff_char_frac*GAM(p)) {forces LAM < diff_char_frac*GAM}
-    in ans next low_diff_char_time +:= elapsed_ms() - start
+    in ans next low_diff_char_time +:= (elapsed_ms() - start)
     {if ans
        then low_diff_char_true_count +:=1{; trueDiffCharHash.match(p)}
        {else falseDiffCharHash.match(p)}
@@ -278,7 +281,7 @@ set strict_low(Param p, int HT) = bool:
     if HT < 0 then return false
     elif not strict_low_flag
     then return true
-    elif prefer_diff_flag
+    elif prefer_diff_flag {default true 2/4/26}
     then {strict_}low_diff(p,HT)
     elif prefer_gamma_flag
     then strict_low_gamma(p,HT)
@@ -315,8 +318,10 @@ set low_char(Param p, int HT) = bool:
 {KL_sum_to_height never saves data, so in large computations this is just better}
 set character_formula_to_height(Param p, int HT) = ParamPol:
     if HT.< then return character_formula(p) fi;
-    let (below,) = height_split(character_formula(p),HT)
-    in below  {again this counts and records time}
+    KL_sum_at_s_to_height(p,HT).s_to_1
+
+{let (below,) = height_split(character_formula(p),HT)
+    in below  {again this counts and records time}}
 {
     if not low_char(p,HT)
     then let (below,) = height_split(character_formula(p),HT)

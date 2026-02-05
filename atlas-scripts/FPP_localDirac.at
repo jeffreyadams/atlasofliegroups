@@ -549,7 +549,7 @@ set local_testK_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     then known_true_count = count(for ans in newStatuses do ans[0] = "T" od)
     then known_false_count = count(for ans in newStatuses do ans[0] = "F" od)
     then () = if test_verbose
-	      then prints("     Examining ",NumClasses," classes in local_testK_hash; ",
+	      then prints("     Examining ",NumClasses," classes in local_testK_hash_old; ",
 	      known_true_count," are known unitary, ", known_false_count, " known nonunitary.")
 	      fi
       then () =  for k:NumClasses
@@ -707,7 +707,7 @@ set local_testK_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
      {then () = if #FVKH = 3 then prints(FVKHnew[2]) fi}
      then time = elapsed_ms() - start
      then () = if time_verbose then prints("     ", print_time_string(time),
-			       " for local_testK_hash; number of tests = ",
+			       " for local_testK_hash_old; number of tests = ",
 			       unitary_test_counter.use_count() - start_count) fi
      in  if sort_LFD_flag
 	 then sort(x.real_form, Lvd, FVKHnew)

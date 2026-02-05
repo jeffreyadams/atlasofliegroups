@@ -92,19 +92,30 @@ else let pc = alcove_center(p)
 fi
 
 {This version seems NOT faster or smaller} {TRY NOT TO USE}
-{
 set full_deform_to_ht(Param p, int HT) = KTypePol:
-  if not ({to_ht_over_u_flag} strict_low(p,HT))
-  then return to_ht(full_deform(p),HT)
-  fi;
     if HT < 0 then return full_deform(p) fi;
+    if not ({to_ht_over_u_flag} strict_low(p,HT))
+    then return to_ht(full_deform(p),HT)
+    fi;
     let pc = alcove_center(p)
     in if deformed_hash_flag
        then deformedHash.entry(pc,HT)
-       else deform_to_height(pc,HT)
+       else full_deform_to_height_MvL_base(pc,HT)
        fi
-}
+
 {deform_to_height(p,HT)}
+
+set full_deform_to_ht(Param p, int HT, int time) = maybe_KTP:
+    if HT < 0 then return full_deform(p,time) fi;
+    if not ({to_ht_over_u_flag} strict_low(p,HT))
+    then return to_ht(full_deform(p,time),HT)
+    fi;
+    let pc = alcove_center(p)
+    in if deformed_hash_flag
+       then deformedHash.maybe_entry(pc,HT,time)
+       else full_deform_to_height_MvL_base(pc,HT,time)
+       fi
+
 
 set twisted_full_deform_to_ht_MvL(Param p, int HT) = KTypePol:
     if HT < 0 then return twisted_full_deform(p) fi;
@@ -136,7 +147,7 @@ set c_form_std_to_ht_MvL(int HT) = (Param->KTypePol):(Param p):
   fi;
   if deformed_hash_flag
   then deformedHash.entry(p,HT)
-  else full_deform_to_ht_MvL_alt(p,HT)
+  else full_deform_to_height_MvL_base(p,HT)
   fi
 
 set c_form_std_to_ht_MvL(int HT, int time) = (Param->maybe_KTP):(Param p):
@@ -146,7 +157,7 @@ set c_form_std_to_ht_MvL(int HT, int time) = (Param->maybe_KTP):(Param p):
   fi;
   if deformed_hash_flag
   then deformedHash.maybe_entry(p,HT,time)
-  else full_deform_to_ht_MvL_alt(p,HT,time)
+  else full_deform_to_height_MvL_base(p,HT,time)
   fi
 
 {
@@ -199,7 +210,7 @@ set c_form_irreducible_to_ht_MvL (Param p,int HT) = KTypePol:
     	let start = elapsed_ms()
 	in if deformed_hash_flag
 	   then deformedHash.entry(q,HT)
-	   else full_deform_to_ht_MvL_alt(q,HT)
+	   else full_deform_to_ht(q,HT)
 	   fi
 {
 	full_deform_to_ht(q,HT)
@@ -269,7 +280,7 @@ set c_form_irreducible_to_ht_MvL (Param p,int HT, int time ) = maybe_KTP:
 		   	{deformedHash.entry(q,HT).done}
 	           else} deformedHash.maybe_entry(q,HT,expiration-elapsed_ms())
 		   {fi}
-	   else full_deform_to_ht_MvL_alt(q, HT, expiration - elapsed_ms())
+	   else full_deform_to_ht(q, HT, expiration - elapsed_ms())
 	   fi
       fi
       , oriented_KL_sum
