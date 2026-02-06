@@ -106,6 +106,7 @@ set low(Param p) = (int,int,int):
 
 set GAM(Param p) = int: (p.infinitesimal_character*p.inner_class.two_rho_check)\1
 
+{
 set low_hash_size = int:0
 {should add a real_form hash, separate stuff for each real form. This is OK as long
  as same G is always used}
@@ -126,6 +127,7 @@ set low_hash = (Param -> (int,int,int)):
        	  then low_hash_size:=N; answers#:= low(p)
 	  fi;
 	  answers[n]
+}
 
 {If NU (nu part) > LAM (lambda part) *nu_frac, then figure to_ht could work better}
 set nu_frac = 1/1

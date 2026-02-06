@@ -376,6 +376,7 @@ set full_deform_to_height_MvL_old(Param p, int height,int TIME) = maybe_KTP:
 {worst cases for block_deform appear to be low(p) = (N,n,N+m) where n and m are relatively small and N big.}
 set full_deform_to_height_MvL_base(Param p, int height) = KTypePol:
 if full_deform_old_flag then return full_deform_to_height_MvL_old(p,height) fi;
+if deform_script_flag then return recursive_deform_scr(p,height) fi;
 ( if not {to_ht_over_u_flag} def_low(p,height)
   then return to_ht(full_deform(p),height)
   fi;
@@ -399,8 +400,10 @@ if full_deform_old_flag then return full_deform_to_height_MvL_old(p,height) fi;
   in output
 )
 
+{alternative is recursive_deform_scr(p) or (p,HT) or (p,HT,time)}
 set full_deform_to_height_MvL_base(Param p, int height, int time) = maybe_KTP:
 if full_deform_old_flag then return full_deform_to_height_MvL_old(p,height,time) fi;
+if deform_script_flag then return recursive_deform_scr(p,height,time) fi;
 ( if not ({to_ht_over_u_flag} def_low(p,height))
   then return to_ht(full_deform(p,time),height)
   fi;

@@ -36,6 +36,27 @@ set compress { output from old |partial_KL_block| to a more useful form } (
   , survivor_lengths { length mapping }
   )
 
+{set dual_KL_block_hash = (Param -> ([Param], int, mat, [vec])):
+    let phash = make_param_hash()
+    then which_block = vec:[] {for each param in phash, number of its block}
+    then which_entry = vec:[] {for each param in phash, number within its block}
+    then blocks = [vec]:[] {indices into phash}
+    then KLmats = [mat]:[]{one for each block}
+    then polyss = [[vec]]:[] {one for each block}
+    in  (Param -> ([Param], int, mat, [vec])): (Param p) (int, mat, [vec]):
+    	let N = phash.size()
+	then n = phash.match(p)
+	in if n=N
+	   then let (B, m, KLmat, polys) = dual_KL_block(p)
+	   	in which_blocks#:=#blocks;
+		   which_entry#:=m;
+		   blocks #:=vec: for q in B do phash.match(q) od;
+		   KLmats #:=KLmat;
+		   polyss #:= polys
+	   fi;
+	   (
+}
+
 set deformation_terms_scr (Param p) = ParamPol:
   let (B,KL_mat,length) = ([Param],mat,vec):
     let (block,M,polys) = partial_KL_block(p:=normal(p))
@@ -125,7 +146,7 @@ set deformation_terms_by_dual_scr (Param p) = ParamPol:
   assert(@:p.is_final,"deformation requires a final parameter");
   let (block,KL_mat,P_polys) = partial_KL_block(p)
   , (full_block,start,dual_KL_mat,dual_polys) = dual_KL_block(p)
-  {column j of dual_KL_mat gives multipliciticies of irr full_block[j]
+  {row j of dual_KL_mat gives multipliciticies of irr full_block[j]
    in Jantzen filts of various standard}
   then subset = [int]: {parameters above p}
        let j0 = first(for q in full_block do height(q)>=height(p) od)
@@ -300,7 +321,7 @@ set deformation_scr (Param p, int HT) = (Param,ParamPol): { deformed Param and n
 {whether to use deformation_terms_by_dual in recursive_deform}
 set by_dual_flag = false
 
-{same as built-in full_deform}
+{same as full_deform}
 set recursive_deform_scr (Param p, int HT) = KTypePol:
   if d_verbose then prints("recursive_deform to height with:", p) fi;
   if not is_final(p) then error("improper parameter") fi;
@@ -353,7 +374,7 @@ set recursive_deform_scr (Param p, int HT) = KTypePol:
     end
   fi { apply that recursive function to the initial argument: } (1,p,HT)
 
-{same as built-in full_deform interruptible}
+{same as full_deform interruptible}
 set recursive_deform_scr (Param p, int HT, int TIME) = maybe_KTP:
   {if d_verbose then prints("recursive_deform to height with:", p) fi;}
   if not is_final(p) then error("improper parameter") fi;
