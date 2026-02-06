@@ -39,7 +39,7 @@ let orbit=complex_nilpotent_from_partition(rd,P) in
  P.symbol.normalize.to_string,
  P.special_star,
  dim_nilpotent_partition(rd,P).to_string,
- orbit.centralizer.nice_format,
+{ orbit.centralizer.nice_format,}"*",
  orbit.component_datum.orders.to_string,
  P.dual_orbit.to_string]
  od in

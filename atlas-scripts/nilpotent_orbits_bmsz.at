@@ -284,4 +284,37 @@ let orbits=dual_orbits(G) then
 wp=weak_packets(G) in
 show_short(orbits,wp,partition_function)
 
+set bmsz(Partition P,string label)=
+let Z=painted_bi_partitions(P,label)[0] in (Z.P.partition,Z.Q.partition) 
+
+set test_bmsz(Partition P, string label)=
+bmsz(P,label)=wrep(dual_orbit(P))
+
+set orbit((Partition,Partition) pair,string label)=
+if label="C" then  dual_orbit(orbit_C(pair))
+elif label="B" then  dual_orbit(orbit_B(pair))
+else error("not defined in type D") fi
+
+
+
+set nilpotent_info(RootDatum G)=void:
+show_orbits_and_reps(G);
+print_nilpotent_orbit_partitions(G);
+show_orbits_and_reps(dual(G));
+print_nilpotent_orbit_partitions(dual(G))
+
+set bmsz_pair(Orbit O,string label)=
+let bp=painted_bi_partitions(O,label) then
+Z=bp[0] then
+pair=(Z.P.partition,Z.Q.partition) in 
+prints("Z=",Z,new_line,"partition pair=",pair)
+
+set bmsz_pairs(int n,string label)=
+let good=good_parity_partitions(n,label) then
+list=for orbit in good do painted_bi_partitions(orbit,label) od in
+tabulate(["orbit","dual","bipartition","partition-pair"]#
+for orbit@i in good do
+ let Z=list[i][0] then
+ pair=(Z.P.partition,Z.Q.partition)  in
+[orbit.to_string,dual_orbit(orbit).to_string,Z.to_string,pair.to_string] od)
 

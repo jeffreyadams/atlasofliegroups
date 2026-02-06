@@ -1,11 +1,13 @@
 <nilpotent_orbits_bmsz.at
 <bmsz_descent.at
+set pair(Split z)=(int,int):(int_part(z),s_part(z))
 
 set theta_verbose=true
 set_type ClassicalSignature=(string label, Split z)
 set p(ClassicalSignature S)=int: int_part(S.z)
 set q(ClassicalSignature S)=int: s_part(S.z)
 set size(ClassicalSignature S)=int:p(S)+q(S)
+set classical_signature(string label, Split z)=ClassicalSignature:(label,z)
 
 set p(Split z)=int:int_part(z)
 set q(Split z)=int:s_part(z)
@@ -20,7 +22,7 @@ elif label="C*" then is_even(p) and is_even(q)
 else error("missing case in is_classical_signature")
 fi
 
-set_type SignedYoungDiagram=([Split] signs,string label)
+set_type KOrbit=([Split] signs,string label)
 {the integers (p,q) are required to be non-negative
 to avoid headaches: the first entry is always (0,0) and is ignored.
  Y=[(0,0),(p_1,q_1),(p_2,q_2),...]
@@ -41,10 +43,11 @@ Note: starting with (0,0) gives:
 the rows of even length are those Y[i] with i even
 rather than vice-versa
 }
-set p(SignedYoungDiagram (signs,label))=(int->int):(int i):int_part(signs[i])
-set q(SignedYoungDiagram (signs,label))=(int->int):(int i):s_part(signs[i])
-set size(SignedYoungDiagram Y)=int:sum(for z@i in signs(Y) do (p(z)+q(z))*i  od)
-set partition(SignedYoungDiagram (signs,))=
+set K_orbit([Split] signs,string label)=KOrbit:(signs,label)
+set p(KOrbit (signs,label))=(int->int):(int i):int_part(signs[i])
+set q(KOrbit (signs,label))=(int->int):(int i):s_part(signs[i])
+set size(KOrbit Y)=int:sum(for z@i in signs(Y) do (p(z)+q(z))*i  od)
+set partition(KOrbit (signs,))=
 let rv=[[int]]:[] in 
  for z@i in signs do
    if !=z then
@@ -52,11 +55,11 @@ let rv=[[int]]:[] in
    fi
  od;reverse(##rv)
 
-set =(SignedYoungDiagram A,SignedYoungDiagram B)=A.label=B.label and
+set =(KOrbit A,KOrbit B)=A.label=B.label and
 #A.signs=#B.signs and
 all(for i:#A.signs do A.signs[i]=B.signs[i] od)
 
-set null_signed_young_diagram(string label)=SignedYoungDiagram:([],label)
+set null_K_orbit(string label)=KOrbit:([],label)
 
 set even_integers([int] list)=[int]: ##for i:#list-1 from 1 do if is_even(i) then [i] else [] fi od
 set odd_integers([int] list)=[int]: ##for i:#list-1 from 1  do if is_odd(i) then [i] else [] fi od
@@ -72,7 +75,7 @@ set even_entries([T]a) = for i in even_indices(a) do a[i] od
 set odd_entries([T]a) = for i in odd_indices(a) do a[i] od
 end
 
-set is_valid(SignedYoungDiagram Y)=bool:
+set is_valid(KOrbit Y)=bool:
 all (for z in Y.signs do int_part(z)>=0 and s_part(z)>=0 od) and
 if is_in(Y.label,["B","D"]) then
  all(for z in even_entries(Y.signs) do int_part(z)=s_part(z) od)
@@ -89,7 +92,7 @@ else
 fi
 
 {(9.10)}
-{set signature_old(SignedYoungDiagram Y)=
+{set signature_old(KOrbit Y)=
 let
 P=sum(for i in even_indices(Y.signs) do let (p,q)=Y.signs[i] in i\2*(p+q) od)
  +sum(for i in odd_indices(Y.signs) do let (p,q)=Y.signs[i] in ((i+1)\2)*p + ((i-1)\2)*q od)
@@ -109,22 +112,40 @@ in (P,Q)}
     z_j -> ((j+1)/2+ s(j-1)/2) z_j
 conclusion:  z_j -> j/2(1+s)z_j (j even) or ((j+1)/2 + s(j-1)/2)z_j  (j odd)
 }  
-set signature(SignedYoungDiagram Y)=Split:
+set signature(KOrbit Y)=Split:
 sum(for j in even_indices(Y.signs) do (j\2)*(1+s)*Y.signs[j] od) +
 sum(for j in odd_indices(Y.signs) do ((j+1)\2 + s*((j-1)\2))*Y.signs[j] od)
 
+set remove_first_column(Partition P)=Partition:transpose(delete(transpose(P),0))
+set add_first_column(Partition P,int n)=Partition:P##ones(n)
+
+set Delta_naive(Orbit O,string label)=(Orbit,string):
+(remove_first_column(O),dual_howe_label(label))
+
+set Delta((Orbit O,string label),int size)=(Orbit,string):
+let naive=remove_first_column(O) then
+extra=size-size(naive) in 
+(naive##ones(extra),dual_howe_label(label))
+ 
 {remove first column, i.e. remove first pair (p_1,q_1) not including (0,0):
- so remove first two entries, and tack (0,0) back on}
-set descent_naive(SignedYoungDiagram Y)=SignedYoungDiagram:
-let signs=Y.signs in ((0*s)#signs[2:],Y.label)
+ so remove first two entries, and tack (0,0) back on; orbit for dual group}
+set Delta_naive(KOrbit Y)=KOrbit:
+let signs=Y.signs then
+ orbit=K_orbit((0*s)#signs[2:],dual_howe_label(Y.label))
+ in assert(is_valid(orbit),"Delta_naive(orbit) not valid");orbit
+
+set remove_ones(KOrbit Y)=KOrbit:
+let signs=Y.signs then
+()=signs[1]:=0 in
+(signs,Y.label)
 
 {Lemma 9.2
  Y=(signs,label)
- theta(p',q',Y) =  (new_signs,howe_dual(label))  if (p_prime,q_prime)=signature(descent_naive(Y))>=(0,0)
+ theta(p',q',Y) =  (new_signs,howe_dual(label))  if (p_prime,q_prime)=signature(Delta_naive(Y))>=(0,0)
                    undefined otherwise
 }
-set theta_non_zero(SignedYoungDiagram Y,ClassicalSignature S_prime)=bool:
-let Y_naive=descent_naive(Y) then
+set theta_non_zero(KOrbit Y,ClassicalSignature S_prime)=bool:
+let Y_naive=Delta_naive(Y) then
 ()=assert(S_prime.label=dual_howe_label(Y.label), "Wrong classical signature in Delta") then
 z_prime=S_prime.z then
 sig_naive=signature(Y_naive) then
@@ -132,10 +153,10 @@ sig_0=z_prime-sig_naive in
 if int_part(sig_0)>=0 and s_part(sig_0)>=0 then true else false fi
 
 {Lemma 9.2}
-set Delta(SignedYoungDiagram Y, ClassicalSignature S_prime)=SignedYoungDiagram:
+set Delta(KOrbit Y, ClassicalSignature S_prime)=KOrbit:
 let ()=assert(theta_non_zero(Y,S_prime), "theta lift of orbit is 0");
 assert(S_prime.label=dual_howe_label(Y.label), "Wrong classical signature in Delta") then
-z_0=S_prime.z-signature(descent_naive(Y)) in
+z_0=S_prime.z-signature(Delta_naive(Y)) in
 if int_part(z_0)>=0 and s_part(z_0)>=0
  then
   let signs=Y.signs then
@@ -146,7 +167,7 @@ if int_part(z_0)>=0 and s_part(z_0)>=0
     [0*s,signs[2]+z_0]##for i:#signs-3 from 3 do signs[i] od
   fi
  in (signs_new,S_prime.label)
-else null_signed_young_diagram(S_prime.label)
+else null_K_orbit(S_prime.label)
 fi
 
 set plus(int parity)=string:if is_even(parity) then "+" else "-" fi
@@ -164,54 +185,56 @@ let rv="" in
      for i:length do rv+:=minus(i) od;rv
  fi
 
-set show(SignedYoungDiagram Y)=void:
-prints(new_line,partition(Y));
+set show(KOrbit Y)=void:
+prints("type ",Y.label,size(Y)\2, " (size=",size(Y),")");
+prints(partition(Y));
 let signs=Y.signs in
 for i:#signs-1 downto 1 do
  for j:int_part(signs[i]) do prints(alt_string(0,i)) od;
  for j:s_part(signs[i]) do prints(alt_string(1,i)) od
  od
 
-{-------------------------marked young diagrams--------------------}
+{---------------Local systems on K-orbits = marked young diagrams--------------------}
 
-{same as Signed except values in ZxZ not NxN
+{same as KOrbit except values in ZxZ not NxN
 set_type MarkedYoungDiagram=([Split] signs,string label)
 
 some functions apply to both 
 }
 
-set_type MarkedYoungDiagram=([Split] signs,string label)     
+set_type KLocalSystem=([Split] signs,string label)
 
-set signed_young_diagram(MarkedYoungDiagram M)=SignedYoungDiagram:
-(for z in M.signs do abs(int_part(z)) + abs(s_part(z))*2 od,M.label)
+set K_orbit(KLocalSystem M)=KOrbit:
+(for z in M.signs do abs(int_part(z)) + s*abs(s_part(z)) od,M.label)
 
-{same as for SignedYoungDiagram except for positivity condition}
+{same as for KOrbit except for positivity condition}
 
-set is_valid_marked(MarkedYoungDiagram M)=bool:
-is_valid(signed_young_diagram(M))
+set is_valid_marked(KLocalSystem M)=bool:
+is_valid(K_orbit(M))
 
-set null_marked_young_diagram(string label)=MarkedYoungDiagram:([],label)
-
+set null_K_local_system(string label)=KLocalSystem:([],label)
 
 {(9.19)}
-set box_contained(int p_0, int q_0, MarkedYoungDiagram M)=bool:
+set box_contained(int p_0, int q_0, KLocalSystem M)=bool:
 ( (p(M)(1)>=p_0 and p_0>=0) or (p(M)(1)<=p_0 and p_0 <=0)) and
 ( (q(M)(1)>=q_0 and q_0>=0) or (q(M)(1)<=q_0 and q_0 <=0))
-set box_contained(Split z,MarkedYoungDiagram M)=bool:box_contained(int_part(z), s_part(z),M)
+set box_contained(Split z,KLocalSystem M)=bool:box_contained(int_part(z), s_part(z),M)
 
 {(9.19)}
-set truncation(MarkedYoungDiagram M,Split w)=MarkedYoungDiagram:
+set truncation(KLocalSystem M,Split w)=KLocalSystem:
 let ()=if  theta_verbose then prints("truncation: ", new_line, "M=", M,new_line, "w=", w) fi in
 assert((is_in(M.label,["B","D"]) or is_valid(M.label,w)) and (box_contained(w,M)), "truncation not defined in this case");
-((0*s)#(for i:#M.signs from 1 do
+((0*s)#(for i:#M.signs-1 from 1 do
  if i=1 then M.signs[i] - w
         else M.signs[i]
  fi
 od),M.label)
 
 
+
+
 {Definition 9.4(i)}
-set sign_twist(MarkedYoungDiagram (signs,label), Split w)=MarkedYoungDiagram:
+set sign_twist(KLocalSystem (signs,label), Split w)=KLocalSystem:
 assert(is_in(label,["B","D"]), "sign twist only defined in types B,D");
 {  if is_odd(i) then ((-1)^( (i+1)\2*eplus+(i-1)\2*eminus)*p,(-1)^( (i-1)\2*eplus+(i+1)\2*eminus)*q) else}
 (for z@i in signs do
@@ -220,111 +243,153 @@ assert(is_in(label,["B","D"]), "sign twist only defined in types B,D");
  else z fi od,label)
 
 {Definition 9.4(ii)}
-set involution(MarkedYoungDiagram (signs,label))=MarkedYoungDiagram:
+set involution(KLocalSystem (signs,label))=KLocalSystem:
 assert(is_in(label,["C","C~"]), "involution only defined in types C,C~");
 (for z@i in signs do if i%4=2 then z else z fi od,label)
 
-set involution_power(MarkedYoungDiagram M,int n)=MarkedYoungDiagram:
+set involution_power(KLocalSystem M,int n)=KLocalSystem:
 if is_even(n) then involution(M) else M fi
 
-{Definition 9.4(iii) AND 9.23
-p_0,q_0\in \frac 12\Z}
-set augmentation(MarkedYoungDiagram (signs,label),rat p_0,rat q_0)=MarkedYoungDiagram:
-if is_in(label,["B","D"]) or
- is_integer(p_0) and is_integer(q_0) and is_valid(label,rat_as_int(p_0)+s*rat_as_int(q_0))
- then
- ((0*s)#(for i:#signs from 1 do
- if i=1 then rat_as_int(p_0)+s*rat_as_int(q_0)
-   else signs[i-1]
-  fi od),label)
-else
-  null_signed_young_diagram(label)
-fi
+{augmention is NOT the same as (9.4)(iii)
+ (9.4)(iii) says: augmenting by (p,q) adds a first column of length c_1(orbit)+p+q
+ I do this in two step: shift_right and then augment simply add a column of ones of signature (p,q)
+}
+set augmentation(KLocalSystem (signs,label),Split z)=KLocalSystem:
+let ()=signs[1]+:=z in (signs,label)
 
-set_type ZMYD=[(int,MarkedYoungDiagram)]
+set_type ZKLocalSystems=[(int,KLocalSystem)]
 
-set prune(ZMYD A)=ZMYD: ##for (mult,M) in A do if mult=0 then [] else [(mult,M)] fi od
+set prune(ZKLocalSystems A)=ZKLocalSystems: ##for (mult,M) in A do if mult=0 then [] else [(mult,M)] fi od
 
-set mult(MarkedYoungDiagram M,ZMYD A)=int:
+set mult(KLocalSystem M,ZKLocalSystems A)=int:
 let i=first(for i:#A do let (,N)=A[i] in M=N od) in
 if i=-1 then 0 else let (mult,)=A[i] in mult fi
 
-set index(MarkedYoungDiagram M,ZMYD A)=int:
+set index(KLocalSystem M,ZKLocalSystems A)=int:
 let i=first(for i:#A do let (,N)=A[i] in M=N od) in i 
 
-set monomials(ZMYD A)=[MarkedYoungDiagram]:
+set monomials(ZKLocalSystems A)=[KLocalSystem]:
 for (,M) in A do M od
 
-set =(ZMYD A,ZMYD B)=bool:
+set =(ZKLocalSystems A,ZKLocalSystems B)=bool:
 #A=#B and
 all(for (mult_A,M_A) in A do mult(M_A,B)=mult_A od)
 
-set *(int n,ZMYD A)=ZMYD:prune(for (mult,M) in A do (n*mult,M) od)
-set +(ZMYD A,ZMYD B)=ZMYD:
+set *(int n,ZKLocalSystems A)=ZKLocalSystems:prune(for (mult,M) in A do (n*mult,M) od)
+set +(ZKLocalSystems A,ZKLocalSystems B)=ZKLocalSystems:
 for (mult_B,M_B) in B do
  if mult(M_B,A)=0 then A#:=(mult_B,M_B)
  else let ()=prints(mult(M_B,A), "and ", mult_B) in A[index(M_B,A)]:=(mult(M_B,A) + mult_B,M_B)
  fi
 od;prune(A)
-set -(ZMYD A)=ZMYD: (-1)*A
-set -(ZMYD A, ZMYD B)=ZMYD:prune(A + (-B))
+set -(ZKLocalSystems A)=ZKLocalSystems: (-1)*A
+set -(ZKLocalSystems A, ZKLocalSystems B)=ZKLocalSystems:prune(A + (-B))
 
 
 
-{------------- sign twist/involution/augmentation/truncation on ZMYD----}
+{------------- sign twist/involution/augmentation/truncation on ZKLocalSystems----}
 
-set sign_twist(ZMYD A, Split w)=ZMYD:
+set sign_twist(ZKLocalSystems A, Split w)=ZKLocalSystems:
 for (mult,M) in A do (mult,sign_twist(M,w)) od
 
-set involution(ZMYD A)=ZMYD:
+set involution(ZKLocalSystems A)=ZKLocalSystems:
 for (mult,M) in A do (mult,involution(M)) od
 
-set truncation(ZMYD A,Split w)=ZMYD:
-for (mult,M) in A do (mult,truncation(M,w)) od
+set truncation_virtual(ZKLocalSystems A,Split w)=ZKLocalSystems:
+for (mult,M) in A do (mult,truncation(M,w)) od
 
 {Section 9.5}
 {Recall (Lemma 9.2) Theta lifting takes a K-orbit for G to one for G'
  G <-> ClassicalSignature S -> ClassicalSignature S' <-> G'
- O <-> SignedYoungDiagram M -> SignedYoungDiagram M' -> O'
+ O <-> KOrbit M -> KOrbit M' -> O'
 Section 9.5: enhance this to a map
-      Z[SignedYoungDiagram] for G -> Z[SignedYoungDiagram] for G'
+      Z[KOrbit] for G -> Z[KOrbit] for G'
 
-The notation in Section 9.5 goes from G' -> G, but we'll turn this around}
+We foollow the notation in Section 9.5, going  from G' -> G}
 
-set l_sign(MarkedYoungDiagram (signs,))=Split:
-sum(for i:#signs do s^(i+1)*signs[i] od)
+set l_sign(KLocalSystem (signs,))=Split:
+sum(for i:#signs do s^i*signs[i] od)
 
-set theta(MarkedYoungDiagram M, ClassicalSignature S_prime)=
-assert(theta_non_zero(signed_young_diagram(M),S_prime), "theta lift of underlying orbit is 0");
-let Y=signed_young_diagram(M) then
-Y_prime=Delta(Y,S_prime) then
-z=signature(M) then
-z_prime=S_prime.z then
-delta=size(Y_prime) - size(Y) then
-()=if theta_verbose then prints("S'=",S_prime,new_line,"M=",M,new_line,"Y_prime=",Y_prime,new_line,"z=",z,new_line,"z'=",z_prime,new_line,"delta=",delta) fi then
-()=assert(delta>=0,"delta <0") in
-if S_prime.label="B"then
-      {(p',q')-(p,q) - l_sign(O) + (delta/2,delta/2)}
- let z_0=z_prime-z -l_sign(M) + h(delta)*(1+s) then
- truncation=truncation(M,h(delta)*(1+s)) then
- involution=involution_power(truncation,h(p(z)-q(z)+1)) then
- twisted=sign_twist(involution,z_0) in
- twisted
-elif S_prime.label="D" then
-      {(p',q')-(p,q) - l_sign(O) + (delta/2,delta/2)}
- let z_0=z_prime-z -l_sign(M) + h(delta)*(1+s) then
- truncation=truncation(M,h(delta)*(1+s)) then
- involution=involution_power(truncation,h(p(z)-q(z))) then
- twisted=sign_twist(involution,z_0) in
- twisted
-elif S_prime.label="C*" then {delta might be odd}
- if is_odd(delta) then null_signed_young_diagram(S_prime.label)
- else
-  let truncation=truncation(M,h(delta)*(1+s)) then  {this will fail if delta \not\in Z}
-  z_0=z_prime-z -l_sign(M) + h(delta)*(1+s) then
-  twisted=sign_twist(truncation,z_0)
-  in twisted
- fi
+{source->target: cut off some rows of length 1, and add a first column
+ target is in the image <=> c_2(target)<=c_1(source),
+ and c_i(source)=c_{i+1}(target) i=2,3,...(numbering starting at 1)}
+ set is_theta_target(Orbit source, Orbit target) =bool:
+let A=transpose(source) then
+B=transpose(target) in
+A[0]>=B[1] and
+all(for i:#A-1 from 1 do A[i]=B[i+1] od) 
+
+{return length of column to be added; number of boxes to be deleted from second column}
+set theta_target_data(Orbit source,Orbit target)=
+assert(is_theta_target(source,target), "not a valid pair of orbits");
+(transpose(target)[0],transpose(source)[0]-transpose(target)[1])
+
+set shift_right(KLocalSystem M)=KLocalSystem:
+([0*s]##for z in M.signs do s*z od,M.label)
+
+set theta(KLocalSystem M, Orbit target, ClassicalSignature S_target)=
+assert(is_theta_target(partition(M),target), "not a valid pair of orbits");
+assert(dual_howe_label(M.label)=S_target.label,"labels don't match");
+let orbit=K_orbit(M) then
+(extra,delta)=theta_target_data(orbit.partition,target) then
+z_target=S_target.z then
+ ()=if theta_verbose then
+ prints("orbit=", orbit);show(orbit);
+ prints("target=", target);show_partition(target);
+ prints("extra=",extra, " delta=", delta);
+ prints("z_target=", z_target)
+ fi in
+if is_in(S_target.label,["B","D"]) then
+ let epsilon=if S_target.label="B" then 1 else 0 fi then
+ truncate= truncation(M,h(delta)*(1+s)) then
+ ()=if theta_verbose then prints("truncate:", truncate);show(truncate) fi then
+ ()=if theta_verbose then prints("involution parameter: ", (p(z_target)-q(z_target)+1)/2) fi then
+ involution=involution_power(truncate,h(p(z_target)-q(z_target)+epsilon)) then
+ ()=if theta_verbose then prints("involution:", involution);show(involution) fi then
+ shift=shift_right(involution) then
+ ()=if theta_verbose then prints("shift:", shift);show(shift) fi then
+ augment=augmentation(shift,z_target-signature(shift)) then
+ ()=if theta_verbose then prints("augment:", augment);show(augment) fi in
+ [augment]
+elif S_target.label="C*" then
+ let truncate= truncation(M,h(delta)*(1+s)) then
+ ()=if theta_verbose then prints("truncate:", truncate);show(truncate) fi then
+ shift=shift_right(truncate) then
+ ()=if theta_verbose then prints("shift:", shift);show(shift) fi then
+ augment=augmentation(shift,z_target-signature(shift)) then
+ ()=if theta_verbose then prints("augment:", augment);show(augment) fi in
+ [augment]
+elif is_in(S_target.label,["C","C~"]) then
+ let epsilon=if S_target.label="C~" then -1 else 0 fi then
+ truncations=
+  if delta = 0
+   then [(M.signs,dual_howe_label(M.label))] 
+  else
+   for j:delta do truncation(M,j+(delta-j)*s) od 
+  fi then
+ ()=if theta_verbose then prints("truncations:", truncations);for t in truncations do show(t) od fi then
+ involutions=for truncate in truncations do
+  involution_power(truncate,h(p(z_target)-q(z_target)+epsilon)) od then
+ shifts = for involution in involutions do
+  shift_right(involution) od then 
+ augments=for shift in shifts do
+  augmentation(shift,z_target-signature(shift)) od in
+ augments
+elif S_target.label="D" then
+ let truncations=
+  if delta = 0
+   then [(M.signs,dual_howe_label(M.label))] 
+  else
+   for j:h(delta) do truncation(M,2*j+(delta-2*j)*s) od 
+  fi then
+ ()=if theta_verbose then prints("truncations:", truncations);for t in truncations do show(t) od fi then
+ shifts = for truncation in truncations do
+  shift_right(truncation) od then 
+ augments=for shift in shifts do
+  augmentation(shift,z_target-signature(shift)) od in
+ augments
+else
+ error("not done")
 fi
 
 
@@ -340,18 +405,32 @@ for i:#list-1 from 1 do
 set rows_by_length(Partition P)=[int]:
 for i:max(P)+1 do count(P,i) od
 
-set K_orbits(Orbit O, string label)=[SignedYoungDiagram]:
-let possible_signs_by_row_length=
-for mult@i in rows_by_length(O) do
-   if is_odd(i) 
-     then [h(mult)*(1+s)]
-   else  {is_even(i)}
-     for i:mult+1 do  i+s*(mult-i) od
-   fi
-od in
-for signs in join(possible_signs_by_row_length) do (signs,label) od
+set K_orbits(Orbit O, string label)=[KOrbit]:
+if label="C" then 
+ let possible_signs_by_row_length=
+ for mult@i in rows_by_length(O) do
+    if is_odd(i) 
+      then [h(mult)*(1+s)]
+    else  {is_even(i)}
+      for i:mult+1 do  i+s*(mult-i) od
+    fi
+ od in
+ for signs in join(possible_signs_by_row_length) do (signs,label) od
+elif is_in(label,["B","D"]) then 
+ let possible_signs_by_row_length=
+ for mult@i in rows_by_length(O) do
+    if is_even(i) 
+      then [h(mult)*(1+s)]
+    else  {is_even(i)}
+      for i:mult+1 do  i+s*(mult-i) od
+    fi
+ od in
+ for signs in join(possible_signs_by_row_length) do (signs,label) od
+else
+ error("not done yet")
+fi
 
-set K_orbits(int rank, string label)=
-for orbit in all_partitions(rank,label) do K_orbits(orbit,label) od
+set K_orbits(int rank, string label)=[KOrbit]:
+##for orbit in all_partitions(rank,label) do K_orbits(orbit,label) od
 
  
