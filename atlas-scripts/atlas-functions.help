@@ -940,7 +940,7 @@ Cayley: (int,Param->Param): Cayley transform for (Weyl generator,parameter)
   If no Cayley transform is defined at all, the parameter is returned unchanged.
 cross: (vec,Param->Param): cross action for (root,parameter)
 Cayley: (vec,Param->Param): Cayley transform for (root,parameter)
-  These two functions should do the same as the three before, but taking the
+  These two functions should do the same as the two before, but taking the
   root in coordinates, and combining the Cayley/inverse Cayley into one
   function (whichever is defined is applied, or else the parameter returned).
   The implementation is quite independent however, so comparison is useful.
