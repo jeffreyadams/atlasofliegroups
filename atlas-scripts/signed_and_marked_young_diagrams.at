@@ -245,13 +245,14 @@ set box_contained(Split z,KLocalSystem M)=bool:box_contained(int_part(z), s_part
 {(9.19)}
 set truncation(KLocalSystem M,Split w)=KLocalSystem:
 let ()=if  theta_verbose then prints("in truncation function: ", new_line, "M=", M,new_line, "w=", w) fi in
-assert((is_in(M.label,["B","D"]) or is_valid(M.label,w)),"truncation not defined");
-if not box_contained(w,M) then null_K_local_system(M.label) else 
-((0*s)#(for i:#M.signs-1 from 1 do
+if w=0 then M else 
+ let ()=assert((is_in(M.label,["B","D"]) or is_valid(M.label,w)),"truncation not defined") in
+ if not box_contained(w,M) then null_K_local_system(M.label) else
+ ((0*s)#(for i:#M.signs-1 from 1 do
  if i=1 then M.signs[i] - w
         else M.signs[i]
  fi
-od),M.label) fi
+od),M.label) fi fi
 
 
 
@@ -368,6 +369,7 @@ assert(dual_howe_label(M.label)=S_target.label,"labels don't match");
 if not is_valid(S_target) then prints("signature not valid");[] else
 let orbit=K_orbit(M) then
 (extra,delta)=theta_target_data(orbit.partition,target) then
+()=if theta_verbose then prints("extra,delta=", extra, " ", delta) fi then
 z_target=S_target.z then
  ()=if theta_verbose then
  prints("orbit=", orbit);show(orbit);
@@ -506,15 +508,15 @@ theta(M,target, (dual_howe_label(M.label),z)) od
 
 {find orbit(s) O^v from list so that Springer(dual orbit) <-> given pair of partitions
  should only be 1 in our cases?}
-set choose_orbit(BiPartition (P,Q), string label, [Orbit] orbits)=
-##for orbit in orbits do 
+set choose_orbit(BiPartition (P,Q), string label, [Orbit] dual_orbits)=
+##for orbit in dual_orbits do 
 let (left,right)=(left_diagram(orbit,label), right_diagram(orbit,label)) in
   if left=P and right=Q then [orbit] else [] fi
 od
 
 
 {cut off some rows of length 1, add a first column}
-set valid_theta_targets(Orbit source, int target_size)=
+set valid_theta_targets(Orbit source, int target_size)=[Orbit]:
 let number_ones=rows_by_length(source)[1] in 
 ##for i:number_ones+1 do
  let cut=remove_ones(source,i) then
@@ -522,6 +524,8 @@ let number_ones=rows_by_length(source)[1] in
  if size(P)<=target_size then [P##ones(target_size-size(P))] else [] fi
 od
 
-set choose_orbit(Orbit source, BiPartition (P,Q), string label)=
-let orbits=valid_theta_targets(source,size(P)+size(Q)) in
-choose_orbit((P,Q),label,orbits)
+set theta(KLocalSystem M, Orbit source,BiPartition (P,Q))=
+let label=M.label then
+dual_orbits=valid_theta_targets(source,#P+#Q) then
+orbits=choose_orbit((P,Q),label,dual_orbits) in
+orbits

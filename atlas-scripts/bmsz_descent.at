@@ -75,7 +75,6 @@ in (Pnew,Qnew,dual_howe_bi_label(Z))
 }
 set descent_naive_case_b(PaintedBiPartition Z)=
 let Pnew=change(column_descent_naive(Z.P),1,0) then
-()=print("Pnew", Pnew) then
 Qnew=for row@i in Z.Q do 
       for entry@j in row do
        if entry=0
