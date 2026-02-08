@@ -4,8 +4,6 @@
 {S is a subset of pp(O_v,label), i.e. an element of A_bar}
 set_type ExtendedPaintedBiPartition=(Orbit O_v,PaintedBiPartition Z,[int] S)
 
-
-
 {Nilpotent orbits via Barbasch-Ma-Sun-Zhu}
 {type Orbit=Partition=[int]}
 
@@ -289,13 +287,6 @@ let Z=painted_bi_partitions(P,label)[0] in (Z.P.partition,Z.Q.partition)
 
 set test_bmsz(Partition P, string label)=
 bmsz(P,label)=wrep(dual_orbit(P))
-
-set orbit((Partition,Partition) pair,string label)=
-if label="C" then  dual_orbit(orbit_C(pair))
-elif label="B" then  dual_orbit(orbit_B(pair))
-else error("not defined in type D") fi
-
-
 
 set nilpotent_info(RootDatum G)=void:
 show_orbits_and_reps(G);

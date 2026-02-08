@@ -1,6 +1,5 @@
 <nilpotent_orbits_bmsz.at
 <bmsz_descent.at
-set pair(Split z)=(int,int):(int_part(z),s_part(z))
 
 set theta_verbose=true
 set_type ClassicalSignature=(string label, Split z)
@@ -11,6 +10,8 @@ set classical_signature(string label, Split z)=ClassicalSignature:(label,z)
 
 set p(Split z)=int:int_part(z)
 set q(Split z)=int:s_part(z)
+set pair(Split z)=(int,int):(p(z),q(z))
+set is_non_negative(Split z)=bool:p(z)>=0 and q(z)>=0 
 
 {Section 4.1 classical signatures}
 set is_valid(ClassicalSignature S)=bool:
@@ -54,6 +55,7 @@ let rv=[[int]]:[] in
      rv#:=for j:p(z)+q(z) do i od
    fi
  od;reverse(##rv)
+set orbit(KOrbit orbit)=Orbit:partition(orbit)
 
 set =(KOrbit A,KOrbit B)=A.label=B.label and
 #A.signs=#B.signs and
@@ -117,7 +119,24 @@ sum(for j in even_indices(Y.signs) do (j\2)*(1+s)*Y.signs[j] od) +
 sum(for j in odd_indices(Y.signs) do ((j+1)\2 + s*((j-1)\2))*Y.signs[j] od)
 
 set remove_first_column(Partition P)=Partition:transpose(delete(transpose(P),0))
-set add_first_column(Partition P,int n)=Partition:P##ones(n)
+
+{add first column of size the number of rows}
+set add_first_column(Partition P)=Partition:
+if #P=0 then [] else partition_from_row_lengths(0#rows_by_length(P)) fi
+
+{add first column of size n}
+set add_first_column(Partition P, int n)=Partition:
+let rows=rows_by_length(P) then
+sum=sum(rows) then
+()=assert(sum<=n,"n is too small") in
+partition_from_row_lengths([0,n-sum]##delete(rows,0))
+
+{remove n rows of length 1}
+set remove_ones(Partition P, int n)=Partition:
+let rows=rows_by_length(P) in
+assert(n<=rows[1], "not that many rows of length 1");
+rows[1]:=rows[1]-n;
+partition_from_row_lengths(rows)
 
 set Delta_naive(Orbit O,string label)=(Orbit,string):
 (remove_first_column(O),dual_howe_label(label))
@@ -203,9 +222,12 @@ some functions apply to both
 }
 
 set_type KLocalSystem=([Split] signs,string label)
+set K_local_system([Split] signs, string label)=KLocalSystem:(signs,label)
 
 set K_orbit(KLocalSystem M)=KOrbit:
 (for z in M.signs do abs(int_part(z)) + s*abs(s_part(z)) od,M.label)
+
+set orbit(KLocalSystem M)=Orbit:orbit(K_orbit(M))
 
 {same as for KOrbit except for positivity condition}
 
@@ -222,13 +244,14 @@ set box_contained(Split z,KLocalSystem M)=bool:box_contained(int_part(z), s_part
 
 {(9.19)}
 set truncation(KLocalSystem M,Split w)=KLocalSystem:
-let ()=if  theta_verbose then prints("truncation: ", new_line, "M=", M,new_line, "w=", w) fi in
-assert((is_in(M.label,["B","D"]) or is_valid(M.label,w)) and (box_contained(w,M)), "truncation not defined in this case");
+let ()=if  theta_verbose then prints("in truncation function: ", new_line, "M=", M,new_line, "w=", w) fi in
+assert((is_in(M.label,["B","D"]) or is_valid(M.label,w)),"truncation not defined");
+if not box_contained(w,M) then null_K_local_system(M.label) else 
 ((0*s)#(for i:#M.signs-1 from 1 do
  if i=1 then M.signs[i] - w
         else M.signs[i]
  fi
-od),M.label)
+od),M.label) fi
 
 
 
@@ -252,10 +275,15 @@ if is_even(n) then involution(M) else M fi
 
 {augmention is NOT the same as (9.4)(iii)
  (9.4)(iii) says: augmenting by (p,q) adds a first column of length c_1(orbit)+p+q
- I do this in two step: shift_right and then augment simply add a column of ones of signature (p,q)
+ this augment simply adds a column of ones of signature (p,q)
+   in practice this is preceded by shift_right which makes the first two columns the same length
+Requirement: z is non-negative (p>=0, q>=0); otherwise return (false,null_K_local_system(label)
 }
-set augmentation(KLocalSystem (signs,label),Split z)=KLocalSystem:
-let ()=signs[1]+:=z in (signs,label)
+set augmentation(KLocalSystem (signs,label),Split z)=(bool,KLocalSystem):
+let dual_label=dual_howe_label(label) in 
+if not is_non_negative(z) then (false,null_K_local_system(dual_label)) else
+if #signs=1 then (true,([0,z],dual_label)) else 
+let ()=signs[1]+:=z in (true,(signs,dual_label)) fi fi
 
 set_type ZKLocalSystems=[(int,KLocalSystem)]
 
@@ -305,24 +333,31 @@ for (mult,M) in A do (mult,truncation(M,w)) od
 Section 9.5: enhance this to a map
       Z[KOrbit] for G -> Z[KOrbit] for G'
 
-We foollow the notation in Section 9.5, going  from G' -> G}
+We follow the notation in Section 9.5, going  from G' -> G}
 
 set l_sign(KLocalSystem (signs,))=Split:
 sum(for i:#signs do s^i*signs[i] od)
 
 {source->target: cut off some rows of length 1, and add a first column
  target is in the image <=> c_2(target)<=c_1(source),
- and c_i(source)=c_{i+1}(target) i=2,3,...(numbering starting at 1)}
- set is_theta_target(Orbit source, Orbit target) =bool:
+ and c_i(source)=c_{i+1}(target) i=2,3,...(numbering starting at 1)
+ if source=[] then true if source is a single column} 
+set is_theta_target(Orbit source, Orbit target) =bool:
+if #source=0 then #transpose(target)=1 else
 let A=transpose(source) then
 B=transpose(target) in
+if #B>1 then
 A[0]>=B[1] and
+target[0]=source[0]+1 and
 all(for i:#A-1 from 1 do A[i]=B[i+1] od) 
+else #A=1 {source is a single column}
+fi fi
 
 {return length of column to be added; number of boxes to be deleted from second column}
-set theta_target_data(Orbit source,Orbit target)=
+set theta_target_data(Orbit source,Orbit target)=(int,int):
 assert(is_theta_target(source,target), "not a valid pair of orbits");
-(transpose(target)[0],transpose(source)[0]-transpose(target)[1])
+if #source=0 then (transpose(target)[0],0) else 
+(transpose(target)[0],transpose(source)[0]-transpose(target)[1]) fi
 
 set shift_right(KLocalSystem M)=KLocalSystem:
 ([0*s]##for z in M.signs do s*z od,M.label)
@@ -330,6 +365,7 @@ set shift_right(KLocalSystem M)=KLocalSystem:
 set theta(KLocalSystem M, Orbit target, ClassicalSignature S_target)=
 assert(is_theta_target(partition(M),target), "not a valid pair of orbits");
 assert(dual_howe_label(M.label)=S_target.label,"labels don't match");
+if not is_valid(S_target) then prints("signature not valid");[] else
 let orbit=K_orbit(M) then
 (extra,delta)=theta_target_data(orbit.partition,target) then
 z_target=S_target.z then
@@ -340,6 +376,7 @@ z_target=S_target.z then
  prints("z_target=", z_target)
  fi in
 if is_in(S_target.label,["B","D"]) then
+ let ()=if theta_verbose then prints("case type: ", S_target.label) fi in
  let epsilon=if S_target.label="B" then 1 else 0 fi then
  truncate= truncation(M,h(delta)*(1+s)) then
  ()=if theta_verbose then prints("truncate:", truncate);show(truncate) fi then
@@ -348,33 +385,44 @@ if is_in(S_target.label,["B","D"]) then
  ()=if theta_verbose then prints("involution:", involution);show(involution) fi then
  shift=shift_right(involution) then
  ()=if theta_verbose then prints("shift:", shift);show(shift) fi then
- augment=augmentation(shift,z_target-signature(shift)) then
- ()=if theta_verbose then prints("augment:", augment);show(augment) fi in
- [augment]
+ ()=if theta_verbose then prints("signature diff: ", z_target-signature(shift)) fi then
+ (valid,augment)=augmentation(shift,z_target-signature(shift)) then
+ ()=if theta_verbose then prints("valid: ", valid, new_line,"augment:", augment);show(augment) fi in
+ if not valid then [] else 
+ [augment] fi
 elif S_target.label="C*" then
+ let ()=if theta_verbose then prints("case type: ", S_target.label) fi in
  let truncate= truncation(M,h(delta)*(1+s)) then
  ()=if theta_verbose then prints("truncate:", truncate);show(truncate) fi then
  shift=shift_right(truncate) then
  ()=if theta_verbose then prints("shift:", shift);show(shift) fi then
- augment=augmentation(shift,z_target-signature(shift)) then
+ (valid,augment)=augmentation(shift,z_target-signature(shift)) then
  ()=if theta_verbose then prints("augment:", augment);show(augment) fi in
- [augment]
+ if not valid then [] else 
+ [augment] fi
 elif is_in(S_target.label,["C","C~"]) then
  let epsilon=if S_target.label="C~" then -1 else 0 fi then
+ ()=if theta_verbose then prints("case type: ", S_target.label) fi then
  truncations=
   if delta = 0
-   then [(M.signs,dual_howe_label(M.label))] 
+{   then [(M.signs,dual_howe_label(M.label))] }
+   then [(M.signs,M.label)] 
   else
    for j:delta do truncation(M,j+(delta-j)*s) od 
   fi then
  ()=if theta_verbose then prints("truncations:", truncations);for t in truncations do show(t) od fi then
- involutions=for truncate in truncations do
-  involution_power(truncate,h(p(z_target)-q(z_target)+epsilon)) od then
- shifts = for involution in involutions do
-  shift_right(involution) od then 
- augments=for shift in shifts do
-  augmentation(shift,z_target-signature(shift)) od in
- augments
+ {shift/augment then involution in this case}
+ shifts = for truncation in truncations do
+  shift_right(truncation) od then
+ ()=if theta_verbose then prints("shifts:", shifts);for t in shifts do show(t) od fi then
+ augments=##for shift in shifts do
+  let (valid,augment)=augmentation(shift,z_target-signature(shift)) in
+  if valid then [augment] else [] fi od then
+ ()=if theta_verbose then prints("augments:", augments);for t in augments do show(t) od fi then
+ involutions=for augment in augments do
+  involution_power(augment,h(p(z_target)-q(z_target)+epsilon)) od then
+ ()=if theta_verbose then prints("involutions:", involutions);for t in involutions do show(t) od fi in
+ involutions
 elif S_target.label="D" then
  let truncations=
   if delta = 0
@@ -385,13 +433,14 @@ elif S_target.label="D" then
  ()=if theta_verbose then prints("truncations:", truncations);for t in truncations do show(t) od fi then
  shifts = for truncation in truncations do
   shift_right(truncation) od then 
- augments=for shift in shifts do
-  augmentation(shift,z_target-signature(shift)) od in
+ augments=##for shift in shifts do
+  let (valid,augment)=augmentation(shift,z_target-signature(shift)) in 
+  if valid then [augment] else [] fi od in 
  augments
 else
  error("not done")
 fi
-
+fi	
 
 {----------generating orbits-------------}
 
@@ -401,9 +450,6 @@ for i:#list-1 from 1 do
  let row=list[i] in
   rv:=##for a in rv do for b in row do a#b od od od;
  rv
- 
-set rows_by_length(Partition P)=[int]:
-for i:max(P)+1 do count(P,i) od
 
 set K_orbits(Orbit O, string label)=[KOrbit]:
 if label="C" then 
@@ -433,4 +479,49 @@ fi
 set K_orbits(int rank, string label)=[KOrbit]:
 ##for orbit in all_partitions(rank,label) do K_orbits(orbit,label) od
 
- 
+set theta(KLocalSystem M, int delta, int extra)=
+let orbit=partition(M) then
+rows_by_length=for z in M.signs do p(z)+q(z	) od then
+()=assert(rows_by_length[1]-delta>=0,"error") then
+()=rows_by_length[1]:=rows_by_length[1]-delta then 
+()=rows_by_length:=[0]##rows_by_length then
+()=rows_by_length[1]:=extra then
+{()=prints("rbl:", rows_by_length) in } 
+target=##for i:#rows_by_length downto 0 do
+             for j:rows_by_length[i] do i
+	     od
+         od then
+()=prints("orbit: ", orbit);show_partition(orbit) then
+()=prints("orbit signature: (", M.label, ",",signature(M),")") then
+()=prints("target:", target);show_partition(target) then
+size_diff=size(target)-size(M) then
+()=prints("size diff: ", size_diff) then
+possible_signatures=let z_M=signature(M) in
+ for i:size_diff+1 do z_M + i+(size_diff-i)*s od then
+()=prints("possible target signatures:", possible_signatures) in
+for z in possible_signatures do
+let ()=prints("----------------------------------------------------",new_line,
+"target signature: (",dual_howe_label(M.label),",", z,")") in  
+theta(M,target, (dual_howe_label(M.label),z)) od
+
+{find orbit(s) O^v from list so that Springer(dual orbit) <-> given pair of partitions
+ should only be 1 in our cases?}
+set choose_orbit(BiPartition (P,Q), string label, [Orbit] orbits)=
+##for orbit in orbits do 
+let (left,right)=(left_diagram(orbit,label), right_diagram(orbit,label)) in
+  if left=P and right=Q then [orbit] else [] fi
+od
+
+
+{cut off some rows of length 1, add a first column}
+set valid_theta_targets(Orbit source, int target_size)=
+let number_ones=rows_by_length(source)[1] in 
+##for i:number_ones+1 do
+ let cut=remove_ones(source,i) then
+ P=add_first_column(cut) in
+ if size(P)<=target_size then [P##ones(target_size-size(P))] else [] fi
+od
+
+set choose_orbit(Orbit source, BiPartition (P,Q), string label)=
+let orbits=valid_theta_targets(source,size(P)+size(Q)) in
+choose_orbit((P,Q),label,orbits)

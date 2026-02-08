@@ -149,4 +149,8 @@ set descent(Orbit O_v,[int] S,string label)=(Orbit,[int]):
 set descent(ExtendedPaintedBiPartition (O_v,Z,S))=ExtendedPaintedBiPartition:
 let (O_v_prime,S_prime)=descent(O_v,S,label(Z)) in 
 (O_v_prime,descent(Z),S_prime)
- 
+
+set descent_chain(PaintedBiPartition Z)=[PaintedBiPartition]:
+let rv=[Z] in
+while size(rv~[0])>0 do
+ rv#:=descent(rv~[0]) od;rv 

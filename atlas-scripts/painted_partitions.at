@@ -7,7 +7,7 @@ Groups: Construction and Unitarity"; arXiv:1712:05552v6 18 Feb 2025}
 
 {shorthand for rat_as_int(n/2), with check that n is even}
 set h(int n)=int:
-assert(is_even(n),"trying to take half of odd integer");n\2 
+assert(is_even(n),"trying to take half of odd integer");n\2
 
 set labels=["A","A~", "B","D","C","C~","C*","D*"]
 set bi_labels=["B+","B-", "C","D","C~","C*","D*"]  {for PaintedBiPartitions see Def 3.3}
@@ -26,8 +26,11 @@ set order(Partition P)=int:sum(P)
 
 set star_string(int n)=string:let rv="" in for i:n do rv:=rv+"*" od;rv
 
+forget show@i_poly
 set show_partition(Partition P)=void:
 for r in P do prints(star_string(r)) od
+
+set show(Partition P)=void:show_partition(P)
 
 set symbols=[string]:["*","s","r","c","d"]
 set symbol(int k)=string:assert(k>=0 and k<=4,"k out of range");symbols[k]
@@ -89,6 +92,15 @@ set count_in_row(PaintedPartition P,int row,int symbol)=int:count(P[row],symbol)
 set count_in_column(PaintedPartition P, int column, int symbol)=int:count_in_row(transpose_of(P),column,symbol)
 set count(PaintedPartition P, int symbol)=sum(for row in P do count(row,symbol) od)
 {replace each entry = symbol  with -1; used in is_valid(PaintedPartition)}
+
+
+set rows_by_length(Partition P)=[int]:
+for i:max(P)+1 do count(P,i) od
+
+set partition_from_row_lengths([int] rows)=
+reverse(sort(##for i:#rows do for j:rows[i] do i od od))
+
+
 
 set delete_by_symbols(PaintedPartition P,[int] excluded_symbols)=PaintedPartition:
 for row in P do
@@ -314,19 +326,30 @@ set A_bar(Orbit O, string label)=[[int]]:power_set(pp(O,label))
 set A_bar_rank(Orbit O,string label)=int:#pp(O,label)
 set A_bar_order(Orbit O,string label)=int:#A_bar(O,label)
 
+set orbit((Partition,Partition) pair,string label)=
+if label="C" then  dual_orbit(orbit_C(pair))
+elif label="B" then  dual_orbit(orbit_B(pair))
+else [-1]  {placeholder for type D} fi
+
+set orbit(PaintedBiPartition Z)=orbit((Z.P.partition,Z.Q.partition),Z.label)
+
 set show_partition(PaintedPartition P)=void:show_partition(partition(P))
 
 set show_painted_partition(PaintedPartition P)=void:
 for row in P do prints(symbol_string(row)) od
 
 set show(PaintedBiPartition (P,Q,bi_label))=void:
+prints("bi_label:", bi_label);
 prints("P:");show_painted_partition(P);
 prints("---------",new_line,"Q:");show_painted_partition(Q)
 
+set show([PaintedBiPartition] list)=void:
+for Z in list do prints("=====================",new_line,Z);show(Z) od
+
 set show_short(PaintedBiPartition (P,Q,bi_label))=void:
-prints(P, " ", Q, " ", bi_label, " ", group_name(P,Q,bi_label))
+prints(P, " ", Q, " ", bi_label, " ", group_name(P,Q,bi_label), " ", orbit(P,Q,bi_label))
 
 set show_short([PaintedBiPartition] list)=void:
 tabulate(for (P,Q,bi_label) in list do
- [P.to_string,Q.to_string,bi_label,group_name(P,Q,bi_label)] od)
+ [P.to_string,Q.to_string,bi_label,group_name(P,Q,bi_label),orbit(P,Q,bi_label).to_string] od)
 
