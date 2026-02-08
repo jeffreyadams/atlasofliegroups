@@ -11,6 +11,7 @@
 
 #include <memory> // for |std::unique_ptr|
 #include <cstdlib> // for |std::abs|
+#include <algorithm> // for |std::fill|
 #include <cassert>
 #include <map> // used in computing |reducibility_points|
 #include <iostream> // for progress reports and easier debugging
@@ -2088,27 +2089,33 @@ sl_list<std::pair<StandardRepr,int> > Rep_table::deformation_terms
 // a function trying to take advantage of a height bound; its milage varies
 sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
   (StandardRepr p, SR_poly& queue, level height_bound)
+// we assume that |queue| contains no terms of height exceeding |height_bound|
 {
   BlockElt start; block_modifier bm;
-  auto& block = lookup_full_block(p,start,bm); // also makes |p| dominant
+  const auto& block = lookup_full_block(p,start,bm); // also makes |p| dominant
   const auto& gamma = p.gamma();
   assert(is_dominant_ratweight(root_datum(),gamma));
   auto dual_block = blocks::Bare_block::dual(block);
   kl::KL_table& kl_tab = dual_block.kl_tab(nullptr,1);
   // create KL table only minimally filled
 
-  // now fill remainder up to height; prepare for restriction to this subset
-  BitMap retained(block.size());
-  sl_list<std::pair<const StandardRepr,Split_integer> > result;
+  // record heights for the block, and extract block terms fro; |queue|
+  std::vector<level> heights(block.size());
+  level low_mark = height_bound+1; // lowest height of term in |queue|
+  sl_list<SR_poly::value_type> result;
+  // where that |value_type| is |std::pair<const StandardRepr,Split_integer>|
   for (BlockElt z=0; z<block.size(); ++z)
   { StandardRepr q = sr(block.representative(z),bm,gamma);
-    if (retained.set_to(z,q.height()<=height_bound))
+    heights[z] = q.height();
+    if (heights[z]<=height_bound)
     {
       auto it = queue.find(q);
-      if (it==queue.end())
+      if (it==queue.end()) // then ensure a term for any |retained| is present
 	result.emplace_back(std::move(q),Split_integer(0));
       else
       {
+	if (q.height()<low_mark)
+	  low_mark = q.height();
 	result.emplace_back(std::move(q),it->second); // push |(q,queue[q])|
 	queue.erase(it); // and remove that term it from the |queue|
       }
@@ -2120,28 +2127,31 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
 
   int_Vector value_at_minus_1;
   value_at_minus_1.reserve(kl_tab.pol_store().size());
-  for (auto& entry : kl_tab.pol_store())
+  for (const auto& entry : kl_tab.pol_store())
   { int val = 0;
     for (unsigned d=entry.size(); d-->0;)
       val = static_cast<int>(entry[d])-val; // Horner evaluate polynomial at -1
     value_at_minus_1.push_back(val);
   }
 
+  BitMap retained(block.size());
   const RankFlags singular = block.singular(bm,gamma); // singular simple coroots
   auto it = result.begin();
-  for (auto elt: retained) // don't increment |it| here
-    if (block.survives(elt,singular))
-      ++it;
-    else
-    { retained.remove(elt);
-      assert(it->second.is_zero()); // |queue| cannot have non final parameter
-      result.erase(it); // drop term; |it| now points to next term
+  for (BlockElt z=0; z<block.size(); ++z)
+    if (heights[z]<=height_bound) // skip block element not recorded in |result|
+    // now |it->first == sr(block.representative(elt),bm,gamma)|
+    { if (retained.set_to(z,heights[z]>=low_mark and block.survives(z,singular)))
+	++it; // leave survivors at |gamma|
+      else
+      { assert(it->second.is_zero()); // |queue| cannot have non final parameter
+	result.erase(it); // drop term; |it| now points to next term
+      }
     }
   result.reverse(); // we shall need to traverse elements downwards in |block|
 
   // viewed from |block|, the |kl_tab| is lower triangular
   // build its transpose, restricted to |retained|, and evaluated at $q=-1$
-  int_Matrix Q_mat (result.size()); // initialise to identity matrix
+  int_Matrix Q_mat (retained.size()); // initialise to identity matrix
   unsigned int i=0,j;
   unsigned int const top=block.size()-1;
   for (auto it=retained.begin(); it(); ++it,++i)
@@ -2154,21 +2164,26 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
     for (const BlockElt z : retained)
       odd_length.set_to(i++,block.length(z)%2!=0);
   }
+  const BitMap even_length = ~odd_length;
 
-  matrix::Vector<Split_integer> coef(signed_P.n_rows());
-  auto pos = result.size()-1;
+  matrix::Vector<Split_integer> coef(signed_P.n_rows()); // working array
+  auto pos = result.size()-1; // distance from |it| to final element of |result|
   for (auto it=result.begin(); not result.at_end(it); ++it,--pos)
     if (not it->second.is_zero())
-    { coef.assign(pos,Split_integer(0));
-      // compute into |coef| the product of columns of |signed_P| with parity
-      // opposite to |pos| with corresponding entries of column |pos| of |Q_mat|
-      for (auto j : (odd_length.isMember(pos) ? ~odd_length : odd_length))
+    { // incorporate deformation terms from |*it|
+      std::fill(&coef[0],&coef[pos],Split_integer(0)); // clear range to be used
+    /* compute into |coef| the matrix product of extracted columns of |signed_P|
+       up to |pos| and with parity opposite it, with vector extracted from
+       column |pos| of |Q_mat| at the corresponding (row) positions  */
+      for (auto j : // values with opposite bit as |pos| in |odd_length|
+	     (odd_length.isMember(pos) ? even_length : odd_length))
       { if (j>=pos)
 	  break;
 	for (unsigned i=0; i<=j; ++i)
 	  coef[i] += signed_P(i,j)*Q_mat(j,pos);
       }
-      { auto our_orient = orientation_number(it->first);
+      { // now add contributions computed in |coef| to |result| beyond |it|
+	auto our_orient = orientation_number(it->first);
 	auto j = pos-1;
 	for (auto jt = std::next(it); not result.at_end(jt); ++jt,--j)
 	{ coef[j] *= it->second;
@@ -2177,7 +2192,7 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
 	  coef[j].times_1_s();
 	  if (diff%4!=0)
 	    coef[j].times_s(); // equivalently |coef[j].negate|
-	  jt->second += coef[j]; // contribute coefficient to result
+	  jt->second += coef[j]; // deformation contribution within block
 	}
       }
   }
@@ -2316,7 +2331,7 @@ const deformation_unit& Rep_table::deformation(StandardRepr z)
   if (z.gamma().denominator() > (1LL<<rank()))
     z = weyl::alcove_center(*this,z);
 
-  auto h=alcove_hash.match(deformation_unit(*this,z));
+  auto h=alcove_hash.match(deformation_unit(*this,z,false));
   {
     deformation_unit& result = pool[h];
     if (result.has_def_contrib())
@@ -2636,7 +2651,9 @@ const deformation_unit&
 
   const auto& delta = inner_class().distinguished();
 
-  auto h = alcove_hash.match(deformation_unit(*this,z));
+  auto h = alcove_hash.match(deformation_unit(*this,z,true));
+  if (not pool[h].is_delta_fixed()) // previous value was from untwisted case
+    pool[h].replace_sample(z); // replace by our value, was tested delta-fixed
   if (pool[h].has_twdef_contrib())
   {
     Ext_rep_context ctxt(*this,delta);

@@ -44,7 +44,7 @@ set simples (LeviInfo(rd,):LI) = [int]:
 in while candidates>0
    do let i = first_set_bit(candidates)
       then bottoms = filter(>=@int)(coroot_ladder_bottoms(rd,i)).to_bitset
-   in candidates:= AND(without_first_set_bit(candidates),bottoms)
+   in candidates:= AND(unset_first_set_bit(candidates),bottoms)
    ;  i
    od
 { alternatively, with (rd,select):LI
