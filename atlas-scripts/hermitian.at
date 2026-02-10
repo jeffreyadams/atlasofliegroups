@@ -211,11 +211,15 @@ set make_KL_sum_hash_table() = KL_sum_hash_table:
 )
 
 set KLsumhash = make_KL_sum_hash_table()
+set KLsumhash_flag = false
 
 set KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol:
     if HT < 0 then return KL_sum_at_s(p) fi;
     if low_char(p,HT)
-    then KLsumhash.entry(p,HT)
+    then if KLsumhash_flag
+    	 then KLsumhash.entry(p,HT)
+	 else  KL_sum_at_s_to_height(p,HT)
+	 fi
     else let (below,) = height_split(KL_sum_at_s(p),HT), middle = elapsed_ms()
     	 in below
     fi
@@ -240,7 +244,10 @@ set KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol:
 set KL_sum_at_s_to_ht_inter(int HT) = (Param p,int time) maybe_PP:
     if  HT < 0 then return KL_sum_at_s(p).done_PP fi;
     if low_char(p,HT)
-    then KLsumhash.maybe_entry(p,HT,time)
+    then if KLsumhash_flag
+    	 then KLsumhash.maybe_entry(p,HT,time)
+	 else KL_sum_at_s_to_height(p,HT,time)
+	 fi
     else let (below,) = height_split(KL_sum_at_s(p),HT)
     	 in below.done_PP
     fi
@@ -332,6 +339,7 @@ set deform_rp_flag = false
 set full_deform_old_flag = false
 
 set full_deform_to_height_MvL_old(Param p, int height) = KTypePol:
+  if height < 0 then return full_deform(p) fi;
   let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p)
   then output = empty_K, def = empty, time = interrupt_base_time
   then P = empty +
@@ -352,6 +360,7 @@ set full_deform_to_height_MvL_old(Param p, int height) = KTypePol:
 
 
 set full_deform_to_height_MvL_old(Param p, int height,int TIME) = maybe_KTP:
+  if height < 0 then return full_deform(p,TIME) fi;
   let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p)
   then output = empty_K, def = empty{ , time = max(TIME\32,interrupt_base_time)}
   then P = empty +
@@ -375,6 +384,7 @@ set full_deform_to_height_MvL_old(Param p, int height,int TIME) = maybe_KTP:
 
 {worst cases for block_deform appear to be low(p) = (N,n,N+m) where n and m are relatively small and N big.}
 set full_deform_to_height_MvL_base(Param p, int height) = KTypePol:
+if height < 0 then return full_deform(p) fi;
 if full_deform_old_flag then return full_deform_to_height_MvL_old(p,height) fi;
 if deform_script_flag then return recursive_deform_scr(p,height) fi;
 ( if not {to_ht_over_u_flag} def_low(p,height)
@@ -402,6 +412,7 @@ if deform_script_flag then return recursive_deform_scr(p,height) fi;
 
 {alternative is recursive_deform_scr(p) or (p,HT) or (p,HT,time)}
 set full_deform_to_height_MvL_base(Param p, int height, int time) = maybe_KTP:
+if height < 0 then return full_deform(p,time) fi;
 if full_deform_old_flag then return full_deform_to_height_MvL_old(p,height,time) fi;
 if deform_script_flag then return recursive_deform_scr(p,height,time) fi;
 ( if not ({to_ht_over_u_flag} def_low(p,height))

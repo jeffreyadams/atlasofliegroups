@@ -210,6 +210,7 @@ set make_KType_hash () = Hash<KType>:
    make_hash(hash_code@(KType,int),=@(KType,KType))
 set make_Param_hash () = Hash<Param>:
    make_hash(hash_code@(Param,int),=@(Param,Param))
+set make_Param_hash ([Param] data) = Hash<Param>: make_hash((hash_code@(Param,int),=@(Param,Param)), data)
 set make_KTypePol_hash () = Hash<KTypePol>:
    make_hash(hash_code@(KTypePol,int),=@(KTypePol,KTypePol))
 
