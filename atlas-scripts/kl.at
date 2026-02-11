@@ -190,13 +190,14 @@ set strict_low_gamma(Param p, int N) = bool:
     {let (,,GAM) = low(p)
     in} (strict_factor*GAM(p)*gamma_frac > N)
 
-{Note HT must be in [LAM,GAM) This condition says it's near the bottom of that range: small HT.}
+{Note HT must be in [LAM,GAM) True says it's near the bottom of that range: small HT.}
 set low_diff(Param p, int HT) = bool:
     if (HT < 0) then return  false fi;
     let LAM = p.height, GAM = GAM(p) {(LAM, , GAM) = low(p)}
-    in (LAM < lam_frac*GAM) and (HT < diff_frac*GAM)
+    in {(LAM < lam_frac*GAM) and} (HT < diff_frac*GAM)
     {(LAM < lam_frac*GAM) and ((GAM - LAM)*diff_frac) > HT {(HT-LAM)}}
 
+{weaken condition on HT, so more often true, so more to_ht }
 set strict_low_diff(Param p, int HT) = bool:
     if HT < 0 then return  false fi;
     let LAM = p.height, GAM = GAM(p)  {(LAM, ,GAM) = low(p)}
@@ -286,6 +287,7 @@ set strict_low_flag = true
 {whether to use test to decide whether to revert to full_deform at difficult p}
 set strict_low_def_flag = true
 
+{if true, allow hermitian_form_irreducible_to_ht; if false, truncate hermitian_form_irreducible}
 set strict_low(Param p, int HT) = bool:
     if HT < 0 then return false
     elif not strict_low_flag

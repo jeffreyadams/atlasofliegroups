@@ -315,7 +315,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 let I = real_form_hash.size()
 	 then i = real_form_hash.match(rf)
 	 then () = if i = I {haven't seen this real form before}
-		   then	let empty = [int]: nullint(#KGB(rf))
+		   then	let empty = [int]: nullint(KGB_size(rf))
                         then null_list=[int]:[] 
 			then () = K_type_hashes #:= make_KType_hash();
 			     K_type_pol_hashes #:= make_KTypePol_hash();
@@ -328,7 +328,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 			     nu_heights #:= null(0)
                         then ()=  xl_sizes #:= null_list
                         then ()=  xl_sizes_cumulative #:= null_list
-			then () = xl_known #:= empty {null(#KGB(rf))}
+			then () = xl_known #:= empty {null(KGB_size(rf))}
 			then () = x_known #:= 0
 			then () = x_partial #:= 0
 			{then () = status_strings #:= []}
@@ -848,7 +848,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		 nu_heights[i] := [];
 		 {prints("i = ",i, ", x_partial = ",x_partial);}
 		 x_partial[i] := 0;
-		 xl_known[i] := nullint(#KGB(rf));
+		 xl_known[i] := nullint(KGB_size(rf));
 		 x_known[i] := 0
 	    fi
     in
@@ -1068,7 +1068,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       let start = elapsed_ms()
       then i = add_real_form(rf)
       then xl_knowni = [int]: xl_known[i]
-      then () = for n:#KGB(rf)
+      then () = for n:KGB_size(rf)
 		do xl_knowni[n] := OR(Ms[n],xl_knowni[n])
 		od
       then () = xl_known[i] := xl_knowni
@@ -1251,7 +1251,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 do let xnum = p.x.number
 	    in prints("void:  big_unitary_hash.long_match(parameter(",Gname,",",xnum,",",p.lambda,",",p.nu,"),j)")
 	 od;
-	 {prints("void: big_unitary_hash.finishall(",Gname,",",xl_known[i],")");} {this has length #KGB(G), which is a lot; not worth including}
+	 {prints("void: big_unitary_hash.finishall(",Gname,",",xl_known[i],")");} {this has length KGB_size(G), which is a lot; not worth including}
 	 if write_x_flag
 	 then for xnum in done_list
 	      do prints("void: big_unitary_hash.finishx_num(",Gname,xnum,")")

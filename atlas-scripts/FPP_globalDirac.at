@@ -90,14 +90,14 @@ set revert_steve_flag(KGBElt x) = bool:
     let G = x.real_form
     in prefer_steve_long_flag and
        is_quasisplit(G) and
-       (x.number = #KGB(G) - 1){ and
+       (x.number = KGB_size(G) - 1){ and
        (lambda != G.rho)}
 
 set revert_steve_flag(KGBElt x, ratvec lambda) = bool:
     let G = x.real_form
     in prefer_steve_long_flag and
        is_quasisplit(G) and
-       (x.number = #KGB(G) - 1) and
+       (x.number = KGB_size(G) - 1) and
        (lambda != G.rho)
 
 set contragredient(KGBElt x) = KGBElt:
@@ -183,7 +183,7 @@ set most_more(RealForm G) = (G.semisimple_rank - 3)*(G.semisimple_rank - 3)
 
 set FPP_def_adjust(KGBElt x) = void:
     let G = x.real_form
-    then N = #KGB(G), n = x.number, r = semisimple_rank(G)
+    then N = KGB_size(G), n = x.number, r = semisimple_rank(G)
     in if KGB_def_test_frac_flag
        then FPP_def_flag := (n > N*KGB_def_test_frac and N-n > 2*r)
        fi{;
@@ -191,13 +191,13 @@ set FPP_def_adjust(KGBElt x) = void:
 
 {returning "true" means bottom layer ought to be used}
 {start messing again 11/5/25. This version  sets more_shift to be zero
-unless x.number >= (#KGB)*start_more_KGB_frac, and L(x,lambda) is not maximal.}
+unless x.number >= (KGB_size)*start_more_KGB_frac, and L(x,lambda) is not maximal.}
 set hard_test_bl(KGBElt x, ratvec lambda) = bool:
        if x.real_form.semisimple_rank < 7 then return false fi;
-       if KGB_frac_flag and x.number < KGB_frac*(#KGB(x.real_form)) then return false fi;
+       if KGB_frac_flag and x.number < KGB_frac*(KGB_size(x.real_form)) then return false fi;
        if not test_more_flag then return true fi;
        let start = elapsed_ms(), G=x.real_form,
-           N = #KGB(x.real_form), n = x.number
+           N = KGB_size(x.real_form), n = x.number
        then () = if n < start_more_KGB_frac*N
     	       	 then more_shift(0);
 	      	      test_bl_time +:= elapsed_ms() - start;
@@ -217,7 +217,7 @@ set hard_test_bl(KGBElt x, ratvec lambda) = bool:
 {returning "true" means bottom layer ought to be used}
 set easy_test_bl(KGBElt x) = bool:
     let G = x.real_form
-    then N = #KGB(G), n = x.number, r = semisimple_rank(G)
+    then N = KGB_size(G), n = x.number, r = semisimple_rank(G)
     in if r < 6
        then false
        elif KGB_frac_flag and n < KGB_frac*N
@@ -239,10 +239,10 @@ set KGB_edge_frac = 1/10
 set test_edge(KGBElt x) = void:
     if not test_edge_flag then return () fi;
     edge_offset:=0;
-    if x.number > KGB_edge_frac*#KGB(x.real_form)
+    if x.number > KGB_edge_frac*KGB_size(x.real_form)
     then edge_offset := 2
     fi;
-    if x.number > KGB_frac*#KGB(x.real_form)
+    if x.number > KGB_frac*KGB_size(x.real_form)
     then edge_offset := (x.real_form.rank+1)\2
     fi;
     if x.involution+1 = 0
@@ -504,7 +504,7 @@ then coh_ind_unip_few(G,Uhash)}
     then () = for (x,lambda)@k in xlambdasW
     	      do {xlambdasW}
 	      	FPP_def_adjust(x);
-	      	predictor_flag:= x.number > adjust_frac*#KGB(G);
+	      	predictor_flag:= x.number > adjust_frac*KGB_size(G);
 	      	test_next(x);
 		test_edge(x);
 	      	if twist(x) != x {close 482}
@@ -760,7 +760,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
     then skipx = false
     then () = for x@j in xs
     	      do {xs}
-	 predictor_flag:= x.number > adjust_frac*#KGB(G);
+	 predictor_flag:= x.number > adjust_frac*KGB_size(G);
 	 test_next(x);
 	 test_edge(x);
 	 if twist(x) != x
@@ -1117,7 +1117,7 @@ then coh_ind_unip_few(G,Uhash)}
 	       fi
     then () = for (x,lambda)@k in xlambdasW
     	      do {xlambdasW}
-	      	predictor_flag:= x.number > adjust_frac*#KGB(G);
+	      	predictor_flag:= x.number > adjust_frac*KGB_size(G);
 		test_next(x);
 	      	if twist(x) != x
 		then big_unitary_hash.finishx(x)
@@ -1331,7 +1331,7 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 	       fi
     then () = for x@j in xs
     	      do {xs}
-	 predictor_flag:= x.number > adjust_frac*#KGB(G);
+	 predictor_flag:= x.number > adjust_frac*KGB_size(G);
 	 test_next(x);
 	 if twist(x) != x
 	 then big_unitary_hash.finishx(x)
@@ -1823,7 +1823,7 @@ fancy_tester) = void:
 	       fi
     then () = for (x,lambda)@k in xlambdas
     	      do {xlambdas}
-	        predictor_flag:= x.number > adjust_frac*#KGB(G);
+	        predictor_flag:= x.number > adjust_frac*KGB_size(G);
 		test_next(x);
 		test_edge(x);
 		if twist(x) != x {start 1545}
@@ -2151,13 +2151,13 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 	      fi
     then () = for x@j in xs
     	      do {xs}
-	 predictor_flag:= x.number > adjust_frac*#KGB(G);
+	 predictor_flag:= x.number > adjust_frac*KGB_size(G);
 	 test_next(x);
 	 test_edge(x);
 	 if twist(x) != x
 	 then big_unitary_hash.finishx(x)
 	 fi;
-	 let revert_steve_flag = revert_steve_flag(x){prefer_steve_long_flag and (x.number = #KGB(G) - 1)}
+	 let revert_steve_flag = revert_steve_flag(x){prefer_steve_long_flag and (x.number = KGB_size(G) - 1)}
 	 then former_time = current, formerUhash = currentUhash, formerUcounter = currentUcounter, x_sc = xs_sc[j],
 	     formerUtime = unitaryTime, formerCcounter = currentCcounter, formerCharTime = charTime,
 	     former_red_count_time = red_count_time,  startmorebadx = more_bad_hash.size(),
@@ -3009,7 +3009,7 @@ set real_induced(RealForm G) = void:
     then lambdainms = [[[ratvec]]]: {one list of LRi lambdas for each xin}
     	 for maxLRi@i in maxLRis
 	 do let rhoi = G.rho - maxLRi.rho
-	    in for n:#KGB(maxLRi)
+	    in for n:KGB_size(maxLRi)
 	       do for lambdaG in lambdainmGs[i][n]
 	       	  do lambdaG - rhoi
 		  od

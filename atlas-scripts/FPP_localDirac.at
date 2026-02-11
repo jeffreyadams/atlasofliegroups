@@ -2916,7 +2916,7 @@ set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, {VertexData vd,} Loca
     then () = more_after_flag:=false
     then () = min_after_flag:=false
     then () = if 1*parameter(x,lambda,lambda) = zero_pol then return [] fi
-    then r = rank(x.involution - 1), NK = #KGB(x.real_form)
+    then r = rank(x.involution - 1), NK = KGB_size(x.real_form)
     then pmin = parameter(x,lambda,0*lambda)
     then () = if {TINY CASE} #LF[0]=1
     	      then if mix_flag
@@ -3072,7 +3072,7 @@ set local_test_GEO_hash_else_dumb(KGBElt x, ratvec lambda, {VertexData vd,} Loca
     then () = more_after_flag:=false
     then () = min_after_flag:=false
     then () = if 1*parameter(x,lambda,lambda) = zero_pol then return [] fi
-    then r = rank(x.involution - 1), NK = #KGB(G), edge_offset_temp = min(#hts-1, edge_offset)
+    then r = rank(x.involution - 1), NK = KGB_size(G), edge_offset_temp = min(#hts-1, edge_offset)
     then pmin = parameter(x,lambda,0*lambda)
     then () = if {TINY CASE} #LF[0]=1
     	      then if mix_flag
@@ -3372,7 +3372,7 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, LocalVertexData Lvd, [
     let (G,j0) = %x, thetaMinus = x.involution - 1, start = elapsed_ms()
     then () = more_after_flag:=false
     then () = min_after_flag:=false
-    then zero_pol = null_module(G), pmin = parameter(x,lambda, 0*lambda), NK = #KGB(G)
+    then zero_pol = null_module(G), pmin = parameter(x,lambda, 0*lambda), NK = KGB_size(G)
     then () = if 1*pmin = zero_pol then return [] fi
     then r = rank(x.involution - 1)
     {then () = to_ht_flag:=true}
@@ -3748,7 +3748,7 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVert
     then () = if quick_flag then short_hts_flag:=false fi
     then zero_pol = null_module(G), pmin = parameter(x,lambda,0*lambda)
     then () = if 1*pmin = zero_pol then return [] fi
-    then r = rank(x.involution - 1) {, NK = #KGB(G)}, step = max(G.semisimple_rank\2,1)
+    then r = rank(x.involution - 1) {, NK = KGB_size(G)}, step = max(G.semisimple_rank\2,1)
     then () = if {TINY CASE} #LF[0]=1
     	      then if mix_flag
 	      	   then return one_param_test_min_bottom(parameter(x,lambda,Lvd.list[LF[0][0][0]]),

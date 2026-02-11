@@ -416,7 +416,7 @@ set deformation_scr (Param p, int HT) = (Param,ParamPol): { deformed Param and n
  { deform(p))} { here |deform| may be replaced by |deformation_terms| }
 
 {whether to use deformation_terms_by_dual in recursive_deform}
-set by_dual_flag = true
+set by_dual_flag = false
 
 {same as full_deform}
 set recursive_deform_scr (Param p, int HT) = KTypePol:
