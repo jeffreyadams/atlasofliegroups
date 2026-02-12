@@ -1002,7 +1002,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       in xl_sizes[i]
     , (RealForm -> [int]): {xl_sizes_cumulative} (RealForm rf) [int]:
       let i = add_real_form(rf)
-      in xl_sizes_cumulative[i]      
+      in xl_sizes_cumulative[i]
     , ((RealForm,int) -> (int,int)): {xl_lookup} (RealForm rf, int j):
         convert_int_to_xl(xl_sizes[add_real_form(rf)],j)
     , (RealForm -> [int]): {xl_known} (RealForm rf) [int]:

@@ -106,6 +106,18 @@ set_type maybe_KTP = (void timed_out | KTypePol done)
 
 set_type maybe_PP =  (void timed_out_PP | ParamPol done_PP)
 
+set is_done(maybe_KTP P) = bool:
+    case P
+    | timed_out: false
+    | done: true
+    esac
+
+set is_done(maybe_PP P) = bool:
+    case P
+    | timed_out_PP: false
+    | done_PP: true
+    esac
+
 {to record time spent in is_unitary, is_unitary_to_ht, etc.}
 set unitaryTime = int: 0
 
@@ -328,6 +340,88 @@ set impure_height(KTypePol P) = int:
 		   od
 	 in -1
      fi
+
+set_type
+[ deformation_hash_time =
+( ( -> int) size {number of parameters stored}
+  , ( -> ) clear
+  , (Param -> int) time_record {time taken for full deform of p}
+  , ((Param,int) -> int) time_record_bounded {time taken for full deform of p, to max of bound}
+  , (Param -> int) time_lookup {time taken for full deform of p if known, else -1}
+  , (Param -> KTypePol) full_deform
+  , ((Param,int) -> maybe_KTP) maybe_full_deform
+  , (int -> Param) param_index {parameter #j}
+  , (int -> int) time_index {time to compute full_deform of parameter #j}
+  , ( -> Param_hash) ParamHash {parameters considersd}
+  , ( -> vec) timeList {list of times for ParamHash}
+  )
+]
+
+set make_deformation_hash_time () = deformation_hash_time:
+( let param_hash = make_Param_hash()
+  then time_list = vec:[]
+  then max_time = int: 100*interrupt_base_time
+  then dummy = maybe_KTP: (1*LKT(U(0,0).trivial)).done
+  then clearDHT() = void:
+       let () = param_hash.clear()
+       then () = time_list :=[]
+       in ()
+  then add_param(Param p) = (KTypePol,int):
+       let I = param_hash.size()
+       then i = param_hash.match(p)
+       in (if i=I
+       	  then let start = elapsed_ms()
+	       then FD = full_deform(p)
+	       in time_list #:= elapsed_ms() - start;
+		  FD
+	  else full_deform(p)
+	  fi, i)
+  then maybe_add_param(Param p, int time) = (maybe_KTP,int):
+       let I = param_hash.size()
+       then i = param_hash.lookup(p)
+       in (if i<0
+       	   then let start = elapsed_ms()
+	        then mFD = full_deform(p,time)
+	       	in case mFD
+		   | timed_out: mFD
+		   | done(FD): time_list #:= elapsed_ms() - start;
+		    	      i:= param_hash.match(p);
+			      FD.done
+		   esac
+	  else full_deform(p).done
+	  fi,i)
+   in
+  ( ( -> int): {size} @int: param_hash.size()
+  , ( -> ): {clear} clearDHT
+  , (Param -> int): {time_record} (Param p):
+    let (,i) = add_param(p) in time_list[i]
+  , ((Param,int) -> int): {time_record_bounded} (Param p, int time):
+    let (,j) = maybe_add_param(p,time)
+    in if j < 0 then 2*time
+       else time_list[j]
+       fi
+  , (Param -> int): {time_lookup}  (Param p):
+    let j = param_hash.lookup(p)
+    in if j<0 then -1 else time_list[j] fi
+  , (Param -> KTypePol): {full_deform} (Param p):
+    let (FD,) = add_param(p) in FD
+  , ((Param,int) -> maybe_KTP): {maybe_full_deform} (Param p, int time):
+    let (mFD,) = maybe_add_param(p,time) in mFD
+  , (int -> Param): {param_index} (int j): param_hash.index(j)
+  , (int -> int): {time_index} (int j): time_list[j]
+  , ( -> Param_hash): {ParamHash} @Param_hash: param_hash
+  , ( -> vec): {timeList} @vec: time_list
+  )
+  )
+
+set defHashTime = make_deformation_hash_time()
+
+
+set full_deform(Param p) = KTypePol:
+    defHashTime.full_deform(p)
+
+set full_deform(Param p, int time) = maybe_KTP:
+    defHashTime.maybe_full_deform(p,time)
 
 {whether to use the script full_deform}
 set deform_script_flag = false
@@ -1961,15 +2055,37 @@ set worst_so_far(Param p, int H) = int:
     	    fi {index >=0}
     fi {H.>=}
 
-set is_done(maybe_KTP P) = bool:
-    case P
-    | timed_out: false
-    | done: true
-    esac
-
-
 {predicted time in milliseconds to complete is_unitary(p)}
 set u_predictor(Param p) = int:
+    if not predictor_flag
+    then return worst_so_far(p,-1) + interrupt_base_time
+    fi;
+    let delta = p.real_form.distinguished_involution
+    then list = for q in {partial_block(p)} monomials(KL_sum_at_s(p))
+    if is_fixed(delta,q) do q fi od
+    {will do full_deform on each term in list}
+    then times = [int]: for q in list do defHashTime.time_lookup(q) od
+    {have we computed full_deform? Storage location j if yes, -1 if no}
+    then known_times = [int]: for T in times if T >= 0 do T fi od
+    then N = #times, n = #known_times
+    in if predictor_verbose
+	     	then prints(new_line,"Start predicting to height -1 param ",p);
+		     prints("(#terms,#known) = (",N,",",n, "), known times = ",known_times)
+       fi;
+       if n> 0 {n = #known_times}
+       then return (N-n)*max(known_times) + (n*interrupt_base_time)\10 {n lookups}
+       	    {N-n full_deforms to compute, probably each worse than known}
+       else let i0 = (2*N)\3 {we know nothing, so compute one full_deform}
+       	    then q = list[i0] {not yet computed full_deform}
+	    then RT = defHashTime.time_record_bounded(q, 10*interrupt_base_time)
+       	    in if predictor_verbose
+	       then prints("chosen random q is number ",i0, " of ",N,": ",q,
+	       	    ", taking ",print_time_string(RT))
+	       fi;
+	       (N-1)*RT + interrupt_base_time {N-1 full_deforms still to compute}
+       fi
+
+set u_predictor_old (Param p) = int:
     if not predictor_flag
     then return worst_so_far(p,-1) + interrupt_base_time
     fi;
@@ -2034,11 +2150,14 @@ set u_predictor(Param p, int HT) = int:
 					      " of ",N,": ",q)
 					 fi
 			       then start_def = elapsed_ms()
-	    	 	       then Q = deformedHash.entry(q,HT)
+	    	 	       then Q = deformedHash.maybe_entry(q,HT,10*interrupt_base_time)
 			       then RT = elapsed_ms() - start_def
 			       in if predictor_verbose
 				  then prints("chosen random time ",
-					       print_time_string(RT))
+					       print_time_string(RT));
+				       if not is_done(Q)
+				       then prints("...but test didn't finish!")
+				       fi
 				  fi;
 				  (N-1)*(RT+1)+ interrupt_base_time
 		  	       {case deformedHash.maybe_entry(q,HT,100*interrupt_base_time)

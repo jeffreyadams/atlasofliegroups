@@ -487,10 +487,10 @@ set final_wiggle_flag = false
 {set this to true to use wiggle tests in local_testK_hash (beginning
 and middle), just doing lookup; since that's fast, safe to default to true?}
 set wiggle_flag1 = false {true bad in Spin(p,q) up to rk 5; helps in
-E7 spherical}
+E7 spherical???}
 
-set wiggle_flag1_count = int: 1
-
+set wiggle_flag1_count = int: 0
+set wiggle_flag1_time = int:0
 {set this also to true to do unitarity tests if lookup fails}
 set wiggle_flag2 = false
 
@@ -578,7 +578,8 @@ set local_testK_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 			  then pC = parameter(x, lambda, gamma)
 			  then ps = monomials(pC)
 			  then () = if wiggle_flag1 and d>0
-				    then let short_verts = for i:d+1
+				    then let start_wiggle = elapsed_ms(),
+				    	     short_verts = for i:d+1
 							   do verts[:i]##verts[i+1:]
 							   od {list of vertex sets for faces}
 					 then CF = character_formula_to_ht(1*pC,HT)
@@ -594,7 +595,7 @@ set local_testK_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 					    then  wiggle_flag1_count+:=1;
 					    	  newStatuses:= updateNUclassesB(newStatuses, gr, k);
 						 newStatuses[k] := "F"
-					    fi {any q}
+					    fi {any q} next wiggle_flag1_time +:= elapsed_ms() - start_wiggle
 				    fi {wiggle_flag1}
 		     {then () = prints(new_line,"k = ",k,", ICPNU_flag = ",ICPNU_flag,", ICPU_flag = ",ICPU_flag)
 		     then () = prints("before ICPNU, newStatuses = ",newStatuses)}
@@ -643,7 +644,8 @@ set local_testK_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 				     then pC = parameter(x, lambda, gamma)
 				     then ps = monomials(finalize(pC))
 				     then () = if wiggle_flag1 and d>0
-					       then let short_verts = for i:d+1
+					       then let start_wiggle = elapsed_ms(),
+					       	    	short_verts = for i:d+1
 								      do verts[:i]##verts[i+1:]
 								      od {list of vertex sets for faces}
 						    then CF = character_formula_to_ht(1*pC,HT)
@@ -659,7 +661,7 @@ set local_testK_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 							       od)
 							then wiggle_flag1_count+:=1;
 							     newStatuses[K] := "F"
-							fi
+							fi next wiggle_flag1_time +:= elapsed_ms() - start_wiggle
 						 fi{wiggle_flag1}
 			  {then () = prints(new_line,"K = ",K,", ICPNU_flag = ",ICPNU_flag,",
 				ICPU_flag = ",ICPU_flag)
@@ -801,7 +803,8 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 			  then ps = monomials(pC)
 			  then () = if wiggle_flag1 and d>0
 				    then {prints("got into wiggle loop, p = ",pC);}
-				    	 let short_verts = for i:d+1
+				    	 let start_wiggle = elapsed_ms(),
+					     short_verts = for i:d+1
 							   do verts[:i]##verts[i+1:]
 							   od {list of vertex sets for faces}
 					 then CF = character_formula_to_ht(1*pC,HT)
@@ -818,7 +821,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 					    then wiggle_flag1_count+:=1;
 					    	 newStatuses:= updateNUclassesB(newStatuses, gr, k);
 						 newStatuses[k] := "F"
-					    fi {any q}
+					    fi {any q} next wiggle_flag1_time +:= elapsed_ms() - start_wiggle
 				    fi {wiggle_flag1}
 		     {then () = prints(new_line,"k = ",k,", ICPNU_flag = ",ICPNU_flag,", ICPU_flag = ",ICPU_flag)
 		     then () = prints("before ICPNU, newStatuses = ",newStatuses)}
@@ -873,7 +876,8 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 				     then pC = parameter(x, lambda, gamma)
 				     then ps = monomials(finalize(pC))
 				     then () = if wiggle_flag1 and d>0
-					       then let short_verts = for i:d+1
+					       then let start_wiggle = elapsed_ms(),
+					       	    	short_verts = for i:d+1
 								      do verts[:i]##verts[i+1:]
 								      od {list of vertex sets for faces}
 						    then CF = character_formula_to_ht(1*pC,HT)
@@ -889,7 +893,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 							       od)
 							then wiggle_flag1_count+:=1;
 							     newStatuses[K] := "F"
-							fi
+							fi next wiggle_flag1_time +:= elapsed_ms() - start_wiggle
 						 fi{wiggle_flag1}
 			  {then () = prints(new_line,"K = ",K,", ICPNU_flag = ",ICPNU_flag,",
 				ICPU_flag = ",ICPU_flag)
@@ -1271,7 +1275,8 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
 		      then pC = parameter(x, lambda, gamma) {sigma/(d+1))}
 		      then ps = monomials(pC)
 		      then () = if wiggle_flag1 and d>0
-				then let short_verts = for i:d+1
+				then let start_wiggle = elapsed_ms(),
+				     short_verts = for i:d+1
 						       do verts[:i]##verts[i+1:]
 						       od {list of vertex sets for faces}
 				     then CF = character_formula(1*pC)
@@ -1288,7 +1293,7 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
 		   then wiggle_flag1_count+:=1;
 		   	newStatuses:= updateNUclassesB(newStatuses, gr, k);
 			newStatuses[k] := "F"
-		   fi {any q}
+		   fi {any q} next wiggle_flag1_time +:= elapsed_ms() - start_wiggle
 				fi {wiggle_flag1}
 		      then pCdef = monomials(pC)
 		      in if newStatuses[k] = "?" and not is_final(pC)
@@ -1728,7 +1733,8 @@ set local_test_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		 then pC = parameter(x, lambda, gamma)
 		 then ps = monomials(pC)
 		 then () = if wiggle_flag1 and d>0 {ASSUME TESTER IS is_unitary}
-			   then let short_verts = for i:d+1
+			   then let start_wiggle = elapsed_ms(),
+				    short_verts = for i:d+1
 						  do verts[:i]##verts[i+1:]
 						  od {list of vertex sets for faces}
 				then CF = character_formula(1*pC)
@@ -1741,8 +1747,8 @@ and not tester(q)
 						   od)
 					    then newStatuses:= updateNUclassesB(newStatuses, gr, m);
 						 newStatuses[m] := "F"
-					    fi {any q}
-				fi {final_wiggle_flag}
+					    fi {any q} next wiggle_flag1_time +:= elapsed_ms() - start_wiggle
+				fi {wiggle_flag1}
 		 then () = if newStatuses[m][0] = "?" and all(for p in ps
 				   do @bool: Uhash.lookup(p).>= or (let ans = tester(p)
 								   in if not ans
@@ -2424,13 +2430,14 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 				   then if wiggle_flag1 and d > 0
 					then {let () = char_counter.use()
 					     then startCF = elapsed_ms()}
-					     let CF = character_formula(pC)
+					     let start_wiggle = elapsed_ms(),
+				    	     	 CF = character_formula(pC)
 					     {then () = charTime +:= elapsed_ms() - startCF}
 					     in monomials(composition_series((sum(x.real_form,
 					     for j:d+1 {v in ratverts}
 					     do wiggle(CF, face_bary(Lvd,verts[:j]##verts[j+1:]))
 					     {(sigma - v)/d)}
-					     od))))
+					     od)))) next wiggle_flag1_time +:= elapsed_ms() - start_wiggle
 							  {proper_facet_deformed(pC)}
 					 else []
 					 fi
