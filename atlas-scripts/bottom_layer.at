@@ -789,7 +789,8 @@ set min_small_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
     	      then NIHCOUNT +:= 1;
 	      	   return if quitNIH_flag
 		   	  then true
-			  else is_unitary_to_ht_big_SIMPLE(p0,DG)
+			  else is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(p0,DG)
+			  {is_unitary_to_ht_big_SIMPLE(p0,DG)}
 			  fi
 	      fi
     	 {this case can happen in Spin(5,3), p = p = parameter(G,39,[1,1,1,1],[0,1,1,1])}
@@ -1183,7 +1184,8 @@ set bottom_elim_factors(Param p0, Param p, QKL_bottom_data (Q, LKdata), KTypePol
 	      	   if not small_test_flag then prints("bad bef at ",p0) fi;
 	      	   return if quitNIH_flag
 		   	  then true
-			  else is_unitary_to_ht_big_SIMPLE(p0,D)
+			  else is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(p0,D)
+			  {is_unitary_to_ht_big_SIMPLE(p0,D)}
 			  fi
 	      fi
     then derpLjs = derived_factor_params0(pL) {one for each derived simple factor derLj}
@@ -1701,7 +1703,8 @@ set bottom_elim_factors_more(Param p0, Param p, [QKL_bottom_data] data, KTypePol
 	      	  if not small_test_flag then prints("bad befm at ",p0) fi;
 	      	   return if quitNIH_flag
 		   	  then true
-			  else is_unitary_to_ht_big_SIMPLE(p0,D)
+			  else is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(p0,D)
+			       {is_unitary_to_ht_big_SIMPLE(p0,D)}
 			  fi
 	      fi
      then three_bools = max_goodness(p0, maxQps), R = more_good_hash.size()
@@ -1776,7 +1779,8 @@ set bottom_elim_factors_more(Param p0, Param p, int D_low, int D, KTypePol P)= b
 	      	  {if not small_test_flag then prints("bad befm at ",p0) fi;}
 	      	   return if quitNIH_flag
 		   	  then true
-			  else is_unitary_to_ht_big_SIMPLE(p0,D)
+			  else is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(p0,D)
+			       {is_unitary_to_ht_big_SIMPLE(p0,D)}
 			       {is_unitary_to_ht_big_SIMPLE(p0,(D+height(p0))\2)}
 			       {is_unitary_to_hts_big_SIMPLE(p0,[(D+height(p0))\2,D])}
 			  fi

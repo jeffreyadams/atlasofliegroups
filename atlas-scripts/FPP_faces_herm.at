@@ -1760,6 +1760,7 @@ set is_known_u_to_ht(Param p, int HT) = bool:
 {return 1 if is_unitary_to_ht(p,HT) known true, -1 if known false, 0 else}
 set status(Param p, int HT) = int:
     if not is_hermitian(p) then return -1 fi;
+    {if HT < 0 and not FPP_def_test(p) then return -1 fi;}
     let start_st = elapsed_ms(), ans = int:0
     then GAM = (p.infinitesimal_character* p.inner_class.two_rho_check)\1
     in
