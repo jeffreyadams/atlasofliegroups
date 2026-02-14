@@ -224,6 +224,8 @@ else
  size(Z)
 fi
 
+{for signature@PaintedBiPartition see signed_and_marked_young_diagrams.at}
+
 set_type GroupDatum=(string name,int p,int q)
 set =(GroupDatum A,GroupDatum B)=bool:
  A.name=B.name and A.p=B.p and A.q=B.q
@@ -326,17 +328,18 @@ set A_bar(Orbit O, string label)=[[int]]:power_set(pp(O,label))
 set A_bar_rank(Orbit O,string label)=int:#pp(O,label)
 set A_bar_order(Orbit O,string label)=int:#A_bar(O,label)
 
+set show_partition(PaintedPartition P)=void:show_partition(partition(P))
+set show_painted_partition(PaintedPartition P)=void:for row in P do prints(symbol_string(row)) od
+
+{orbit is defined in nilpotent_orbits_bmsz.at, so remove definitions of orbit,
+and move show functions to nilpotent_orbits_bmsz.at}
+{
 set orbit((Partition,Partition) pair,string label)=
 if label="C" then  dual_orbit(orbit_C(pair))
 elif label="B" then  dual_orbit(orbit_B(pair))
 else [-1]  {placeholder for type D} fi
 
 set orbit(PaintedBiPartition Z)=orbit((Z.P.partition,Z.Q.partition),Z.label)
-
-set show_partition(PaintedPartition P)=void:show_partition(partition(P))
-
-set show_painted_partition(PaintedPartition P)=void:
-for row in P do prints(symbol_string(row)) od
 
 set show(PaintedBiPartition (P,Q,bi_label))=void:
 prints("bi_label:", bi_label);
@@ -352,4 +355,4 @@ prints(P, " ", Q, " ", bi_label, " ", group_name(P,Q,bi_label), " ", orbit(P,Q,b
 set show_short([PaintedBiPartition] list)=void:
 tabulate(for (P,Q,bi_label) in list do
  [P.to_string,Q.to_string,bi_label,group_name(P,Q,bi_label),orbit(P,Q,bi_label).to_string] od)
-
+}
