@@ -2603,6 +2603,28 @@ set complex_posroots (KGBElt x) =  mat:
 { pad string with blanks (for lining up columns in tables) }
 set pad (string s,int width) = string: l_adjust(width,s)
 
+set min_height (KTypePol P) = Maybe<int>:
+   if =P then none() else some(height(first_K_type(P))) fi
+set min_height (ParamPol P) = Maybe<int>:
+   if =P then none() else some(height(first_param(P))) fi
+set max_height (KTypePol P) = Maybe<int>:
+   if =P then none() else some(height(last_K_type(P))) fi
+set max_height (ParamPol P) = Maybe<int>:
+   if =P then none() else some(height(last_param(P))) fi
+
+{ height of polynomial is that of highest term, or -1 for an empty polynomial }
+set height (KTypePol P) = int:
+   case max_height(P) | none(): -1 | some(h): h esac
+set height (ParamPol P) = int:
+   case max_height(P) | none(): -1 | some(h): h esac
+
+set min_height([Param] params) = [Param]: { keep only minimal height terms }
+   if #params=0 then []
+   else
+      let min=min(for p in params do height(p) od)
+   in for p in params if height(p)=min do p fi od
+   fi
+
 { for user convenience; a ParamPol is an associative array ParamPol->Split
   so selecting its monomials (Param values) by position is not reliable, but
   allowing so is useful in user sessions to pick terms from a computed result
@@ -2611,10 +2633,6 @@ set monomials (KTypePol P) = [KType]: for @t in P do t od
 set monomials (ParamPol P) = [Param]: for @p in P do p od
 set monomial  (KTypePol P,int i) = KType: monomials(P)[i]
 set monomial  (ParamPol P,int i) = Param: monomials(P)[i]
-
-{ height of a ParamPol is max of height of each term}
-set height (KTypePol P) = int: max(-1)(for @t in P do height(t) od)
-set height (ParamPol P) = int: max(-1)(for @p in P do height(p) od)
 
 {. Convert a list of KTypePol into the list of distinct parameters occurring;
    careful: don't let terms cancel! .}
