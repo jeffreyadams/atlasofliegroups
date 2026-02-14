@@ -147,6 +147,7 @@ set to_ht (int N) = (KTypePol->KTypePol): (KTypePol P):
   fi
 
 {Each KL_sum_at_s(Param) will be hashed only to some maximum height; full KL_sum_at_s is hashed by library}
+{
 set_type
 [KL_sum_hash_table =
 ( (->int) param_size {number of parameters included}
@@ -224,14 +225,14 @@ set make_KL_sum_hash_table() = KL_sum_hash_table:
 
 set KLsumhash = make_KL_sum_hash_table()
 set KLsumhash_flag = false
-
+}
 set KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol:
     if HT < 0 then return KL_sum_at_s(p) fi;
     if low_char(p,HT)
-    then if KLsumhash_flag
+    then {if KLsumhash_flag
     	 then KLsumhash.entry(p,HT)
-	 else  KL_sum_at_s_to_height(p,HT)
-	 fi
+	 else}  KL_sum_at_s_to_height(p,HT)
+	 {fi}
     else let (below,) = height_split(KL_sum_at_s(p),HT), middle = elapsed_ms()
     	 in below
     fi
@@ -256,10 +257,10 @@ set KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol:
 set KL_sum_at_s_to_ht_inter(int HT) = (Param p,int time) maybe_PP:
     if  HT < 0 then return KL_sum_at_s(p).done_PP fi;
     if low_char(p,HT)
-    then if KLsumhash_flag
+    then {if KLsumhash_flag
     	 then KLsumhash.maybe_entry(p,HT,time)
-	 else KL_sum_at_s_to_height(p,HT,time)
-	 fi
+	 else} KL_sum_at_s_to_height(p,HT,time)
+	 {fi}
     else let (below,) = height_split(KL_sum_at_s(p),HT)
     	 in below.done_PP
     fi
@@ -485,7 +486,7 @@ if deform_script_flag then return recursive_deform_scr(p,height) fi;
   in case mFD
      | done(FD): return to_ht(FD,height)
      |timed_out:
-     if not def_low(p,height)
+     if not low(p,height)
      then return to_ht(full_deform(p),height)
      fi;
      let !empty_K=null_K_module(p.real_form), !empty=null_module(p)
@@ -518,7 +519,7 @@ if deform_script_flag then return recursive_deform_scr(p,height,time) fi;
   in case mFD
      | done(FD): return to_ht(mFD,height)
      |timed_out:
-  if not def_low(p,height)
+  if not low(p,height)
   then return to_ht(full_deform(p,time),height)
   fi;
   let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p)

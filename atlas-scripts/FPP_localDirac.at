@@ -2653,15 +2653,23 @@ set one_param_time = int: 0
 
 set wiggle_unitary_flag = false
 
-{true more than 3/4 of time, so shouldn't do much to_height testing}
+{E7_s: false 62000 times, true 3 times. So SHOULD do to_height}
 set one_param_test(Param p) = [Param]:
     let start = elapsed_ms(), Q = monomials(finalize(p)), G = p.real_form
-    then stati = for q in Q do status(q,-1) od
-    in if all( for N in stati do N =1 od) then return [p] next one_true_counter.use();
-       	       	     	      	      	       one_param_time +:= elapsed_ms() - start fi;
-       if any (for N in stati do N = -1 od) then return [] next one_false_counter.use();
-       	      	     	      	     	    	 one_param_time +:= elapsed_ms() - start fi;
-       let test = if wiggle_unitary_flag
+    in if not all(for q in Q do @bool: FPP_def_test(q) od)
+       then one_false_counter.use();
+       	    one_param_time +:= elapsed_ms() - start;
+	    []
+       else let stati = for q in Q do status(q,-1) od
+    in if all( for N in stati do N =1 od)
+       then one_true_counter.use();
+       	    one_param_time +:= elapsed_ms() - start;
+	    [p]
+       elif any (for N in stati do N = -1 od)
+       then one_false_counter.use();
+       	    one_param_time +:= elapsed_ms() - start;
+       	    []
+       else let test = if wiggle_unitary_flag
 		then all(for q in Q do @bool: wiggle_is_unitary(q) od)
 		else all(for q in Q
 			 do @bool:
@@ -2689,7 +2697,9 @@ set one_param_test(Param p) = [Param]:
        else one_false_counter.use();
  	    one_param_time +:= elapsed_ms() - start;
 	    []
-       fi
+       fi{test}
+       fi{all stati}
+       fi {not FPP_def_test(p)}
 
 {each vec of size 6 will record initial vertex/edge sizes; sizes after min_bottom;
 and sizes after more_bottom}
@@ -2701,52 +2711,56 @@ set LF_more_bl_vec = vec:[]
 {only does min_bottom test}
 set one_param_test_min_bottom(Param p, Param_hash Uhash) = [Param]:
     let start = elapsed_ms(), Q = monomials(finalize(p)), G = p.real_form
-    then stati = for q in Q do status(q,-1) od
-    in if all( for N in stati do N =1 od) then return [p] next one_true_counter.use();
-       	       	     	      	      	       one_param_time +:= elapsed_ms() - start fi;
-       if any (for N in stati do N = -1 od) then return [] next one_false_counter.use();
-       	      	     	      	     	    	 one_param_time +:= elapsed_ms() - start fi;
-       hash_bottom_layerCounter.use();
-       let elim_min = all(for q in Q do min_bottom_elim_factors(q,p) od)
-       then () = LF_min_bl_vec := if elim_min
+    in if not all(for q in Q do @bool: FPP_def_test(q) od)
+       then one_false_counter.use();
+       	    one_param_time +:= elapsed_ms() - start;
+	    []
+       else let stati = for q in Q do status(q,-1) od
+    in if all( for N in stati do N =1 od)
+       then one_true_counter.use();
+       	    one_param_time +:= elapsed_ms() - start;
+       	    [p]
+       elif any (for N in stati do N = -1 od)
+       then one_false_counter.use();
+       	    one_param_time +:= elapsed_ms() - start;
+       	    []
+       else  hash_bottom_layerCounter.use();
+       	     let elim_min = all(for q in Q do min_bottom_elim_factors(q,p) od)
+       	     in LF_min_bl_vec := if elim_min
     	      		    then [1,0]
 			    else [0,0]
-			    fi
-       then () = bl_size_hash.match(LF_pre_vec##LF_min_bl_vec##LF_min_bl_vec)
-       then () = if not elim_min
-    	       	 then one_false_counter.use();
-	      	      one_param_time +:= elapsed_ms() - start;
-		      return []
-	      	  fi
-       then r = rank(Q[0].x.involution - 1)
-       then test = all(for q in Q
-       	      	    do @bool:
-		    let ans = is_unitary_test_big_SIMPLE_interrupt(q)
-		    	{if test_interrupt_flag {up_mu_flag}
-		    	then let ans = is_unitary_test_big_SIMPLE_interrupt(q)}
-		    in if not ans
-		       then bad_hash.match(q);
-			    big_unitary_hash.numatch(q)
-			fi; ans
-		    {else let DEFHTS = [int]: next_heights(p, r\2)
-		    	 then ans = is_unitary_test_big_SIMPLE(q, DEFHTS)
-			 in if not ans then bad_hash.match(q) fi; ans
-		    fi}
-	   	    od)
-    in if test
-       then one_true_counter.use();
-	    one_param_time +:= elapsed_ms() - start;
-	    for q in Q do big_unitary_hash.umatch(q) od;
-	    [p]
-       else one_false_counter.use();
-	    one_param_time +:= elapsed_ms() - start;
-	    []
-       fi
+			    fi; {elim_min}
+       		bl_size_hash.match(LF_pre_vec##LF_min_bl_vec##LF_min_bl_vec);
+       		if not elim_min
+    	       	then one_false_counter.use();
+	      	     one_param_time +:= elapsed_ms() - start;
+		     []
+		else let r = rank(Q[0].x.involution - 1)
+		     then test = all(for q in Q
+       	      	     	       do @bool:
+		    	       let ans = is_unitary_test_big_SIMPLE_interrupt(q)
+		    	       in if not ans
+		       	       	  then bad_hash.match(q);
+			    	  big_unitary_hash.numatch(q)
+				  fi; ans
+	   	    	       od)
+    		      in if test
+       		      	 then one_true_counter.use();
+	    		      one_param_time +:= elapsed_ms() - start;
+	    		      for q in Q do big_unitary_hash.umatch(q) od;
+	    		      [p]
+       			 else one_false_counter.use();
+	    		      one_param_time +:= elapsed_ms() - start;
+	    		      []
+       			 fi{test}
+		 fi {not elim_min}
+       		 fi{all stati}
+       		 fi {not FPP_def_test(p)}
 
 set one_param_test_min_bottom(Param p) = [Param]:
     one_param_test_min_bottom(p, big_unitary_hash.uhash(p.real_form))
 
-{assume min_bottom already called, so lookup failed}
+{assume min_bottom already called, so lookup and FPP_def failed}
 set one_param_test_bottom(Param p, [int] Es) = [Param]:
     let start = elapsed_ms(), QG = monomials(finalize(p)),G = p.real_form
     {Next statement, to check here whether terms of QG already known, sometimes omitted?}
@@ -2836,83 +2850,83 @@ set one_param_test_bottom(Param p) = [Param]:
     	     [height(p), height(p) + more_shift_level]
     in one_param_test_bottom(p,Es)
 
-{2/12/26: got tired of cleaning one_param at this point}
 {don't assume min_bottom already called; should only be called if ht > 0?}
 set one_param_test_all_bottom(Param p, [int] Ds) = [Param]:
     let start = elapsed_ms(), Q = monomials(finalize(p)),G = p.real_form
-    {then () = prints("Ds = ",Ds)}
-    then () = if all(for q in Q do big_unitary_hash.ulookup(q).>= od)
-    	      then return [p]
-	      elif any(for q in Q do big_unitary_hash.nulookup(q).>= od)
-	      then return []
-	      fi
-    then () = hash_bottom_layerCounter.use()
-    then elim_min = all(for q in Q do min_bottom_elim_factors(q,p) od)
-    then () = LF_min_bl_vec:= if elim_min
+    in if not all(for q in Q do @bool: FPP_def_test(q) od)
+       then one_false_counter.use();
+       	    one_param_time +:= elapsed_ms() - start;
+	    []
+       else let stati = for q in Q do status(q,-1) od
+       	    in if all( for N in stati do N =1 od)
+       	       then one_true_counter.use();
+       	       	    one_param_time +:= elapsed_ms() - start;
+	    	    [p]
+       	       elif any (for N in stati do N = -1 od)
+       	       then one_false_counter.use();
+       	       	    one_param_time +:= elapsed_ms() - start;
+       	    	    []
+    		    {then () = prints("Ds = ",Ds)}
+       	       else hash_bottom_layerCounter.use();
+       	       	    let elim_min = all(for q in Q do min_bottom_elim_factors(q,p) od)
+    	    	    in LF_min_bl_vec:= if elim_min
     	      		      then [1,0]
 			      else [0,0]
-			      fi
-    then () = if not elim_min
-    	      then let () = one_false_counter.use()
-	      	   then ()= one_param_time +:= elapsed_ms() - start
-		   in return []
-	      fi
-{now min bottom failed to eliminate...}
-    then elim_more = true
-    then Es = (if #Ds > 1 then Ds
-    	      else height(p)#Ds
-	      fi).sort_u
-    then () = if #Es > 1
-       	      then let () = if more_verbose then prints("start more with p = ",p, ", Es = ",Es) fi
-	    	   then Ps = for q in Q do K_type_pol(character_formula{_to_height}(q{, Es~[0]})) od
-       	    	   then still_here = true
-		   then () = {for D in Ds[:1]
-		      	     do} still_here := all(for {D@j in Ds[1:]} j:#Es-1 from 1
+			      fi; {elim_min}
+   	      	       if not elim_min
+    	      	       then one_false_counter.use();
+	      	       one_param_time +:= elapsed_ms() - start;
+		       []
+		       else {now min bottom failed to eliminate...}
+    	      	       	    let elim_more = true
+    		   	    then Es = (if #Ds > 1 then Ds else height(p)#Ds fi).sort_u
+    		    	    in if #Es > 1
+       	      	       	       then if more_verbose then prints("start more with p = ",p, ", Es = ",Es) fi;
+	    	       	       	    let Ps = for q in Q do K_type_pol(character_formula{_to_height}(q{, Es~[0]})) od
+       	    	   	    	    then still_here = true
+		      	    	    in still_here := all(for {D@j in Ds[1:]} j:#Es-1 from 1
 					       	  do all(for q@i in Q
 						      	 do @bool: bottom_elim_factors_more(q, p, Es[j-1],Es[j], Ps[i])
 						   	 od)
-					          od){;
-				 if not still_here then break fi}
-			      {od}
-		   in elim_more:= still_here
-		fi {#Es > 1}
-    then () = if more_verbose then prints("result of elim_more was ",elim_more) fi
-    then () = LF_more_bl_vec:= if elim_more
-    	      		       then [1,0]
-			       else [0,0]
-			       fi
-    then () = bl_size_hash.match(LF_pre_vec##LF_min_bl_vec##LF_more_bl_vec)
-    in if elim_more
-       then let () = if test_verbose then prints("one parameter unitary on bottom layer to height ",Es~[0]) fi
-       	    then test = all( [(->bool)]:
-		    	   for q in Q
-			   do @bool: let ans = if test_interrupt_flag {up_mu_flag}
-		    	      then is_unitary_test_big_SIMPLE_interrupt(q)
-		    	      else let steps = max(rank(p.x.involution-1),1)
-    				   then test_heights = next_heights(p, steps)
-				   in is_unitary_test_big_SIMPLE(q,test_heights)
-		    	      fi
-			      then () = if not ans
-			      	      	then more_bad_hash.match(q)
-					fi
-			      in ans
-		    	od)
-	    then () = if more_verbose then prints("your final answer was ",test) fi
-	    in if test
-	       then let () = for q in Q
-		     	     do big_unitary_hash.umatch(q)
-		     	     od
-	    	    then () = one_true_counter.use()
-	    	    then () = one_param_time +:= elapsed_ms() - start
-	    	    in [p]
-	       else let () = one_false_counter.use() {if test is false}
-	       	    then () = one_param_time +:= elapsed_ms() - start
-		    in []
-               fi
-	else let () = one_false_counter.use() {if elim_more is false}
-	     then () = one_param_time +:= elapsed_ms() - start
-	     in []
-        fi
+					          od);
+		   	    			  elim_more:= still_here
+		       		fi; {#Es > 1}
+    		       		if more_verbose then prints("result of elim_more was ",elim_more) fi;
+    		       		LF_more_bl_vec:= if elim_more
+    	      		       			 then [1,0]
+			       			 else [0,0]
+			       			 fi;
+ 		      		 bl_size_hash.match(LF_pre_vec##LF_min_bl_vec##LF_more_bl_vec);
+    				if elim_more {now the result}
+       				then if test_verbose then prints("one parameter unitary on bottom layer to height ",Es~[0]) fi;
+       	    			   	let test = all( [(->bool)]:
+		    	   		       for q in Q do @bool: let ans = let steps = max(rank(p.x.involution-1),1)
+    				   	       	     	     	    	      then test_heights = next_heights(p, steps)
+				   				    	      in is_unitary_test_big_SIMPLE(q,test_heights)
+			      					    in if not ans
+			      	      				       then more_bad_hash.match(q)
+								       fi;
+			      					       ans
+		    					  od)
+	    				in if more_verbose then prints("your final answer was ",test) fi;
+	    				if test
+	       				then for q in Q
+		     	     		     do big_unitary_hash.umatch(q)
+		     	     		     od;
+					     one_true_counter.use();
+					     one_param_time +:= elapsed_ms() - start;
+	    	    			     [p]
+	       				else one_false_counter.use(); {if test is false}
+	       	    			     one_param_time +:= elapsed_ms() - start;
+		    			     []
+               				fi
+				  else one_false_counter.use(); {if elim_more is false}
+	     			       one_param_time +:= elapsed_ms() - start;
+	     			       []
+        			  fi {elim_more}
+			fi{not elim_min}
+		fi{all stati}
+	fi{all FPP_def}
 
 set one_param_test_all_bottom(Param p) = [Param]:
     let Es = {[height(p)]##next_heights(p,2*edge_offset)}

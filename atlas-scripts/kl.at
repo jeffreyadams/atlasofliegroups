@@ -142,16 +142,17 @@ set gamma_frac = 1/4
 {if target height < (GAM - LAM)*diff_frac, then figure
 is_unitary_to_ht could be faster. So largest reasonable target height
 is (GAM-LAM)*diff_frac. INCREASE to use to_ht more often}
-set diff_frac = rat: 1/4 {1/4 better than 1/8 for E7_s spherical}
+set diff_frac = rat: 1/3 {1/4 better than 1/8 for E7_s spherical}
 
 {if target height < GAM*diff_char_frac, then figure
 {formerly (GAM - LAM)*diff_frac}
 is_unitary_to_ht could be faster. So largest reasonable target height
 is (GAM-LAM)*diff_frac. INCREASE to use to_ht more often}
-set diff_char_frac = rat: 1/3 {1/8 and 1/12 used a bit more memory and time in
+set diff_char_frac = rat: 1/4 {1/8 and 1/12 used a bit more memory and time in
     		     	       spherical E7_s}
 		{2/5/26: for Spin(6,6), .20 was faster than .15 or .25}
 		{2/12/26: 1/3 was better than 1/5 or 1/2 for E7_s (20925,[ 1, 2, 2, 1, 1, 2, 2 ]/1)}
+		{2/14/26: 1/4 better than 1/3 for E7_s[20000:20025]}
 set diff_KGB_char_frac = rat: 9/10
 
 {if LAM < lam_frac*GAM (big nu), don't try to_ht }
@@ -159,7 +160,7 @@ set lam_frac = rat: 1/6 {2/3}
 
 { strict_factor is how much to DISLIKE trunctating character
     formula; increase to truncate LESS often}
-set strict_factor = rat: 2/1
+{set strict_factor = rat: 2/1}
 
 {strict versions mean harder be false/more often true: they are used to prevent the
 code from using to_ht so much. Otherwise the
@@ -169,15 +170,15 @@ use it.}
 
 {whether to use to_height in computing to height N}
 {true means large nu/small ht, so is_unitary_to_ht could be better}
-set low_nu(Param p, int N) = bool:
-    if N < 0 then return  false fi;
-    let (,NU,) = low(p)
-    in (N >= 0) and (NU > N*nu_frac)
-
-set strict_low_nu(Param p, int HT) = bool:
+set low_nu(Param p, int HT) = bool:
     if HT < 0 then return  false fi;
     let (,NU,) = low(p)
-    in (strict_factor*NU > HT*nu_frac)
+    in NU > HT*nu_frac
+
+{set strict_low_nu(Param p, int HT) = bool:
+    if HT < 0 then return  false fi;
+    let (,NU,) = low(p)
+    in (strict_factor*NU > HT*nu_frac)}
 
 {true means GAM big compared to HT, so is_unitary_to_ht could be better}
 {If N>= GAM, then to_ht gives answer to unitarity.}
@@ -186,24 +187,26 @@ set low_gamma(Param p, int HT) = bool:
     {let (,,GAM) = low(p)
     in} (GAM(p)*gamma_frac) > HT
 
-set strict_low_gamma(Param p, int N) = bool:
+{set strict_low_gamma(Param p, int N) = bool:
     if N < 0 then return  false fi;
     {let (,,GAM) = low(p)
-    in} (strict_factor*GAM(p)*gamma_frac > N)
+    in} (strict_factor*GAM(p)*gamma_frac > N)}
 
 {Note HT must be in [LAM,GAM) True says it's near the bottom of that range: small HT.}
 set low_diff(Param p, int HT) = bool:
     if (HT < 0) then return  false fi;
     let LAM = p.height, GAM = GAM(p) {(LAM, , GAM) = low(p)}
-    in {(LAM < lam_frac*GAM) and} (HT < diff_frac*GAM)
+    in HT - LAM < diff_frac*GAM
+    {(LAM < lam_frac*GAM) and} {(HT < diff_frac*GAM)}
     {(LAM < lam_frac*GAM) and ((GAM - LAM)*diff_frac) > HT {(HT-LAM)}}
 
 {weaken condition on HT, so more often true, so more to_ht }
-set strict_low_diff(Param p, int HT) = bool:
+{set strict_low_diff(Param p, int HT) = bool:
     if HT < 0 then return  false fi;
     let LAM = p.height, GAM = GAM(p)  {(LAM, ,GAM) = low(p)}
-    in (LAM < lam_frac*GAM) and HT < diff_frac*strict_factor*GAM
-    {(strict_factor*(GAM - LAM)*diff_frac) > HT} {(HT-LAM))}
+    in HT - LAM < diff_frac*strict_factor*GAM
+    {(LAM < lam_frac*GAM) and HT < diff_frac*strict_factor*GAM}
+    {(strict_factor*(GAM - LAM)*diff_frac) > HT} {(HT-LAM))}}
 
 {set KGB_hash = (RealForm -> [KGBElt]):
     let rf_hash = make_RealForm_hash()
@@ -239,6 +242,7 @@ set low_diff_char(Param p, int HT) = bool: {false {ALWAYS use KL_sum_at_s}}
     then {ans = {(LAM < lam_frac*GAM) and} (((GAM - LAM)*diff_char_frac) > HT {HT - LAM)})}
     	 ans = p.x.number > diff_KGB_char_frac*KGB_size(p.real_form)
 	       and (HT < diff_char_frac*GAM(p)) {forces LAM < diff_char_frac*GAM}
+	       	   {(HT - height(p)) < diff_char_frac*GAM(p)}
     in ans next low_diff_char_time +:= (elapsed_ms() - start)
     {if ans
        then low_diff_char_true_count +:=1{; trueDiffCharHash.match(p)}
@@ -252,9 +256,9 @@ set low_KL_char(Param p, int HT) = bool:
     KL_predictor_up_to_ht(p,HT) < KL_predictor(p)
 
 {this is true MORE often, making to_ht more common}
-set strict_low_KL_char(Param p, int HT) = bool:
+{set strict_low_KL_char(Param p, int HT) = bool:
     p.x.number > diff_KGB_char_frac*KGB_size(p.real_form) and
-    KL_predictor_up_to_ht(p,HT) < strict_factor*KL_predictor(p)
+    KL_predictor_up_to_ht(p,HT) < strict_factor*KL_predictor(p)}
 
 {Switching to HT -LAM 1/26 didn't work well; adding the small LAM condition is meant to alleviate??}
 
@@ -266,7 +270,7 @@ set low_lam(Param p, int HT) = bool:
 
 set prefer_KL_flag = false
 
-set prefer_strict_KL_flag = false
+{set prefer_strict_KL_flag = false}
 
 set prefer_diff_flag = true {true used to give true for parameter(E7_s,773,[0,1,1,1,1,1,0]/1,
     [-3,0,0,0,6,-6,0]/2) and HT 327, leading to a very slow is_unitary_to_ht}
@@ -274,6 +278,12 @@ set prefer_diff_flag = true {true used to give true for parameter(E7_s,773,[0,1,
 set prefer_gamma_flag = false
 
 set prefer_lam_flag = false
+
+{whether to apply test to switcb from is_unitary_to_ht to is_unitary}
+set low_flag = true
+
+{whether to apply test to switcb from KL_sum_to_ht to KL_sum}
+set low_char_flag = true
 
 {set low_test_flag = false
 
@@ -283,34 +293,36 @@ set low_test(Param p, int N) = bool:
 }
 {whether to use test to decide whether to revert to is_unitary at difficult p}
 {if false, then never revert}
-set strict_low_flag = true
+{set strict_low_flag = true}
 
 {whether to use test to decide whether to revert to full_deform at difficult p}
-set strict_low_def_flag = true
+{set strict_low_def_flag = true}
 
 {if true, allow hermitian_form_irreducible_to_ht; if false, truncate hermitian_form_irreducible}
-set strict_low(Param p, int HT) = bool:
+set {strict_}low(Param p, int HT) = bool:
     if HT < 0 then return false
-    elif not strict_low_flag
+    elif not low_flag
     then return true
     elif prefer_diff_flag {default true 2/4/26}
     then {strict_}low_diff(p,HT)
     elif prefer_gamma_flag
-    then strict_low_gamma(p,HT)
+    then {strict_}low_gamma(p,HT)
     elif prefer_lam_flag
     then low_lam(p,HT) and low_diff(p,HT)
-    else strict_low_nu(p,HT)
+    else {strict_}low_nu(p,HT)
     fi
 
 {whether to allow full_deform_to_ht rather than revert to full_deform}
-set def_low(Param p,int HT) = bool:
+{set def_low(Param p,int HT) = bool:
     if HT < 0 then return false
     elif not strict_low_def_flag
     then return true
     else strict_low(p,HT) and p.height < lam_frac*GAM(p){2*LAM <= GAM}
-    fi
+    fi}
 
-set low(Param p, int HT) = bool:
+{set low(Param p, int HT) = bool:
+    if HT < 0 then return false
+    elif not strict_low_flag
     if prefer_diff_flag
     then low_diff(p,HT)
     elif prefer_gamma_flag
@@ -318,16 +330,20 @@ set low(Param p, int HT) = bool:
     elif prefer_lam_flag
     then low_lam(p,HT) and low_diff(p,HT)
     else low_nu(p,HT)
-    fi
+    fi}
 
+{whether to consider replacing KL_sum_to_ht with KL_sum}
 set low_char(Param p, int HT) = bool:
-    if prefer_strict_KL_flag
-    then strict_low_KL_char(p,HT)
-    elif prefer_KL_flag
-    then low_KL_char(p,HT)
+    if HT < 0 then return false
+    elif not low_char_flag
+    then return true
     elif prefer_diff_flag
     then low_diff_char(p,HT)
-    else strict_low_KL_char(p,HT) {more often true; lots of to_ht}
+    {elif prefer_strict_KL_flag
+    then strict_low_KL_char(p,HT)}
+    elif prefer_KL_flag
+    then low_KL_char(p,HT)
+    else false{ALWAYS switch to KL_sum}
     fi
 
 {KL_sum_to_height never saves data, so in large computations this is just better}
