@@ -6,6 +6,7 @@
 < red_points.at {for red_points}
 {still need to fix this to allow deformed parameters NOT in FPP!}
 
+{NOW VALID ONLY IF deformation in nu stays in FPP}
 {need to study reducibility along av at int values
 from int to int inclusive}
 set range(KGBElt x, ratvec lambda, vec av) = (int, int):
@@ -1723,9 +1724,10 @@ set localFD_1SteveU\
 		else false
 		fi
 	 fi
+	 {don't need this next test; we are just throwing out nonunitary singletons}
     then temp_Dirac_flag =
-    	 if Dirac_flag and not(temp_Dirac_best_flag) and
-    	 		       max(for mu in LKTs(parameter(x,lambda,0*lambda)) do tensor_p_hts(mu) od) <=HT
+    	 if Dirac_flag and not(temp_Dirac_best_flag) {and
+    	 		       max(for mu in LKTs(parameter(x,lambda,0*lambda)) do tensor_p_hts(mu) od) <=HT}
 	 then let bd = DiracBD(x,lambda)
 	      then QG = invariant_form(G)
 	      then index = first(for v in LF01
@@ -1878,7 +1880,7 @@ set localFD_1SteveUmin\
     then LF01 = warmup(x,lambda,HT,Lvd,[LF00])[0]
     then Q = ((ratvec,ratvec)->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBD = 0/1
-    then () = if Dirac_flag and max(for mu in LKTs(parameter(x,lambda,0*lambda)) do tensor_p_hts(mu) od) <=HT
+    then () = if Dirac_flag {and max(for mu in LKTs(parameter(x,lambda,0*lambda)) do tensor_p_hts(mu) od) <=HT}
 	      then let bd = DiracBD(x,lambda)
 		   then QG = invariant_form(G)
 		   then index = first(for v in LF01
@@ -2034,8 +2036,8 @@ set localFD_1SteveU_graph\
 		fi
 	 fi
     then temp_Dirac_flag =
-    	 if Dirac_flag and not(temp_Dirac_best_flag) and
-    	 		       max(for mu in LKTs(parameter(x,lambda,0*lambda)) do tensor_p_hts(mu) od) <=HT
+    	 if Dirac_flag and not(temp_Dirac_best_flag) {and
+    	 		       max(for mu in LKTs(parameter(x,lambda,0*lambda)) do tensor_p_hts(mu) od) <=HT}
 	 then let bd = DiracBD(x,lambda)
 	      then QG = {Dirac_easy_hash.invt_form(G)} invariant_form(G)
 	      then index = first(for v in LF01
@@ -2627,8 +2629,8 @@ set test_Steve(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [[FaceVerts
 		fi
 	 fi
     then temp_Dirac_flag =
-    	 if Dirac_flag and not(temp_Dirac_best_flag) and
-    	 		       max(for mu in LKTs(parameter(x,lambda,0*lambda)) do tensor_p_hts(mu) od) <=HT
+    	 if Dirac_flag and not(temp_Dirac_best_flag) {and
+    	 		       max(for mu in LKTs(parameter(x,lambda,0*lambda)) do tensor_p_hts(mu) od) <=HT}
 	 then let bd = DiracBD(x,lambda)
 	      then QG = {Dirac_easy_hash.invt_form(G)} invariant_form(G)
 	      then index = first(for v in Lvd.list

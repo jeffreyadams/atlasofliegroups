@@ -2056,14 +2056,16 @@ set worst_so_far(Param p, int H) = int:
     	    fi {index >=0}
     fi {H.>=}
 
+set didnt_finish_u_count = int: 0
+
 {predicted time in milliseconds to complete is_unitary(p)}
 set u_predictor(Param p) = int:
     if not predictor_flag
     then return worst_so_far(p,-1) + interrupt_base_time
     fi;
-    let delta = p.real_form.distinguished_involution
+    let delta = p.real_form.distinguished_involution, start_pred = elapsed_ms()
     then list = for q in {partial_block(p)} monomials(KL_sum_at_s(p))
-    if is_fixed(delta,q) do q fi od
+    if is_fixed(delta,q) do q fi od, rk = delta.n_rows
     {will do full_deform on each term in list}
     then times = [int]: for q in list do defHashTime.time_lookup(q) od
     {have we computed full_deform? Storage location j if yes, -1 if no}
@@ -2074,16 +2076,37 @@ set u_predictor(Param p) = int:
 		     prints("(#terms,#known) = (",N,",",n, "), known times = ",known_times)
        fi;
        if n> 0 {n = #known_times}
-       then return (N-n)*max(known_times) + (n*interrupt_base_time)\10 {n lookups}
+       then if predictor_verbose
+       	    then prints("prediction = ", print_time_string((N-n)*max(known_times) + (n*interrupt_base_time)\10))
+	    fi;
+	    {would be good to see WHICH terms are known, and weight their times accordingly. If a term
+	     near x_open is known, then the predecessors are often nearly known}
+       return (N-n)*max(known_times) + (n*interrupt_base_time*rk)\20 {n lookups}
        	    {N-n full_deforms to compute, probably each worse than known}
        else let i0 = (2*N)\3 {we know nothing, so compute one full_deform}
        	    then q = list[i0] {not yet computed full_deform}
-	    then RT = defHashTime.time_record_bounded(q, 10*interrupt_base_time)
-       	    in if predictor_verbose
-	       then prints("chosen random q is number ",i0, " of ",N,": ",q,
-	       	    ", taking ",print_time_string(RT))
+	    then RT = defHashTime.time_record_bounded(q, rk^2*interrupt_base_time)
+       	    in predictor_time+:= elapsed_ms() - start_pred;
+	       if RT > rk^2*interrupt_base_time {probably timed out}
+	       then didnt_finish_u_count+:=1;
+	       	    if predictor_verbose
+		       then {prints("test probably didn't finish, so revert to worst_so_far prediction ",
+		       	    print_time_string(WSF))}
+			    prints("test probably didn't finish, so guessing ", 2*N*RT + interrupt_base_time)
+		       fi;
+	       	    {let WSF = worst_so_far(p,-1)
+		    in if predictor_verbose
+		       then prints("test probably didn't finish, so revert to worst_so_far prediction ",
+		       	    print_time_string(WSF))
+		       fi;}
+		       return {WSF}2*N*RT + (interrupt_base_time*rk)\10
+		fi;
+		if predictor_verbose
+	        then prints("chosen random q is number ",i0, " of ",N,": ",q,
+	       	    ", taking ",print_time_string(RT));
+		    prints("prediction = ",print_time_string((N-1)*RT + (interrupt_base_time*rk)\20))
 	       fi;
-	       (N-1)*RT + interrupt_base_time {N-1 full_deforms still to compute}
+	       (N-1)*RT + (interrupt_base_time*rk)\20 {N-1 full_deforms still to compute}
        fi
 
 set u_predictor_old (Param p) = int:
@@ -2114,6 +2137,8 @@ set u_predictor_old (Param p) = int:
 	       esac + interrupt_base_time
        fi
 
+set didnt_finish_ht_count = int: 0
+
 {predicted time in milliseconds to complete is_unitary{to_ht}(p,{HT})}
 set u_predictor(Param p, int HT) = int:
     if HT < 0 then return u_predictor(p) fi;
@@ -2124,12 +2149,12 @@ set u_predictor(Param p, int HT) = int:
        else let delta = p.real_form.distinguished_involution
 	    then list = {is_unitary runs over terms in KL_sum_to_ht(p,HT)}
 		       for q in monomials(KL_sum_at_s_to_ht(HT)(p))
-		       if is_fixed(delta,q) do q fi od
+		       if is_fixed(delta,q) do q fi od, rk = delta.n_rows
     	    then indices = for q in list do deformedHash.lookup(q) od
 	    	 {have we stored answer? Storage location j if yes, -1 if no}
     	    then known_indices = [int]: for j in indices
     	 	       	       	 	if j >= 0 and deformedHash.height_index(j) >= HT
-			    	    	do j {loop that runs 0 or 1 times}
+			    	    	do j
 				    	fi
 			      	 	od
     	     then N = #indices, n = #known_indices {possible terms, known terms}
@@ -2141,35 +2166,29 @@ set u_predictor(Param p, int HT) = int:
 		fi;
        	        let ans = if n = 0 {no known times; compute _one_ such time}
        	     	    	  then let i0 = (2*#list)\3 {#list\2}
-				       {if HT < 0
-			       	       then 3*#list\5 {moderately difficult term}
-				       else #list\6 {earlier in list is harder}
-				       fi}
 			       then q = list[i0] {necessarily not in deformedHash}
 			       then () = if predictor_verbose
 			       	       	 then prints("chosen random q is number ",i0,
 					      " of ",N,": ",q)
 					 fi
 			       then start_def = elapsed_ms()
-	    	 	       then Q = deformedHash.maybe_entry(q,HT,10*interrupt_base_time)
+	    	 	       then Q = deformedHash.maybe_entry(q,HT, rk^2*interrupt_base_time)
 			       then RT = elapsed_ms() - start_def
-			       in if predictor_verbose
-				  then prints("chosen random time ",
-					       print_time_string(RT));
-				       if not is_done(Q)
-				       then prints("...but test didn't finish!")
-				       fi
+			       in if not is_done(Q)
+				  then didnt_finish_ht_count +:=1;
+				       if predictor_verbose
+				       then prints("test didn't finish, so guessing ",
+				       {revert to worst_so_far prediction ",}
+				       	    {print_time_string(WSF)}
+					   print_time_string(2*N*RT+interrupt_base_time))
+				       fi;
+				  predictor_time+:= elapsed_ms() - start_pred;
+				  return {WSF} 2*N*RT+interrupt_base_time
+				  fi;
+				  if predictor_verbose
+				  then prints("chosen random time ", print_time_string(RT))
 				  fi;
 				  (N-1)*(RT+1)+ interrupt_base_time
-		  	       {case deformedHash.maybe_entry(q,HT,100*interrupt_base_time)
-		     	       	  | timed_out: 200*N*interrupt_base_time
-		 	  	  | done(r): let j0 = deformedHash.lookup(q)
-				    	     in if predictor_verbose
-					     	then prints("chosen random time ",
-						     print_time_string(deform_times[j0]))
-						fi;
-						max(N*deform_times[j0], interrupt_base_time)
-		     		  esac}
 			   else (N-n)*(max(times)+1) {N-n deforms to compute, estimated time}
 			   	+ (2*n*interrupt_base_time)\10 {n lookups}
 			   fi

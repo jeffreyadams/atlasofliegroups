@@ -1929,7 +1929,7 @@ fancy_tester) = void:
 			    fi; ()
 		    else let answer = if revert_steve_flag {and lambda_sc!=Gsc.rho}
 			     	      then edge_offset:=1;
-				      	   steve_graph_flag:=true;
+				      	   steve_graph_flag:=false {true};
 					   local_test_GEO_hash_steve(x_sc, lambda_sc, Lvd, Uhash,
 				      	   fancy_tester)
 				       elif local_test_bl_flag
@@ -2292,7 +2292,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 			  else let answer = [Param]:
 			       	      if revert_steve_flag
 			       	      then edge_offset:=1;
-				      	   steve_graph_flag:=true;
+				      	   steve_graph_flag:=false{true};
 				      	   local_test_GEO_hash_steve(x_sc, M*lambda, Lvd, Uhash,
 				      	   fancy_tester)
 			       	      elif local_test_bl_flag
