@@ -237,8 +237,10 @@ set =(GroupDatum A,GroupDatum B)=bool:
  A.name=B.name and A.p=B.p and A.q=B.q
 
 set all_group_data(int rank,string label)=[GroupDatum]:
-if is_in(label,["B"]) then
+if is_in(label,["B+"]) then
  for i:2*rank+2 do ("SO",2*rank+1-i,i) od
+elif is_in(label,["B-"]) then
+ for i:2*rank+2 do ("SO",2*rank-i,i+1) od
 elif label="D" then
  for i:2*rank+1 do ("SO",2*rank-i,i) od
 elif label="C" then [("Sp",2*rank,-1)]
@@ -265,8 +267,12 @@ fi
 
 {distinguish between SO(p,q) and SO(q,p), etc.}
 set group_datum(PaintedBiPartition Z)=GroupDatum:
-if is_in(Z.bi_label,["B+","B-","B","D"]) then
+if Z.bi_label="B+" then 
     ("SO",p(Z),q(Z))
+ elif Z.bi_label="B-" then
+     ("SO",p(Z),q(Z))
+ elif Z.bi_label="D" then
+     ("SO",p(Z),q(Z))
  elif Z.bi_label="C" then
     ("Sp",2*p(Z),-1)  {-1 to indicate Sp(2n,R) not Sp(p,q)}
  elif Z.bi_label="C*" then
@@ -335,7 +341,8 @@ set A_bar_rank(Orbit O,string label)=int:#pp(O,label)
 set A_bar_order(Orbit O,string label)=int:#A_bar(O,label)
 
 set show_partition(PaintedPartition P)=void:show_partition(partition(P))
-set show_painted_partition(PaintedPartition P)=void:for row in P do prints(symbol_string(row)) od
+set show_painted_partition(PaintedPartition P)=void:
+if #P=0 then prints("[]") else for row in P do prints(symbol_string(row)) od fi
 
 {orbit is defined in nilpotent_orbits_bmsz.at, so remove definitions of orbit,
 and move show functions to nilpotent_orbits_bmsz.at}

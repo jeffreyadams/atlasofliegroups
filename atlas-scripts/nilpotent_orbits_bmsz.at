@@ -67,20 +67,20 @@ set even_index_rows(Orbit P)=Orbit:for i:(#P-2)\2+1 do P[2*i+1] od
 set odd_index_rows(Orbit P)=Orbit:for i:(#P-1)\2+1 do P[2*i] od
 
 {Definition 3.7: dual orbit -> pair of partitions <-> Weyl group representation}
-set left_diagram(Orbit P, string label)=Partition:
+set left_diagram(Orbit P, string bi_label)=Partition:
 let left=
-if label="B" then  {P has even rows}
+ if label_of(bi_label)="B" then  {P has even rows}
  for row in even_index_rows(P) do h(row) od
-elif label="C~" then  {P has even rows}
+elif bi_label="C~" then  {P has even rows}
  for row in odd_index_rows(P) do h(row) od
-elif is_in(label,["C","C*"]) then  {P has odd rows}
+elif is_in(bi_label,["C","C*"]) then  {P has odd rows}
  {all odd index rows except the last row if n=#P is odd,
   last row is row #n (odd) which = P[n-1], n-1 is even,
   so this is an even_index_row}
  let temp=for row in even_index_rows(P) do h(row+1) od in
  if 2*#temp-1=#P then temp[:#temp-1] else temp fi
 { if is_odd(#P) then temp[:#temp-1] else temp fi}
-elif is_in(label,["D","D*"]) then {P has odd rows and #P is even}
+elif is_in(bi_label,["D","D*"]) then {P has odd rows and #P is even}
  if #P=0 then [0] else
   for i:#P\2 do   
    if i=0
@@ -93,15 +93,15 @@ else
 fi
 in transpose(left)
 
-set right_diagram(Orbit P, string label)=Orbit:
+set right_diagram(Orbit P, string bi_label)=Orbit:
 let right=
-if label="B" then  {P has even rows}
+if label_of(bi_label)="B" then  {P has even rows}
  for row in odd_index_rows(P) do h(row) od
-elif label="C~" then  {P has even rows}
+elif bi_label="C~" then  {P has even rows}
  for row in even_index_rows(P) do h(row) od
-elif is_in(label,["C","C*"]) then  {P has odd rows}
+elif is_in(bi_label,["C","C*"]) then  {P has odd rows}
  for row in odd_index_rows(P) do h(row-1) od
-elif is_in(label,["D","D*"]) then {P has odd rows}
+elif is_in(bi_label,["D","D*"]) then {P has odd rows}
  if #P=0 then [0]
   else for i:#P\2 do  h(P[2*i+1]-1) od
  fi
@@ -151,8 +151,8 @@ set find = find(=@(GroupDatum,GroupDatum))
 set collated_group_data([PaintedBiPartition] list)=([GroupDatum],[int]):
 if #list=0 then ([],[]) else
  let rank=size(list[0]) then
- label=label_of(list[0].bi_label) then
- group_data=all_group_data(rank,label) then
+ bi_label=list[0].bi_label then
+ group_data=all_group_data(rank,bi_label) then
  rv=null(#group_data) in
  for Z in list do
   let j=find(group_data,group_datum(Z)) in
@@ -333,15 +333,22 @@ tabulate(
 ["P","Q","bi-label","group","orbit","dual orbit"]#
 for (P,Q,bi_label) in list do
  [P.to_string,Q.to_string,bi_label,group_name(P,Q,bi_label),orbit(P,Q,bi_label).to_string,dual_orbit(P,Q,bi_label).to_string] od)
-{
-set show(PaintedBiPartition (P,Q,bi_label))=void:
-prints("bi_label:", bi_label);
-prints("P:");show_painted_partition(P);
-prints("---------",new_line,"Q:");show_painted_partition(Q)
 
-set show([PaintedBiPartition] list)=void:
-for Z in list do prints("=====================",new_line,Z);show(Z) od
-}
+set show([[PaintedBiPartition]] list)=void:
+for chain@i in list do
+prints("==========================",new_line, "i=", i);
+show(chain)
+od
+
+set show_long(PaintedBiPartition (P,Q,bi_label))=void:
+prints("bi_label:", bi_label);
+prints("painted partition P:");show_painted_partition(P);
+prints("<<<<<<<<<<<<<<<<<<<<<<<<<<<",new_line,"painted partition Q:");show_painted_partition(Q);
+prints(">>>>>>>>>>>>>>>>>>>>>>>>>>>")
+
+set show_long([PaintedBiPartition] list)=void:
+for Z in list do prints("lkjlkjlkj",new_line,Z);show(Z) od
+
 set show_short(PaintedBiPartition (P,Q,bi_label))=void:
 prints(P, " ", Q, " ", bi_label, " ", group_name(P,Q,bi_label), " ", orbit(P,Q,bi_label))
 
@@ -370,15 +377,15 @@ prints("Orbit: ", O_v, new_line,
 show_collated_group_data(bi_partitions)
 
 {get rid of the rank entry, shouldn't need it; only for the collated_group_data}
-set report([Orbit] orbits,string label, int rank )=void:
+set report([Orbit] orbits,string bi_label, int rank )=void:
 prints("pbp=#painted bi_partitions",new_line,"pp= #primitive indices+1");
 tabulate(
-["orbit","pbp","pp","#unip","groups"]#for orbit@i in orbits do
-let pbp=pbp(orbit,label) in
-let number=2^number_primitive(orbit,label) then
+["orbit","pbp","pp","#unip","reps by group"]#for orbit@i in orbits do
+let pbp=pbp(orbit,bi_label) in
+let number=2^number_primitive(orbit,bi_label) then
 (,groups)=collated_group_data(pbp) in
 [to_string(orbit),to_string(#pbp), to_string(number), to_string(number*#pbp),to_string(groups)] od);
-prints("Groups:");for G in all_group_data(rank,label) do prints(group_name(G)) od
+prints("Groups:");for G in all_group_data(rank,bi_label) do prints(group_name(G)) od
 
 set report(GroupDatum G,[Orbit] orbits,string label)=void:
 prints("pbp=#painted bi_partitions",new_line,"pp= #primitive indices+1");

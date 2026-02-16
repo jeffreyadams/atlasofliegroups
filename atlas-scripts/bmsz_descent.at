@@ -129,8 +129,11 @@ set iterate(PaintedBiPartition Z)=
 set iterations(int n,string label)=
 for Z in painted_bi_partitions(n,label) do iterate(Z) od
 
+{moved to nilpotent_orbits_bmsz.at}
+{
 set show_short([[PaintedBiPartition]] list)=void:
 for Z@i in list do prints(new_line,i);show_short(Z) od
+}
 
 {See (3.10}
 set descent_naive(Orbit O_v)=Orbit: row_descent_naive(O_v)

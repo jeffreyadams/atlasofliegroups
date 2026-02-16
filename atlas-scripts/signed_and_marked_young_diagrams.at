@@ -66,6 +66,26 @@ all(for i:#A.signs do A.signs[i]=B.signs[i] od)
 
 set null_K_orbit(string label)=KOrbit:([],label)
 
+set sign_char(int n)=string: if is_even(n) then "+" else "-" fi
+
+set alt_string_plus(int k)=string:concat(for i:k do sign_char(i) od)
+set alt_string_minus(int k)=string:concat(for i:k do sign_char(i+1) od)
+set alt_string(int plus_or_minus,int length)=string:
+ if is_even(plus_or_minus) then alt_string_plus(length) else alt_string_minus(length) fi
+
+{(length, z=p+qs -> p+q alternating rows, p starting with +, q starting with -}
+set signed_rows(int length, Split z)=[string]:
+for i:int_part(z) do alt_string_plus(length) od##
+for i:s_part(z) do alt_string_minus(length) od
+
+set show(KOrbit (signs,label))=void:
+for i:#signs downto 0 do
+ let rows=signed_rows(i,signs[i]) in
+ for row in rows do prints(row) od
+od
+
+set symbol_string(PaintedPartition P)=[string]: for row in P do symbol_string(row) od
+
 set even_integers([int] list)=[int]: ##for i:#list-1 from 1 do if is_even(i) then [i] else [] fi od
 set odd_integers([int] list)=[int]: ##for i:#list-1 from 1  do if is_odd(i) then [i] else [] fi od
 
@@ -216,6 +236,13 @@ for i:#signs-1 downto 1 do
  for j:s_part(signs[i]) do prints(alt_string(1,i)) od
  od
 
+set show_short(KOrbit Y)=void:
+let signs=Y.signs in
+for i:#signs-1 downto 1 do
+ for j:int_part(signs[i]) do prints(alt_string(0,i)) od;
+ for j:s_part(signs[i]) do prints(alt_string(1,i)) od
+ od
+
 {---------------Local systems on K-orbits = marked young diagrams--------------------}
 
 {same as KOrbit except values in ZxZ not NxN
@@ -229,6 +256,9 @@ set K_local_system([Split] signs, string label)=KLocalSystem:(signs,label)
 
 set K_orbit(KLocalSystem M)=KOrbit:
 (for z in M.signs do abs(int_part(z)) + s*abs(s_part(z)) od,M.label)
+
+set show(KLocalSystem M)=void:show(K_orbit(M))
+set show_short(KLocalSystem M)=void:show_short(K_orbit(M))
 
 set orbit(KLocalSystem M)=Orbit:orbit(K_orbit(M))
 
@@ -593,4 +623,5 @@ if =signature(chain~[0]).z then
 else
 error("last element of chain isn't null")
 fi
+
 
