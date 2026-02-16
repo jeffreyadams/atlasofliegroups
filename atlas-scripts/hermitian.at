@@ -2171,14 +2171,16 @@ set u_predictor(Param p) = int:
     then times = [int]: for q in list do defHashTime.time_lookup(q) od
     {have we computed full_deform? time needed if yes, -1 if no}
     then known_times = [int]: for T in times if T >= 0 do T fi od
+    then unknown_indices = [int]: for T@j in times if T <0 do j fi od
     then N = #times, n = #known_times
     in if predictor_verbose
 	     	then prints(new_line,"Start predicting to height -1 param ",p);
 		     prints("(#terms,#known) = (",N,",",n, "), known times = ",known_times)
        fi;
+       {if N-n > n}
        if n> 0 {n = #known_times}
        then if predictor_verbose
-       	    then prints("prediction = ", print_time_string((N-n)*max(known_times) + (n*interrupt_base_time)\10))
+       	    then prints("prediction = ", print_time_string((N-n)*max(known_times) + (n*interrupt_base_time)\20))
 	    fi;
 	    {would be good to see WHICH terms are known, and weight their times accordingly. If a term
 	     near x_open is known, then the predecessors are often nearly known}
@@ -2538,17 +2540,18 @@ set map ((Param->maybe_KTP)f, ParamPol P) = maybe_KTP:
 {if deform_hash_flag, guaranteed to deform at least one term}
 {finishes without interruption if all terms already deformed}
 set c_form_irreducible (Param p,int time) = maybe_KTP:
-   let ori_nr_p = orientation_nr(p), expiration = elapsed_ms() + time
+   let ori_nr_p = orientation_nr(p), expiration = elapsed_ms() + time, dummy = K_type_pol(p)
    then oriented_KL_sum = ParamPol: null_module(p) +
       for c@q in KL_sum_at_s(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
    then list = monomials(oriented_KL_sum)
-   then keep_one = true
-   in if #list = 0 then return null_K_module(p.real_form).done fi;
+   then unknown_indices = for q@j in list if defHashTime.time_lookup_to_ht(q,-1) < 0 do j fi od
+   in {if #list = 0 then return null_K_module(p.real_form).done fi;}
+      if #unknown_indices > 0
+      then dummy := full_deform(list[unknown_indices[#unknown_indices\2]])
+      fi;
       map( (Param q) maybe_KTP:
-      if expiration - elapsed_ms() < 0 and not keep_one
+      if expiration - elapsed_ms() < 0
       then timed_out()
-      elif keep_one
-      then full_deform(q).done next keep_one:=false
       else full_deform(q, expiration - elapsed_ms())
       fi
       , oriented_KL_sum
@@ -2594,15 +2597,17 @@ set c_form_irreducible (Param p,int time) = maybe_KTP:
 
 {guaranteed to deform at least one term}
 set c_form_irreducible_cut (Param p,int HT, int time) = maybe_KTP:
-   let ori_nr_p = orientation_nr(p), expiration = elapsed_ms() + time
+   let ori_nr_p = orientation_nr(p), expiration = elapsed_ms() + time, dummy = K_type_pol(p)
    then oriented_KL_sum = ParamPol: null_module(p) +
       for c@q in KL_sum_at_s_to_ht(HT)(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
-   then keep_one = true
-   in map( (Param q) maybe_KTP:
-      if expiration - elapsed_ms() < 0 and not keep_one
+   then list = monomials(oriented_KL_sum)
+   then unknown_indices = for q@j in list if defHashTime.time_lookup_to_ht(q,HT) < 0 do j fi od
+   in if #unknown_indices > 0
+      then dummy := full_deform_to_ht(list[unknown_indices[#unknown_indices\2]],HT)
+      fi;
+      map( (Param q) maybe_KTP:
+      if expiration - elapsed_ms() < 0
       then timed_out()
-      elif keep_one
-      then full_deform_to_ht(q,HT).done {deformedHash.entry(q,HT).done} next keep_one:=false
       else {deformedHash.maybe_entry}full_deform_to_ht(q,HT,expiration - elapsed_ms())
       fi
       , oriented_KL_sum
@@ -2611,14 +2616,16 @@ set c_form_irreducible_cut (Param p,int HT, int time) = maybe_KTP:
 {guaranteed to deform at least one term}
 set twisted_c_form_irreducible_unnormalized (Param p,int time) = maybe_KTP:
 ( let (fixed,unfixed)=twisted_c_form_irreducible_contributions(p)
-  , expiration = elapsed_ms() + time
-  then keep_one = true
-  in case map( (Param q) maybe_KTP:
-     	  if expiration - elapsed_ms() < 0 and not keep_one
+  , expiration = elapsed_ms() + time, dummy = K_type_pol(p)
+  then list = monomials(fixed)
+  then unknown_indices = for q@j in list if defHashTime.time_lookup_to_ht(q,-1) < 0 do j fi od
+  in if #unknown_indices > 0
+     then dummy:= twisted_full_deform(list[unknown_indices[#unknown_indices\2]])
+     fi;
+     case map( (Param q) maybe_KTP:
+     	  if expiration - elapsed_ms() < 0
       	  then timed_out()
-     	  elif keep_one
-     	  then twisted_full_deform(q).done
-     	  else twisted_full_deform(q, expiration - elapsed_ms()) next keep_one:=false
+     	  else twisted_full_deform(q, expiration - elapsed_ms())
      	  fi
 	   , fixed
 	   )
