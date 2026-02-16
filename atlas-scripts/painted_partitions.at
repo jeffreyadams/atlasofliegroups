@@ -68,7 +68,7 @@ set number_rows(PaintedPartition P)=int:#P
 set number_columns(PaintedPartition P)=int:#transpose(partition(P))
 set size(PaintedPartition P)=int:size(partition(P))
 
-set null_painted_partition=PaintedPartition:[]
+set null_painted_partition=PaintedPartition:[[]]
 
 set equal(PaintedPartition P,PaintedPartition Q)=bool:
 number_rows(P)=number_rows(Q) and all(for row@i in P do row=Q[i] od)
@@ -165,6 +165,10 @@ else
  for P in f(n-1) do  add_one_to_first_column(P)##add_one_to_last_row(P) od.##
 fi in f(n)
 
+set painted_partitions(Partition P)=[PaintedPartition]:
+##for pp in painted_partitions(size(P)) do
+ if partition(pp)=P then [pp] else [] fi od
+
 set_type PaintedBiPartition=(PaintedPartition P,PaintedPartition Q,string bi_label)
 
 set label_of(string bi_label)=string:if is_in(bi_label,["B+","B-"]) then "B" else bi_label fi
@@ -175,8 +179,7 @@ set count(PaintedBiPartition (P,Q,),int symbol)=int:count(P,symbol)+count(Q,symb
 
 {*,s,r,c,d}
 {0,1,2,3,4}
-set is_valid_left(PaintedPartition P, string bi_label)=
-let label=label_of(bi_label) in 
+set is_valid_left(PaintedPartition P, string label)=
 let S=symbols(P) then
 excluded=[int]:
  if   label="B" then [1,2,4]
@@ -190,8 +193,9 @@ else
 fi
 in all(for x in excluded do count(S,x)=0 od)
 
-set is_valid_right(PaintedPartition Q, string bi_label)=
-let label=label_of(bi_label) in 
+set is_valid_left(PaintedPartition P, string bi_label)=bool:is_valid_left(P,label_of(bi_label))
+
+set is_valid_right(PaintedPartition Q, string label)=
 let S=symbols(Q) then
 excluded=[int]:
  if label="B" then [3]
@@ -204,6 +208,8 @@ else
  error("missing case in is_valid_right")
 fi
 in all(for x in excluded do count(S,x)=0 od)
+
+set is_valid_right(PaintedPartition P, string bi_label)=bool:is_valid_right(P,label_of(bi_label))
 
 set is_valid(PaintedBiPartition Z)=bool:
 same_zeroes(Z.P,Z.Q) and is_valid_left(Z.P,Z.label) and is_valid_right(Z.Q,Z.label)
@@ -259,7 +265,7 @@ fi
 
 {distinguish between SO(p,q) and SO(q,p), etc.}
 set group_datum(PaintedBiPartition Z)=GroupDatum:
-if is_in(Z.bi_label,["B+","B-","D"]) then
+if is_in(Z.bi_label,["B+","B-","B","D"]) then
     ("SO",p(Z),q(Z))
  elif Z.bi_label="C" then
     ("Sp",2*p(Z),-1)  {-1 to indicate Sp(2n,R) not Sp(p,q)}

@@ -67,7 +67,7 @@ set even_index_rows(Orbit P)=Orbit:for i:(#P-2)\2+1 do P[2*i+1] od
 set odd_index_rows(Orbit P)=Orbit:for i:(#P-1)\2+1 do P[2*i] od
 
 {Definition 3.7: dual orbit -> pair of partitions <-> Weyl group representation}
-set left_diagram(Orbit P, string label)=Orbit:
+set left_diagram(Orbit P, string label)=Partition:
 let left=
 if label="B" then  {P has even rows}
  for row in even_index_rows(P) do h(row) od
@@ -115,66 +115,22 @@ in transpose(right)
 set diagram_pair(Orbit dual_orbit,string label_for_G)=(Partition,Partition):
 (left_diagram(dual_orbit,label_for_G),right_diagram(dual_orbit,label_for_G))
 
-set left_valid_painted_partitions(int n,string label)=
-for P in painted_partitions(n) do
+set left_valid_painted_partitions(int n,string label)=[PaintedPartition]:
+let valid=for P in painted_partitions(n) do
  if is_valid_left(P,label) then [P] else [] fi od.##
+in if #valid=0 then [null_painted_partition] else valid fi
+
+set left_valid_painted_partitions(Partition P,string label)=[PaintedPartition]:
+for Z in painted_partitions(size(P)) do
+  if is_valid_left(Z,label) and partition(Z)=P then [Z] else [] fi od.##
 
 set right_valid_painted_partitions(int n,string label)=
 for P in painted_partitions(n) do
  if is_valid_right(P,label) then [P] else [] fi od.##
 
-{this depends on the bi_label}
-set painted_bi_partitions_given_bi_label(int left,int right, string bi_label)=[PaintedBiPartition]:
-let left=left_valid_painted_partitions(left,bi_label) then
-right=right_valid_painted_partitions(right,bi_label) then
-label=label_of(bi_label) in
-##for P in left do
- ##for Q in right do
-  if is_valid(P,Q,bi_label) then [(P,Q,bi_label)] else [] fi od od
-
-{usually specify label, not bi_label: same except in case B take the union of B+,B-}
-set painted_bi_partitions(int left,int right, string label)=[PaintedBiPartition]:
-if label="B" then
- painted_bi_partitions_given_bi_label(left,right,"B+")##painted_bi_partitions_given_bi_label(left,right,"B-")
- else  painted_bi_partitions_given_bi_label(left,right,label) fi
-
-set painted_bi_partitions_given_bi_label(int n, string bi_label)=[PaintedBiPartition]:
-for i:n+1 do painted_bi_partitions_given_bi_label(i,n-i,bi_label) od.##
-
-set painted_bi_partitions(int n, string label)=[PaintedBiPartition]:
-if label="B" then
- painted_bi_partitions_given_bi_label(n,"B+")##painted_bi_partitions_given_bi_label(n,"B-")
- else  painted_bi_partitions_given_bi_label(n,label) fi
-
-{(O_v,label) -> diagram_pair (Left,Right)
-Note: label (not bi_label)
--> set of painted bi partions (P,Q,label) with partition(P)=Left, partition(Q)=right
-where label(bi_label)=label
-}
-set painted_bi_partitions(Orbit O_v, string label)=[PaintedBiPartition]:
-let (left,right)=diagram_pair(O_v,label) in
-let n=
-if is_in(label,["C","C*"]) then {G=Sp(2n),G_v=SO(2n+1) size(O_v)=2n+1}
- h(size(O_v)-1)
-elif is_in(label,["B","C~"]) then {G=SO(2n+1) G_v=Sp(2n) 2n=size(O_v)}
- h(size(O_v))
-elif is_in(label,["D","D*"]) then {SO(2n)}
- h(size(O_v))
-else
-error("case not implemented yet")
-fi
-{in let ()=prints("n=", n)  then} in let
-all = painted_bi_partitions(n,label) in
-for Z in all do if partition(Z.P)=left and partition(Z.Q)=right then [Z] else [] fi od.##
-
-set pbp(Orbit O_v, string label)=[PaintedBiPartition]:painted_bi_partitions(O_v,label)
-set number_pbp(Orbit O_v,string label)=int:#pbp(O_v,label)
-
-set pbp(GroupDatum G,Orbit O_v, string label)=[PaintedBiPartition]:
-##for Z in pbp(O_v,label) do
- if group_datum(Z)=G then [Z] else [] fi od
-
-set number_pbp(GroupDatum G,Orbit O_v, string label)=int:#pbp(G,O_v,label)
+set right_valid_painted_partitions(Partition P,string label)=
+for Z in painted_partitions(size(P)) do
+  if is_valid_right(Z,label) and partition(Z)=P then [Z] else [] fi od.##
 
 {label: type of G, orbit is for G^v}
 set complex_group(Orbit O_v,string label)=RootDatum:
@@ -204,6 +160,141 @@ if #list=0 then ([],[]) else
  od;(group_data,rv)
 fi
 
+set show_collated_group_data([PaintedBiPartition] list)=void:
+let (groups,numbers)=collated_group_data(list) in
+for G@i in groups do 
+prints(group_name(G), " ", numbers[i]) od
+
+set nilpotent_info(RootDatum G)=void:
+show_orbits_and_reps(G);
+print_nilpotent_orbit_partitions(G);
+show_orbits_and_reps(dual(G));
+print_nilpotent_orbit_partitions(dual(G))
+
+set add_one(Partition P)=Partition:P[0]+:=1;P
+set subtract_one(Partition P)=Partition:P~[0]-:=1;P
+
+set dual(Partition P, string label)=
+if #P=0 then [] 
+elif is_in(label,["B","B+","B-"]) then  {see springer_table_B.at}
+B_to_C_dual(P) 
+elif is_in(label,["C","C*"]) then
+C_to_B_dual(P) 
+elif is_in(label,["D","D*"]) then 
+let (Q,)=D_dual(P,true) in Q  {see springer_table_D.at}
+else
+error("(dual) only types BCD") 
+fi
+
+{dual orbit, label is for G -> orbit for G^v}
+set dual_orbit(Partition P,Partition Q, string label)=[Orbit]:  {should only be one Orbit}
+if is_in(label,["C","C*"]) then [dual(orbit_C(P,Q),"C")]
+elif is_in(label,["B","B+","B-"]) then [dual(orbit_B(P,Q),"B")]
+elif is_in(label,["D","D*"]) then
+##for orbit in good_parity_partitions(rank(P,Q), "D") do
+ if diagram_pair(orbit,label)=(P,Q) then [orbit] else [] fi od
+else
+ error("(dual_orbit) only types BCD")
+fi
+set dual_orbit(PaintedPartition P,PaintedPartition Q,string label)=[Orbit]:dual_orbit(P.partition,Q.partition,label)
+set orbit(BiPartition (P,Q), string label)=dual_orbit(P,Q,label)
+set dual_orbit(BiPartition (P,Q), string label)=dual_orbit(P,Q,label)
+
+set orbit(Partition P,Partition Q, string label)=Orbit:
+if is_in(label,["C","C*"]) then orbit_C(P,Q)
+elif is_in(label,["B","B+","B-"])  then orbit_B(P,Q)
+elif is_in(label,["D","D*"]) then
+let orbits= ##for orbit in good_parity_partitions(rank(P,Q), "D") do
+ if diagram_pair(orbit,label)=(P,Q) then [dual(orbit,"D")] else [] fi od
+in assert(#orbits<2,"orbit function returned >1 orbit");
+assert(#orbits>0,"orbit function returned no orbits");
+orbits[0]
+else
+ error("(orbit) only types BCD")
+fi
+set orbit(PaintedPartition P,PaintedPartition Q,string label)=Orbit:orbit(P.partition,Q.partition,label)
+set orbit(BiPartition (P,Q), string label)=orbit(P,Q,label)
+set orbit(PaintedBiPartition Z)=orbit(Z.P,Z.Q,Z.label)
+
+set painted_bi_partitions(Orbit O_vee,string label_for_G)=[PaintedBiPartition]:
+let (left,right)=diagram_pair(O_vee,label_for_G) in
+##for P in left_valid_painted_partitions(left,label_for_G) do
+ ##for Q in right_valid_painted_partitions(right,label_for_G) do
+  if is_valid(P,Q,label_for_G) then [(P,Q,label_for_G)] else [] fi
+ od
+od
+
+set painted_bi_partitions(int n, string label)=[PaintedBiPartition]:
+##for orbit in good_parity_partitions(n,label) do painted_bi_partitions(orbit,label) od
+
+{this depends on the bi_label}
+{NOTE: is_valid(P,Q,bi_label)=true does not imply the dual_orbit(P,Q,bi_label) is good parity.
+ For example
+atlas> A
+Value: ([[0]],[[0,1]],"C")
+atlas> is_valid(A)
+Value: true
+atlas> dual_orbit(A)
+Value: [[3,2,2]]  {this is not good parity}
+This rarely fails - perhaps it should always be true, and is_valid is not quite correct
+NOTE: DANGEROUS BEND
+}
+set painted_bi_partitions_given_bi_label_old(int left, int right, string bi_label)=[PaintedBiPartition]:
+let left_valid=left_valid_painted_partitions(left,bi_label) then
+right_valid=right_valid_painted_partitions(right,bi_label) then
+label=label_of(bi_label) in
+##for P in left_valid do
+ ##for Q in right_valid do
+  let dual_orbit=dual_orbit(P,Q,bi_label)[0] in 
+{  if is_valid(P,Q,bi_label) {and is_good_parity(dual_orbit(P,Q,bi_label)[0],bi_label)} then [(P,Q,bi_label)] else [] fi od od}
+  if is_valid(P,Q,bi_label)
+   and is_good_parity(dual_orbit,bi_label)
+   and not(size(dual_orbit)=0 and left+right>0)    {if dual orbit is empty but left+right \ne 0 then reject}
+then [(P,Q,bi_label)] else [] fi od od
+
+{usually specify label, not bi_label: same except in case B take the union of B+,B-}
+set painted_bi_partitions_old(int left,int right, string label)=[PaintedBiPartition]:
+if label="B" then
+ painted_bi_partitions_given_bi_label_old(left,right,"B+")##painted_bi_partitions_given_bi_label_old(left,right,"B-")
+ else  painted_bi_partitions_given_bi_label_old(left,right,label) fi
+
+set painted_bi_partitions_given_bi_label_old(int n, string bi_label)=[PaintedBiPartition]:
+for i:n+1 do painted_bi_partitions_given_bi_label_old(i,n-i,bi_label) od.##
+
+set painted_bi_partitions_old(int n, string label)=[PaintedBiPartition]:
+if label="B" then
+ painted_bi_partitions_given_bi_label_old(n,"B+")##painted_bi_partitions_given_bi_label_old(n,"B-")
+ else  painted_bi_partitions_given_bi_label_old(n,label) fi
+
+{(O_v,label) -> diagram_pair (Left,Right)
+Note: label (not bi_label)
+-> set of painted bi partions (P,Q,label) with partition(P)=Left, partition(Q)=right
+where label(bi_label)=label
+}
+set painted_bi_partitions_old(Orbit O_v, string label)=[PaintedBiPartition]:
+let (left,right)=diagram_pair(O_v,label) in
+let n=
+if is_in(label,["C","C*"]) then {G=Sp(2n),G_v=SO(2n+1) size(O_v)=2n+1}
+ h(size(O_v)-1)
+elif is_in(label,["B","C~"]) then {G=SO(2n+1) G_v=Sp(2n) 2n=size(O_v)}
+ h(size(O_v))
+elif is_in(label,["D","D*"]) then {SO(2n)}
+ h(size(O_v))
+else
+error("case not implemented yet")
+fi
+{in let ()=prints("n=", n)  then} in let
+all = painted_bi_partitions_old(n,label) in
+for Z in all do if partition(Z.P)=left and partition(Z.Q)=right then [Z] else [] fi od.##
+
+set pbp(Orbit O_v, string label)=[PaintedBiPartition]:painted_bi_partitions(O_v,label)
+set pbp(GroupDatum G,Orbit O_v, string label)=[PaintedBiPartition]:
+##for Z in pbp(O_v,label) do
+ if group_datum(Z)=G then [Z] else [] fi od
+set number_pbp(Orbit O_v,string label)=int:#pbp(O_v,label)
+set number_pbp(GroupDatum G,Orbit O_v, string label)=int:#pbp(G,O_v,label)
+
+
 {see (3.8)}
 set pbp_ext(Orbit O_v,string label)=([PaintedBiPartition],[[int]]):
 if is_in(label,["B","C","D","C~"])
@@ -217,10 +308,47 @@ if is_in(label,["B","C","D","C~"])
  else (pbp(G,O_v,label),[[int]]:[[]])
 fi
 
-set show_collated_group_data([PaintedBiPartition] list)=void:
-let (groups,numbers)=collated_group_data(list) in
-for G@i in groups do 
-prints(group_name(G), " ", numbers[i]) od
+
+
+{Note:
+orbit for G^v -> (P,Q) diagram_pair(orbit,label_for_G) -> dual_orbit(P,Q,diagram_for_G) = orbit
+for orbit in good_parity_partitions (4,"C") do dual_orbit(diagram_pair(orbit,"C"),"C")[0]=orbit od
+}
+
+set confirm(int n,string label_for_G)=bool:
+all(for orbit in good_parity_partitions (n,label_for_G) do dual_orbit(diagram_pair(orbit,label_for_G),label_for_G)[0]=orbit od)
+
+set test (int n, string label)=
+let good=good_parity_partitions(n,label) then
+pairs=for P in good do diagram_pair(P,label) od in
+tabulate(
+for pair@i in pairs do
+[i.to_string,good[i].to_string,pair.to_string,orbit(pair,label).to_string, dual_orbit(pair,label).to_string] od)
+
+set show(PaintedBiPartition (P,Q,bi_label))=void:
+prints(P, " ", Q, " ", bi_label, " ", group_name(P,Q,bi_label), " ", orbit(P,Q,bi_label), " ", dual_orbit(P,Q,bi_label))
+
+set show([PaintedBiPartition] list)=void:
+tabulate(
+["P","Q","bi-label","group","orbit","dual orbit"]#
+for (P,Q,bi_label) in list do
+ [P.to_string,Q.to_string,bi_label,group_name(P,Q,bi_label),orbit(P,Q,bi_label).to_string,dual_orbit(P,Q,bi_label).to_string] od)
+{
+set show(PaintedBiPartition (P,Q,bi_label))=void:
+prints("bi_label:", bi_label);
+prints("P:");show_painted_partition(P);
+prints("---------",new_line,"Q:");show_painted_partition(Q)
+
+set show([PaintedBiPartition] list)=void:
+for Z in list do prints("=====================",new_line,Z);show(Z) od
+}
+set show_short(PaintedBiPartition (P,Q,bi_label))=void:
+prints(P, " ", Q, " ", bi_label, " ", group_name(P,Q,bi_label), " ", orbit(P,Q,bi_label))
+
+set show_short([PaintedBiPartition] list)=void:
+tabulate(for (P,Q,bi_label) in list do
+ [P.to_string,Q.to_string,bi_label,group_name(P,Q,bi_label),orbit(P,Q,bi_label).to_string] od)
+
 
 set number_unipotent(Orbit O_v,string label)=int:
 if label="B" or label="D" and size(O_v)=0
@@ -283,22 +411,12 @@ od
 #["Total","","",grand_total.to_string]
 );prints()
 
-set show_short(RealForm G,(ComplexNilpotent->Partition) partition_function)=void:
-let orbits=dual_orbits(G) then
-wp=weak_packets(G) in
-show_short(orbits,wp,partition_function)
 
-set bmsz(Partition P,string label)=
-let Z=painted_bi_partitions(P,label)[0] in (Z.P.partition,Z.Q.partition) 
 
+set bmsz(Partition P,string label)=let Z=painted_bi_partitions(P,label)[0] in (Z.P.partition,Z.Q.partition) 
 set test_bmsz(Partition P, string label)=
 bmsz(P,label)=wrep(dual_orbit(P))
 
-set nilpotent_info(RootDatum G)=void:
-show_orbits_and_reps(G);
-print_nilpotent_orbit_partitions(G);
-show_orbits_and_reps(dual(G));
-print_nilpotent_orbit_partitions(dual(G))
 
 set bmsz_pair(Orbit O,string label)=
 let bp=painted_bi_partitions(O,label) then
@@ -315,90 +433,29 @@ for orbit@i in good do
  pair=(Z.P.partition,Z.Q.partition)  in
 [orbit.to_string,dual_orbit(orbit).to_string,Z.to_string,pair.to_string] od)
 
-set add_one(Partition P)=Partition:P[0]+:=1;P
-set subtract_one(Partition P)=Partition:P~[0]-:=1;P
+set orbit_info(RootDatum G)=void:
+show_orbits_and_reps(G);
+print_nilpotent_orbit_partitions(G)
 
-set dual(Partition P, string label)=
-if #P=0 then [] 
-elif label="B" then  {see springer_table_B.at}
-B_to_C_dual(P) 
-elif label="C" then
-C_to_B_dual(P) 
-elif label="D" then 
-let (Q,)=D_dual(P,true) in Q  {see springer_table_D.at}
-else
-error("only types BCD") 
+set partition_of_orbit_D_weak(ComplexNilpotent orbit)=Partition:
+let (P,)=partition_of_orbit_D(orbit) in P
+
+set choose_dual_partition_function(RootDatum G)=
+{handles SL(2), SO(3) separately}
+let (type,)=simple_factors(Lie_type(G))[0] in
+if G=SL(2,R) then prints("OK");partition_of_orbit_B@ComplexNilpotent
+elif G=SO(3,0) or G=SO(2,1) or G=SO(1,2) or G=SO(0,3) then partition_of_orbit_D_weak@ComplexNilpotent
+else 
+if type="B" then partition_of_orbit_C@ComplexNilpotent
+  elif type="C" then partition_of_orbit_B@ComplexNilpotent
+  elif is_in(type,["D","A"]) then  partition_of_orbit_D_weak@ComplexNilpotent  {SO(4) and SO(6)}
+  else error("missing case in choose_dual_partition_function")
+fi
 fi
 
-{dual orbit, label is for G -> orbit for G^v}
-set dual_orbit(Partition P,Partition Q, string label)=[Orbit]:  {should only be one Orbit}
-if label="C" then [dual(orbit_C(P,Q),"C")]
-elif label="B" then [dual(orbit_B(P,Q),"B")]
-elif label="D" then
-##for orbit in good_parity_partitions(rank(P,Q), "D") do
- if diagram_pair(orbit,label)=(P,Q) then [orbit] else [] fi od
-else
- error("only types BCD")
-fi
-set dual_orbit(PaintedPartition P,PaintedPartition Q,string label)=[Orbit]:dual_orbit(P.partition,Q.partition,label)
-set orbit(BiPartition (P,Q), string label)=dual_orbit(P,Q,label)
-set dual_orbit(BiPartition (P,Q), string label)=dual_orbit(P,Q,label)
+set show_short(RealForm G,(ComplexNilpotent->Partition) partition_function)=void:
+let orbits=dual_orbits(G) then
+wp=weak_packets(G) in
+show_short(orbits,wp,partition_function)
 
-set orbit(Partition P,Partition Q, string label)=Orbit:
-if label="C" then orbit_C(P,Q)
-elif label="B" then orbit_B(P,Q)
-elif label="D" then
-let orbits= ##for orbit in good_parity_partitions(rank(P,Q), "D") do
- if diagram_pair(orbit,label)=(P,Q) then [dual(orbit,"D")] else [] fi od
-in assert(#orbits<2,"orbit function returned >1 orbit");
-assert(#orbits>0,"orbit function returned no orbits");
-orbits[0]
-else
- error("only types BCD")
-fi
-set orbit(PaintedPartition P,PaintedPartition Q,string label)=Orbit:orbit(P.partition,Q.partition,label)
-set orbit(BiPartition (P,Q), string label)=orbit(P,Q,label)
-set orbit(PaintedBiPartition Z)=orbit(Z.P,Z.Q,Z.label)
-
-{Note:
-orbit for G^v -> (P,Q) diagram_pair(orbit,label_for_G) -> dual_orbit(P,Q,diagram_for_G) = orbit
-for orbit in good_parity_partitions (4,"C") do dual_orbit(diagram_pair(orbit,"C"),"C")[0]=orbit od
-}
-
-set confirm(int n,string label_for_G)=bool:
-all(for orbit in good_parity_partitions (n,label_for_G) do dual_orbit(diagram_pair(orbit,label_for_G),label_for_G)[0]=orbit od)
-
-set test (int n, string label)=
-let good=good_parity_partitions(n,label) then
-pairs=for P in good do diagram_pair(P,label) od in
-tabulate(
-for pair@i in pairs do
-[i.to_string,good[i].to_string,pair.to_string,orbit(pair,label).to_string, dual_orbit(pair,label).to_string] od)
-
-
-
-
-
-set show(PaintedBiPartition (P,Q,bi_label))=void:
-prints(P, " ", Q, " ", bi_label, " ", group_name(P,Q,bi_label), " ", orbit(P,Q,bi_label), " ", dual_orbit(P,Q,bi_label))
-
-set show([PaintedBiPartition] list)=void:
-tabulate(
-["P","Q","bi-label","group","orbit","dual orbit"]#
-for (P,Q,bi_label) in list do
- [P.to_string,Q.to_string,bi_label,group_name(P,Q,bi_label),orbit(P,Q,bi_label).to_string,dual_orbit(P,Q,bi_label).to_string] od)
-{
-set show(PaintedBiPartition (P,Q,bi_label))=void:
-prints("bi_label:", bi_label);
-prints("P:");show_painted_partition(P);
-prints("---------",new_line,"Q:");show_painted_partition(Q)
-
-set show([PaintedBiPartition] list)=void:
-for Z in list do prints("=====================",new_line,Z);show(Z) od
-}
-set show_short(PaintedBiPartition (P,Q,bi_label))=void:
-prints(P, " ", Q, " ", bi_label, " ", group_name(P,Q,bi_label), " ", orbit(P,Q,bi_label))
-
-set show_short([PaintedBiPartition] list)=void:
-tabulate(for (P,Q,bi_label) in list do
- [P.to_string,Q.to_string,bi_label,group_name(P,Q,bi_label),orbit(P,Q,bi_label).to_string] od)
+set show_short(RealForm G)=show_short(G,choose_dual_partition_function(G))
