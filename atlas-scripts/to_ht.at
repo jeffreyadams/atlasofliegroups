@@ -32,7 +32,7 @@ set deform_to_height_hash = ((ParamPol P, int HT) -> KTypePol):
 )
 }
 
-set full_deform_to_ht_MvL(Param p, int HT) = KTypePol:
+{set full_deform_to_ht_MvL(Param p, int HT) = KTypePol:
     if {deformed_hash_flag} HT >= 0
     then deformedHash.entry(p,HT)
     else full_deform(p) {deform_to_height(p,HT)}
@@ -43,6 +43,7 @@ set full_deform_to_ht_MvL (Param p, int HT, int time) = maybe_KTP:
     then deformedHash.maybe_entry(p,HT,time)
     else full_deform(p,time) {full_deform_to_ht_MvL_base(p,HT,time)}
     fi
+}
 {
 ( if deformed_hash_flag
   then let j = deformedHash.lookup(p)
@@ -79,7 +80,7 @@ set full_deform_to_ht_MvL (Param p, int HT, int time) = maybe_KTP:
   in done(output)
 )
 }
-set full_deform_to_ht_old(Param p, int HT) = KTypePol:
+{set full_deform_to_ht_old(Param p, int HT) = KTypePol:
 if height(p) > HT and HT >=0 then null_K_module(p.real_form)
 elif height(p) = HT then K_type_pol(p)
 else let pc = alcove_center(p)
@@ -89,16 +90,16 @@ else let pc = alcove_center(p)
   	then return to_ht(full_deform(pc),HT)
 	else deform_to_height(pc,HT)
 	fi
-fi
+fi}
 
 {This version seems NOT faster or smaller} {TRY NOT TO USE}
-set full_deform_to_ht(Param p, int HT) = KTypePol:
+{set full_deform_to_ht(Param p, int HT) = KTypePol:
     if HT < 0 then return full_deform(p) fi;
     {if not strict_low(p,HT))
     then return to_ht(full_deform(p),HT)
     fi;}
     let pc = alcove_center(p)
-    in deformedHash.entry(pc,HT)
+    in deformedHash.entry(pc,HT)}
 
 {if deformed_hash_flag
        then 
@@ -107,20 +108,21 @@ set full_deform_to_ht(Param p, int HT) = KTypePol:
 
 {deform_to_height(p,HT)}
 
-set full_deform_to_ht(Param p, int HT, int time) = maybe_KTP:
+{set full_deform_to_ht(Param p, int HT, int time) = maybe_KTP:
     if HT < 0 then return full_deform(p,time) fi;
     {if not ({to_ht_over_u_flag} strict_low(p,HT))
     then return to_ht(full_deform(p,time),HT)
     fi;}
     let pc = alcove_center(p)
     in deformedHash.maybe_entry(pc,HT,time)
+}
 
 {if deformed_hash_flag
        then deformedHash.maybe_entry(pc,HT,time)
        else full_deform_to_height_MvL_base(pc,HT,time)
        fi}
 
-
+{
 set twisted_full_deform_to_ht_MvL(Param p, int HT) = KTypePol:
     if HT < 0 then return twisted_full_deform(p) fi;
     let pc = alcove_center(p)
@@ -149,7 +151,7 @@ set twisted_full_deform_to_ht(Param p,int HT) = KTypePol: twisted_full_deform_to
 set twisted_full_deform_to_ht(Param p,int HT, int time) = maybe_KTP: twisted_full_deform_to_ht_MvL(p, HT,time)
 {.write c-invariant form on standard module as a ParamPol of
 standardrepKs to specified height.}
-
+}
 set c_form_std_to_ht_MvL(int HT) = (Param->KTypePol):(Param p): full_deform_to_ht(p, HT)
 { never involves |twisted_full_deform| }
   {if not ({to_ht_over_u_flag} strict_low(p,HT))
@@ -180,10 +182,10 @@ set c_form_std_to_ht(int N) = (Param->KTypePol):(Param p):
 }
 
 set twisted_c_form_std_to_ht_MvL(int N) = (Param->KTypePol):(Param p):
-   twisted_full_deform_to_ht_MvL(p,N)
+   twisted_full_deform_to_ht(p,N)
 
 set twisted_c_form_std_to_ht_MvL(int N, int time) = (Param->maybe_KTP):(Param p):
-   twisted_full_deform_to_ht_MvL(p,N,time)
+   twisted_full_deform_to_ht(p,N,time)
 
 set twisted_c_form_std_to_ht(int N) = (Param p)KTypePol:
    twisted_full_deform_to_ht(p,N)
@@ -240,7 +242,7 @@ set c_form_irreducible_to_ht_MvL (Param p,int HT) = KTypePol:
 		 let start = elapsed_ms()
 		 {then ans =
 		 full_deform_to_ht(q,HT)}
-		 in deformedHash.entry(q,HT)
+		 in full_deform_to_ht(q,HT) {deformedHash.entry(q,HT)}
 		 {if deformed_hash_flag
 		    then deformedHash.append_time(q,HT,ans,elapsed_ms() - start)
 		    fi;
@@ -262,19 +264,18 @@ set c_form_irreducible_to_ht_MvL (Param p,int HT, int time ) = maybe_KTP:
       	do (c*orientation_nr_term(ori_nr_p,q),q)
       	od
     then list = monomials(oriented_KL_sum)
-    then indices = for q in list do deformedHash.lookup(q) od
+    then indices = for q in list do defHashTime.param_lookup(q) od
     then unknown_ks = for j@k in indices
-    	 	       	    do if j < 0
-			       	  or (deformedHash.height_index(j) >= 0 and HT < 0)
-				  or (deformedHash.height_index(j) >= 0 and
-				     HT > deformedHash.height_index(j))
-			       do k {loop that runs 0 or 1 times}
-			       fi
-			    od.##
+    	 	       	  if j < 0 or (defHashTime.height_index(j) >= 0 and HT < 0)
+			     or (defHashTime.height_index(j) >= 0 and
+				 HT > defHashTime.height_index(j))
+		       do k
+		       fi
+		       od
      in if #unknown_ks = 0
 	then return map( (Param q) KTypePol:
-	      	    deformedHash.entry(q,HT), oriented_KL_sum).done
-	else deformedHash.entry(list[unknown_ks[(#unknown_ks-1)\2]],HT).done
+	      	    full_deform_to_ht(q,HT), oriented_KL_sum).done
+	else full_deform_to_ht(list[unknown_ks[(#unknown_ks-1)\2]],HT).done
 	fi {#unknown_ks};
     	map( (Param q) maybe_KTP: if expiration - elapsed_ms() < 0
       	     	       		  then timed_out()
