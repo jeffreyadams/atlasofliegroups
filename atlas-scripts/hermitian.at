@@ -513,7 +513,7 @@ set make_deformation_hash_time () = deformation_hash_time:
 		     then full_deform(p)
 		     else twisted_full_deform(p)
 		     fi,HT)
-	  elif height_list[i] >= HT {we already deformed to a greater height}
+	  elif height_list[i] >= HT and HT >= 0 {we already deformed to a greater height}
 	  then to_ht(if is_equal_rank(p.real_form)
 		     then full_deform_to_height_MvL_base(p,height_list[i])
 		     else twisted_full_deform(p)
@@ -548,7 +548,7 @@ set make_deformation_hash_time () = deformation_hash_time:
 		     then full_deform(p)
 		     else twisted_full_deform(p)
 		     fi,HT).done
-	  elif height_list[i] >= HT and HT>0{we already deformed to a greater height}
+	  elif height_list[i] >= HT and HT>=0{we already deformed to a greater height}
 	  then to_ht(if is_equal_rank(p.real_form)
 		     then full_deform_to_height_MvL_base(p,height_list[i])
 		     else twisted_full_deform(p)
@@ -2674,7 +2674,6 @@ set hermitian_form_irreducible_cut (Param p, int HT, int time) = maybe_KTP:
    		 esac
   in unitaryTime+:=elapsed_ms() - start_time;
      answer
-
 
 set is_unitary (Param p, int time) = int: { -1: no, 0:timed out, 1: yes }
     if p.is_hermitian
