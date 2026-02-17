@@ -618,7 +618,8 @@ theta_recurse(chain,target_level,[Z])
 
 set theta_recurse([PaintedBiPartition] chain)=
 let ()=prints("theta_recurse(2)") in
-if =signature(chain~[0]).z then
+{if =signature(chain~[0]).z then}
+if =size(chain~[0]) then
  theta_recurse(chain,#chain-1,null_K_local_system(chain~[0].label))
 else
 error("last element of chain isn't null")

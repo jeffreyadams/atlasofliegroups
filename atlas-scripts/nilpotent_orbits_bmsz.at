@@ -179,6 +179,8 @@ if #P=0 then []
 elif is_in(label,["B","B+","B-"]) then  {see springer_table_B.at}
 B_to_C_dual(P) 
 elif is_in(label,["C","C*"]) then
+C_to_B_dual(P)
+elif is_in(label,["C~"]) then  {NOT SURE ABOUT THIS}
 C_to_B_dual(P) 
 elif is_in(label,["D","D*"]) then 
 let (Q,)=D_dual(P,true) in Q  {see springer_table_D.at}
@@ -187,28 +189,41 @@ error("(dual) only types BCD")
 fi
 
 {dual orbit, label is for G -> orbit for G^v}
-set dual_orbit(Partition P,Partition Q, string label)=[Orbit]:  {should only be one Orbit}
-if is_in(label,["C","C*"]) then [dual(orbit_C(P,Q),"C")]
-elif is_in(label,["B","B+","B-"]) then [dual(orbit_B(P,Q),"B")]
-elif is_in(label,["D","D*"]) then
-##for orbit in good_parity_partitions(rank(P,Q), "D") do
+set dual_orbit_by_search(Partition P,Partition Q, string label)=Orbit:
+let orbits= ##for orbit in good_parity_partitions(rank(P,Q), label) do
  if diagram_pair(orbit,label)=(P,Q) then [orbit] else [] fi od
+in assert(#orbits<2,"orbit function returned >1 orbit");
+assert(#orbits>0,"orbit function returned no orbits");
+orbits[0]
+
+set orbit_by_search(Partition P,Partition Q, string label)=Orbit:
+dual(dual_orbit_by_search(P,Q,label),label) 
+
+{dual orbit, label is for G -> orbit for G^v}
+set dual_orbit(Partition P,Partition Q, string label)=Orbit:  {should only be one Orbit}
+if is_in(label,["C","C*"]) then dual(orbit_C(P,Q),"C")
+elif is_in(label,["B","B+","B-"]) then dual(orbit_B(P,Q),"B")
+elif is_in(label,["D","D*","C~"]) then
+ dual_orbit_by_search(P,Q,label)
 else
- error("(dual_orbit) only types BCD")
+ error("(dual_orbit) missing case")
 fi
-set dual_orbit(PaintedPartition P,PaintedPartition Q,string label)=[Orbit]:dual_orbit(P.partition,Q.partition,label)
+set dual_orbit(PaintedPartition P,PaintedPartition Q,string label)=Orbit:dual_orbit(P.partition,Q.partition,label)
 set orbit(BiPartition (P,Q), string label)=dual_orbit(P,Q,label)
 set dual_orbit(BiPartition (P,Q), string label)=dual_orbit(P,Q,label)
+
+set orbit_by_search(Partition P,Partition Q, string label)=Orbit:
+let orbits= ##for orbit in good_parity_partitions(rank(P,Q), label) do
+ if diagram_pair(orbit,label)=(P,Q) then [dual(orbit,label)] else [] fi od
+in assert(#orbits<2,"orbit function returned >1 orbit");
+assert(#orbits>0,"orbit function returned no orbits");
+orbits[0]
 
 set orbit(Partition P,Partition Q, string label)=Orbit:
 if is_in(label,["C","C*"]) then orbit_C(P,Q)
 elif is_in(label,["B","B+","B-"])  then orbit_B(P,Q)
-elif is_in(label,["D","D*"]) then
-let orbits= ##for orbit in good_parity_partitions(rank(P,Q), "D") do
- if diagram_pair(orbit,label)=(P,Q) then [dual(orbit,"D")] else [] fi od
-in assert(#orbits<2,"orbit function returned >1 orbit");
-assert(#orbits>0,"orbit function returned no orbits");
-orbits[0]
+elif is_in(label,["D","D*","C~"]) then
+ orbit_by_search(P,Q,label)
 else
  error("(orbit) only types BCD")
 fi
@@ -245,7 +260,7 @@ right_valid=right_valid_painted_partitions(right,bi_label) then
 label=label_of(bi_label) in
 ##for P in left_valid do
  ##for Q in right_valid do
-  let dual_orbit=dual_orbit(P,Q,bi_label)[0] in 
+  let dual_orbit=dual_orbit(P,Q,bi_label) in 
 {  if is_valid(P,Q,bi_label) {and is_good_parity(dual_orbit(P,Q,bi_label)[0],bi_label)} then [(P,Q,bi_label)] else [] fi od od}
   if is_valid(P,Q,bi_label)
    and is_good_parity(dual_orbit,bi_label)
@@ -316,7 +331,7 @@ for orbit in good_parity_partitions (4,"C") do dual_orbit(diagram_pair(orbit,"C"
 }
 
 set confirm(int n,string label_for_G)=bool:
-all(for orbit in good_parity_partitions (n,label_for_G) do dual_orbit(diagram_pair(orbit,label_for_G),label_for_G)[0]=orbit od)
+all(for orbit in good_parity_partitions (n,label_for_G) do dual_orbit(diagram_pair(orbit,label_for_G),label_for_G)=orbit od)
 
 set test (int n, string label)=
 let good=good_parity_partitions(n,label) then
