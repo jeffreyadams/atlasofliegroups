@@ -39,9 +39,8 @@ set kill_for_big_uTime() = void:
     fi
 
 set UFast() = void:
-    prints("Setting old_test_interrupt_flag:=false, deformed_hash_flag:=true");
-    old_test_interrupt_flag:=false;
-    deformed_hash_flag:=true
+    prints("Setting old_test_interrupt_flag:=false");
+    old_test_interrupt_flag:=false
 
 set ULoud() = void:
     test_interrupt_verbose:=true

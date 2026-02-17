@@ -13,6 +13,7 @@ set deformLookupCounter = make_counter()
 set deformCalcCounter = make_counter()
 set twistedDeformLookupCounter = make_counter()
 set twistedDeformCalcCounter = make_counter()
+set test_interrupt_verbose = false
 
 {typewise_pure(c_form) is a necessary condition for purity of hermitian form, and rules out a lot}
 set is_typewise_pure(KTypePol P) = bool:
@@ -463,6 +464,7 @@ if deform_script_flag then return recursive_deform_scr(p,height,time) fi;
      esac
 )
 
+
 set_type
 [ deformation_hash_time =
 ( ( -> int) size {number of parameters stored}
@@ -489,11 +491,15 @@ set_type
 
 set make_deformation_hash_time () = deformation_hash_time:
 ( let param_hash = make_Param_hash()
+  then pol_hash = make_KTypePol_hash() {to store full_deform_to_ht, which library does not}
+  then pol_list = vec:[] {jth entry is location in pol_hash of full_deform to max height of Param #j}
   then time_list = vec:[]
   then height_list = vec:[]
   then dummy = maybe_KTP: (1*LKT(U(0,0).trivial)).done
   then clearDHT() = void:
        param_hash.clear();
+       pol_hash.clear();
+       pol_list := [];
        time_list :=[];
        height_list := []
   then add_param(Param p, int HT) = (KTypePol,int):
@@ -506,24 +512,29 @@ set make_deformation_hash_time () = deformation_hash_time:
 			 else to_ht(twisted_full_deform(p),HT)
 			 fi
 	       in time_list #:= elapsed_ms() - start;
+	          if HT >= 0
+		  then pol_list #:=pol_hash.match(FD)
+		  else pol_list #:=-1
+		  fi;
 	       	  height_list #:= HT;
 		  FD
-	  elif height_list[i] < 0 {we did full_deform}
+	  elif height_list[i] < 0 {we prevously did full_deform}
 	  then to_ht(if is_equal_rank(p.real_form)
 		     then full_deform(p)
 		     else twisted_full_deform(p)
 		     fi,HT)
 	  elif height_list[i] >= HT and HT >= 0 {we already deformed to a greater height}
-	  then to_ht(if is_equal_rank(p.real_form)
-		     then full_deform_to_height_MvL_base(p,height_list[i])
-		     else twisted_full_deform(p)
-		     fi,HT)
+	  then to_ht(pol_hash.index(pol_list[i]),HT)
 	  else let start = elapsed_ms()
 	       then FD = if is_equal_rank(p.real_form)
 		      	 then full_deform_to_height_MvL_base(p,HT)
 			 else to_ht(twisted_full_deform(p),HT)
 			 fi
-	       in time_list[i]:= elapsed_ms() - start;
+	       in time_list[i]:= max(time_list[i], elapsed_ms() - start);
+	       	  if HT >= 0
+		  then pol_list[i]:=pol_hash.match(FD)
+		  else pol_list[i]:=-1
+		  fi;
 	       	  height_list[i]:=HT;
 		  FD
 	  fi, i)
@@ -539,32 +550,37 @@ set make_deformation_hash_time () = deformation_hash_time:
 	       	in case mFD
 		   | timed_out: mFD
 		   | done(FD): time_list #:= elapsed_ms() - start;
-		     	       height_list #:= -1;
+		     	       if HT >= 0
+		  	       then pol_list #:=pol_hash.match(FD)
+		  	       else pol_list #:=-1
+		  	       fi;
+		     	       height_list #:= HT;
 		    	       i:= param_hash.match(p);
 			       FD.done
 		   esac
-	  elif height_list[i] < 0 {we did full_deform}
+	  elif height_list[i] < 0 {we previously did full_deform}
 	  then to_ht(if is_equal_rank(p.real_form)
 		     then full_deform(p)
 		     else twisted_full_deform(p)
 		     fi,HT).done
 	  elif height_list[i] >= HT and HT>=0{we already deformed to a greater height}
-	  then to_ht(if is_equal_rank(p.real_form)
-		     then full_deform_to_height_MvL_base(p,height_list[i])
-		     else twisted_full_deform(p)
-		     fi,HT).done
-           else let start = elapsed_ms() {HT > height_list_i, or HT < 0}
+	  then to_ht(pol_hash.index(pol_list[i]),HT).done
+          else let start = elapsed_ms() {HT > height_list_i, or HT < 0}
 	       then mFD = if is_equal_rank(p.real_form)
 		      	  then full_deform_to_height_MvL_base(p,HT,time)
 			  else to_ht(twisted_full_deform(p,time),HT)
 			  fi
 		in case mFD
 		   | timed_out: mFD
-		   | done(FD): time_list[i]:= elapsed_ms() - start;
+		   | done(FD): time_list[i]:= max(time_list[i],elapsed_ms() - start);
+		     	       if HT >= 0
+		  	       then pol_list[i]:=pol_hash.match(FD)
+		  	       else pol_list[i]:=-1
+		  	       fi;
 		     	       height_list[i] := HT;
 			       FD.done
 		   esac
-	  fi,i)
+	    fi,i)
    in
   ( ( -> int): {size} @int: param_hash.size()
   , ( -> ): {clear} clearDHT
@@ -573,7 +589,7 @@ set make_deformation_hash_time () = deformation_hash_time:
   , ((Param,int) -> int): {time_record_bounded} (Param p, int time):
     let (,j) = maybe_add_param(p,-1,time)
     in if j < 0
-       then -1 {2*time}
+       then time
        else time_list[j]
        fi
   , ((Param,int) -> int): {time_record_to_ht} (Param p, int HT):
@@ -582,7 +598,7 @@ set make_deformation_hash_time () = deformation_hash_time:
     let (,j) = maybe_add_param(p,HT,time)
     in if j >= 0
        then time_list[j]
-       else -1
+       else time
        fi
   , (Param -> int): {time_lookup}  (Param p):
     let j = param_hash.lookup(p)
@@ -638,258 +654,6 @@ set twisted_full_deform_to_ht(Param p, int HT) = KTypePol:
 set twisted_full_deform_to_ht(Param p, int HT, int time) = maybe_KTP:
     defHashTime.maybe_full_deform_to_ht(p,HT,time)
 
-
-{whether to use _alt versions of full_deform_to_ht_MvL}
-{
-set alt_flag = false
-set alt_count = int: 0
-set alt_time = int:0
-
-set full_deform_to_ht_MvL_altA(Param p, int height) = KTypePol:
-  if not alt_flag then return full_deform_to_ht_MvL_base(p,height) fi;
-  alt_count +:=1;
-  let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p)
-  then output = empty_K, def = empty, time = interrupt_base_time
-  then P = empty +
-       	 { snap p down to a reducibility point, or tempered parameter }
-     	 (let rp = if deform_rp_flag
-	      	   then reducibility_points_rp(p,height)
-		   else reducibility_points(p)
-		   fi
-      	  in if =#rp
-      	     then output +:= p.K_type; []
-	     else [p*rp~[0]]
-	     fi)
-      then () = while >#P
-       	    do if elapsed_ms() - start > time
-	       then {try full_deform}
-		    let try = full_deform(p,time)
-		    {if deform_script_flag
-		    	      then recursive_deform_scr(p, height, time)
-		    	      else full_deform(p,time)
-			      fi}
-		    in case try
-		       |timed_out: time:=2*time; ()
-		       |done(r): alt_time +:= elapsed_ms() - start; return to_ht(r, height)
-		       esac
-		fi;
-		{prints("At C, q = ",first_param(P), ", height = ",height,", #P = ",#P);}
-		set (def,P) :=
-               (let q=first_param(P) in block_deform(q,P next P:=empty,height))
-  	       ;  let kt = for c@m in def if  =nu(m) do (c,m.K_type) fi od
-     	       	  ,   pp = for c@m in def if !=nu(m) do (c,m) fi od
-  	      in output := (output next output:=empty_K) + kt; P := (P next P:=empty) + pp
-  	    od
-  in alt_time +:= elapsed_ms() - start; output
-
-set alt_time_int_fail = int:0
-set alt_time_int_pass = int:0
-
-{THIS is where all the time is spent! For Spin(6,4), it's 15.4 secs vs 2.2 for uninterrupted}
-set full_deform_to_ht_MvL_altA(Param p, int height,int TIME) = maybe_KTP:
-  if not alt_flag then return full_deform_to_ht_MvL_base(p,height,TIME) fi;
-  let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p){,
-      deformed_hash_flag_hold = deformed_hash_flag}
-  {then () = if height >= 0
-       	    then deformed_hash_flag:=true
-	    fi}
-  then output = empty_K, def = empty, time = max(TIME\32,interrupt_base_time)
-  then P = empty +
-       	 { snap p down to a reducibility point, or tempered parameter }
-     	 (let rp = if deform_rp_flag
-	      	   then reducibility_points_rp(p,height)
-		   else reducibility_points(p)
-		   fi
-      	  in if =#rp
-      	     then output +:= p.K_type; []
-	     else [p*rp~[0]]
-	     fi)
-      then () = while >#P
-       	    do if elapsed_ms() - start > TIME
-	       then alt_time_int_fail +:= elapsed_ms() - start; return timed_out()
-	       fi;
-	       if elapsed_ms() - start > time
-	       then time:=2*time;
-		    let try = full_deform(p,time) {try full_deform}
-		    {if deform_script_flag {try full_deform}
-		    	      then recursive_deform_scr(p, height, time)
-		    	      else full_deform(p,time)
-			      fi}
-		    in case try
-		       |timed_out: time:=2*time; ()
-		       |done(r): alt_count+:=1;
-		       		 alt_time_int_pass+:= elapsed_ms() - start;
-				 return done(to_ht(r, height))
-		       esac
-		fi;
-		{prints("At D, q = ",first_param(P), ", height = ",height,", #P = ",#P);}
-		set (def,P) :=
-               (let q=first_param(P) in block_deform(q,P next P:=empty,height))
-  	       ;  let kt = for c@m in def if  =nu(m) do (c,m.K_type) fi od
-     	       	  ,   pp = for c@m in def if !=nu(m) do (c,m) fi od
-  	      in output := (output next output:=empty_K) + kt; P := (P next P:=empty) + pp
-  	    od
-  in alt_count+:=1; alt_time_int_pass+:= elapsed_ms() - start; done(output)
-
-set alt_verbose = false
-set alt_full = false
-set alt_time_guess = interrupt_base_time
-
-set START_TIME = int:0
-{set used_to_ht = int:0}
-
-set full_deform_to_ht_MvL_alt(Param p, int height) = KTypePol:
-  if not alt_flag then return full_deform_to_ht_MvL_base(p,height) fi;
-  START_TIME:=elapsed_ms(); {used_to_ht:=0}
-  alt_count+:=1;
-  if alt_verbose
-  then prints(new_line,"starting full_deform_to_ht_MvL_alt(",p,",",height,")")
-  fi;
-  let !empty_K=null_K_module(p.real_form), !empty=null_module(p),  start_to_ht = elapsed_ms()
-  then output = empty_K, def = empty, time = alt_time_guess
-  {time will increase as we fail}
-  then P = empty +
-       	 { snap p down to a reducibility point, or tempered parameter }
-     	 (let rp = if deform_rp_flag
-	      	   then reducibility_points_rp(p, height)
-		   else reducibility_points(p)
-		   fi
-      	  in if =#rp
-      	     then output +:= p.K_type; []
-	     else [p*rp~[0]]
-	     fi)
-  then () = if alt_verbose
-       	    then prints("working P = ",P," after ",print_time_string(elapsed_ms() - START_TIME))
-	    fi
-  {then () = used_to_ht+:= elapsed_ms() - start_to_ht}
-  then () = while >#P
-       	    do if elapsed_ms() - start_to_ht > time
-	       then {try full_deform}
-	       	    if alt_verbose
-		    then prints(new_line,"starting loop try_full after ",print_time_string(elapsed_ms() - START_TIME),
-       	      	    " for ", print_time_string(time))
-		    fi;
-		    let try = full_deform(p,time)
-		    	      {if deform_script_flag
-		    	      then recursive_deform_scr(p, height, time)
-			      else full_deform(p,time)
-			      fi}
-		    in start_to_ht:=elapsed_ms(); {starting a new round of deform_to_ht}
-		       case try
-		       |timed_out: if alt_verbose
-		       		   then prints("failed after ",print_time_string(elapsed_ms() - START_TIME))
-				   fi; time:=2*time; ()
-		       |done(r): alt_time_int_pass:= elapsed_ms() - START_TIME;
-		       		 {alt_full := true;}
-				 alt_time_guess := max(alt_time_guess, elapsed_ms() - START_TIME);
-				 if alt_verbose
-				 then prints("succeeded after ",print_time_string(elapsed_ms() - START_TIME))
-				 fi;
-				 return to_ht(r, height)
-		       esac
-		fi;
-		if alt_verbose
-		then prints(new_line, "starting loop (def,P), P = ",P," after ",print_time_string(elapsed_ms() - START_TIME))
-		fi;
-		{prints("At E, q = ",first_param(P), ", height = ",height,", #P = ",#P);}
-		set (def,P) :=
-		(let q=first_param(P) in block_deform(q,P,height))
-  	       ;  let kt = for c@m in def if  =nu(m) do (c,m.K_type) fi od
-     	       	  ,   pp = for c@m in def if !=nu(m) do (c,m) fi od
-  	      in output +:= kt; P +:= pp;
-	      	 if alt_verbose
-		 then prints("completed loop (def,P), P = ",P," after ",print_time_string(elapsed_ms() - START_TIME))
-		 fi
-	    od
-  in {deformed_hash_flag := deformed_hash_flag_hold;}
-     alt_time_guess:= max(alt_time_guess,elapsed_ms() - START_TIME);
-     alt_time+:= elapsed_ms() - START_TIME;
-     if alt_verbose
-     then prints(new_line,"completed full_deform_to_ht_MvL_alt after ",
-		  print_time_string(elapsed_ms() - START_TIME))
-     fi;
-     {alt_full:= false;} output
-
-set full_deform_to_ht_MvL_alt(Param p, int height,int TIME) = maybe_KTP:
-  if not alt_flag then return full_deform_to_ht_MvL_base(p,height,TIME) fi;
-  START_TIME:=elapsed_ms(); {TIME:= max(TIME,alt_time_guess);}
-  if alt_verbose
-  then prints(new_line,"starting full_deform_to_ht_MvL_alt(",p,",",height,",",TIME,")")
-  fi;
-  let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p),
-      start_to_ht = elapsed_ms()
-  then output = empty_K, def = empty, time = max(TIME\32,interrupt_base_time)
-  then P = empty +
-       	 { snap p down to a reducibility point, or tempered parameter }
-     	 (let rp = if deform_script_flag
-	      	   then reducibility_points_rp(p, height)
-		   else reducibility_points(p)
-		   fi
-      	  in if =#rp
-      	     then output +:= p.K_type; []
-	     else [p*rp~[0]]
-	     fi)
-  then () = if alt_verbose
-       	    then prints("working P = ",P," after ",print_time_string(elapsed_ms() - START_TIME))
-	    fi
-  then () = while >#P
-       	    do if elapsed_ms() - START_TIME > TIME
-	       then alt_time_int_fail +:= elapsed_ms() - start; return timed_out()
-	       fi;
-	       if elapsed_ms() - start_to_ht > time
-	       then {try full_deform}
-	       	    if alt_verbose
-		    then prints(new_line,"starting loop try_full after ",print_time_string(elapsed_ms() - START_TIME),
-       	      	    " for ", print_time_string(time))
-		    fi;
-		    let try = full_deform(p,time)
-		    {if deform_script_flag
-		    	      then recursive_deform_scr(p, height, time)
-			      else full_deform(p,time)
-			      fi}
-		    in start_to_ht:=elapsed_ms();
-		       case try
-		       |timed_out: if alt_verbose
-		       		   then prints("failed after ",print_time_string(elapsed_ms() - START_TIME))
-				   fi; time:=2*time; ()
-		       |done(r): alt_count+:=1;
-		       		 alt_time_int_pass+:= elapsed_ms() - start;
-				 if alt_verbose
-				 then prints("succeeded after ",print_time_string(elapsed_ms() - START_TIME))
-				 fi;
-				 return done(to_ht(r, height))
-		       esac
-		fi;
-		if alt_verbose
-		then prints(new_line,"starting loop (def,P), P = ",P," after ",print_time_string(elapsed_ms() - START_TIME))
-		fi;
-		{prints("At F, q = ",first_param(P), ", height = ",height,", #P = ",#P);}
-		set (def,P) :=
-	       (let q=first_param(P) in block_deform(q,P,height))
-  	       ;  let kt = for c@m in def if  =nu(m) do (c,m.K_type) fi od
-     	       	  ,   pp = for c@m in def if !=nu(m) do (c,m) fi od
-  	      in output +:= kt; P +:= pp;
-{
-	       (let q=first_param(P) in block_deform(q,P next P:=empty,height))
-  	       ;  let kt = for c@m in def if  =nu(m) do (c,m.K_type) fi od
-     	       	  ,   pp = for c@m in def if !=nu(m) do (c,m) fi od
-  	      in output := (output next output:=empty_K) + kt; P := (P next P:=empty) + pp;
-
-}
-	      	 if alt_verbose
-		 then prints("completed loop (def,P), P = ",P," after ",print_time_string(elapsed_ms() - START_TIME))
-		 fi
-  	    od
-  in alt_time_guess:= max(alt_time_guess,elapsed_ms() - START_TIME);
-     alt_time_int_pass+:= elapsed_ms() - START_TIME;
-     alt_full:=false;
-     if alt_verbose
-     then prints("completed full_deform_to_ht_MvL_alt after ",
-		  print_time_string(elapsed_ms() - START_TIME))
-     fi;
-     done(output)
-}
-
 {should require number of -alphav*theta >= number of alphav}
 set red_coroots(KGBElt x) = [vec]:
     let G = x.real_form,  theta = x.involution
@@ -911,705 +675,6 @@ in for alpha_v@j in rd.poscoroots
       do alpha_v
       fi
    od
-
-{
-set MvL_alcove_time = int:0
-{This vec characterizes the half-open alcove in which Marc puts p}
-set MvL_alcove(Param p) = vec:
-    let start = elapsed_ms(), theta1= 1+p.x.involution, p0 = p*0
-    in for alphav in red_coroots(p.x)
-       do if (alphav*theta1).=
-       	  then if is_parity(root(p.root_datum,alphav), p0)
-       	       then floor((alphav*p.infinitesimal_character)\2)
-	       else floor((alphav*p.infinitesimal_character - 1)\2)
-	       fi
-       	  else floor(alphav*p.infinitesimal_character)
-       	  fi
-       od next MvL_alcove_time +:= elapsed_ms() - start
-}
-
-{ table of full_deform to ht, indexed by Param. MODIFY 11/22/25: NEG HEIGHT MEANS NO CUTOFF. {OLD: Height zero means no cutoff.}}
-{since untwisted is not used for unequal rank, store only twisted in that case.}
-{Twisted always stored with no cutoff, since we don't now have a good twisted
-to_ht, so make that a separate type.}
-
-{
-set_type
-[ deformation_hash_to_ht =
-( ( -> int) size {number of parameters stored}
-  , ( -> ) clear
-  , (Param -> int) height {maximum height to which p is deformed: NEG means infty}
-  , ((Param,int)->KTypePol) entry
-  , ((Param,int,int)->maybe_KTP) maybe_entry
-  , (Param->int) lookup
-  , ((Param,int,KTypePol)->) append
-  , ((Param,int,KTypePol,int)->) append_time
-  , ((Param,int,maybe_KTP)->) maybe_append
-  , ((Param,int,maybe_KTP,int)->) maybe_append_time
-  , (int -> Param) param_index {parameter #j}
-  , (int -> int) height_index {height to which parameter #j is deformed}
-  , (int -> int) time_index {time to compute deformation of parameter #j}
-  , (int -> KTypePol) data_index {deformation of parameter #j to its ht}
-  )
-]
-
-set deform_param_hash = make_Param_hash() {used as index into...}
-set deformed_data = [KTypePol] : []
-set deform_max_heights = [int] : []
-set deform_use_count = [int] : []
-set deform_times = [int]: []
-
-set_type xlv_type = (KGBElt x, ratvec lambda, vec v)
-
-set xlv_hash_code(xlv_type xlv, int N) = int:
-    (hash_code(xlv.x,N) + 3*hash_code(xlv.lambda,N) + 7*hash_code(xlv.v,N))%N
-
-set xlv_equality(xlv_type xlv, xlv_type ymw) = bool:
-    xlv.x = ymw.x and xlv.lambda = ymw.lambda and xlv.v = ymw.v
-
-set deform_xlv_hash = make_hash(xlv_hash_code, xlv_equality)
-
-{there is still code for storing full_deform marked with HT < 0. IT SHOULD NOT BE USED.
-The library does fine at hashing full_deform.}
-set make_deformation_hash_to_ht () = deformation_hash_to_ht:
-(  let clear() = void:
-       let () = deform_param_hash.clear()
-       then () = deform_max_heights :=[]
-       then () = deformed_data :=[]
-       then () = deform_times :=[]
-       then () = deform_use_count := []
-       in ()
-   then add_param(Param p, int h) = int:
-       	let I = deform_param_hash.size()
-	then i = deform_param_hash.lookup(p)
-	then P = null_K_module(SL(1,R))
-	then start = elapsed_ms()
-	{then() = if p.nu = [-1,0,2,0,-1,2,-1]/2 then 1\0 else 0 fi}
-	then () = if i.< {haven't seen this p before}
-	     then deformCalcCounter.use();
-	     	  P := if h<0
-	     	      then if is_equal_rank(p.real_form)
-		      	   then full_deform(p)
-			   else twisted_full_deform(p)
-			   fi
-		      else if is_equal_rank(p.real_form)
-		      	   then full_deform_to_height_MvL_base(p,h) {was base}
-			   else to_ht(twisted_full_deform(p),h)
-			   fi
-		      fi;
-		   deform_times #:= elapsed_ms() - start;
-		   deform_param_hash.match(p);
-		   i:=I;
-		   deform_max_heights #:= h;
-		   deformed_data#:=P;
-		   deform_use_count#:=0
-	      elif {i>=0; p seen} h < 0 and deform_max_heights[i].>=
-	      then deformCalcCounter.use();
-	      	   P := if is_equal_rank(p.real_form)
-		      	then full_deform(p)
-			else twisted_full_deform(p)
-			fi {full_deform(p)};
-		   deform_times[i]:=elapsed_ms() - start;
-		   deform_max_heights[i]:=-1;
-		   deformed_data[i]:=P
-	      elif {i >=0, h>=0 } deform_max_heights[i] >= 0 and h > deform_max_heights[i]
-	      then deformCalcCounter.use();
-	      	   P := if is_equal_rank(p.real_form)
-		      	then full_deform_to_height_MvL_base(p,h) {was _base}
-			else to_ht(twisted_full_deform(p),h)
-			fi {deform_to_height(p,h)};
-		   deform_times[i]:=elapsed_ms() - start;
-		   deform_max_heights[i]:=h;
-		   deformed_data[i]:=P
-	      else deformLookupCounter.use()
-	      fi
-	  then () = deform_use_count[i] +:=1
-	  in i
-  then maybe_add_param(Param p, int h, int time) = int:
-   	let I = deform_param_hash.size(), G = p.real_form
-	{then () = prints("I = ",I)}
-	then k = deform_param_hash.lookup(p)
-	{then () = prints("k = ",k)}
-	then P = maybe_KTP: timed_out()
-	then start = elapsed_ms()
-	then () = if k.< {haven't seen this p before}
-	     then deformCalcCounter.use();
-	     	  P := if is_equal_rank(p.real_form)
-		       then if h<0
-	     	       	    then full_deform(p,time)
-		      	    else full_deform_to_height_MvL_base(p,h,time) {was base}
-			    fi
-		       else if h<0
-		       	    then twisted_full_deform(p,time)
-			    else to_ht(twisted_full_deform(p,time),h)
-			    fi
-		   fi; {this step should not change deformation_hash_table!}
-		   case P
-		   	| timed_out: return -1
-			| done(result):
-		   k:=deform_param_hash.match(p);
-		   {prints("k = ",k,", I = ",deform_param_hash.size());}
-		   {assert(@:k=I,"def table changed inside maybe_add_param?");}
-		   deform_times #:= elapsed_ms() - start;
-		   deform_max_heights #:= h;
-		   deformed_data#:=result;
-		   deform_use_count#:=0
-		   esac
-	      elif {k>=0; p seen} h<0 and deform_max_heights[k].>=
-	      then deformCalcCounter.use();
-	      	   P := if is_equal_rank(G)
-		     	then full_deform(p,time)
-			else twisted_full_deform(p,time)
-			fi;
-		   case P
-		   	| timed_out: return -1
-			| done(result):
-		   deform_times[k]:=elapsed_ms() - start;
-		   deform_max_heights[k]:=-1;
-		   deformed_data[k]:=result;
-		   deform_use_count[k]+:=1
-		   esac
-	      elif {k =>0, h>=0 or } deform_max_heights[k] >= 0 and h > deform_max_heights[k]
-	      then deformCalcCounter.use();
-	      	   P := if is_equal_rank(G)
-		     	then full_deform_to_height_MvL_base(p,h,time) {was _base}
-			else to_ht(twisted_full_deform(p,time),h)
-			fi;
-		   case P
-		   	| timed_out: return -1
-			| done(result):
-		   deform_times[k]:=elapsed_ms() - start;
-		   deform_param_hash.match(p);
-		   deform_max_heights[k]:= h;
-		   deformed_data[k]:=result;
-		   deform_use_count[k] +:=1
-		   esac
-	      else deformLookupCounter.use()
-	      fi
-	  in k
-   in
-   ( ( -> int): {size} @int: deform_param_hash.size()
-  , ( -> ): {clear} clear
-  , (Param -> int): {height} (Param p): deform_max_heights[deform_param_hash.lookup(p)]
-  , ((Param, int)->KTypePol): {entry} (Param p, int h):
-    let i = add_param(p, h)
-    in if h >= 0
-       then regroup(p.real_form,to_ht(deformed_data[i],h))
-       else regroup(p.real_form,deformed_data[i])
-       fi
-  , ((Param,int,int)->maybe_KTP): {maybe_entry} (Param p, int h, int time):
-    let j = maybe_add_param(p, h, time)
-    in if j < 0
-       then timed_out()
-       else if h.>=
-       	    then (regroup(p.real_form, to_ht(deformed_data[j],h))).done
-	    else (regroup(p.real_form,deformed_data[j])).done
-	    fi
-       fi
-  , (Param->int): {lookup} (Param p): deform_param_hash.lookup(p)
-  , ((Param,int,KTypePol)->): {append} (Param p, int h, KTypePol P):
-    let I = deform_param_hash.size()
-    then i = deform_param_hash.match(p)
-    in if i=I {haven't seen p before}
-       then deform_max_heights #:=h;
-	    deformed_data#:=P;
-	    deform_times#:=0;
-	    deform_use_count#:=0
-       elif {i < I} (h<0 and deform_max_heights[i].>=)
-	    or h>deform_max_heights[i] {seen p, but not to h}
-       then deform_max_heights[i]:=h;
-	    deformed_data[i]:=P;
-	    deform_use_count[i]+:=1
-       fi
-  , ((Param,int,KTypePol,int)->): {append_time} (Param p, int h, KTypePol P, int time):
-    let I = deform_param_hash.size()
-    then i = deform_param_hash.match(p)
-    {then () = if p.nu = [-1,0,2,0,-1,2,-1]/2 then 1\0 else 0 fi}
-    in if i=I {haven't seen p before}
-       then deform_max_heights #:=h;
-	    deformed_data#:=P;
-	    deform_use_count#:=0;
-	    deform_times #:=time
-       elif {i < I} (h<0 and deform_max_heights[i].>=)
-	    or h>deform_max_heights[i] {seen p, but not to h}
-       then deform_max_heights[i]:=h;
-	    deformed_data[i]:=P;
-	    deform_use_count[i]+:=1;
-	    deform_times[i]:=time
-       fi
-  , ((Param,int,maybe_KTP)->): {maybe_append} (Param p, int HT, maybe_KTP P):
-    case P
-    	 | timed_out: ()
-    	 | done(result):
-    	   let I = deform_param_hash.size()
-    	   then i = deform_param_hash.match(p)
-    	   {then () = if p.nu = [-1,0,2,0,-1,2,-1]/2 then 1\0 else 0 fi}
-    	   in if i=I {haven't seen p before}
-       	      then deform_max_heights #:=HT;
-	      	   deformed_data#:=result;
-		   deform_times#:=0;
-	   	   deform_use_count#:=0
-       	      elif {i < I} (HT<0 and deform_max_heights[i].>=)
-	      	   or HT>deform_max_heights[i] {seen p, but not to HT}
-       	      then deform_max_heights[i]:=HT;
-	      	   deformed_data[i]:=result
-       	      fi
-    esac
-  , ((Param,int,maybe_KTP,int)->): {maybe_append_time}  (Param p, int HT, maybe_KTP P, int time):
-    case P
-    	 | timed_out: ()
-    	 | done(result):
-    	   let I = deform_param_hash.size()
-    	   then i = deform_param_hash.match(p)
-    	   {then () = if p.nu = [-1,0,2,0,-1,2,-1]/2 then 1\0 else 0 fi}
-    	   in if i=I {haven't seen p before}
-       	      then deform_max_heights #:=HT;
-	      	   deformed_data#:=result;
-		   deform_times#:=time;
-	   	   deform_use_count#:=0
-       	      elif {i < I} (HT<0 and deform_max_heights[i].>=)
-	      	   or HT>deform_max_heights[i] {seen p, but not to HT}
-       	      then deform_max_heights[i]:=HT;
-	      	   deformed_data[i]:=result;
-		   deform_times[i]:=time;
-		   deform_use_count[i]+:=1
-       	      fi
-    esac
-  , (int -> Param): {param_index} (int j): deform_param_hash.index(j)
-  , (int -> int): {height_index} (int j): deform_max_heights[j]
-  , (int -> int): {time_index}  (int j): deform_times[j]
-  , (int -> KTypePol): {data_index} (int j): deformed_data[j]
-  )
-)
-
-
-set make_deformation_hash_to_htB () = deformation_hash_to_ht:
-(  let clear() = void:
-       let () = deform_xlv_hash.clear()
-       then () = deform_max_heights :=[]
-       then () = deformed_data :=[]
-       then () = deform_times :=[]
-       then () = deform_use_count := []
-       in ()
-   then add_param(Param p, int h) = int:
-       	let I = deform_xlv_hash.size()
-	then xlv = (p.x,p.lambda, MvL_alcove(p))
-	then i = deform_xlv_hash.lookup(xlv)
-	then P = null_K_module(SL(1,R))
-	then start = elapsed_ms()
-	{then() = if p.nu = [-1,0,2,0,-1,2,-1]/2 then 1\0 else 0 fi}
-	then () = if i.< {haven't seen this MvL_alcove before}
-	     then deformCalcCounter.use();
-	     	  P := if h<0
-	     	      then if is_equal_rank(p.real_form)
-		      	   then full_deform(p)
-			   else twisted_full_deform(p)
-			   fi
-		      else if is_equal_rank(p.real_form)
-		      	   then full_deform_to_height_MvL_base(p,h) {was _base}
-			   else to_ht(twisted_full_deform(p),h)
-			   fi
-		      fi;
-		   deform_times #:= elapsed_ms() - start;
-		   deform_xlv_hash.match(xlv);
-		   i:=I;
-		   deform_max_heights #:= h;
-		   deformed_data#:=P;
-		   deform_use_count#:=0
-	      elif {i>=0; p seen} h < 0 and deform_max_heights[i].>=
-	      then deformCalcCounter.use();
-	      	   P := if is_equal_rank(p.real_form)
-		      	then full_deform(p)
-			else twisted_full_deform(p)
-			fi {full_deform(p)};
-		   deform_times[i]:=elapsed_ms() - start;
-		   deform_max_heights[i]:=-1;
-		   deformed_data[i]:=P
-	      elif {i >=0, h>=0 } deform_max_heights[i] >= 0 and h > deform_max_heights[i]
-	      then deformCalcCounter.use();
-	      	   P := if is_equal_rank(p.real_form)
-		      	then full_deform_to_height_MvL_base(p,h) {was _base}
-			else to_ht(twisted_full_deform(p),h)
-			fi {deform_to_height(p,h)};
-		   deform_times[i]:=elapsed_ms() - start;
-		   deform_max_heights[i]:=h;
-		   deformed_data[i]:=P
-	      else deformLookupCounter.use()
-	      fi
-	  then () = deform_use_count[i] +:=1
-	  in i
-  then maybe_add_param(Param p, int h, int time) = int:
-   	let I = deform_xlv_hash.size(), G = p.real_form
-	{then () = prints("I = ",I)}
-	then xlv = (p.x, p.lambda, MvL_alcove(p))
-	then k = deform_xlv_hash.lookup(xlv)
-	{then () = prints("k = ",k)}
-	then P = maybe_KTP: timed_out()
-	then start = elapsed_ms()
-	then () = if k.< {haven't seen this p before}
-	     then deformCalcCounter.use();
-	     	  P := if is_equal_rank(p.real_form)
-		       then if h<0
-	     	       	    then full_deform(p,time)
-		      	    else full_deform_to_height_MvL_base(p,h,time) {was _base}
-			    fi
-		       else if h<0
-		       	    then twisted_full_deform(p,time)
-			    else to_ht(twisted_full_deform(p,time),h)
-			    fi
-		   fi; {this step should not change deformation_hash_table!}
-		   case P
-		   	| timed_out: return -1
-			| done(result):
-		   k:=deform_xlv_hash.match(xlv);
-		   {prints("k = ",k,", I = ",deform_xlv_hash.size());}
-		   {assert(@:k=I,"def table changed inside maybe_add_param?");}
-		   deform_times #:= elapsed_ms() - start;
-		   deform_max_heights #:= h;
-		   deformed_data#:=result;
-		   deform_use_count#:=0
-		   esac
-	      elif {k>=0; p seen} h<0 and deform_max_heights[k].>=
-	      then deformCalcCounter.use();
-	      	   P := if is_equal_rank(G)
-		     	then full_deform(p,time)
-			else twisted_full_deform(p,time)
-			fi;
-		   case P
-		   	| timed_out: return -1
-			| done(result):
-		   deform_times[k]:=elapsed_ms() - start;
-		   deform_max_heights[k]:=-1;
-		   deformed_data[k]:=result;
-		   deform_use_count[k]+:=1
-		   esac
-	      elif {k =>0, h>=0 or } deform_max_heights[k] >= 0 and h > deform_max_heights[k]
-	      then deformCalcCounter.use();
-	      	   P := if is_equal_rank(G)
-		     	then full_deform_to_height_MvL_base(p,h,time) {was _base}
-			else to_ht(twisted_full_deform(p,time),h)
-			fi;
-		   case P
-		   	| timed_out: return -1
-			| done(result):
-		   deform_times[k]:=elapsed_ms() - start;
-		   deform_xlv_hash.match(p.x, p.lambda,MvL_alcove(p));
-		   deform_max_heights[k]:= h;
-		   deformed_data[k]:=result;
-		   deform_use_count[k] +:=1
-		   esac
-	      else deformLookupCounter.use()
-	      fi
-	  in k
-   in
-   ( ( -> int): {size} @int: deform_xlv_hash.size()
-  , ( -> ): {clear} clear
-  , (Param -> int): {height} (Param p): deform_max_heights[deform_param_hash.lookup(p)]
-  , ((Param, int)->KTypePol): {entry} (Param p, int h):
-    let i = add_param(p, h)
-    in if h >= 0
-       then regroup(p.real_form,to_ht(deformed_data[i],h))
-       else regroup(p.real_form,deformed_data[i])
-       fi
-  , ((Param,int,int)->maybe_KTP): {maybe_entry} (Param p, int h, int time):
-    let j = maybe_add_param(p, h, time)
-    in if j < 0
-       then timed_out()
-       else if h.>=
-       	    then (regroup(p.real_form, to_ht(deformed_data[j],h))).done
-	    else (regroup(p.real_form,deformed_data[j])).done
-	    fi
-       fi
-  , (Param->int): {lookup} (Param p): deform_xlv_hash.lookup(p.x,p.lambda,MvL_alcove(p))
-  , ((Param,int,KTypePol)->): {append} (Param p, int h, KTypePol P):
-    let I = deform_xlv_hash.size()
-    then i = deform_xlv_hash.match(p.x,p.lambda,MvL_alcove(p))
-    in if i=I {haven't seen p before}
-       then deform_max_heights #:=h;
-	    deformed_data#:=P;
-	    deform_times#:=0;
-	    deform_use_count#:=0
-       elif {i < I} (h<0 and deform_max_heights[i].>=)
-	    or h>deform_max_heights[i] {seen p, but not to h}
-       then deform_max_heights[i]:=h;
-	    deformed_data[i]:=P;
-	    deform_use_count[i]+:=1
-       fi
-  , ((Param,int,KTypePol,int)->): {append_time} (Param p, int h, KTypePol P, int time):
-    let I = deform_xlv_hash.size()
-    then i = deform_xlv_hash.match(p.x, p.lambda, MvL_alcove(p))
-    {then () = if p.nu = [-1,0,2,0,-1,2,-1]/2 then 1\0 else 0 fi}
-    in if i=I {haven't seen p before}
-       then deform_max_heights #:=h;
-	    deformed_data#:=P;
-	    deform_use_count#:=0;
-	    deform_times #:=time
-       elif {i < I} (h<0 and deform_max_heights[i].>=)
-	    or h>deform_max_heights[i] {seen p, but not to h}
-       then deform_max_heights[i]:=h;
-	    deformed_data[i]:=P;
-	    deform_use_count[i]+:=1;
-	    deform_times[i]:=time
-       fi
-  , ((Param,int,maybe_KTP)->): {maybe_append} (Param p, int HT, maybe_KTP P):
-    case P
-    	 | timed_out: ()
-    	 | done(result):
-    	   let I = deform_xlv_hash.size()
-    	   then i = deform_xlv_hash.match(p.x,p.lambda,MvL_alcove(p))
-    	   {then () = if p.nu = [-1,0,2,0,-1,2,-1]/2 then 1\0 else 0 fi}
-    	   in if i=I {haven't seen p before}
-       	      then deform_max_heights #:=HT;
-	      	   deformed_data#:=result;
-		   deform_times#:=0;
-	   	   deform_use_count#:=0
-       	      elif {i < I} (HT<0 and deform_max_heights[i].>=)
-	      	   or HT>deform_max_heights[i] {seen p, but not to HT}
-       	      then deform_max_heights[i]:=HT;
-	      	   deformed_data[i]:=result
-       	      fi
-    esac
-  , ((Param,int,maybe_KTP,int)->): {maybe_append_time}  (Param p, int HT, maybe_KTP P, int time):
-    case P
-    	 | timed_out: ()
-    	 | done(result):
-    	   let I = deform_xlv_hash.size()
-    	   then i = deform_xlv_hash.match(p.x,p.lambda, MvL_alcove(p))
-    	   {then () = if p.nu = [-1,0,2,0,-1,2,-1]/2 then 1\0 else 0 fi}
-    	   in if i=I {haven't seen p before}
-       	      then deform_max_heights #:=HT;
-	      	   deformed_data#:=result;
-		   deform_times#:=time;
-	   	   deform_use_count#:=0
-       	      elif {i < I} (HT<0 and deform_max_heights[i].>=)
-	      	   or HT>deform_max_heights[i] {seen p, but not to HT}
-       	      then deform_max_heights[i]:=HT;
-	      	   deformed_data[i]:=result;
-		   deform_times[i]:=time;
-		   deform_use_count[i]+:=1
-       	      fi
-    esac
-  , (int -> Param): {Param_index} (int j):
-    prints("not a good question for xlv hash");
-    prints("xlv entry is ",deform_xlv_hash.index(j));
-    SL(2,R).trivial
-  , (int -> int): {height_index} (int j): deform_max_heights[j]
-  , (int -> int): {time_index}  (int j): deform_times[j]
-  , (int -> KTypePol): {data_index} (int j): deformed_data[j]
-  )
-)
-
-
-set append_to_deformation_hash(RealForm G, Param p, [KPolTermDatum] data, int ht, int use) = void:
-    let I = deform_param_hash.size()
-    then i = deform_param_hash.lookup(p)
-    in if i.< {haven't seen this p}
-       then deform_param_hash.match(p);
-	    i:=I;
-	    deform_max_heights #:=ht;
-	    deformed_data #:= K_pol(G,data);
-	    deform_times #:=0;
-	    deform_use_count #:= use
-       elif (deform_max_heights[i] < ht) or
-	    (ht < 0 and deform_max_heights[i] >= 0)
-       then deform_param_hash.match(p);
-       	    deform_max_heights[i] := ht;
-	    deformed_data[i] := K_pol(G, data);
-	    deform_times[i]:=0;
-	    deform_use_count[i] +:=use
-       fi
-
-set append_to_deformation_hash(RealForm G, [Param] p_list, [[KPolTermDatum]] data_list,
-    [int] ht_list, [int] use_list) = void:
-    for p@j in p_list
-    do append_to_deformation_hash(G,p,data_list[j],ht_list[j],use_list[j])
-    od
-set write_deformation_frac = 100
-
-{write the part of deformation_hash referring to G}
-set write_deformation_hash(RealForm G) = void:
-    let param_list = deform_param_hash.list()
-    then M = max((for P@j in deformed_data do
-    deform_use_count[j]*#deformed_data[j] od)#0)
-    then good_j = for p@j in param_list
-    	 	   do if p.real_form = G and deform_use_count[j]* #deformed_data[j] *write_deformation_frac > M
-		      then [j]
-		      else []
-		      fi
-		   od.##
-    then good_param_list = for j in good_j do param_list[j] od
-    then good_deformed_data = for j in good_j do K_data(deformed_data[j]) od
-    then good_deform_max_heights = for j in good_j do deform_max_heights[j] od
-    then good_deform_use_count = for j in good_j do deform_use_count[j] od
-    in write_real_form(G,"G_temp");
-       for p@k in good_param_list
-       do let (,x) = %p.x
-       	  in prints("let p_temp = parameter(G_temp,",x,",",p.lambda,",",p.nu,")");
-	     prints("then temp_def_data = ",good_deformed_data[k]);
-       	     prints("in append_to_deformation_hash(G_temp, p_temp,",good_deformed_data[k],",",
-       		  good_deform_max_heights[k],",", good_deform_use_count[k],")")
-       od
-
-{
-set_type
-[ twisted_deformation_hash =
-( ( -> int) size {number of parameters stored}
-  , ( -> ) clear
-  , (Param -> int) height {maximum height to which p is deformed}
-  , ((Param,int)->KTypePol) entry
-  , (Param->int) lookup
-  , ((Param,int,KTypePol)->) append
-  , ((Param,int,maybe_KTP)->) maybe_append
-  , (int -> Param) param_index {parameter #j}
-  , (int -> int) height_index {height to which parameter #j is deformed}
-  , (int -> KTypePol) data_index {deformation of parameter #j}
-  )
-]
-
-set twisted_deform_param_hash = make_Param_hash() {used as index into...}
-set twisted_deformed_data = [KTypePol] : []
-set twisted_deform_max_heights = [int] : []
-set twisted_deform_times = [int] : []
-set twisted_deform_use_count = [int] : []
-
-set make_twisted_deformation_hash() = twisted_deformation_hash:
-(   let clear() = void:
-       let () =  twisted_deform_param_hash.clear()
-       then () = twisted_deform_max_heights :=[]
-       then () = twisted_deformed_data :=[]
-       then () = twisted_deform_times :=[]
-       then () = twisted_deform_use_count := []
-       in ()
-   then add_param(Param p, int h) = int:
-       	let I =  twisted_deform_param_hash.size()
-	then i =  twisted_deform_param_hash.match(p)
-	then P = null_K_module(SL(1,R))
-	then () = if i=I {haven't seen this p before}
-	     then twistedDeformCalcCounter.use();
-	     	  P := if h=0
-		       then twisted_full_deform(p)
-		       else to_ht(twisted_full_deform(p),h)
-		       fi;
-		  twisted_deformed_data#:=P;
-		  twisted_deform_max_heights #:=h;
-		  twisted_deform_use_count#:=0
-	      elif {i>=0; p seen} h=0 and twisted_deform_max_heights[i].>
-	      then twistedDeformCalcCounter.use();
-	      	   P := twisted_full_deform(p);
-		   twisted_deform_max_heights[i]:=0;
-		   twisted_deformed_data[i]:=P
-	      elif {i >0, h>0 or } twisted_deform_max_heights[i] > 0
-	       	    and h > twisted_deform_max_heights[i]
-	      then twistedDeformCalcCounter.use();
-	      	   P := to_ht(twisted_full_deform(p),h);
-		   twisted_deform_max_heights[i]:=h;
-		   twisted_deformed_data[i]:=P
-	      else twistedDeformLookupCounter.use()
-	      fi
-	  in i
-   in
-   ( ( -> int): {size} @int:  twisted_deform_param_hash.size()
-  , ( -> ): {clear} clear
-  , (Param -> int): {height} (Param p):twisted_deform_max_heights[deform_param_hash.lookup(p)]
-  , ((Param,int)->KTypePol): {entry} (Param p, int h):
-    let i = add_param(p,h)
-    in if h > 0
-       then regroup(p.real_form,to_ht(twisted_deformed_data[i],h))
-       else regroup(p.real_form,twisted_deformed_data[i])
-       fi
-  , (Param->int): {lookup} (Param p): twisted_deform_param_hash.lookup(p)
-  , ((Param,int,KTypePol)->): {append} (Param p, int h, KTypePol P):
-    let I = twisted_deform_param_hash.size()
-    then i = twisted_deform_param_hash.match(p)
-    in if i=I {haven't seen p before}
-       then twisted_deform_max_heights #:=h;
-	    twisted_deformed_data#:=P;
-	    twisted_deform_use_count#:=0
-       elif {i < I} (h=0 and twisted_deform_max_heights[i].>) 
-	    or h>twisted_deform_max_heights[i] {seen p, but not to h}
-       then twisted_deform_max_heights[i]:=h;
-	    twisted_deformed_data[i]:=P
-       fi
-  , ((Param,int,maybe_KTP)->): {maybe_append} (Param p, int HT, maybe_KTP P):
-    case P
-    	 | timed_out: ()
-    	 | done(result):
-    	   let I = twisted_deform_param_hash.size()
-    	   then i = twisted_deform_param_hash.match(p)
-    	   in if i=I {haven't seen p before}
-       	      then twisted_deform_max_heights #:=HT;
-	      	   twisted_deformed_data#:=result;
-	   	   twisted_deform_use_count#:=0
-       	      elif {i < I} (HT=0 and twisted_deform_max_heights[i].>) 
-	      	   or HT>twisted_deform_max_heights[i] {seen p, but not to HT}
-       	      then twisted_deform_max_heights[i]:=HT;
-	      	   twisted_deformed_data[i]:=result
-       	      fi
-    esac
-  , (int -> Param): {param_index} (int j):  twisted_deform_param_hash.index(j)
-  , (int -> int): {height_index} (int j): twisted_deform_max_heights[j]
-  , (int -> KTypePol): {data_index} (int j): twisted_deformed_data[j]
-  )
-)
-
-set append_to_twisted_deformation_hash(RealForm G, Param p, [KPolTermDatum] data) = void:
-    let I = twisted_deform_param_hash.size()
-    then i = twisted_deform_param_hash.match(p)
-    in if i=I {haven't seen this p}
-       then twisted_deformed_data #:= K_pol(G,data)
-       fi
-
-set append_to_twisted_deformation_hash(RealForm G, [Param] p_list, [[KPolTermDatum]] data_list) = void:
-    for p@j in p_list
-    do append_to_twisted_deformation_hash(G,p,data_list[j])
-    od
-
-{write the part of deformation_hash referring to G}
-set write_twisted_deformation_hash(RealForm G) = void:
-    let param_list = twisted_deform_param_hash.list()
-    then good_j = for p@j in param_list
-    	 	   do if p.real_form = G then [j]
-		      else []
-		      fi
-		   od.##
-    then good_param_list = for j in good_j do param_list[j] od
-    then good_twisted_deformed_data = for j in good_j do K_data(twisted_deformed_data[j]) od
-    in write_real_form(G,"G_temp");
-       for p@k in good_param_list
-       do let (,x) = %p.x
-       	  in prints("let p_temp = parameter(G_temp,",x,",",p.lambda,",",p.nu,")");
-       	     prints("in append_to_twisted_deformation_hash(G_temp,p_temp,",good_twisted_deformed_data[k],
-	     ")")
-       od
-}
-
-{whether to use these hash tables. "False" saves quite a bit of memory
-(about 10% in F4_s) with very little speed cost (less than 1% in
-F4_s)}
-{TRUE should help interrupted to_ht}
-}
-set deformed_hash_flag = false {true}
-{
-{set xlv_flag = false {true costs 10% time for E7_s near x.number = 12000}}
-
-{set deformedHash = if xlv_flag
-    		   then make_deformation_hash_to_htB()
-		   else make_deformation_hash_to_ht()
-		   fi}
-
-set deformedHashA =  make_deformation_hash_to_ht()
-set deformedHashB =  make_deformation_hash_to_htB()
-set deformedHash = deformedHashA
-
-
-set choose_xlv(bool choice) = void:
-    if choice
-    then deformedHash:= deformedHashB
-    else deformedHash:= deformedHashA
-    fi
-}
-
-{set twistedDeformedHash = make_twisted_deformation_hash()}
 
 {like is_pure, but in case of false, second value is the lowest K-type where
 the KTypePol changes sign. Better to put the guilty K-type in a hash table.}
@@ -2180,7 +1245,7 @@ set u_predictor(Param p) = int:
        {if N-n > n}
        if n> 0 {n = #known_times}
        then if predictor_verbose
-       	    then prints("prediction = ", print_time_string((N-n)*max(known_times) + (n*interrupt_base_time)\20))
+       	    then prints("prediction = ", print_time_string((N-n)*max(known_times) + (n*interrupt_base_time*rk)\20))
 	    fi;
 	    {would be good to see WHICH terms are known, and weight their times accordingly. If a term
 	     near x_open is known, then the predecessors are often nearly known}
@@ -2190,7 +1255,7 @@ set u_predictor(Param p) = int:
        	    then q = list[i0] {not yet computed full_deform}
 	    then RT = defHashTime.time_record_bounded(q, rk^2*interrupt_base_time)
        	    in predictor_time+:= elapsed_ms() - start_pred;
-	       if RT > rk^2*interrupt_base_time {probably timed out}
+	       if RT = rk^2*interrupt_base_time {probably timed out}
 	       then didnt_finish_u_count+:=1;
 	       	    if predictor_verbose
 		       then {prints("test probably didn't finish, so revert to worst_so_far prediction ",
@@ -2259,7 +1324,7 @@ set u_predictor(Param p, int HT) = int:
 	    then N = #times, n = #known_times {possible terms, known terms}
     	    in if predictor_verbose
 	     	then prints(new_line,"Start predicting to height ", HT, " param ",p);
-		     prints("(N,n) = (",N,",",n, "), times = ",times)
+		     prints("(N,n) = (",N,",",n, "), known times = ",known_times)
 		fi;
        	        let ans = if n = 0 {no known times; compute _one_ such time}
        	     	    	  then let i0 = (#list)\3 {#list\2}
@@ -2268,10 +1333,9 @@ set u_predictor(Param p, int HT) = int:
 			       	       	 then prints("chosen random q is number ",i0,
 					      " of ",N,": ",q)
 					 fi
-			       then start_def = elapsed_ms()
-	    	 	       then Q = full_deform_to_ht(q,HT, rk^2*interrupt_base_time)
-			       then RT = elapsed_ms() - start_def
-			       in if not is_done(Q)
+			       then  RT = defHashTime.time_record_to_ht_bounded(q, HT,
+			       	     rk^2*interrupt_base_time)
+			       in if RT = rk^2*interrupt_base_time
 				  then didnt_finish_ht_count +:=1;
 				       if predictor_verbose
 				       then prints("test didn't finish, so guessing ",
