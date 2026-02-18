@@ -15,5 +15,22 @@ for pi@i in reps do prints("====================================================
  prints("Associated Cycle (",#acs[i]," components):");
   for ac@j in acs[i] do  prints("component #",j,":");show_short(ac) od od
 
+set reps_and_chains(Orbit O_v,string bi_label)=
+let reps=pbp(O_v,bi_label) then
+chains=for pi in reps do descent_chain(pi) od in (reps,chains)
+
 set bmsz_report(int n, string bi_label)=void:
 for orbit in good_parity_partitions(n,bi_label) do bmsz_report(orbit,bi_label) od
+
+set acs(Orbit O_v, string bi_label)=
+let reps=pbp(O_v,bi_label) then
+chains=for pi in reps do descent_chain(pi) od in
+for chain@i in chains do (chain, theta_recurse(chain)) od
+
+set show( [([PaintedBiPartition], [KLocalSystem])] data)=void:
+for (chain,ac) in data do prints("====================================",new_line,"chain:"); show(chain);
+prints("associated cycle:");show(ac) od
+
+set show_short( [([PaintedBiPartition], [KLocalSystem])] data)=void:
+for (chain,ac) in data do prints("====================================",new_line,"rep:");show(chain[0]);
+prints("associated cycle:");show(ac) od
