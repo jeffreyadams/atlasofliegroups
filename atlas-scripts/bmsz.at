@@ -1,15 +1,18 @@
-<nilpotent_orbits_bmsz.at
+<signed_and_marked_young_diagrams.at
 
 set bmsz_report(Orbit O_v, string bi_label)=void:
+let ()=if theta_verbose then
+ prints("###############################################################") fi in
+let ()=if theta_verbose then  prints("bmsz_report with", new_line,"O_v=",O_v, new_line,"bi_label=", bi_label) fi  in
 let reps=pbp(O_v,bi_label) then
 chains=for pi in reps do descent_chain(pi) od then
-acs=for chain in chains do theta_recurse(chain) od in
-let ()=prints("ACS:", acs) in 
-let ()=prints("####################################################",new_line,
-"####################################################",new_line,
-"Summary of data for orbit: (",O_v,",",bi_label,")");
-prints("number of reps: ", #reps)
-in
+acs=for chain in chains do
+theta_recurse(chain) od in
+let ()=if theta_verbose then  prints("recursing on chain: ") fi in
+let ()=if theta_verbose then prints("#reps: ", #reps, new_line) fi  in
+let ()=if theta_verbose then prints("ACS:", acs) fi  in 
+let ()=if theta_verbose then prints("Summary of data for orbit: (",O_v,",",bi_label,")") fi in 
+{let ()=if_theta_verbose then prints("number of reps: ", #reps) fi}
 for pi@i in reps do prints("=================================================================",new_line,"rep #", i, new_line, "pi=",pi);show_long(pi);prints("descent chain for pi:");
  show(chains[i]);
  prints("Associated Cycle (",#acs[i]," components):");
@@ -18,6 +21,12 @@ for pi@i in reps do prints("====================================================
 set reps_and_chains(Orbit O_v,string bi_label)=
 let reps=pbp(O_v,bi_label) then
 chains=for pi in reps do descent_chain(pi) od in (reps,chains)
+
+set reps_and_chains_and_acs(Orbit O_v,string bi_label)=
+let reps=pbp(O_v,bi_label) then
+chains=for pi in reps do descent_chain(pi) od
+then acs=for chain in chains do theta_recurse(chain) od 
+in (reps,chains,acs)
 
 set bmsz_report(int n, string bi_label)=void:
 for orbit in good_parity_partitions(n,bi_label) do bmsz_report(orbit,bi_label) od
@@ -34,3 +43,12 @@ prints("associated cycle:");show(ac) od
 set show_short( [([PaintedBiPartition], [KLocalSystem])] data)=void:
 for (chain,ac) in data do prints("====================================",new_line,"rep:");show(chain[0]);
 prints("associated cycle:");show(ac) od
+
+set show_short(Orbit O_v,string bi_label)=void:
+let (reps,chains,acs)=reps_and_chains_and_acs(O_v,bi_label) in
+prints("************************************");
+prints("number of reps: ", #chains);
+show_short(for chain@i in chains do (chain,acs[i])  od)
+
+set show_short(int n,string bi_label)=void:
+for orbit in good_parity_partitions(n,bi_label) do show_short(orbit,bi_label) od

@@ -346,7 +346,7 @@ if #P=0 then prints("[]") else for row in P do prints(symbol_string(row)) od fi
 
 {orbit is defined in nilpotent_orbits_bmsz.at, so remove definitions of orbit,
 and move show functions to nilpotent_orbits_bmsz.at}
-{
+
 set orbit((Partition,Partition) pair,string label)=
 if label="C" then  dual_orbit(orbit_C(pair))
 elif label="B" then  dual_orbit(orbit_B(pair))
@@ -368,4 +368,4 @@ prints(P, " ", Q, " ", bi_label, " ", group_name(P,Q,bi_label), " ", orbit(P,Q,b
 set show_short([PaintedBiPartition] list)=void:
 tabulate(for (P,Q,bi_label) in list do
  [P.to_string,Q.to_string,bi_label,group_name(P,Q,bi_label),orbit(P,Q,bi_label).to_string] od)
-}
+
