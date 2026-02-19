@@ -2,7 +2,7 @@
 <polynomial.at { for type |i_poly| and function |eval| }
 <convert_c_form.at { final part of unitarity computation }
 <red_points.at
-
+<hash.at {for make_Param_hash}
 { this file defines commands that are equivalent to the |full_deform| command
   that is now built-in; it therefore serves mainly documentation (and
   historic) purposes, and should not be required for any other scripts. In
@@ -35,6 +35,46 @@ set compress { output from old |partial_KL_block| to a more useful form } (
     od
   , survivor_lengths { length mapping }
   )
+
+{seems useless}
+{
+set dual_KL_block_hash = (Param -> ([Param], int, mat, [vec])):
+    let phash = make_Param_hash()
+    then which_block = vec:[] {for each param in phash, number of its block}
+{    then which_entry = vec:[]} {for each param in phash, number within its block}
+{entry number in block is n - blocks[n][0]}
+    then blocks = [vec]:[] {[start,end] for each block}
+    then KLmats = [mat]:[]{one for each block}
+    then polyss = [[vec]]:[] {one for each block}
+    in  (Param -> ([Param], int, mat, [vec])): (Param p) ([Param], int, mat, [vec]):
+    	let N = phash.size()
+	then n = phash.lookup(p)
+	in if n<0
+	   then let (B, m, KLmat, polys) = dual_KL_block(p)
+	   	in which_block ##:= for j:#B do #blocks od;
+		   {prints("wb = ",which_block);}
+		   {which_entry ##:= for j:#B from N do j od;}
+		   phash.fill(B);
+		   blocks #:= (vec: [N,phash.size()]);
+		   {prints("blocks = ",blocks);}
+		   KLmats #:=KLmat;
+		   {prints("KLMs = ",KLmats);}
+		   polyss #:= polys;
+		   {prints(polys);}
+		   n := N+m {should be location of p in phash}
+		     	    {put an assert?}
+	   fi;
+	   let b = which_block[n]
+	   in (phash.list()[blocks[b][0]:blocks[b][1]], n-blocks[b][0],
+	   	KLmats[b], polyss[b])
+
+set use_dual_KL_block_hash_flag = true
+
+set dual_KL_block(Param p) = if use_dual_KL_block_hash_flag
+    			     then dual_KL_block_hash(p)
+			     else dual_KL_block(p)
+			     fi
+}
 
 set deformation_terms_scr (Param p) = ParamPol:
   let (B,KL_mat,length) = ([Param],mat,vec):
@@ -76,11 +116,62 @@ set deformation_terms_scr (Param p) = ParamPol:
     od
   fi
 
+set deformation_terms_scr (Param p, int HT) = ParamPol:
+  let (B,KL_mat,length) = ([Param],mat,vec):
+    let (block,M,polys) = partial_KL_block(p:=normal(p))
+    then l = vec: for q in block do q.length od{, n=#block}
+    , p_1= for Q in polys do eval(Q,minus_1) od
+    then low_inds = for q@j in block do if height(q)<=HT do j fi od.##
+    in
+    block:= for j in low_inds do block[j] od;
+    M := for j in low_inds do for k in low_inds do M[j][k] od od;
+    l := for j in low_inds do l[j] od;
+    ( block
+    , for col@j in M
+      do let lj=l[j] in
+	 for entry@i in col do minus_1^(lj-l[i])*p_1[entry] od
+      od
+    , l
+    ) {replace entry P_{x,y}(q) in M by (-1)^{l(x)-l(y)} P_{x,y}(-1)}
+      {columns of KL_mat are irr chars}
+  then nB=#B in
+  if =nB or B~[0]!=p
+  then null_module(p) { if |p| itself is not among survivors, return 0 }
+  else { compute final column |acc| of |Q| matrix by solving linear system
+         $P'*acc=e_p$ with $P'$ a matrix of Split, columns from |KL_sum_at_s| }
+    let remainder = null(nB-1)#1 { start with standard basis vector for |p| }
+    , solution=null(nB)		      {sero vec of size nB}
+    , !opposite_parity=1-length~[0]%2 {0 or 1, parity opposite to that of |length(p)| }
+    , !on_p = orientation_nr(p)
+    in
+    for q_ind : nB
+    ~do let contrib=remainder[q_ind]*KL_mat[q_ind] in
+      remainder -:= contrib
+    ; if length[q_ind]%2=opposite_parity
+      then solution +:= contrib
+      fi
+    od {solution is odd levels of Jantzen(p), as sum of irrs???}
+  ; null_module(p)+
+    for c@i in solution
+    do { twist (1-s)*solution according to orientation numbers of its terms }
+      let x=B[i] then (q,r)=(on_p-orientation_nr(x))\%2 in
+      assert(@:r=0,"odd orientation");
+      (minus_1^q*c*one_minus_s,x) { we have |s^q*c*(1-s) = (-1)^q*c(1-s)| }
+      { for the same reason we replaced |s| by |-1| in computations giving |c| }
+    od
+  fi
+
 set deformation_terms_by_dual_scr (Param p) = ParamPol:
   assert(@:p.is_final,"deformation requires a final parameter");
   let (block,KL_mat,P_polys) = partial_KL_block(p)
   , (full_block,start,dual_KL_mat,dual_polys) = dual_KL_block(p)
-  then pol_eval =  for P in P_polys do eval(P,minus_1) od
+  {row j of dual_KL_mat gives multipliciticies of irr full_block[j]
+   in Jantzen filts of various standard}
+  then subset = [int]: {parameters above p}
+       let j0 = first(for q in full_block do height(q)>=height(p) od)
+       in for q@i in full_block[j0:] do if find(block,q) >=0 do i fi od.##
+   {want to cut down to rows and columns in subset...}
+  then pol_eval =  for P in P_polys do eval(P,minus_1) od, Q_col = vec:[]
   , dual_pol_eval = for P in dual_polys do eval(P,minus_1) od
   , l_sg = for q in block do minus_1^length(q) od
   , to_full = (int->int):
@@ -104,23 +195,46 @@ in null_module(p) +
      ( orientation_nr_term(on_p,q)*solution[i]*one_minus_s , q )
    od
 
+{to hold partial block}
+set partial_param_hash = make_Param_hash()
+{using this causes failure in FPP_unitary_hash_one_level(Spin(4,4))}
+
 set deformation_terms_by_dual_scr (Param p,int HT) = ParamPol:
 (  assert(@:p.is_final,"deformation requires a final parameter")
 ;  if HT < 0 then return deformation_terms_by_dual_scr(p) fi
 ;  assert(@:p.height<=HT,"height bound kills term to deform")
-;  let (full_block,start,dual_KL_mat,polys) = dual_KL_block(p)
+;  let (full_block,start,dual_KL_mat,polys) = dual_KL_block(p), h0 = height(p)
+   then (partial_block,partial_KL_mat,partial_polys) = partial_KL_block(p)
+   then partial_subset = [int]:
+ 	for q@i in partial_block if (q.height<=HT) do i fi od {taken from the END of partial_block}
+   then partial_block_ht = for i in partial_subset do partial_block[i] od
+   then partial_ev = for P in partial_polys do eval(P,minus_1) od
+   then partial_KL_mat_ht = mat: (for j in partial_subset
+   			    	  do for i in partial_subset do partial_ev[partial_KL_mat[j][i]] od
+				  od)
+   then partial_param_hash = make_Param_hash(partial_block_ht)
    then subset = [int]:
-     for q@i in full_block if q.height<=HT do i fi od
+     for q@i in full_block if partial_param_hash.lookup(q) >= 0 do i fi od
+     {(q.height<=HT) and (q.height)>=h0 do i fi od}
+     {should only select i in partial_block(p)}
    , ev = for P in polys do eval(P,minus_1) od
    , Q_col = vec:[] { vector variable to be assigned below }
-   then Q_mat = mat: { transpose, select rows/cols from |subset|, set $q:=-1$ }
-     for i in subset
+   {then () = prints("for p = ",p,", HT = ",HT,", FB = ",
+   	for i in subset do partial_param_hash.lookup(full_block[i]) od)}
+   {then () = prints("PB = ",for q in partial_block_ht do partial_param_hash.lookup(q) od)}
+   then Q_mat = mat: { transpose dual_KL_mat, select rows/cols from |subset|, set $q:=-1$ }
+     for i in subset {columns}
      do let col = vec: for j in subset do ev[dual_KL_mat[i,j]] od
      in if i=start then Q_col:=col else col fi { store the column for |p| }
      od
    , block = [Param]: for i in subset do full_block[i] od
-   then signed_P_mat = { $(-1)^{l(x,y)}P_{x,y}[q:=-1]$ for $x,y$ in |block| }
-      inverse(Q_mat)
+   then () = assert(@: all(for q@j in block do q = partial_block_ht[j] od),"orders don't match")
+   {then () = prints("Qm = ",Q_mat)}
+   then signer = diagonal(for q in partial_block_ht do (-1)^(length(q)) od)
+   then signed_P_mat = signer*partial_KL_mat_ht*signer
+   {then () = prints("sPm = ",signed_P_mat); prints("sPm*Qm = ",signed_P_mat*Q_mat);}
+   then () = assert(@:Q_mat*signed_P_mat-id_mat(#subset) = 0,"mats are not inv")
+   { $(-1)^{l(x,y)}P_{x,y}[q:=-1]$ for $x,y$ in |block| }
    , lp_parity=p.length%2 { parity of length that is excluded below }
    then solution = vec:
       { compute more efficiently: |signed_P_mat*diagonal(odd_levels)*Q_col|,
@@ -134,7 +248,67 @@ in null_module(p) +
    for q@i in block
    do { twist (1-s)*solution according to orientation numbers of its terms }
      ( orientation_nr_term(on_p,q)*solution[i]*one_minus_s , q )
-   od
+   od {will be nonzero only for q in partial_block(p)}
+)
+
+{time in milliseconds to invert an N x N upper triangular matrix is about inverse_rate * N^3}
+
+set upper_ex(int N) = mat:
+    let M = id_mat(N)
+    in for j:N-1  do for i:j+1 do M[i,j+1]:=i+1 od od;
+       M
+
+set inverse_rate = rat:
+    let N = 100
+    then M = upper_ex(N), start = elapsed_ms()
+    then inv = M.inverse
+    in (elapsed_ms() - start)/N^3
+
+set upper_ones(int N) = mat:
+    let M = id_mat(N)
+    in for j:N-1  do for i:j+1 do M[i,j+1]:=1 od od;
+       M
+{estimated time in milliseconds for original: partial_KL and dual full_KL}
+set guessA(Param p) = int: KL_predictor_full(p) + KL_predictor(p)
+
+{estimated time in millseconds for B: partial_KL + inversion}
+set guessB(Param p) = int: KL_predictor(p) + floor(inverse_rate*(#partial_block(p))^3)
+
+{inverting an n x n (upper tri?) matrix takes time proportional n^3; on my laptop, (1/(4*10^4))*n^3
+milliseconds. Computing KL for a block of size N takes time roughly proportion to N^2: laptop it's
+(1/2.5*10^4)*N^2. SO should prefer original if .6 * (#partial_block_ht)^3 > (#full_block)^2  }
+{I suspect there will be overflow as soon as #partial_block_ht is more than 20 or so}
+{SO THIS FUNCTION IS UNRELIABLE!}
+set deformation_terms_by_dualB_scr (Param p,int HT) = ParamPol:
+(  assert(@:p.is_final,"deformation requires a final parameter")
+;  if HT < 0 then return deformation_terms_by_dual_scr(p) fi
+;  assert(@:p.height<=HT,"height bound kills term to deform")
+;  let (partial_block,partial_KL_mat,partial_polys) = partial_KL_block(p)
+   then partial_subset = [int]:
+ 	for q@i in partial_block if (q.height<=HT) do i fi od {taken from the END of partial_block}
+   then partial_block_ht = for i in partial_subset do partial_block[i] od
+   then partial_ev = for P in partial_polys do eval(P,minus_1) od
+   then partial_KL_mat_ht = mat: (for j in partial_subset
+   			    	  do for i in partial_subset do partial_ev[partial_KL_mat[j][i]] od
+				  od)
+   {then partial_param_hash = make_Param_hash(partial_block_ht)}
+   then signer = diagonal(for q in partial_block_ht do (-1)^(length(q)) od)
+   then signed_P_mat = signer*partial_KL_mat_ht*signer
+   then Q_mat = inverse(signed_P_mat) {GREAT danger of overflow!}
+   then Q_col = Q_mat~[0], lp_parity=p.length%2 { parity of length that is excluded below }
+   then solution = vec:
+      { compute more efficiently: |signed_P_mat*diagonal(odd_levels)*Q_col|,
+        where |odd_levels=vec: for q@i in block do #q.length%2!=lp_parity| }
+        let odd_subset = { reuse local variable, now for selecting odd levels }
+           for q@i in partial_block_ht if q.length%2!=lp_parity do i fi od
+       in (mat: signed_P_mat.n_rows # for j in odd_subset do signed_P_mat[j] od)
+       *(vec: for i in odd_subset do Q_col[i] od)
+  , !on_p = orientation_nr(p)
+in null_module(p) +
+   for q@i in partial_block_ht
+   do { twist (1-s)*solution according to orientation numbers of its terms }
+     ( orientation_nr_term(on_p,q)*solution[i]*one_minus_s , q )
+   od {will be nonzero only for q in partial_block_ht(p)}
 )
 
 { go to next reducibility point (move even if at reducibility point) }
@@ -241,7 +415,10 @@ set deformation_scr (Param p, int HT) = (Param,ParamPol): { deformed Param and n
   (lower_scr(p,HT), deformation_terms_by_dual_scr(p,HT))
  { deform(p))} { here |deform| may be replaced by |deformation_terms| }
 
-{same as built-in full_deform}
+{whether to use deformation_terms_by_dual in recursive_deform}
+set by_dual_flag = false
+
+{same as full_deform}
 set recursive_deform_scr (Param p, int HT) = KTypePol:
   if d_verbose then prints("recursive_deform to height with:", p) fi;
   if not is_final(p) then error("improper parameter") fi;
@@ -259,7 +436,10 @@ set recursive_deform_scr (Param p, int HT) = KTypePol:
       ~do
 	let p_def=Finalize(p*factor) { next deformation of |p| }
 	then def= {deform(p_def)} { bypass built-in |deform| here }
-	     	  deformation_terms_by_dual_scr(p_def,HT)
+	     	  if by_dual_flag
+		  then deformation_terms_by_dual_scr(p_def,HT)
+		  else deformation_terms_scr(p_def,HT)
+		  fi
         in
 	  prints("adding deformation term: p=", p_def, new_line,"adding:", def)
       ; acc+:=def
@@ -280,7 +460,10 @@ set recursive_deform_scr (Param p, int HT) = KTypePol:
       for factor in reducibility_points_rp(p,HT)
       ~ { direction of deformation is down, towards 0; this is not essential }
       do acc+:={deform(p*factor)}
-      	 deformation_terms_by_dual_scr(Finalize(p*factor),HT)
+      	 if by_dual_flag
+	 then deformation_terms_by_dual_scr(Finalize(p*factor),HT)
+	 else deformation_terms_scr(Finalize(p*factor),HT)
+	 fi
       od
     ; for k@q in acc { traverse the sum of the deformation terms spun off }
       do at_nu0 +:= full_def_scr(sc*k,q,HT) od
@@ -288,7 +471,7 @@ set recursive_deform_scr (Param p, int HT) = KTypePol:
     end
   fi { apply that recursive function to the initial argument: } (1,p,HT)
 
-{same as built-in full_deform interruptible}
+{same as full_deform interruptible}
 set recursive_deform_scr (Param p, int HT, int TIME) = maybe_KTP:
   {if d_verbose then prints("recursive_deform to height with:", p) fi;}
   if not is_final(p) then error("improper parameter") fi;
@@ -303,7 +486,10 @@ set recursive_deform_scr (Param p, int HT, int TIME) = maybe_KTP:
       for factor in reducibility_points_rp(p,HT)
       ~ { direction of deformation is down, towards 0; this is not essential }
       do acc+:={deform(p*factor)}
-      	 deformation_terms_by_dual_scr(Finalize(p*factor),HT)
+      	 if by_dual_flag
+	 then deformation_terms_by_dual_scr(Finalize(p*factor),HT)
+	 else deformation_terms_scr(Finalize(p*factor),HT)
+	 fi
       od
     ; for k@q in acc { traverse the sum of the deformation terms spun off }
       do at_nu0 +:= case full_def_scr(sc*k,q,HT,expiration)
@@ -315,8 +501,7 @@ set recursive_deform_scr (Param p, int HT, int TIME) = maybe_KTP:
       else (at_nu0).done
       fi
     end)(1,p,HT,elapsed_ms() + TIME)
-  { apply that recursive function to the initial argument: } 
-
+  { apply that recursive function to the initial argument: }
 
 {same as built-in full_deform}
 set recursive_deform_old (Param p, int HT) = KTypePol:
@@ -338,7 +523,7 @@ set recursive_deform_old (Param p, int HT) = KTypePol:
       do at_nu0 +:= full_def_old(sc*k,q,HT) od
     ; at_nu0
     end) (1,p,HT)
-  { apply that recursive function to the initial argument: } 
+  { apply that recursive function to the initial argument: }
 
 { code that follows is adapted from hermitian.at to do unitarity computation
   in terms of the above functions rather than built-ins

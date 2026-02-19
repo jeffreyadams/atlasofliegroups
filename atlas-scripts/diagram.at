@@ -10,8 +10,8 @@
   whose positions correspond to nodes of the diagram, so size is semisimple rank.
 }
 
-set simple_automorphisms (string simple_type, int rank) = [vec]:
-   let identity = vec: #rank
+set simple_automorphisms (string simple_type, int rank) = [Permutation]:
+   let identity = Permutation: #rank
 in case char_index(simple_type,"ABCDEFG")
    in {A} if rank<=1 then [identity] else [identity, ~identity] fi
    ,  {B} [identity]
@@ -27,25 +27,30 @@ in case char_index(simple_type,"ABCDEFG")
    else error("Unknown Lie type ",simple_type,rank)
    esac
 
-{ Find groups of equal simple factors. The caller should make sure not to pass
-  both factors B2 and C2 in the same call: choose one of the two to prefer,
-  and convert the other systematically to that one before calling us.
+{ Find groups of equal simple factors, presumably produced by |simple_factors|.
+  This uses plain equality of strings and numbers, so if one wishes to allow
+  permuting factors B2 and C2, give them the same name before calling
+  |permutable_types| (and make arragements to do the permutation correctly).
+
+  Example: permutable_types(simple_factors("A2D4A2A1D4A2")) = [[3],[0,2,5],[1,4]]
 }
 set permutable_types ([string,int] simple_factors) = [[int]]:
    let leq((string t0,int r0),(string t1,int r1)) = bool:
       if t0!=t1 then t0<=t1 else r0<=r1 fi
 in partition_by ( (int i):simple_factors[i] , leq ) (# #simple_factors)
 
+{ Prepare for iterating over diagram autormorphisms (a laborious enterprise) }
 set diagram_automorphism_iterator (LieType t) = Iterator<vec>:
 (  let types = [string,int]: simple_factors(t)
-   , n = semisimple_rank(t) { size of all permutations }
-   then clusters = [[int]]: permutable_types(types).(filter(([int]a):#a>1))
-   , simple_autos = [int,[vec]]:
+   , n = semisimple_rank(t) { size of all diagram permutations }
+   then !clusters = [vec]: { each entry lists type indices in a cluster }
+     permutable_types(types).(filter(([int]a):#a>1)) { omit singletons }
+   , simple_autos = [int,[Permutation]]: { (position,internal permutations) }
      for type@i in types do (i,simple_automorphisms(type)) od
-     .(filter((int.,[vec]a):#a>1))
-in { replace second component of each |simple_autos| entry }
+     .(filter((int.,[vec]a):#a>1)) { omit trivial automorphism groups }
+in { change to "difference" form of permutations components of |simple_autos| }
    for (k,autos)@i in simple_autos
-   do let m=#autos
+   do let m=#autos { the number of permutations to cycle through }
       then deltas = { left-multiply each entry by cyclically preceeding one }
 	for pi@i in autos
 	do compose_permutations(permutation_inverse(autos[(i-1)%m]),pi)
@@ -57,27 +62,29 @@ in { replace second component of each |simple_autos| entry }
    let go=true { set to false when |incr| cannot produce anything new }
    , cur = vec: #n { working permutation }
    , auto_position = [int,int]:
-     { loop indices while traversing automorphisms, and their modulus }
+     { loop indices while traversing internal automorphisms, and their modulus }
      for (,autos) in simple_autos do ( 0, #autos ) od { intially indices are 0 }
+   , current_perm = [Iterator<vec>]: { one iterator for each cluster }
+     for c in clusters do permutation_iterator(c) od
 
 { constants for iteration }
-   , starts = 0 # map(snd)(types).cumulate_forward
-   , modulus = { orders of the lists of automoprhism that are run over }
+   , !starts = { starting indice of the diagram components }
+     0 # map(snd)(types).cumulate_forward
+   , !modulus = { orders of the lists of automoprhism that are run over }
      for (,autos) in simple_autos do #autos od
-   , current_perm = [Iterator<vec>]: { one iterator for each cluster }
-     for c in clusters do permutation_iterator(#c) od
+
    then
      advance(int start,vec delta) = void:
-     { right-multiply by permutation |delta| lifted to simpla factor at |start| }
+     { right-multiply by permutation |delta| lifted to simple factor at |start| }
         let snap = cur[start:start+#delta] { take snapshot of old values } in
         for dst@src in delta do cur[start+src] := snap[dst] od
    , install(int k, vec pi) = void: { install permutation |pi| of cluster |k| }
-        let cl = [int]: clusters[k]
-	then (,r) = types[cl[0]] { get rank of each of the factors permuted }
-	, st = for i in cl do starts[i] od { and starting points of each factor }
-	in for d:r
-	   do for dst@src in pi do cur[st[src]+d] := st[dst]+d od
-	   od
+        let !cl = vec: clusters[k] { cluster of which |pi| is a permutation }
+	then (,r) = types[cl[0]] { common rank of all of the factors permuted }
+     in for j@i in pi { now |j=pi[i]| is a simple type index present in |cl| }
+	do let a = starts[cl[i]], b=starts[j] { component-initial diagram nodes }
+	in for d:r do cur[a+d] := b+d od { trivial map component |cl[i]| to |j| }
+	od
 in ( @Maybe<vec>:  { |get| method: value produced this iteration, if any }
      if go then some(cur) else none() fi
    , @void:
@@ -88,17 +95,18 @@ in ( @Maybe<vec>:  { |get| method: value produced this iteration, if any }
      ;  advance(starts[i],deltas[k])
      ;  if k>0 then return() fi { stop unless |k| was wrapped around }
      od
-     { now all factor automorphism are back to identity; advan the permutations }
-   ; for (get,incr)@j in current_perm { |perm| is permutation of clusters[j] }
-     do incr();
-        case get()
-        | none(): let size = #clusters[j] in
-	  current_perm[j] := permutation_iterator(size) { reset }
-	  ; install(j,#size) { reset cluster permutation to identity }
-	| some(pi): install(j,pi); return()
+     { factor automorphisms are back to identity; advance cluster permutations }
+   ; for (get,incr)@j in current_perm { only rarely iterates more than once }
+     do incr() { try to advance |current_perm[j]|, then quit unless it carries }
+     ;  case get()
+        | none():
+	    current_perm[j] := permutation_iterator(clusters[j]) { reset }
+	  ; install(j,clusters[j]) { adapt |cur| to match, then continue loop }
+	| some(pi): install(j,pi)
+	  ; return() { quit increment, do not reset |go| }
 	esac
      od
-   ; go:=false
+   ; go:=false { if loop terminates, we've "carried" all the way through: stop }
    )
 )
 

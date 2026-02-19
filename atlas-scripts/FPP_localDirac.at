@@ -246,19 +246,6 @@ set approxDiffA(Param p) = int:
 {meant to store bottom layer K-types}
 set bl_KHash = make_KType_hash()
 
-{ Block of p, including zero parameters. Relevant because that's where
-KL calculations need to happen }
-set full_block(Param p) = [Param]:
-let G = p.real_form
-in for q in block_of(translate_param_by(p, G.two_rho))
-   do translate_param_by(q, -G.two_rho)
-   od
-{in is_unitary_to_ht(N), KL calculations live in this subset of
-full_block}
-set full_block_to_ht(Param p, int N) = [Param]:
-    for q in full_block(p)
-    do if height(q) <= N then [q] else [] fi od.##
-
 set ht_saving(Param p, int N) = rat:
     #full_block_to_ht(p,N)/#full_block(p)
 
@@ -497,8 +484,15 @@ set wiggle_flag0 = false
 {set this to true to use wiggle tests in in local_test_hash (end)}
 set final_wiggle_flag = false
 
-{set this to true to use wiggle tests in local_testK_hash (beginning and middle)}
-set wiggle_flag1 = false
+{set this to true to use wiggle tests in local_testK_hash (beginning
+and middle), just doing lookup; since that's fast, safe to default to true?}
+set wiggle_flag1 = false {true bad in Spin(p,q) up to rk 5; helps in
+E7 spherical???}
+
+set wiggle_flag1_count = int: 0
+set wiggle_flag1_time = int:0
+{set this also to true to do unitarity tests if lookup fails}
+set wiggle_flag2 = false
 
 {if true, just do first LFDKH pass on red_count equiv classes: more is_unitary, but less character formula}
 set dry_flag = false
@@ -558,7 +552,7 @@ set local_testK_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     then known_true_count = count(for ans in newStatuses do ans[0] = "T" od)
     then known_false_count = count(for ans in newStatuses do ans[0] = "F" od)
     then () = if test_verbose
-	      then prints("     Examining ",NumClasses," classes in local_testK_hash; ",
+	      then prints("     Examining ",NumClasses," classes in local_testK_hash_old; ",
 	      known_true_count," are known unitary, ", known_false_count, " known nonunitary.")
 	      fi
       then () =  for k:NumClasses
@@ -584,20 +578,24 @@ set local_testK_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 			  then pC = parameter(x, lambda, gamma)
 			  then ps = monomials(pC)
 			  then () = if wiggle_flag1 and d>0
-				    then let short_verts = for i:d+1
+				    then let start_wiggle = elapsed_ms(),
+				    	     short_verts = for i:d+1
 							   do verts[:i]##verts[i+1:]
 							   od {list of vertex sets for faces}
-					 then CF = character_formula_to_height(1*pC,HT)
+					 then CF = character_formula_to_ht(1*pC,HT)
 					 then pdef1 = for sv in short_verts
 						      do monomials(composition_series_to_ht(wiggle(CF,
 								face_bary(Lvd,sv)), HT {- 1}))
 						      od.##
 					 in if any(for q in pdef1
-						   do height(q) > H0 and not tester(q)
+						   do @bool: height(q) > H0 and (status(q,HT) <0)
+						      or (status(q,-1) = -1 and not is_pure(to_ht(min_bottom_sig(q),HT)))
+						      or (status(q,HT) = 0 and wiggle_flag2 and not tester(q))
 						   od)
-					    then newStatuses:= updateNUclassesB(newStatuses, gr, k);
+					    then  wiggle_flag1_count+:=1;
+					    	  newStatuses:= updateNUclassesB(newStatuses, gr, k);
 						 newStatuses[k] := "F"
-					    fi {any q}
+					    fi {any q} next wiggle_flag1_time +:= elapsed_ms() - start_wiggle
 				    fi {wiggle_flag1}
 		     {then () = prints(new_line,"k = ",k,", ICPNU_flag = ",ICPNU_flag,", ICPU_flag = ",ICPU_flag)
 		     then () = prints("before ICPNU, newStatuses = ",newStatuses)}
@@ -646,19 +644,24 @@ set local_testK_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 				     then pC = parameter(x, lambda, gamma)
 				     then ps = monomials(finalize(pC))
 				     then () = if wiggle_flag1 and d>0
-					       then let short_verts = for i:d+1
+					       then let start_wiggle = elapsed_ms(),
+					       	    	short_verts = for i:d+1
 								      do verts[:i]##verts[i+1:]
 								      od {list of vertex sets for faces}
-						    then CF = character_formula_to_height(1*pC,HT)
+						    then CF = character_formula_to_ht(1*pC,HT)
 						    then pdef1 = for sv in short_verts
 								 do monomials(composition_series_to_ht(wiggle(CF,
 								face_bary(Lvd,sv)), HT {- 1}))
 								  od.##
 						     in if any(for q in pdef1
-							       do height(q) > H0 and not tester(q)
+							       do @bool: height(q) > H0 and (status(q,HT) <0)
+					or (status(q,-1) = -1 and not is_pure(to_ht(min_bottom_sig(q),HT)))
+								 {or (status(q,-1) = -1 and not tester(q))}
+						      		 or (wiggle_flag2 and status(q,HT) = 0 and not tester(q))
 							       od)
-							then newStatuses[K] := "F"
-							fi
+							then wiggle_flag1_count+:=1;
+							     newStatuses[K] := "F"
+							fi next wiggle_flag1_time +:= elapsed_ms() - start_wiggle
 						 fi{wiggle_flag1}
 			  {then () = prints(new_line,"K = ",K,", ICPNU_flag = ",ICPNU_flag,",
 				ICPU_flag = ",ICPU_flag)
@@ -714,7 +717,7 @@ set local_testK_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
      {then () = if #FVKH = 3 then prints(FVKHnew[2]) fi}
      then time = elapsed_ms() - start
      then () = if time_verbose then prints("     ", print_time_string(time),
-			       " for local_testK_hash; number of tests = ",
+			       " for local_testK_hash_old; number of tests = ",
 			       unitary_test_counter.use_count() - start_count) fi
      in  if sort_LFD_flag
 	 then sort(x.real_form, Lvd, FVKHnew)
@@ -799,20 +802,26 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 			  then pC = parameter(x, lambda, gamma)
 			  then ps = monomials(pC)
 			  then () = if wiggle_flag1 and d>0
-				    then let short_verts = for i:d+1
+				    then {prints("got into wiggle loop, p = ",pC);}
+				    	 let start_wiggle = elapsed_ms(),
+					     short_verts = for i:d+1
 							   do verts[:i]##verts[i+1:]
 							   od {list of vertex sets for faces}
-					 then CF = character_formula_to_height(1*pC,HT)
+					 then CF = character_formula_to_ht(1*pC,HT)
 					 then pdef1 = for sv in short_verts
 						      do monomials(composition_series_to_ht(wiggle(CF,
 								face_bary(Lvd,sv)), HT {- 1}))
 						      od.##
 					 in if any(for q in pdef1
-						   do height(q) > H0 and not tester(q)
+						   do @bool: height(q) > H0 and (status(q,HT) <0)
+						   or (status(q,-1) = -1 and not is_pure(to_ht(min_bottom_sig(q),HT)))
+						   {or (status(q,-1) = -1 and not tester(q))}
+						      or (wiggle_flag2 and status(q,HT) = 0 and not tester(q))
 						   od)
-					    then newStatuses:= updateNUclassesB(newStatuses, gr, k);
+					    then wiggle_flag1_count+:=1;
+					    	 newStatuses:= updateNUclassesB(newStatuses, gr, k);
 						 newStatuses[k] := "F"
-					    fi {any q}
+					    fi {any q} next wiggle_flag1_time +:= elapsed_ms() - start_wiggle
 				    fi {wiggle_flag1}
 		     {then () = prints(new_line,"k = ",k,", ICPNU_flag = ",ICPNU_flag,", ICPU_flag = ",ICPU_flag)
 		     then () = prints("before ICPNU, newStatuses = ",newStatuses)}
@@ -867,19 +876,24 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 				     then pC = parameter(x, lambda, gamma)
 				     then ps = monomials(finalize(pC))
 				     then () = if wiggle_flag1 and d>0
-					       then let short_verts = for i:d+1
+					       then let start_wiggle = elapsed_ms(),
+					       	    	short_verts = for i:d+1
 								      do verts[:i]##verts[i+1:]
 								      od {list of vertex sets for faces}
-						    then CF = character_formula_to_height(1*pC,HT)
+						    then CF = character_formula_to_ht(1*pC,HT)
 						    then pdef1 = for sv in short_verts
 								 do monomials(composition_series_to_ht(wiggle(CF,
 								face_bary(Lvd,sv)), HT {- 1}))
 								  od.##
 						     in if any(for q in pdef1
-							       do height(q) > H0 and not tester(q)
+							       do @bool: height(q) > H0 and (status(q,HT) <0)
+						or (status(q,-1) = -1 and not is_pure(to_ht(min_bottom_sig(q),HT)))
+						      		or (status(q,HT) = 0 and wiggle_flag2 and
+								not tester(q))
 							       od)
-							then newStatuses[K] := "F"
-							fi
+							then wiggle_flag1_count+:=1;
+							     newStatuses[K] := "F"
+							fi next wiggle_flag1_time +:= elapsed_ms() - start_wiggle
 						 fi{wiggle_flag1}
 			  {then () = prints(new_line,"K = ",K,", ICPNU_flag = ",ICPNU_flag,",
 				ICPU_flag = ",ICPU_flag)
@@ -956,12 +970,14 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd, {def 3}
     	is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(p, ht))
      in local_testK_hash(x, lambda, Lvd, FVKH, eq, gr, classListByFace, tester,
      ht, Uhash, fancy_tester)
+{which is_unitary_to_ht above???}
 
 set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     [[FaceVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFace,
     int ht, Param_hash Uhash) = [[FaceVertsKHash]]:
     let tester = ((Param->bool): (Param p) bool: is_unitary_to_ht_big_SIMPLE(p, ht))
      in local_testK_hash(x, lambda, Lvd, FVKH, eq, gr, classListByFace, tester, ht, Uhash)
+{which is_unitary_to_ht above???}
 
 {test candidate classes with (new) tester. Assume know_lower_flag is true,
  and use that to get rid of some candidates. Delete
@@ -1182,6 +1198,7 @@ set local_testK_hash_know_lower(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     (Param->bool) tester, Param_hash Uhash) = [[FaceVertsKHash]]:
     local_testK_hash_know_lower(x, lambda, Lvd, FVKH, eq, gr, classListByFace,
     tester, Uhash, is_unitary_hash_big_SIMPLE@Param)
+{which is_unitary_hash above???}
 
 set tell_all = false
 
@@ -1198,7 +1215,7 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
     KTypePol_hash pol_hash, Param_hash Uhash, (Param -> bool) fancy_tester) = [[FaceVertsKHash]]:
     let newStatuses = for j:#eq do "?" od,  NumClasses = #eq, p0 = parameter(x,lambda,0*lambda)
     then hts = [int]: (for mu in monomials(branch_std(p0,HT)) do height(mu) od).sort_u
-    then ONE = min(edge_offset,#hts-1)
+    then ONE = min(edge_offset,#hts-1), H0 = height(parameter(x,lambda,0*lambda))
     then printInterval = int: {1} max(1,NumClasses\10), red_shift = if red_count_flag then 1 else 0 fi
     {Find all Param's in Uhash with (x,lambda). For each, compute corresponding Face.
      Use function known_unitaries from FPP_faces_herm
@@ -1245,8 +1262,6 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
 			    for str@i in newStatuses do if str[0] = "F" then [i] else [] fi od.##)
 		       fi
 		  fi
-
-
 		fi {KNU_flag}
 {next if possible label classes known to be nonunitary because they finalize or deform to nonunitary}
     then () = for k:NumClasses
@@ -1259,8 +1274,9 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
 		      {then sigma = sum(#lambda, ratverts)}
 		      then pC = parameter(x, lambda, gamma) {sigma/(d+1))}
 		      then ps = monomials(pC)
-		      then () = if wiggle_flag0 and d>0
-				then let short_verts = for i:d+1
+		      then () = if wiggle_flag1 and d>0
+				then let start_wiggle = elapsed_ms(),
+				     short_verts = for i:d+1
 						       do verts[:i]##verts[i+1:]
 						       od {list of vertex sets for faces}
 				     then CF = character_formula(1*pC)
@@ -1268,14 +1284,17 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
 						  do monomials(composition_series_to_ht(wiggle(CF,
 								face_bary(Lvd,sv)),HT))
 						  od.##
-				     in if any(for q in pdef1
-						   do height(q) > hts[0] and
-						      not is_unitary_to_hts_big_SIMPLE(q,hts[1:ONE+1])
-						   od)
-					then newStatuses:= updateNUclassesB(newStatuses, gr, k);
-						 newStatuses[k] := "F"
-					fi {any q}
-				fi {wiggle_flag0}
+		in if any(for q in pdef1 do @bool: height(q) > H0 and (status(q,HT) < 0)
+		      or (status(q,-1) = -1 and not is_pure(to_ht(min_bottom_sig(q),HT)))
+		     { or (status(q,-1) = -1 and not is_unitary_to_hts_big_SIMPLE(q,hts[1:ONE+1]))}
+			      or (wiggle_flag2 and status(q,HT) = 0 and
+			      not is_unitary_to_hts_big_SIMPLE(q,hts[1:ONE+1]))
+					od)
+		   then wiggle_flag1_count+:=1;
+		   	newStatuses:= updateNUclassesB(newStatuses, gr, k);
+			newStatuses[k] := "F"
+		   fi {any q} next wiggle_flag1_time +:= elapsed_ms() - start_wiggle
+				fi {wiggle_flag1}
 		      then pCdef = monomials(pC)
 		      in if newStatuses[k] = "?" and not is_final(pC)
 			 then if all(for q in pCdef do @bool: is_finished(q.x, q.lambda) and
@@ -1691,7 +1710,7 @@ set local_test_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	      then prints("representatives of unknown classes:");
 		   for m in unknown_ms
 		   do let C = eq[m]
-		      then N = if final_wiggle_flag and C~[0] >= #LFVH[0]
+		      then N = if wiggle_flag1 and C~[0] >= #LFVH[0]
 			       then C~[0]
 			       else C[0]
 			       fi
@@ -1704,7 +1723,7 @@ set local_test_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	      fi {final_verbose}
     then () = for m@k in unknown_ms {work from small faces toward big}
 	     ~do let C = eq[m]
-		 then N = if final_wiggle_flag and C~[0] >= #LFVH[0]
+		 then N = if wiggle_flag1 and C~[0] >= #LFVH[0]
 			  then C~[0]
 			  else C[0]
 			  fi
@@ -1713,22 +1732,23 @@ set local_test_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		 then gamma = face_bary(Lvd,verts)
 		 then pC = parameter(x, lambda, gamma)
 		 then ps = monomials(pC)
-		 then () = if final_wiggle_flag and d>0
-			   then let short_verts = for i:d+1
-						      do verts[:i]##verts[i+1:]
-						      od {list of vertex sets for faces}
-				    then CF = character_formula(1*pC)
-				    then pdef1 = for sv in short_verts
-						      do monomials(composition_series(wiggle(CF,
-								face_bary(Lvd,sv))))
-						      od.##
-					 in if any(for q in pdef1
-						   do height(q) > H0 and not tester(q)
+		 then () = if wiggle_flag1 and d>0 {ASSUME TESTER IS is_unitary}
+			   then let start_wiggle = elapsed_ms(),
+				    short_verts = for i:d+1
+						  do verts[:i]##verts[i+1:]
+						  od {list of vertex sets for faces}
+				then CF = character_formula(1*pC)
+				then pdef1 = for sv in short_verts
+					     do monomials(composition_series(wiggle(CF, face_bary(Lvd,sv))))
+					     od.##
+				in if any(for q in pdef1 do @bool: height(q) > H0 
+
+and not tester(q)
 						   od)
 					    then newStatuses:= updateNUclassesB(newStatuses, gr, m);
 						 newStatuses[m] := "F"
-					    fi {any q}
-				fi {final_wiggle_flag}
+					    fi {any q} next wiggle_flag1_time +:= elapsed_ms() - start_wiggle
+				fi {wiggle_flag1}
 		 then () = if newStatuses[m][0] = "?" and all(for p in ps
 				   do @bool: Uhash.lookup(p).>= or (let ans = tester(p)
 								   in if not ans
@@ -1775,7 +1795,10 @@ set local_test_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 								face_bary(Lvd,sv))))
 						      od.##
 					 in if any(for q in pdef1
-						   do height(q) > H0 and not tester(q)
+						   do height(q) > H0 and
+						      ((status(q,-1) <0) or
+						      (status(q,-1) = 0 and not is_pure(min_bottom_sig(q))) or
+						      (wiggle_flag2 and not tester(q)))
 						   od)
 					    then newStatuses[M] := "F"
 					    fi {any q}
@@ -1937,9 +1960,9 @@ in  if test_verbose
 					   face_bary(Lvd,sv))))
 			 od.##
 	 in if any(for q in pdef1 do @: height(q) > H0 and
-	       	       not tester(q)
-		       {(status(q,-1) < 0)
-		       or (height(q) > 0 and not tester(q))}
+	       	        ((status(q,-1) <0) or
+			(status(q,-1) = 0 and not is_pure(min_bottom_sig(q))) or
+			(wiggle_flag2 and not tester(q)))
 		       od)
 	    then {prints("parameter ",pC," tests nonunitary by wiggle, verts = ",verts);}
 		 newStatuses:= updateNUclassesB(newStatuses, gr, m)
@@ -2104,7 +2127,10 @@ in  if test_verbose
 			 do monomials(composition_series(wiggle(CF,
 					face_bary(Lvd,sv))))
 			 od.##
-       in if any(for q in pdef1 do height(q) > H0 and not tester(q) od)
+       in if any(for q in pdef1 do (height(q) > H0) and (status(q,-1) <0)
+       	     	       	  	   or (status(q,-1) = 0 and (not is_pure(min_bottom_sig(q)) or
+				   (wiggle_flag2 and not tester(q))))
+				od)
 	  then newStatuses:= updateNUclassesB(newStatuses, gr, m)
 	  ;     newStatuses[m] := "F"
 	  fi {any q}
@@ -2401,16 +2427,17 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		      {then sigma = sum(#lambda, ratverts)}
 		      then pC = parameter(x, lambda, face_bary(Lvd,verts)) {,sigma/(d+1))}
 		      then pCdef = if is_final(pC)
-				   then if wiggle_flag and d > 0
+				   then if wiggle_flag1 and d > 0
 					then {let () = char_counter.use()
 					     then startCF = elapsed_ms()}
-					     let CF = character_formula(pC)
+					     let start_wiggle = elapsed_ms(),
+				    	     	 CF = character_formula(pC)
 					     {then () = charTime +:= elapsed_ms() - startCF}
 					     in monomials(composition_series((sum(x.real_form,
 					     for j:d+1 {v in ratverts}
 					     do wiggle(CF, face_bary(Lvd,verts[:j]##verts[j+1:]))
 					     {(sigma - v)/d)}
-					     od))))
+					     od)))) next wiggle_flag1_time +:= elapsed_ms() - start_wiggle
 							  {proper_facet_deformed(pC)}
 					 else []
 					 fi
@@ -2626,28 +2653,40 @@ set one_param_time = int: 0
 
 set wiggle_unitary_flag = false
 
-{true more than 3/4 of time, so shouldn't do much to_height testing}
+{E7_s: false 62000 times, true 3 times. So SHOULD do to_height}
 set one_param_test(Param p) = [Param]:
     let start = elapsed_ms(), Q = monomials(finalize(p)), G = p.real_form
-    then () = if all(for q in Q do big_unitary_hash.ulookup(q).>= od)
-	      then return [p]
-	      elif any(for q in Q do big_unitary_hash.nulookup(q).>= od)
-	      then return []
-	      fi
-    then test = if wiggle_unitary_flag
+    in if not all(for q in Q do @bool: FPP_def_test(q) od)
+       then one_false_counter.use();
+       	    one_param_time +:= elapsed_ms() - start;
+	    []
+       else let stati = for q in Q do status(q,-1) od
+    in if all( for N in stati do N =1 od)
+       then one_true_counter.use();
+       	    one_param_time +:= elapsed_ms() - start;
+	    [p]
+       elif any (for N in stati do N = -1 od)
+       then one_false_counter.use();
+       	    one_param_time +:= elapsed_ms() - start;
+       	    []
+       else let test = if wiggle_unitary_flag
 		then all(for q in Q do @bool: wiggle_is_unitary(q) od)
 		else all(for q in Q
 			 do @bool:
-			    let ans = if test_interrupt_flag {up_mu_flag}
+			    let ans = is_unitary_test_big_SIMPLE_interrupt(q)
+			    {if test_interrupt_flag {up_mu_flag}
 				      then is_unitary_test_big_SIMPLE_interrupt(q)
 				      else is_unitary_hash_big_SIMPLE(q)
-				      fi
-			    in if more_after_flag and not ans
-			    then more_after_flag:=false; more_bad_hash.match(q)
-			    fi;
-			    if min_after_flag and not ans
-			    then min_after_flag:= false; bad_hash.match(q)
-			    fi; ans
+				      fi}
+			    in if not ans
+			       then big_unitary_hash.numatch(q);
+			       	    if more_after_flag
+			    	    then more_after_flag:=false; more_bad_hash.match(q)
+			    	    fi;
+			    	    if min_after_flag
+			    	    then min_after_flag:= false; bad_hash.match(q)
+			    	    fi
+			        fi; ans
 			 od)
 		 fi
     in if test
@@ -2658,7 +2697,9 @@ set one_param_test(Param p) = [Param]:
        else one_false_counter.use();
  	    one_param_time +:= elapsed_ms() - start;
 	    []
-       fi
+       fi{test}
+       fi{all stati}
+       fi {not FPP_def_test(p)}
 
 {each vec of size 6 will record initial vertex/edge sizes; sizes after min_bottom;
 and sizes after more_bottom}
@@ -2670,110 +2711,127 @@ set LF_more_bl_vec = vec:[]
 {only does min_bottom test}
 set one_param_test_min_bottom(Param p, Param_hash Uhash) = [Param]:
     let start = elapsed_ms(), Q = monomials(finalize(p)), G = p.real_form
-    then () = if all(for q in Q do Uhash.lookup(q).>= od)
-	      then return [p]
-	      elif any(for q in Q do big_unitary_hash.nulookup(q).>= od)
-	      then return []
-	      fi
-    then () = hash_bottom_layerCounter.use()
-    then elim_min = all(for q in Q do min_bottom_elim_factors(q,p) od)
-    then () = LF_min_bl_vec := if elim_min
+    in if not all(for q in Q do @bool: FPP_def_test(q) od)
+       then one_false_counter.use();
+       	    one_param_time +:= elapsed_ms() - start;
+	    []
+       else let stati = for q in Q do status(q,-1) od
+    in if all( for N in stati do N =1 od)
+       then one_true_counter.use();
+       	    one_param_time +:= elapsed_ms() - start;
+       	    [p]
+       elif any (for N in stati do N = -1 od)
+       then one_false_counter.use();
+       	    one_param_time +:= elapsed_ms() - start;
+       	    []
+       else  hash_bottom_layerCounter.use();
+       	     let elim_min = all(for q in Q do min_bottom_elim_factors(q,p) od)
+       	     in LF_min_bl_vec := if elim_min
     	      		    then [1,0]
 			    else [0,0]
-			    fi
-    then () = bl_size_hash.match(LF_pre_vec##LF_min_bl_vec##LF_min_bl_vec)
-    then () = if not elim_min
-    	      then let () = one_false_counter.use()
-	      	   then ()= one_param_time +:= elapsed_ms() - start
-		   in return []
-	      fi
-    then r = rank(Q[0].x.involution - 1)
-    then test = all(for q in Q
-       	      	    do @bool: 
-		    if test_interrupt_flag {up_mu_flag}
-		    then let ans = is_unitary_test_big_SIMPLE_interrupt(q)
-		    	 in if not ans then bad_hash.match(q) fi; ans
-		    else let DEFHTS = [int]: next_heights(p, r\2)
-		    	 then ans = is_unitary_test_big_SIMPLE(q, DEFHTS)
-			 in if not ans then bad_hash.match(q) fi; ans
-		    fi
-	   	    od)
-    in if test
-       then one_true_counter.use();
-	    one_param_time +:= elapsed_ms() - start;
-	    for q in Q do big_unitary_hash.umatch(q) od;
-	    [p]
-       else one_false_counter.use();
-	    one_param_time +:= elapsed_ms() - start;
-	    []
-       fi
+			    fi; {elim_min}
+       		bl_size_hash.match(LF_pre_vec##LF_min_bl_vec##LF_min_bl_vec);
+       		if not elim_min
+    	       	then one_false_counter.use();
+	      	     one_param_time +:= elapsed_ms() - start;
+		     []
+		else let r = rank(Q[0].x.involution - 1)
+		     then test = all(for q in Q
+       	      	     	       do @bool:
+		    	       let ans = is_unitary_test_big_SIMPLE_interrupt(q)
+		    	       in if not ans
+		       	       	  then bad_hash.match(q);
+			    	  big_unitary_hash.numatch(q)
+				  fi; ans
+	   	    	       od)
+    		      in if test
+       		      	 then one_true_counter.use();
+	    		      one_param_time +:= elapsed_ms() - start;
+	    		      for q in Q do big_unitary_hash.umatch(q) od;
+	    		      [p]
+       			 else one_false_counter.use();
+	    		      one_param_time +:= elapsed_ms() - start;
+	    		      []
+       			 fi{test}
+		 fi {not elim_min}
+       		 fi{all stati}
+       		 fi {not FPP_def_test(p)}
 
 set one_param_test_min_bottom(Param p) = [Param]:
     one_param_test_min_bottom(p, big_unitary_hash.uhash(p.real_form))
 
-{assume min_bottom already called, so lookup failed}
+{assume min_bottom already called, so lookup and FPP_def failed}
 set one_param_test_bottom(Param p, [int] Es) = [Param]:
     let start = elapsed_ms(), QG = monomials(finalize(p)),G = p.real_form
     {Next statement, to check here whether terms of QG already known, sometimes omitted?}
-    then () = if all(for q in QG do big_unitary_hash.ulookup(q).>= od)
+    {then stati = for q in Q do status(q,-1) od
+    in if all( for N in stati do N =1 od) then return [p] next one_true_counter.use();
+       	       	     	      	      	       one_param_time +:= elapsed_ms() - start fi;
+       if any (for N in stati do N = -1 od) then return [] next one_false_counter.use();
+       	      	     	      	     	    	 one_param_time +:= elapsed_ms() - start fi;}
+     {then () = if all(for q in QG do big_unitary_hash.ulookup(q).>= od)
     	      then return [p]
 	      elif any(for q in QG do big_unitary_hash.nulookup(q).>= od)
 	      then return []
-	      fi
-    then () = bl_KHash.clear()
-    then () = hash_bottom_layerCounter.use()
-    then still_here = true
-    then (Qmin,) = if small_test_flag
+	      fi}
+    in bl_KHash.clear();
+       hash_bottom_layerCounter.use();
+       let still_here = true
+       then (Qmin,) = if small_test_flag
     	 	    then theta_stable_data_small(p)
 		    else theta_stable_quasi_data(p)
 		    fi
-    then () = if #Es > 1
-       	      then let () = if more_verbose then prints("start one_param_test_bottom with p = ",p, ", Es = ",Es) fi
-	    	   then Ps = for q in QG do K_type_pol(character_formula(q)) od
-		   in while still_here and #Es > 1
-		      do let old_size = bl_KHash.size()
-			 then (datasNEW, EsNEW) = add_datas(p, Qmin, Es)
-			 in if bl_KHash.size() > old_size
-			    then Es:= EsNEW;
-		   		 still_here := all(for q@i in QG
-						   do @bool:
-						      let ans = bottom_elim_factors_more(q, p, datasNEW, Ps[i])
-						      in if not ans
-						      	 then if more_verbose
+       in if #Es > 1
+       	  then if more_verbose then prints("start one_param_test_bottom with p = ",p, ", Es = ",Es) fi;
+	       let Ps = for q in QG do K_type_pol(character_formula(q)) od
+	       in while still_here and #Es > 1
+		  do let old_size = bl_KHash.size()
+		     then (datasNEW, EsNEW) = add_datas(p, Qmin, Es)
+		     in if bl_KHash.size() > old_size
+			then Es:= EsNEW;
+		   	still_here := all(for q@i in QG
+					  do @bool:
+					     let ans = bottom_elim_factors_more(q, p, datasNEW, Ps[i])
+					     in if not ans
+						then if more_verbose
 		then prints("finish one_param_test_bottom with Es = ",Es) fi;
-		     		    			       	  more_bad_hash.match(q)
-							 else if more_verbose
+		     		    		     more_bad_hash.match(q);
+						     big_unitary_hash.numatch(q)
+						else if more_verbose
 		then prints("continue one_param_test_bottom with Es = ",Es) fi
-							 fi; ans
+						fi; ans
 						   od)
 			     else break
 			     fi
 		       od
-		fi {#Es > 1}
-    then () = LF_more_bl_vec:= if still_here
+	   fi; {#Es > 1}
+    	   LF_more_bl_vec:= if still_here
     	      		       then [1,0]
 			       else [0,0]
-			       fi
-    then () = bl_size_hash.match(LF_pre_vec##LF_min_bl_vec##LF_more_bl_vec)
-    then () = if more_verbose then prints("result of bottom_elim_more was ",still_here) fi
-    then r = rank(p.x.involution-1) {, step = max(G.semisimple_rank\2,1)}
-    in if still_here
-       then let () = if test_verbose then prints("one parameter unitary on bottom layer to height ",Es~[0]) fi
-       then test = all( [(->bool)]:
+			       fi;
+    	   bl_size_hash.match(LF_pre_vec##LF_min_bl_vec##LF_more_bl_vec);
+    	   if more_verbose then prints("result of bottom_elim_more was ",still_here) fi;
+    	   let r = rank(p.x.involution-1) {, step = max(G.semisimple_rank\2,1)}
+    	   in if still_here
+              then if test_verbose then prints("one parameter unitary on bottom layer to height ",Es~[0])
+	      fi;
+       	      let test = all( [(->bool)]:
 		    	   for q in QG
-			   do @bool: let ans = 
-			      if test_interrupt_flag {up_mu_flag}
+			   do @bool: let ans = is_unitary_test_big_SIMPLE_interrupt(q)
+			      {if test_interrupt_flag {up_mu_flag}
 		    	      then is_unitary_test_big_SIMPLE_interrupt(q)
 		    	      else is_unitary_hash_big_SIMPLE(q)
-		    	      fi
+		    	      fi}
 			      then () = if not ans and more_after_flag
 		            {HERE USE DIRAC ON MORE K-types}
-			      	      	then more_bad_hash.match(q); more_after_flag:=false
+			      	      	then more_bad_hash.match(q);
+					     big_unitary_hash.numatch(q);
+					     more_after_flag:=false
 					fi
 			      in ans
 			   od)
-	    then () = if more_verbose then prints("your final answer was ",test) fi
-	    in if test
+	    in if more_verbose then prints("your final answer was ",test) fi;
+	       if test
 	       then one_true_counter.use();
 	    	    one_param_time +:= elapsed_ms() - start;
 		    for q in QG do big_unitary_hash.umatch(q) od;
@@ -2785,7 +2843,7 @@ set one_param_test_bottom(Param p, [int] Es) = [Param]:
 	else one_false_counter.use(); {if still_here is false}
 	     one_param_time +:= elapsed_ms() - start;
 	     []
-        fi
+        fi {still_here}
 
 set one_param_test_bottom(Param p) = [Param]:
     let Es = {[height(p)]##next_heights(p,2*edge_offset)}
@@ -2795,79 +2853,80 @@ set one_param_test_bottom(Param p) = [Param]:
 {don't assume min_bottom already called; should only be called if ht > 0?}
 set one_param_test_all_bottom(Param p, [int] Ds) = [Param]:
     let start = elapsed_ms(), Q = monomials(finalize(p)),G = p.real_form
-    {then () = prints("Ds = ",Ds)}
-    then () = if all(for q in Q do big_unitary_hash.ulookup(q).>= od)
-    	      then return [p]
-	      elif any(for q in Q do big_unitary_hash.nulookup(q).>= od)
-	      then return []
-	      fi
-    then () = hash_bottom_layerCounter.use()
-    then elim_min = all(for q in Q do min_bottom_elim_factors(q,p) od)
-    then () = LF_min_bl_vec:= if elim_min
+    in if not all(for q in Q do @bool: FPP_def_test(q) od)
+       then one_false_counter.use();
+       	    one_param_time +:= elapsed_ms() - start;
+	    []
+       else let stati = for q in Q do status(q,-1) od
+       	    in if all( for N in stati do N =1 od)
+       	       then one_true_counter.use();
+       	       	    one_param_time +:= elapsed_ms() - start;
+	    	    [p]
+       	       elif any (for N in stati do N = -1 od)
+       	       then one_false_counter.use();
+       	       	    one_param_time +:= elapsed_ms() - start;
+       	    	    []
+    		    {then () = prints("Ds = ",Ds)}
+       	       else hash_bottom_layerCounter.use();
+       	       	    let elim_min = all(for q in Q do min_bottom_elim_factors(q,p) od)
+    	    	    in LF_min_bl_vec:= if elim_min
     	      		      then [1,0]
 			      else [0,0]
-			      fi
-    then () = if not elim_min
-    	      then let () = one_false_counter.use()
-	      	   then ()= one_param_time +:= elapsed_ms() - start
-		   in return []
-	      fi
-{now min bottom failed to eliminate...}
-    then elim_more = true
-    then Es = (if #Ds > 1 then Ds
-    	      else height(p)#Ds
-	      fi).sort_u
-    then () = if #Es > 1
-       	      then let () = if more_verbose then prints("start more with p = ",p, ", Es = ",Es) fi
-	    	   then Ps = for q in Q do K_type_pol(character_formula{_to_height}(q{, Es~[0]})) od
-       	    	   then still_here = true
-		   then () = {for D in Ds[:1]
-		      	     do} still_here := all(for {D@j in Ds[1:]} j:#Es-1 from 1
+			      fi; {elim_min}
+   	      	       if not elim_min
+    	      	       then one_false_counter.use();
+	      	       one_param_time +:= elapsed_ms() - start;
+		       []
+		       else {now min bottom failed to eliminate...}
+    	      	       	    let elim_more = true
+    		   	    then Es = (if #Ds > 1 then Ds else height(p)#Ds fi).sort_u
+    		    	    in if #Es > 1
+       	      	       	       then if more_verbose then prints("start more with p = ",p, ", Es = ",Es) fi;
+	    	       	       	    let Ps = for q in Q do K_type_pol(character_formula{_to_height}(q{, Es~[0]})) od
+       	    	   	    	    then still_here = true
+		      	    	    in still_here := all(for {D@j in Ds[1:]} j:#Es-1 from 1
 					       	  do all(for q@i in Q
 						      	 do @bool: bottom_elim_factors_more(q, p, Es[j-1],Es[j], Ps[i])
 						   	 od)
-					          od){;
-				 if not still_here then break fi}
-			      {od}
-		   in elim_more:= still_here
-		fi {#Es > 1}
-    then () = if more_verbose then prints("result of elim_more was ",elim_more) fi
-    then () = LF_more_bl_vec:= if elim_more
-    	      		       then [1,0]
-			       else [0,0]
-			       fi
-    then () = bl_size_hash.match(LF_pre_vec##LF_min_bl_vec##LF_more_bl_vec)
-    in if elim_more
-       then let () = if test_verbose then prints("one parameter unitary on bottom layer to height ",Es~[0]) fi
-       	    then test = all( [(->bool)]:
-		    	   for q in Q
-			   do @bool: let ans = if test_interrupt_flag {up_mu_flag}
-		    	      then is_unitary_test_big_SIMPLE_interrupt(q)
-		    	      else let steps = max(rank(p.x.involution-1),1)
-    				   then test_heights = next_heights(p, steps)
-				   in is_unitary_test_big_SIMPLE(q,test_heights)
-		    	      fi
-			      then () = if not ans
-			      	      	then more_bad_hash.match(q)
-					fi
-			      in ans
-		    	od)
-	    then () = if more_verbose then prints("your final answer was ",test) fi
-	    in if test
-	       then let () = for q in Q
-		     	     do big_unitary_hash.umatch(q)
-		     	     od
-	    	    then () = one_true_counter.use()
-	    	    then () = one_param_time +:= elapsed_ms() - start
-	    	    in [p]
-	       else let () = one_false_counter.use() {if test is false}
-	       	    then () = one_param_time +:= elapsed_ms() - start
-		    in []
-               fi
-	else let () = one_false_counter.use() {if elim_more is false}
-	     then () = one_param_time +:= elapsed_ms() - start
-	     in []
-        fi
+					          od);
+		   	    			  elim_more:= still_here
+		       		fi; {#Es > 1}
+    		       		if more_verbose then prints("result of elim_more was ",elim_more) fi;
+    		       		LF_more_bl_vec:= if elim_more
+    	      		       			 then [1,0]
+			       			 else [0,0]
+			       			 fi;
+ 		      		 bl_size_hash.match(LF_pre_vec##LF_min_bl_vec##LF_more_bl_vec);
+    				if elim_more {now the result}
+       				then if test_verbose then prints("one parameter unitary on bottom layer to height ",Es~[0]) fi;
+       	    			   	let test = all( [(->bool)]:
+		    	   		       for q in Q do @bool: let ans = let steps = max(rank(p.x.involution-1),1)
+    				   	       	     	     	    	      then test_heights = next_heights(p, steps)
+				   				    	      in is_unitary_test_big_SIMPLE(q,test_heights)
+			      					    in if not ans
+			      	      				       then more_bad_hash.match(q)
+								       fi;
+			      					       ans
+		    					  od)
+	    				in if more_verbose then prints("your final answer was ",test) fi;
+	    				if test
+	       				then for q in Q
+		     	     		     do big_unitary_hash.umatch(q)
+		     	     		     od;
+					     one_true_counter.use();
+					     one_param_time +:= elapsed_ms() - start;
+	    	    			     [p]
+	       				else one_false_counter.use(); {if test is false}
+	       	    			     one_param_time +:= elapsed_ms() - start;
+		    			     []
+               				fi
+				  else one_false_counter.use(); {if elim_more is false}
+	     			       one_param_time +:= elapsed_ms() - start;
+	     			       []
+        			  fi {elim_more}
+			fi{not elim_min}
+		fi{all stati}
+	fi{all FPP_def}
 
 set one_param_test_all_bottom(Param p) = [Param]:
     let Es = {[height(p)]##next_heights(p,2*edge_offset)}
@@ -2896,7 +2955,7 @@ set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, {VertexData vd,} Loca
     then () = more_after_flag:=false
     then () = min_after_flag:=false
     then () = if 1*parameter(x,lambda,lambda) = zero_pol then return [] fi
-    then r = rank(x.involution - 1), NK = #KGB(x.real_form)
+    then r = rank(x.involution - 1), NK = KGB_size(x.real_form)
     then pmin = parameter(x,lambda,0*lambda)
     then () = if {TINY CASE} #LF[0]=1
     	      then if mix_flag
@@ -3052,7 +3111,7 @@ set local_test_GEO_hash_else_dumb(KGBElt x, ratvec lambda, {VertexData vd,} Loca
     then () = more_after_flag:=false
     then () = min_after_flag:=false
     then () = if 1*parameter(x,lambda,lambda) = zero_pol then return [] fi
-    then r = rank(x.involution - 1), NK = #KGB(G), edge_offset_temp = min(#hts-1, edge_offset)
+    then r = rank(x.involution - 1), NK = KGB_size(G), edge_offset_temp = min(#hts-1, edge_offset)
     then pmin = parameter(x,lambda,0*lambda)
     then () = if {TINY CASE} #LF[0]=1
     	      then if mix_flag
@@ -3352,7 +3411,7 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, LocalVertexData Lvd, [
     let (G,j0) = %x, thetaMinus = x.involution - 1, start = elapsed_ms()
     then () = more_after_flag:=false
     then () = min_after_flag:=false
-    then zero_pol = null_module(G), pmin = parameter(x,lambda, 0*lambda), NK = #KGB(G)
+    then zero_pol = null_module(G), pmin = parameter(x,lambda, 0*lambda), NK = KGB_size(G)
     then () = if 1*pmin = zero_pol then return [] fi
     then r = rank(x.involution - 1)
     {then () = to_ht_flag:=true}
@@ -3631,6 +3690,7 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, {VertexData vd,} LocalV
     then () = ICPNU_flag:=false
     then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF, (Param->bool):(Param p):
     is_unitary_to_hts_big_SIMPLE(p, hts[:edge_offset+1]), hts[edge_offset], Uhash)
+    {which is_unitary_to_hts above???}
 	 {now have vert/edges unitary to hts[edge_offset]}
     then () = if test_verbose then prints("unitary to ht ",hts[edge_offset],
                         " face counts to dim 1: ",for list in LFDKH do #list od) fi
@@ -3646,7 +3706,7 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, {VertexData vd,} LocalV
 		   then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,pol_hash,hts[Dlast])
 		   then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF,
 		   	(Param->bool): (Param p): is_unitary_to_hts_big_SIMPLE(p,hts[1:Dlast+1])
-		      , hts[Dlast], Uhash)
+		      , hts[Dlast], Uhash)  {which is_unitary_to_hts above???}
     {list hts[Dlast+1:] is automatically empty ???}
     {is_unitary_test_big_SIMPLE_interrupt(p,1) is equivalent}
                    in if test_verbose
@@ -3670,6 +3730,7 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, {VertexData vd,} LocalV
 		 then () = LFDKH := local_testK_hash(x,lambda,Lvd,
                       LFDKH, eq, gr, CLBF, (Param->bool): (Param p):
 		      is_unitary_to_hts_big_SIMPLE(p,hts[:D+edge_offset+1]), hts[D+edge_offset], Uhash)
+		      {which is_unitary_to_ht above???}
                  then () = if test_verbose
 			   then prints("unitary to ht ",hts[D+edge_offset],
 		      	      		" face counts to dim ",D+1,
@@ -3726,7 +3787,7 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVert
     then () = if quick_flag then short_hts_flag:=false fi
     then zero_pol = null_module(G), pmin = parameter(x,lambda,0*lambda)
     then () = if 1*pmin = zero_pol then return [] fi
-    then r = rank(x.involution - 1) {, NK = #KGB(G)}, step = max(G.semisimple_rank\2,1)
+    then r = rank(x.involution - 1) {, NK = KGB_size(G)}, step = max(G.semisimple_rank\2,1)
     then () = if {TINY CASE} #LF[0]=1
     	      then if mix_flag
 	      	   then return one_param_test_min_bottom(parameter(x,lambda,Lvd.list[LF[0][0][0]]),

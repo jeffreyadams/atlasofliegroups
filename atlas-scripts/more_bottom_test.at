@@ -61,7 +61,8 @@ set more_test(RealForm G, int low, int high) = [(vec, int)]:
     more_bad_hash.clear();
     big_unitary_hash.clear();
     more_shift(0);
-    test_bl_flag:=false;
+    easy_test_flag:=false;
+    hard_test_flag:=false;
     FPP_unitary_hash_bottom_layer(KGB(G)[low:high]);
     more_test(more_bad_hash)
 
@@ -81,7 +82,8 @@ set min_test(RealForm G, int low, int high) = [vec]:
     good_hash.clear();
     big_unitary_hash.clear();
     more_flag:=false;
-    test_bl_flag:=false;
+    easy_test_flag:=false;
+    hard_test_flag:=false;
     FPP_unitary_hash_bottom_layer(KGB(G)[low:high]);
     min_test(good_hash)
 
@@ -128,9 +130,8 @@ set timeBL([(KGBElt, ratvec)] xls) = [int]:
     then (x0,) = xls[0]
     then G = x0.real_form
     then () = unipotents_to_hash(G, big_unitary_hash.uhash(G))
-    then () = unip_flag:=false
-    then () = test_bl_flag:=false
-    then() =  revert_flag:=false
+    then () = unip_flag:=false; easy_test_flag:=false; hard_test_flag:=false
+    then() = revert_flag:=false
     then ans = for xl@j in xls
        do let start = elapsed_ms()
        	  then () = FPP_unitary_hash_bottom_layer(xls[j:j+1])
@@ -144,8 +145,7 @@ set timeBLred_count([(KGBElt, ratvec)] xls) = [int]:
     let (x0,) = xls[0] next FPP_report_flag:=false
     then G = x0.real_form
     then () = unipotents_to_hash(G, big_unitary_hash.uhash(G))
-    then () = unip_flag:=false
-    then () = test_bl_flag:=false
+    then () = unip_flag:=false; easy_test_flag:=false; hard_test_flag:=false
     then () = revert_flag:=false
     then () = red_count_flag:=true
     then ans = for xl@j in xls
@@ -166,8 +166,7 @@ set timeBLMS([(KGBElt, ratvec)] xls) = [int]:
     let (x0,) = xls[0] next FPP_report_flag:=false
     then G = x0.real_form
     then () = unipotents_to_hash(G, big_unitary_hash.uhash(G))
-    then () = unip_flag:=false
-    then () = test_bl_flag:=false
+    then () = unip_flag:=false; easy_test_flag:=false; hard_test_flag:=false
     then() =  revert_flag:=false
     then ans = for xl@j in xls
        do let start = elapsed_ms()

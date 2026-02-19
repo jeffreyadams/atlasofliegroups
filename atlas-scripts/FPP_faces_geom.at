@@ -1941,5 +1941,5 @@ set facet_deformed_new(Param p) = [Param]:
 {how often FPP_def_test finds a nonunitary p. Placed here so report()
 can access it in hermitian.at}
 set FPP_def_count = int:0
-
+set FPP_use_count = int:0
 set FPP_def_time = int:0

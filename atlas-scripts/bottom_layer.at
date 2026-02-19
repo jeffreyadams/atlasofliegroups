@@ -789,7 +789,8 @@ set min_small_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
     	      then NIHCOUNT +:= 1;
 	      	   return if quitNIH_flag
 		   	  then true
-			  else is_unitary_to_ht_big_SIMPLE(p0,DG)
+			  else is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(p0,DG)
+			  {is_unitary_to_ht_big_SIMPLE(p0,DG)}
 			  fi
 	      fi
     	 {this case can happen in Spin(5,3), p = p = parameter(G,39,[1,1,1,1],[0,1,1,1])}
@@ -814,7 +815,7 @@ set min_small_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
 	    	     do let sigLj = KTypePol: {signature for derpLj}
 			    if big_unitary_hash.uhash(derLjs[j]).lookup(derpL0j).>=
 			    then {let startCF = elapsed_ms()}
-			       	 let QLj = character_formula_to_height(derpL0j,DLs[j])
+			       	 let QLj = character_formula_to_ht(derpL0j,DLs[j])
 			       	 {then () = charTime +:= elapsed_ms() - startCF
 			       	 then () = char_counter.use()}
 			       	 in K_type_pol(QLj)
@@ -881,7 +882,7 @@ set min_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
     then Lbranches = for derpL0j@j in derpL0js
 	    	     do let sigLj =
 		            if big_unitary_hash.uhash(derLjs[j]).lookup(derpL0j).>=
-			    then let QLj = character_formula_to_height(derpL0j,DLs[j])
+			    then let QLj = character_formula_to_ht(derpL0j,DLs[j])
 				 in K_type_pol(QLj)
 			    elif RF_code
 	    	      	    then big_unitary_hash.sig_entry(derpL0j, DLs[j])
@@ -933,7 +934,7 @@ set min_bottom_sig(Param p0) = KTypePol:
     then Lbranches = for derpL0j@j in derpL0js
 	    	     do let sigLj =
 		            if big_unitary_hash.uhash(derLjs[j]).lookup(derpL0j).>=
-			    then let QLj = character_formula_to_height(derpL0j,DLs[j])
+			    then let QLj = character_formula_to_ht(derpL0j,DLs[j])
 				 in K_type_pol(QLj)
 			    elif RF_code
 	    	      	    then big_unitary_hash.sig_entry(derpL0j, DLs[j])
@@ -977,7 +978,7 @@ set min_bottom_sig(Param p0, int HT) = KTypePol:
     then Lbranches = for derpL0j@j in derpL0js
 	    	     do let sigLj =
 		            if big_unitary_hash.uhash(derLjs[j]).lookup(derpL0j).>=
-			    then let QLj = character_formula_to_height(derpL0j,DLs[j])
+			    then let QLj = character_formula_to_ht(derpL0j,DLs[j])
 				 in K_type_pol(QLj)
 			    elif RF_code
 	    	      	    then big_unitary_hash.sig_entry(derpL0j, DLs[j])
@@ -1012,8 +1013,8 @@ set min_bottom_elim_factors(Param p, KTypePol P) = bool:
 set min_bottom_elim_factors(Param p0, Param p) = bool:
     {let startCF = elapsed_ms()}
     let CF = if small_test_flag
-    	     then character_formula_to_height(p0, minSmallBottomData.G_min_height(p.x,p.lambda))
-    	     else character_formula_to_height(p0, max(for mu in LKTs(p0)
+    	     then character_formula_to_ht(p0, minSmallBottomData.G_min_height(p.x,p.lambda))
+    	     else character_formula_to_ht(p0, max(for mu in LKTs(p0)
     	       	    				     do minBottomData.G_min_height(mu)
 		   				     od))
 	     fi
@@ -1056,7 +1057,7 @@ set min_bottom_elim_factors(Param p0, Param p, KTypePol P, int HT) = bool:
     then Lbranches = for derpL0j@j in derpL0js
 	    	     do let sigLj =
 		            if big_unitary_hash.uhash(derLjs[j]).lookup(derpL0j).>=
-			    then let QLj = character_formula_to_height(derpL0j,DLs[j])
+			    then let QLj = character_formula_to_ht(derpL0j,DLs[j])
 				 in K_type_pol(QLj)
 			    elif RF_code
 	    	      	    then big_unitary_hash.sig_entry(derpL0j, DLs[j])
@@ -1098,7 +1099,7 @@ set min_bottom_elim_factors(Param p, KTypePol P,int HT) = bool:
 {These min_bottom functions are used only on simple G}
 set min_bottom_elim_factors(Param p0, Param p, int HT) = bool:
     {let startCF = elapsed_ms()}
-    let CF = character_formula_to_height(p0, HT)
+    let CF = character_formula_to_ht(p0, HT)
     {could figure out max ht needed?}
     {then () = charTime +:= elapsed_ms() - startCF
     then () = char_counter.use()}
@@ -1183,7 +1184,8 @@ set bottom_elim_factors(Param p0, Param p, QKL_bottom_data (Q, LKdata), KTypePol
 	      	   if not small_test_flag then prints("bad bef at ",p0) fi;
 	      	   return if quitNIH_flag
 		   	  then true
-			  else is_unitary_to_ht_big_SIMPLE(p0,D)
+			  else is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(p0,D)
+			  {is_unitary_to_ht_big_SIMPLE(p0,D)}
 			  fi
 	      fi
     then derpLjs = derived_factor_params0(pL) {one for each derived simple factor derLj}
@@ -1249,7 +1251,7 @@ factor inducing to p !!!}
 {LKdata[j] is [(tauj,tauLj)]: tauLj are thes Lj\cap K-types inducing to a bottom layer tauj of p.}
 set bottom_elim_factors(Param p0, Param p, QKL_bottom_data (Q,LKdata)) = bool:
     let DG = max([height(p)]##for (tau,) in LKdata do height(tau) od)
-    then P = K_type_pol(character_formula_to_height(p0,DG))
+    then P = K_type_pol(character_formula_to_ht(p0,DG))
     in bottom_elim_factors(p0, p, (Q, LKdata), P)
 
 set bottom_elim_factors(Param p0, QKL_bottom_data qkl) = bool:
@@ -1701,7 +1703,8 @@ set bottom_elim_factors_more(Param p0, Param p, [QKL_bottom_data] data, KTypePol
 	      	  if not small_test_flag then prints("bad befm at ",p0) fi;
 	      	   return if quitNIH_flag
 		   	  then true
-			  else is_unitary_to_ht_big_SIMPLE(p0,D)
+			  else is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(p0,D)
+			       {is_unitary_to_ht_big_SIMPLE(p0,D)}
 			  fi
 	      fi
      then three_bools = max_goodness(p0, maxQps), R = more_good_hash.size()
@@ -1752,7 +1755,7 @@ set bottom_elim_factors_more(Param p0, Param p, [QKL_bottom_data] data)= bool:
     then D = max(for (Q,LKdata) in data
 		 do max(for (tau,) in LKdata do height(tau) od#h)
 		 od#h)
-    then CF = character_formula_to_height(p0,D)
+    then CF = character_formula_to_ht(p0,D)
      then P = K_type_pol(CF)
     in  bottom_elim_factors_more(p0, p, data, P)
 
@@ -1776,7 +1779,8 @@ set bottom_elim_factors_more(Param p0, Param p, int D_low, int D, KTypePol P)= b
 	      	  {if not small_test_flag then prints("bad befm at ",p0) fi;}
 	      	   return if quitNIH_flag
 		   	  then true
-			  else is_unitary_to_ht_big_SIMPLE(p0,D)
+			  else is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(p0,D)
+			       {is_unitary_to_ht_big_SIMPLE(p0,D)}
 			       {is_unitary_to_ht_big_SIMPLE(p0,(D+height(p0))\2)}
 			       {is_unitary_to_hts_big_SIMPLE(p0,[(D+height(p0))\2,D])}
 			  fi
@@ -1844,7 +1848,7 @@ set bottom_elim_factors_more(Param p0, Param p, int D, KTypePol P)= bool:
 
 {insist that p0 is final, p0 is a LQ of p}
 set bottom_elim_factors_more(Param p0, Param p, int D_low, int D) = bool:
-    let CF = character_formula_to_height(p0,D)
+    let CF = character_formula_to_ht(p0,D)
     then P = K_type_pol(CF)
     in bottom_elim_factors_more(p0, p, D_low, D, P)
 
@@ -1973,7 +1977,7 @@ set bottom_test_factors_more(Param p0, Param p, int D, KTypePol P) = bool:
 {set bottom_test_factors_more(Param p0, Param p, int D) = bool:
     if not more_flag
     then is_unitary_hash_big(p0) {min_bottom_test_factors(p)}
-    else let Q = character_formula_to_height(p0, D)
+    else let Q = character_formula_to_ht(p0, D)
     	 then P = K_type_pol(Q)
     	 in bottom_test_factors_more(p0, p, D, P)
     fi}

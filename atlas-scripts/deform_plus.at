@@ -1,6 +1,6 @@
 <basic.at
 <polynomial.at { for type |i_poly| and function |eval| }
-<deform.at { for |deformation_terms| }
+<deform.atOLD { for |deformation_terms| }
 <Weylgroup.at
 
 set deformation (Param p) = (Param,ParamPol): { deformed Param and new terms }
