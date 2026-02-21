@@ -16,7 +16,7 @@
 {BREAK HERE?}
 
 set old_test_interrupt_flag = false
-set Ufirst_flag = false
+set Ufirst_flag = true {false} {changed to true 2/21/26 because of E7_s}
 
 {lowest level (index in hts[]) to start testing}
 {1 gives small improvement over 2 in E6; haven't tested bigger G}
