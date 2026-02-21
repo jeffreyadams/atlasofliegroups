@@ -2276,8 +2276,14 @@ set is_unitary_test_big_SIMPLE_interrupt_old(Param p, int step) = bool:
       fi
 
 {increase the interruptible times by this}
-set to_ht_factor = int: 5
+set to_ht_factor = int: 1
 set u_factor = int: 1
+
+{if (predicted u_time)/(predicted to_ht_time) is exceeds prefer_u_factor, then skip u
+in favor of to_ht. Increasing u_factor allows more u tests.}
+set prefer_u_factor = rat: 4/1
+
+
 
 {"step" is how many steps up in to_ht list to start}
 set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
@@ -2324,7 +2330,7 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
 	    	        ", u_time = ", print_time_string(u_time))
 	    fi
   then () = while result = 0
-       	    do if{A} u_time < to_ht_time
+       	    do if{A} u_time <= prefer_u_factor * to_ht_time {u_factor*u_time < 2*to_ht_factor*to_ht_time}
 	       then let start_u = elapsed_ms()
 	       	    then () = result := is_unitary_hash_big_SIMPLE(p, u_factor*u_time)
 		    in test_time:= elapsed_ms() - start_u;
@@ -2335,10 +2341,10 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
 		       fi;
 		       if result!=0
 		       then break
-		       else u_time:=u_predictor(p,-1)
+		       else u_time:=u_predictor(p)
 		       fi
-	        fi{A}; {u_time < {5*}to_ht_time}
-	       	if{B} to_ht_time < 5*u_time
+	        fi{A}; { u_time <= prefer_u_factor * to_ht_time  }
+	       	if{B}  u_time > prefer_u_factor * to_ht_time {to_ht_factor*to_ht_time < 2*u_factor*u_time}
 	       	then let start_to_ht = elapsed_ms()
 	       	     in result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,to_ht_factor*to_ht_time);
 	       	    	test_time:=elapsed_ms() - start_to_ht;
@@ -2374,7 +2380,7 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
 			 if test_interrupt_verbose
 			 then prints("  Predicted to_ht_time now ",print_time_string(to_ht_time))
 			 fi
-	           fi{B} {to_ht_time < 5*u_time}
+	           fi{B} {u_time > prefer_u_factor * to_ht_time}
 	    od
    in if test_interrupt_verbose
       then prints("Finish is_unitary_test_big_SIMPLE_interrupt_Ufirst, time ",
@@ -2427,8 +2433,8 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
        	    then prints("starting to_ht_time = ", print_time_string(to_ht_time),
 	    	        ", u_time = ", print_time_string(u_time))
 	    fi
-  then () = while result = 0 
-       	    do if{A} to_ht_time < 5*u_time
+  then () = while result = 0
+       	    do if{A} u_time > prefer_u_factor * to_ht_time{ to_ht_factor*to_ht_time < 2*u_factor*u_time}
 	       then let start_to_ht = elapsed_ms()
 	       	    in 	result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,to_ht_factor*to_ht_time);
 	       	    	test_time:=elapsed_ms() - start_to_ht;
@@ -2454,8 +2460,8 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
 			then prints("  Predicted to_ht_time for ht = ",ht," is ",
 			     print_time_string(to_ht_time))
 			 fi
-	        fi{A};  {to_ht_time < 5*u_time}
-		if{B} u_time < {5*}to_ht_time
+	        fi{A};  {prefer_u_factor * to_ht_time}
+		if{B} u_time <= prefer_u_factor * to_ht_time
 		then let startu = elapsed_ms()
 		     then () = result := is_unitary_hash_big_SIMPLE(p, u_factor*u_time)
 		     in test_time:= elapsed_ms() - startu;
@@ -2471,7 +2477,7 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
 			     then prints("  Predicted u_time is now ", print_time_string(u_time))
 			     fi
 			fi
-		 fi{B}; {u_time < {5*}to_ht_time}
+		 fi{B}; { u_time <= prefer_u_factor * to_ht_time}
 		 if result = 1 and old_ht >= top_ht
 		 then big_unitary_hash.umatch(p)
 		 else if result = 1 then result:=0 fi
@@ -2578,7 +2584,7 @@ set is_unitary_test_big_SIMPLE_interrupted_Ufirst(Param p, int time) = int:
 	    	        ", u_time = ", print_time_string(u_time))
 	    fi
   then () = while result = 0 and elapsed_ms() - start < time
-       	    do if{A} u_time < to_ht_time
+       	    do if{A} u_time <= prefer_u_factor * to_ht_time {u_factor*u_time < 2*to_ht_factor*to_ht_time}
 	       then let start_u = elapsed_ms()
 	       	     in result := is_unitary_hash_big_SIMPLE(p, u_factor*u_time);
 		       	 test_time:= elapsed_ms() - start_u;
@@ -2594,8 +2600,8 @@ set is_unitary_test_big_SIMPLE_interrupted_Ufirst(Param p, int time) = int:
 		       	      then prints("  Predicted u_time now ",print_time_string(u_time))
 		       	      fi
 		  	 fi {result.!=}
-	       fi; {A} {u_time < {5*}to_ht_time}
-	       if{B} to_ht_time < u_time
+	       fi; {A} {u_time <= prefer_u_factor * to_ht_time}
+	       if{B} u_time > prefer_u_factor * to_ht_time {to_ht_factor*to_ht_time < 2*u_factor*u_time}
 	       then let start_to_ht = elapsed_ms()
 		    in result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,to_ht_factor*to_ht_time);
 	       	       test_time:=elapsed_ms() - start_to_ht;
@@ -2625,7 +2631,7 @@ set is_unitary_test_big_SIMPLE_interrupted_Ufirst(Param p, int time) = int:
 			then prints("  Predicted to_ht_time now ",print_time_string(to_ht_time))
 			fi
 		   fi {result.<}
-		 fi{B}  {to_ht_time < 5*u_time}
+		 fi{B}  {u_time > prefer_u_factor * to_ht_time}
 	    od
    in if test_interrupt_verbose
       then prints("Finish is_unitary_test_big_SIMPLE_interrupted_Ufirst, time ",
@@ -2670,7 +2676,7 @@ set is_unitary_test_big_SIMPLE_interrupted(Param p, int time) = int:
 	    	        ", u_time = ", print_time_string(u_time))
 	    fi
   then () = while result = 0 and elapsed_ms() - start < time
-       	    do if{A} to_ht_time < 5*u_time
+       	    do if{A} u_time > prefer_u_factor * to_ht_time  {to_ht_factor*to_ht_time < 2*u_factor*u_time}
 	       then let start_to_ht = elapsed_ms()
 	       	    in result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,to_ht_factor*to_ht_time);
 	       	       test_time:=elapsed_ms() - start_to_ht;
@@ -2694,8 +2700,8 @@ set is_unitary_test_big_SIMPLE_interrupted(Param p, int time) = int:
 		       	    result:=0;
 		       	    to_ht_time := u_predictor(p,ht)
 		  fi {result.<}
-	       fi; {A} {to_ht_time < 5*u_time}
-	       if{B} u_time < {5*}to_ht_time
+	       fi; {A} { u_time > prefer_u_factor * to_ht_time}
+	       if{B}  u_time <= prefer_u_factor * to_ht_time {u_factor*u_time < 2*to_ht_factor*to_ht_time}
 	       then let start_u = elapsed_ms()
 	       then () = result := is_unitary_hash_big_SIMPLE(p, u_factor*u_time);
 			 {is_unitary(p, u_factor*u_time);}
@@ -2709,7 +2715,7 @@ set is_unitary_test_big_SIMPLE_interrupted(Param p, int time) = int:
 	       	  then break
 		  else u_time := u_predictor(p,-1)
 		  fi {result.!=}
-	       fi {B} {u_time < {5*}to_ht_time}
+	       fi {B} { u_time <= prefer_u_factor * to_ht_time}
 	    od
    in if test_interrupt_verbose
       then prints("Finish is_unitary_test_big_SIMPLE_interrupted, time ",
@@ -2748,7 +2754,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst_old(Param p, int HT) = bool:
 	    	        ", u_time = ", print_time_string(u_time))
 	    fi
   then () = while result = 0
-       	    do if{A} u_time < {5*}to_ht_time
+       	    do if{A} u_time <= prefer_u_factor * to_ht_time {u_factor*u_time < 2*to_ht_factor*to_ht_time}
 	       then let start_u = elapsed_ms()
 	       	    then form = hermitian_form_irreducible(p,u_factor*u_time)
 		    in result := is_pure(to_ht(form,HT));
@@ -2770,8 +2776,8 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst_old(Param p, int HT) = bool:
 		       then add_to_u_to_ht(p,HT)
 		       else u_time := u_predictor(p,-1)
 		       fi {result.<}
-	       fi; {A} {u_time < {5*}to_ht_time}
-	       if{B} to_ht_time < 5*u_time
+	       fi; {A} {u_time <= prefer_u_factor * to_ht_time}
+	       if{B}  u_time > prefer_u_factor * to_ht_time {to_ht_factor*to_ht_time < 2*u_factor*u_time}
 	       then let start_to_ht = elapsed_ms()
 	       	    {then () = push_deform_flag:=true;}
 		    in result := is_unitary_to_ht_big_SIMPLE_interrupt(p,HT,to_ht_factor*to_ht_time);
@@ -2791,7 +2797,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst_old(Param p, int HT) = bool:
 	       	       	     then prints("  to_ht_time now ", print_time_string(to_ht_time))
 			     fi}
 		  	fi { result.<}
-		fi {B} {to_ht_time < 5*u_time}
+		fi {B} {u_time > prefer_u_factor * to_ht_time}
 	    od
    in if test_interrupt_verbose
       then prints("Finish is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst, time ",
@@ -2828,7 +2834,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
 	    	        ", u_time = ", print_time_string(u_time))
 	    fi
   then () = while result = 0
-       	    do if{A} u_time < {5*}to_ht_time
+       	    do if{A} u_time <= prefer_u_factor * to_ht_time {u_factor*u_time < 2*to_ht_factor*to_ht_time}
 	       then let start_u = elapsed_ms()
 	       	    then form = hermitian_form_irreducible_cut(p,HT,u_factor*u_time)
 		    in result := is_pure(form); {is_pure(to_ht(form,HT));}
@@ -2844,8 +2850,8 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
 		       then break
 		       else u_time := u_predictor(p,-1)
 		       fi {result.<}
-	       fi; {A} {u_time < {5*}to_ht_time}
-	       if{B} to_ht_time < 5*u_time
+	       fi; {A} {u_time <= prefer_u_factor * to_ht_time }
+	       if{B} u_time > prefer_u_factor * to_ht_time  {to_ht_factor*to_ht_time < 2*u_factor*u_time}
 	       then let start_to_ht = elapsed_ms()
 		    in result := is_unitary_to_ht_big_SIMPLE_interrupt(p,HT,to_ht_factor*to_ht_time);
 	       	       test_time:=elapsed_ms() - start_to_ht;
@@ -2864,7 +2870,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
 	       	       	     then prints("  to_ht_time now ", print_time_string(to_ht_time))
 			     fi}
 		  	fi { result.<}
-		fi {B} {to_ht_time < 5*u_time}
+		fi {B} {u_time > prefer_u_factor * to_ht_time }
 	    od
    in if test_interrupt_verbose
       then prints("Finish is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst, time ",
@@ -2899,7 +2905,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
 	    	        ", u_time = ", print_time_string(u_time))
 	    fi
   then () = while result = 0
-       	    do if{A} to_ht_time < 5*u_time
+       	    do if{A}  u_time > prefer_u_factor * to_ht_time {to_ht_factor*to_ht_time < 2*u_factor*u_time}
 	       then let start_to_ht = elapsed_ms()
 	       	    then () = result := is_unitary_to_ht_big_SIMPLE_interrupt(p,HT,to_ht_factor*to_ht_time);
 	       	              test_time:=elapsed_ms() - start_to_ht;
@@ -2919,8 +2925,8 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
 			    then prints("  Predicted to_ht_time now ",print_time_string(to_ht_time))
 			    fi
 		       fi
-	       fi{A}; {to_ht_time < 5*u_time}
-	       if{C} u_time < {5*}to_ht_time
+	       fi{A}; { u_time > prefer_u_factor * to_ht_time }
+	       if{C}  u_time <= prefer_u_factor * to_ht_time {u_factor*u_time < 2*to_ht_factor*to_ht_time}
 	       then let start_u = elapsed_ms()
 	       	    then form = big_unitary_hash.sig_entry_interrupt{hermitian_form_irreducible}
 		    	 (p, -1, u_factor*u_time)
@@ -2932,7 +2938,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
 				   "; total = ", print_time_string(elapsed_ms() - start))
 			 fi
 	       	    in if result.= {no result from is_unitary}
-	       	       then u_time:=u_predictor(p,-1);
+	       	       then u_time:=u_predictor(p);
 			    	 if test_interrupt_verbose
 			      	 then prints("  Predicted u_time now ",print_time_string(u_time))
 			      	 fi
@@ -2950,7 +2956,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
 			then add_to_u_to_ht(p,HT);
 			     break
 			fi
-	       fi{C}{;} {u_time < {5*}to_ht_time}
+	       fi{C}{;} {u_time <= prefer_u_factor * to_ht_time }
 	       {if result = -1
 	       then big_unitary_hash.numatch_height(p,HT)
 	       elif result = 1
@@ -2997,7 +3003,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
 	    	        ", u_time = ", print_time_string(u_time))
 	    fi
   then () = while result = 0 {or (result = 1 and HT < HTlast)}
-       	    do if{A} to_ht_time < 5*u_time
+       	    do if{A} u_time > prefer_u_factor * to_ht_time{to_ht_factor*to_ht_time < 2*u_factor*u_time}
 	       then let start_to_ht = elapsed_ms()
 	       	    in if test_interrupt_verbose
 		       then prints("starting is_unitary_to_ht_big_SIMPLE_interrupt(p,",HT,",",
@@ -3034,8 +3040,8 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
 			     then prints("  Predicted to_ht_time now ",print_time_string(to_ht_time))
 			     fi
 			fi {result.>}
-		fi; {A} {to_ht_time < 5*u_time}
-	        if {B} u_time < {5*}to_ht_time
+		fi; {A} { u_time > prefer_u_factor * to_ht_time}
+	        if {B}  u_time <= prefer_u_factor * to_ht_time{u_factor*u_time < 2*to_ht_factor*to_ht_time}
 		then let start_u = elapsed_ms()
 		     {then () = push_deform_flag:=true}
 		     {then depth = is_unitary_depth(p,u_factor*u_time)}
@@ -3052,11 +3058,11 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
 			fi;
 			{prints(u_count," u_tests so far.");}
 			if result != 0 then break fi;
-			u_time:=u_predictor(p,-1);
+			u_time:=u_predictor(p);
 			if test_interrupt_verbose
 			then prints("  Predicted u_time now ",print_time_string(u_time))
 			fi
-		 fi{B} {u_time < {5*}to_ht_time}
+		 fi{B} { u_time <= prefer_u_factor * to_ht_time}
 	    od
    in if test_interrupt_verbose
       then prints("Finish is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst, time ",
@@ -3069,6 +3075,107 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
       else is_unitary_to_ht_big_SIMPLE(p,HTlast) {shouldn't come to here}
       fi
 
+
+set is_unitary_to_hts_big_SIMPLE_interrupt_Ufirst(Param p, [int] HTs) = bool:
+  if (stat_holder:=status(p,HTs~[0])).!= then return stat_holder > 0 fi; {D}
+  HTs:= for HT in HTs do if HT>=height(p) do HT fi od.##;
+  {remove  status saves 200/7200 Spin(4,4), but requires repeating tests in Spin(5,5).
+  Better kept: avoids 17 negative is_unitary retests in Spin(6,6), savve 2 mb/300, 1.8 sec/360}
+  if old_testing_flag then return is_unitary_to_hts{_big_SIMPLE}(p,HTs) fi; {should reorder to use big_simple}
+  let (,,GAM) = low(p) in HTs:= for ht in HTs do if ht <= GAM do ht fi od.##;
+  if #HTs = 0 then return is_unitary_hash_big_SIMPLE(p) fi;
+  if #HTs = 1 then return is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(p, HTs[0]) fi;
+  if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
+  if test_interrupt_verbose
+  then prints(new_line,"Starting is_unitary_to_hts_big_SIMPLE_interrupt_Ufirst, p = ",p, ", HTs = ",HTs)
+  fi;
+  let G = p.real_form, start = elapsed_ms()
+  then FPP_flag = is_FPP(G,p.infinitesimal_character)
+  then () = if not FPP_flag
+	    then return is_unitary_to_hts(p,HTs) {prints("FPP DANGER TO HTs at ",p)}
+	    fi
+  then () = p := herm_center(p)
+  then result = 0, HTfirst = HTs[0], HTlast = HTs~[0]
+  then (u_time,to_ht_time) = adjust_to_ht_over_u(p,HTfirst), test_time = int:0
+  then to_ht_count = int:0, u_count = int:0
+  then level = 0, HT = HTfirst
+  then () = if test_interrupt_verbose
+       	    then prints("starting to_ht_time = ", print_time_string(to_ht_time),
+	    	        ", u_time = ", print_time_string(u_time))
+	    fi
+  then () = while result = 0 {or (result = 1 and HT < HTlast)}
+	    do if {B}  u_time <= prefer_u_factor * to_ht_time{u_factor*u_time < 2*to_ht_factor*to_ht_time}
+	       then let start_u = elapsed_ms()
+		     {then () = push_deform_flag:=true}
+		     {then depth = is_unitary_depth(p,u_factor*u_time)}
+		     then form = big_unitary_hash.sig_entry_interrupt(p,-1 ,u_factor*u_time)
+		     {then form = hermitian_form_irreducible(p,u_factor*u_time)}
+	       	     in u_count+:=1;
+		     	test_time:= elapsed_ms() - start_u;
+			result:=is_pure(to_ht(form,HTlast));
+	       		if test_interrupt_verbose
+		       	then prints("result ",result," from is_unitary, in time ",
+				      	 print_time_string(test_time),
+				   "; total = ", print_time_string(elapsed_ms() - start));
+			     prints(u_count," u_tests so far.")
+			fi;
+			{prints(u_count," u_tests so far.");}
+			if result != 0 then break fi;
+			u_time:=u_predictor(p);
+			if test_interrupt_verbose
+			then prints("  Predicted u_time now ",print_time_string(u_time))
+			fi
+		fi;{B} { u_time <= prefer_u_factor * to_ht_time}
+       	    	if{A} u_time > prefer_u_factor * to_ht_time{to_ht_factor*to_ht_time < 2*u_factor*u_time}
+	       	then let start_to_ht = elapsed_ms()
+	       	    in if test_interrupt_verbose
+		       then prints("starting is_unitary_to_ht_big_SIMPLE_interrupt(p,",HT,",",
+		       	    to_ht_factor*to_ht_time,")")
+		       fi;
+		       result := is_unitary_to_ht_big_SIMPLE_interrupt(p,HT,to_ht_factor*to_ht_time);
+			      to_ht_count+:=1;
+	       		      test_time:=elapsed_ms() - start_to_ht;
+	       	       if test_interrupt_verbose
+	       	       then prints("result ", result, " from to_ht ",HT,", in time ",
+			     print_time_string(test_time),
+				   "; total = ", print_time_string(elapsed_ms() - start));
+			    prints(to_ht_count," to_ht tests so far.")
+		        fi;
+			      {prints(to_ht_count," to_ht tests so far.")}
+	       	       if result.>
+	       	       then add_to_u_to_ht(p,HT);
+		       	    if HT=HTlast
+			    then break
+			    else level +:= 1;
+			      	 HT :=HTs[level];
+				 result:=0;
+				 to_ht_time:= u_predictor(p,HT);
+				 if test_interrupt_verbose
+			      	 then prints("  Predicted to_ht_time now ",
+					     print_time_string(to_ht_time))
+			      	 fi
+			     fi {HT=HTLAST}
+			elif result.<
+	       	        then big_unitary_hash.numatch_height(p,HT);
+			     break
+			else to_ht_time:=u_predictor(p,HT);
+			     if test_interrupt_verbose
+			     then prints("  Predicted to_ht_time now ",print_time_string(to_ht_time))
+			     fi
+			fi {result.>}
+		fi {A} { u_time > prefer_u_factor * to_ht_time}
+
+	    od
+   in if test_interrupt_verbose
+      then prints("Finish is_unitary_to_hts_big_SIMPLE_interrupt_Ufirst, time ",
+      	   	  print_time_string(elapsed_ms() - start), " result ",result,new_line)
+      fi;
+      if result > 0
+      then true
+      elif result < 0
+      then false
+      else is_unitary_to_ht_big_SIMPLE(p,HTlast) {shouldn't come to here}
+      fi
 
 {This was in FPP_lambdas.at; moved here to use recording is_unitary tests}
 {1 means unitary, -1 nonunitary, 0 no test}
@@ -3183,7 +3290,7 @@ set to_hts_count_mat = null(10,10)
 set to_hts_count = null(10)
 
 {Ns should be increasing string of heights > height(p).}
-set is_unitary_to_hts_big_SIMPLE_interrupt(Param p,[int] Ns, int time) = bool:
+set is_unitary_to_hts_big_SIMPLE_interrupt_old(Param p,[int] Ns, int time) = bool:
     if print_int_flag then prints("N = ",Ns, " p = ",p) fi;
     if #Ns = 0 or Ns~[0] < height(p) then return true fi;
     {if not big_unitary_hash.nu_height_lookup_bool(p, Ns~[0]) then return false fi;}
@@ -3219,6 +3326,12 @@ set is_unitary_to_hts_big_SIMPLE_interrupt(Param p,[int] Ns, int time) = bool:
 	     od
      in true
 
+set is_unitary_to_hts_big_SIMPLE_interrupt(Param p, [int] HTs) = bool:
+    if Ufirst_flag
+    then is_unitary_to_hts_big_SIMPLE_interrupt_Ufirst(p, HTs)
+    else is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(p, HTs)
+    fi
+
 {meant to be used for G simple}
 { compute Hermitian form to hts on p, report if it is unitary}
 set is_unitary_to_hts_big_SIMPLE(Param p,[int] Ns) = bool:
@@ -3233,7 +3346,7 @@ set is_unitary_to_hts_big_SIMPLE(Param p,[int] Ns) = bool:
   then () = if not FPP_flag
 	    then return is_unitary_to_hts(p,Ns) {prints("FPP DANGER TO HT at ",p)}
 	    fi
-  in is_unitary_to_hts_big_SIMPLE_interrupt(p, Ns, interrupt_base_time)
+  in is_unitary_to_hts_big_SIMPLE_interrupt_old(p, Ns, interrupt_base_time)
 
 
 { compute Hermitian form to hts on p, report if it is unitary}

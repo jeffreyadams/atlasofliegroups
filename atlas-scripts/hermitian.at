@@ -102,219 +102,13 @@ set hash_steveCounter = make_counter()
 {initial time to give interruptible command}
 set interrupt_base_time = int: 100 {was 200 before 7/24/25; sometimes 500...}
 
-{ the next type is the same as |Maybe<KTypePol>|, but injector names differ }
-set_type maybe_KTP = (void timed_out | KTypePol done)
-
-set_type maybe_PP =  (void timed_out_PP | ParamPol done_PP)
-
-set is_done(maybe_KTP P) = bool:
-    case P
-    | timed_out: false
-    | done: true
-    esac
-
-set is_done(maybe_PP P) = bool:
-    case P
-    | timed_out_PP: false
-    | done_PP: true
-    esac
-
 {to record time spent in is_unitary, is_unitary_to_ht, etc.}
 set unitaryTime = int: 0
 
 set predictor_verbose =false
 set predictor_flag = false {evening 12/21/25; was false until 12/19, when something went wrong}
 set predictor_time = int:0
-
-set to_ht (KTypePol P,int N) = KTypePol:
-  if N<0 then return P fi;
-  let (below,)=height_split(P,N) in below
-
-set to_ht(maybe_KTP P,int N) = maybe_KTP:
-    if N < 0 then return P fi;
-    case P
-    | timed_out: timed_out()
-    | done(r): done(to_ht(r,N))
-    esac
-
-set to_ht_PP (int N) = (ParamPol->ParamPol): (ParamPol P):
-  if N < 0 then P
-  else let (below,)=height_split(P,N) in below
-  fi
-
-set to_ht (int N) = (KTypePol->KTypePol): (KTypePol P):
-  if N < 0 then P
-  else let (below,)=height_split(P,N) in below
-  fi
-
-{Each KL_sum_at_s(Param) will be hashed only to some maximum height; full KL_sum_at_s is hashed by library}
-{
-set_type
-[KL_sum_hash_table =
-( (->int) param_size {number of parameters included}
-  , (Param->int) max_ht {largest height to which KL_sum_at_s is hashed}
-  , ((Param,int)->ParamPol) entry {KL_sum_at_s_to_height}
-  , ((Param,int,int)->maybe_PP) maybe_entry {KL_sum_at_s_to_height}
-  , (->Param_hash) paramhash
-  , (->vec) max_hts
-  , (->) clear
-)
-]
-
-set make_KL_sum_hash_table() = KL_sum_hash_table:
-( let paramhash = make_Param_hash()
-  then KL_sums = [ParamPol]:[] {one for each p in Param_hash}
-  then max_hts = vec:[] {one for each p in Param_hash}
-  then clearKLSH() = void:
-       paramhash.clear();
-       KL_sums:=[];
-       max_hts:=[]
-  then add_param(Param p, int HT) = int: {index in Param_hash; HT MUST be >= 0}
-       let N = paramhash.size()
-       then n = paramhash.match(p)
-       in if n=N or max_hts[n] < HT
-       	  then let start = elapsed_ms(), PP = KL_sum_at_s_to_height(p,HT)
-	       in charTime+:= elapsed_ms() - start; char_counter.use();
-	       	  if n=N
-	       	  then max_hts #:=HT;
-	       	  KL_sums #:=PP
-	     	  else max_hts[n]:=HT;
-	       	  KL_sums[n]:=PP
-	     	  fi
-	  fi;
-	  n
-  then maybe_add_param(Param p, int HT, int time) = int: {index in Param_hash; HT >= 0}
-       let N = paramhash.size()
-       then n = paramhash.lookup(p)
-       in if n<0 or max_hts[n] < HT
-       	  then let start = elapsed_ms(), mPP = KL_sum_at_s_to_height(p,HT,time)
-	       in case mPP
-	       	  | timed_out_PP: -1
-	     	  | done_PP(PP): charTime+:= elapsed_ms() - start; char_counter.use();
-			 if n < 0
-	       		 then max_hts #:=HT;
-			      KL_sums #:=PP;
-			      n:=N
-			 else max_hts[n]:=HT;
-			      KL_sums[n]:=PP
-			 fi;
-			 n
-		   esac
-	   else n
-	   fi
-   in
-   ( (->int): {param_size} @int: paramhash.size()
-   , (Param->int): {max_ht} (Param p):
-     let n = paramhash.lookup(p)
-     in if n < 0
-     	then -1
-	else max_hts[n]
-	fi
-   , ((Param,int)->ParamPol): {entry} (Param p, int HT):
-     to_ht_PP(HT)(KL_sums[add_param(p,HT)])
-   , ((Param,int,int)->maybe_PP): {maybe_entry} (Param p, int HT, int time):
-     let n = maybe_add_param(p,HT,time)
-     in if n < 0
-     	then timed_out_PP()
-     	else to_ht_PP(HT)(KL_sums[n]).done_PP
-	fi
-   , (->Param_hash): {paramhash} @:paramhash
-   , (->vec): {max_hts} @:max_hts
-   , (->): {clear} clearKLSH
-   )
-)
-
-set KLsumhash = make_KL_sum_hash_table()
-set KLsumhash_flag = false
-}
-set KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol:
-    if HT < 0 then return KL_sum_at_s(p) fi;
-    if low_char(p,HT)
-    then {if KLsumhash_flag
-    	 then KLsumhash.entry(p,HT)
-	 else}  KL_sum_at_s_to_height(p,HT)
-	 {fi}
-    else let (below,) = height_split(KL_sum_at_s(p),HT), middle = elapsed_ms()
-    	 in below
-    fi
-{
-	 then notoht = middle - start
-	 then other = KL_sum_at_s_to_height(p,HT)
-	 then toht = elapsed_ms() - middle 
-       	 in if toht < notoht - 5
-	    then prints("At ",p," ",HT,"toht = ",toht,", notoht = ",notoht)
-	    fi;
-	    below
-}
-  {let P = KL_sum_at_s_to_height(p,N) in}
-{
-  if low_char(p,HT)
-  then KL_sum_at_s_to_height(p,HT)
-  else let (below,) = height_split(KL_sum_at_s(p),HT)
-       in below
-  fi
-}
-
-set KL_sum_at_s_to_ht_inter(int HT) = (Param p,int time) maybe_PP:
-    if  HT < 0 then return KL_sum_at_s(p).done_PP fi;
-    if low_char(p,HT)
-    then {if KLsumhash_flag
-    	 then KLsumhash.maybe_entry(p,HT,time)
-	 else} KL_sum_at_s_to_height(p,HT,time)
-	 {fi}
-    else let (below,) = height_split(KL_sum_at_s(p),HT)
-    	 in below.done_PP
-    fi
-{
-let start = elapsed_ms()
-    	 then (below,) = height_split(KL_sum_at_s(p),HT), middle = elapsed_ms()
-	 then other = KL_sum_at_s_to_height(p,HT)
-	 then toht = elapsed_ms() - middle 
-    	 in if toht < notoht - 5
-	    then prints("At ",p," ",HT,"toht = ",toht,", notoht = ",notoht)
-	    fi;
-	    below.done_PP
-}
-
-set twisted_KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol:
-    if HT < 0 then return twisted_KL_sum_at_s(p)
-    else let (below,) = height_split(twisted_KL_sum_at_s(p),HT)
-    	 in below
-    fi
-  {to_ht(N)(twisted_KL_sum_at_s(p))}
-
-{set to_ht (ParamPol P,int N) = ParamPol:
-  if N<0 then return P fi;
-  let (below,)=height_split(P,N) in below}
-
-
-set character_formula_to_ht(Param p, int HT) = ParamPol:
-    if HT.< then return character_formula(p) fi;
-    if not low_char(p,HT)
-    then let (below,) = height_split(character_formula(p),HT)
-    	 in return below  {again this counts and records time}
-    else let start = elapsed_ms()
-    	 in s_to_1(KL_sum_at_s_to_ht(HT)(p)) next charTimeToHt+:= elapsed_ms() - start; char_counter_to_ht.use()
-    fi
-
-set character_formula_to_ht (ParamPol P, int HT) = ParamPol:
-    map(((Param->ParamPol): (Param p): character_formula_to_ht(p, HT)), P)
-
-set composition_series_to_ht(ParamPol P, int HT) = ParamPol:
-  if HT.< then return composition_series(P) fi;
-  P:=to_ht_PP(HT)(P);
-  if #P = 0 then return P fi;
-  let p0 = first_param(P)
-  in if not low_char(p0,HT)
-     then to_ht_PP(HT)(composition_series(P))
-     else null_module(P) +
-     	  while !=P { non null module }
-  	  do let (coef,p):term=first_term(P)
-     	  in P -:= coef*character_formula_to_ht(p,HT)
-     	  ; term
-  	  od
-     fi
-set composition_series_to_ht (Param p,int H) = ParamPol: composition_series_to_ht(ParamPol: p, H)
+set predictor_count = int:0
 
 {take a KTypePol _apparently_ attached to G and make it _actually_ attached
 to G. Need this to use looked-up deformations.}
@@ -343,6 +137,13 @@ set impure_height(KTypePol P) = int:
 	 in -1
      fi
 
+set full_deform_library(Param p) = full_deform(p)
+
+set full_deform_library(Param p, int time) = full_deform(p, time)
+
+set twisted_full_deform_library(Param p) = twisted_full_deform(p)
+
+set twisted_full_deform_library(Param p, int time) = twisted_full_deform(p, time)
 
 {whether to use the script full_deform}
 set deform_script_flag = false
@@ -375,7 +176,7 @@ set full_deform_to_height_MvL_old(Param p, int height) = KTypePol:
 
 
 set full_deform_to_height_MvL_old(Param p, int height,int TIME) = maybe_KTP:
-  if height < 0 then return full_deform(p,TIME) fi;
+  if height < 0 then return full_deform_library(p,TIME) fi;
   let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p)
   then output = empty_K, def = empty{ , time = max(TIME\32,interrupt_base_time)}
   then P = empty +
@@ -399,15 +200,15 @@ set full_deform_to_height_MvL_old(Param p, int height,int TIME) = maybe_KTP:
 
 {worst cases for block_deform appear to be low(p) = (N,n,N+m) where n and m are relatively small and N big.}
 set full_deform_to_height_MvL_base(Param p, int height) = KTypePol:
-if height < 0 then return full_deform(p) fi;
+if height < 0 then return full_deform_library(p) fi;
 if full_deform_old_flag then return full_deform_to_height_MvL_old(p,height) fi;
 if deform_script_flag then return recursive_deform_scr(p,height) fi;
-( let mFD = full_deform(p,interrupt_base_time) {if full_deform was already computed, it'll come up fast}
+( let mFD = full_deform(p,2) {if full_deform was already computed, it'll come up fast}
   in case mFD
      | done(FD): return to_ht(FD,height)
      |timed_out:
      if not low(p,height)
-     then return to_ht(full_deform(p),height)
+     then return to_ht(full_deform_library(p),height)
      fi;
      let !empty_K=null_K_module(p.real_form), !empty=null_module(p)
      then output = empty_K, def = empty
@@ -432,15 +233,15 @@ if deform_script_flag then return recursive_deform_scr(p,height) fi;
 
 {alternative is recursive_deform_scr(p) or (p,HT) or (p,HT,time)}
 set full_deform_to_height_MvL_base(Param p, int height, int time) = maybe_KTP:
-if height < 0 then return full_deform(p,time) fi;
+if height < 0 then return full_deform_library(p,time) fi;
 if full_deform_old_flag then return full_deform_to_height_MvL_old(p,height,time) fi;
 if deform_script_flag then return recursive_deform_scr(p,height,time) fi;
-( let mFD = full_deform(p,interrupt_base_time) {if full_deform was already computed, it'll come up fast}
+( let mFD = full_deform(p,2) {if full_deform was already computed, it'll come up fast}
   in case mFD
      | done(FD): return to_ht(mFD,height)
      |timed_out:
   if not low(p,height)
-  then return to_ht(full_deform(p,time),height)
+  then return to_ht(full_deform_library(p,time),height)
   fi;
   let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p)
   then output = empty_K, def = empty, expiration = elapsed_ms() + time
@@ -486,6 +287,8 @@ set_type
   , ( -> Param_hash) ParamHash {parameters considered}
   , ( -> vec) heightList {list of max hts for ParamHash}
   , ( -> vec) timeList {list of times for ParamHash}
+  , ( -> vec) polList {locations in PolHash of deformations}
+  , ( -> KTypePol_hash) PolHash {holding full_deform_to_ht's}
   )
 ]
 
@@ -509,7 +312,7 @@ set make_deformation_hash_time () = deformation_hash_time:
        	  then let start = elapsed_ms()
 	       then FD = if is_equal_rank(p.real_form)
 		      	 then full_deform_to_height_MvL_base(p,HT)
-			 else to_ht(twisted_full_deform(p),HT)
+			 else to_ht(twisted_full_deform_library(p),HT)
 			 fi
 	       in time_list #:= elapsed_ms() - start;
 	          if HT >= 0
@@ -520,8 +323,8 @@ set make_deformation_hash_time () = deformation_hash_time:
 		  FD
 	  elif height_list[i] < 0 {we prevously did full_deform}
 	  then to_ht(if is_equal_rank(p.real_form)
-		     then full_deform(p)
-		     else twisted_full_deform(p)
+		     then full_deform_library(p)
+		     else twisted_full_deform_library(p)
 		     fi,HT)
 	  elif height_list[i] >= HT and HT >= 0 {we already deformed to a greater height}
 	  then to_ht(pol_hash.index(pol_list[i]),HT)
@@ -545,7 +348,7 @@ set make_deformation_hash_time () = deformation_hash_time:
        	   then let start = elapsed_ms()
 	        then mFD = if is_equal_rank(p.real_form)
 		     	   then full_deform_to_height_MvL_base(p,HT,time)
-			   else to_ht(twisted_full_deform(p,time),HT)
+			   else to_ht(twisted_full_deform_library(p,time),HT)
 			   fi
 	       	in case mFD
 		   | timed_out: mFD
@@ -560,15 +363,15 @@ set make_deformation_hash_time () = deformation_hash_time:
 		   esac
 	  elif height_list[i] < 0 {we previously did full_deform}
 	  then to_ht(if is_equal_rank(p.real_form)
-		     then full_deform(p)
-		     else twisted_full_deform(p)
+		     then full_deform_library(p)
+		     else twisted_full_deform_library(p)
 		     fi,HT).done
 	  elif height_list[i] >= HT and HT>=0{we already deformed to a greater height}
 	  then to_ht(pol_hash.index(pol_list[i]),HT).done
           else let start = elapsed_ms() {HT > height_list_i, or HT < 0}
 	       then mFD = if is_equal_rank(p.real_form)
 		      	  then full_deform_to_height_MvL_base(p,HT,time)
-			  else to_ht(twisted_full_deform(p,time),HT)
+			  else to_ht(twisted_full_deform_library(p,time),HT)
 			  fi
 		in case mFD
 		   | timed_out: mFD
@@ -625,6 +428,8 @@ set make_deformation_hash_time () = deformation_hash_time:
   , ( -> Param_hash): {ParamHash} @Param_hash: param_hash
   , ( -> vec): {heightList} @vec: height_list
   , ( -> vec): {timeList} @vec: time_list
+  , ( -> vec): {polList} @vec: pol_list
+  , ( -> KTypePol_hash): {PolHash} @KTypePol_hash: pol_hash
   )
   )
 
@@ -1040,6 +845,8 @@ set report_tested(string label) = void:
     then prints(OT_hash.size()," params had ", sum(OT_counts), " interrupted tests go too long by ",
     	 print_time_string(sum(OT_times)))
     fi;
+    prints("predictor_flag = ",predictor_flag,", predictor time = ",print_time_string(predictor_time),
+    	   ", predictor count = ", predictor_count);
     prints("#bottom_layer = ",hash_bottom_layerCounter.use_count(), ", #one_level = ",
     	   hash_one_levelCounter.use_count(), {", #real_dumb = "} ", #dumb = ",
 	   hash_real_dumbCounter.use_count() +
@@ -1157,6 +964,8 @@ set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(v
     then prints(OT_hash.size()," params had ", sum(OT_counts), " interrupted tests go too long by ",
     	 print_time_string(sum(OT_times)))
     fi;
+    prints("predictor_flag = ",predictor_flag,", predictor time = ",print_time_string(predictor_time),
+    	   ", predictor count = ", predictor_count);
     prints("#bottom_layer = ",hash_bottom_layerCounter.use_count(), ", #one_level = ",
     	   hash_one_levelCounter.use_count(), {", #real_dumb = "} ", #dumb = ",
 	   hash_real_dumbCounter.use_count() +
@@ -1253,21 +1062,22 @@ set u_predictor(Param p) = int:
        	    {N-n full_deforms to compute, probably each worse than known}
        else let i0 = N\3 {we know nothing, so compute one full_deform}
        	    then q = list[i0] {not yet computed full_deform}
-	    then RT = defHashTime.time_record_bounded(q, rk^2*interrupt_base_time)
+	    then RT = defHashTime.time_record_bounded(q, {rk^2*}interrupt_base_time)
        	    in predictor_time+:= elapsed_ms() - start_pred;
-	       if RT = rk^2*interrupt_base_time {probably timed out}
+	       predictor_count+:=1;
+	       if RT >= interrupt_base_time {probably timed out}
 	       then didnt_finish_u_count+:=1;
-	       	    if predictor_verbose
+	       	    {if predictor_verbose
 		       then {prints("test probably didn't finish, so revert to worst_so_far prediction ",
 		       	    print_time_string(WSF))}
 			    prints("test probably didn't finish, so guessing ", 2*N*RT + interrupt_base_time)
-		       fi;
-	       	    {let WSF = worst_so_far(p,-1)
+		       fi;}
+	       	    let WSF = max(worst_so_far(p,-1), (interrupt_base_time)\10)
 		    in if predictor_verbose
 		       then prints("test probably didn't finish, so revert to worst_so_far prediction ",
 		       	    print_time_string(WSF))
-		       fi;}
-		       return {WSF}2*N*RT + (interrupt_base_time*rk)\10
+		       fi;
+		       return WSF {{2*N*RT} + (interrupt_base_time{*rk})\10}
 		fi;
 		if predictor_verbose
 	        then prints("chosen random q is number ",i0, " of ",N,": ",q,
@@ -1310,7 +1120,7 @@ set didnt_finish_ht_count = int: 0
 {predicted time in milliseconds to complete is_unitary{to_ht}(p,{HT})}
 set u_predictor(Param p, int HT) = int:
     if HT < 0 then return u_predictor(p) fi;
-    let WSF = max({5*(p.real_form.semisimple_rank)^2} interrupt_base_time, worst_so_far(p,HT)),
+    let WSF = max({5*(p.real_form.semisimple_rank)^2} interrupt_base_time\10, worst_so_far(p,HT)),
     	start_pred = elapsed_ms()
     in if not predictor_flag
        then WSF
@@ -1334,17 +1144,20 @@ set u_predictor(Param p, int HT) = int:
 					      " of ",N,": ",q)
 					 fi
 			       then  RT = defHashTime.time_record_to_ht_bounded(q, HT,
-			       	     rk^2*interrupt_base_time)
-			       in if RT = rk^2*interrupt_base_time
+			       	     {rk^2*}interrupt_base_time)
+			       in if RT >= {rk^2*}interrupt_base_time
 				  then didnt_finish_ht_count +:=1;
 				       if predictor_verbose
-				       then prints("test didn't finish, so guessing ",
+				       then prints("test didn't finish, so revert to worst_so_far prediction ",
+				       	    print_time_string(WSF))
+				       {guessing ",}
 				       {revert to worst_so_far prediction ",}
 				       	    {print_time_string(WSF)}
-					   print_time_string(2*N*RT+interrupt_base_time))
+					   {print_time_string(2*N*RT+interrupt_base_time))}
 				       fi;
 				  predictor_time+:= elapsed_ms() - start_pred;
-				  return {WSF} 2*N*RT+interrupt_base_time
+				  predictor_count+:=1;
+				  return WSF {2*N*RT+interrupt_base_time}
 				  fi;
 				  if predictor_verbose
 				  then prints("chosen random time ", print_time_string(RT))
@@ -1358,6 +1171,7 @@ set u_predictor(Param p, int HT) = int:
 		    	 print_time_string(elapsed_ms() - start_pred))
 		    fi;
 		    predictor_time+:= elapsed_ms() - start_pred;
+		    predictor_count+:=1;
 		    ans
 	    fi
 

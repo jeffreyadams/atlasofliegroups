@@ -41,6 +41,23 @@ set charTime = int:0
 
 set charTimeToHt = int:0
 
+{ the next type is the same as |Maybe<KTypePol>|, but injector names differ }
+set_type maybe_KTP = (void timed_out | KTypePol done)
+
+set_type maybe_PP =  (void timed_out_PP | ParamPol done_PP)
+
+set is_done(maybe_KTP P) = bool:
+    case P
+    | timed_out: false
+    | done: true
+    esac
+
+set is_done(maybe_PP P) = bool:
+    case P
+    | timed_out_PP: false
+    | done_PP: true
+    esac
+
 set character_formula (Param p) = ParamPol:
     let start = elapsed_ms()
     in s_to_1(KL_sum_at_s(p)) next charTime+:= elapsed_ms() - start;
@@ -106,29 +123,6 @@ set low(Param p) = (int,int,int):
 
 set GAM(Param p) = int: (p.infinitesimal_character*p.inner_class.two_rho_check)\1
 
-{
-set low_hash_size = int:0
-{should add a real_form hash, separate stuff for each real form. This is OK as long
- as same G is always used}
- {computing hashcode has more or less the same cost as low, so this is useless}
-set low_hash = (Param -> (int,int,int)):
-    let hashcode((mat theta, ratvec gamma), int mod) = int:
-    	let (denom,num) = %gamma
-    	then datavec = vec: ((theta.##)##denom)#num
-	in hash_code(datavec,mod)
-    then equal((mat theta0, ratvec gamma0),(mat theta1,ratvec gamma1)) = bool:
-    	 theta0 = theta1 and gamma0 = gamma1
-    then hash = Hash<(mat,ratvec)>: make_hash(hashcode,equal)
-    then answers = [(int,int,int)]: []
-    in (Param -> (int,int,int)): (Param p):
-       let theta=p.x.involution, gamma = p.infinitesimal_character
-       then N =hash.size(), n = hash.match(theta,gamma)
-       in if n = N
-       	  then low_hash_size:=N; answers#:= low(p)
-	  fi;
-	  answers[n]
-}
-
 {If NU (nu part) > LAM (lambda part) *nu_frac, then figure to_ht could work better}
 set nu_frac = 1/1
 
@@ -159,16 +153,6 @@ set diff_KGB_char_frac = rat: 9/10
 {if LAM < lam_frac*GAM (big nu), don't try to_ht }
 set lam_frac = rat: 1/6 {2/3}
 
-{ strict_factor is how much to DISLIKE trunctating character
-    formula; increase to truncate LESS often}
-{set strict_factor = rat: 2/1}
-
-{strict versions mean harder be false/more often true: they are used to prevent the
-code from using to_ht so much. Otherwise the
-caller of is_unitary_to_ht can make a local decision about whether to
-use it.}
-
-
 {whether to use to_height in computing to height N}
 {true means large nu/small ht, so is_unitary_to_ht could be better}
 set low_nu(Param p, int HT) = bool:
@@ -188,11 +172,6 @@ set low_gamma(Param p, int HT) = bool:
     {let (,,GAM) = low(p)
     in} (GAM(p)*gamma_frac) > HT
 
-{set strict_low_gamma(Param p, int N) = bool:
-    if N < 0 then return  false fi;
-    {let (,,GAM) = low(p)
-    in} (strict_factor*GAM(p)*gamma_frac > N)}
-
 {Note HT must be in [LAM,GAM) True says it's near the bottom of that range: small HT.}
 set low_diff(Param p, int HT) = bool:
     if (HT < 0) then return  false fi;
@@ -201,65 +180,22 @@ set low_diff(Param p, int HT) = bool:
     {(LAM < lam_frac*GAM) and} {(HT < diff_frac*GAM)}
     {(LAM < lam_frac*GAM) and ((GAM - LAM)*diff_frac) > HT {(HT-LAM)}}
 
-{weaken condition on HT, so more often true, so more to_ht }
-{set strict_low_diff(Param p, int HT) = bool:
-    if HT < 0 then return  false fi;
-    let LAM = p.height, GAM = GAM(p)  {(LAM, ,GAM) = low(p)}
-    in HT - LAM < diff_frac*strict_factor*GAM
-    {(LAM < lam_frac*GAM) and HT < diff_frac*strict_factor*GAM}
-    {(strict_factor*(GAM - LAM)*diff_frac) > HT} {(HT-LAM))}}
-
-{set KGB_hash = (RealForm -> [KGBElt]):
-    let rf_hash = make_RealForm_hash()
-    then data = [[KGBElt]]: [] {one list for each real form in rf_hash}
-    in (RealForm -> [KGBElt]): (RealForm rf) [KGBElt]:
-       let N = rf_hash.size()
-       then n = rf_hash.match(rf)
-       in if n=N
-       	  then data#:= KGB(rf)
-	  fi;
-	  data[n]
-
-set KGB(RealForm rf) = [KGBElt]: KGB_hash(rf)
-set KGB(RealForm rf, int n) = KGBElt:
-    let list = KGB(rf)
-    in if n>= #list do error("Inexistent KGB element "+to_string(n)) fi;
-       list[n]
-}
-
-{set low_diff_char_true_count = int:0
-set low_diff_char_use_count = int:0}
 set low_diff_char_time = int:0
-
-{set trueDiffCharHash = make_Param_hash()
-set falseDiffCharHash = make_Param_hash()}
-
 
 {if true, allow KL_sum_at_s_to_height}
 set low_diff_char(Param p, int HT) = bool: {false {ALWAYS use KL_sum_at_s}}
     if (HT < 0) then return  false fi;
-    {low_diff_char_use_count +:=1;}
     let start = elapsed_ms(){, ({LAM}, , GAM) = low(p)}
     then {ans = {(LAM < lam_frac*GAM) and} (((GAM - LAM)*diff_char_frac) > HT {HT - LAM)})}
     	 ans = p.x.number > diff_KGB_char_frac*KGB_size(p.real_form)
 	       and (HT < diff_char_frac*GAM(p)) {forces LAM < diff_char_frac*GAM}
 	       	   {(HT - height(p)) < diff_char_frac*GAM(p)}
     in ans next low_diff_char_time +:= (elapsed_ms() - start)
-    {if ans
-       then low_diff_char_true_count +:=1{; trueDiffCharHash.match(p)}
-       {else falseDiffCharHash.match(p)}
-       fi;
-    ans next low_diff_char_time +:= elapsed_ms() - start}
 
 set low_KL_char(Param p, int HT) = bool:
     {prints("we're in low_KL_char at ",p);}
     p.x.number > diff_KGB_char_frac*KGB_size(p.real_form) and
     KL_predictor_up_to_ht(p,HT) < KL_predictor(p)
-
-{this is true MORE often, making to_ht more common}
-{set strict_low_KL_char(Param p, int HT) = bool:
-    p.x.number > diff_KGB_char_frac*KGB_size(p.real_form) and
-    KL_predictor_up_to_ht(p,HT) < strict_factor*KL_predictor(p)}
 
 {Switching to HT -LAM 1/26 didn't work well; adding the small LAM condition is meant to alleviate??}
 
@@ -270,8 +206,6 @@ set low_lam(Param p, int HT) = bool:
     in}  (p.height < lam_frac*GAM(p))
 
 set prefer_KL_flag = false
-
-{set prefer_strict_KL_flag = false}
 
 set prefer_diff_flag = true {true used to give true for parameter(E7_s,773,[0,1,1,1,1,1,0]/1,
     [-3,0,0,0,6,-6,0]/2) and HT 327, leading to a very slow is_unitary_to_ht}
@@ -286,21 +220,8 @@ set low_flag = true
 {whether to apply test to switcb from KL_sum_to_ht to KL_sum}
 set low_char_flag = true
 
-{set low_test_flag = false
-
-set low_test(Param p, int N) = bool:
-    let q = all_parameters_gamma(p.real_form, p.infinitesimal_character)~[0]
-    in height(q) - height(p) > N
-}
-{whether to use test to decide whether to revert to is_unitary at difficult p}
-{if false, then never revert}
-{set strict_low_flag = true}
-
-{whether to use test to decide whether to revert to full_deform at difficult p}
-{set strict_low_def_flag = true}
-
 {if true, allow hermitian_form_irreducible_to_ht; if false, truncate hermitian_form_irreducible}
-set {strict_}low(Param p, int HT) = bool:
+set low(Param p, int HT) = bool:
     if HT < 0 then return false
     elif not low_flag
     then return true
@@ -312,26 +233,6 @@ set {strict_}low(Param p, int HT) = bool:
     then low_lam(p,HT) and low_diff(p,HT)
     else {strict_}low_nu(p,HT)
     fi
-
-{whether to allow full_deform_to_ht rather than revert to full_deform}
-{set def_low(Param p,int HT) = bool:
-    if HT < 0 then return false
-    elif not strict_low_def_flag
-    then return true
-    else strict_low(p,HT) and p.height < lam_frac*GAM(p){2*LAM <= GAM}
-    fi}
-
-{set low(Param p, int HT) = bool:
-    if HT < 0 then return false
-    elif not strict_low_flag
-    if prefer_diff_flag
-    then low_diff(p,HT)
-    elif prefer_gamma_flag
-    then low_gamma(p,HT)
-    elif prefer_lam_flag
-    then low_lam(p,HT) and low_diff(p,HT)
-    else low_nu(p,HT)
-    fi}
 
 {whether to consider replacing KL_sum_to_ht with KL_sum}
 set low_char(Param p, int HT) = bool:
@@ -347,24 +248,72 @@ set low_char(Param p, int HT) = bool:
     else false{ALWAYS switch to KL_sum}
     fi
 
-{KL_sum_to_height never saves data, so in large computations this is just better}
-set character_formula_to_height(Param p, int HT) = ParamPol:
-    if HT.< then return character_formula(p) fi;
-    KL_sum_at_s_to_height(p,HT).s_to_1
+set to_ht (KTypePol P,int N) = KTypePol:
+  if N<0 then return P fi;
+  let (below,)=height_split(P,N) in below
 
-{let (below,) = height_split(character_formula(p),HT)
-    in below  {again this counts and records time}}
-{
-    if not low_char(p,HT)
-    then let (below,) = height_split(character_formula(p),HT)
-    	 in return below  {again this counts and records time}
-    else let start = elapsed_ms()
-    	 in s_to_1(KL_sum_at_s_to_height(p,HT)) next charTimeToHt+:= elapsed_ms() - start; char_counter_to_ht.use()
+set to_ht(maybe_KTP P,int N) = maybe_KTP:
+    if N < 0 then return P fi;
+    case P
+    | timed_out: timed_out()
+    | done(r): done(to_ht(r,N))
+    esac
+
+set to_ht_PP (int N) = (ParamPol->ParamPol): (ParamPol P):
+  if N < 0 then P
+  else let (below,)=height_split(P,N) in below
+  fi
+
+set to_ht (int N) = (KTypePol->KTypePol): (KTypePol P):
+  if N < 0 then P
+  else let (below,)=height_split(P,N) in below
+  fi
+
+set KL_sum_at_s(Param p) = ParamPol:
+    let start = elapsed_ms()
+    in KL_sum_at_s(p) next charTime +:= elapsed_ms() - start; char_counter.use()
+
+set KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol: {should check whether library knows KL_sum_at_s, use that}
+    let start = elapsed_ms()
+    in if HT < 0
+       then KL_sum_at_s(p)
+       elif low_char(p,HT)
+       then KL_sum_at_s_to_height(p,HT) next charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use()
+       else let (below,) = height_split(KL_sum_at_s(p),HT), middle = elapsed_ms()
+    	    in below
+       fi
+
+set KL_sum_at_s_to_ht_inter(int HT) = (Param p,int time) maybe_PP:
+    let start = elapsed_ms()
+    in if  HT < 0
+       then KL_sum_at_s(p).done_PP
+       elif low_char(p,HT)
+       then KL_sum_at_s_to_height(p,HT,time) next charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use()
+       else let (below,) = height_split(KL_sum_at_s(p),HT)
+    	    in below.done_PP
+       fi
+
+set twisted_KL_sum_at_s(Param p) = ParamPol:
+    let start = elapsed_ms()
+    in twisted_KL_sum_at_s(p) next charTime +:= elapsed_ms() - start; char_counter.use()
+
+
+set twisted_KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol:
+    if HT < 0 then return twisted_KL_sum_at_s(p)
+    elif low_char(p,HT)
+    then let start = elapsed_ms()
+    	 then (below,) = height_split(twisted_KL_sum_at_s(p),HT)
+    	 in below next charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use()
+    else let (below,) = height_split(twisted_KL_sum_at_s(p),HT)
+    	 in below
     fi
-}
 
-set character_formula_to_height (ParamPol P, int HT) = ParamPol:
-    map(((Param->ParamPol): (Param p): character_formula_to_height(p, HT)), P)
+set character_formula_to_ht(Param p, int HT) = ParamPol:
+    s_to_1(KL_sum_at_s_to_ht(HT)(p))
+
+set character_formula_to_ht (ParamPol P, int HT) = ParamPol:
+    map(((Param->ParamPol): (Param p): character_formula_to_ht(p, HT)), P)
+
 { ------------------------------------------------------------------- }
 
 { composition series }
@@ -383,7 +332,7 @@ set composition_series_to_height_old(ParamPol P, int HT) = ParamPol:
   in null_module(P)+
   while !=PHT { non null module }
   do let (coef,p):term=first_term(PHT)
-     in PHT -:= coef*character_formula_to_height(p,HT)
+     in PHT -:= coef*character_formula_to_ht(p,HT)
      ; term
   od
 
@@ -404,6 +353,23 @@ set composition_series_to_height(Param p, int HT) = ParamPol:
 
 set composition_series_to_height (ParamPol P,int HT) = ParamPol:
     sum(P.real_form, for c@q in P do composition_series_to_height(q, HT) od)
+
+set composition_series_to_ht(ParamPol P, int HT) = ParamPol:
+  if HT.< then return composition_series(P) fi;
+  P:=to_ht_PP(HT)(P);
+  if #P = 0 then return P fi;
+  let p0 = first_param(P)
+  in if not low_char(p0,HT)
+     then to_ht_PP(HT)(composition_series(P))
+     else null_module(P) +
+     	  while !=P { non null module }
+  	  do let (coef,p):term=first_term(P)
+     	  in P -:= coef*character_formula_to_ht(p,HT)
+     	  ; term
+  	  od
+     fi
+set composition_series_to_ht (Param p,int H) = ParamPol: composition_series_to_ht(ParamPol: p, H)
+
 {---------------------------}
 {same using dual}
 
