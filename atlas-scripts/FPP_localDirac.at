@@ -4353,7 +4353,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, {VertexData vd,}
     		     then () = check_pols(x, lambda, Lvd, ans, zero_ht, pol_hash)
     	   	     then tester0 = if prefer_to_hts
     	 	     	       then (Param->bool): (Param p) bool:
-     	     	   	       	    is_unitary_to_hts_big_SIMPLE_interrupt(p, hts[:ZERO+1])
+  {replace TO_HTfirst 2/22/26} 	    is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(p, hts[:ZERO+1])
 		   	       else (Param->bool): (Param p) bool:
      	     	   	       	    is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(p, zero_ht)
 		   	       fi {prefer_to_hts}
@@ -4377,7 +4377,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, {VertexData vd,}
 	          fi {step_flag}
     then () = check_pols(x, lambda, Lvd, LFDKH, one_ht, pol_hash)
     then tester1 = (Param->bool): (Param p) bool:
-     	     	   if prefer_to_hts then is_unitary_to_hts_big_SIMPLE_interrupt(p, hts[ZERO+1:ONE+1])
+ {replace interr_THf 2/22/26} if prefer_to_hts then is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(p, hts[ZERO+1:ONE+1])
 	 	   else is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(p,one_ht)
 		   fi {to_ht is definitely 2% slower for F4 spherical,
 		       10% slower for Sp(10) spherical}
@@ -4583,7 +4583,7 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
     {then () = prints("depth = ",depth, ", #Shorthts = ",#Shorthts, ", ONE = ",ONE)}
     then one_ht = hts[ONE]
     then tester1 = (Param->bool): (Param p) bool:
-     	     	  if prefer_to_hts then is_unitary_to_hts_big_SIMPLE_interrupt(p, hts[:ONE+1])
+{repl THf 2/22/26} if prefer_to_hts then is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(p, hts[:ONE+1])
 	 	  else is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(p,one_ht)
 	 	  {to_ht is definitely 2% slower for F4 spherical, 10% slower for Sp(10) spherical}
 	 	  fi
