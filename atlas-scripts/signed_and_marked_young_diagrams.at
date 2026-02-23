@@ -2,7 +2,7 @@
 <bmsz_descent.at
 
 
-set theta_verbose=false
+set theta_verbose=true
 set_type ClassicalSignature=(string label, Split z)
 set p(ClassicalSignature S)=int: int_part(S.z)
 set q(ClassicalSignature S)=int: s_part(S.z)
@@ -258,6 +258,9 @@ set K_local_system([Split] signs, string label)=KLocalSystem:(signs,label)
 set K_orbit(KLocalSystem M)=KOrbit:
 (for z in M.signs do abs(int_part(z)) + s*abs(s_part(z)) od,M.label)
 
+{KLocalSystem might have negative number is a+bs, make these positive}
+set partition(KLocalSystem M)=Partition:partition(K_orbit(M))  
+
 set show(KLocalSystem M)=void:show(K_orbit(M))
 set show_short(KLocalSystem M)=void:show_short(K_orbit(M))
 set show([KLocalSystem] list)=void:
@@ -307,7 +310,7 @@ assert(is_in(label,["B","D"]), "sign twist only defined in types B,D");
 {Definition 9.4(ii)}
 set involution(KLocalSystem (signs,label))=KLocalSystem:
 assert(is_in(label,["C","C~"]), "involution only defined in types C,C~");
-(for z@i in signs do if i%4=2 then z else z fi od,label)
+(for z@i in signs do if i%4=2 then -z else z fi od,label)
 
 set involution_power(KLocalSystem M,int n)=KLocalSystem:
 if is_even(n) then involution(M) else M fi
@@ -441,7 +444,7 @@ if is_in(S_target.label,["B","D"]) then
  (valid,truncate)= truncation(M,h(delta)*(1+s)) then
  ()=if theta_verbose then prints("delta=",delta) fi then
  ()=if theta_verbose then prints("truncate:", truncate);show(truncate) fi then
- ()=if theta_verbose then prints("involution parameter: ", (p(z_target)-q(z_target)+1)/2) fi then
+ ()=if theta_verbose then prints("involution power (B/D): ", (p(z_target)-q(z_target)+epsilon)/2) fi then
  involution=involution_power(truncate,h(p(z_target)-q(z_target)+epsilon)) then
  ()=if theta_verbose then prints("involution:", involution);show(involution) fi then
  shift=shift_right(involution) then
@@ -492,7 +495,8 @@ elif is_in(S_target.label,["C","C~"]) then
  ()=if theta_verbose then prints("augments:", augments);for t in augments do show(t) od fi then
  involutions=for augment in augments do
 {  involution_power(augment,h(p(z_target)-q(z_target)+epsilon)) od then}{No: p,q of the source, not target, in this case}
-let   power=p(z_source)-q(z_source)+epsilon  in prints("power=", power);
+let   power=p(z_source)-q(z_source)+epsilon  in
+ if theta_verbose then prints("involution power (C/C~)=", power) fi;
   involution_power(augment,h(power)) od then
  ()=if theta_verbose then prints("involutions:", involutions);for t in involutions do show(t) od fi then
  ()=if theta_verbose then prints("involutions orbits:");for Z in involutions do prints(Z, " ", orbit(Z)) od fi in
