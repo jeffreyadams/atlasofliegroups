@@ -182,7 +182,7 @@ set pos_tester(KGBElt x, ratvec lambda,int HT,ratvec gamma) = bool:
     then qs = monomials(1*p)
     in all(for q in qs do @bool:
        	       if HT >= 0
-       	       then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT)
+       	       then  is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
 	       else is_unitary_test_big_SIMPLE_interrupt(q)
 	       fi od)
 
@@ -197,7 +197,7 @@ set pos_tester_min(KGBElt x, ratvec lambda,int HT,ratvec gamma) = bool:
        fi;
        all (for q in qs do @bool:
        if HT >= 0
-       	       then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT)
+       	       then is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
 	       else is_unitary_test_big_SIMPLE_interrupt(q)
 	       fi od)
 
@@ -228,12 +228,12 @@ set pos_tester_known_Kchar(KGBElt x, ratvec lambda,int HT,ratvec gamma, vec KCv)
     in if extra_coord_flag
        then (all (for q in qs do @bool:
        	    	 if HT >= 0
-       	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT)
+       	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
 	       	 else is_unitary_test_big_SIMPLE_interrupt(q)
 	       	 fi od),KCv)
        else (all (for q in qs do @bool:
        	       if HT >= 0
-       	       then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT)
+       	       then is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
 	       else is_unitary_test_big_SIMPLE_interrupt(q)
 	       fi od),[])
        fi
@@ -245,13 +245,13 @@ set pos_tester_Kchar(KGBElt x, ratvec lambda,int HT,ratvec gamma) = (bool, vec):
     in if extra_coord_flag
        then (all (for q in qs do @bool:
        	    	 if HT >= 0
-       	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT)
+       	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
 	       	 else is_unitary_test_big_SIMPLE_interrupt(q)
 	       	 fi od),
        	    [Kpol_hash.match(K_type_pol(character_formula_to_ht(1*p,HT))),#qs])
        else (all (for q in qs do @bool:
        	    	 if HT >= 0
-       	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT)
+       	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
 	       	 else is_unitary_test_big_SIMPLE_interrupt(q)
 	       	 fi od),[])
        fi
@@ -274,12 +274,12 @@ set pos_tester_known_Kchar_min(KGBElt x, ratvec lambda,int HT,ratvec gamma, vec 
        if extra_coord_flag
        then (all (for q in qs do @bool:
        	    	 if HT >= 0
-       	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT)
+       	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
 	       	 else is_unitary_test_big_SIMPLE_interrupt(q)
 	       	 fi od),KCv)
        else (all (for q in qs do @bool:
        	    	 if HT >= 0
-       	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT)
+       	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
 	       	 else is_unitary_test_big_SIMPLE_interrupt(q)
 	       	 fi od),[])
        fi
@@ -318,13 +318,13 @@ set pos_tester_Kchar_min(KGBElt x, ratvec lambda,int HT,ratvec gamma) =
        if extra_coord_flag
        then (all (for q in qs do @bool:
        	    	 if HT >= 0
-       	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT)
+       	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
 	       	 else is_unitary_test_big_SIMPLE_interrupt(q)
 	       	 fi od),
        	    [Kpol_hash.match(K_type_pol(character_formula_to_ht(1*p,HT))),#qs])
        else (all (for q in qs do @bool:
        	    	 if HT >= 0
-       	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT)
+       	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
 	       	 else is_unitary_test_big_SIMPLE_interrupt(q)
 	       	 fi od),[])
        fi
@@ -1520,7 +1520,7 @@ begin
     then () = for j in good_js do short_lochash.match(lochash.index(j)) od
     then tester(Param p) =
     	 if HT >= 0
-	 then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(p,HT)
+	 then is_unitary_to_ht_big_SIMPLE_interrupt_pick(p,HT)
 	 else is_unitary_test_big_SIMPLE_interrupt(p)
 	 fi
     then up_gens = up_graph_gens(short_lochash, short_KCvlist, short_loclist)
@@ -1747,7 +1747,7 @@ set localFD_1SteveU\
     then answer = [vec]:
     	 if steve_tilde_flag
 	 then for v@k in LF01
-       	 ~do if fund_face_verbose and (k%freq).=
+       	 ~do if fund_face_verbose and (k<=20 or (k%freq).=)
 	      	  then prints("at vertex ",k," of ",length,
 	    	       " at time ", print_time_string(elapsed_ms() - start),
 		       "; vecHash size = ",{if steve_small_flag
@@ -1790,7 +1790,7 @@ set localFD_1SteveU\
 	     	     fi
 	       od.## {list of candidate vertices}
        	 else  for v@k in LF01
-	       do if fund_face_verbose and (k%freq).=
+	       do if fund_face_verbose and (k<=20 or (k%freq).=)
 	      	  then prints("at vertex ",k," of ",length,
 	    	       " at time ", print_time_string(elapsed_ms() - start),
 		       "; vecHash size = ",{if steve_small_flag

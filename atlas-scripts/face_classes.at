@@ -2,7 +2,7 @@
 <sort.at
 <combinatorics.at
 <hash.at {for KTypePol_hash}
-{<to_ht.at {for to_ht}}
+<kl.at {this was already included by FPP_faces_geom.at, so harmless; for to_ht}
 <K_highest_weights {for LKTs}
 <FPP_faces_geom.at {for red_count_flag}
 set_type FaceVerts = [ratvec]
@@ -44,14 +44,18 @@ set index_in_face_list([LocalFaceVertsHash] L) = (vec->int):
     in index_in(for v in L do v[:m] od)
 }
 
-set to_ht (int N) = (ParamPol->ParamPol): (ParamPol P):
+{set to_ht (int N) = (ParamPol->ParamPol): (ParamPol P):
   if N < 0 then P
   else let (below,)=height_split(P,N) in below
-  fi
+  fi}
 
-{definition repeated from hermitian.at to avoid dependencies}
-set to_ht(KTypePol P, int N) = KTypePol:
-    let (below,) = height_split(P,N) in below
+{definition repeated from hermitian.at to avoid dependencies} {DONE IN kl.at}
+{set to_ht(KTypePol P, int N) = KTypePol:
+    if N < 0
+    then P
+    else let (below,) = height_split(P,N)
+    	 in below
+    fi}
 
 {removes repetitions and sorts a list of ints}
 set no_reps = sort_u@([int])
