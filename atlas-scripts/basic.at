@@ -411,9 +411,9 @@ set unset_bit_positions (int n) = vec:
 set unset_bit_positions (int n,int limit) = vec: set_bit_positions(~n,limit)
 
 set bitwise_intersection ([int] ns) = int:
-   let a=-1 in for n in ns do a:=AND(a,n) od; a
+   let a=-1 in for n in ns do a AND:= n od; a
 set bitwise_union ([int] ns) = int:
-   let a=0 in for n in ns do a:=OR(a,n) od; a
+   let a=0 in for n in ns do a OR:= n od; a
 
 
 set is_member   = ([int]->(int->bool)): is_member(=@(int,int))
@@ -1530,7 +1530,7 @@ in while let new_indices = int:
 	 do i
 	 fi od.to_bitset
    in new_indices.> { |while|-condition: whether new roots were found }
-   do candidates := AND_NOT(candidates,new_indices) { clear bits }
+   do candidates AND_NOT:= new_indices { clear bits }
    ;  let (M,d)=wall_projector(rd,(simples-candidates).set_bit_positions)
       in gamma := M*gamma/d
    od
