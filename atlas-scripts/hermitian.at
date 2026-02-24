@@ -408,9 +408,9 @@ set make_deformation_hash_time () = deformation_hash_time:
     in if j<0 then -1 else time_list[j] fi
   , ((Param,int) -> int): {time_lookup_to_ht} (Param p, int HT):
     let j = param_hash.lookup(p)
-    in if j<0 then -1
+    in if j<0 then -1 {p not known to defHashTime}
        elif height_list[j] < 0 then time_list[j]
-       elif height_list[j] < HT then -1
+       elif height_list[j] < HT then -1{p known, but not high enough}
        else time_list[j]
        fi
   , (Param -> int): {param_lookup} (Param p): param_hash.lookup(p)
@@ -1418,14 +1418,14 @@ set map ((Param->maybe_KTP)f, ParamPol P) = maybe_KTP:
 {if deform_hash_flag, guaranteed to deform at least one term}
 {finishes without interruption if all terms already deformed}
 set c_form_irreducible (Param p,int time) = maybe_KTP:
-   let ori_nr_p = orientation_nr(p), expiration = elapsed_ms() + time, dummy = K_type_pol(p)
+   let ori_nr_p = orientation_nr(p), expiration = elapsed_ms() + time, dummy = K_type_pol(p).done
    then oriented_KL_sum = ParamPol: null_module(p) +
       for c@q in KL_sum_at_s(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
    then list = monomials(oriented_KL_sum)
    then unknown_indices = for q@j in list if defHashTime.time_lookup_to_ht(q,-1) < 0 do j fi od
    in {if #list = 0 then return null_K_module(p.real_form).done fi;}
       if #unknown_indices > 0
-      then dummy := full_deform(list[unknown_indices[#unknown_indices\2]])
+      then dummy := full_deform(list[unknown_indices[#unknown_indices\2]], 2*time)
       fi;
       map( (Param q) maybe_KTP:
       if expiration - elapsed_ms() < 0
@@ -1475,13 +1475,13 @@ set c_form_irreducible (Param p,int time) = maybe_KTP:
 
 {guaranteed to deform at least one term}
 set c_form_irreducible_cut (Param p,int HT, int time) = maybe_KTP:
-   let ori_nr_p = orientation_nr(p), expiration = elapsed_ms() + time, dummy = K_type_pol(p)
+   let ori_nr_p = orientation_nr(p), expiration = elapsed_ms() + time, dummy = K_type_pol(p).done
    then oriented_KL_sum = ParamPol: null_module(p) +
       for c@q in KL_sum_at_s_to_ht(HT)(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
    then list = monomials(oriented_KL_sum)
    then unknown_indices = for q@j in list if defHashTime.time_lookup_to_ht(q,HT) < 0 do j fi od
    in if #unknown_indices > 0
-      then dummy := full_deform_to_ht(list[unknown_indices[#unknown_indices\2]],HT)
+      then dummy := full_deform_to_ht(list[unknown_indices[#unknown_indices\2]],HT, 2*time)
       fi;
       map( (Param q) maybe_KTP:
       if expiration - elapsed_ms() < 0
@@ -1494,11 +1494,11 @@ set c_form_irreducible_cut (Param p,int HT, int time) = maybe_KTP:
 {guaranteed to deform at least one term}
 set twisted_c_form_irreducible_unnormalized (Param p,int time) = maybe_KTP:
 ( let (fixed,unfixed)=twisted_c_form_irreducible_contributions(p)
-  , expiration = elapsed_ms() + time, dummy = K_type_pol(p)
+  , expiration = elapsed_ms() + time, dummy = K_type_pol(p).done
   then list = monomials(fixed)
   then unknown_indices = for q@j in list if defHashTime.time_lookup_to_ht(q,-1) < 0 do j fi od
   in if #unknown_indices > 0
-     then dummy:= twisted_full_deform(list[unknown_indices[#unknown_indices\2]])
+     then dummy:= twisted_full_deform(list[unknown_indices[#unknown_indices\2]], 2*time)
      fi;
      case map( (Param q) maybe_KTP:
      	  if expiration - elapsed_ms() < 0
