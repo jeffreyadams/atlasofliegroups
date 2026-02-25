@@ -97,7 +97,7 @@ protected: // all fields may be set in a derived class constructor
   // possible tables of Bruhat order and Kazhdan-Lusztig polynomials
   std::vector<std::unique_ptr<BlockEltList> > partial_Hasse_diagram;
   std::unique_ptr<BruhatOrder> d_bruhat;
-  std::unique_ptr<kl::KL_table> kl_tab_ptr;
+  std::unique_ptr<kl::KL_table> KL_tab_ptr;
 
 public:
 // constructors and destructors
@@ -197,10 +197,12 @@ public:
   // manipulators
   BruhatOrder& bruhatOrder() { fill_Bruhat(); return *d_bruhat; }
   BruhatOrder&& Bruhat_order() && { fill_Bruhat(); return std::move(*d_bruhat); }
-  kl::KL_table& kl_tab // create, fiil, and return KL table
+  kl::KL_table& KL_tab // create, fiil, and return KL table
     (KL_hash_Table* pol_hash, // extend hash table of KL polynomials if provided
      BlockElt limit=0, bool verbose=false) // default to silently fill entirely
-  { fill_kl_tab(limit,pol_hash,verbose); return *kl_tab_ptr; }
+  { fill_KL_tab(limit,pol_hash,verbose); return *KL_tab_ptr; }
+
+  bool has_KL_column(BlockElt j) const;
 
  protected:
   void set_Bruhat_covered (BlockElt z, BlockEltList&& covered);
@@ -208,7 +210,7 @@ public:
   void fill_Bruhat();
 
   // partial fill up to column |limit| exclusive, or fill entirely if |limit==0|
-  void fill_kl_tab(BlockElt limit, KL_hash_Table* pol_hash, bool verbose);
+  void fill_KL_tab(BlockElt limit, KL_hash_Table* pol_hash, bool verbose);
 
 }; // |class Block_base|
 
@@ -424,7 +426,7 @@ class common_block : public Block_base
   // it is assumed that |shift| is orthogonal to the integral system
   void shift (const RatWeight& shift);
 
-  // obtain KL hash table from |*kl_tab_ptr|, maybe creating it using argument
+  // obtain KL hash table from |*KL_tab_ptr|, maybe creating it using argument
   kl::Poly_hash_export KL_hash(KL_hash_Table* KL_pol_hash);
   void swallow // integrate an older partial block, with mapping of elements
     (common_block&& sub,
