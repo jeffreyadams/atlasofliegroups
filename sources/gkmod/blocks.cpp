@@ -166,7 +166,7 @@ Block_base::Block_base(const KGB& kgb)
   , dd(kgb.innerClass().root_datum().Cartan_matrix())
   , partial_Hasse_diagram()
   , d_bruhat(nullptr)
-  , kl_tab_ptr(nullptr)
+  , KL_tab_ptr(nullptr)
 {
 } // |Block_base::Block_base|
 
@@ -176,7 +176,7 @@ Block_base::Block_base(unsigned int integral_rank)
   , dd()
   , partial_Hasse_diagram()
   , d_bruhat(nullptr)
-  , kl_tab_ptr(nullptr)
+  , KL_tab_ptr(nullptr)
 {}
 
 Block_base::Block_base(const Block_base& b) // copy constructor
@@ -184,7 +184,7 @@ Block_base::Block_base(const Block_base& b) // copy constructor
   , dd(b.dd)
   , partial_Hasse_diagram()
   , d_bruhat(nullptr) // don't care to copy; is empty in |Block::build| anyway
-  , kl_tab_ptr(nullptr)  // likewise
+  , KL_tab_ptr(nullptr)  // likewise
 {
 #ifdef VERBOSE // then show that we're called (does not actually happen)
   std::cerr << "copying a block" << std::endl;
@@ -389,14 +389,17 @@ void Block_base::fill_Bruhat()
       (new BruhatOrder(complete_Hasse_diagram(*this,partial_Hasse_diagram)));
 }
 
+bool Block_base::has_KL_column(BlockElt j) const
+{ return KL_tab_ptr.get()!=nullptr and j<KL_tab_ptr->first_hole();
+}
 // computes and stores the KL polynomials
-void Block_base::fill_kl_tab(BlockElt limit,
+void Block_base::fill_KL_tab(BlockElt limit,
 			     KL_hash_Table* pol_hash, bool verbose)
 {
-  if (kl_tab_ptr.get()==nullptr) // do this only the first time
-    kl_tab_ptr.reset(new kl::KL_table(*this,pol_hash));
+  if (KL_tab_ptr.get()==nullptr) // do this only the first time
+    KL_tab_ptr.reset(new kl::KL_table(*this,pol_hash));
   // now extend tables to contain |limit-1|, or fill entirely if |limit==0|
-  kl_tab_ptr->fill(limit,verbose);
+  KL_tab_ptr->fill(limit,verbose);
 }
 
 // free function
@@ -1358,10 +1361,10 @@ ext_block::ext_block& common_block::extended_block
 // provide access to our polynomial hash table, creating it if necessary
 kl::Poly_hash_export common_block::KL_hash(KL_hash_Table* KL_pol_hash)
 {
-  if (kl_tab_ptr.get()==nullptr) // do this only the first time
-    kl_tab_ptr.reset(new kl::KL_table(*this,KL_pol_hash));
+  if (KL_tab_ptr.get()==nullptr) // do this only the first time
+    KL_tab_ptr.reset(new kl::KL_table(*this,KL_pol_hash));
 
-  return kl_tab_ptr-> polynomial_hash_table();
+  return KL_tab_ptr-> polynomial_hash_table();
 } // |common_block::KL_hash|
 
 #ifndef NDEBUG
@@ -1427,14 +1430,14 @@ void common_block::swallow
       c=embed[c]; // translate in place
     set_Bruhat_covered(embed[z],std::move(covered));
   }
-  if (sub.kl_tab_ptr!=nullptr)
+  if (sub.KL_tab_ptr!=nullptr)
   {
     // ensure existence of polynomial hash table; wrap up reference to it
     kl::Poly_hash_export hash_object = KL_hash(KL_pol_hash);
-    assert (kl_tab_ptr.get()!=nullptr); // because |KL_hash| built |hash|
+    assert (KL_tab_ptr.get()!=nullptr); // because |KL_hash| built |hash|
 
     // now swallow the poylnomial hash table of |sub| into ours
-    kl_tab_ptr->swallow(std::move(*sub.kl_tab_ptr),embed,hash_object.ref);
+    KL_tab_ptr->swallow(std::move(*sub.KL_tab_ptr),embed,hash_object.ref);
   }
 
 #if 0

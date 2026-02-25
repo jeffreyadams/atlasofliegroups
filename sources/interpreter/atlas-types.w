@@ -7143,7 +7143,7 @@ void KL_block_wrapper(eval_level l)
       survivors.push_back(z);
     }
 @)
-  const kl::KL_table& kl_tab = block.kl_tab(nullptr);
+  const kl::KL_table& kl_tab = block.KL_tab(nullptr);
     // fill full block, not sharing polynomials, silently
   typedef polynomials::Polynomial<int> Pol;
   matrix::Matrix<Pol> M(survivors.size(),survivors.size(),Pol());
@@ -7282,7 +7282,7 @@ void partial_KL_block_wrapper(eval_level l)
     }
   @)
 
-  const kl::KL_table& kl_tab = block.kl_tab(nullptr);
+  const kl::KL_table& kl_tab = block.KL_tab(nullptr);
     // fill the partial block, not sharing polynomials, silently
   typedef polynomials::Polynomial<int> Pol;
   matrix::Matrix<Pol> M(survivors.size(),survivors.size(),Pol());
@@ -7318,7 +7318,7 @@ void dual_KL_block_wrapper(eval_level l)
   auto& block = p->rt().lookup_full_block(p->val,start,bm);
 @/const auto& gamma = p->val.gamma();
   auto dual_block = blocks::Bare_block::dual(block);
-  const kl::KL_table& kl_tab = dual_block.kl_tab(nullptr);
+  const kl::KL_table& kl_tab = dual_block.KL_tab(nullptr);
   // fill entire KL table, don't share polys
 @)
   sl_list<BlockElt> survivors; // indexes into |block|
@@ -7408,7 +7408,7 @@ void param_W_graph_wrapper(eval_level l)
   auto& block = p->rt().lookup_full_block(p->val,start,bm);
   push_value(std::make_shared<int_value>(start));
 @)
-  const kl::KL_table& kl_tab = block.kl_tab(nullptr);
+  const kl::KL_table& kl_tab = block.KL_tab(nullptr);
    // this does the actual KL computation
   wgraph::WGraph wg = kl::wGraph(kl_tab);
 @)
@@ -7432,7 +7432,7 @@ void param_W_cells_wrapper(eval_level l)
   auto& block = p->rt().lookup_full_block(p->val,start,bm);
   push_value(std::make_shared<int_value>(start));
 @)
-  const kl::KL_table& kl_tab = block.kl_tab(nullptr);
+  const kl::KL_table& kl_tab = block.KL_tab(nullptr);
    // this does the actual KL computation
   wgraph::WGraph wg = kl::wGraph(kl_tab);
   wgraph::DecomposedWGraph dg(wg);
@@ -8622,6 +8622,34 @@ void KL_sum_at_s_to_ht_wrapper(eval_level l)
     push_value(std::make_shared<virtual_module_value>@|
       (p->rf,p->rt().KL_column_at_s_to_height(p->val,limit)));
 }
+
+@ Here are two variants of the functions above: the first one returns
+immediately with failure indicated through a union type if the Kazhdan-Lusztig
+table for this real form is not already computed, and otherwise uses the already
+computed value; the second one gives both a height bound and a time-out period,
+so that it too uses a union value to distinguish failure and success.
+
+@< Local function def...@>=
+void stored_KL_sum_at_s_wrapper(eval_level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p,"Cannot compute Kazhdan-Lusztig sum");
+  test_final(*p,"Cannot compute Kazhdan-Lusztig sum");
+  if (l!=eval_level::no_value)
+  {
+    if (p->rt().has_KL_column(p->val))
+    {
+      auto col = std::make_shared<virtual_module_value>
+         (p->rf,p->rt().KL_column_at_s(p->val));
+      push_value(std::make_shared<union_value>
+        (1,std::move(col),main_hash_table->match_literal("some")));
+    }
+    else
+    { auto nil = std::make_shared<tuple_value>(0); // the void
+      push_value(std::make_shared<union_value>(0,std::move(nil),
+                 main_hash_table->match_literal("none")));
+    }
+  }
+}
 @)
 void timed_KL_sum_at_s_to_ht_wrapper(eval_level l)
 { auto period = get<int_value>()->long_val();
@@ -8706,7 +8734,7 @@ void KL_column_wrapper(eval_level l)
 }
 @)
 
-@ We add another function in which the external involution is an argument
+@ We add another function in which the external involution as an argument
 
 @< Local function def...@>=
 void external_twisted_KL_sum_at_s_wrapper(eval_level l)
@@ -8875,6 +8903,8 @@ install_function(timed_twisted_full_deform_wrapper,@|"twisted_full_deform"
 install_function(KL_sum_at_s_wrapper,@|"KL_sum_at_s","(Param->ParamPol)");
 install_function(KL_sum_at_s_to_ht_wrapper,@|"KL_sum_at_s_to_height"
 		,"(Param,int->ParamPol)");
+install_function(stored_KL_sum_at_s_wrapper,@|"stored_KL_sum_at_s"
+		,"(Param->|ParamPol)");
 install_function(timed_KL_sum_at_s_to_ht_wrapper,@|"KL_sum_at_s_to_height"
 		,"(Param,int,int->|ParamPol)");
 install_function(twisted_KL_sum_at_s_wrapper,@|"twisted_KL_sum_at_s"
