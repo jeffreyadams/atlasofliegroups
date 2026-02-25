@@ -99,7 +99,7 @@ set revert_steve_flag(KGBElt x, ratvec lambda) = bool:
        	       is_quasisplit(G) and
        	       (x.number = KGB_size(G) - 1) and
        	       (lambda != G.rho)
-    in if ans then predictor_flag:=false fi;
+    in {if ans then predictor_flag:=false fi;}
        ans
 
 set contragredient(KGBElt x) = KGBElt:

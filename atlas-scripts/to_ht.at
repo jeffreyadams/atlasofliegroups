@@ -255,6 +255,7 @@ set c_form_irreducible_to_ht_MvL (Param p,int HT) = KTypePol:
 {now guaranteed to deform at least one term}
 {finishes without interruption if all terms already deformed}
 set c_form_irreducible_to_ht_MvL (Param p,int HT, int time ) = maybe_KTP:
+  if HT < 0 then return c_form_irreducible(p, time) fi;
   if not ({to_ht_over_u_flag} {strict_}low(p,HT))
   then return c_form_irreducible_cut(p,HT,time)
   fi;
@@ -264,24 +265,24 @@ set c_form_irreducible_to_ht_MvL (Param p,int HT, int time ) = maybe_KTP:
       	do (c*orientation_nr_term(ori_nr_p,q),q)
       	od
     then list = monomials(oriented_KL_sum)
-    then indices = for q in list do defHashTime.param_lookup(q) od
-    then unknown_ks = for j@k in indices
-    	 	       	  if j < 0 or (defHashTime.height_index(j) >= 0 and HT < 0)
-			     or (defHashTime.height_index(j) >= 0 and
-				 HT > defHashTime.height_index(j))
-		       do k
-		       fi
-		       od
+    then inf_indices = for q in list do defHashTime.param_lookup(q) od
+    then indices = for q in list do defHashHtTime.param_lookup(q) od
+    then unknown_ks = for p@k in list
+    	 	      if defHashHtTime.time_lookup_to_ht(p,HT) <= -1
+		      do k
+		      fi
+		      od
      in if #unknown_ks = 0
-	then return map( (Param q) KTypePol:
-	      	    full_deform_to_ht(q,HT), oriented_KL_sum).done
-	else full_deform_to_ht(list[unknown_ks[(#unknown_ks-1)\2]],HT).done
-	fi {#unknown_ks};
-    	map( (Param q) maybe_KTP: if expiration - elapsed_ms() < 0
+	then map( (Param q) KTypePol:
+	      	 full_deform_to_ht(q,HT), oriented_KL_sum).done
+	else full_deform_to_ht(list[unknown_ks~[0]],HT, time);
+    	     map( (Param q) maybe_KTP: if expiration - elapsed_ms() < 0
       	     	       		  then timed_out()
       				  else full_deform_to_ht(q, HT, expiration - elapsed_ms())
       				  fi
       				  , oriented_KL_sum)
+	fi {#unknown_ks}
+
 
 
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
