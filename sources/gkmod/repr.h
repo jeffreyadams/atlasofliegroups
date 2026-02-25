@@ -645,6 +645,8 @@ class Rep_table : public Rep_context
 
   // polynomial representing column of |z| in KL-table, evaluated at $q:=s$
   SR_poly KL_column_at_s(StandardRepr z); // by value
+  bool has_KL_column(StandardRepr z); // by value
+
   // column of |z| in KL-table, as (sparse) list of pairs $(x,P_{x,y})$
   simple_list<std::pair<BlockElt,kl::KLPol> >
     KL_column(common_block& block, BlockElt y);

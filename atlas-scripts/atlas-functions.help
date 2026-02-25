@@ -1138,6 +1138,13 @@ KL_column: (Param->[int,Param,vec]): column of Kazhdan-Lusztig table
 KL_sum_at_s: (Param->ParamPol): signed sum of KL polynomials at s, fixed y
   Computes \sum_{x\leq y}(-1)^{l(y)-l(x)}P_{x,y}[q:=s]*x where y is the block
   element of the parameter, and the sum is over other block elements x.
+stored_KL_sum_at_s: (Param->(void|ParamPol)): try KL_sum_at_s without computing
+  If the KL polynomials for (the block of) the given parameter have been
+  previously computed, the atlas program will store this value as long as the
+  real form of the parameter is accessible, and this function tries to return
+  that stored value if it exists (as ParamPol variant of the union type). It
+  will not however compute the KL_sum_at_s if it has not already been computed
+  before, returning nothing (the void variant of the union type) instead.
 KL_sum_at_s_to_height: (Param,int->ParamPol): truncated version of KL_sum_at_s
   Computes the terms in \sum_{x\leq y}(-1)^{l(y)-l(x)}P_{x,y}[q:=s]*x where
   x runs over block elements of height at most limit; here y is the block

@@ -2009,7 +2009,7 @@ sl_list<std::pair<StandardRepr,int> > Rep_table::deformation_terms
 
   assert(not finals.empty() and finals.front()==y); // otherwise don't call us
   const kl::KL_table& kl_tab =
-    block.kl_tab(&KL_poly_hash,y+1); // fill silently up to |y|
+    block.KL_tab(&KL_poly_hash,y+1); // fill silently up to |y|
 
   std::unique_ptr<unsigned int[]> index // a sparse array, map final to position
     (new unsigned int [block.size()]); // unlike |std::vector| do not initialise
@@ -2094,7 +2094,7 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
   const auto& gamma = p.gamma();
   assert(is_dominant_ratweight(root_datum(),gamma));
   auto dual_block = blocks::Bare_block::dual(block);
-  kl::KL_table& kl_tab = dual_block.kl_tab(nullptr,1);
+  kl::KL_table& kl_tab = dual_block.KL_tab(nullptr,1);
   // create KL table only minimally filled
 
   // record heights for the block, and extract block terms fro; |queue|
@@ -2215,7 +2215,7 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr sr) // |sr| must be final
   assert(contrib.size()==z+1 and contrib[z].front().first==z);
 
   const kl::KL_table& kl_tab =
-    block.kl_tab(&KL_poly_hash,z+1); // fill silently up to |z|
+    block.KL_tab(&KL_poly_hash,z+1); // fill silently up to |z|
 
   SR_poly result;
   auto z_length=block.length(z);
@@ -2238,6 +2238,16 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr sr) // |sr| must be final
   return result;
 } // |Rep_table::KL_column_at_s|
 
+bool Rep_table::has_KL_column(StandardRepr sr) // |sr| must be final
+{
+  normalise(sr); // implies that |sr| it will appear at the top of its own block
+  assert(is_final(sr));
+
+  BlockElt z; block_modifier bm;
+  auto& block = lookup(sr,z,bm);
+  return block.has_KL_column(z);
+}
+
 SR_poly Rep_table::KL_column_at_s_to_height (StandardRepr p, level height_bound)
 {
   normalise(p); // implies that |p| it will appear at the top of its own block
@@ -2253,7 +2263,7 @@ SR_poly Rep_table::KL_column_at_s_to_height (StandardRepr p, level height_bound)
   const auto& gamma = p.gamma();
   assert(is_dominant_ratweight(root_datum(),gamma));
   auto dual_block = blocks::Bare_block::dual(block);
-  kl::KL_table& kl_tab = dual_block.kl_tab(nullptr,1);
+  kl::KL_table& kl_tab = dual_block.KL_tab(nullptr,1);
   // create KL table only minimally filled
 
   // now fill remainder up to height; prepare for restriction to this subset
@@ -2309,7 +2319,7 @@ simple_list<std::pair<BlockElt,kl::KLPol> >
   Rep_table::KL_column(common_block& block, BlockElt y)
 {
   const kl::KL_table& kl_tab =
-    block.kl_tab(&KL_poly_hash,y+1); // fill silently up to |z|
+    block.KL_tab(&KL_poly_hash,y+1); // fill silently up to |z|
 
   simple_list<std::pair<BlockElt,kl::KLPol> > result;
   for (BlockElt x=y+1; x-->0; )
