@@ -1664,7 +1664,7 @@ set next_heightC_verbose = false
 {returns the height of the next K-type > HT, or -1 if none exists}
 set next_heightC = ((Param,int) -> int):
     let p = Param: SL(2,R).trivial, start_time = int:0
-    then HT_bound = let (,,GAM) = low(p) in GAM {to_ht to HT_bound is is_unitary}
+    then HT_bound = GAM(p) {to_ht to HT_bound is is_unitary}
     then current_tau_bound = tensor_p_big(LKTs(p)[0])
     then current_bound = height(current_tau_bound)
     then current_height = int: -1
@@ -1677,7 +1677,7 @@ set next_heightC = ((Param,int) -> int):
     start_time:=elapsed_ms();
     if not p=q
     then {p:=q;}
-    	 HT_bound := (let (,,GAM) = low(p:=q) in GAM); {to_ht to HT_bound is is_unitary}
+    	 HT_bound := GAM(p:=q); {to_ht to HT_bound is is_unitary}
 	 current_tau_bound := tensor_p_big(LKTs(q)[0]);
 	 current_bound := height(current_tau_bound);
 	 if current_bound > HT_bound
@@ -2066,7 +2066,9 @@ set print_int_flag = false
 {assume p is hermitian}
 set hermitian_form_irreducible_to_ht_big_SIMPLE(Param p,int HT) = KTypePol:
   let GAM = (p.infinitesimal_character* p.inner_class.two_rho_check)\1
-  in if (HT >= GAM) or (HT < 0) then return hermitian_form_irreducible_big_SIMPLE(p) fi;
+  in if {(HT >= GAM) or} (HT < 0) then return hermitian_form_irreducible_big_SIMPLE(p) fi;
+  {there's a case p = parameter(E7_s,3624,[-4,2,2,1,2,-4,1]/1,[-3,1,1,0,3,-6,4]/4) of height 112
+   where HT = 120 = GAM; is_unitary seems slow, or something...?}
   {if status(p,HT) > 0 then return K_type_pol(character_formula_to_ht(p,HT)) fi;}{#7}
   {save nothing in Spin(4,4)}
   let G = p.real_form
@@ -2109,15 +2111,15 @@ set is_unitary_to_ht_big_SIMPLE_interrupt(Param p, int HT, int time) = int: {1 m
        	    then return hermitian_form_irreducible_to_ht_MvL(p, HT, time).is_pure
 	    fi
   then () = p := herm_center(p)
-  then (,,GAM) = low(p) {unitary to HT >= GAM means unitary}
+  then GAM = GAM(p) {unitary to HT >= GAM means unitary}
   in if test_interrupt_verbose
      then prints("about to call big_unitary_hash.sig_entry_interrupt(p,", HT,",", time,")")
-     fi;
-     let P = if HT >= GAM
+     fi; {bad possibility: HT = GAM, but is_unitary is very slow}
+     {let P = if HT >= GAM
      	     then big_unitary_hash.sig_entry_interrupt(p, -1, time)
-	     else{ deformed_hash_flag:=true;}
-		  big_unitary_hash.sig_entry_interrupt(p, HT, time)
-	     fi
+	     else big_unitary_hash.sig_entry_interrupt(p, HT, time)
+	     fi}
+     let P = big_unitary_hash.sig_entry_interrupt(p, HT, time)
      in case P
      	| timed_out: 0
 	| done(r): let D = impure_height(r)
@@ -2266,7 +2268,7 @@ set is_unitary_test_big_SIMPLE_interrupt_old(Param p, int step) = bool:
 			    fi
 	    od
    in if test_interrupt_verbose
-      then prints("Finish is_unitary_test_big_SIMPLE_interrupt_Ufirst, time ",
+      then prints("Finish is_unitary_test_big_SIMPLE_interrupt_old, time ",
       	   print_time_string(elapsed_ms() - start), " result ",result,new_line)
       fi;
       if result > 0 then true
@@ -2295,7 +2297,7 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
   if test_interrupt_verbose
   then prints(new_line,"Starting is_unitary_test_big_SIMPLE_interrupt_Ufirst, p = ",p)
   fi;
-  let G = p.real_form, (,,GAM) = low(p)
+  let G = p.real_form, GAM = GAM(p)
   then FPP_flag = is_FPP(G,p.infinitesimal_character)
   then () = if not FPP_flag
 	    then return is_unitary(p) {prints("FPP DANGER TO HT at ",p)}
@@ -2514,7 +2516,7 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, [int] hts) = bool:
   if test_interrupt_verbose
   then prints(new_line,"Starting is_unitary_test_big_SIMPLE_interrupt, p = ",p,", hts = ",hts)
   fi;
-  let G = p.real_form, (,{NU},GAM) = low(p)
+  let G = p.real_form, GAM = GAM(p)
   then ht_bound = GAM*gamma_frac {NU*nu_frac}
   {this estimates the biggest ht where to_ht could be faster than is_unitary}
   then FPP_flag = is_FPP(G,p.infinitesimal_character)

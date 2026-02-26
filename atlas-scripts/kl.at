@@ -176,7 +176,8 @@ set low_gamma(Param p, int HT) = bool:
 set low_diff(Param p, int HT) = bool:
     if (HT < 0) then return  false fi;
     let LAM = p.height, GAM = GAM(p) {(LAM, , GAM) = low(p)}
-    in HT - LAM < diff_frac*GAM
+    in LAM < (1-diff_frac)*GAM and
+       HT - LAM < diff_frac*GAM
     {(LAM < lam_frac*GAM) and} {(HT < diff_frac*GAM)}
     {(LAM < lam_frac*GAM) and ((GAM - LAM)*diff_frac) > HT {(HT-LAM)}}
 
@@ -273,15 +274,32 @@ set KL_sum_at_s(Param p) = ParamPol:
     let start = elapsed_ms()
     in KL_sum_at_s(p) next charTime +:= elapsed_ms() - start; char_counter.use()
 
+set KL_sum_at_s_to_ht_new(int HT) = (Param p) ParamPol: {should check whether library knows KL_sum_at_s, use that}
+    let start = elapsed_ms()
+    in if HT < 0
+       then KL_sum_at_s(p)
+       else let mKLS = stored_KL_sum_at_s(p)
+       	    in case mKLS
+	       | timed_out_PP: if low_char(p,HT)
+       	       	 	    then KL_sum_at_s_to_height(p,HT) 
+       			    else let (below,) = height_split(KL_sum_at_s(p),HT), middle = elapsed_ms()
+    	    		    	 in below
+			    fi
+	       | done_PP(KLS): let (below,) = height_split(KLS,HT)
+    	       	 	    in below
+	       esac
+       fi next charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use()
+
 set KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol: {should check whether library knows KL_sum_at_s, use that}
     let start = elapsed_ms()
     in if HT < 0
        then KL_sum_at_s(p)
        elif low_char(p,HT)
-       then KL_sum_at_s_to_height(p,HT) next charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use()
+       then KL_sum_at_s_to_height(p,HT)
        else let (below,) = height_split(KL_sum_at_s(p),HT), middle = elapsed_ms()
     	    in below
-       fi
+       fi next charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use()
+
 
 set KL_sum_at_s_to_ht_inter(int HT) = (Param p,int time) maybe_PP:
     let start = elapsed_ms()

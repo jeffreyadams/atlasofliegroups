@@ -444,7 +444,7 @@ set make_deformation_hash_height_time () = deformation_hash_height_time:
 	       	  pol_list #:=pol_hash.match(FD);
 	       	  height_list #:= HT;
 		  FD
-	  elif height_list[i] >= HT {we already deformed to a greater height}
+	  elif height_list[i] >= HT and time_list[i].>= {we already deformed to a greater height}
 	  then to_ht(pol_hash.index(pol_list[i]),HT)
 	  else let start = elapsed_ms()
 	       then FD = if is_equal_rank(p.real_form)
@@ -1160,9 +1160,9 @@ set u_predictor(Param p) = int:
     {will do full_deform on each term in list}
     then times = [int]: for q in list do defHashTime.time_lookup(q) od
     {have we computed full_deform? time needed if yes, -1 if no}
-    then est_times = [int]: for T in times if T != -1 do abs(T) fi od
-    then unknown_indices = [int]: for T@j in times if T = 1 do j fi od
-    then N = #list, n = #est_times
+    then est_times = [int]: for T in times if T != -1 do abs(T) fi od {(abs(t)+1) -1 better}
+    then unknown_indices = [int]: for T@j in times if T < 0 do j fi od
+    then N = #list, n = #est_times, un = #unknown_indices
     in if predictor_verbose
 	     	then prints(new_line,"Start predicting to height -1 param ",p);
 		     prints("(#terms,#estimated) = (",N,",",n, "), estimated times = ",est_times)
@@ -1170,12 +1170,12 @@ set u_predictor(Param p) = int:
        {if N-n > n}
        if n> 0 {n = #est_times}
        then if predictor_verbose
-       	    then prints("prediction = ", print_time_string((N-n)*max(est_times) + (n*interrupt_base_time)\20))
+       	    then prints("prediction = ", print_time_string((N-un)*max(est_times) + (un*interrupt_base_time)\20))
 	    fi;
 	    {would be good to see WHICH terms are known, and weight their times accordingly. If a term
 	     near x_open is known, then the predecessors are often nearly known}
-      	     (N-n)*max(est_times) + (n*interrupt_base_time)\20 {n lookups}
-       	    {N-n full_deforms to compute, probably each worse than known}
+      	     (N-un)*max(est_times) + (un*interrupt_base_time)\20 {n lookups}
+       	    {N-un full_deforms to compute, probably each worse than known}
        else let i0 = (2*N)\3 {we know nothing, so compute one full_deform}
        	    then q = list[i0] {not yet computed full_deform}
 	    then RT = defHashTime.time_record_bounded(q, interrupt_base_time)
@@ -1237,8 +1237,9 @@ set u_predictor(Param p, int HT, int time) = int:
 		       if is_fixed(delta,q) do q fi od, rk = delta.n_rows
 	    then times =  [int]: for q in list do defHashHtTime.time_lookup_to_ht(q,HT) od
 	    then known_indices = [int]: for T@j in times if T!= -1 do j fi od
-	    then est_times = [int]: for T in times if T != -1 do abs(T) fi od
-	    then N = #times, n = #est_times {possible terms, known terms}
+	    then well_known_indices = [int]: for T@j in times if T >= 0 do j fi od
+	    then est_times = [int]: for j in known_indices do abs(times[j]) od {(abs(t)+1) -1 better}
+	    then N = #times, n = #known_indices, nw = #well_known_indices {possible terms, known terms, nw}
     	    in if predictor_verbose
 	     	then prints(new_line,"Start predicting to height ", HT, " param ",p);
 		     prints("(N,n) = (",N,",",n, "), est times = ",est_times)
@@ -1263,8 +1264,8 @@ set u_predictor(Param p, int HT, int time) = int:
 				       fi;
 				       (N-1)*(RT+1)+ interrupt_base_time
 				  fi
-			   else (N-n)*(max(est_times)+1) {N-n deforms to compute, estimated time}
-			   	+ n*(interrupt_base_time\10) {n lookups}
+			   else (N-nw)*(max(est_times)+1) {N-nw deforms to compute, estimated time}
+			   	+ nw*(interrupt_base_time\10) {n lookups}
 			   fi
 		 in if predictor_verbose
 		    then prints("prediction ",print_time_string(ans), " in time ",
