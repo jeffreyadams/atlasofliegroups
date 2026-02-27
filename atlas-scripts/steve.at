@@ -177,17 +177,21 @@ set is_def_tester(vec thruple) = (vec -> bool):
 set taus(KGBElt x, ratvec lambda, int HT) = [KType]:
     monomials(branch(K_type_pol(parameter(x,lambda,0*lambda)),HT))
 
+set OTF_hold = bool: false
+
 set pos_tester(KGBElt x, ratvec lambda,int HT,ratvec gamma) = bool:
+    OTF_hold:=old_testing_flag;
+    if HT >=0 then old_testing_flag:=true fi;
     let p = parameter(x,lambda,gamma), G = x.real_form
     then qs = monomials(1*p)
-    in all(for q in qs do @bool:
-       	       if HT >= 0
-       	       then  is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
-	       else is_unitary_test_big_SIMPLE_interrupt(q)
-	       fi od)
+    in all(for q in qs
+       	   do @bool: is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
+	   od) next old_testing_flag:=OTF_hold
 
 {should be called only if height(x,lambda,0) > 0 and HT >= minBottomData.G_min_height(x,lambda)}
 set pos_tester_min(KGBElt x, ratvec lambda,int HT,ratvec gamma) = bool:
+     OTF_hold:=old_testing_flag;
+    if HT >=0 then old_testing_flag:=true fi;
     let p = parameter(x,lambda,gamma), G = x.real_form
     then qs = monomials(1*p)
     in {prints("got to pos_tester_min at ",p);}
@@ -195,11 +199,9 @@ set pos_tester_min(KGBElt x, ratvec lambda,int HT,ratvec gamma) = bool:
        then {prints("got to pos_tester_min at ",p," and bottom worked!");}
        	    return false
        fi;
-       all (for q in qs do @bool:
-       if HT >= 0
-       	       then is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
-	       else is_unitary_test_big_SIMPLE_interrupt(q)
-	       fi od)
+       all (for q in qs
+       	    do @bool: is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
+	    od) next old_testing_flag:=OTF_hold
 
 {compute vectors of size 2 giving [index of K-char, #Langlands quotients]}
 set extra_coord_flag = true
@@ -223,44 +225,42 @@ set use_deform_nonu_steve() = void:
 {USE Kpol_hash defined in FPP_faces_geom.at; assume index od }
 set pos_tester_known_Kchar(KGBElt x, ratvec lambda,int HT,ratvec gamma, vec KCv) =
     (bool, vec):
+     OTF_hold:=old_testing_flag;
+    if HT >=0 then old_testing_flag:=true fi;
     let p = parameter(x,lambda,gamma), G = x.real_form
     then qs = monomials(1*p)
     in if extra_coord_flag
-       then (all (for q in qs do @bool:
-       	    	 if HT >= 0
-       	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
-	       	 else is_unitary_test_big_SIMPLE_interrupt(q)
-	       	 fi od),KCv)
-       else (all (for q in qs do @bool:
-       	       if HT >= 0
-       	       then is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
-	       else is_unitary_test_big_SIMPLE_interrupt(q)
-	       fi od),[])
-       fi
+       then (all (for q in qs
+       	    	  do @bool: is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
+	       	  od),KCv)
+       else (all (for q in qs
+       	    	  do @bool: is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
+	      	  od),[])
+       fi next old_testing_flag:=OTF_hold
 
 {USE Kpol_hash defined in FPP_faces_geom.at}
 set pos_tester_Kchar(KGBElt x, ratvec lambda,int HT,ratvec gamma) = (bool, vec):
+    OTF_hold:=old_testing_flag;
+    if HT >=0 then old_testing_flag:=true fi;
     let p = parameter(x,lambda,gamma), G = x.real_form
     then qs = monomials(1*p)
     in if extra_coord_flag
-       then (all (for q in qs do @bool:
-       	    	 if HT >= 0
-       	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
-	       	 else is_unitary_test_big_SIMPLE_interrupt(q)
-	       	 fi od),
+       then (all (for q in qs
+       	    	  do @bool: is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
+	       	  od),
        	    [Kpol_hash.match(K_type_pol(character_formula_to_ht(1*p,HT))),#qs])
-       else (all (for q in qs do @bool:
-       	    	 if HT >= 0
-       	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
-	       	 else is_unitary_test_big_SIMPLE_interrupt(q)
-	       	 fi od),[])
-       fi
+       else (all (for q in qs
+       	    	  do @bool: is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
+	       	  od),[])
+       fi next old_testing_flag:=OTF_hold
 
 {should only be invoked if height(x,lambda)>0 and HT >= minBottomData.G_min_height(x,lambda)}
 {SHOULD USE KNOWN Kchar KCv[0] if possible}
 {USE Kpol_hash defined in FPP_faces_geom.at; assume index od }
 set pos_tester_known_Kchar_min(KGBElt x, ratvec lambda,int HT,ratvec gamma, vec KCv) =
     (bool, vec):
+    OTF_hold:=old_testing_flag;
+    if HT >=0 then old_testing_flag:=true fi;
     let p = parameter(x,lambda,gamma), G = x.real_form
     then qs = monomials(1*p)
     in {prints("got to pos_tester_known_Kchar_min");}
@@ -272,21 +272,19 @@ set pos_tester_known_Kchar_min(KGBElt x, ratvec lambda,int HT,ratvec gamma, vec 
 		   fi
        fi;
        if extra_coord_flag
-       then (all (for q in qs do @bool:
-       	    	 if HT >= 0
-       	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
-	       	 else is_unitary_test_big_SIMPLE_interrupt(q)
-	       	 fi od),KCv)
-       else (all (for q in qs do @bool:
-       	    	 if HT >= 0
-       	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
-	       	 else is_unitary_test_big_SIMPLE_interrupt(q)
-	       	 fi od),[])
-       fi
+       then (all (for q in qs
+       	    	  do @bool: is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
+	       	  od),KCv)
+       else (all (for q in qs
+       	    	  do @bool: is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
+	       	  od),[])
+       fi next old_testing_flag:=OTF_hold
 
 {USE Kpol_hash defined in FPP_faces_geom.at}
 set pos_tester_Kchar_min(KGBElt x, ratvec lambda,int HT,ratvec gamma) =
     (bool, vec):
+    OTF_hold:=old_testing_flag;
+    if HT >=0 then old_testing_flag:=true fi;
     let p = parameter(x,lambda,gamma), G = x.real_form
     then qs = monomials(1*p)
     {then stats = for q in qs do status(q,HT) od} {nothing for Spin(4,4)}
@@ -316,18 +314,14 @@ set pos_tester_Kchar_min(KGBElt x, ratvec lambda,int HT,ratvec gamma) =
 		   fi
        fi;
        if extra_coord_flag
-       then (all (for q in qs do @bool:
-       	    	 if HT >= 0
-       	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
-	       	 else is_unitary_test_big_SIMPLE_interrupt(q)
-	       	 fi od),
+       then (all (for q in qs
+       	    	  do @bool: is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
+	       	  od),
        	    [Kpol_hash.match(K_type_pol(character_formula_to_ht(1*p,HT))),#qs])
-       else (all (for q in qs do @bool:
-       	    	 if HT >= 0
-       	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
-	       	 else is_unitary_test_big_SIMPLE_interrupt(q)
-	       	 fi od),[])
-       fi
+       else (all (for q in qs
+       	    	  do @bool: is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
+	       	  od),[])
+       fi next old_testing_flag:=OTF_hold
 
 set Kchar_vec_time = int: 0
 
@@ -345,468 +339,6 @@ set report_def_thruples() = void:
     prints(print_time_string(def_thruples_time)," to find deformed thruple candidates.");
     prints("Found ",hash_def_true_count," deformations proving unitarity (to height), ",
     	   hash_def_false_count," deformations proving nonunitarity (to height).")
-
-{
-set_type
-[steve_hash_table =
-( ( -> ) clear {clear the table}
-  , ((KGBElt, ratvec) ->) clear_xl {clear the tsbles for (x,lambda)}
-  , ( -> int) real_form_size {number of real forms included}
-  , ( -> vec) xlhash_sizes {for every real form, the number of pairs(x,lambda)}
-{  , ( -> vec) K_type_sizes {number of KTypes for each real form}}
-  , ((KGBElt, ratvec) -> vec) heights {list of heights to which reducibility has been studied}
-  , ((KGBElt, ratvec, int) -> (int, int, int)) indices {rfnum, xlnum, htnum}
-  {, ((KGBElt, ratvec, vec, int) -> KTypePol) ind_quo} {like function ind_quo, but storing answers}
-  {, ((KGBElt, ratvec, vec, int, int) -> bool) test} {like function test}
-  , ((KGBElt, ratvec, int) -> vec_hash) vecHash {hash table of location vecs known}
-  , ((KGBElt, ratvec, int) -> [[int]]) red_points {for each reducibility coroot, list of reducibility points}
-  , ((KGBElt, ratvec, int) -> [bool]) postests {size vecHash.size(), listing unitarity results}
-  , ((KGBElt, ratvec, int) -> [vec]) extra_coords {size vecHash.size():
-  [Kchar #, #LQs] if extra_coord_flag, [] else}
-  , ((int, int, int, ratvec, vec) -> bool) partly_indexed_postest_known_Kchar
-  , ((KGBElt, ratvec, int, ratvec, vec) -> bool) postest_known_Kchar {test param(x,lambda,last_arg) for unitarity to ht}
-  , ((int, int, int, int) -> bool) indexed_postest {known rfnum, xlnum, htnum, vecnum}
-  , ((int, int, int, ratvec) -> bool) partly_indexed_postest
-  , ((KGBElt, ratvec, int, ratvec) -> bool) postest {test param(x,lambda,last_arg) for unitarity to ht}
-  , ((KGBElt, ratvec, int, ratvec) -> vec) extra_coord {index of Kchar of param(x,lambda,last_arg) to ht, #LQs}
-  , ((int, int, int, ratvec, vec) -> vec) indexed_thruple_known_Kchar {known rfnum, xlnum, htnum}
-  , ((KGBElt, ratvec, int, ratvec, vec) -> vec) thruple_known_Kchar {loc vec: (x,lambda,gamma) to HT}
-  , ((int, int, int, ratvec) -> vec) indexed_thruple {known rfnum, xlnum, htnum}
-  , ((KGBElt, ratvec, int, ratvec) -> vec) thruple {loc vec: (x,lambda,gamma) to HT}
-  , ((int, int, int, ratvec, vec) -> vec) indexed_thruple_known_Kchar_no_stat {known rfnum, xlnum, htnum; don't compute status}
-  , ((KGBElt, ratvec, int, ratvec, vec) -> vec) thruple_known_Kchar_no_stat {loc vec: (x,lambda,gamma) to HT; don't compute status}
-  , ((int, int, int, ratvec) -> vec) indexed_thruple_no_stat {known rfnum, xlnum, htnum; don't compute status}
-  , ((KGBElt, ratvec, int, ratvec) -> vec) thruple_no_stat {loc vec: (x,lambda,gamma) to HT; don't compute status}
-)
-]
-}
-
-{
-set make_steve_hash() = steve_hash_table:
-(   let real_form_hash = make_RealForm_hash()
-    then xlhashes = [xlambda_hash]: [] {one for each real form}
-    then heights = [[vec]]:[] {one for each entry in each xlhash}
-    then vechashes = [[[vec_hash]]]:[] {one for each height for each entry in each xlhash}
-    then redpoints = [[[[int]]]]:[] {for each entry in xlhash and height, [int] = bitmap of reducibility
-    	 	     		  points for each reducibility coroot}
-    then statuses = [[[[bool]]]]:[] {one [bool] for each vechash}
-    then charvecs = [[[[vec]]]]: [] {one [vec] for each vechash; possibly [index of K_char, #LQs]}
-    then clearSH() = void:
-    	 let () = real_form_hash.clear()
-	 {then () = K_type_hashes:=[]}
-	 then () = xlhashes:=[]
-	 {then () = paramhashes:=[]}
-	 {then () = ktps:=[]}
-	 then () = heights:=[]
-	 then () = vechashes:=[]
-	 then () = statuses:=[]
-	 then () = charvecs:=[]
-	 then () = redpoints := []
-	 in ()
-    then add_real_form(RealForm rf) = int:
-    	 let I = real_form_hash.size()
-	 then i = real_form_hash.match(rf)
-    	 then () = if i = I {haven't seen this real form before}
-	      	   then	{K_type_hashes #:= make_KType_hash();}
-		        xlhashes #:= make_xlambda_hash();
-			{paramhashes #:= ([Param_hash]:[]);}
-			{ktps #:= ([[KTypePol]]:[]);}
-			heights   #:= ([vec]:[]);
-			vechashes #:= ([[vec_hash]]:[]);
-			statuses  #:= ([[[bool]]]:[]);
-			redpoints #:= ([[[int]]]:[]);
-			charvecs  #:= ([[[vec]]]:[]);
-			assert(@:real_form_hash.size() = {#K_type_hashes and} #xlhashes {= #K_type_hashes} and
-	       	    	   #heights = #xlhashes and #vechashes = #heights and #statuses = #heights and
-			   #redpoints = #heights, "steve_hash damaged on adding real form")
-	    	   fi
-	  in i
-    then add_xl(KGBElt x, ratvec lambda) = (int,int): {real form index, xlhash index}
-    	 let rfnum = add_real_form(x.real_form)
-	 then XLNUM = xlhashes[rfnum].size()
-	 then xlnum = xlhashes[rfnum].match(x,lambda)
-	 in if xlnum = XLNUM {new (x,lambda)}
-	    then {paramhashes[rfnum] #:= make_Param_hash();}
-	    	 {ktps[rfnum] #:= ([KTypePol]:[]);}
-		 heights[rfnum]#:=null(0);
-	    { add empty list of lists of reducibility points for the new height}
-	    	 redpoints[rfnum] #:= ([[int]]:[]);
-		 vechashes[rfnum]#:=([vec_hash]:[]);
-		 statuses[rfnum]#:=([[bool]]:[]);
-		 charvecs[rfnum]#:=([[vec]]:[])
-	    fi;
-	    (rfnum,xlnum)
-    then add_xlht(KGBElt x, ratvec lambda, int HT) = (int,int,int): {real form index, xlhash index, HT index}
-    	 let (rfnum,xlnum) = add_xl(x,lambda)
-	 then J = #heights[rfnum][xlnum], htnum = find(heights[rfnum][xlnum],HT)
-	 in if htnum.< {new HT}
-	    then let hrxl = heights[rfnum][xlnum], {[[int]]}
-	    	     hr = heights[rfnum]
-	    	 then () = hrxl#:= HT
-		 then () = hr[xlnum]:=hrxl
-		 then () = heights[rfnum]:=hr
-		 then rprxl = redpoints[rfnum][xlnum], rpr = redpoints[rfnum]
-		 then () = rprxl #:= for list in red_points(x,lambda,HT) do to_bitset(list) od
-		      {add a new [int]}
-		      {red_points can include NEGATIVE ints; bitset won't do}
-		 then () = rpr[xlnum]:=rprxl
-		 then () = redpoints[rfnum]:=rpr
-		 then vhsxl = vechashes[rfnum][xlnum], vhsr = vechashes[rfnum]
-		 then () = vhsxl #:= make_vec_hash()
-		 		      {add a new vec_hash for new height}
-		 then () = vhsr[xlnum]:=vhsxl
-		 then () = vechashes[rfnum]:=vhsr
-		 then statusxl = statuses[rfnum][xlnum], statusr = statuses[rfnum]
-		 then () = statusxl #:= ([bool]:[]) { for this height }
-		 then () = statusr[xlnum]:=statusxl
-		 then () = statuses[rfnum]:=statusr
-		 then charvecxl = charvecs[rfnum][xlnum], charvecr = charvecs[rfnum]
-		 then () = charvecxl #:= ([vec]:[]) { for this height }
-		 then () = charvecr[xlnum]:=charvecxl
-		 then () = charvecs[rfnum]:=charvecr
-		 in htnum:= J
-	    fi;
-	    (rfnum,xlnum,htnum)
-	 {rfnum, xlnum, htnum, vecnum; statuses[rfnum][xlnum][htnum][vecnum] is the result}
-    then SHthruple_plain_indexed(int rfnum, int xlnum, int htnum, ratvec gamma) = int:
-	 let (x,lambda) = xlhashes[rfnum].index(xlnum), HT = heights[rfnum][xlnum][htnum]
-	 then rcor = red_coroots_DV(x,lambda)
-    	 then rp = for M in redpoints[rfnum][xlnum][htnum]
-		   do set_bit_positions(M) {this is [int]}
-		   od {this is [[int]]}
-	 then loc = for av@j in rcor
-	      	    do location(rp[j],av*gamma)
-	    	    od
-	 then VECNUM = vechashes[rfnum][xlnum][htnum].size()
-	 then vecnum = vechashes[rfnum][xlnum][htnum].match(loc)
-	 {then () = prints("vechashes[rfnum][htnum] = ",vechashes[rfnum][xlnum][htnum].list())
-	 then () = prints("loc = ",loc)}
-	 then () = if vecnum = VECNUM {new location rel hyperplanes}
-	      	   then let srxlht = statuses[rfnum][xlnum][htnum], {[bool]}
-		   	    srxl = statuses[rfnum][xlnum],
-			    sr = statuses[rfnum],
-			    charvecxlht = charvecs[rfnum][xlnum][htnum], {[vec]}
-		   	    charvecxl = charvecs[rfnum][xlnum],
-			    charvecr = charvecs[rfnum]
-			then (boo,v) = pos_tester_Kchar(x, lambda, HT, gamma)
-			then () = srxlht#:=boo
-			then () = srxl[htnum]:=srxlht
-			then () = sr[xlnum]:=srxl
-
-			then () = charvecxlht#:=v
-			then () = charvecxl[htnum]:=charvecxlht
-			then () = charvecr[xlnum]:=charvecxl
-			in statuses[rfnum]:=sr;
-			   charvecs[rfnum]:=charvecr
-		   fi
-	 in vecnum
-	 {rfnum, xlnum, htnum, vecnum; statuses[rfnum][xlnum][htnum][vecnum] is the result}
-    then SHthruple_plain(KGBElt x, ratvec lambda, int HT, ratvec gamma) = (int, int, int, int):
-    	 let (rfnum, xlnum, htnum) = add_xlht(x,lambda,HT)
-	 in (rfnum, xlnum, htnum, SHthruple_plain_indexed(rfnum, xlnum, htnum, gamma))
-	 {rfnum, xlnum, htnum, vecnum; statuses[rfnum][xlnum][htnum][vecnum] is the result}
-	 {Following version checks deformations}
-    then SHthruple_indexed_known_Kchar(int rfnum, int xlnum, int htnum, ratvec gamma, vec Kcv) = int:
-    	 if not (deform_loc_flag or deform_nonu_flag)
-	 then return SHthruple_plain_indexed(rfnum, xlnum, htnum, gamma)
-	 fi;
-	 let (x,lambda) = xlhashes[rfnum].index(xlnum), HT = heights[rfnum][xlnum][htnum]
-	 then rcor = red_coroots_DV(x,lambda)
-    	 then rp = for M in redpoints[rfnum][xlnum][htnum]
-		   do set_bit_positions(M) {this is [int]}
-		   od {this is [[int]]}
-	 then loc = for av@j in rcor
-	      	    do location(rp[j],av*gamma)
-	    	    od
-	 then VECNUM = vechashes[rfnum][xlnum][htnum].size()
-	 then vecnum = vechashes[rfnum][xlnum][htnum].match(loc)
-	 {then () = prints("vechashes[rfnum][htnum] = ",vechashes[rfnum][xlnum][htnum].list())
-	 then () = prints("loc = ",loc)}
-	 then () = if vecnum = VECNUM {new location rel hyperplanes}
-	      	   then let srxlht = statuses[rfnum][xlnum][htnum], {[bool]}
-		   	    srxl = statuses[rfnum][xlnum],
-			    sr = statuses[rfnum],
-			    charvecxlht = charvecs[rfnum][xlnum][htnum], {[vec]}
-		   	    charvecxl = charvecs[rfnum][xlnum],
-			    charvecr = charvecs[rfnum]
-			then start = elapsed_ms()
-			then def_tester = is_def_tester(loc)
-			then (boo,v) = (bool,vec): (false,[])
-			then () = for defloc@m in vechashes[rfnum][xlnum][htnum].list()[:vecnum]
-			     	  do if def_tester(defloc)
-				     then if not statuses[rfnum][xlnum][htnum][m]
-				     	  then hash_def_false_count+:=1;
-					       v:=Kcv;
-					       break
-					  elif deform_loc_flag and
-					       charvecs[rfnum][xlnum][htnum][m] = Kcv
-					  then hash_def_true_count+:=1;
-					       boo:=true;
-					       v:=Kcv;
-					       break
-					  fi
-				      fi
-				   od
-		        then () = def_thruples_time+:= elapsed_ms() - start
-			then () = if (#v).=
-			     	  then boo:= pos_tester(x, lambda, HT, gamma);
-				       v:=Kcv
-				  fi
-			then () = srxlht#:=boo
-			then () = srxl[htnum]:=srxlht
-			then () = sr[xlnum]:=srxl
-
-			then () = charvecxlht#:=v
-			then () = charvecxl[htnum]:=charvecxlht
-			then () = charvecr[xlnum]:=charvecxl
-			in statuses[rfnum]:=sr;
-			   charvecs[rfnum]:=charvecr
-		   fi
-	 in vecnum
-    then SHthruple_indexed(int rfnum, int xlnum, int htnum, ratvec gamma) = int:
-    	 if not (deform_loc_flag or deform_nonu_flag)
-	 then return SHthruple_plain_indexed(rfnum, xlnum, htnum, gamma)
-	 fi;
-	 let (x,lambda) = xlhashes[rfnum].index(xlnum), HT = heights[rfnum][xlnum][htnum]
-	 then rcor = red_coroots_DV(x,lambda)
-    	 then rp = for M in redpoints[rfnum][xlnum][htnum]
-		   do set_bit_positions(M) {this is [int]}
-		   od {this is [[int]]}
-	 then loc = for av@j in rcor
-	      	    do location(rp[j],av*gamma)
-	    	    od
-	 then VECNUM = vechashes[rfnum][xlnum][htnum].size()
-	 then vecnum = vechashes[rfnum][xlnum][htnum].match(loc)
-	 {then () = prints("vechashes[rfnum][htnum] = ",vechashes[rfnum][xlnum][htnum].list())
-	 then () = prints("loc = ",loc)}
-	 then () = if vecnum = VECNUM {new location rel hyperplanes}
-	      	   then let srxlht = statuses[rfnum][xlnum][htnum], {[bool]}
-		   	    srxl = statuses[rfnum][xlnum],
-			    sr = statuses[rfnum],
-			    charvecxlht = charvecs[rfnum][xlnum][htnum], {[vec]}
-		   	    charvecxl = charvecs[rfnum][xlnum],
-			    charvecr = charvecs[rfnum]
-			then Kcv = Kchar_vec(x,lambda,HT,gamma)
-			then start = elapsed_ms()
-			then def_tester = is_def_tester(loc)
-			then (boo,v) = (bool,vec): (false,[])
-			then () = for defloc@m in vechashes[rfnum][xlnum][htnum].list()[:vecnum]
-			     	  do if def_tester(defloc)
-				     then if not statuses[rfnum][xlnum][htnum][m]
-				     	  then hash_def_false_count+:=1;
-					       v:=Kcv;
-					       break
-					  elif deform_loc_flag and
-					       charvecs[rfnum][xlnum][htnum][m] = Kcv
-					  then hash_def_true_count+:=1;
-					       boo:=true;
-					       v:=Kcv;
-					       break
-					  fi
-				      fi
-				   od
-		        then () = def_thruples_time+:= elapsed_ms() - start
-			then () = if (#v).=
-			     	  then boo:= pos_tester(x, lambda, HT, gamma);
-				       v:=Kcv
-				  fi
-			then () = srxlht#:=boo
-			then () = srxl[htnum]:=srxlht
-			then () = sr[xlnum]:=srxl
-
-			then () = charvecxlht#:=v
-			then () = charvecxl[htnum]:=charvecxlht
-			then () = charvecr[xlnum]:=charvecxl
-			in statuses[rfnum]:=sr;
-			   charvecs[rfnum]:=charvecr
-		   fi
-	 in vecnum
-
-    then SHthruple(KGBElt x, ratvec lambda, int HT, ratvec gamma) = (int,int,int,int):
-    	 let (rfnum, xlnum, htnum) = add_xlht(x,lambda,HT)
-	 in if (deform_loc_flag or deform_nonu_flag)
-	    then (rfnum, xlnum, htnum, SHthruple_indexed(rfnum, xlnum, htnum, gamma))
-	    else (rfnum, xlnum, htnum, SHthruple_plain_indexed(rfnum, xlnum, htnum, gamma))
-	    fi
-	 {rfnum, xlnum, htnum, vecnum; statuses[rfnum][xlnum][htnum][vecnum] is the result}
-{      then check() = void:
-      	   assert(real_form_hash.size() = xlhashes.size(),"wrong rf/xl hash sizes");
-      	   for rf@rfnum in real_form_hash.list()
-	   do assert(xlhashes[rfnum].size() = #heights[rfnum], "wrong xl/hts sizes");
-	      for xl@xlnum in xlhashes[rfnum]
-	      do assert(#heights[rfnum][xlnum] = }
-    then SHthruple_indexed_known_Kchar_no_stat(int rfnum, int xlnum, int htnum, ratvec gamma,
-    vec KCv) = int:
-    	 if not (deform_loc_flag or deform_nonu_flag)
-	 then return SHthruple_plain_indexed(rfnum, xlnum, htnum, gamma)
-	 fi;
-	 let (x,lambda) = xlhashes[rfnum].index(xlnum), HT = heights[rfnum][xlnum][htnum]
-	 then rcor = red_coroots_DV(x,lambda)
-    	 then rp = for M in redpoints[rfnum][xlnum][htnum]
-		   do set_bit_positions(M) {this is [int]}
-		   od {this is [[int]]}
-	 then loc = for av@j in rcor
-	      	    do location(rp[j],av*gamma)
-	    	    od
-	 then VECNUM = vechashes[rfnum][xlnum][htnum].size()
-	 then vecnum = vechashes[rfnum][xlnum][htnum].match(loc)
-	 {then () = prints("vechashes[rfnum][htnum] = ",vechashes[rfnum][xlnum][htnum].list())
-	 then () = prints("loc = ",loc)}
-	 then () = if vecnum = VECNUM {new location rel hyperplanes}
-	      	   then let charvecxlht = charvecs[rfnum][xlnum][htnum], {[vec]}
-		   	    charvecxl = charvecs[rfnum][xlnum],
-			    charvecr = charvecs[rfnum]
-			then () = charvecxlht#:=KCv
-			then () = charvecxl[htnum]:=charvecxlht
-			then () = charvecr[xlnum]:=charvecxl
-			in charvecs[rfnum]:=charvecr
-		   fi
-	 in vecnum
-    then SHthruple_indexed_no_stat(int rfnum, int xlnum, int htnum, ratvec gamma) = int:
-    	 if not (deform_loc_flag or deform_nonu_flag)
-	 then return SHthruple_plain_indexed(rfnum, xlnum, htnum, gamma)
-	 fi;
-	 let (x,lambda) = xlhashes[rfnum].index(xlnum), HT = heights[rfnum][xlnum][htnum]
-	 then rcor = red_coroots_DV(x,lambda)
-    	 then rp = for M in redpoints[rfnum][xlnum][htnum]
-		   do set_bit_positions(M) {this is [int]}
-		   od {this is [[int]]}
-	 then loc = for av@j in rcor
-	      	    do location(rp[j],av*gamma)
-	    	    od
-	 then VECNUM = vechashes[rfnum][xlnum][htnum].size()
-	 then vecnum = vechashes[rfnum][xlnum][htnum].match(loc)
-	 {then () = prints("vechashes[rfnum][htnum] = ",vechashes[rfnum][xlnum][htnum].list())
-	 then () = prints("loc = ",loc)}
-	 then () = if vecnum = VECNUM {new location rel hyperplanes}
-	      	   then let charvecxlht = charvecs[rfnum][xlnum][htnum], {[vec]}
-		   	    charvecxl = charvecs[rfnum][xlnum],
-			    charvecr = charvecs[rfnum]
-			then KCv = Kchar_vec(x,lambda,HT,gamma)
-			then () = charvecxlht#:=KCv
-			then () = charvecxl[htnum]:=charvecxlht
-			then () = charvecr[xlnum]:=charvecxl
-			in charvecs[rfnum]:=charvecr
-		   fi
-	 in vecnum
-    then SHthruple_no_stat(KGBElt x, ratvec lambda, int HT, ratvec gamma) = (int,int,int,int):
-    	 let (rfnum, xlnum, htnum) = add_xlht(x,lambda,HT) {, start_count = unitary_test_counter.use_count()}
-	 in if (deform_loc_flag or deform_nonu_flag)
-	    then (rfnum, xlnum, htnum, SHthruple_indexed_no_stat(rfnum, xlnum, htnum, gamma))
-	    else (rfnum, xlnum, htnum, SHthruple_plain_indexed(rfnum, xlnum, htnum, gamma))
-	    fi
-	 {in prints("no_stat used ", unitary_test_counter.use_count() - start_count, " unitarity tests.")
-	     ;ans}
-      in
-  ( ( -> ): {clear} clearSH
-  , ((KGBElt, ratvec) ->): {clear_xl} (KGBElt x, ratvec lambda) void:
-    let rfnum = real_form_hash.lookup(x.real_form)
-    then () = if rfnum.< then return () fi
-    then xlnum = xlhashes[rfnum].lookup(x,lambda)
-    then () = if xlnum.< then return () fi
-    then heightsrf = heights[rfnum], vechsrf = vechashes[rfnum], redptsrf = redpoints[rfnum],
-    	 statrf = statuses[rfnum], charvecsrf = charvecs[rfnum]
-    in heightsrf[xlnum]:=[];
-       vechsrf[xlnum]:=[];
-       redptsrf[xlnum]:=[];
-       statrf[xlnum]:=[];
-       charvecsrf[xlnum]:=[];
-       heights[rfnum]:=heightsrf;
-       vechashes[rfnum]:=vechsrf;
-       redpoints[rfnum]:=redptsrf;
-       statuses[rfnum]:= statrf;
-       charvecs[rfnum]:=charvecsrf
-  , ( -> int): {real_form_size} @int: real_form_hash.size()
-  , ( -> vec): {xlhash_sizes} @vec: for xlhash in xlhashes do xlhash.size() od
-  {, ( -> vec): {K_type_sizes} @vec: for Khash in K_type_hashes do Khash.size() od}
-  , ((KGBElt, ratvec) -> vec): {heights} (KGBElt x, ratvec lambda) vec:
-    let (rfnum, xlnum) = add_xl(x,lambda)
-    in heights[rfnum][xlnum]
-  , ((KGBElt, ratvec, int) -> (int, int, int)): {indices} (KGBElt x, ratvec lambda, int HT) (int, int, int):
-    add_xlht(x,lambda,HT)
-  {, ((KGBElt, ratvec, vec, int) -> KTypePol): {ind_quo} (KGBElt x, ratvec lambda, vec av, int m) KTypePol:
-    let qL = pL1(x,lambda,av,m/1)
-    then (rfnum, xlnum, paramnum) = add_xlp(qL, x.real_form)
-    in ktps[rfnum][xlnum][paramnum]}
-  {, ((KGBElt, ratvec, vec, int, int) -> bool): {test} (KGBElt x, ratvec lambda, vec av, int m, int HT) bool:
-    let Q = SHind_quo(x, lambda, av, m)
-    in to_ht(Q,HT).!=}
-  , ((KGBElt, ratvec, int) -> vec_hash): {vecHash} (KGBElt x, ratvec lambda, int HT) vec_hash:
-    let (rfnum, xlnum, htnum) = add_xlht(x,lambda,HT)
-    in vechashes[rfnum][xlnum][htnum]
-  , ((KGBElt, ratvec, int) -> [[int]]): {red_points} (KGBElt x, ratvec lambda, int HT) [[int]]:
-    {SHred_points(x,lambda,HT)}
-    let (rfnum, xlnum, htnum) = add_xlht(x,lambda,HT)
-    in for M in redpoints[rfnum][xlnum][htnum]
-       do set_bit_positions(M)
-       od
-  , ((KGBElt, ratvec, int) -> [bool]): {postests} (KGBElt x, ratvec lambda, int HT) [bool]:
-    let (rfnum, xlnum, htnum) = add_xlht(x,lambda,HT)
-    in statuses[rfnum][xlnum][htnum]
-  , ((KGBElt, ratvec, int) -> [vec]): {extra_coords} (KGBElt x, ratvec lambda, int HT) [vec]:
-    let (rfnum, xlnum, htnum) = add_xlht(x,lambda,HT)
-    in charvecs[rfnum][xlnum][htnum]
-  , ((int, int, int, ratvec, vec) -> bool): {partly_indexed_postest_known_Kchar}
-    (int rfnum, int xlnum, int htnum, ratvec gamma, vec KCv) bool:
-    let vecnum = SHthruple_indexed_known_Kchar(rfnum, xlnum, htnum, gamma, KCv)
-    in statuses[rfnum][xlnum][htnum][vecnum]
-  , ((KGBElt, ratvec, int, ratvec, vec) -> bool): {postest_known_Kchar} (KGBElt x, ratvec lambda, int HT,
-    ratvec gamma, vec KCv) bool:
-    let (rfnum, xlnum, htnum, vecnum) = SHthruple(x,lambda,HT,gamma)
-    in statuses[rfnum][xlnum][htnum][vecnum]
-  , ((int, int, int, int) -> bool): {indexed_postest} (int rfnum, int xlnum, int htnum, int vecnum) bool:
-    statuses[rfnum][xlnum][htnum][vecnum]
-  , ((int, int, int, ratvec) -> bool): {partly_indexed_postest} (int rfnum, int xlnum, int htnum,
-    ratvec gamma) bool:
-    let vecnum = SHthruple_indexed(rfnum, xlnum, htnum, gamma)
-    in statuses[rfnum][xlnum][htnum][vecnum]
-  , ((KGBElt, ratvec, int, ratvec) -> bool): {postest} (KGBElt x, ratvec lambda, int HT,
-    ratvec gamma) bool:
-    let (rfnum, xlnum, htnum, vecnum) = SHthruple(x,lambda,HT,gamma)
-    in statuses[rfnum][xlnum][htnum][vecnum]
-  , ((KGBElt, ratvec, int, ratvec) -> vec): {extra_coord} (KGBElt x, ratvec lambda,
-    int HT, ratvec gamma) vec:
-    let (rfnum, xlnum, htnum, vecnum) = SHthruple(x,lambda,HT,gamma)
-    in charvecs[rfnum][xlnum][htnum][vecnum]
-  , ((int, int, int, ratvec, vec) -> vec): {indexed_thruple_known_Kchar} (int rfnum, int xlnum, int htnum,
-    ratvec gamma, vec KCv) vec:
-    let vecnum = SHthruple_indexed_known_Kchar(rfnum, xlnum, htnum, gamma, KCv)
-    in vechashes[rfnum][xlnum][htnum].index(vecnum)
-  , ((KGBElt, ratvec, int, ratvec, vec) -> vec): {thruple_known_Kchar} (KGBElt x, ratvec lambda, int HT,
-    ratvec gamma, vec KCv) vec:
-    let (rfnum, xlnum, htnum, vecnum) = SHthruple(x,lambda,HT,gamma)
-    in vechashes[rfnum][xlnum][htnum].index(vecnum)
-  , ((int, int, int, ratvec) -> vec): {indexed_thruple} (int rfnum, int xlnum, int htnum,
-    ratvec gamma) vec:
-    let vecnum = SHthruple_indexed(rfnum, xlnum, htnum, gamma)
-    in vechashes[rfnum][xlnum][htnum].index(vecnum)
-  , ((KGBElt, ratvec, int, ratvec) -> vec): {thruple} (KGBElt x, ratvec lambda, int HT,
-    ratvec gamma) vec:
-    let (rfnum, xlnum, htnum, vecnum) = SHthruple(x,lambda,HT,gamma)
-    in vechashes[rfnum][xlnum][htnum].index(vecnum)
-  , ((int, int, int, ratvec, vec) -> vec): {indexed_thruple_known_Kchar_no_stat} (int rfnum, int
-    xlnum, int htnum, ratvec gamma, vec KCv) vec:
-    let vecnum = SHthruple_indexed_known_Kchar_no_stat(rfnum, xlnum, htnum, gamma, KCv)
-    in vechashes[rfnum][xlnum][htnum].index(vecnum)
-  , ((KGBElt, ratvec, int, ratvec, vec) -> vec): {thruple_known_Kchar_no_stat} (KGBElt x, ratvec
-    lambda, int HT, ratvec gamma, vec KCv) vec:
-    let (rfnum, xlnum, htnum, vecnum) = SHthruple_no_stat(x,lambda,HT,gamma)
-    in vechashes[rfnum][xlnum][htnum].index(vecnum)
-  , ((int, int, int, ratvec) -> vec): {indexed_thruple_no_stat} (int rfnum, int xlnum, int htnum,
-    ratvec gamma) vec:
-    let vecnum = SHthruple_indexed_no_stat(rfnum, xlnum, htnum, gamma)
-    in vechashes[rfnum][xlnum][htnum].index(vecnum)
-  , ((KGBElt, ratvec, int, ratvec) -> vec): {thruple_no_stat} (KGBElt x, ratvec lambda, int HT,
-    ratvec gamma) vec:
-    let (rfnum, xlnum, htnum, vecnum) = SHthruple_no_stat(x,lambda,HT,gamma)
-    in vechashes[rfnum][xlnum][htnum].index(vecnum)
-  )
-)
-}
-
-{
-set steve_hash = make_steve_hash()
-}
 
 {meant to hold data for one (x,lambda,HT)}
 set_type
