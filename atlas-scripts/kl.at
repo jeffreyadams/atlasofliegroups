@@ -274,6 +274,9 @@ set KL_sum_at_s(Param p) = ParamPol:
     let start = elapsed_ms()
     in KL_sum_at_s(p) next charTime +:= elapsed_ms() - start; char_counter.use()
 
+set KL_new_count = int:0
+set KL_false_low_count = int:0
+
 set KL_sum_at_s_to_ht_new(int HT) = (Param p) ParamPol: {should check whether library knows KL_sum_at_s, use that}
     let start = elapsed_ms()
     in if HT < 0
@@ -281,24 +284,31 @@ set KL_sum_at_s_to_ht_new(int HT) = (Param p) ParamPol: {should check whether li
        else let mKLS = stored_KL_sum_at_s(p)
        	    in case mKLS
 	       | timed_out_PP: if low_char(p,HT)
-       	       	 	    then KL_sum_at_s_to_height(p,HT) 
-       			    else let (below,) = height_split(KL_sum_at_s(p),HT), middle = elapsed_ms()
-    	    		    	 in below
+       	       	 	    then charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use();
+			    	 KL_sum_at_s_to_height(p,HT) 
+       			    else let (below,) = height_split(KL_sum_at_s(p),HT)
+    	    		    	 in KL_false_low_count+:=1; below
 			    fi
 	       | done_PP(KLS): let (below,) = height_split(KLS,HT)
-    	       	 	    in below
+    	       	 	    in KL_new_count +:= 1;
+			       charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use();
+			       below
 	       esac
-       fi next charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use()
+       fi
 
-set KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol: {should check whether library knows KL_sum_at_s, use that}
+set KL_sum_to_ht_new_flag = false
+
+set KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol: {should check
+    whether library knows KL_sum_at_s, use that}
+    if KL_sum_to_ht_new_flag then return  KL_sum_at_s_to_ht_new(HT)(p) fi;
     let start = elapsed_ms()
     in if HT < 0
        then KL_sum_at_s(p)
        elif low_char(p,HT)
-       then KL_sum_at_s_to_height(p,HT)
+       then charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use(); KL_sum_at_s_to_height(p,HT)
        else let (below,) = height_split(KL_sum_at_s(p),HT), middle = elapsed_ms()
-    	    in below
-       fi next charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use()
+    	    in KL_false_low_count+:=1; below
+       fi
 
 
 set KL_sum_at_s_to_ht_inter(int HT) = (Param p,int time) maybe_PP:
