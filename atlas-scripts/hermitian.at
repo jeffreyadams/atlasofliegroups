@@ -1170,8 +1170,8 @@ set u_predictor(Param p) = int:
        {if N-n > n}
        if n> 0 {n = #est_times}
        then if predictor_verbose
-       	    then prints("prediction = ", print_time_string(un*(max(est_times) + 
-	    ((N-un)*interrupt_base_time)\20))) {un full deforms still to compute}
+       	    then prints("prediction = ", print_time_string(un*max(est_times) + 
+	    ((N-un)*interrupt_base_time)\20) )  {un full deforms still to compute}
 	    fi;
 	    {would be good to see WHICH terms are known, and weight their times accordingly. If a term
 	     near x_open is known, then the predecessors are often nearly known}
