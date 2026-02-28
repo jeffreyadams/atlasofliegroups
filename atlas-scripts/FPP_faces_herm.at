@@ -606,7 +606,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 				       then () = D:=-1
 				       in ans
 				  elif ({to_ht_over_u_flag} {strict_}low(p,D)) {added strict 12/13/25}
-     	  			  then hermitian_form_irreducible_to_ht(p,D)
+     	  			  then HF_false_low_count+:=1;
+				       hermitian_form_irreducible_to_ht(p,D)
 				  else hermitian_form_irreducible_cut(p,D)
 				  fi
 		  then N = nuhashes[rfnum].size()
@@ -641,7 +642,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 					     K_type_pol(character_formula(p))
 					elif {strict_}low(p,D)
 					     {strict 12/13/25}{low(p.x,p.lambda,N)}
-					then hermitian_form_irreducible_to_ht(p,D)
+					then HF_false_low_count+:=1;
+					     hermitian_form_irreducible_to_ht(p,D)
 					else hermitian_form_irreducible_cut(p,D)
 					fi
 			    then N = nuhashes[rfnum].size(), H = impure_height(sigD)
@@ -763,7 +765,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 				    then D:= -1;
 				       	 K_type_pol(character_formula(p)).done
 				    elif (low(p,D))
-     	  			    then if test_interrupt_verbose
+     	  			    then HF_false_low_count+:=1;
+				    	 if test_interrupt_verbose
 		       		    	 then
 			prints("in add_param_interrupt, calling hermitian_form_irreducible_to_ht_MvL")
 					  fi;
@@ -809,7 +812,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 					       K_type_pol(character_formula(p)).done
 					  elif ({to_ht_over_u_flag} {strict_}low(p,D))
 					  {strict 12/13/25}{low(p.x,p.lambda,N)}
-					  then hermitian_form_irreducible_to_ht_MvL(p,D,time)
+					  then HF_false_low_count+:=1;
+					       hermitian_form_irreducible_to_ht_MvL(p,D,time)
 					  else hermitian_form_irreducible_cut(p,D,time)
 					fi
 		             then sigD = case m_sigD
@@ -2083,14 +2087,14 @@ set hermitian_form_irreducible_to_ht_big_SIMPLE(Param p,int HT) = KTypePol:
 set HOWMTH = int:0
 
 set hermitian_form_irreducible_to_ht_big(Param p,int HT) = KTypePol:
-    HOWMTH +:= 1;
-    if ({to_ht_over_u_flag} {strict_}low(p,HT)) {added strict 12/13/25}
+    HOWMTH +:= 1; hermitian_form_irreducible_to_ht(p,HT) {testing with low done here}
+    {if ({to_ht_over_u_flag} {strict_}low(p,HT)) {added strict 12/13/25}
     then {let answer =} hermitian_form_irreducible_to_ht(p,HT)
     	 {then D = first_impure_height(answer)
 	 in if D<0
 	    then big_unitary_hash...}
     else to_ht(hermitian_form_irreducible(p),HT)
-    fi
+    fi}
 {1/14/26: above called 5 times for E7_s}
 
 set is_unitary_to_ht_big_SIMPLE_old(Param p, int HT) = bool:
@@ -2135,8 +2139,9 @@ set is_unitary_to_ht_big_SIMPLE(Param p, int HT, int time) = bool:
     if (stat_holder:= status(p,HT)).!= then return stat_holder > 0 fi;
     {save nothing in Spin(4,4)}
     if HT.< then return is_unitary_hash_big_SIMPLE(p) fi;
-    if not ({to_ht_over_u_flag} {strict_}low(p,HT))
-    then let ans = hermitian_form_irreducible(p,time)
+    {if not ({to_ht_over_u_flag} {strict_}low(p,HT))
+    then
+    let ans = hermitian_form_irreducible(p,time)
 	    in case hermitian_form_irreducible(p,time) {maybe_KTP}
 	    | timed_out: is_unitary_to_ht_big_SIMPLE_old(p, HT)
 	    | done(r): let D = impure_height(r)
@@ -2147,8 +2152,8 @@ set is_unitary_to_ht_big_SIMPLE(Param p, int HT, int time) = bool:
 		      	   true
 		      fi
 	    esac
-    else is_unitary_to_ht_big_SIMPLE_old(p, HT)
-    fi
+    else} is_unitary_to_ht_big_SIMPLE_old(p, HT)
+    {fi}
 
 {false tries is_unitary intermittently}
 set old_to_ht_flag = true
@@ -2747,11 +2752,11 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_old(Param p,[int] Ns, int time) = boo
     let j0 = first(for N in Ns do N>= height(p) od)
     then () = Ns:=Ns[j0:]
     then () = for N@i in Ns
-	     do let result = 0, which_flag = low(p,N), start = elapsed_ms()
+	     do let result = 0, {which_flag = low(p,N),} start = elapsed_ms()
 		then () = while result = 0
-			  do result:= if which_flag
-				      then is_unitary_to_ht_MvL(p,N,time)
-				      else case hermitian_form_irreducible(p,time)
+			  do result:= {if which_flag
+				      then} is_unitary_to_ht_MvL(p,N,time);
+				      {else case hermitian_form_irreducible(p,time)
 					  | timed_out: 0
 					  | done(result):
 					    if is_pure((to_ht(result,Ns~[0])))
@@ -2759,12 +2764,12 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_old(Param p,[int] Ns, int time) = boo
 					    else -1
 					    fi
 					  esac
-				     fi;
-				if print_int_flag then prints("in to_hts, time = ", time, ", which_flag = ",
-				which_flag, ", elapsed = ", elapsed_ms() - start) fi;
-			     if not which_flag and not result.= then break fi;
-			     if which_flag then time := 2*time fi;
-			     which_flag := not which_flag
+				     fi;}
+				if print_int_flag then prints("in to_hts, time = ", time,", elapsed = ",
+				elapsed_ms() - start) fi;
+			     if {not which_flag and} not result.= then break fi;
+			     {if which_flag then} time := 2*time {fi}
+			     {which_flag := not which_flag}
 			  od {while result}
 		in if result<0
 		   then big_unitary_hash.numatch_height(p,Ns~[0]); return false
@@ -3447,15 +3452,15 @@ set is_unitary_def_test_big_SIMPLE(Param p,int m) = bool:
     then () = if not FPP_flag
 	      then return is_unitary(p) {prints("FPP DANGER DEF TEST at ",p)}
 	      fi
-    in if low(p, height(p))
-       then let (def,flag)= deform_hts(p,m)
+    in {if low(p, height(p))
+       then} let (def,flag)= deform_hts(p,m)
 	    in if flag
 	       then (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) and
 		    is_unitary_to_hts_big_SIMPLE(p,def)
 	       else is_unitary_test_big_SIMPLE(p,def)
 	       fi
-       else is_unitary_hash_big_SIMPLE(p)
-       fi
+       {else is_unitary_hash_big_SIMPLE(p)
+       fi}
 
 set is_unitary_def_test_big(Param p,int m) = bool:
   if (not is_hermitian(p)) then return false fi;

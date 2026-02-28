@@ -48,6 +48,8 @@ set LARmax = rat: 4/5
 set LAGAmin = 1/1
 set LARmin = rat: 1/2
 
+{count cases of changing form_to_ht to form because of low(p,HT)}
+set HF_false_low_count = int:0
 
 set status_time = int: 0
 set status_count = int: 0
@@ -207,9 +209,9 @@ if deform_script_flag then return recursive_deform_scr(p,height) fi;
   in case mFD
      | done(FD): return to_ht(FD,height)
      |timed_out:
-     if not low(p,height)
-     then return to_ht(full_deform_library(p),height)
-     fi;
+     {if not low(p,height)
+     then FD_false_low_count+:=1; return to_ht(full_deform_library(p),height)
+     fi;} {try NOT making a choice one term at a time}
      let !empty_K=null_K_module(p.real_form), !empty=null_module(p)
      then output = empty_K, def = empty
      then P = empty +
@@ -240,9 +242,9 @@ if deform_script_flag then return recursive_deform_scr(p,height,time) fi;
   in case mFD
      | done(FD): return to_ht(mFD,height)
      |timed_out:
-  if not low(p,height)
-  then return to_ht(full_deform_library(p,time),height)
-  fi;
+  {if not low(p,height)
+  then FD_false_low_count+:=1; return to_ht(full_deform_library(p,time),height)
+  fi;} {try NOT making a choice one term at a time}
   let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p)
   then output = empty_K, def = empty, expiration = elapsed_ms() + time
   then P = empty +
@@ -418,6 +420,12 @@ set_type
   )
 ]
 
+set full_deform_to_ht_new_flag = false
+
+{meant to count occasions when a desired full_deform_to_ht is obtained from a known full_deform}
+set FD_new_count = int:0
+set FD_false_low_count = int:0
+
 set make_deformation_hash_height_time () = deformation_hash_height_time:
 ( let param_hash = make_Param_hash()
   then pol_hash = make_KTypePol_hash() {to store full_deform_to_ht, which library does not}
@@ -436,20 +444,35 @@ set make_deformation_hash_height_time () = deformation_hash_height_time:
        then i = param_hash.match(p)
        in (if i=I {haven't considered p}
        	  then let start = elapsed_ms()
-	       then FD = if is_equal_rank(p.real_form)
-		      	 then full_deform_to_height_MvL_base(p,HT)
-			 else to_ht(twisted_full_deform_library(p),HT)
+	       then FD = if full_deform_to_ht_new_flag and defHashTime.time_lookup(p).>=
+	       	       	 then FD_new_count+:=1;
+			      if is_equal_rank(p.real_form)
+		    	      then to_ht(HT)(full_deform_library(p))
+			      else to_ht(HT)(twisted_full_deform_library(p))
+			      fi
+	       		 else if is_equal_rank(p.real_form)
+		      	      then full_deform_to_height_MvL_base(p,HT)
+			      else to_ht(twisted_full_deform_library(p),HT)
+			      fi
 			 fi
 	       in time_list #:= elapsed_ms() - start;
 	       	  pol_list #:=pol_hash.match(FD);
 	       	  height_list #:= HT;
 		  FD
-	  elif height_list[i] >= HT and time_list[i].>= {we already deformed to a greater height}
+	  elif height_list[i] >= HT and time_list[i].>=
+	       {we already deformed to a greater height}
 	  then to_ht(pol_hash.index(pol_list[i]),HT)
 	  else let start = elapsed_ms()
-	       then FD = if is_equal_rank(p.real_form)
-		      	 then full_deform_to_height_MvL_base(p,HT)
-			 else to_ht(twisted_full_deform(p),HT)
+	       then FD = if full_deform_to_ht_new_flag and defHashTime.time_lookup(p).>=
+	       	       	 then FD_new_count+:=1;
+			      if is_equal_rank(p.real_form)
+		    	      then to_ht(HT)(full_deform_library(p))
+			      else to_ht(HT)(twisted_full_deform_library(p))
+			      fi
+			 else if is_equal_rank(p.real_form)
+		      	      then full_deform_to_height_MvL_base(p,HT)
+			      else to_ht(twisted_full_deform(p),HT)
+			      fi
 			 fi
 	       in time_list[i]:= max(time_list[i], elapsed_ms() - start);
 		  pol_list[i]:=pol_hash.match(FD);
@@ -461,9 +484,16 @@ set make_deformation_hash_height_time () = deformation_hash_height_time:
        then i = param_hash.match(p)
        in (if i=I
        	   then let start = elapsed_ms()
-	        then mFD = if is_equal_rank(p.real_form)
-		     	   then full_deform_to_height_MvL_base(p,HT,time)
-			   else to_ht(twisted_full_deform_library(p,time),HT)
+	        then mFD = if full_deform_to_ht_new_flag and defHashTime.time_lookup(p).>=
+	       	       	   then FD_new_count+:=1;
+			   	if is_equal_rank(p.real_form)
+		    	      	then to_ht(HT)(full_deform_library(p)).done
+			      	else to_ht(HT)(twisted_full_deform_library(p)).done
+			      	fi
+			   else if is_equal_rank(p.real_form)
+		     	   	then full_deform_to_height_MvL_base(p,HT,time)
+			   	else to_ht(twisted_full_deform_library(p,time),HT)
+			   	fi
 			   fi
 	       	in case mFD
 		   | timed_out: time_list #:= start - elapsed_ms() - 2;
@@ -480,9 +510,16 @@ set make_deformation_hash_height_time () = deformation_hash_height_time:
 	  then to_ht(pol_hash.index(pol_list[i]),HT).done
 	  elif height_list[i] >= HT {but we didn't yet succeed}
 	  then let start = elapsed_ms() {HT > height_list_i}
-	       then mFD = if is_equal_rank(p.real_form)
-		      	  then full_deform_to_height_MvL_base(p,HT,time)
-			  else to_ht(twisted_full_deform_library(p,time),HT)
+	       then mFD = if full_deform_to_ht_new_flag and defHashTime.time_lookup(p).>=
+	       	       	  then FD_new_count+:=1;
+			       if is_equal_rank(p.real_form)
+		    	       then to_ht(HT)(full_deform_library(p)).done
+			       else to_ht(HT)(twisted_full_deform_library(p)).done
+			       fi
+			  else if is_equal_rank(p.real_form)
+		      	       then full_deform_to_height_MvL_base(p,HT,time)
+			       else to_ht(twisted_full_deform_library(p,time),HT)
+			       fi
 			  fi
 		in case mFD
 		   | timed_out: time_list[i] +:= start - elapsed_ms();
@@ -495,9 +532,16 @@ set make_deformation_hash_height_time () = deformation_hash_height_time:
 			       FD.done
 		   esac
           else let start = elapsed_ms() {HT > height_list_i}
-	       then mFD = if is_equal_rank(p.real_form)
-		      	  then full_deform_to_height_MvL_base(p,HT,time)
-			  else to_ht(twisted_full_deform_library(p,time),HT)
+	       then mFD = if full_deform_to_ht_new_flag and defHashTime.time_lookup(p).>=
+	       	       	  then FD_new_count+:=1;
+			       if is_equal_rank(p.real_form)
+		    	       then to_ht(HT)(full_deform_library(p)).done
+			       else to_ht(HT)(twisted_full_deform_library(p)).done
+			       fi
+			  else if is_equal_rank(p.real_form)
+		      	       then full_deform_to_height_MvL_base(p,HT,time)
+			       else to_ht(twisted_full_deform_library(p,time),HT)
+			       fi
 			  fi
 		in case mFD
 		   | timed_out: time_list[i]:= start - elapsed_ms() - 2;
@@ -973,6 +1017,9 @@ set report_tested(string label) = void:
     prints(print_time_string(unitaryTime)," for ",unitary_test_counter.use_count()," utests; ",
     print_time_string(charTime), " for ",char_counter.use_count(), " char calcs; ",
     print_time_string(charTimeToHt), " for ",char_counter_to_ht.use_count(), " char_to_ht calcs.");
+    prints(HF_false_low_count," form_to_ht calcs -> form because of low(p,HT)");
+    if KL_sum_to_ht_new_flag then prints(KL_new_count," KL_sum_at_s_to_ht calcs -> known KL_sum_at_s, ",
+       KL_false_low_count," KL_sum_at_s_to_ht calcs -> new KL_sum_at_s because of low_char") fi;
     {prints("time for up_mu = ",print_time_string(up_mu_time), ", mu_time_mult = ",mu_time_mult,
     	   ", shift_frac = ",shift_frac, ", min_ht_mult = ", min_ht_mult);}
     {prints({"LAGAmax = ",LAGAmax,", GARLAGmin = ",GARLAGmin, ", GARmin = ", GARmin,}
@@ -1092,6 +1139,9 @@ set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(v
     prints(print_time_string(unitaryTime)," for ",unitary_test_counter.use_count()," utests; ",
     print_time_string(charTime), " for ",char_counter.use_count(), " char calcs; ",
     print_time_string(charTimeToHt), " for ",char_counter_to_ht.use_count(), " char_to_ht calcs");
+    prints(HF_false_low_count," form_to_ht calcs -> form because of low(p,HT)");
+    if KL_sum_to_ht_new_flag then prints(KL_new_count," KL_sum_at_s_to_ht calcs -> known KL_sum_at_s, ",
+       KL_false_low_count," KL_sum_at_s_to_ht calcs -> new KL_sum_at_s because of low_char") fi;
     prints("  ----------------")
     , @: {clear_report_tested_cum}
      tph := 0; tpt := 0; tnh := 0; tnt :=0; oth :=0; otc :=0; ott :=0;
@@ -1100,6 +1150,25 @@ set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(v
      utc := 0; utt := 0; ct :=0; cu := 0; ctth := 0; cuth :=0; DTc:=0; DBTc:=0; nhtC_time:=0)
 
 set report_tested_cum() = report_tested_cum("","")
+
+{execute this behind ">>badps.at" or something similar}
+set list_to_ht_bad(int minTime) = void:
+    let badps = [Param]: [], badTs = [int]:[], badHs = [int]:[]
+    in for hash@j in tested_inter_to_ht_hashes
+       do for p@k in hash.list()
+       	  do let T = tested_inter_to_ht_times[j][k]
+	     in if T>= minTime
+	     	then badps#:=p;
+		     badTs#:=T;
+		     badHs #:=j+height(p)
+		fi
+	  od
+       od;
+       prints("{|badps| is a list of ",#badps," Param's.  is_unitary_to_ht(badps[j],badHs[j]) ran for time badTs[j] >= ",minTime,"}");
+       write_param_list(badps,"badps");
+       prints("set badHs = ",badHs);
+       prints("set badTs = ",badTs)
+
 
 set wsf_time = int:0
 
@@ -1183,7 +1252,8 @@ set u_predictor(Param p) = int:
        	    in if RT < -1
 	       then didnt_finish_u_count+:=1;
 		    if predictor_verbose
-		    then prints("test probably didn't finish, so guessing ", 2*N*(-(RT+2)) + interrupt_base_time)
+		    then prints("test probably didn't finish, so guessing ",
+		    print_time_string(2*N*(-(RT+2)) + interrupt_base_time))
 		    fi;
 		    2*N*(-(RT+2)) + interrupt_base_time
 		else if predictor_verbose
@@ -1335,7 +1405,8 @@ u_predictor(p, HT, interrupt_base_time)
 {return predicted (u_time, to_ht_time)}
 set adjust_to_ht_over_u(Param p,int HT) = (int,int):
     let ut = u_predictor(p)
-    in (ut, u_predictor(p,HT,ut+10))
+    in (ut, u_predictor(p,HT,min(ut+10, 10*interrupt_base_time)))
+    {the allotted time is the largest that still makes to_ht preferable to u}
     {(u_predictor(p,-1), u_predictor(p,HT))}
     {if HT <= height(p) then return (0,0) fi;
     let u_time = u_predictor(p,-1), to_ht_time = u_predictor(p,HT)
