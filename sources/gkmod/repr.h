@@ -480,27 +480,14 @@ class deformation_unit
 
   KT_nr_pol lowest_K_types, def_contrib,
     LKTs_twisted, def_contrib_twisted; // twisted versions at $q = -1$
-  Rep_table& rt; // access $K$-type table, coroots (for alcove testing) etc.
+  const Rep_context& rc; // access information for hash table methods
 
   RankFlags status; // whether |def_contrib|,|def_contrib_twisted| are defined
 
-  void set_LKTs();
+  void set_LKTs(Rep_table& rt);
 public:
-  deformation_unit(Rep_table& rt, const StandardRepr& sr, bool twisted)
-    : sample(sr)
-    , lowest_K_types(), def_contrib(), LKTs_twisted(), def_contrib_twisted()
-    , rt(rt), status(twisted ? 0x4 : 0)
-  {
-    set_LKTs();
-  }
-  deformation_unit(Rep_table& rt, StandardRepr&& sr, bool twisted)
-  : sample(std::move(sr))
-  , lowest_K_types(), def_contrib(), LKTs_twisted(), def_contrib_twisted()
-  , rt(rt), status(twisted ? 0x4 : 0)
-  {
-    set_LKTs();
-  }
-
+  deformation_unit(Rep_table& rt, const StandardRepr& sr, bool twisted);
+  deformation_unit(Rep_table& rt, StandardRepr&& sr, bool twisted);
   deformation_unit(deformation_unit&&) = default; // type is only movable
 
   bool has_def_contrib() const { return status.test(0); }
@@ -699,8 +686,9 @@ class Rep_table : public Rep_context
 
   // full deformation to $\nu=0$ of |z|
   const deformation_unit& // warning: transient reference (into |pool| vector)
-    deformation(StandardRepr z); // by value
-  K_type_nr_poly full_deformation(const StandardRepr& z);
+    deformation(StandardRepr& z);
+  bool has_deformation(const StandardRepr& z);
+  K_type_nr_poly full_deformation(StandardRepr& z);
 
   // like |deformation_terms|; caller multiplies returned coefficients by $1-s$
   sl_list<std::pair<StandardRepr,int> > twisted_deformation_terms
@@ -720,8 +708,10 @@ class Rep_table : public Rep_context
 
   // full twisted deformation, with |flip| telling whether to multiply by |s|
   const deformation_unit& // warning: transient reference (into |pool| vector)
-  twisted_deformation(StandardRepr z, bool& flip); // |z| by value
-  K_type_nr_poly twisted_full_deformation(const StandardRepr& z);
+  twisted_deformation(StandardRepr& z, bool& flip);
+  bool has_twisted_deformation(const StandardRepr& z);
+  K_type_nr_poly
+  twisted_full_deformation(StandardRepr& z);
 
  private:
   class Bruhat_generator; // helper class: internal |add_block_below| recursion
