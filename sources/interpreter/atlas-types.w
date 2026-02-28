@@ -8382,7 +8382,7 @@ void full_deform_wrapper(eval_level l)
     // the data type used by |Rep_table::full_deformation|
   auto finals = p->rc().finals_for(p->val);
   for (auto it=finals.begin(); not finals.at_end(it); ++it)
-    for (auto&& term : p->rt().full_deformation(std::move(it->first)))
+    for (auto&& term : p->rt().full_deformation(it->first))
       result.add_term(std::move(term.first),term.second*it->second);
 @) // now convert from (tabled) |repr::K_type_nr_poly| to |K_type_poly|
   push_value(std::make_shared<K_type_pol_value>@|
@@ -8402,8 +8402,8 @@ void twisted_full_deform_wrapper(eval_level l)
     extended_finalise(rc,p->val,rc.inner_class().distinguished());
   repr::K_type_nr_poly result;
     // the data type used by |Rep_table::twisted_full_deformation|
-  for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
-  { const auto& def = rt.twisted_full_deformation(std::move(it->first));
+  for (auto it=finals.begin(); it!=finals.end(); ++it)
+  { const auto& def = rt.twisted_full_deformation(it->first);
     result.add_multiple(def,
 			it->second ? Split_integer(0,1) : Split_integer(1,0));
   }
@@ -8425,7 +8425,7 @@ go on to compute the full deformation.
 
 @< Local function def...@>=
 void stored_full_deform_wrapper(eval_level l)
-{ shared_module_parameter p = get<module_parameter_value>();
+{ own_module_parameter p = get_own<module_parameter_value>();
   if (not p->rc().is_final(p->val))
     throw runtime_error@|("Parameter not final; nothing can be stored");
   if (l==eval_level::no_value)
@@ -8446,7 +8446,7 @@ void stored_full_deform_wrapper(eval_level l)
 }
 @)
 void stored_twisted_full_deform_wrapper(eval_level l)
-{ shared_module_parameter p = get<module_parameter_value>();
+{ own_module_parameter p = get_own<module_parameter_value>();
   const auto& rc=p->rc();
   test_standard(*p,"Cannot compute full twisted deformation");
   if (not rc.is_final(p->val))
@@ -8492,7 +8492,7 @@ void timed_full_deform_wrapper(eval_level l)
   set_timer(period);
   try
   { for (auto it=finals.begin(); not finals.at_end(it); ++it)
-      for (auto&& term : p->rt().full_deformation(std::move(it->first)))
+      for (auto&& term : p->rt().full_deformation(it->first))
         pol.add_term(std::move(term.first),term.second*it->second);
   }
   catch (const time_out& e)
@@ -8527,8 +8527,8 @@ void timed_twisted_full_deform_wrapper(eval_level l)
 @)
   set_timer(period);
   try
-  { for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
-    { const auto& def = rt.twisted_full_deformation(std::move(it->first));
+  { for (auto it=finals.begin(); it!=finals.end(); ++it)
+    { const auto& def = rt.twisted_full_deformation(it->first);
       pol.add_multiple(def,
 		       it->second ? Split_integer(0,1) : Split_integer(1,0));
     }
