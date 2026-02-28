@@ -8412,6 +8412,64 @@ void twisted_full_deform_wrapper(eval_level l)
     (p->rf,export_K_type_pol(p->rt(),result)));
 }
 
+@ Sometimes one wants to access a (twisted) full deformation formula if it is
+already computed and stored, but otherwise return rapidly with just that
+information, rather than plunging into a (possibly very time consuming)
+computation. The functions |stored_full_deform| and |stored_twisted_full_deform|
+provides this information, its result being packed into a union type value.
+
+Since the information about whether a value us stored for a parameter is found
+inside a |deformation_unit|, we need to break open the code called by
+|full_deform_wrapper| above, and not call |Rep_table::deformation| which would
+go on to compute the full deformation.
+
+@< Local function def...@>=
+void stored_full_deform_wrapper(eval_level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  if (not p->rc().is_final(p->val))
+    throw runtime_error@|("Parameter not final; nothing can be stored");
+  if (l==eval_level::no_value)
+    return;
+@)
+  if (p->rt().has_deformation(p->val))
+  { repr::K_type_nr_poly brute = p->rt().full_deformation(p->val);
+    auto result =
+      std::make_shared<K_type_pol_value>(p->rf,export_K_type_pol(p->rt(),brute));
+    push_value(std::make_shared<union_value>
+        (1,std::move(result),main_hash_table->match_literal("some")));
+  }
+  else
+  { auto nil = std::make_shared<tuple_value>(0); // the void
+    push_value(std::make_shared<union_value>(0,std::move(nil),
+               main_hash_table->match_literal("none")));
+  }
+}
+@)
+void stored_twisted_full_deform_wrapper(eval_level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  const auto& rc=p->rc();
+  test_standard(*p,"Cannot compute full twisted deformation");
+  if (not rc.is_final(p->val))
+    throw runtime_error@|("Parameter not final; nothing can be stored");
+  if (not rc.is_delta_fixed(p->val))
+    throw runtime_error@|("Parameter not fixed by inner class involution");
+  if (l==eval_level::no_value)
+    return;
+@)
+  if (p->rt().has_twisted_deformation(p->val))
+  { repr::K_type_nr_poly brute = p->rt().twisted_full_deformation(p->val);
+    auto result =
+      std::make_shared<K_type_pol_value>(p->rf,export_K_type_pol(p->rt(),brute));
+    push_value(std::make_shared<union_value>
+        (1,std::move(result),main_hash_table->match_literal("some")));
+  }
+  else
+  { auto nil = std::make_shared<tuple_value>(0); // the void
+    push_value(std::make_shared<union_value>(0,std::move(nil),
+               main_hash_table->match_literal("none")));
+  }
+}
+
 @ As an experiment, we provide variants of the |full_deform| function, and of
 its twisted counterpart, each with a time-out argument. These function return a
 value of (the same) union type: if the computation does not finish in the
@@ -8802,6 +8860,10 @@ install_function(block_deform_wrapper,@|"block_deform"
 install_function(full_deform_wrapper,@|"full_deform","(Param->KTypePol)");
 install_function(twisted_full_deform_wrapper,@|"twisted_full_deform"
                 ,"(Param->KTypePol)");
+install_function(stored_full_deform_wrapper,@|"stored_full_deform"
+		,"(Param->|KTypePol)");
+install_function(stored_twisted_full_deform_wrapper,@|"stored_twisted_full_deform"
+                ,"(Param->|KTypePol)");
 install_function(timed_full_deform_wrapper,@|"full_deform"
                 ,"(Param,int->|KTypePol)");
 install_function(timed_twisted_full_deform_wrapper,@|"twisted_full_deform"

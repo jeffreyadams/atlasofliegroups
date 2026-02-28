@@ -1110,6 +1110,15 @@ twisted_full_deform: (Param->KTypePol): inner class twisted deformation to nu=0
   and preparations may cause a flip in that choice. If needed use scale_extended
   and finalize_extended to do these preparations while keeping track of flips.
 
+stored_full_deform: (Param->(void|KTypePol)),
+stored_twisted_full_deform: (Param->(void|KTypePol)): lookup only versions
+  If a (twisted) deformation formula for the given parameter (or one known to
+  give the same result) was previously computed using |full_deform| respectively
+  |twisted_full_deform|, the atlas program stores this value as long as the real
+  form of the parameter is accessible. These functions return the stored value
+  if one exists (as ParamPol variant of the union type), and otherwise nothing
+  (as the void variant of the union type), without computing the deformation.
+
 full_deform: (Param,int->(void|KTypePol)),
 twisted_full_deform: (Param,int->(void|KTypePol)): time-limited versions
   These two functions perform the same computation as their counterparts without
