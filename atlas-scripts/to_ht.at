@@ -211,9 +211,11 @@ set oriented_KL_sum_to_ht  (int N, int time) = (Param p)ParamPol:
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
 {.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
 set c_form_irreducible_to_ht_MvL (Param p,int HT) = KTypePol:
+  {
   if not ({to_ht_over_u_flag} {strict_}low(p,HT))
   then HF_false_low_count+:=1; return c_form_irreducible_cut(p,HT)
   fi;
+  } {try NOT using low to decide 3/1/26}
   if not(herm_report)
   then
   let P=oriented_KL_sum_to_ht(HT)(p), count=0 then nP=#P
@@ -256,9 +258,11 @@ set c_form_irreducible_to_ht_MvL (Param p,int HT) = KTypePol:
 {finishes without interruption if all terms already deformed}
 set c_form_irreducible_to_ht_MvL (Param p,int HT, int time ) = maybe_KTP:
   if HT < 0 then return c_form_irreducible(p, time) fi;
+  {
   if not ({to_ht_over_u_flag} {strict_}low(p,HT))
   then HF_false_low_count+:=1; return c_form_irreducible_cut(p,HT,time)
   fi;
+  } {try NOT using low to decide 3/1/26}
    let ori_nr_p = orientation_nr(p), expiration = elapsed_ms() + time
    then oriented_KL_sum = ParamPol: null_module(p) +
       	for c@q in KL_sum_at_s_to_ht(HT)(p)
@@ -288,17 +292,21 @@ set c_form_irreducible_to_ht_MvL (Param p,int HT, int time ) = maybe_KTP:
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
 {.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
 set c_form_irreducible_to_ht (Param p,int HT) = KTypePol:
+  {
   if not low(p,HT)
   then HF_false_low_count+:=1; return c_form_irreducible_cut(p,HT)
   fi;
+  } {try NOT using low to decide 3/1/26}
   map(c_form_std_to_ht_MvL(HT), oriented_KL_sum_to_ht(HT)(p) )
  
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
 {.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
 set c_form_irreducible_to_ht (Param p,int HT, int time) = maybe_KTP:
+  {
   if not low(p,HT)
   then HF_false_low_count+:=1; return c_form_irreducible_cut(p,HT,time)
   fi;
+  } {try NOT using low to decide 3/1/26}
   map(c_form_std_to_ht_MvL(HT,time), oriented_KL_sum_to_ht(HT)(p) )
 
 { utility: compute fixed and unfixed contributions to c-form on irreducible(p)

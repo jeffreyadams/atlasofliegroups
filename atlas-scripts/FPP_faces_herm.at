@@ -605,10 +605,10 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 				  then let ans = K_type_pol(character_formula(p))
 				       then () = D:=-1
 				       in ans
-				  elif ({to_ht_over_u_flag} {strict_}low(p,D)) {added strict 12/13/25}
-     	  			  then HF_false_low_count+:=1;
-				       hermitian_form_irreducible_to_ht(p,D)
-				  else hermitian_form_irreducible_cut(p,D)
+				  {elif ({to_ht_over_u_flag} {strict_}low(p,D)) {added strict 12/13/25}
+     	  			  then HF_false_low_count+:=1;}
+				  else hermitian_form_irreducible_to_ht(p,D)
+				  {else hermitian_form_irreducible_cut(p,D)}
 				  fi
 		  then N = nuhashes[rfnum].size()
 		  then H = impure_height(sigD)
@@ -640,11 +640,11 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 			    then sigD = if uhashes[rfnum].lookup(p).>=
 					then D:=-1;
 					     K_type_pol(character_formula(p))
-					elif {strict_}low(p,D)
+					{elif {strict_}low(p,D)
 					     {strict 12/13/25}{low(p.x,p.lambda,N)}
-					then HF_false_low_count+:=1;
-					     hermitian_form_irreducible_to_ht(p,D)
-					else hermitian_form_irreducible_cut(p,D)
+					then HF_false_low_count+:=1;}
+					else hermitian_form_irreducible_to_ht(p,D)
+					{else hermitian_form_irreducible_cut(p,D)}
 					fi
 			    then N = nuhashes[rfnum].size(), H = impure_height(sigD)
 			    then () = if H = -1
@@ -762,20 +762,20 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		       then prints("in add_param_interrupt for height ",D," and time ",time)
 		       fi;
 		  let m_sigD = if uhashes[rfnum].lookup(p).>=
-				    then D:= -1;
-				       	 K_type_pol(character_formula(p)).done
-				    elif (low(p,D))
-     	  			    then HF_false_low_count+:=1;
-				    	 if test_interrupt_verbose
-		       		    	 then
-			prints("in add_param_interrupt, calling hermitian_form_irreducible_to_ht_MvL")
-					  fi;
+			       then D:= -1;
+				    K_type_pol(character_formula(p)).done
+				    {elif (low(p,D))
+     	  			    then HF_false_low_count+:=1;}
+			       else if test_interrupt_verbose
+		       		    then
+				    prints("in add_param_interrupt, calling hermitian_form_irreducible_to_ht_MvL")
+				    fi;
 				    hermitian_form_irreducible_to_ht_MvL(p,D,time)
-				    else if test_interrupt_verbose
+				    {else if test_interrupt_verbose
 		       		    	 then
 			prints("in add_param_interrupt, calling hermitian_form_irreducible_cut")
 					  fi;
-				    hermitian_form_irreducible_cut(p,D,time)
+				    hermitian_form_irreducible_cut(p,D,time)}
 				  fi
 		        then sigD = case m_sigD
 		       	       	    | timed_out: return (-1,-1,-1,false); 0*K_type_pol(p)
@@ -810,12 +810,12 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 			    then m_sigD = if uhashes[rfnum].lookup(p).>=
 					  then D:= -1;
 					       K_type_pol(character_formula(p)).done
-					  elif ({to_ht_over_u_flag} {strict_}low(p,D))
+					  {elif ({to_ht_over_u_flag} {strict_}low(p,D))
 					  {strict 12/13/25}{low(p.x,p.lambda,N)}
-					  then HF_false_low_count+:=1;
-					       hermitian_form_irreducible_to_ht_MvL(p,D,time)
-					  else hermitian_form_irreducible_cut(p,D,time)
-					fi
+					  then HF_false_low_count+:=1;}
+					  else hermitian_form_irreducible_to_ht_MvL(p,D,time)
+					  {else hermitian_form_irreducible_cut(p,D,time)}
+					  fi
 		             then sigD = case m_sigD
 		       	       	       	 | timed_out: return (-1,-1,-1,false); 0*K_type_pol(p)
 				    	 | done (sigD): sigD
