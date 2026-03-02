@@ -2809,11 +2809,17 @@ set old_testing_flag = false
 set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst_old(Param p, int HT) = bool:
    if (HT>=0) and (HT < height(p)) then return true fi;
   {if (stat_holder:=status(p,HT)).!= then return stat_holder > 0 fi;} {#13} {nothing in Spin(4,4)}
-  if old_testing_flag then return is_unitary_to_ht_big_SIMPLE(p,HT) fi;
+  if old_testing_flag
+  then let (u,t) = adjust_to_ht_over_u(p,HT)
+       in if u <= prefer_u_factor * t
+       	  then return is_unitary_hash_big_SIMPLE(p)
+	  else return is_unitary_to_ht_big_SIMPLE(p,HT)
+	  fi
+   fi;
   if (not is_hermitian(p)) then return false fi;
   if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
   if test_interrupt_verbose
-  then prints(new_line,"Starting is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst, p = ",p, ", HT = ",HT)
+  then prints(new_line,"Starting is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst_old, p = ",p, ", HT = ",HT)
   fi;
   let G = p.real_form, start = elapsed_ms()
   then FPP_flag = is_FPP(G,p.infinitesimal_character)
@@ -2875,7 +2881,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst_old(Param p, int HT) = bool:
 		fi {B} {u_time > prefer_u_factor * to_ht_time}
 	    od
    in if test_interrupt_verbose
-      then prints("Finish is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst, time ",
+      then prints("Finish is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst_old, time ",
       	   	  print_time_string(elapsed_ms() - start), " result ",result,new_line)
       fi;
       if result > 0
@@ -2890,7 +2896,14 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
    {if not predictor_flag then return is_unitary_to_ht_big_SIMPLE(p,HT) fi;}
    if (HT>=0) and (HT < height(p)) then return true fi;
   {if (stat_holder:=status(p,HT)).!= then return stat_holder > 0 fi;} {#13} {nothing in Spin(4,4)}
-  if old_testing_flag then return is_unitary_to_ht_big_SIMPLE(p,HT) fi;
+  if old_testing_flag
+  then let (u,t) = adjust_to_ht_over_u(p,HT)
+       in if u <= prefer_u_factor * t
+       	  then return is_unitary_hash_big_SIMPLE(p)
+	  else return is_unitary_to_ht_big_SIMPLE(p,HT)
+	  fi
+   fi;
+  {if old_testing_flag then return is_unitary_to_ht_big_SIMPLE(p,HT) fi;}
   if (not is_hermitian(p)) then return false fi;
   if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
   if test_interrupt_verbose
@@ -2910,13 +2923,14 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
 	    	        ", u_time = ", print_time_string(u_time))
 	    fi
   then () = while result = 0
-       	    do if{A} u_time <= prefer_u_factor * to_ht_time {floor(u_factor*u_time) < 2*floor(to_ht_factor*to_ht_time)}
+       	    do if{A} u_time > prefer_u_factor * to_ht_time {floor(u_factor*u_time) < 2*floor(to_ht_factor*to_ht_time)}
 	       then let start_u = elapsed_ms()
-	       	    then form = hermitian_form_irreducible_cut(p,HT,floor(u_factor*u_time))
+	       	    then form = big_unitary_hash.sig_entry_interrupt (p,HT,floor(u_factor*u_time))
+		    {hermitian_form_irreducible_cut(p,HT,floor(u_factor*u_time))}
 		    in result := is_pure(form); {is_pure(to_ht(form,HT));}
 		       test_time:= elapsed_ms() - start_u;
 	       	       if test_interrupt_verbose
-		       then prints("result ",result," from is_unitary_cut, in time ",
+		       then prints("result ",result," from is_unitary_to_ht, in time ",
 				   print_time_string(test_time), "; total = ",
 				   print_time_string(elapsed_ms() - start))
 		       fi;
@@ -2933,7 +2947,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
 			    fi
 		       fi {result.<}
 	       fi; {A} {u_time <= prefer_u_factor * to_ht_time }
-	       if{B} u_time > prefer_u_factor * to_ht_time  {floor(to_ht_factor*to_ht_time) < 2*floor(u_factor*u_time)}
+	       if{B} u_time <= prefer_u_factor * to_ht_time  {floor(to_ht_factor*to_ht_time) < 2*floor(u_factor*u_time)}
 	       then let start_to_ht = elapsed_ms()
 		    in result := is_unitary_to_ht_big_SIMPLE_interrupt(p,HT,floor(to_ht_factor*to_ht_time));
 	       	       test_time:=elapsed_ms() - start_to_ht;
@@ -2973,7 +2987,14 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
   if (HT>=0) and (HT < height(p)) then return true fi;
   if (stat_holder:=status(p,HT)).!= then return stat_holder > 0 fi;{C}
   {removing saves 100/7200 in Spin(4,4); but keeping helps in higher rank.}
-  if old_testing_flag then return is_unitary_to_ht_big_SIMPLE(p,HT) fi;
+  if old_testing_flag
+  then let (u,t) = adjust_to_ht_over_u(p,HT)
+       in if u <= prefer_u_factor * t
+       	  then return is_unitary_hash_big_SIMPLE(p)
+	  else return is_unitary_to_ht_big_SIMPLE(p,HT)
+	  fi
+   fi;
+  {if old_testing_flag then return is_unitary_to_ht_big_SIMPLE(p,HT) fi;}
   if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
   if test_interrupt_verbose
   then prints(new_line,"Starting is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst, p = ",p, ", HT = ",HT)
@@ -2991,7 +3012,8 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
 	    	        ", u_time = ", print_time_string(u_time))
 	    fi
   then () = while result = 0
-       	    do if{A}  u_time > prefer_u_factor * to_ht_time {floor(to_ht_factor*to_ht_time) < 2*floor(u_factor*u_time)}
+       	    do if{A}  u_time > prefer_u_factor * to_ht_time
+	       	      {floor(to_ht_factor*to_ht_time) < 2*floor(u_factor*u_time)}
 	       then let start_to_ht = elapsed_ms()
 	       	    then () = result := is_unitary_to_ht_big_SIMPLE_interrupt(p,HT,floor(to_ht_factor*to_ht_time));
 	       	              test_time:=elapsed_ms() - start_to_ht;
@@ -3006,8 +3028,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
 		       elif result.>
 		       then add_to_u_to_ht(p,HT);
 		       	    break
-		       else {(u_time,to_ht_time): = adjust_to_ht_over_u(p,HT);}
-		       	    u_time := u_predictor(p,-1);
+		       else u_time := u_predictor(p);
 		       	    to_ht_time:= u_predictor(p,HT,u_time+10);
 			    if test_interrupt_verbose
 			    then prints("  (u_time,to_ht_time) now (", print_time_string(u_time),",",
@@ -3027,8 +3048,9 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
 				   "; total = ", print_time_string(elapsed_ms() - start))
 			 fi
 	       	    in if result.= {no result from is_unitary}
-	       	       then u_time := u_predictor(p,-1);
-		       	    to_ht_time:= u_predictor(p,HT);
+	       	       then {(u_time,to_ht_time) := adjust_to_ht_over_u(p,HT);}
+		       	    u_time := u_predictor(p);
+		       	    to_ht_time:= u_predictor(p,HT, u_time+10);
 			    if test_interrupt_verbose
 			    then prints("  (u_time,to_ht_time) now (", print_time_string(u_time),",",
 			    	 print_time_string(to_ht_time),")")
@@ -3079,10 +3101,17 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
   HTs:= for HT in HTs do if HT>=height(p) do HT fi od.##;
   {remove  status saves 200/7200 Spin(4,4), but requires repeating tests in Spin(5,5).
   Better kept: avoids 17 negative is_unitary retests in Spin(6,6), savve 2 mb/300, 1.8 sec/360}
-  if old_testing_flag then return is_unitary_to_hts_big_SIMPLE(p,HTs) fi;
+  {if old_testing_flag then return is_unitary_to_hts_big_SIMPLE(p,HTs) fi;}
   let GAM = GAM(p) in HTs:= for ht in HTs do if ht <= GAM do ht fi od.##;
   if #HTs = 0 then return is_unitary_hash_big_SIMPLE(p) fi;
   if #HTs = 1 then return is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(p, HTs[0]) fi;
+  if old_testing_flag
+  then let (u,t) = adjust_to_ht_over_u(p,HTs[0])
+       in if u <= prefer_u_factor * t
+       	  then return is_unitary_hash_big_SIMPLE(p)
+	  else return is_unitary_to_hts_big_SIMPLE(p,HTs)
+	  fi
+   fi;
   if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
   if test_interrupt_verbose
   then prints(new_line,"Starting is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst, p = ",p, ", HTs = ",HTs)
@@ -3182,11 +3211,18 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_Ufirst(Param p, [int] HTs) = bool:
   HTs:= for HT in HTs do if HT>=height(p) do HT fi od.##;
   {remove  status saves 200/7200 Spin(4,4), but requires repeating tests in Spin(5,5).
   Better kept: avoids 17 negative is_unitary retests in Spin(6,6), savve 2 mb/300, 1.8 sec/360}
-  if old_testing_flag then return is_unitary_to_hts_big_SIMPLE(p,HTs) fi;
+  {if old_testing_flag then return is_unitary_to_hts_big_SIMPLE(p,HTs) fi;}
   let GAM = GAM(p) in HTs:= for ht in HTs do if ht <= GAM do ht fi od.##;
   if #HTs = 0 then return is_unitary_hash_big_SIMPLE(p) fi;
   if #HTs = 1 then return is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(p, HTs[0]) fi;
   if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
+  if old_testing_flag
+  then let (u,t) = adjust_to_ht_over_u(p,HTs[0])
+       in if u <= prefer_u_factor * t
+       	  then return is_unitary_hash_big_SIMPLE(p)
+	  else return is_unitary_to_hts_big_SIMPLE(p,HTs)
+	  fi
+  fi;
   if test_interrupt_verbose
   then prints(new_line,"Starting is_unitary_to_hts_big_SIMPLE_interrupt_Ufirst, p = ",p, ", HTs = ",HTs)
   fi;

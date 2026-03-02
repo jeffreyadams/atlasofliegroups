@@ -226,7 +226,7 @@ set use_deform_nonu_steve() = void:
 set pos_tester_known_Kchar(KGBElt x, ratvec lambda,int HT,ratvec gamma, vec KCv) =
     (bool, vec):
      OTF_hold:=old_testing_flag;
-    if HT >=0 then old_testing_flag:=true fi;
+    {if HT >=0 then old_testing_flag:=true fi;}
     let p = parameter(x,lambda,gamma), G = x.real_form
     then qs = monomials(1*p)
     in if extra_coord_flag
@@ -241,7 +241,7 @@ set pos_tester_known_Kchar(KGBElt x, ratvec lambda,int HT,ratvec gamma, vec KCv)
 {USE Kpol_hash defined in FPP_faces_geom.at}
 set pos_tester_Kchar(KGBElt x, ratvec lambda,int HT,ratvec gamma) = (bool, vec):
     OTF_hold:=old_testing_flag;
-    if HT >=0 then old_testing_flag:=true fi;
+    {if HT >=0 then old_testing_flag:=true fi;}
     let p = parameter(x,lambda,gamma), G = x.real_form
     then qs = monomials(1*p)
     in if extra_coord_flag

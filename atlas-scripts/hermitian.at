@@ -241,7 +241,7 @@ if deform_script_flag then return recursive_deform_scr(p,height,time) fi;
 ( let mFD = full_deform(p,2) {if full_deform was already computed, it'll come up fast}
   in case mFD
      | done(FD): return to_ht(mFD,height)
-     |timed_out:
+     | timed_out:
   {if not low(p,height)
   then FD_false_low_count+:=1; return to_ht(full_deform_library(p,time),height)
   fi;} {try NOT making a choice one term at a time}
@@ -364,7 +364,7 @@ set make_deformation_hash_time () = deformation_hash_time:
 			  else twisted_full_deform_library(p,time)
 			  fi
 	       in case mFD
-		   | timed_out: time_list[i] -:= start - elapsed_ms() - 1;
+		   | timed_out: time_list[i] +:= start - elapsed_ms() - 1;
 				mFD
 		   | done(FD): time_list[i] := elapsed_ms() - start - time_list[i] - 1;
 			        FD.done
@@ -1231,67 +1231,30 @@ set u_predictor(Param p) = int:
     {have we computed full_deform? time needed if yes, -1 if no}
     then est_times = [int]: for T in times if T != -1 do abs(T+1) fi od {(abs(t+1)) -1 truer, but avoid 0}
     then unknown_indices = [int]: for T@j in times if T < 0 do j fi od
-    then N = #list, n = #est_times, un = #unknown_indices
+    then num_filled_unknown = int: 0
+    then () = if #unknown_indices > 0 {there are unknown full_deforms; work on one}
+    	      then let j0 = (2*#unknown_indices)\3
+	      	   then q0 = list[unknown_indices[j0]]
+	      	   then RT = defHashTime.time_record_bounded(q0,interrupt_base_time)
+		   in if RT >= 0 then num_filled_unknown+:=1 fi;
+		      times[unknown_indices[j0]] := RT
+	      fi
+    then () = est_times := for T in times if T != -1 do abs(T+1) fi od {(abs(t+1)) -1 truer, but avoid 0}
+    then N = #list, n = #est_times, un = #unknown_indices - num_filled_unknown
     in if predictor_verbose
 	     	then prints(new_line,"Start predicting to height -1 param ",p);
-		     prints("(#terms,#estimated) = (",N,",",n, "), estimated times = ",est_times)
+		     prints("(#terms,#unknown,#estimated) = (N,un,n) = (",N,",",un,",",n,
+		     	    "), estimated times = ",est_times)
        fi;
-       {if N-n > n}
-       if n> 0 {n = #est_times}
-       then if predictor_verbose
-       	    then prints("prediction = ", print_time_string(un*max(est_times) + 
-	    ((N-un)*interrupt_base_time)\20) )  {un full deforms still to compute}
-	    fi;
+       if predictor_verbose
+       then prints("prediction = ", print_time_string(un*max(est_times) + 
+	   ((N-un)*interrupt_base_time)\20) )  {un full deforms still to compute}
+       fi;
 	    {would be good to see WHICH terms are known, and weight their times accordingly. If a term
 	     near x_open is known, then the predecessors are often nearly known}
-      	     un*max(est_times) + ((N-un)*interrupt_base_time)\20 {N-un lookups}
-       	    {N-un full_deforms to compute, probably each worse than known}
-       else let i0 = (2*N)\3 {we know nothing, so compute one full_deform}
-       	    then q = list[i0] {not yet computed full_deform}
-	    then RT = defHashTime.time_record_bounded(q, interrupt_base_time)
-       	    in if RT < -1
-	       then didnt_finish_u_count+:=1;
-		    if predictor_verbose
-		    then prints("test probably didn't finish, so guessing ",
-		    print_time_string(2*N*(-(RT+2)) + interrupt_base_time))
-		    fi;
-		    2*N*(-(RT+2)) + interrupt_base_time
-		else if predictor_verbose
-	             then prints("chosen random q is number ",i0, " of ",N,": ",q,
-	       	     	  ", taking ",print_time_string(RT));
-		    	  prints("prediction = ",print_time_string((N-1)*RT + interrupt_base_time\20))
-	       	     fi;
-	       	     (N-1)*RT + interrupt_base_time\20 {N-1 full_deforms still to compute}
-		fi
-       fi next predictor_time+:= elapsed_ms() - start_pred; predictor_count+:=1
+       un*max(est_times) + ((N-un)*interrupt_base_time)\20 next predictor_time+:= elapsed_ms() - start_pred;
+       			 predictor_count+:=1
 
-set u_predictor_old (Param p) = int:
-    if not predictor_flag
-    then return worst_so_far(p,-1) + interrupt_base_time
-    fi;
-    let delta = p.real_form.distinguished_involution
-    then list = for q in partial_block(p) if is_fixed(delta,q) do q fi od
-    {will do full_deform on each term in list}
-    then N = #list, start_pred = elapsed_ms(), first = 0
-    then () = for q@j in list
-	      do let FD = full_deform(q,interrupt_base_time\10)
-	      	 in if is_done(FD)
-	       	 then first :=j+1
-	       	 else break
-	       	 fi;
-		 if elapsed_ms() - start_pred > 10*interrupt_base_time
-	       	 then break
-		 fi
-	       od
-    in if first = N {got through whole list}
-       then (elapsed_ms() - start_pred) + interrupt_base_time
-       else let start_test = elapsed_ms()
-       	    then Q = full_deform(list[first],10*interrupt_base_time)
-	    in case Q
-	       |timed_out: (N-first)*20*interrupt_base_time + start_test-start_pred
-	       |done(r): (elapsed_ms() - start_test)*(N-first) + start_test-start_pred
-	       esac + interrupt_base_time
-       fi
 
 set didnt_finish_ht_count = int: 0
 
@@ -1307,15 +1270,26 @@ set u_predictor(Param p, int HT, int time) = int:
 		       for q in monomials(KL_sum_at_s_to_ht(HT)(p))
 		       if is_fixed(delta,q) do q fi od, rk = delta.n_rows
 	    then times =  [int]: for q in list do defHashHtTime.time_lookup_to_ht(q,HT) od
-	    then known_indices = [int]: for T@j in times if T!= -1 do j fi od
-	    then well_known_indices = [int]: for T@j in times if T >= 0 do j fi od
-	    then est_times = [int]: for j in known_indices do abs(times[j]+1) od {abs(t+1) -1 truer, but avoid 0}
-	    then N = #times, n = #known_indices, nw = #well_known_indices {possible terms, known terms, nw}
+	    then est_times = [int]: for T in times if T!=-1 do abs(T+1) fi od {abs(t+1) -1 truer, but avoid 0}
+    	    then unknown_indices = [int]: for T@j in times if T < 0 do j fi od
+    	    then num_filled_unknown = int: 0, un = #unknown_indices
+    	    then () = if un > 0 {there are unknown full_deforms; work on one}
+    	      	      then let j0 = (2*#unknown_indices)\3
+	      	      then q0 = list[unknown_indices[j0]]
+	      	      then RT = defHashTime.time_record_bounded(q0,interrupt_base_time)
+		      in if RT >= 0 then num_filled_unknown+:=1 fi;
+		      	 un -:= num_filled_unknown;
+		      	 times[unknown_indices[j0]] := RT
+	      	      fi
+	    then () = est_times := for T in times if T!=-1 do abs(T+1) fi od
+	    	 {abs(t+1) -1 truer, but avoid 0}
+	    then N = #times, ne = #est_times{ , nw = #well_known_indices} {possible terms, known terms}
     	    in if predictor_verbose
 	     	then prints(new_line,"Start predicting to height ", HT, " param ",p);
-		     prints("(N,n) = (",N,",",n, "), est times = ",est_times)
+		     prints("(#terms,#unknown,#estimated) = (N,un,ne) = (",N,",",un,",",ne,
+		     	    "), est times = ",est_times)
 		fi;
-       	        let ans = if n = 0 {no known times; compute _one_ such time}
+       	        let ans = {if n = 0 {no known times; compute _one_ such time} {guaranteed ne >= 1}
        	     	    	  then let i0 = (2*N)\3 {#list\2}
 			       then q = list[i0] {necessarily not in defHtTimeHash}
 			       then () = if predictor_verbose
@@ -1334,10 +1308,10 @@ set u_predictor(Param p, int HT, int time) = int:
 				       then prints("chosen random time ", print_time_string(RT))
 				       fi;
 				       (N-1)*(RT+1)+ interrupt_base_time
-				  fi
-			   else (N-nw)*(max(est_times)) {N-nw deforms to compute, estimated time}
-			   	+ (nw*interrupt_base_time)\20 {nw lookups}
-			   fi
+				  fi}
+			   un*max(est_times) + ((N-un)*interrupt_base_time)\20 {N-un lookups}
+			   {un deforms to compute, estimated time}
+			   {fi}
 		 in if predictor_verbose
 		    then prints("prediction ",print_time_string(ans), " in time ",
 		    	 print_time_string(elapsed_ms() - start_pred))
@@ -1350,55 +1324,6 @@ set u_predictor(Param p, int HT, int time) = int:
 {predicted time in milliseconds to complete is_unitary{to_ht}(p,{HT})}
 set u_predictor(Param p, int HT) = int:
 u_predictor(p, HT, interrupt_base_time)
-    {if HT < 0 then return u_predictor(p) fi;
-    let WSF = max({5*(p.real_form.semisimple_rank)^2} interrupt_base_time\10, worst_so_far(p,HT)),
-    	start_pred = elapsed_ms()
-    in if not predictor_flag
-       then WSF
-       else let delta = p.real_form.distinguished_involution
-	    then list = {is_unitary runs over terms in KL_sum_to_ht(p,HT)}
-		       for q in monomials(KL_sum_at_s_to_ht(HT)(p))
-		       if is_fixed(delta,q) do q fi od, rk = delta.n_rows
-	    then times =  [int]: for q in list do defHashHtTime.time_lookup_to_ht(q,HT) od
-	    then known_indices = [int]: for T@j in times if T!= -1 do j fi od
-	    then est_times = [int]: for T in times if T != -1 do abs(T) fi od
-	    then N = #times, n = #est_times {possible terms, known terms}
-    	    in if predictor_verbose
-	     	then prints(new_line,"Start predicting to height ", HT, " param ",p);
-		     prints("(N,n) = (",N,",",n, "), est times = ",est_times)
-		fi;
-       	        let ans = if n = 0 {no known times; compute _one_ such time}
-       	     	    	  then let i0 = (2*N)\3 {#list\2}
-			       then q = list[i0] {necessarily not in defHtTimeHash}
-			       then () = if predictor_verbose
-			       	       	 then prints("chosen random q is number ",i0,
-					      " of ",N,": ",q)
-					 fi
-			       then  RT = defHashHtTime.time_record_to_ht_bounded(q, HT,
-			       	     interrupt_base_time)
-			       in if RT < -1
-				  then didnt_finish_ht_count +:=1;
-				       if predictor_verbose
-				       then prints("test didn't finish, so guessing ",
-				       	    		 print_time_string(2*N*(-(RT+2)) + interrupt_base_time))
-				       fi;
-				       2*N*(-(RT+2))+interrupt_base_time
-				  else if predictor_verbose
-				       then prints("chosen random time ", print_time_string(RT))
-				       fi;
-				       (N-1)*(RT+1)+ interrupt_base_time
-				  fi
-			   else (N-n)*(max(est_times)+1) {N-n deforms to compute, estimated time}
-			   	+ n*(interrupt_base_time\10) {n lookups}
-			   fi
-		 in if predictor_verbose
-		    then prints("prediction ",print_time_string(ans), " in time ",
-		    	 print_time_string(elapsed_ms() - start_pred))
-		    fi;
-		    predictor_time+:= elapsed_ms() - start_pred;
-		    predictor_count+:=1;
-		    ans
-	    fi}
 
 {set adjust_factor = int: 5}
 
@@ -1406,12 +1331,6 @@ u_predictor(p, HT, interrupt_base_time)
 set adjust_to_ht_over_u(Param p,int HT) = (int,int):
     let ut = u_predictor(p)
     in (ut, u_predictor(p,HT,min(ut+10, 10*interrupt_base_time)))
-    {the allotted time is the largest that still makes to_ht preferable to u}
-    {(u_predictor(p,-1), u_predictor(p,HT))}
-    {if HT <= height(p) then return (0,0) fi;
-    let u_time = u_predictor(p,-1), to_ht_time = u_predictor(p,HT)
-    in to_ht_over_u_flag := (u_time > adjust_factor* to_ht_time) or strict_low(p,HT);
-       (u_time,to_ht_time)}
 
 {.write c-invariant form on standard module as a KTypePol }
 { never involves |twisted_full_deform| }
