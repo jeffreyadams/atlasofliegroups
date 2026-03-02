@@ -441,119 +441,90 @@ set make_deformation_hash_height_time () = deformation_hash_height_time:
        height_list := []
   then add_param(Param p, int HT) = (KTypePol,int):
        let I = param_hash.size()
-       then i = param_hash.match(p)
-       in (if i=I {haven't considered p}
-       	  then let start = elapsed_ms()
-	       then FD = if full_deform_to_ht_new_flag and defHashTime.time_lookup(p).>=
-	       	       	 then FD_new_count+:=1;
-			      if is_equal_rank(p.real_form)
-		    	      then to_ht(HT)(full_deform_library(p))
-			      else to_ht(HT)(twisted_full_deform_library(p))
-			      fi
-	       		 else if is_equal_rank(p.real_form)
-		      	      then full_deform_to_height_MvL_base(p,HT)
-			      else to_ht(twisted_full_deform_library(p),HT)
-			      fi
-			 fi
-	       in time_list #:= elapsed_ms() - start;
-	       	  pol_list #:=pol_hash.match(FD);
-	       	  height_list #:= HT;
-		  FD
-	  elif height_list[i] >= HT and time_list[i].>=
+       then i = param_hash.match(p), start = elapsed_ms()
+       in if i=I or (height_list[i] < HT) or (time_list[i] < 0) {haven't considered p to HT}
+       	  then let FDH =  let mFD = if is_equal_rank(p.real_form)
+	       	     	      then stored_full_deform(p)
+		     	      else stored_twisted_full_deform(p)
+		     	      fi
+	       		  in case mFD
+	       	  	     | done(FD): FD_new_count+:=1;
+		    	       to_ht(HT)(FD)
+			     | timed_out: if is_equal_rank(p.real_form)
+		      	       	      	  then full_deform_to_height_MvL_base(p,HT)
+			       		  else to_ht(twisted_full_deform_library(p),HT)
+			       		  fi
+			     esac
+	       in if i = I
+	       	  then time_list #:= elapsed_ms() - start;
+	       	       pol_list #:=pol_hash.match(FDH);
+	       	       height_list #:= HT
+		  elif height_list[i] >= HT {now i<I; still computing to HT}
+		  then time_list[i]:= (elapsed_ms() - start) - time_list[i] + 2;
+		       pol_list[i]:=pol_hash.match(FDH);
+		       height_list[i]:=HT
+		  else time_list[i]:= elapsed_ms() - start;
+		       {now height_list[i] < HT, so freshly computed to HT}
+		       pol_list[i]:=pol_hash.match(FDH);
+		       height_list[i]:=HT
+		  fi;
+		  (FDH, i)
+	  else (to_ht(pol_hash.index(pol_list[i]),HT),i)
 	       {we already deformed to a greater height}
-	  then to_ht(pol_hash.index(pol_list[i]),HT)
-	  else let start = elapsed_ms()
-	       then FD = if full_deform_to_ht_new_flag and defHashTime.time_lookup(p).>=
-	       	       	 then FD_new_count+:=1;
-			      if is_equal_rank(p.real_form)
-		    	      then to_ht(HT)(full_deform_library(p))
-			      else to_ht(HT)(twisted_full_deform_library(p))
-			      fi
-			 else if is_equal_rank(p.real_form)
-		      	      then full_deform_to_height_MvL_base(p,HT)
-			      else to_ht(twisted_full_deform(p),HT)
-			      fi
-			 fi
-	       in time_list[i]:= max(time_list[i], elapsed_ms() - start);
-		  pol_list[i]:=pol_hash.match(FD);
-	       	  height_list[i]:=HT;
-		  FD
-	  fi, i)
+	  fi
   then maybe_add_param(Param p, int HT, int time) = (maybe_KTP,int):
        let I = param_hash.size() {now always HT >= 0}
-       then i = param_hash.match(p)
-       in (if i=I
-       	   then let start = elapsed_ms()
-	        then mFD = if full_deform_to_ht_new_flag and defHashTime.time_lookup(p).>=
-	       	       	   then FD_new_count+:=1;
-			   	if is_equal_rank(p.real_form)
-		    	      	then to_ht(HT)(full_deform_library(p)).done
-			      	else to_ht(HT)(twisted_full_deform_library(p)).done
-			      	fi
-			   else if is_equal_rank(p.real_form)
-		     	   	then full_deform_to_height_MvL_base(p,HT,time)
-			   	else to_ht(twisted_full_deform_library(p,time),HT)
-			   	fi
-			   fi
-	       	in case mFD
-		   | timed_out: time_list #:= start - elapsed_ms() - 2;
-		     		height_list #:= HT;
-				pol_list #:= -1;
-				mFD
-		   | done(FD): time_list #:= elapsed_ms() - start;
-		  	       pol_list #:=pol_hash.match(FD);
-		     	       height_list #:= HT;
-			       FD.done
-		   esac
-	  elif height_list[i] >= HT {we already deformed to a greater height} and
-	       time_list[i].>= {didn't time out}
-	  then to_ht(pol_hash.index(pol_list[i]),HT).done
-	  elif height_list[i] >= HT {but we didn't yet succeed}
-	  then let start = elapsed_ms() {HT > height_list_i}
-	       then mFD = if full_deform_to_ht_new_flag and defHashTime.time_lookup(p).>=
-	       	       	  then FD_new_count+:=1;
-			       if is_equal_rank(p.real_form)
-		    	       then to_ht(HT)(full_deform_library(p)).done
-			       else to_ht(HT)(twisted_full_deform_library(p)).done
-			       fi
-			  else if is_equal_rank(p.real_form)
-		      	       then full_deform_to_height_MvL_base(p,HT,time)
-			       else to_ht(twisted_full_deform_library(p,time),HT)
-			       fi
-			  fi
-		in case mFD
-		   | timed_out: time_list[i] +:= start - elapsed_ms();
-		     		height_list[i]:=HT;
-				pol_list[i]:=-1;
-		     		mFD
-		   | done(FD): time_list[i]:= -time_list[i] + elapsed_ms() - (start + 2);
-		     	       height_list[i]:=HT;
-		  	       pol_list[i]:=pol_hash.match(FD);
-			       FD.done
-		   esac
-          else let start = elapsed_ms() {HT > height_list_i}
-	       then mFD = if full_deform_to_ht_new_flag and defHashTime.time_lookup(p).>=
-	       	       	  then FD_new_count+:=1;
-			       if is_equal_rank(p.real_form)
-		    	       then to_ht(HT)(full_deform_library(p)).done
-			       else to_ht(HT)(twisted_full_deform_library(p)).done
-			       fi
-			  else if is_equal_rank(p.real_form)
-		      	       then full_deform_to_height_MvL_base(p,HT,time)
-			       else to_ht(twisted_full_deform_library(p,time),HT)
-			       fi
-			  fi
-		in case mFD
-		   | timed_out: time_list[i]:= start - elapsed_ms() - 2;
-		     		height_list[i]:=HT;
-				pol_list[i]:=-1;
-		     		mFD
-		   | done(FD): time_list[i]:= max(time_list[i],elapsed_ms() - start);
-		     	       height_list[i]:=HT;
-		  	       pol_list[i]:=pol_hash.match(FD);
-			       FD.done
-		   esac 
-	    fi,i)
+       then i = param_hash.match(p), start = elapsed_ms()
+       in  if i=I or (height_list[i] < HT) or (time_list[i] < 0)
+       	   then let mFDH = maybe_KTP:
+	   	    let mFD = maybe_KTP: if is_equal_rank(p.real_form) {this is maybe_KTP}
+	       	     	      	    then stored_full_deform(p)
+		     	      	    else stored_twisted_full_deform(p)
+		     	      	    fi
+		          in case mFD
+	       	  	     | done(FD): FD_new_count+:=1;
+		    	       		  to_ht(mFD,HT)
+			     | timed_out: if is_equal_rank(p.real_form)
+		      	       	      	  then full_deform_to_height_MvL_base(p,HT,time)
+			       		  else to_ht(twisted_full_deform_library(p,time),HT)
+			       		  fi
+			     esac
+	       	 in if i = I
+	       	    then case mFDH
+		    	 | done(FDH): time_list#:= elapsed_ms() - start; {nonneg, actual time}
+			      	      pol_list #:= pol_hash.match(FDH);
+	       	       	 	      height_list #:= HT
+			 | timed_out: time_list#:= start - elapsed_ms() - 2; {-2 or smaller: not done, -(time used + 2)}
+			   	      pol_list #:= -1;
+				      height_list#:=HT
+			 esac
+		    elif height_list[i] >= HT {now i<I; still computing to HT}
+		    then case mFDH
+		    	 | done(FDH): time_list[i]:= (elapsed_ms() - start) + if time_list[i] < -1
+			   	      		     		     	      then -(time_list[i] + 2)
+									      else 0
+									      fi; {completed, record total time}
+			   	      pol_list[i] := pol_hash.match(FDH);
+		       	 	      height_list[i]:=HT
+			 | timed_out: time_list[i] := start - elapsed_ms() + if time_list[i] < -1
+			   	      		      	      		     then time_list[i]
+									     else 0
+									     fi;
+			   	      pol_list[i]:=-1;
+				      height_list[HT]:=HT
+			 esac
+		    else case mFDH {computing a new HT}
+		    	 | done(FDH): time_list[i]:= elapsed_ms() - start;
+		           	      pol_list[i]:=pol_hash.match(FDH);
+		       	 	      height_list[i]:=HT
+			 | timed_out: time_list[i] := start - elapsed_ms()-2;
+			   	      pol_list[i]:= -1;
+				      height_list[i]:=HT
+			 esac
+		    fi;
+		    (mFDH, i)
+	    else (to_ht(pol_hash.index(pol_list[i]), HT).done, i)
+	    fi
    in
   ( ( -> int): {size} @int: param_hash.size()
   , ( -> ): {clear} clearDHT
