@@ -741,8 +741,8 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		Uhash, fancy_tester)
     fi;
     let newStatuses = for j:#eq do "?" od,  NumClasses = #eq, red_shift = if red_count_flag then 1 else 0 fi
-	, printInterval = int: 1, H0 = height(parameter(x,lambda,0*lambda)), OTF_hold = old_testing_flag
-    then () = old_testing_flag:=true
+	, printInterval = int: 1, H0 = height(parameter(x,lambda,0*lambda)){, OTF_hold = old_testing_flag
+    then () = old_testing_flag:=true}
     {use Uhash to mark some classes as known? (those that hit a unitary Param)}
     {Find all Param's in Uhash with (x,lambda). For each, compute corresponding Face.
      Use function known_unitaries from FPP_faces
@@ -956,7 +956,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
      in  if sort_LFD_flag
 	 then sort(x.real_form, Lvd, FVKHnew)
 	 else FVKHnew
-	 fi next old_testing_flag:=OTF_hold
+	 fi {next old_testing_flag:=OTF_hold}
 
 set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd, {def 2}
     [[FaceVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFace, (Param->bool) tester,
