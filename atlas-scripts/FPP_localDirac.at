@@ -741,8 +741,8 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		Uhash, fancy_tester)
     fi;
     let newStatuses = for j:#eq do "?" od,  NumClasses = #eq, red_shift = if red_count_flag then 1 else 0 fi
-	, printInterval = int: 1, H0 = height(parameter(x,lambda,0*lambda)){, OTF_hold = old_testing_flag
-    then () = old_testing_flag:=true}
+	, printInterval = int: 1, H0 = height(parameter(x,lambda,0*lambda)), OTF_hold = old_testing_flag
+    {then () = {old_testing_flag:=true}}
     {use Uhash to mark some classes as known? (those that hit a unitary Param)}
     {Find all Param's in Uhash with (x,lambda). For each, compute corresponding Face.
      Use function known_unitaries from FPP_faces
@@ -956,7 +956,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
      in  if sort_LFD_flag
 	 then sort(x.real_form, Lvd, FVKHnew)
 	 else FVKHnew
-	 fi {next old_testing_flag:=OTF_hold}
+	 fi next old_testing_flag:=OTF_hold
 
 set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd, {def 2}
     [[FaceVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFace, (Param->bool) tester,
@@ -968,9 +968,9 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd, {def 3}
     [[FaceVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFace, int ht,
     Param_hash Uhash, (Param->bool) fancy_tester) = [[FaceVertsKHash]]:
     let OTF_hold = old_testing_flag
-    in old_testing_flag:=true;
+    in {old_testing_flag:=true;}
        let tester = ((Param->bool): (Param p) bool:
-    	   is_unitary_to_ht_big_SIMPLE_interrupt_pick(p, ht))
+    	   is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(p, ht))
      	   in local_testK_hash(x, lambda, Lvd, FVKH, eq, gr, classListByFace, tester,
      	      			  ht, Uhash, fancy_tester) next old_testing_flag:=OTF_hold
 {which is_unitary_to_ht above???}
@@ -992,7 +992,7 @@ set local_testK_hash_know_lower(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     Param_hash Uhash, (Param->bool) fancy_tester) = [[FaceVertsKHash]]:
     let newStatuses = for j:#eq do "?" od,  NumClasses = #eq, red_shift = if red_count_flag then 1 else 0 fi
 	, printInterval = int: 1, G = x.real_form, OTF_hold = old_testing_flag
-    then () = old_testing_flag:=true
+    {then () = {old_testing_flag:=true}}
     {use Uhash to mark some classes as known? (those that hit a unitary Param)}
     {Find all Param's in Uhash with (x,lambda). For each, compute corresponding Face.
      Use function known_unitaries from FPP_faces
@@ -1229,7 +1229,8 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
 	      then prints("hts = ",hts, ", HT = ",HT, ", ONE = ",ONE,", NumClasses = ",NumClasses);
 		   prints("FVKH = ",FVKH);
 		   prints("eq = ",eq)
-	      fi; old_testing_flag:=true
+	      fi{;
+	      old_testing_flag:=true}
     then () = if KU_flag {and #FVKH = 2}
 	      then let () = KUKU_flag:=false
 		   then knownUnitaries = known_unitaries(Uhash, x, lambda, Lvd, FVKH, fancy_tester)
@@ -1416,7 +1417,7 @@ set local_testK_hash_bottom_layer_more(KGBElt x, ratvec lambda, LocalVertexData 
 		   " equiv classes of faces to dim ",#FVKH-1)
 	      ; prints()
 	      fi
-	      {; old_testing_flag :=true}
+	      ; old_testing_flag :=true
 	      ; for k:NumClasses
 		~do if fund_face_verbose {and NumClasses > 100} and
 		   ((NumClasses-k-1)%printInterval = 0)
@@ -3153,7 +3154,7 @@ set local_test_GEO_hash_else_dumb(KGBElt x, ratvec lambda, {VertexData vd,} Loca
            {remove from LFDKH all faces failing is_unitary to hts[edge_offset_temp]}
 	   {CAN'T use know_lower, because that uses DiracBest, without caring for height}
     then () =  LFDKH := local_testK_hash{_know_lower}(x,lambda,Lvd, LFDKH, eq, gr, CLBF, (Param->bool):
-    (Param p) bool: is_unitary_to_ht_big_SIMPLE_interrupt_pick(p, hts[edge_offset_temp]), hts[edge_offset_temp],
+    (Param p) bool: is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(p, hts[edge_offset_temp]), hts[edge_offset_temp],
     		   	     	   				  Uhash, fancy_tester)
     then () = if test_verbose then prints("unitary to ",hts[edge_offset_temp]," face counts to dim 1: ",
     	      	 	      	   		   for list in LFDKH do #list od) fi
@@ -3694,7 +3695,7 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, {VertexData vd,} LocalV
     then ICPNU_flag_hold = ICPNU_flag
     then () = ICPNU_flag:=false
     then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF, (Param->bool):(Param p):
-    is_unitary_to_hts_big_SIMPLE_interrupt(p, hts[:edge_offset+1]), hts[edge_offset], Uhash)
+    is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(p, hts[:edge_offset+1]), hts[edge_offset], Uhash) {add THf 2/23/26}
     {which is_unitary_to_hts above???} {add _interrupt 2/20/26}
 	 {now have vert/edges unitary to hts[edge_offset]}
     then () = if test_verbose then prints("unitary to ht ",hts[edge_offset],
@@ -3734,7 +3735,7 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, {VertexData vd,} LocalV
        	      	 {compute graph on faces to dim D+1}
 		 then () = LFDKH := local_testK_hash(x,lambda,Lvd,
                       LFDKH, eq, gr, CLBF, (Param->bool): (Param p):
-{add THf 2/23/26}     is_unitary_to_hts_big_SIMPLE_interrupt(p,hts[:D+edge_offset+1]), hts[D+edge_offset], Uhash)
+{add THf 2/23/26}     is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(p,hts[:D+edge_offset+1]), hts[D+edge_offset], Uhash)
 		      {which is_unitary_to_ht above???}
                  then () = if test_verbose
 			   then prints("unitary to ht ",hts[D+edge_offset],
@@ -4088,8 +4089,8 @@ set local_test_GEO_hash2_end(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[Fac
     then D0 = edge_offset
     then ht0 = hts[edge_offset]
     then tester1 = (Param->bool): (Param p) bool:
-     	     	  if prefer_to_hts then is_unitary_to_hts_big_SIMPLE_interrupt(p, hts[:D0+1]) {added THf 2/23/26}
-	 	  else is_unitary_to_ht_big_SIMPLE_interrupt_pick(p,ht0)
+     	     	  if prefer_to_hts then is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(p, hts[:D0+1]) {added THf 2/23/26}
+	 	  else is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(p,ht0)
 	 	  fi
     then start_count = unitary_test_counter.use_count()
     {then () = prints("at (x,lambda) = (",x,",",lambda,"), pol_hash_min.list() is ",pol_hash_min.list())}
@@ -4358,9 +4359,9 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, {VertexData vd,}
     		     then () = check_pols(x, lambda, Lvd, ans, zero_ht, pol_hash)
     	   	     then tester0 = if prefer_to_hts
     	 	     	       then (Param->bool): (Param p) bool:
-  {rm TO_HTfirst 2/23/26} 	    is_unitary_to_hts_big_SIMPLE_interrupt(p, hts[:ZERO+1])
+  {rm TO_HTfirst 2/23/26} 	    is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(p, hts[:ZERO+1])
 		   	       else (Param->bool): (Param p) bool:
-     	     	   	       	    is_unitary_to_ht_big_SIMPLE_interrupt_pick(p, zero_ht)
+     	     	   	       	    is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(p, zero_ht)
 		   	       fi {prefer_to_hts}
     	             then ((eq,gr),IUCL,CLBF) = localGraphK(ans, pol_hash, zero_ht)
               	     {then () = prints("at hts[edge_offset], #eq = ", #eq)}
@@ -4382,8 +4383,8 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, {VertexData vd,}
 	          fi {step_flag}
     then () = check_pols(x, lambda, Lvd, LFDKH, one_ht, pol_hash)
     then tester1 = (Param->bool): (Param p) bool:
- {replace interr_THf 2/22/26} if prefer_to_hts then is_unitary_to_hts_big_SIMPLE_interrupt(p, hts[ZERO+1:ONE+1])
-	 	   else is_unitary_to_ht_big_SIMPLE_interrupt_pick(p,one_ht)
+ {replace interr_THf 2/22/26} if prefer_to_hts then is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(p, hts[ZERO+1:ONE+1])
+	 	   else is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(p,one_ht)
 		   fi {to_ht is definitely 2% slower for F4 spherical,
 		       10% slower for Sp(10) spherical}
     then () = if one_two_reverse_flag
@@ -4588,8 +4589,8 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
     {then () = prints("depth = ",depth, ", #Shorthts = ",#Shorthts, ", ONE = ",ONE)}
     then one_ht = hts[ONE]
     then tester1 = (Param->bool): (Param p) bool:
-{repl THf 2/22/26} if prefer_to_hts then is_unitary_to_hts_big_SIMPLE_interrupt(p, hts[:ONE+1])
-	 	  else is_unitary_to_ht_big_SIMPLE_interrupt_pick(p,one_ht)
+{repl THf 2/22/26} if prefer_to_hts then is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(p, hts[:ONE+1])
+	 	  else is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(p,one_ht)
 	 	  {to_ht is definitely 2% slower for F4 spherical, 10% slower for Sp(10) spherical}
 	 	  fi
     then start_count = unitary_test_counter.use_count()
@@ -4747,7 +4748,7 @@ set local_test_GEO_hash_steve_steve_end(KGBElt x, ratvec lambda, LocalVertexData
     then hts = next_heights(p0,edge_offset+1)
     then one_ht = hts[edge_offset]
     then tester1 = (Param->bool): (Param p) bool:
-     	     	  is_unitary_to_hts_big_SIMPLE(p, hts) {rm iTHf 2/23/26}
+     	     	  is_unitary_to_hts_big_SIMPLE{_interrupt_TOHTfirst}(p, hts) {rm iTHf 2/23/26}
 	 	  { is_unitary_to_ht_big_SIMPLE(p,one_ht) }
 	 	  {to_ht is definitely 2% slower for F4 spherical, 10% slower for Sp(10) spherical}
     then start_count = unitary_test_counter.use_count()
@@ -4849,7 +4850,7 @@ set local_test_GEO_hash_steve_end(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     then () = long_out_flag:=false {to allow using local_test_hash without recording Params}
     then p0 = parameter(x, lambda, 0*lambda)
     then tester1 = (Param->bool): (Param p) bool:
-     	     	  is_unitary_to_ht_big_SIMPLE_interrupt_pick(p, H1) {replace THf 2/23/26}
+     	     	  is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(p, H1) {replace THf 2/23/26}
 	 	  { is_unitary_to_ht_big_SIMPLE(p,one_ht) }
 	 	  {to_ht is definitely 2% slower for F4 spherical, 10% slower for Sp(10) spherical}
     then start_count = unitary_test_counter.use_count()
@@ -4977,7 +4978,7 @@ set local_test_GEO_hash_steve_end_faces(KGBElt x, ratvec lambda, LocalVertexData
     then one_ht = hts[edge_offset]
     then tester1 = (Param->bool): (Param p) bool:
      	     	  {is_unitary_to_hts_big_SIMPLE(p, hts)}
-		  is_unitary_to_hts_big_SIMPLE_interrupt(p,hts) {try 12/8/25}{replace THf 2/23}
+		  is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(p,hts) {try 12/8/25}{replace THf 2/23}
 	 	  { is_unitary_to_ht_big_SIMPLE(p,one_ht) }
 	 	  {to_ht is definitely 2% slower for F4 spherical, 10% slower for Sp(10) spherical}
     then start_count = unitary_test_counter.use_count()

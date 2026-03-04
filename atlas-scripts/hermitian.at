@@ -235,13 +235,16 @@ if deform_script_flag then return recursive_deform_scr(p,height) fi;
 {whether to use script_deform in interrupted u_predictor_to_ht}
 set secret_pred_flag = false
 
+{make possible additional interruptions of full_deform_to_ht(p,HT,time)}
+set force_interrupt_flag = false
+
 {alternative is recursive_deform_scr(p) or (p,HT) or (p,HT,time)}
 set full_deform_to_height_MvL_base(Param p, int height, int time) = maybe_KTP:
 if height < 0 then return full_deform_library(p,time) fi;
 if full_deform_old_flag then return full_deform_to_height_MvL_old(p,height,time) fi;
 if deform_script_flag {or secret_pred_flag} then return recursive_deform_scr(p,height,time) fi;
 ( let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p)
-  then output = empty_K, def = empty, expiration = start + time
+  then output = empty_K, def = empty, expiration = start + time, count = 2
   then P = empty +
   { snap p down to a reducibility point, or tempered parameter }
   (let rp = if deform_rp_flag
@@ -255,8 +258,9 @@ if deform_script_flag {or secret_pred_flag} then return recursive_deform_scr(p,h
           prints("At B, q = ",first_param(P), ", height = ",height,", #P = ",#P);}
 	  set (def,P) :=
           (let q=first_param(P)
-	   in if KL_predictor_full(q) > 10*(expiration - elapsed_ms())
-	      then return timed_out() fi;
+	   in if force_interrupt_flag and count > 0 and
+	      	 KL_predictor_full(q) > 10*(expiration - elapsed_ms())
+	      then return timed_out() else count-:= 1 fi;
 	   block_deform(q,P next P:=empty,height))
 	  {; prints("after block_deform, used ",print_time_string(elapsed_ms() - start))}
   	  ; if elapsed_ms() > expiration then return timed_out() fi
@@ -988,7 +992,7 @@ set report_tested(string label) = void:
     prints(print_time_string(unitaryTime)," for ",unitary_test_counter.use_count()," utests; ",
     print_time_string(charTime), " for ",char_counter.use_count(), " char calcs; ",
     print_time_string(charTimeToHt), " for ",char_counter_to_ht.use_count(), " char_to_ht calcs.");
-    prints(HF_false_low_count," form_to_ht calcs -> form because of low(p,HT)");
+    prints(HF_false_low_count," form_to_ht -> form because of low(p,HT); ",FD_new_count," full_deform_to_ht DISAPPEAR because of stored_full_deform");
     if KL_sum_to_ht_new_flag then prints(KL_new_count," KL_sum_at_s_to_ht calcs -> known KL_sum_at_s, ",
        KL_false_low_count," KL_sum_at_s_to_ht calcs -> new KL_sum_at_s because of low_char") fi;
     {prints("time for up_mu = ",print_time_string(up_mu_time), ", mu_time_mult = ",mu_time_mult,
@@ -1110,7 +1114,7 @@ set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(v
     prints(print_time_string(unitaryTime)," for ",unitary_test_counter.use_count()," utests; ",
     print_time_string(charTime), " for ",char_counter.use_count(), " char calcs; ",
     print_time_string(charTimeToHt), " for ",char_counter_to_ht.use_count(), " char_to_ht calcs");
-    prints(HF_false_low_count," form_to_ht calcs -> form because of low(p,HT)");
+    prints(HF_false_low_count," form_to_ht calcs -> form because of low(p,HT); ",FD_new_count," full_deform_to_ht DISAPPEAR because of stored_full_deform");
     if KL_sum_to_ht_new_flag then prints(KL_new_count," KL_sum_at_s_to_ht calcs -> known KL_sum_at_s, ",
        KL_false_low_count," KL_sum_at_s_to_ht calcs -> new KL_sum_at_s because of low_char") fi;
     prints("  ----------------")
