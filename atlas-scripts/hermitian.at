@@ -205,10 +205,10 @@ set full_deform_to_height_MvL_base(Param p, int height) = KTypePol:
 if height < 0 then return full_deform_library(p) fi;
 if full_deform_old_flag then return full_deform_to_height_MvL_old(p,height) fi;
 if deform_script_flag then return recursive_deform_scr(p,height) fi;
-( let mFD = full_deform(p,2) {if full_deform was already computed, it'll come up fast}
+( {let mFD = full_deform(p,2) {if full_deform was already computed, it'll come up fast}
   in case mFD
      | done(FD): return to_ht(FD,height)
-     |timed_out:
+     |timed_out:}
      {if not low(p,height)
      then FD_false_low_count+:=1; return to_ht(full_deform_library(p),height)
      fi;} {try NOT making a choice one term at a time}
@@ -230,41 +230,41 @@ if deform_script_flag then return recursive_deform_scr(p,height) fi;
   	      in output := (output next output:=empty_K) + kt; P := (P next P:=empty) + pp
   	    od
        in output
-      esac
+      {esac}
       )
+{whether to use script_deform in interrupted u_predictor_to_ht}
+set secret_pred_flag = false
 
 {alternative is recursive_deform_scr(p) or (p,HT) or (p,HT,time)}
 set full_deform_to_height_MvL_base(Param p, int height, int time) = maybe_KTP:
 if height < 0 then return full_deform_library(p,time) fi;
 if full_deform_old_flag then return full_deform_to_height_MvL_old(p,height,time) fi;
-if deform_script_flag then return recursive_deform_scr(p,height,time) fi;
-( let mFD = full_deform(p,2) {if full_deform was already computed, it'll come up fast}
-  in case mFD
-     | done(FD): return to_ht(mFD,height)
-     | timed_out:
-  {if not low(p,height)
-  then FD_false_low_count+:=1; return to_ht(full_deform_library(p,time),height)
-  fi;} {try NOT making a choice one term at a time}
-  let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p)
-  then output = empty_K, def = empty, expiration = elapsed_ms() + time
+if deform_script_flag {or secret_pred_flag} then return recursive_deform_scr(p,height,time) fi;
+( let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p)
+  then output = empty_K, def = empty, expiration = start + time
   then P = empty +
   { snap p down to a reducibility point, or tempered parameter }
   (let rp = if deform_rp_flag
 	    then reducibility_points_rp(p,height)
 	    else reducibility_points(p)
 	    fi
+  {then () = prints("after rp, used ",print_time_string(elapsed_ms() - start))}
   in if =#rp then output +:= p.K_type; [] else [p*rp~[0]] fi)
      then () = while >#P
-       do {prints("At B, q = ",first_param(P), ", height = ",height,", #P = ",#P);}
+       do {prints("entering while, used ",print_time_string(elapsed_ms() - start));
+          prints("At B, q = ",first_param(P), ", height = ",height,", #P = ",#P);}
 	  set (def,P) :=
-          (let q=first_param(P) in block_deform(q,P next P:=empty,height))
+          (let q=first_param(P)
+	   in if KL_predictor_full(q) > 10*(expiration - elapsed_ms())
+	      then return timed_out() fi;
+	   block_deform(q,P next P:=empty,height))
+	  {; prints("after block_deform, used ",print_time_string(elapsed_ms() - start))}
   	  ; if elapsed_ms() > expiration then return timed_out() fi
   	  ;  let kt = for c@m in def if  =nu(m) do (c,m.K_type) fi od
      	       	  ,   pp = for c@m in def if !=nu(m) do (c,m) fi od
   	  in output := (output next output:=empty_K) + kt; P := (P next P:=empty) + pp
        od
      in return done(output)
-     esac
 )
 
 
@@ -511,7 +511,7 @@ set make_deformation_hash_height_time () = deformation_hash_height_time:
 									     else 0
 									     fi;
 			   	      pol_list[i]:=-1;
-				      height_list[HT]:=HT
+				      height_list[i]:=HT
 			 esac
 		    else case mFDH {computing a new HT}
 		    	 | done(FDH): time_list[i]:= elapsed_ms() - start;
@@ -1135,11 +1135,26 @@ set list_to_ht_bad(int minTime) = void:
 		fi
 	  od
        od;
+       prints("predictor_flag:=true; predictor_verbose:=true");
        prints("{|badps| is a list of ",#badps," Param's.  is_unitary_to_ht(badps[j],badHs[j]) ran for time badTs[j] >= ",minTime,"}");
        write_param_list(badps,"badps");
        prints("set badHs = ",badHs);
        prints("set badTs = ",badTs)
 
+set list_bad(int minTime) = void:
+    let badps = [Param]: [], badTs = [int]:[]
+    in for p@k in tested_inter_hash.list()
+       do let T = tested_inter_times[k]
+	  in if T>= minTime
+	     then badps#:=p;
+		  badTs#:=T
+	     fi
+       od;
+       prints("predictor_flag:=true; predictor_verbose:=true");
+       prints("{|badps| is a list of ",#badps," Param's.  is_unitary(badps[j]) ran for time badTs[j] >= ",
+       			minTime,"}");
+       write_param_list(badps,"badps");
+       prints("set badTs = ",badTs)
 
 set wsf_time = int:0
 
@@ -1201,13 +1216,10 @@ set u_predictor(Param p, int time) = int:
     then times = [int]: for q in list do defHashTime.time_lookup(q) od
     {have we computed full_deform? time needed if yes, -1 if no}
     then est_times = [int]: for T in times if T != -1 do abs(T+1) fi od
-    {if T <0 then -5*(T+1) else T+1 fi fi od}
-    	 {(abs(t+1)) -1 truer, but avoid 0}
     then unknown_indices = [int]: for T@j in times if T < 0 do j fi od
     then num_filled_unknown = int: 0
     then () = if #unknown_indices > 0 {there are unknown full_deforms; work on one}
-    	      then let j0 = (2*#unknown_indices)\3
-	      	   then j = unknown_indices[j0]
+    	      then let j = unknown_indices[(2*#unknown_indices)\3]
 		   then q = list[j]
 	      	   then RT = defHashTime.time_record_bounded(q,time)
 		   in if RT >= 0 then num_filled_unknown+:=1 else didnt_finish_u_count +:= 1 fi;
@@ -1221,8 +1233,9 @@ set u_predictor(Param p, int time) = int:
 	     	then prints(new_line,"Start predicting to height -1 param ",p);
 		     prints("(#terms,#unknown,#estimated) = (N,un,n) = (",N,",",un,",",n,
 		     	    "), estimated times = ",est_times)
-       fi;
-       let ans = (bit_length(un)*max(est_times))\40 + ((N-un)*interrupt_base_time)\40
+       fi; {DANGER: IBT/40 insuff to do lookups! Need to get something at runtime.}
+       let ans = un*max(est_times) + ((N-un)*interrupt_base_time)\10
+	    {ans = (bit_length(un)*max(est_times))\40 + ((N-un)*interrupt_base_time)\10}
        	   {un full deforms to compute} {tried dividing un*max by 1, 10}
        	   in if predictor_verbose
        	      then prints("prediction = ", print_time_string(ans))
@@ -1248,31 +1261,28 @@ set u_predictor_to_ht(Param p, int HT, int time) = int:
 		       for q in monomials(KL_sum_at_s_to_ht(HT)(p))
 		       if is_fixed(delta,q) do q fi od, rk = delta.n_rows
 	    then times =  [int]: for q in list do defHashHtTime.time_lookup_to_ht(q,HT) od
-	    then est_times = [int]: for T in times if T!=-1 do if T < 0 then -40*(T+1) else (T+1) fi fi od
+	    then est_times = [int]: for T in times if T!=-1 do abs (T+1) fi od
 	    {abs(t+1) -1 truer, but avoid 0}
     	    then unknown_indices = [int]: for T@j in times if T < 0 do j fi od
     	    then num_filled_unknown = int: 0, un = #unknown_indices
     	    then () = if un > 0 {there are unknown full_deforms; work on some}
-    	      	      then let j0 = unknown_indices[0], k = min(2, un)
-		      {let j0 = (2*#unknown_indices)\3} {where to start}
-	      	      in for j:k
-		      	 do let q = list[unknown_indices[j]]
-	      	      	    then RT = defHashTime.time_record_bounded(q,time)
-			    	 {changed 3/2 from interrupt_base_time}
+    	      	      then let j = (2*#unknown_indices)\3 {where to start}
+		      	   then j = unknown_indices[(2*#unknown_indices)\3]
+	      	      	   then q = list[j]
+	      	      	   then RT = defHashHtTime.time_record_to_ht_bounded(q,HT,time\2 +1)
+			    	 {changed 3/2 from interrupt_base_time to time}
 		      	    in if RT >= 0 then num_filled_unknown+:=1 else didnt_finish_ht_count +:= 1 fi;
-			       times[unknown_indices[j]] := RT
-			 od;
-			 un -:= num_filled_unknown
+			       times[j] := RT;
+			       un -:= num_filled_unknown
 	      	      fi
-	    then () = est_times := for T in times if T!=-1 do if T < 0 then -40*(T+1) else T+1 fi fi od
-	    	 {abs(t+1) -1 truer, but avoid 0}
+	    then () = est_times := for T in times if T!=-1 do abs(T+1) fi od
 	    then N = #times, ne = #est_times
     	    in if predictor_verbose
 	       then prints(new_line,"Start predicting to height ", HT, " param ",p);
 		    prints("(#terms,#unknown,#estimated) = (N,un,ne) = (",N,",",un,",",ne,
 		     	    "), est times = ",est_times)
 	       fi;
-       	       let ans =  un*max(est_times) + ((N-un)*interrupt_base_time)\40 {N-un lookups}
+       	       let ans =  un*max(est_times) + ((N-un)*interrupt_base_time)\10 {N-un lookups}
 			   {un deforms to compute, estimated time}
 	       in if predictor_verbose
 		  then prints("prediction ",print_time_string(ans), " in time ",

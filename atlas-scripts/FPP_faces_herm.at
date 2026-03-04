@@ -2289,8 +2289,6 @@ set u_factor = rat: 1
 in favor of to_ht. Increasing u_factor allows more u tests.}
 set prefer_u_factor = rat: 2/1 {4/1 after a little E8_q testing}
 
-
-
 {"step" is how many steps up in to_ht list to start}
 set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
   {if not predictor_flag then return is_unitary_hash_big_SIMPLE(p) fi;}
@@ -2810,8 +2808,10 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst_old(Param p, int HT) = bool:
    if (HT>=0) and (HT < height(p)) then return true fi;
   {if (stat_holder:=status(p,HT)).!= then return stat_holder > 0 fi;} {#13} {nothing in Spin(4,4)}
   if old_testing_flag
-  then let (u,t) = adjust_to_ht_over_u(p,HT)
-       in if u <= prefer_u_factor * t
+  then secret_pred_flag:=true;
+       let (u,t) = adjust_to_ht_over_u(p,HT)
+       in secret_pred_flag:=false;
+       	  if u <= prefer_u_factor * t
        	  then return is_unitary_hash_big_SIMPLE(p)
 	  else return is_unitary_to_ht_hash_big_SIMPLE(p,HT)
 	  fi
@@ -2897,8 +2897,10 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
    if (HT>=0) and (HT < height(p)) then return true fi;
   {if (stat_holder:=status(p,HT)).!= then return stat_holder > 0 fi;} {#13} {nothing in Spin(4,4)}
   if old_testing_flag
-  then let (u,t) = adjust_to_ht_over_u(p,HT)
-       in if u <= prefer_u_factor * t
+  then secret_pred_flag:=true;
+       let (u,t) = adjust_to_ht_over_u(p,HT)
+       in secret_pred_flag:=false;
+	  if u <= prefer_u_factor * t
        	  then return is_unitary_hash_big_SIMPLE(p)
 	  else return is_unitary_to_ht_hash_big_SIMPLE(p,HT)
 	  fi
@@ -2988,8 +2990,10 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
   if (stat_holder:=status(p,HT)).!= then return stat_holder > 0 fi;{C}
   {removing saves 100/7200 in Spin(4,4); but keeping helps in higher rank.}
   if old_testing_flag
-  then let (u,t) = adjust_to_ht_over_u(p,HT)
-       in if u <= prefer_u_factor * t
+  then secret_pred_flag:=true;
+       let (u,t) = adjust_to_ht_over_u(p,HT)
+       in secret_pred_flag:= false;
+       	  if u <= prefer_u_factor * t
        	  then return is_unitary_hash_big_SIMPLE(p)
 	  else return is_unitary_to_ht_hash_big_SIMPLE(p,HT)
 	  fi
@@ -3106,8 +3110,10 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
   if #HTs = 0 then return is_unitary_hash_big_SIMPLE(p) fi;
   if #HTs = 1 then return is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(p, HTs[0]) fi;
   if old_testing_flag
-  then let (u,t) = adjust_to_ht_over_u(p,HTs[0])
-       in if u <= prefer_u_factor * t
+  then secret_pred_flag:=true;
+       let (u,t) = adjust_to_ht_over_u(p,HTs[0])
+       in secret_pred_flag:=false;
+       	  if u <= prefer_u_factor * t
        	  then return is_unitary_hash_big_SIMPLE(p)
 	  else return is_unitary_to_hts_big_SIMPLE(p,HTs)
 	  fi
@@ -3217,8 +3223,10 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_Ufirst(Param p, [int] HTs) = bool:
   if #HTs = 1 then return is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(p, HTs[0]) fi;
   if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
   if old_testing_flag
-  then let (u,t) = adjust_to_ht_over_u(p,HTs[0])
-       in if u <= prefer_u_factor * t
+  then secret_pred_flag:=true;
+       let (u,t) = adjust_to_ht_over_u(p,HTs[0])
+       in secret_pred_flag:=false;
+       	  if u <= prefer_u_factor * t
        	  then return is_unitary_hash_big_SIMPLE(p)
 	  else return is_unitary_to_hts_big_SIMPLE(p,HTs)
 	  fi
