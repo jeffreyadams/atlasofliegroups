@@ -1052,6 +1052,7 @@ set s_part (Split x) = int: let (,y)=%x in y
 set s_to_1 (Split x) = int: +%x        { let (a,b)=%x in a+b }
 set s_to_minus_1 (Split x) = int: -%x  { let (a,b)=%x in a-b }
 set times_s (Split x) = let (a,b)=%x in Split: (b,a)
+set bar(Split x)=Split: let (a,b)=%x in Split: (a,-b)
 
 set split_as_int (Split x) = int:
   let (r,y)=%x in assert(@:y.=,"split is not an integer"); r
@@ -1063,6 +1064,7 @@ set / (Split w,int n) = Split:
   let (q,r)=w\%n in assert(@: =r,"Inexact division"); q
 set % (Split w,int n) = Split: let (a,b)=%w in (a%n,b%n)
 set exp_s(int n) = Split: if n.is_even then 1 else s fi
+
 
 { a Split coefficient is pure if it has at most one nonzero component }
 set is_pure (Split w)=bool: =*%w { test if product of both components is zero }

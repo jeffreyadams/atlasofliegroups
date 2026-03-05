@@ -26,6 +26,7 @@ fi
 
 set signature(PaintedBiPartition Z)=ClassicalSignature:
 (Z.label,(Z.p,Z.q))  {(Z.p,Z.q) = Z.p+ s*Z.q}
+set signature(ExtendedPaintedBiPartition X)=signature(X.Z)
 
 set_type KOrbit=([Split] signs,string label)
 {the integers (p,q) are required to be non-negative
@@ -142,7 +143,7 @@ set signature(KOrbit Y)=Split:
 sum(for j in even_indices(Y.signs) do (j\2)*(1+s)*Y.signs[j] od) +
 sum(for j in odd_indices(Y.signs) do ((j+1)\2 + s*((j-1)\2))*Y.signs[j] od)
 
-set signature(KLocalSystem Z)=Split:signature(K_orbit(Z))
+
 
 set remove_first_column(Partition P)=Partition:transpose(delete(transpose(P),0))
 
@@ -259,6 +260,8 @@ set K_local_system([Split] signs, string label)=KLocalSystem:(signs,label)
 
 set K_orbit(KLocalSystem M)=KOrbit:
 (for z in M.signs do abs(int_part(z)) + s*abs(s_part(z)) od,M.label)
+
+set signature(KLocalSystem Z)=Split:signature(K_orbit(Z))
 
 {KLocalSystem might have negative number is a+bs, make these positive}
 set partition(KLocalSystem M)=Partition:partition(K_orbit(M))  
@@ -418,10 +421,10 @@ set shift_right(KLocalSystem M)=KLocalSystem:
 ([0*s]##for z in M.signs do s*z od,M.label)
 
 {set theta_before_twist(KLocalSystem M, Orbit target, ClassicalSignature S_target, ClassicalSignature S_source)}
-set theta_before_twist(KLocalSystem M, Orbit target, ClassicalSignature S_target)=
+set theta_before_twist(KLocalSystem M, Orbit target, ClassicalSignature S_target)=[KLocalSystem]:
 let ()=if theta_verbose then prints("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%",new_line,
      "in set theta... with ", new_line,
-     "M=",M,new_line,"target=",target,new_line,"target signature:", S_target, new_line, "source signature", S_source) fi in 
+     "M=",M,new_line,"target=",target,new_line,"target signature:", S_target, new_line, "source signature", signature(M)) fi in 
 let ()=assert(is_theta_target(partition(M),target), "not a valid pair of orbits") then
 ()= assert(dual_howe_label(M.label)=S_target.label,"labels don't match") then
 ()=if theta_verbose then prints("passed asserts") fi in 
@@ -439,8 +442,7 @@ z_source=signature(M) then
  prints("extra=",extra, " delta=", delta);
  prints("z_target=", z_target);
  prints("S_target.label: ", S_target.label);
- prints("z_source=", z_source);
- prints("S_source.label: ", S_source.label)
+ prints("z_source=", z_source)
  fi in
 if is_in(S_target.label,["B","D"]) then
  let ()=if theta_verbose then prints("case type (B/D): ", S_target.label) fi in
@@ -529,17 +531,23 @@ fi
 fi
 
 set tensor_det_1(KLocalSystem Z)=KLocalSystem:
- (for a in Z.signs do s*a od,Z.label)
+ (for z in Z.signs do s*z od,Z.label)
+
+set tensor_plus_minus(KLocalSystem Z)=KLocalSystem:
+ (for z in Z.signs do bar(z) od,Z.label)
 
 {actual theta: theta_before_twist followed by twists of (4.17)}
-set theta(KLocalSystem M, Orbit target, ClassicalSignature S_target, ClassicalSignature S_source)=
-for Z in theta_before_twist(M,target,S_target, S_source) do
+set theta(ExtendedPaintedBiPartition X,KLocalSystem M, Orbit target,
+ClassicalSignature S_target, ClassicalSignature S_source)=
+for Z in theta_before_twist(M,target,S_target) do
   if is_in (Z.label,["B","D"]) then
    if epsilon(Z)=0 then Z else tensor_det_1(Z) fi
-  elif is_in(Z.label,["C","C~"] then
-   
+  elif is_in(Z.label,["C","C~"]) then
+   if epsilon_extended(X)=0 then Z else tensor_plus_minus(Z)  fi
+  fi
+od
   
-}
+
 
 
 {----------generating orbits-------------}

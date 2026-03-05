@@ -155,8 +155,7 @@ set descent_ext([int] S)=[int]:
 {-----------------ExtendedPaintedBiPartitions------------------}
 set_type ExtendedPaintedBiPartition=(PaintedBiPartition Z,[int] S)
 set size(ExtendedPaintedBiPartition X)=size(X.Z)
-set signature(ExtendedPaintedBiPartition X)=signature(X.Z)
-set epsilon(ExtendedPaintedBiPartition X)=int:
+set epsilon_extended(ExtendedPaintedBiPartition X)=int:
  if contains(1)(X.S) then 1 else 0 fi
 set descent(ExtendedPaintedBiPartition (Z,S))=ExtendedPaintedBiPartition:
 (descent(Z),descent_ext(S))
