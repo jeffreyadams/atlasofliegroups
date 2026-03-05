@@ -1286,7 +1286,7 @@ set u_predictor_to_ht(Param p, int HT, int time) = int:
 		    prints("(#terms,#unknown,#estimated) = (N,un,ne) = (",N,",",un,",",ne,
 		     	    "), est times = ",est_times)
 	       fi;
-       	       let ans =  un*max(est_times) + ((N-un)*interrupt_base_time)\10 {N-un lookups}
+       	       let ans =  un*max(est_times) + ((N-un)*interrupt_base_time)\2 {N-un lookups}
 			   {un deforms to compute, estimated time}
 	       in if predictor_verbose
 		  then prints("prediction ",print_time_string(ans), " in time ",

@@ -2282,12 +2282,12 @@ set is_unitary_test_big_SIMPLE_interrupt_old(Param p, int step) = bool:
       fi
 
 {increase the interruptible times by this}
-set to_ht_factor = rat: 1
-set u_factor = rat: 1
+set to_ht_factor = rat: 5
+set u_factor = rat: 2
 
 {if (predicted u_time)/(predicted to_ht_time) is exceeds prefer_u_factor, then skip u
 in favor of to_ht. Increasing u_factor allows more u tests.}
-set prefer_u_factor = rat: 2/1 {4/1 after a little E8_q testing}
+set prefer_u_factor = rat: 6/1 {2/1} {4/1 after a little E8_q testing}
 
 
 
@@ -2349,7 +2349,7 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
 		       fi;
 		       if result!=0
 		       then break
-		       else u_time:=u_predictor(p)
+		       else u_time:=max(u_predictor(p), 3*u_time\2)
 		       fi
 	        fi{A}; { u_time <= prefer_u_factor * to_ht_time  }
 	       	if{B}  u_time > prefer_u_factor * to_ht_time {to_ht_factor*to_ht_time < 2*floor(u_factor*u_time)}
@@ -2384,7 +2384,7 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
 				   {if ht < 0 then return true fi} {one-diml case}
 			      fi
 			 fi{result.>};
-			 to_ht_time:=u_predictor_to_ht(p,ht,u_time + 10);
+			 to_ht_time:=max(u_predictor_to_ht(p,ht,u_time + 10), (3*to_ht_time)\2);
 			 if test_interrupt_verbose
 			 then prints("  Predicted to_ht_time now ",print_time_string(to_ht_time))
 			 fi
@@ -2867,7 +2867,8 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst_old(Param p, int HT) = bool:
 			     break
 		       elif result.>
 		       then add_to_u_to_ht(p,HT)
-		       else to_ht_time:= u_predictor_to_ht(p,HT,u_time+10)
+		       else to_ht_time:=max(u_predictor_to_ht(p,HT,u_time + 10), (3*to_ht_time)\2)
+		       {to_ht_time:= u_predictor_to_ht(p,HT,u_time+10)}
 			     {if test_interrupt_verbose
 	       	       	     then prints("  to_ht_time now ", print_time_string(to_ht_time))
 			     fi}
@@ -2926,7 +2927,8 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
 		       then break
 		       else {(u_time,to_ht_time) := adjust_to_ht_over_u(p,HT);}
 		       	    u_time := u_predictor(p);
-		       	    to_ht_time:= u_predictor_to_ht(p,HT, u_time +10);
+		       	    to_ht_time:= to_ht_time:=max(u_predictor_to_ht(p,HT,u_time + 10), (3*to_ht_time)\2);
+			    {u_predictor_to_ht(p,HT, u_time +10);}
 		       	    if test_interrupt_verbose
 			    then prints("  (u_time,to_ht_time) now (", print_time_string(u_time),",",
 			    	 print_time_string(to_ht_time),")")
@@ -2949,7 +2951,8 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
 		       then add_to_u_to_ht(p,HT)
 		       else {(u_time, to_ht_time) := adjust_to_ht_over_u(p,HT);}
 		       	    u_time := u_predictor(p);
-		       	    to_ht_time:= u_predictor_to_ht(p,HT, u_time + 10);
+		       	    {to_ht_time:= to_ht_time:=max(u_predictor_to_ht(p,HT,u_time + 10), (3*to_ht_time)\2);}
+			    {u_predictor_to_ht(p,HT, u_time + 10);}
 			    if test_interrupt_verbose
 			    then prints("  (u_time,to_ht_time) now (", print_time_string(u_time),",",
 			    	 print_time_string(to_ht_time),")")
@@ -3007,8 +3010,8 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
 		       then add_to_u_to_ht(p,HT);
 		       	    break
 		       else {(u_time,to_ht_time): = adjust_to_ht_over_u(p,HT);}
-		       	    u_time := u_predictor(p,-1);
-		       	    to_ht_time:= u_predictor_to_ht(p,HT,u_time+10);
+		       	    u_time := u_predictor(p);
+		       	    to_ht_time:= max(u_predictor_to_ht(p,HT,u_time+10),(3*to_ht_time)\2);
 			    if test_interrupt_verbose
 			    then prints("  (u_time,to_ht_time) now (", print_time_string(u_time),",",
 			    	 print_time_string(to_ht_time),")")
@@ -3028,7 +3031,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
 			 fi
 	       	    in if result.= {no result from is_unitary}
 	       	       then u_time := u_predictor(p,-1);
-		       	    to_ht_time:= u_predictor_to_ht(p,HT);
+		       	    {to_ht_time:= u_predictor_to_ht(p,HT);}
 			    if test_interrupt_verbose
 			    then prints("  (u_time,to_ht_time) now (", print_time_string(u_time),",",
 			    	 print_time_string(to_ht_time),")")
@@ -3134,7 +3137,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
 			elif result.<
 	       	        then big_unitary_hash.numatch_height(p,HT);
 			     break
-			else to_ht_time:=u_predictor_to_ht(p,HT);
+			else to_ht_time:=max(u_predictor_to_ht(p,HT),(3*to_ht_time)\2 );
 			     if test_interrupt_verbose
 			     then prints("  Predicted to_ht_time now ",print_time_string(to_ht_time))
 			     fi
@@ -3157,7 +3160,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
 			fi;
 			{prints(u_count," u_tests so far.");}
 			if result != 0 then break fi;
-			u_time:=u_predictor(p);
+			u_time:=max(u_predictor(p), (3*u_time)\2);
 			if test_interrupt_verbose
 			then prints("  Predicted u_time now ",print_time_string(u_time))
 			fi
@@ -3222,7 +3225,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_Ufirst(Param p, [int] HTs) = bool:
 			fi;
 			{prints(u_count," u_tests so far.");}
 			if result != 0 then break fi;
-			u_time:=u_predictor(p);
+			u_time:=max(u_predictor(p), (3*u_time)\2) {u_predictor(p)};
 			if test_interrupt_verbose
 			then prints("  Predicted u_time now ",print_time_string(u_time))
 			fi
@@ -3259,7 +3262,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_Ufirst(Param p, [int] HTs) = bool:
 			elif result.<
 	       	        then big_unitary_hash.numatch_height(p,HT);
 			     break
-			else to_ht_time:=u_predictor_to_ht(p,HT);
+			else to_ht_time:=max(u_predictor_to_ht(p,HT),(3*to_ht_time)\2);
 			     if test_interrupt_verbose
 			     then prints("  Predicted to_ht_time now ",print_time_string(to_ht_time))
 			     fi
