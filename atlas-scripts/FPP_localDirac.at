@@ -742,7 +742,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     fi;
     let newStatuses = for j:#eq do "?" od,  NumClasses = #eq, red_shift = if red_count_flag then 1 else 0 fi
 	, printInterval = int: 1, H0 = height(parameter(x,lambda,0*lambda)), OTF_hold = old_testing_flag
-    then () = old_testing_flag:=true
+    {then () = {old_testing_flag:=true}}
     {use Uhash to mark some classes as known? (those that hit a unitary Param)}
     {Find all Param's in Uhash with (x,lambda). For each, compute corresponding Face.
      Use function known_unitaries from FPP_faces
@@ -968,7 +968,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd, {def 3}
     [[FaceVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFace, int ht,
     Param_hash Uhash, (Param->bool) fancy_tester) = [[FaceVertsKHash]]:
     let OTF_hold = old_testing_flag
-    in old_testing_flag:=true;
+    in {old_testing_flag:=true;}
        let tester = ((Param->bool): (Param p) bool:
     	   is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(p, ht))
      	   in local_testK_hash(x, lambda, Lvd, FVKH, eq, gr, classListByFace, tester,
@@ -992,7 +992,7 @@ set local_testK_hash_know_lower(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     Param_hash Uhash, (Param->bool) fancy_tester) = [[FaceVertsKHash]]:
     let newStatuses = for j:#eq do "?" od,  NumClasses = #eq, red_shift = if red_count_flag then 1 else 0 fi
 	, printInterval = int: 1, G = x.real_form, OTF_hold = old_testing_flag
-    then () = old_testing_flag:=true
+    {then () = {old_testing_flag:=true}}
     {use Uhash to mark some classes as known? (those that hit a unitary Param)}
     {Find all Param's in Uhash with (x,lambda). For each, compute corresponding Face.
      Use function known_unitaries from FPP_faces
@@ -1229,8 +1229,8 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
 	      then prints("hts = ",hts, ", HT = ",HT, ", ONE = ",ONE,", NumClasses = ",NumClasses);
 		   prints("FVKH = ",FVKH);
 		   prints("eq = ",eq)
-	      fi;
-	      old_testing_flag:=true
+	      fi{;
+	      old_testing_flag:=true}
     then () = if KU_flag {and #FVKH = 2}
 	      then let () = KUKU_flag:=false
 		   then knownUnitaries = known_unitaries(Uhash, x, lambda, Lvd, FVKH, fancy_tester)

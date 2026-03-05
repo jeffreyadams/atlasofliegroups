@@ -153,7 +153,7 @@ set never_use_FPP_def_test() = void:
     FPP_def_flag:=false
 
 {if x is greater than this fraction of KGB, then turn on predictor_flag}
-set adjust_frac = rat: 2/3 {3/2} {5/6}
+set adjust_frac = rat: 2/3 {0/1} {2/3} {3/2} {5/6}
 {turn predictor by default back ON 2/18/26. Needs OFF for steve? done 2/19/26}
 {on is a problem in E8_q from 45000 to 50000?; so change default to 5/6 2/19/26}
 {well, try to address by making u_predictor faster; so back to 2/3}

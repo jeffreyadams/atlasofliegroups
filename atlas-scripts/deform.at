@@ -161,6 +161,52 @@ set deformation_terms_scr (Param p, int HT) = ParamPol:
     od
   fi
 
+{
+set deformation_terms_zero_scr (Param p, int HT) = ParamPol:
+  let (B,KL_mat,length) = ([Param],mat,vec):
+    let (block,M,polys) = partial_KL_block(p:=normal(p))
+    then l = vec: for q in block do q.length od{, n=#block}
+    , p_1= for Q in polys do eval(Q,minus_1) od
+    then low_inds = for q@j in block do if height(q)<=HT do j fi od.##
+    in
+    block:= for j in low_inds do block[j] od;
+    M := for j in low_inds do for k in low_inds do M[j][k] od od;
+    l := for j in low_inds do l[j] od;
+    ( block
+    , for col@j in M
+      do let lj=l[j] in
+	 for entry@i in col do minus_1^(lj-l[i])*p_1[entry] od
+      od
+    , l
+    ) {replace entry P_{x,y}(q) in M by (-1)^{l(x)-l(y)} P_{x,y}(-1)}
+      {columns of KL_mat are irr chars}
+  then nB=#B in
+  if =nB or B~[0]!=p
+  then null_module(p) { if |p| itself is not among survivors, return 0 }
+  else { compute final column |acc| of |Q| matrix by solving linear system
+         $P'*acc=e_p$ with $P'$ a matrix of Split, columns from |KL_sum_at_s| }
+    let remainder = null(nB-1)#1 { start with standard basis vector for |p| }
+    , solution=null(nB)		      {sero vec of size nB}
+    , !opposite_parity=1-length~[0]%2 {0 or 1, parity opposite to that of |length(p)| }
+    , !on_p = orientation_nr(p)
+    in
+    for q_ind : nB
+    ~do let contrib=remainder[q_ind]*KL_mat[q_ind] in
+      remainder -:= contrib
+    ; if length[q_ind]%2=opposite_parity
+      then solution +:= contrib
+      fi
+    od {solution is odd levels of Jantzen(p), as sum of irrs???}
+  ; null_module(p)+
+    for c@i in solution
+    do { twist (1-s)*solution according to orientation numbers of its terms }
+      let x=B[i] then (q,r)=(on_p-orientation_nr(x))\%2 in
+      assert(@:r=0,"odd orientation");
+      (minus_1^q*c*one_minus_s,x) { we have |s^q*c*(1-s) = (-1)^q*c(1-s)| }
+      { for the same reason we replaced |s| by |-1| in computations giving |c| }
+    od
+  fi
+}
 set deformation_terms_by_dual_scr (Param p) = ParamPol:
   assert(@:p.is_final,"deformation requires a final parameter");
   let (block,KL_mat,P_polys) = partial_KL_block(p)
