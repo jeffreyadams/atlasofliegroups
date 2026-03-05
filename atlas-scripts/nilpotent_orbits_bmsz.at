@@ -2,7 +2,6 @@
 <weak_packets.at
 
 {S is a subset of pp(O_v,label), i.e. an element of A_bar}
-set_type ExtendedPaintedBiPartition=(Orbit O_v,PaintedBiPartition Z,[int] S)
 
 {Nilpotent orbits via Barbasch-Ma-Sun-Zhu}
 {type Orbit=Partition=[int]}

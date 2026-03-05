@@ -148,11 +148,58 @@ set descent(Orbit O_v,[int] S,string label)=(Orbit,[int]):
  pp_prime=pp(O_v_prime,label) in 
 (O_v_prime,##for i in pp(O_v,label) do if i>1 and is_member(pp_prime)(i-1) then [i] else [] fi  od)
 
-set descent(ExtendedPaintedBiPartition (O_v,Z,S))=ExtendedPaintedBiPartition:
-let (O_v_prime,S_prime)=descent(O_v,S,label(Z)) in 
-(O_v_prime,descent(Z),S_prime)
+{Definition of descent of subset of P from Section 3.4 (3.15)}
+set descent_ext([int] S)=[int]:
+##for j in S do if j>1 then [j-1] else [] fi od
 
-set descent_chain(PaintedBiPartition Z)=[PaintedBiPartition]:
+{-----------------ExtendedPaintedBiPartitions------------------}
+set_type ExtendedPaintedBiPartition=(PaintedBiPartition Z,[int] S)
+set size(ExtendedPaintedBiPartition X)=size(X.Z)
+set signature(ExtendedPaintedBiPartition X)=signature(X.Z)
+set epsilon(ExtendedPaintedBiPartition X)=int:
+ if contains(1)(X.S) then 1 else 0 fi
+set descent(ExtendedPaintedBiPartition (Z,S))=ExtendedPaintedBiPartition:
+(descent(Z),descent_ext(S))
+
+set descent_chain(ExtendedPaintedBiPartition Z)=[ExtendedPaintedBiPartition]:
 let rv=[Z] in
 while size(rv~[0])>0 do
- rv#:=descent(rv~[0]) od;rv 
+ rv#:=descent(rv~[0]) od;rv
+
+set descent_chain(ExtendedPaintedBiPartition Z)=[ExtendedPaintedBiPartition]:
+let rv=[Z] in
+while size(rv~[0])>0 do
+ rv#:=descent(rv~[0]) od;rv
+
+{define variants of show for ExtendedPaintedBiPartition}
+set show(ExtendedPaintedBiPartition (Z,S))=void:
+prints(Z.P, " ", Z.Q, " ", Z.bi_label, " ", group_name(Z), " ", orbit(Z), " ", dual_orbit(Z), " ", S)
+
+set show([ExtendedPaintedBiPartition] list)=void:
+tabulate(
+["P","Q","bi-label","group","orbit","dual orbit","S"]#
+for (Z,S) in list do
+ [Z.P.to_string,Z.Q.to_string,Z.bi_label,group_name(Z),orbit(Z).to_string,dual_orbit(Z).to_string,S.to_string] od)
+
+set show([[ExtendedPaintedBiPartition]] list)=void:
+for chain@i in list do
+prints("==========================",new_line, "i=", i);
+show(chain)
+od
+
+set show_long(ExtendedPaintedBiPartition (Z,S))=void:
+prints("bi_label:", Z.bi_label, new_line, "S=", S);
+prints("painted partition P:");show_painted_partition(Z.P);
+prints("<<<<<<<<<<<<<<<<<<<<<<<<<<<",new_line,"painted partition Q:");show_painted_partition(Z.Q);
+prints(">>>>>>>>>>>>>>>>>>>>>>>>>>>")
+
+set show_long([ExtendedPaintedBiPartition] list)=void:
+for Z in list do prints("");show(Z) od
+
+set show_short(ExtendedPaintedBiPartition (Z,S))=void:
+prints(Z.P, " ", Z.Q, " ", Z.bi_label, " ", group_name(Z), " ", orbit(Z))
+
+set show_short([ExtendedPaintedBiPartition] list)=void:
+tabulate(for (Z,S) in list do
+ [Z.P.to_string,Z.Q.to_string,Z.bi_label,group_name(Z),orbit(Z).to_string,S.to_string] od)
+

@@ -25,7 +25,7 @@ else error("missing case in is_classical_signature")
 fi
 
 set signature(PaintedBiPartition Z)=ClassicalSignature:
-(Z.label,(Z.p,Z.q))
+(Z.label,(Z.p,Z.q))  {(Z.p,Z.q) = Z.p+ s*Z.q}
 
 set_type KOrbit=([Split] signs,string label)
 {the integers (p,q) are required to be non-negative
@@ -141,6 +141,8 @@ conclusion:  z_j -> j/2(1+s)z_j (j even) or ((j+1)/2 + s(j-1)/2)z_j  (j odd)
 set signature(KOrbit Y)=Split:
 sum(for j in even_indices(Y.signs) do (j\2)*(1+s)*Y.signs[j] od) +
 sum(for j in odd_indices(Y.signs) do ((j+1)\2 + s*((j-1)\2))*Y.signs[j] od)
+
+set signature(KLocalSystem Z)=Split:signature(K_orbit(Z))
 
 set remove_first_column(Partition P)=Partition:transpose(delete(transpose(P),0))
 
@@ -415,7 +417,8 @@ fi
 set shift_right(KLocalSystem M)=KLocalSystem:
 ([0*s]##for z in M.signs do s*z od,M.label)
 
-set theta(KLocalSystem M, Orbit target, ClassicalSignature S_target, ClassicalSignature S_source)=
+{set theta_before_twist(KLocalSystem M, Orbit target, ClassicalSignature S_target, ClassicalSignature S_source)}
+set theta_before_twist(KLocalSystem M, Orbit target, ClassicalSignature S_target)=
 let ()=if theta_verbose then prints("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%",new_line,
      "in set theta... with ", new_line,
      "M=",M,new_line,"target=",target,new_line,"target signature:", S_target, new_line, "source signature", S_source) fi in 
@@ -428,7 +431,8 @@ let orbit=K_orbit(M) then
 (extra,delta)=theta_target_data(orbit.partition,target) then
 ()=if theta_verbose then prints("extra,delta=", extra, " ", delta) fi then
 z_target=S_target.z then
-z_source=S_source.z then
+{z_source=S_source.z then}
+z_source=signature(M) then
  ()=if theta_verbose then
  prints("orbit=", orbit);show(orbit);
  prints("target=", target);show_partition(target);
@@ -488,7 +492,6 @@ elif is_in(S_target.label,["C","C~"]) then
  ()=if theta_verbose then prints("shifts:", shifts);for t in shifts do show(t) od fi then
  augments=##for shift in shifts do
  let  ()=if theta_verbose then prints("shift: ", shift, "  signature(shift): ", signature(shift)) fi in
-
   let (valid,augment)=augmentation(shift,z_target-signature(shift)) in
   if valid then [augment] else [] fi od then
  ()=if theta_verbose then prints("special case C~") fi then
@@ -523,7 +526,21 @@ elif S_target.label="D*" then  {is this D*?}
 else
  error("not done")
 fi
-fi	
+fi
+
+set tensor_det_1(KLocalSystem Z)=KLocalSystem:
+ (for a in Z.signs do s*a od,Z.label)
+
+{actual theta: theta_before_twist followed by twists of (4.17)}
+set theta(KLocalSystem M, Orbit target, ClassicalSignature S_target, ClassicalSignature S_source)=
+for Z in theta_before_twist(M,target,S_target, S_source) do
+  if is_in (Z.label,["B","D"]) then
+   if epsilon(Z)=0 then Z else tensor_det_1(Z) fi
+  elif is_in(Z.label,["C","C~"] then
+   
+  
+}
+
 
 {----------generating orbits-------------}
 
@@ -613,7 +630,7 @@ dual_orbits=valid_theta_targets(source,#P+#Q) then
 orbits=choose_orbit((P,Q),label,dual_orbits) in
 orbits
 
-set theta_one_level([PaintedBiPartition] chain,int start_level,KLocalSystem Z)=
+set theta_one_level([ExtendedPaintedBiPartition] chain,int start_level,KLocalSystem Z)=
 if theta_verbose then
  prints("in theta_one_level: ", new_line,"target level=",start_level, new_line, "Z=",Z)
 fi;
