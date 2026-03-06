@@ -2287,7 +2287,7 @@ set u_factor = rat: 2
 
 {if (predicted u_time)/(predicted to_ht_time) is exceeds prefer_u_factor, then skip u
 in favor of to_ht. Increasing u_factor allows more u tests.}
-set prefer_u_factor = rat: 6/1 {2/1} {4/1 after a little E8_q testing}
+set prefer_u_factor = rat: 3/2  {6/1 3/5/26 commit} {2/1} {4/1 after a little E8_q testing}
 
 
 

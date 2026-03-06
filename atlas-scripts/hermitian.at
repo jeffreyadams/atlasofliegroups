@@ -1211,7 +1211,7 @@ set didnt_finish_u_count = int: 0
 {predicted time in milliseconds to complete is_unitary(p)}
 set u_predictor(Param p, int time) = int:
     if not predictor_flag
-    then return worst_so_far(p,-1) + interrupt_base_time
+    then return max(worst_so_far(p,-1),interrupt_base_time\10)
     fi;
     let delta = p.real_form.distinguished_involution, start_pred = elapsed_ms()
     then list = for q in {partial_block(p)} monomials(KL_sum_at_s(p))
@@ -1219,7 +1219,6 @@ set u_predictor(Param p, int time) = int:
     {will do full_deform on each term in list}
     then times = [int]: for q in list do defHashTime.time_lookup(q) od
     {have we computed full_deform? time needed if yes, -1 if no}
-    then est_times = [int]: for T in times if T != -1 do abs(T+1) fi od
     then unknown_indices = [int]: for T@j in times if T < 0 do j fi od
     then num_filled_unknown = int: 0
     then () = if #unknown_indices > 0 {there are unknown full_deforms; work on one}
@@ -1229,8 +1228,7 @@ set u_predictor(Param p, int time) = int:
 		   in if RT >= 0 then num_filled_unknown+:=1 else didnt_finish_u_count +:= 1 fi;
 		      times[j] := RT
 	      fi
-    then () = est_times := for T in times if T != -1 do abs(T+1) fi od
-    {if T < 0 then -5*(T+1) else (T+1) fi fi od}
+    then est_times = for T in times if T != -1 do if T<0 then -5*T else T+1 fi fi od
     	 {(abs(t+1)) -1 truer, but avoid 0}
     then N = #list, n = #est_times, un = #unknown_indices - num_filled_unknown
     in if predictor_verbose
@@ -1265,13 +1263,10 @@ set u_predictor_to_ht(Param p, int HT, int time) = int:
 		       for q in monomials(KL_sum_at_s_to_ht(HT)(p))
 		       if is_fixed(delta,q) do q fi od, rk = delta.n_rows
 	    then times =  [int]: for q in list do defHashHtTime.time_lookup_to_ht(q,HT) od
-	    then est_times = [int]: for T in times if T!=-1 do abs (T+1) fi od
-	    {abs(t+1) -1 truer, but avoid 0}
     	    then unknown_indices = [int]: for T@j in times if T < 0 do j fi od
     	    then num_filled_unknown = int: 0, un = #unknown_indices
-    	    then () = if un > 0 {there are unknown full_deforms; work on some}
-    	      	      then let j = (2*#unknown_indices)\3 {where to start}
-		      	   then j = unknown_indices[(2*#unknown_indices)\3]
+    	    then () = if un > 0 {there are unknown full_deforms; work on one}
+    	      	      then let j = unknown_indices[(2*#unknown_indices)\3]
 	      	      	   then q = list[j]
 	      	      	   then RT = defHashHtTime.time_record_to_ht_bounded(q,HT,time\2 +1)
 			    	 {changed 3/2 from interrupt_base_time to time}
@@ -1279,7 +1274,7 @@ set u_predictor_to_ht(Param p, int HT, int time) = int:
 			       times[j] := RT;
 			       un -:= num_filled_unknown
 	      	      fi
-	    then () = est_times := for T in times if T!=-1 do abs(T+1) fi od
+	    then est_times = for T in times if T!=-1 do if T < 0 then -5*T else (T+1) fi fi od
 	    then N = #times, ne = #est_times
     	    in if predictor_verbose
 	       then prints(new_line,"Start predicting to height ", HT, " param ",p);
