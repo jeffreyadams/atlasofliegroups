@@ -26,7 +26,7 @@ fi
 
 set signature(PaintedBiPartition Z)=ClassicalSignature:
 (Z.label,(Z.p,Z.q))  {(Z.p,Z.q) = Z.p+ s*Z.q}
-set signature(ExtendedPaintedBiPartition X)=signature(X.Z)
+set signature(ExtendedPaintedBiPartition X)=signature(X.painted_bi_partition)
 
 set_type KOrbit=([Split] signs,string label)
 {the integers (p,q) are required to be non-negative
@@ -423,7 +423,7 @@ set shift_right(KLocalSystem M)=KLocalSystem:
 {set theta_before_twist(KLocalSystem M, Orbit target, ClassicalSignature S_target, ClassicalSignature S_source)}
 set theta_before_twist(KLocalSystem M, Orbit target, ClassicalSignature S_target)=[KLocalSystem]:
 let ()=if theta_verbose then prints("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%",new_line,
-     "in set theta... with ", new_line,
+     "in theta_before_twist... with ", new_line,"orbit: ", target, new_line,
      "M=",M,new_line,"target=",target,new_line,"target signature:", S_target, new_line, "source signature", signature(M)) fi in 
 let ()=assert(is_theta_target(partition(M),target), "not a valid pair of orbits") then
 ()= assert(dual_howe_label(M.label)=S_target.label,"labels don't match") then
@@ -537,19 +537,25 @@ set tensor_plus_minus(KLocalSystem Z)=KLocalSystem:
  (for z in Z.signs do bar(z) od,Z.label)
 
 {actual theta: theta_before_twist followed by twists of (4.17)}
-set theta(ExtendedPaintedBiPartition X,KLocalSystem M, Orbit target,
+set theta_actual(ExtendedPaintedBiPartition X_target,KLocalSystem M_source, Orbit target,
 ClassicalSignature S_target, ClassicalSignature S_source)=
-for Z in theta_before_twist(M,target,S_target) do
-  if is_in (Z.label,["B","D"]) then
-   if epsilon(Z)=0 then Z else tensor_det_1(Z) fi
-  elif is_in(Z.label,["C","C~"]) then
-   if epsilon_extended(X)=0 then Z else tensor_plus_minus(Z)  fi
+if theta_verbose then prints("in theta_actual with EPBP:", X_target, new_line, "M_source=", M_source, new_line,
+"orbit target: ", target, new_line, "going to compute theta_before_twist") fi;
+let theta_before=theta_before_twist(M_source,target,S_target) then
+()=if theta_verbose then prints("computed theta_before:");for X in theta_before do prints(X) od;prints("end of theta_before") fi in
+for Y in theta_before do
+  if theta_verbose then prints("for Y in theta_before with Y=", Y, new_line) fi;
+  if is_in (Y.label,["B","D"]) then
+   if theta_verbose then prints("Y.label in B,D: ", Y.label, new_line, "X_target=", X_target, new_line, "epsilon(X_target)=", epsilon(X_target)) fi;
+   if epsilon(X_target)=0 then Y else tensor_plus_minus(Y) fi
+  elif is_in(Y.label,["C","C~"]) then
+   if theta_verbose then prints("Y.label in C/C~: ", Y.label, new_line, "X_target=", X_target, new_line, "epsilon(X_target)=", epsilon(X_target)) fi;
+   if epsilon_extended(X_target)=0 then Y else tensor_det_1(Y)   fi
+  else
+   Y
   fi
 od
   
-
-
-
 {----------generating orbits-------------}
 
 set join([[Split]] list)=[[Split]]:
@@ -587,7 +593,9 @@ fi
 set K_orbits(int rank, string label)=[KOrbit]:
 ##for orbit in all_partitions(rank,label) do K_orbits(orbit,label) od
 
-set theta(KLocalSystem M, int delta, int extra,ClassicalSignature S_source)=
+set theta_extended(ExtendedPaintedBiPartition Z,KLocalSystem M, int delta, int extra,ClassicalSignature S_source)=
+if theta_verbose then prints("in theta_extended with: Z=", Z, new_line,"M=",M, new_line,"delta=",delta, new_line,
+"extra=", extra, new_line, "S_source: ", S_source) fi;
 let orbit=partition(M) then
 rows_by_length=for z in M.signs do p(z)+q(z	) od then
 ()=assert(rows_by_length[1]-delta>=0,"error") then
@@ -610,7 +618,7 @@ possible_signatures=let z_M=signature(M) in
 for z in possible_signatures do
 let ()=if theta_verbose then prints("----------------------------------------------------",new_line,
 "target signature: (",dual_howe_label(M.label),",", z,")") fi in  
-theta(M,target, (dual_howe_label(M.label),z),S_source) od
+theta_actual(Z,M,target, (dual_howe_label(M.label),z),S_source) od
 
 {find orbit(s) O^v from list so that Springer(dual orbit) <-> given pair of partitions
  should only be 1 in our cases?}
@@ -632,24 +640,28 @@ if #source=0 then [ones(target_size)] else
  od
 fi
 
-set theta(KLocalSystem M, Orbit source,BiPartition (P,Q))=
+set theta_3(KLocalSystem M, Orbit source,BiPartition (P,Q))=
 let label=M.label then
 dual_orbits=valid_theta_targets(source,#P+#Q) then
 orbits=choose_orbit((P,Q),label,dual_orbits) in
 orbits
 
 set theta_one_level([ExtendedPaintedBiPartition] chain,int start_level,KLocalSystem Z)=
+ let target_level=start_level-1 in
 if theta_verbose then
- prints("in theta_one_level: ", new_line,"target level=",start_level, new_line, "Z=",Z)
+ prints("in theta_one_level (a): ", new_line,"target level=",target_level, new_line, "Z=",Z)
 fi;
-let value=theta(Z,orbit(chain[start_level]),signature(chain[start_level]),signature(chain[start_level+1])) in
+{let value=theta(chain[start_level],Z,orbit(chain[start_level]),signature(chain[start_level]),signature(chain[start_level+1])) in}
+let value=theta_actual(chain[target_level],Z,orbit(chain[start_level]),signature(chain[start_level]),signature(chain[start_level+1])) in
 if theta_verbose then
- prints("finished theta_one_level: chain=", chain, new_line, "target level=", start_level,new_line,
- "Z=", Z, new_line, "return value=", value) fi;value
-
-set theta_one_level([PaintedBiPartition] chain,int start_level,[KLocalSystem] list)=
+ prints("finished theta_one_level: chain=", chain, new_line, "target level=", target_level,new_line,
+ "Z=", Z, new_line, "return value=", value) fi;
+value
+ 
+set theta_one_level([ExtendedPaintedBiPartition] chain,int start_level,[KLocalSystem] list)=
+let target_level=start_level-1 in		 
 let ()=if theta_verbose then 
-let ()=prints("in theta_one_level with start_level=", start_level, new_line, "list=");list! in
+let ()=prints("in theta_one_level (b) with start_level=", start_level, new_line, "target_level: ", target_level,new_line,"list=");list! in
 let ()=prints("running theta(Z,orbit(...), signature) over Z in list:") in
 for Z in list do prints(Z, " ", orbit(Z)) od fi in 
 ##for Z in list do
@@ -658,28 +670,31 @@ for Z in list do prints(Z, " ", orbit(Z)) od fi in
  let ()=if theta_verbose then prints("got orbit: ", orbit) fi then
  signature_source=signature(Z) then
 ()= if theta_verbose then 
- prints("target level: ", start_level);
- prints("source level: ", start_level+1,
- new_line, "source chain: ");show(chain[start_level+1]);
- prints("target chain: ");show(chain[start_level]);
- prints("signature_source: ", signature(chain[start_level+1]),
- new_line,"signature_target: ", signature(chain[start_level])) fi in
-theta(Z,orbit(chain[start_level]),signature(chain[start_level]),signature(chain[start_level+1])) od
+ prints("target level: ", target_level);
+ prints("source level: ", start_level,
+ new_line, "source chain: ");show(chain[start_level]);
+ prints("target chain: ");show(chain[target_level]);
+ prints("signature_source: ", signature(chain[start_level]),
+ new_line,"signature_target: ", signature(chain[target_level])) fi in
+{theta(chain[start_level],Z,orbit(chain[start_level]),signature(chain[start_level]),signature(chain[start_level+1])) od}
+prints("OK");theta_actual(chain[target_level],Z,orbit(chain[target_level]),signature(chain[target_level]),signature(chain[start_level])) od
 
-set theta_recurse([PaintedBiPartition] chain,int
-start_level,[KLocalSystem] list)= let
-()=prints("theta_recurse(1): start_level=",start_level) in
-for j:start_level downto 0 do let
-()=if theta_verbose then prints("===================================",new_line, "main start level: ", start_level, new_line, "calling theta_one_level from level", j+1, " to level " ,j, new_line,"list=");list! fi   in let
-()=if theta_verbose then prints("calling theta_one_level with start level=",j) fi in
+set theta_recurse([ExtendedPaintedBiPartition] chain,int main_start_level,[KLocalSystem] list)= let
+()=prints("theta_recurse(1): main_start_level=", main_start_level) in
+for j:main_start_level downto 1 do let
+  ()=if theta_verbose then prints("===================================",
+             new_line, "main start level: ", main_start_level, new_line,
+	     "calling theta_one_level from level ", j, " to level " ,j-1,
+	     new_line,"list=");list! fi   in
+let ()=if theta_verbose then prints("calling theta_one_level with start level=",j) fi in
 list:=theta_one_level(chain,j,list) od;
 let ()=if theta_verbose then prints("list is now: ",list) fi in list
 
-set theta_recurse([PaintedBiPartition] chain,int start_level,KLocalSystem Z)=
+set theta_recurse([ExtendedPaintedBiPartition] chain,int start_level,KLocalSystem Z)=
 let ()=if theta_verbose then prints("theta_recurse(2): start_level=",start_level) fi in 
 theta_recurse(chain,start_level,[Z])
 
-set theta_recurse([PaintedBiPartition] chain)=
+set theta_recurse([ExtendedPaintedBiPartition] chain)=
 let ()=if theta_verbose then prints("theta_recurse(3)") fi in
 {if =signature(chain~[0]).z then}
 if =size(chain~[0]) then

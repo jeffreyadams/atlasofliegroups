@@ -153,13 +153,16 @@ set descent_ext([int] S)=[int]:
 ##for j in S do if j>1 then [j-1] else [] fi od
 
 {-----------------ExtendedPaintedBiPartitions------------------}
-set_type ExtendedPaintedBiPartition=(PaintedBiPartition Z,[int] S)
-set size(ExtendedPaintedBiPartition X)=size(X.Z)
+set_type ExtendedPaintedBiPartition=(PaintedBiPartition painted_bi_partition,[int] S)
+set extended_painted_bi_partition(PaintedBiPartition X,[int] S)=ExtendedPaintedBiPartition:(X,S)
+set size(ExtendedPaintedBiPartition X)=size(X.painted_bi_partition)
+set epsilon(ExtendedPaintedBiPartition X)=int:epsilon(X.painted_bi_partition)
 set epsilon_extended(ExtendedPaintedBiPartition X)=int:
  if contains(1)(X.S) then 1 else 0 fi
 set descent(ExtendedPaintedBiPartition (Z,S))=ExtendedPaintedBiPartition:
 (descent(Z),descent_ext(S))
-
+set orbit(ExtendedPaintedBiPartition Z)=orbit(painted_bi_partition(Z))
+set label(ExtendedPaintedBiPartition Z)=string:label(painted_bi_partition(Z))
 set descent_chain(ExtendedPaintedBiPartition Z)=[ExtendedPaintedBiPartition]:
 let rv=[Z] in
 while size(rv~[0])>0 do
@@ -201,4 +204,30 @@ prints(Z.P, " ", Z.Q, " ", Z.bi_label, " ", group_name(Z), " ", orbit(Z))
 set show_short([ExtendedPaintedBiPartition] list)=void:
 tabulate(for (Z,S) in list do
  [Z.P.to_string,Z.Q.to_string,Z.bi_label,group_name(Z),orbit(Z).to_string,S.to_string] od)
+
+{see (3.8)}
+set extended_painted_bipartitions(Orbit O_v,string label)=
+let pbp=pbp(O_v,label) in 
+if is_in(label,["B","C","D","C~"])
+ then
+   ##for Z in pbp do
+    for S in A_bar(O_v,label) do 
+     ExtendedPaintedBiPartition:(Z,S) od od
+ else
+    for Z in pbp do ExtendedPaintedBiPartition:(Z,[int]:[]) od
+fi
+
+set extended_painted_bipartitions(GroupDatum G,Orbit O_v,string label)=
+let pbp=pbp(G,O_v,label) in 
+if is_in(label,["B","C","D","C~"])
+ then
+   ##for Z in pbp do
+    for S in A_bar(O_v,label) do 
+     ExtendedPaintedBiPartition:(Z,S) od od
+ else
+    for Z in pbp do ExtendedPaintedBiPartition:(Z,[int]:[]) od
+fi
+
+set reps(Orbit O_v,string label)=extended_painted_bipartitions(O_v,label)
+set reps(GroupDatum G,Orbit O_v,string label)=extended_painted_bipartitions(G,O_v,label)
 

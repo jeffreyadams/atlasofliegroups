@@ -170,7 +170,6 @@ set painted_partitions(Partition P)=[PaintedPartition]:
  if partition(pp)=P then [pp] else [] fi od
 
 set_type PaintedBiPartition=(PaintedPartition P,PaintedPartition Q,string bi_label)
-
 set label_of(string bi_label)=string:if is_in(bi_label,["B+","B-"]) then "B" else bi_label fi
 set label(PaintedBiPartition Z)=string:label_of(bi_label(Z))
 
@@ -344,7 +343,7 @@ set primitive_pairs(Orbit O,string label)=[int]:##for i:#O-1 from 1 do if is_pri
 set pp(Orbit O,string label)=[int]:primitive_pairs(O,label)
 set number_primitive(Orbit O,string label)=int:#primitive_pairs(O,label)
 
-{A_bar is the set of subsets of pp(O,label)}
+{A_bar is the set of subsets of [int]:pp(O,label)}
 set A_bar(Orbit O, string label)=[[int]]:power_set(pp(O,label))
 set A_bar_rank(Orbit O,string label)=int:#pp(O,label)
 set A_bar_order(Orbit O,string label)=int:#A_bar(O,label)

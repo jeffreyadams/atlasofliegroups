@@ -308,21 +308,7 @@ set pbp(GroupDatum G,Orbit O_v, string label)=[PaintedBiPartition]:
 set number_pbp(Orbit O_v,string label)=int:#pbp(O_v,label)
 set number_pbp(GroupDatum G,Orbit O_v, string label)=int:#pbp(G,O_v,label)
 
-
-{see (3.8)}
-set pbp_ext(Orbit O_v,string label)=([PaintedBiPartition],[[int]]):
-if is_in(label,["B","C","D","C~"])
- then (pbp(O_v,label),A_bar(O_v,label))
- else (pbp(O_v,label),[[int]]:[[]])
-fi
-
-set pbp_ext(GroupDatum G,Orbit O_v,string label)=([PaintedBiPartition],[[int]]):
-if is_in(label,["B","C","D","C~"])
- then (pbp(G,O_v,label),A_bar(O_v,label))
- else (pbp(G,O_v,label),[[int]]:[[]])
-fi
-
-
+{for ExtendedPaintedBiPartition versions see bmsz_descent.at}
 
 {Note:
 orbit for G^v -> (P,Q) diagram_pair(orbit,label_for_G) -> dual_orbit(P,Q,diagram_for_G) = orbit
