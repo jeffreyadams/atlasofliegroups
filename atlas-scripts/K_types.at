@@ -1,17 +1,18 @@
-<basic.at     { for *@(Param,rat) }
+<basic.at     { for *@(Param,rat), int_part, s_part}
 <hermitian.at { for hermitian_form_irreducible }
 <K_highest_weights.at
 <to_ht.at {for hermitian_form_irreducible_to_ht}
 <FPP_faces_herm.at {for script branching}
 
-set int_part (KTypePol P) = KTypePol:
+{moved to basic}
+{set int_part (KTypePol P) = KTypePol:
    P.null_K_module + for c@t in P do (c.int_part,t) od
 set s_part (KTypePol P) = KTypePol:
-   P.null_K_module + for c@t in P do (c.s_part,t) od
+   P.null_K_module + for c@t in P do (c.s_part,t) od}
 
 {set branch_std = (KTypePol,int->KTypePol): branch@(KTypePol,int) { built-in }}
-set branch_std (KTypePol P, int cut_off) = KTypePol:
-    let start = elapsed_ms()
+set branch_std (KTypePol P, int cut_off) = KTypePol: {branch(P,cut_off)}
+let start = elapsed_ms()
     then ans = if my_branch_flag
     	       then big_unitary_hash.branch(P,cut_off)
 	       else branch(P,cut_off)
@@ -26,8 +27,9 @@ set branch_std (KType mu, int cut_off) = KTypePol:
     branch_std(1*mu,cut_off)
 
 set branch_std (ParamPol P, int bound) = KTypePol:
-    let start = elapsed_ms()
-    then ans = if my_branch_flag
+    {branch(K_type_pol(P),bound)}
+let start = elapsed_ms()
+then ans = if my_branch_flag
     	       then big_unitary_hash.branch(K_type_pol(P),bound)
 	       else branch(K_type_pol(P),bound)
 	       fi
@@ -53,6 +55,8 @@ set mult_irr (KType p_K,ParamPol P) = int:
 
 set K_signature_irr (Param p,int bound) = (KTypePol,KTypePol):
   let HI = hermitian_form_irreducible(p)
+  {then ans = branch(HI,bound)
+  in (int_part(ans), s_part(ans))}
   then start = elapsed_ms()
   then ans = if my_branch_flag
     	     then big_unitary_hash.branch(HI,bound)
@@ -76,6 +80,7 @@ set K_signature_irrB (Param p,int bound) = (KTypePol,KTypePol):
      else branch_builtin_time +:= elapsed_ms() - start
      fi;
      (int_part(ans),s_part(ans))
+
 
 set signed_mult (KType p_K,Param p) = (int,int):
   let (P,Q)=K_signature_irr(p,height(p_K)) in (P[p_K].int_part,Q[p_K].int_part)

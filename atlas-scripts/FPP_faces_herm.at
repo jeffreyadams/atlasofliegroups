@@ -1,5 +1,5 @@
 {this file concerns (local) facets of parameters, in preparation of analysis of their unitarity.}
-
+<basic.at {for s_part, int_part}
 <FPP_faces_geom.at
 <goodroots.at { for is_pos_on_LKTs }
 <Dirac.at
@@ -13,6 +13,8 @@
 <up_mu.at {for up_mu_hash}
 <Vogan-dual.at {for dual@Param}
 <FPP_lambdas.at
+<weak_unip.at {for check_wk_unip}
+<smallQ.at {for theta_stable_data_small}
 {BREAK HERE?}
 
 set old_test_interrupt_flag = false
@@ -1775,6 +1777,87 @@ set is_known_u_to_ht(Param p, int HT) = bool:
        else (HT >= 0) and (u_to_ht_hts[j] >= HT)
        fi
 
+set fair_pos_counter = int:0
+set fair_neg_counter = int:0
+set fair_counter = int:0
+set fair_time = int:0
+
+set fairly_small_flag = false
+
+{this version is only for G simple and hermitian FPP params}
+{does weakly fair induction; 1 means it's weakly fair induced and unitary; -1 means nonunitary; and
+0 means not weakly fair induced}
+set is_unitary_hash_big_SIMPLE_fair(Param p) = int:
+    fair_counter+:=1;
+    let start = elapsed_ms(), (Q,pL) = if fairly_small_flag
+    	      		      	       then theta_stable_data_small(p)
+				       else theta_stable_quasi_data(p)
+				       fi
+    then derpLs = for qLj in derived_factor_params0(pL)
+		  do monomials(finalize(qLj))
+		  od.##, (S,) = Q
+    then () = if #derpLs = 0
+    	      then big_unitary_hash.umatch(p);
+	      	   fair_pos_counter +:= 1;
+		   fair_time+:= elapsed_ms() - start;
+		   return 1 fi;
+    	      if rho_u(Q).=
+	      then fair_counter-:=1;
+	      fair_time+:= elapsed_ms() - start;
+	      return 0 fi {Q=G, so no reduction}
+    then fair_statuses = [bool]: [], GKDs = vec: [], taus = [vec]: []
+    in for derpL in derpLs
+       do let (status,GKD,tau) = wu_hash.check_wk_unip(derpL.root_datum,
+			    	derpL.infinitesimal_character)
+	   in fair_statuses#:= status;
+	      GKDs#:=GKD;
+	      taus#:=tau
+	od;
+        if (all(fair_statuses)) and
+	    all(for derpL@j in derpLs do @bool: (tau(derpL) = taus[j]) od) and
+	    all(for derpL@j in derpLs do @bool: GK_dim(derpL) = GKDs[j] od)
+     	then {we've got weakly unipotent}
+	     if all(for derpL in derpLs do is_FPP(derpL.root_datum, derpL.infinitesimal_character) and
+	     		      	 	   big_unitary_hash.check(derpL) od)
+	     then big_unitary_hash.umatch(p);
+	      	  fair_pos_counter +:= 1;
+		  fair_time+:= elapsed_ms() - start;
+		  1
+	     else let muL = LKTs(pL)[0]
+	     	  then sigL = glue_sigs(for derpL in derpLs
+		       	      		do big_unitary_hash.sig_entry(derpL,-1)
+					od, muL)
+		  then sig = theta_induce_K(sigL,p.real_form)
+		  in if is_pure(sig)
+		     then big_unitary_hash.umatch(p);
+	      	     	  fair_pos_counter +:= 1;
+		  	  fair_time+:= elapsed_ms() - start;
+		  	  1
+		     elif int_part(sig) + s_part(sig) = K_type_pol(character_formula(p))
+		     then big_unitary_hash.numatch(p);
+	      	     	  fair_neg_counter +:= 1;
+		  	  fair_time+:= elapsed_ms() - start;
+		  	  -1
+		     else 0
+		     fi
+	      fi
+	  else fair_time+:= elapsed_ms() - start;
+	       0 {not weakly unipotent, so can't control induction}
+	fi
+
+{whether to use preceding test in status}
+set fair_use_flag = false
+
+set report_fair() = void:
+    if fair_use_flag
+    then prints(fair_counter," uses of big_SIMPLE_fair, finding ",fair_pos_counter," unitary and ",
+    	 	fair_neg_counter, " non-unitary reps, in time ", print_time_string(fair_time));
+	 prints(iwu_count," uses of is_weakly_unipotent, in time ",print_time_string(iwu_time))
+    fi
+
+set clear_fair() = void:
+    fair_counter:=0; fair_pos_counter:=0; fair_neg_counter:=0; fair_time:=0; iwu_count:=0; iwu_time:=0
+
 {return 1 if is_unitary_to_ht(p,HT) known true, -1 if known false, 0 else}
 set status(Param p, int HT) = int:
     if not is_hermitian(p) then return -1 fi;
@@ -1791,6 +1874,8 @@ set status(Param p, int HT) = int:
     then {assert(@:is_unitary_to_ht(p,HT));} 1
     elif is_finished(p.x, p.lambda) and HT < 0
     then -1 {otherwise we'd have found it in ulookup}
+    elif fair_use_flag
+    then is_unitary_hash_big_SIMPLE_fair(p)
     else 0
     fi;
     status_time +:= elapsed_ms() - start_st;

@@ -1,6 +1,6 @@
 <truncated_induction.at
 <sub_cells.at
-<K_types.at
+{<K_types.at}
 <special_rep.at {for to_special}
 set av_verbose=false
 

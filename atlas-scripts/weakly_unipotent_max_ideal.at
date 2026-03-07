@@ -190,10 +190,14 @@ find(sings,S)=-1
 
 {given a RootDatum G and a dominant weight lambda, determines whether the maximal ideal I_{max}(lambda) is weakly unipotent}
 
+set iwu_time = int:0
+set iwu_count = int:0
+
 set is_weakly_unipotent(RootDatum G, ratvec lambda)=bool:
-let list=candidates_shorter(G,lambda) in
+iwu_count+:=1;
+let start = elapsed_ms(), list=candidates_shorter(G,lambda) in
 if #list=0 then true else let sings=prohibited_singular_data(G,lambda) then M=integrality_datum(G,lambda) in
-0=sum(for mu in list do #(check_mu(M,lambda,mu,sings)=false) od) fi
+0=sum(for mu in list do #(check_mu(M,lambda,mu,sings)=false) od) fi next iwu_time+:= elapsed_ms() - start
 
 
 {given a RootDatum G and a dominant weight lambda, determines whether the maximal ideal I_{max}(lambda) is very weakly unipotent}

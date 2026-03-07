@@ -2539,6 +2539,11 @@ set is_pure_1 (ParamPol P) = bool:
    for c in P do if !=c.s_part then return false fi od; true
 set is_pure (ParamPol P) = bool: for c in P do c od.is_pure
 
+set int_part (KTypePol P) = KTypePol:
+   P.null_K_module + for c@t in P do (c.int_part,t) od
+set s_part (KTypePol P) = KTypePol:
+   P.null_K_module + for c@t in P do (c.s_part,t) od
+
 { report number of integer, purely s, and mixed terms }
 set purity (KTypePol P) = (int,int,int):
   let (x,y,z)=(0,0,0) in
