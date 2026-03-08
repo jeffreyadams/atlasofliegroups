@@ -1559,26 +1559,35 @@ type constructors of the same arity, which is the number of type variables
 abstracted in the context of the grouped type definition (in which these type
 variables denote type parameters). Their right hand sides can mutually refer to
 types being defined, as well as using built-in or previously defined types and
-type constructors of course. Since the type names being defined are not yet
-treated as type constructors, mutual references do not take type arguments; when
-later used, the arguments passed will be passed on unchanged in such mutual
-references.
+type constructors. We shall however forbid an application of any previously
+defined recursive type constructor with one of the types being defined as (type
+subexpression of) one of its arguments; the reason is that our rules for type
+equivalence never make (an instance of) a type (constructor) defined by one set
+of recursive equations equivalent to an instance of a type constructor defined
+by another set of recursive equations. Since the type names being defined are
+not yet treated as type constructors, mutual references do not take type
+arguments; when later used, the argument types are implicitly passed on
+unchanged among such mutual references.
 
-Grouped type definitions define an oriented graph, where each vertex is a type
+@ Grouped type definitions define an oriented graph, where each vertex is a type
 subexpression of one of the right hand sides of the definitions. Edges are for
-direct descendant relations, or for references within the definition group,
-represented by |tabled| types with |tabled_nr()>=table_size()|. (The |tabled|
-case with |tabled_nr()<table_size()| can also occur, as an application of an
-already tabled type constructor; whether that constructor is recursive or not,
-it will be treated in the same way a built-in type constructor would be, with
-any argument types being its type subexpressions.) This graph can serve to
-detect actual recursion patterns, which appear as cliques for the relation of
-mutual reachability among vertices.
+direct descendance relations, or for references within the definition group. The
+parser represents the latter by |tabled| types with |tabled_nr()>=table_size()|.
+(The |tabled| case with |tabled_nr()<table_size()| can also occur, as an
+application of an already tabled type constructor; whether that constructor is
+recursive or not, it will be treated in the same way a built-in type constructor
+would be, with any argument types being its type subexpressions.) This graph can
+serve to detect actual recursion patterns, which appear as cliques for the
+relation of mutual reachability among vertices.
 
 To process a group of type definitions, we first decompose the right hand side
 type expressions into ``nodes'' for which all type subexpressions will (also)
 become tabled references. Then we determine the recursive cliques among these
-nodes, and mark all their members with the |recursive| flag. Then
+nodes, and mark all their members with the |recursive| flag. At this point we
+can check if any of the recursive nodes is an application of a previously
+defined recursive type constructor (which apparently has at least one of the
+types being defined as argument or as type subexpression thereof), and reject
+the current type definition for that reason (as was mentioned above). Otherwise,
 we can use |type_expr::operator==| to test for equality among the remaining (not
 directly recursive) nodes, to weed out any repetition of some previously tabled
 constructor of the same arity. Finally we remove redundant tabled entries and
@@ -1598,12 +1607,15 @@ std::vector<type_nr_type> type_expr::add_typedefs
 @/@< Copy right hand sides of |defs| to |type_array|, and add entries for
      any of their component types that have themselves any descendants @>
 
-  preorder::Preorder graph(type_array.begin(),type_array.end());
+@)preorder::Preorder graph(type_array.begin(),type_array.end());
   auto cliques = graph.closure().cliques();
-
-@/@< Add entries to |type_map| according to the entries of |type_array|,
-     while setting the |recursive| flag for members of |cliques|
-     and type names for those that are given one in |defs| @>
+@/BitMap rec(type_array.size());
+@/
+  @< Set the |rec| flag for members of |cliques|, and flag an error if
+     any of them involves a previously defined recursive type constructor @>
+  @< Add entries to |type_map| according to the entries of |type_array|,
+     while setting the |recursive| flag from |rec|, and type names for those
+     types that are given one in |defs| @>
 
   std::vector<type_nr_type> relocate(type_array.size());
 @/@< For new members of |type_map| that are not |recursive|, test whether they
@@ -1767,6 +1779,34 @@ fortunately this is quite easy.
       type_array[i] = type_data(defs[i].second,sl_list<unsigned short>());
 }
 
+@ The |cliques| are already computed when we come here, so it is easy to flag
+all their elements (which are indices into |type_array|) in the |BitMap rec@;|.
+After this is done, we traverse this union of cliques, to see if any of their
+|type_array| points to a previously defined recursive |tabled| type constructor,
+in which case we terminate |add_typedefs| by throwing a |program_error|. The
+entries of |type_array| have passed the |has_descendants| test, so any |tabled|
+type is necessarily an existing |tabled| type constructor, and the fact that we
+are in a clique implies that some type recursion is taking place through one of
+its arguments. The only additional test required to check that we are in a
+prohibited situation is that the type constructor used is itself recursive.
+
+@< Set the |rec| flag for members of |cliques|, and flag an error if
+     any of them involves a previously defined recursive type constructor @>=
+{
+  for (const auto& clique : cliques)
+    rec |= BitMap(type_array.size(),clique.wcbegin(),clique.wcend());
+  for (auto index : rec)
+  { const type_expr& tp = *type_array[index].tp;
+    if (tp.raw_kind()==tabled and type_map[tp.tabled_nr()].recursive)
+    { std::ostringstream o;
+      o << "Type definition recursion uses type constructor '"
+      @| << main_hash_table->name_of(type_map[tp.tabled_nr()].name)
+      @|<< "', itself recursive, which is not allowed";
+      throw program_error(o.str());
+    }
+  }
+}
+
 @ When the |type_array| has served its purpose of allowing the detection of
 recursion within the simultaneous type definitions, its entries~|e| will give
 rise to types installed in |type_map|. Such a type will be modelled on |e.tp|,
@@ -1835,11 +1875,7 @@ specified in |defs| (for those entries that directly correspond to one of the
 defined types).
 
 @< Add entries to |type_map| according to the entries of |type_array|... @>=
-{ BitMap rec(type_array.size());
-  for (const auto& clique : cliques)
-    rec |= BitMap(type_array.size(),clique.wcbegin(),clique.wcend());
-@)
-  for (type_nr_type i=0; i<type_array.size(); ++i)
+{ for (type_nr_type i=0; i<type_array.size(); ++i)
   {
     const auto& data = type_array[i];
     sl_list<unsigned short>::const_iterator oit=data.out.cbegin();
@@ -2661,8 +2697,12 @@ void type_assignment::restore_polymorphics(const BitMap& which)
 }
 
 @ A helper method |renumber| can be used during substitution to ensure that the
-remaining polymorphic variables are compacted to become consecutive. Doing this
-on the fly is not efficient, but |equiv| is hardly ever a large vector.
+remaining polymorphic variables are compacted to become consecutive. It
+transforms the type variable number |i| into a possibly smaller number that
+takes into account the fact that some lower type variables may have been
+substituted for, and therefore no longer are polymorphic type variables; it
+returns the new number. Doing this repeatedly on the fly is not efficient, but
+it does not bother us much since |equiv| is hardly ever a large vector.
 
 @< Function definitions @>=
 unsigned int type_assignment::renumber(unsigned int i) const
