@@ -1279,10 +1279,10 @@ class type;
 which is basically a vector of |type_binding|. The variant |tabled_variant| of
 |type_expr| will record an index into this vector (we ignore here another use
 made of this variant in the parser, which is dealt with in the \.{global.w}
-module). This class does not hide its data (though it does have one private
-method |dissect_to|), but the unique object of this class is a private static
-member of |type_expr|, so access is mostly controlled by static methods of that
-class.
+module). This class does not hide its data (though it does have private methods
+|dissect_to| and |rewrite|), but the unique object of this class is a private
+static member of |type_expr|, so access is mostly controlled by static methods
+of that class.
 
 The way tabled type are used has evolved a bit since the introduction of user
 type constructors. Before, the main importance was being able to do structural
@@ -1557,7 +1557,7 @@ Tabled types are introduced either by a call of |add_simple_typedef| above, or
 by a calls of |add_typedefs|. The latter actually introduces a group of tabled
 type constructors of the same arity, which is the number of type variables
 abstracted in the context of the grouped type definition (in which these type
-variables denote type parameters). There right hand sides can mutually refer to
+variables denote type parameters). Their right hand sides can mutually refer to
 types being defined, as well as using built-in or previously defined types and
 type constructors of course. Since the type names being defined are not yet
 treated as type constructors, mutual references do not take type arguments; when
@@ -1578,10 +1578,10 @@ mutual reachability among vertices.
 To process a group of type definitions, we first decompose the right hand side
 type expressions into ``nodes'' for which all type subexpressions will (also)
 become tabled references. Then we determine the recursive cliques among these
-nodes, and mark all their members with the |recursive| flag. For the remaining
-(not directly recursive) nodes we can use |type_expr::operator==| to test for
-equality to weed out any equality among nodes or with previously tabled
-constructors of the same arity. Finally we remove redundant tabled entries and
+nodes, and mark all their members with the |recursive| flag. Then
+we can use |type_expr::operator==| to test for equality among the remaining (not
+directly recursive) nodes, to weed out any repetition of some previously tabled
+constructor of the same arity. Finally we remove redundant tabled entries and
 readjust references to entries that as a consequence have been shifted in the
 table.
 
@@ -1617,28 +1617,29 @@ std::vector<type_nr_type> type_expr::add_typedefs
 }
 
 @ A first concern is which component types of the right hand sides should get a
-separate slot in |type_array|; the minimal requirement is any intermediate type
+separate slot in |type_array|; the minimal requirement is: any intermediate type
 in a recursion, i.e., one that both descends from some type being defined, and
 that has the same type as descendant. Since we are going to use |type_array| to
-find out such recursive relations, it is not practical to use recursion as a
-criterion for allocating slots in |type_array|; therefore we shall create such a
-slot for any type expression that has itself any descendant type. These are:
-row, function, tuple and union types, and instances of already defined tabled
-type constructors with |tabled_arity()>0| (whose argument types we count as
-descendants). In order to easily see which direct descendants of a node produce
-a link in |graph|, we define the predicate |has_descendants|.
+find out such recursive relations, it is not practical to already use recursion
+in a criterion for allocating slots in |type_array|. Therefore we shall instead
+create such a slot for any type expression that has itself any descendant type.
+(This somewhat limits the number of type expressions that need a slot in
+|type_array|, but in case of large type expressions that turn out to be not
+involved in any recursion, it still copies all nodes that are not leaves; such
+nodes will later be ignored once recursion has been detected.) Type expressions
+with descendants are: row, function, tuple and union types, and instances of
+already defined recursive tabled type constructors with |tabled_arity()>0|
+(whose argument types we count as descendants). Applications of non-recursive
+tabled type constructors will be replaced by their one-level expansions (which
+usually but not always have descendants), removing them from the graph used to
+detect recursions. While applications of a recursive type constructors are
+allowed to remain in the graph, they will be rejected later if it turns out that
+their arguments cause them to be involved in any recursion of the current set of
+definitions; for now however, this is of no concern.
 
-We do not accept the applications of previously tabled type constructors as
-entries of |type_map|, to avoid having |type_expr::expanded| on one tabled type
-(constructor) returning another one. When inserting into |type_map|, they will
-be effectively be |expanded()| to a non tabled type (obtained by substitution
-from the |definiens| of the previously tabled constructor). The unlikely
-possibility that the expansion turns out to have no descendants will not break
-anything, so we ignore it. (Actually, if a parameter type to the old constructor
-would turn out to be unused, certain instances of this scenario would lead us to
-believe there is type recursion via the argument list, when in fact there is
-none; this would be very devious, and maybe we should exclude the possibility by
-insisting that type constructors use all their type arguments at least once.)
+In order to easily see which direct descendants of a node produce
+a link in |graph|, we define the predicate |has_descendants|, defined in a
+straightforward way.
 
 @< Local function definitions @>=
 bool has_descendants (const type_expr& tp)
@@ -1649,8 +1650,8 @@ bool has_descendants (const type_expr& tp)
   case row_type: case function_type: case union_type:
     return true;
   case tuple_type: return tp.tuple()!=nullptr;
-    case tabled:
-  return tp.tabled_nr()<type_expr::table_size() and tp.tabled_arity()>0;
+  case tabled:
+    return tp.tabled_nr()<type_expr::table_size() and tp.tabled_arity()>0;
   }
 }
 
@@ -1788,7 +1789,7 @@ have post-increment of a list iterator; such a method was however deliberately
 left undefined, because for the main case where post-increment on an iterator
 (of another type) can be essential, namely in the argument of an |erase| method,
 using it with an |sl_list| iterator would actually be an error.) If the
-rewriting is done because of |has_decendants()|, then this is the only way we
+rewriting is done because of |has_descendants()|, then this is the only way we
 can find the right slot; in the case of a type currently being defined on the
 other hand, the number is also obtained as |tabled_nr()| for our descendant
 type, but we still need to advance the iterator, so we use that value only as a
@@ -1830,7 +1831,7 @@ entry with |tag==tabled|.
 
 When we are done copying the entry, we set the |recursive| and |name| fields of
 the copied entry according to what we computed respectively to what was
-specified in |defs| (for those entries that directly correspond to on of the
+specified in |defs| (for those entries that directly correspond to one of the
 defined types).
 
 @< Add entries to |type_map| according to the entries of |type_array|... @>=
@@ -2347,7 +2348,7 @@ globally bound identifiers with a polymorphic type. In the former case the type
 variables start out as ``fixed by the context'' within their scope (nothing can
 be assumed about them, nor can they be substituted for) but when emerging from
 such a scope, such type variables present in the type of the type abstraction
-clause become polymorphic. i.e., implicitly universally quantified. We have
+clause become polymorphic, i.e., implicitly universally quantified. We have
 chosen to use just one kind of type variables internally, with a threshold
 between fixed and polymorphic variables present in the context where the type
 expressions are handled. Polymorphic type variables (those above the threshold)
@@ -2462,14 +2463,8 @@ public:
   type_assignment copy() const;
   unsigned int var_start() const @+{@; return threshold; }
   unsigned int size() const @+{@; return equiv.size(); }
-  bool empty() const
-  { auto null = @[ [](const type_ptr& p){@; return p==nullptr; } @];
-    return std::all_of(equiv.begin(),equiv.end(),null);
-  }
-  bool full() const
-  { auto null = @[ [](const type_ptr& p){@; return p==nullptr; } @];
-    return std::none_of(equiv.begin(),equiv.end(),null);
-  }
+  bool empty() const @+{@; return std::all_of(equiv.begin(),equiv.end(),null); }
+  bool full() const @+{@; return std::none_of(equiv.begin(),equiv.end(),null); }
   void set_floor(unsigned int n) @+{@; assert(empty()); threshold=n; }
   void grow(unsigned int n) @+{@; equiv.resize(size()+n); }
     // add |n| unassigned type variables
@@ -2498,6 +2493,7 @@ public:
   bool unify(const type_expr& P, const type_expr& Q);
 @)
 private:
+  static bool null(const type_ptr& p)@+{@; return p==nullptr; }
   bool is_free_in(const type_expr& tp, unsigned int nr) const;
 };
 
@@ -2765,12 +2761,13 @@ itself.
 effect is to modify the type assignment in such a way that, in case success is
 returned, the substitution for the new assignment will unify the two argument
 |type_expr| values. The actual unified type can then be obtained by calling the
-|substitute| method. This separation of unification and actual substitution into
-other related types rather than to unified types themselves. For instance in a
-function application we apply unification between the parameter part of a
-function type and the type of the argument expression; once the match is made,
-the |type_assignment| can then be used for substitution into the result part of
-the function type to get the type of the call.
+|substitute| method. This separation of unification and actual substitution
+makes it possible to perform the unifying substitution into (related) other
+types rather than to unified types themselves. For instance in a function
+application we apply unification between the parameter part of a function type
+and the type of the argument expression; once the match is made, the
+|type_assignment| can then be used for substitution into the result part of the
+function type to get the type of the call.
 
 In case of failure, the caller should ignore (or wipe out) any substitutions
 that might be recorded in |assign|.
