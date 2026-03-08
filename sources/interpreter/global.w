@@ -1685,7 +1685,7 @@ status as a type identifier would make the field name unusable.
     else
     { std::ostringstream o;
       o << "Repeated definition of '" @| << main_hash_table->name_of(id)
-      @|<< " in grouped type definition";
+      @|<< "' in grouped type definition";
       throw program_error(o.str());
     }
   }
