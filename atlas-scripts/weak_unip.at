@@ -1,0 +1,83 @@
+<<weakly_unipotent_max_ideal.at {for computing those}
+<<FPP_faces_herm.at {for big_unitary_hash}
+<<nilpotent_orbits.at {for nilpotent_orbits}
+{for each simple root datum rd, lists infinitesimal chars gamma for which the
+ corresponding maximal ideal is weakly unipotent and corresponding GK_dim's}
+
+set_type wuhash_datum = (ratvec_hash gammaHash, vec GKDim, [vec] tauInvt)
+
+set new_wuhash_datum = (make_ratvec_hash(), [], [])
+
+set_type
+[weakly_unipotent_hash_table =
+( ( -> int) root_datum_size {number of root data included}
+  , ( -> vec) wk_unip_sizes {for each root datum, number of infl chars known}
+  , (RootDatum -> int) wk_unip_size {number of infl chars known}
+  , (RootDatum -> wuhash_datum) wuHash
+  , ( -> ) clear {clear table}
+  , ((RootDatum,ratvec) -> (bool, int, vec)) is_known_wk_unip {whether ratvec gamma is in list; if so,
+    			   	       	     		       GK_dim and tau-invt}
+  , ((RootDatum,ratvec) -> (bool, int, vec)) check_wk_unip {check whether gamma is wkly unip; if so,
+    			    	   	      		       GK_dim and tau-invt}
+  )
+]
+
+set make_weakly_unipotent_hash() = weakly_unipotent_hash_table:
+( let rd_hash = make_RootDatum_hash()
+  then wu_hash_data = [wuhash_datum]: []
+  then clear() = void:
+       rd_hash.clear();
+       wu_hash_data:=[]
+  then add_rd(RootDatum rd) = int: {index of rd in rd_hash}
+       let I = rd_hash.size()
+       then i = rd_hash.match(rd)
+       in if i=I
+       	  then let Grd = rd.split_form
+	  then gammas = [ratvec]: for N in nilpotent_orbits(rd.dual) do N.H/2 od
+	  then ps = for gamma in gammas do parameter(x_open(Grd),Grd.rho, gamma) od
+	  then newWu = wuhash_datum: (make_ratvec_hash(gammas), for p in ps do GK_dim(p) od,
+	       	       		      for p in ps do tau(p) od)
+	  in wu_hash_data#:= newWu;
+	     i
+	  else i
+	  fi
+  in
+  ( ( -> int): {root_datum_size} @int: rd_hash.size()
+  , ( -> vec): {wk_unip_sizes}  @vec:
+    for (gammaHash,,) in wu_hash_data do gammaHash.size() od
+  , (RootDatum -> int): {wk_unip_size} (RootDatum rd):
+    let i = rd_hash.lookup(rd)
+    in if i >= 0
+       then wu_hash_data[i].gammaHash.size()
+       else -1
+       fi
+  , (RootDatum -> wuhash_datum): {wuHash} (RootDatum rd):
+    let i = add_rd(rd)
+    in wu_hash_data[i]
+  , ( -> ): {clear} clear
+  , ((RootDatum,ratvec) -> (bool, int, vec)): {is_known_wk_unip} (RootDatum rd, ratvec gamma):
+    let i = add_rd(rd)
+    then (gammaHash, GKDim, tauInvt)= wu_hash_data[i]
+    then j = gammaHash.lookup(gamma)
+    in (j>=0, if j>=0 then GKDim[j] else -1 fi, if j>=0 then tauInvt[j] else [] fi)
+  , ((RootDatum,ratvec) -> (bool, int, vec)): {check_wk_unip} (RootDatum rd, ratvec gamma):
+    let i = add_rd(rd)
+    then (gammaHash, GKDim, tauInvt)= wu_hash_data[i]
+    then j = gammaHash.lookup(gamma)
+    in if j>=0
+       then (true, GKDim[j], tauInvt[j])
+       else let status = is_weakly_unipotent(rd,gamma)
+       	    in if status
+	       then let GKD = GK_dim_maximal_ideal(rd,gamma)
+	       	    then rid = integrality_datum(rd,gamma)
+	       	    then tau = vec: for av@j in rid.simple_coroots if av*gamma >0 do j fi od
+	       	    in gammaHash.match(gamma); GKDim#:=GKD; tauInvt#:=tau;
+		       wu_hash_data[i]:=(gammaHash,GKDim,tauInvt);
+		       (true, GKD, tau)
+	       else (false, -1, [])
+	       fi
+       fi
+  )
+)
+
+set wu_hash = make_weakly_unipotent_hash() 
