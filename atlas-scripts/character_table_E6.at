@@ -54,8 +54,9 @@ set Magma_positions_E6 (WeylClassTable Wct) = [int]: { |Wct| classes to Magma }
    then profiles_sorted = for r in Magma_ranked do e6_profile[r] od
    , lookup = binary_lookup(rlex_leq@(vec,vec))
    in for w@i in Wct.class_representatives
-      do let prof = vec:
-         [order(w),Wct.class_size(i),Wct.sign[i], Wct.reflection[i]]
+      do let z = Wct.reflection[0]-6
+      	 then prof = vec:
+         [order(w),Wct.class_size(i),Wct.sign[i], Wct.reflection[i]-z]
       in Magma_ranked[lookup(prof,profiles_sorted).requisition]
       od
 
