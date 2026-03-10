@@ -1516,7 +1516,7 @@ void type_define_identifier
   }
   catch (program_error& err)
   { std::ostringstream o;
-    o << "Error in type definition " << loc << ":\n" @| << err.message
+    o << "(in type definition " << loc << "):\n" @| << err.message
       << "\n  Type definition aborted";
     err.message = o.str(); // replace message by extended one
     throw; // then re-throw
@@ -1654,7 +1654,7 @@ void process_type_definitions
   catch (program_error& err)
   { type_expr::reset_table_size(old_size); // roll back any extension made
     std::ostringstream o;
-    o << "Error in 'set_type' command " << loc << ":\n" @| << err.message
+    o << "(in 'set_type' command " << loc << "):\n" @| << err.message
       << "\n  Type definition aborted";
     err.message = o.str(); // replace message by extended one
     throw; // then re-throw
