@@ -270,8 +270,11 @@ set show(KLocalSystem M)=void:show(K_orbit(M))
 set show_short(KLocalSystem M)=void:show_short(K_orbit(M))
 set show([KLocalSystem] list)=void:
 let ()=if #list>1 then prints(#list, " KLocalSystems") else prints(#list, " KLocalSystem") fi in 
-for M in list do show(M) od
-set show_short([KLocalSystem] list)=void:for M in list do show_short(M) od
+for M in list do prints("------");show(M) od
+set show_short([KLocalSystem] list)=void:for M in list do prints("-----");show_short(M) od
+
+set show([[KLocalSystem]] list)=void: for X in list do prints("**************");show(X) od
+set show_short([[KLocalSystem]] list)=void:for M in list do prints("**************");show_short(M) od
 
 set orbit(KLocalSystem M)=Orbit:orbit(K_orbit(M))
 
@@ -686,7 +689,7 @@ for j:main_start_level downto 1 do let
              new_line, "main start level: ", main_start_level, new_line,
 	     "calling theta_one_level from level ", j, " to level " ,j-1,
 	     new_line,"list=");list! fi   in
-let ()=if theta_verbose then prints("calling theta_one_level with start level=",j) fi in
+  let ()=if theta_verbose then prints("calling theta_one_level with start level=",j) fi in
 list:=theta_one_level(chain,j,list) od;
 let ()=if theta_verbose then prints("list is now: ",list) fi in list
 
@@ -700,6 +703,35 @@ let ()=if theta_verbose then prints("theta_recurse(3)") fi in
 if =size(chain~[0]) then
  let start_level=#chain-1 in 
  theta_recurse(chain,start_level,null_K_local_system(chain~[0].label))
+else
+error("last element of chain isn't null")
+fi
+
+{long versions}
+set theta_recurse_long([ExtendedPaintedBiPartition] chain,int main_start_level,[KLocalSystem] list)= let
+()=prints("theta_recurse(1): main_start_level=", main_start_level) in
+let local_system_chain=list  in
+for j:main_start_level downto 1 do let
+  ()=if theta_verbose then prints("===================================",
+             new_line, "main start level: ", main_start_level, new_line,
+	     "calling theta_one_level from level ", j, " to level " ,j-1,
+	     new_line,"list=");list! fi   in
+  let ()=if theta_verbose then prints("calling theta_one_level with start level=",j) fi in
+let new_list=theta_one_level(chain,j,list)  in
+local_system_chain##:=new_list;
+list:=new_list od;
+let ()=if theta_verbose then prints("list is now: ",list) fi in (list,local_system_chain)
+
+set theta_recurse_long([ExtendedPaintedBiPartition] chain,int start_level,KLocalSystem Z)=
+let ()=if theta_verbose then prints("theta_recurse(2): start_level=",start_level) fi in 
+theta_recurse_long(chain,start_level,[Z])
+
+set theta_recurse_long([ExtendedPaintedBiPartition] chain)=
+let ()=if theta_verbose then prints("theta_recurse(3)") fi in
+{if =signature(chain~[0]).z then}
+if =size(chain~[0]) then
+ let start_level=#chain-1 in 
+ theta_recurse_long(chain,start_level,null_K_local_system(chain~[0].label))
 else
 error("last element of chain isn't null")
 fi
