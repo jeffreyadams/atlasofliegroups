@@ -1668,28 +1668,34 @@ bool has_descendants (const type_expr& tp)
 }
 
 @ The |type_array| has entries of type |type_data| that we shall now detail.
-Since each entry corresponds to a type subexpression contained in |defs|, it is
-practical to maintain a pointer to that |type_expr|, rather than to reconstruct
-that information in some form. And since the main purpose of building this array
-is to represent cross references between the entries as a graph, we shall
-maintain a list of integers for the outgoing edges of this graph. Since the
-edges correspond to those directly descendant types~|tp| of the node for which
-|has_descendants(tp)| holds, this information suffices to later produce an entry
-of |type_map| corresponding to the node, with those descendants that are also
-present in |type_map| replaced by |tabled| references.
+Each entry corresponds to a type subexpression contained in |defs|, but possibly
+expanded if it was an application of a non-recursive type constructor. The
+latter possibility forces us to store a copy |tp| of the type expression, since
+storing a pointer into |defs| (as we used to do) cannot work with the expansion
+process unless we make complicated lifetime-extending arrangements to ensure
+that pointers cannot become dangling. The types in different entries have
+overlapping subexpressions that are thus duplicated, but efficiency is hardly a
+worry here since type definitions are rare and usually small. Since the main
+purpose of building this array is to represent cross references between the
+entries as a graph, we shall maintain a list of integers for the outgoing edges
+of this graph. Since the edges correspond to those directly descendant
+types~|desc| of |tp| for which |has_descendants(desc)| holds, this information
+suffices to later produce an entry of |type_map| corresponding to the node, with
+those descendants that are also present in |type_map| replaced by |tabled|
+references.
 
-We provide |begin| and |end| iterators that actually iterate over the |out|
+We also provide |begin| and |end| iterators that actually iterate over the |out|
 list.
 
 @< Local type definitions @>=
 
 struct type_expr::type_data
-{ const_type_p tp;
+{ type_expr tp;
   sl_list<unsigned short> out;
 @)
-  type_data() : tp(nullptr), out() @+{} // default creates empty slot
-  type_data(const_type_p tp, sl_list<unsigned short>&& out)
-  : tp(tp), out(std::move(out)) @+{}
+  type_data() : tp(), out() @+{} // default creates empty slot
+  type_data(const type_expr& tp, sl_list<unsigned short>&& out)
+  : tp(tp.copy()), out(std::move(out)) @+{}
   sl_list<unsigned short>::const_iterator begin() const
   @+{@; return out.begin(); }
   sl_list<unsigned short>::const_iterator end() const
@@ -1713,10 +1719,10 @@ components of our type that themselves have descendants, in order to ensure
 their presence in |type_array|. It also collects the indices into that array
 that these recursive calls return, and ends with pushing the |type_expr| itself
 to |type_array|, with the accumulated list of indices as its |out| field,
-returning the index at which it was push as result of the call. The list also
+returning the index at which it was pushed as result of the call. The list also
 collects the references to types currently being defined, in the form of
-components that are |tabled| with |tabled_nr()| above the current table size.
-Since all of this is done for components in all variants it gets a bit
+components that are |tabled|, with |tabled_nr()>=type_expr::table_size()|.
+Since all of this is done for components in all variants, it gets a bit
 repetitive, so we define another auxiliary method |record| to do the testing,
 the recursive calling, and the accumulation of indices. The fact that recursive
 calls are only done for actual type subexpressions of |*this|, guarantees
@@ -1741,7 +1747,7 @@ type_nr_type type_expr::dissect_to (std::vector<type_data>& type_array) const
       it->record(type_array,out);
   }
   const type_nr_type result = type_array.size();
-  type_array.emplace_back(this,std::move(out));
+  type_array.emplace_back(*this,std::move(out));
   return result;
 }
 @)
@@ -1776,7 +1782,7 @@ fortunately this is quite easy.
       type_array.pop_back();
     }
     else
-      type_array[i] = type_data(defs[i].second,sl_list<unsigned short>());
+      type_array[i] = type_data(*defs[i].second,sl_list<unsigned short>());
 }
 
 @ The |cliques| are already computed when we come here, so it is easy to flag
@@ -1796,8 +1802,8 @@ prohibited situation is that the type constructor used is itself recursive.
   for (const auto& clique : cliques)
     rec |= BitMap(type_array.size(),clique.wcbegin(),clique.wcend());
   for (auto index : rec)
-  { const type_expr& tp = *type_array[index].tp;
-    if (tp.raw_kind()==tabled and type_map[tp.tabled_nr()].recursive)
+  { const type_expr& tp = type_array[index].tp;
+    if (tp.raw_kind()==tabled and tp.is_recursive())
     { std::ostringstream o;
       o << "Type definition recursion uses type constructor '"
       @| << main_hash_table->name_of(type_map[tp.tabled_nr()].name)
@@ -1880,29 +1886,29 @@ defined types).
     const auto& data = type_array[i];
     sl_list<unsigned short>::const_iterator oit=data.out.cbegin();
     type_expr tp;
-    switch(data.tp->raw_kind())
-    { default: tp = data.tp->copy();
+    switch(data.tp.raw_kind())
+    { default: tp = data.tp.copy();
     // rare, but |defs| may equate to a type without descendants
     break; case row_type:
       tp = type_expr::row
-        (data.tp->component_type().rewrite(old_table_size,n_args,oit));
+        (data.tp.component_type().rewrite(old_table_size,n_args,oit));
     break; case function_type:
       { auto tmp = // use temporary to force sequencing the |rewrite| calls
-          data.tp->func()->arg_type.rewrite(old_table_size,n_args,oit);
+          data.tp.func()->arg_type.rewrite(old_table_size,n_args,oit);
         tp = type_expr::function
            (std::move(tmp),
-            data.tp->func()->result_type.rewrite(old_table_size,n_args,oit));
+            data.tp.func()->result_type.rewrite(old_table_size,n_args,oit));
       }
     break;case tuple_type: case union_type:
       { dressed_type_list aux;
-        for (wtl_const_iterator it(data.tp->tuple()); not it.at_end(); ++it)
+        for (wtl_const_iterator it(data.tp.tuple()); not it.at_end(); ++it)
           aux.push_back(it->rewrite(old_table_size,n_args,oit));
-        tp = type_expr::tuple_or_union(data.tp->raw_kind(),aux.undress());
+        tp = type_expr::tuple_or_union(data.tp.raw_kind(),aux.undress());
       }
     break; case tabled:
-      @< Apply |rewrite| to every type in |data.tp->tabled_args()|,
+      @< Apply |rewrite| to every type in |data.tp.tabled_args()|,
          then assign to |tp| the expansion of the tabled type number
-         |data.tp->tabled_nr()| applied to that list of argument types @>
+         |data.tp.tabled_nr()| applied to that list of argument types @>
      }
     type_map.emplace_back(std::move(tp),n_args);
     if (rec.isMember(i))
@@ -1934,11 +1940,11 @@ a |type_map| entry for it. But already having given it a separate slot in
 |type_array|, that avoidance would require additional work, and is not currently
 done.
 
-@< Apply |rewrite| to every type in |data.tp->tabled_args()|... @>=
+@< Apply |rewrite| to every type in |data.tp.tabled_args()|... @>=
 { dressed_type_list aux;
-  for (wtl_const_iterator it(data.tp->tabled_args()); not it.at_end(); ++it)
+  for (wtl_const_iterator it(data.tp.tabled_args()); not it.at_end(); ++it)
     aux.push_back(it->rewrite(old_table_size,n_args,oit));
-  tp = type_expr::user_type(data.tp->tabled_nr(),aux.undress()).expanded();
+  tp = type_expr::user_type(data.tp.tabled_nr(),aux.undress()).expanded();
 }
 
 @ Once the type definitions are installed in |type_map| with the necessary
