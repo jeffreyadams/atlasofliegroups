@@ -1663,7 +1663,9 @@ bool has_descendants (const type_expr& tp)
     return true;
   case tuple_type: return tp.tuple()!=nullptr;
   case tabled:
-    return tp.tabled_nr()<type_expr::table_size() and tp.tabled_arity()>0;
+    if (tp.tabled_nr()>=type_expr::table_size() or tp.tabled_arity()==0)
+      return false;
+    return tp.is_recursive() or has_descendants(tp.expanded());
   }
 }
 
@@ -1743,8 +1745,12 @@ type_nr_type type_expr::dissect_to (std::vector<type_data>& type_array) const
     for (wtl_const_iterator it(tuple_variant); not it.at_end(); ++it)
       it->record(type_array,out);
   break; case tabled:
-    for (wtl_const_iterator it(tabled_args()); not it.at_end(); ++it)
-      it->record(type_array,out);
+    if (type_map[tabled_variant.nr].recursive)
+      for (wtl_const_iterator it(tabled_args()); not it.at_end(); ++it)
+        it->record(type_array,out);
+    else
+      return expanded().dissect_to(type_array);
+      // retry for our expansion in this case
   }
   const type_nr_type result = type_array.size();
   type_array.emplace_back(*this,std::move(out));
