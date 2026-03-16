@@ -10,6 +10,7 @@
 <kl.at {for character_formula}
 <count.at {for char_count}
 <writeFiles {to write hash tables}
+<simple_factors.at {for simple_factors}
 
 {functions for calculating FPP face lists, both "globally" (from the
 root datum) and "local" (as relevant to parameters for a single LKT
@@ -1777,6 +1778,10 @@ set global_vertices(InnerClass ic, ratvec gamma) = FaceVerts:
     	 in M*face_verts(Affd, gamma0)
     fi
 
+{only works for rd simple}
+set non_herm_global_vertices(RootDatum rd, ratvec gamma) = FaceVerts:
+    face_verts(rd, gamma)
+
 {this is useful for going to actual barycenter? Now not used? The int
 d says that the first d are global vertices.}
 set local_vertices2(Param p) = (FaceVerts,int):
@@ -1832,6 +1837,14 @@ set herm_center(Param p) = Param:
     then answer = parameter(p.x, p.lambda, sum(#list[0],list)/#list)
     then () = hermCenterNewTime +:= elapsed_ms() - start
     in answer
+
+set non_herm_center(Param p) = Param:
+    let start = elapsed_ms(), rd = p.root_datum, gamma = p.infinitesimal_character
+    then zgamma = gamma -
+    sum(rd.rank, for alphav@j in rd.simple_coroots do (gamma*alphav)*rd.fundamental_weights[j] od)
+    then gamma_bary = sum(rank(rd), for rdf in simple_factors(rd)
+    	 do let vertsf = face_verts(rdf,gamma) in sum(rank(rd), vertsf)/#vertsf od) + zgamma
+    in parameter(p.x, p.lambda, gamma_bary) next hermCenterNewTime +:= elapsed_ms() - start
 
 {meant to record time in character_formula(p) and character_formula_to_height(p)}
 {set charTime = int: 0}

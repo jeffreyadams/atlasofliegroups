@@ -211,12 +211,21 @@ for rd@i in rds do prints(i, " ", rd.Lie_type.str) od
 set show([[RootDatum]] rds)=void:
 for list@i in rds do prints(new_line, i);show(list) od
 
+{This function was broken, not sure how exactly}
 {find a conjugate of sub_rd in rds, everything going on in rd_ambient}
-set can_locate (RootDatum rd_ambient, [RootDatum] rds,RootDatum sub_rd) = bool:
+{set can_locate (RootDatum rd_ambient, [RootDatum] rds,RootDatum sub_rd) = bool:
    let sub = un_datum(rd_ambient,sub_rd)
 in for D in rds
    do @: succeeds(permuting_transporter(rd_ambient,un_datum(rd_ambient,D),sub))
-   od.any
+   od.any}
+
+set can_locate (RootDatum rd_ambient, [RootDatum] rds,RootDatum sub_rd) = bool:
+    let subrk = ss_rank(sub_rd), subpos = #sub_rd.posroots, subrho = dominant(rd_ambient,sub_rd.rho),
+    	mamas = uproot(rd_ambient,sub_rd.simple_roots)
+    in first(for rd in rds do ss_rank(rd) = subrk and #rd.posroots = subpos and
+    	      	    	   dominant(rd_ambient,rd.rho) = subrho and
+			   permuting_transporter(rd_ambient, mamas,uproot(rd_ambient,rd.simple_roots)).succeeds
+			   od) !=-1
 
 {test sub_rd_1 is rd-conjugate to a subgroup of sub_rd_2, where a list
  of all subgroups of the latter is precomputed and passed as argument }
