@@ -231,7 +231,7 @@ fi
 
 {(3.6) epsilon = 1 if d occurs in 1st column of P or Q, else 0}
 set epsilon(PaintedBiPartition Z)=int:
-if any(for row in Z.P##Z.Q do row[0]=4 od) then 1 else 0 fi
+if any(for row in Z.P##Z.Q do row[0]=4 od) then 0 else 1 fi
 
 {for signature@PaintedBiPartition see signed_and_marked_young_diagrams.at}
 set_type GroupDatum=(string name,int p,int q)
