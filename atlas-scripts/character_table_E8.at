@@ -12,9 +12,10 @@ set GAP_positions_E8 (WeylClassTable Wct) = [int]: { |Wct| classes to Magma }
    then profiles_sorted = for r in GAP_ranked do e8_gap_profile[r] od
    , lookup = binary_lookup(rlex_leq@(vec,vec))
    in for w@i in Wct.class_representatives
-      do let prof = vec:
+      do let z = Wct.reflection[0] - 8
+      	 then prof = vec:
          [ order(w), Wct.class_size(i)
-	 , Wct.sign[i], Wct.reflection[i], Wct.reflection[Wct.class_power(i,3)]
+	 , Wct.sign[i], Wct.reflection[i] - z, Wct.reflection[Wct.class_power(i,3)] - z
 	 ]
       in GAP_ranked[lookup(prof,profiles_sorted).requisition]
       od
@@ -22,11 +23,12 @@ set GAP_positions_E8 (WeylClassTable Wct) = [int]: { |Wct| classes to Magma }
 set GAP_reorder_E8 (WeylClassTable Wct) = [int]: { map GAP to |Wct| numbers }
    let Wct_prof = [vec]: { 112 vectors of size 5 }
       for j:Wct.n_classes
-      do [ Wct.class_representatives[j].order
+      do let z = Wct.reflection[0] - 8
+      	 in [ Wct.class_representatives[j].order
 	 , Wct.class_sizes[j]
 	 , Wct.sign[j]
-	 , Wct.reflection[j]
-	 , Wct.reflection[Wct.class_power(j,3)]
+	 , Wct.reflection[j] - z
+	 , Wct.reflection[Wct.class_power(j,3) - z]
 	 ]
       od
    then rank_of_GAP_elts = [int]: { for x in e8_gap_profile its |lex_leq| rank }

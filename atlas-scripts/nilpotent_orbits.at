@@ -613,6 +613,8 @@ set two_rho_of_pseudo_Levi (RootDatum rd,[int] list)=vec:
 {use is_conjugate to test conjugacy}
 {this only works if rd(.derived?) is simple}
 {alternative: pseudo_Levi_subgroups defined in subgroups.at}
+
+{appears to be badly broken; I don't understand what it's meant to compute}
 set pseudo_Levis (RootDatum rd) = [[int]]:
 (  let r=semisimple_rank(rd)
    ,  levis=standard_Levi_conjugacy_representatives(rd)
