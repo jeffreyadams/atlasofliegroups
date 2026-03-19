@@ -1634,31 +1634,36 @@ std::vector<type_nr_type> type_expr::add_typedefs
 }
 
 @ A first concern is which component types of the right hand sides should get a
-separate slot in |type_array|; the minimal requirement is: any intermediate type
-in a recursion, i.e., one that both descends from some type being defined, and
-that has the same type as descendant. Since we are going to use |type_array| to
-find out such recursive relations, it is not practical to already use recursion
-in a criterion for allocating slots in |type_array|. Therefore we shall instead
-create such a slot for any type expression that has itself any descendant type.
-(This somewhat limits the number of type expressions that need a slot in
-|type_array|, but in case of large type expressions that turn out to be not
-involved in any recursion, it still copies all nodes that are not leaves; such
-nodes will later be ignored once recursion has been detected.) Type expressions
-with descendants are: row, function, tuple and union types, and instances of
-already defined recursive tabled type constructors with |tabled_arity()>0|
-(whose argument types we count as descendants). Applications of non-recursive
-tabled type constructors will be replaced by their one-level expansions (which
-usually but not always have descendants), removing them from the graph used to
-detect recursions. While applications of a recursive type constructors are
-allowed to remain in the graph, they will be rejected later if it turns out that
-their arguments cause them to be involved in any recursion of the current set of
-definitions; for now however, this is of no concern.
+separate slot in |type_array|. Since we want to directly table every new
+recursive type (constructor), we require at a minimum that any intermediate type
+in a recursion present in~|defs|, i.e., one that both descends from some type
+being defined and that has the same type as descendant, should get a slot in
+|type_array|. But we are going to use |type_array| precisely to find out such
+recursive relations, so it is not practical to already use recursion in a
+criterion for allocating slots in |type_array|. We therefore used to instead
+create such a slot for any type expression that has itself has some descendant
+type; by excluding primitive types, type variables, empty tuples, and tabled
+types with no arguments, this somewhat limited the number of type expressions
+that need a slot in |type_array|. However the criterion used to suppress copying
+to |type_array| then had to be applied again when interpreting which outgoing
+edges in the |type_array| graph correspond to which direct descendants, which is
+cumbersome. We therefore now prefer to copy all type subexpressions of |defs| to
+|type_array|, and once recursion has been detected, filter out unnecessary nodes
+when filling |type_map|.
 
-In order to easily see which direct descendants of a node produce
-a link in |graph|, we define the predicate |has_descendants|, defined in a
-straightforward way. The only complication is effectively replacing |tp| by its
-expansion in case it is an application of a user defined non-recursive type
-constructor, which is done in the form of a recursive call to |has_descendants|.
+The function |has_descendants| below performs the test that used to be applied
+in deciding whether to copy a type expression to |type_array|; it is now unused.
+The way it handles application of existing tabled type constructors nonetheless
+remains pertinent. If the constructor is marked as non-recursive, we replace the
+application by its one-level expansion, effectively removing the application
+from the graph used to detect recursions (in its place, the expansion and its
+subexpressions are copied to |type_array|, and will determine whether any
+recursion passed through them). However constructors marked as recursive are not
+expanded (to ensure termination), and their argument expressions are considered
+their direct descendants. If those arguments should turn out to cause any
+recursion of the current set of definitions, we shall then signal an error (our
+type algorithms cannot handle such recursions); for now however, this is of no
+concern.
 
 @< Local function definitions @>=
 bool has_descendants (const type_expr& tp)
@@ -1724,24 +1729,21 @@ struct type_expr::type_data
      sl_list<unsigned short>::const_iterator& it) const;
 
 @ The |type_expr| static method |dissect_to| will be called for all type
-expressions contained in |defs| that were found to satisfy |has_descendants|.
-Its goal is ensure an entry in |type_array| is created for the type, which
-happens near the end after all its descendant type expressions have been
-treated. It also collects a list of the indices into |type_array| of its direct
-descendants, which is then stored in the |type_expr| entry for the type itself.
-Some of these descendants may be ``local'' references, namely those to types
-currently being defined, appearing as |tabled| types with
-|tabled_nr()>=type_expr::table_size()|; for these the slot in |type_array|
-recorded in the list will be that of their preassigned location. (The type for
-which |dissect_to| is called cannot itself be a local reference, since
-|has_descendants| is false for them.)
+expressions contained in |defs|, except local references (type identifiers for
+one of the types defined in ~|defs|). Its goal is to ensure an entry in
+|type_array| is created for the type, which happens near the end after all its
+descendant type expressions have been treated. It also collects a list of the
+indices into |type_array| of its direct descendants, which list is then stored
+in the |type_expr| entry for the type itself. Some of these descendants may be
+local references; for these the slot in |type_array| recorded in the list will
+be that of their preassigned location.
 
 Since all of this is done for components in all variants, it gets a bit
-repetitive, so we delegate testing, recursive calling, and accumulation of
-indices to another auxiliary method, |record|. The fact that recursive calls are
-only done for actual type subexpressions (after systematic expansion of
-non-recursive user defined types or type constructors) of |*this|, guarantees
-termination of the recursion.
+repetitive, so we delegate accumulation of indices, handling local references
+and otherwise recursive calling, to another auxiliary method, |record|.
+Recursive calls are only done for actual type subexpressions of |*this|, after
+systematic expansion of non-recursive user defined types or type constructors;
+this guarantees termination of the recursion.
 
 There is one case for which |dissect_to| is directly recursive (without calling
 |record|), namely if our type is an application of an existing non-recursive
@@ -1756,18 +1758,15 @@ systematically expand them would lead to catastrophe). And lastly, we will not
 be able to reconstruct the usage of this type constructor when showing the types
 or type constructors produced by the current |add_typedefs| (the same will be
 true for recursive type constructors used, but that is because we later do their
-expansion to avoid having |tabled| types in |type_expr::type_map|). Note that we
-know that |expanded| will return a type satisfying |has_descendants|, since we
-do a similar expansion when testing before calling |dissect_to|.
+expansion to avoid having |tabled| types in |type_expr::type_map|).
 
 @< Function definitions @>=
 type_nr_type type_expr::dissect_to (std::vector<type_data>& type_array) const
 {
-  assert(has_descendants(*this)); // so we need to handle only those cases below
   sl_list<unsigned short> out;
   switch(tag)
-  { default: assert(false); // kinds that always fail |has_descendants()|
-  break; case row_type: row_variant->record(type_array,out);
+  { default: break; // no descendants for primitive types and type variables
+         case row_type: row_variant->record(type_array,out);
   break; case function_type:
     func_variant->arg_type.record(type_array,out);
     func_variant->result_type.record(type_array,out);
@@ -1775,6 +1774,7 @@ type_nr_type type_expr::dissect_to (std::vector<type_data>& type_array) const
     for (wtl_const_iterator it(tuple_variant); not it.at_end(); ++it)
       it->record(type_array,out);
   break; case tabled:
+    assert(tabled_nr()<table_size()); // local references should not come here
     if (is_recursive())
       for (wtl_const_iterator it(tabled_args()); not it.at_end(); ++it)
         it->record(type_array,out);
@@ -1789,10 +1789,10 @@ type_nr_type type_expr::dissect_to (std::vector<type_data>& type_array) const
 @)
 void type_expr::record
   (std::vector<type_data>& type_array, sl_list<unsigned short>& out) const
-{ if (has_descendants(*this))
-    out.push_back(dissect_to(type_array));
-  else if (raw_kind()==tabled and tabled_nr()>=table_size())
+{ if (tag==tabled and tabled_nr()>=table_size())
     out.push_back(tabled_nr()-table_size());
+  else
+    out.push_back(dissect_to(type_array));
 }
 
 @ In order for references to types currently being defined to point correctly,
@@ -1813,13 +1813,10 @@ an empty list of links.
 {
   type_array.resize(n_defs); // slots to be filled later
   for (type_nr_type i=0; i<n_defs; ++i)
-    if (has_descendants(*defs[i].second))
     { defs[i].second->dissect_to(type_array);
     @/type_array[i] = std::move(type_array.back());
       type_array.pop_back();
     }
-    else
-      type_array[i] = type_data(*defs[i].second,sl_list<unsigned short>());
 }
 
 @ The |cliques| are already computed when we come here, so it is easy to flag
@@ -1854,71 +1851,57 @@ prohibited situation is that the type constructor used is itself recursive.
 @ When the |type_array| has served its purpose of allowing the detection of
 recursion within the simultaneous type definitions, its entries~|e| will give
 rise to types installed in |type_map|. Such a type will be modelled on |e.tp|,
-but it will only have direct descendants, which if they have any descendants
-themselves will also be tabled in |type_map|. The method |rewrite| will be
-called for descendants |desc| of |e.tp| to ensure they are transformed into a
-tabled reference if they need to (the call |desc.rewrite(sz,n,it)| computes the
-number of the slot where the type for |desc| will be stored, encoded in
-the |nr| of the |local_ref| that is returned, but does not store anything there
-itself). This is the case if |has_descendants(desc)| holds, or if the |desc| is
-one of the types currently being defined. If neither is the case, the call to
-|rewrite| reduces to |desc.copy()|.
+but it will only have direct descendants, which will also be tabled in
+|type_map|. The method |rewrite| will be called for descendants |desc| of |e.tp|
+to ensure they are transformed into a tabled references; then the call
+|desc.rewrite(sz,n,it)| computes the number of the slot where the type for
+|desc| will be stored, and encodes in the |nr| field of the |local_ref| that is
+returned (but |rewrite| does not store anything into |type_map| itself).
 
 The method |type_expr::rewrite| takes two arguments that will not vary among all
-calls made to copy entries from |type_Array| to |type_expr::type_map|, namely
+calls made to copy entries from |type_array| to |type_expr::type_map|, namely
 the initial size |sz| of |type_expr::type_map|, and the number |n_args| of type
 arguments of the type constructors being defined. A third argument |it| will be
 an iterator into the list of vertex numbers linked from the current node |e|,
 which is used to compute the slot number |nr| in the local-referencing tabled
 type (constructor) to be returned. The |type_expr desc@;| for which |rewrite| is
-called is used only to know if it has any descendants, or otherwise if it refers
-to one of left hand sides of |defs|. In both cases a |tabled| type referring to
-the correct slot is obtained by calling |local_ref| with the |nr| computed from
-the value accessed by~|it| before it is incremented. (This is one place where it
-would be useful to have post-increment of a |sl_list| iterator; such a method
-was however deliberately left undefined, to avoid the temptation of incorrectly
-using it in the argument of the |erase| method.) Using |it| is the only way we
-can find the right slot when |has_descendants(desc)| holds; although in the
-other case, when |tag==tabled| already, the slot number could also be found as
-the corresponding |tabled_nr()|, we still need to advance |it|. Therefore we
-proceed in the latter case basically like in the former, but do use
-|tabled_nr()| as a check to see that it agrees with the iterator.
+called is currently used only to see whether it refers to one of the left hand
+sides of |defs|, in which case |nr| is already stored as |desc.tabled_nr()|,
+but since it can also be obtained from~|it| in the same way as for other cases,
+and |it| needs to be incremented anyway, we only use |tabled_nr()| as a double
+check of this value. All in all, what really happens here is just using and then
+incrementing~|it|, and returning a |local_ref| computed from its value; the
+value |n_args| is used to provide standard list of type variable arguments that
+will cause mutually recursive type constructors to pass their arguments around
+unchanged.
+
+In the code below it is tempting to try to write |nr=sz+*it++|, but the
+post-increment operator for |sl_list| iterators was deliberately left undefined,
+to avoid the temptation of incorrectly using it in the argument of the |erase|
+method, as would be appropriate for certain other iterator types.
 
 @< Function definitions @>=
 type_expr type_expr::rewrite
  (type_nr_type sz, unsigned int n_args,
   sl_list<unsigned short>::const_iterator& it) const
-{
-  if (has_descendants(*this))
-@/{@; type_nr_type nr = sz+*it;
-    ++it;
-    return local_ref(nr,n_args);
-  }
+{ type_nr_type nr = sz+*it;
+  ++it;
   if (raw_kind()==tabled and tabled_nr()>=sz)
-  // this case has a link too
-  { type_nr_type nr = sz+*it;
-    ++it;
-    // use and translate link that was recorded
     assert(nr == tabled_nr()); // this is what it was recorded from
-    return local_ref(nr,n_args);
-  }
-  return copy();
-  // remaining cases, including old tabled types with |arity==0|
+  return local_ref(nr,n_args);
 }
 
 @ Now the transfer of elements of |type_array| to |type_map| is fairly
-straightforward. All descendants must be passed through |rewrite| to convert
-them into a local |tabled| reference, after which a new type of the same
-|kind()| is constructed from these pieces. We store it in a local variable |tp|,
-which is then appended as a new entry of |type_map|. (We could have directly
-used |type_map.emplace_back| with the type and |n_args|, instead of assigning to
-the intermediary |tp|, but this would make the already long calls to construct
-the type even longer.) In non-recursive parts one ultimately gets to ``leaves'',
-type subexpressions without descendants that could either be a primitive type or
-type variable (these are simply copied) or an empty tuple type (which needs no
-special attention). The only complication in our code is the case where the type
-in |type_array| already has |raw_kind()==tabled|; we shall treat this in the
-next section.
+straightforward. Given that all descendants of tabled types are themselves also
+tabled, we only need to descend one level into each type. All direct descendants
+must be passed through |rewrite| to convert them into a local |tabled|
+reference, after which a new type of the same |kind()| is constructed from these
+pieces. We store this type in a local variable |tp|, which is then appended as a
+new entry of |type_map|. (We could have directly used |type_map.emplace_back|
+with the type and |n_args|, instead of assigning to the intermediary |tp|, but
+this would make the already long calls to construct the type even longer.) The
+only complication in our code is the case where the type in |type_array| already
+has |raw_kind()==tabled|; we shall treat this in the next section.
 
 When we are done copying the entry, we set the |recursive| and |name| fields of
 the copied entry according to what we computed respectively to what was
@@ -1933,7 +1916,7 @@ defined types).
     type_expr tp;
     switch(data.tp.raw_kind())
     { default: tp = data.tp.copy();
-    // rare, but |defs| may equate to a type without descendants
+    // primitive types and type variables are copied unchanged
     break; case row_type:
       tp = type_expr::row
         (data.tp.component_type().rewrite(old_table_size,n_args,oit));
@@ -1968,12 +1951,10 @@ defined types).
 direct descendants are local references to other nodes, we can come across
 entries of |type_array| that \emph{themselves} have |tag==tabled|. This only
 arises for uses of previously tabled types, and since the non-recursive ones
-were expanded upon copying to |type_array|, while the recursive ones with
-|arity==0| have no node created for them for lack of descendants, we can only
-encounter applications of recursive type constructors (with positive arity)
-here. Such applications should not be found to be recursive in |rec| (through
-argument types that contain any of the left hand sides of |defs|), and this has
-already been tested for and ruled out.
+were expanded upon copying to |type_array|, we can only encounter recursive
+types or type constructor application. Such applications should not be found to
+be recursive in |rec| (through argument types that contain any of the left hand
+sides of |defs|), and this has already been tested for and ruled out.
 
 The complication this case has to deal with is that we want to avoid storing
 type expressions in |type_map| that are themselves tabled references. This is
@@ -1981,12 +1962,13 @@ achieved by calling |expanded| after processing the type argument list (which
 proceeds similarly to tuple and union types) and building a |user_type| from the
 type constructor and the processed argument list. While necessary to ensure that
 any tabled type will require just a single expansion to produce a type with
-non-tabled |top_kind()|, this expansion does mean that the name of type
-constructor used in the right hand side of the definition cannot be reproduced
-on output of the defined type; the situation is similar for applications of
-non-recursive type constructors, as they were already expanded long ago. It
-would be quite hard make changes that avoid this somewhat unfortunate effect, so
-we currently just accept it.
+non-tabled |top_kind()|, which is essential for deciding equivalence between
+tabled types, this expansion does mean that the name of type constructor used in
+the right hand side of the definition cannot be reproduced on output of the
+defined type; the situation is similar for applications of non-recursive type
+constructors, as they were already expanded long ago. It would be quite hard
+make changes that avoid this somewhat unfortunate effect, so we currently just
+accept it.
 
 @< Apply |rewrite| to every type in |data.tp.tabled_args()|... @>=
 { assert(not rec.isMember(i)); // since we tested for this earlier
