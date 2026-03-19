@@ -2775,20 +2775,31 @@ In case of failure, the caller should ignore (or wipe out) any substitutions
 that might be recorded in |assign|.
 
 The treatment of type variables and tabled types is detailed in other sections.
-Apart from that, we just perform a recursive traversal of both types, failing as
-soon as different tags are found, and succeeding if the traversal completes
-without that happening.
+Both of these can lead to a recursive call of |unify| with modified arguments.
+The type variable case is mainly intended to deal with polymorphic type
+variables, and if it finds only fixed type variables, it could have decided to
+fall through, since these could be dealt with these below in a way similar to
+primitive types. However it turns out that while dealing with the polymorphic
+type variable case, it is easy to also handle fixed ones, \emph{provided that}
+any tabled types have been expanded at that point. Therefore, by ordering the
+handling of tabled types before that of type variables, we can avoid such
+falling through, and need not deal with type variables in the |switch|.
+
+If neither of these two preliminary cases applies, we perform a recursive
+traversal of the types |P| and |Q|, failing as soon as different tags are found,
+and succeeding if the traversal completes without that happening.
 
 
 @< Function definitions @>=
 bool type_assignment::unify(const type_expr& P, const type_expr& Q)
 { auto P_kind = P.raw_kind(), Q_kind = Q.raw_kind();
   assert(P_kind!=undetermined_type and Q_kind!=undetermined_type);
-  if (P_kind==variable_type or Q_kind==variable_type)
-    @< Decide |unify| when at least one type is a type variable @>
   if (P_kind==tabled or Q_kind==tabled)
     @< Decide |unify| in the presence of tabled types,
-       avoiding any recursive calls if both types are tabled and recursive @>
+       avoiding any recursive calls in sufficiently many cases to avoid
+       non-termination @>
+  if (P_kind==variable_type or Q_kind==variable_type)
+    @< Decide |unify| when at least one type is a type variable @>
 @)
   if(P_kind!=Q_kind)
     return false;
@@ -2815,18 +2826,52 @@ bool type_assignment::unify(const type_expr& P, const type_expr& Q)
 }
 
 @ If one or both of the types being unified are tabled, we most of the time call
-|unify| recursively with |expanded()| tabled type(s). However we must not do it
-in case both types are recursive, and we may avoid calling |expand| if both are
-the same tabled type or type constructor, as we can then just apply a recursive
-test to any type arguments (in case of a constructor). In the case of distinct
-recursive types (or constructors) we can immediately conclude failure of the
-unification. The code below tries to cover all these cases using as few tests as
-possible.
+|unify| recursively with |expanded()| tabled type(s). However, we must make sure
+to avoid the non-termination that would obviously ensue if this method were
+unconditionally applied and we were comparing two identical recursive tabled
+types. Our basic approach then will be that in case we are comparing an applied
+tabled type constructor to another application of the same constructor, we just
+switch to recursively comparing any arguments in both applications (or just
+concluding equality in the case of identical recursive tabled types without
+arguments), thus leaving aside any further inspection of the recursive
+definition itself. In case of applications of \emph{different} tabled
+constructors within the same recursive definition, we immediately conclude
+inequality. Thus we are essentially treating recursive tabled constructors as
+additions to our repertoire of basic type constructors (function, row, tuple,
+and union).
+
+There remains the case of comparing applications of unrelated recursive tabled
+type constructors. The rule we implement is to say that for such constructors,
+applications of different ones are always considered different. This is prudent,
+but not without surprises if we allow type constructors to be recursive through
+the application of an existing recursive type constructor. For instance if one
+first has a recursive ``linked list'' type constructor, one may then want to
+have another recursive type at some point of its definition use a linked list of
+(values of) the new type itself. Then that type subexpression will be a
+recursively defined tabled type, and it will expand to an instance of the
+recursive tabled "linked list'' constructor~; according to our rule the type
+expressions before and after expansion, being both tabled but different, will
+fail to be considered equal, or to unify with one another. We have tried to
+think of a relaxation of the expansion rules that would allow unification to
+succeed for such cases, but that seems to always run into the possibility for
+infinite recursion, a simple case being two separate but equivalent recursive
+type definitions (our rules stipulate that unification should not succeed, but
+if we do not immediately avoid expansion, how are we going to stop the recursive
+expansion later?).
+
+So we choose for the cop-out solution to forbid defining recursive types where
+(some of) the recursion passes through the application of another user defined
+recursive type constructor (like the linked list constructor above). Instead we
+should cater for a way to encapsulate user defined type constructors in a way
+that hides their internal defining structure (instead providing access functions
+allowing to work with them), which then do not need to be expanded for
+unification. Such type constructors can then be used without problem in new,
+possibly recursive, type (constructor) definitions, just like built-in type
+constructors can.
 
 @:avoiding infinite recursion@>
 
-@< Decide |unify| in the presence of tabled types,
-   avoiding any recursive calls if both types are tabled and recursive @>=
+@< Decide |unify| in the presence of tabled types... @>=
 { if (P_kind==tabled and Q_kind==tabled)
   { if (P.tabled_nr()!=Q.tabled_nr())
     @/return not (P.is_recursive() and Q.is_recursive()) @|
@@ -2849,13 +2894,27 @@ possible.
 
 @ The decision process for type variables is somewhat similar to that of tabled
 types as far as already assigned or non polymorphic type variables are
-concerned, but the important case is where there is an unassigned type variable,
-in which case we call |set_equivalent| for it with the other type (which might
-be another polymorphic type variable) and return whether it succeeds. The way
-|set_equivalent| handles the case of a type expression that cannot be assigned
-because it refers back to the same type variable, namely by returning |false|,
-means that this just makes the |unify| unification fail; this is precisely what
-we want for this case.
+concerned: here we replace assigned polymorphic type variables by their
+|equivalent| value where the previous case used |expanded|. But the important
+case is where there is an unassigned type variable, in which case we instead
+call |set_equivalent| for it, with the other type (which might be another
+polymorphic type variable) as argument, and return whether this call succeeds.
+The way |set_equivalent| handles the case of a type expression that cannot be
+assigned because it refers back to the same type variable to be assigned to,
+namely by returning |false|, means that this just makes the |unify| unification
+fail; this is precisely what we want for this case.
+
+Just like comparing identical tabled type led to a shortcut, we can also return
+|true| when comparing identical type variables, without even worrying whether
+they are polymorphic and if so whether they have already been assigned to.
+Having done so, we also know that if we end up finding that
+neither |P| nor |Q| was a polymorphic type variable (but at least one of them
+was a type variable in order to get here), then they cannot be equal: a fixed
+type variable does not match a type of another |kind|, and if both are such
+fixed variables they must be different ones. This does use that fact that
+|tabled| types have been dealt with, since an non-recursive type constructor
+application could expand to a fixed type variable, whence the importance of
+ordering tabled and type variable cases in our parent section.
 
 @< Decide |unify| when at least one type is a type variable @>=
 { if (P_kind==variable_type)
@@ -2875,7 +2934,7 @@ we want for this case.
     }
   }
 @)
-  return false; // since one or two unequal fixed type variables are left
+  return false; // since we have one or two unequal fixed type variables
 }
 
 
