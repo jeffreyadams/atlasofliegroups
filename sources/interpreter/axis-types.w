@@ -1724,9 +1724,6 @@ struct type_expr::type_data
   type_nr_type dissect_to(std::vector<type_data>& type_array) const;
   void record
     (std::vector<type_data>& type_array, sl_list<unsigned short>& out) const;
-  type_expr rewrite
-    (type_nr_type sz, unsigned int n_args,
-     sl_list<unsigned short>::const_iterator& it) const;
 
 @ The |type_expr| static method |dissect_to| will be called for all type
 expressions contained in |defs|, except local references (type identifiers for
@@ -1851,25 +1848,22 @@ prohibited situation is that the type constructor used is itself recursive.
 @ When the |type_array| has served its purpose of allowing the detection of
 recursion within the simultaneous type definitions, its entries~|e| will give
 rise to types installed in |type_map|. Such a type will be modelled on |e.tp|,
-but it will only have direct descendants, which will also be tabled in
-|type_map|. The method |rewrite| will be called for descendants |desc| of |e.tp|
-to ensure they are transformed into a tabled references; then the call
-|desc.rewrite(sz,n,it)| computes the number of the slot where the type for
-|desc| will be stored, and encodes in the |nr| field of the |local_ref| that is
-returned (but |rewrite| does not store anything into |type_map| itself).
+but its direct descendants will typically be tabled references to other types
+tabled in |type_map| (though types that do not refer to |type_map| at all are
+also valid possibilities). The lambda |rewrite| will be called to construct the
+direct descendants of and entry written to |type_map|. It is given as argument
+an iterator pointing to an index into |type_array| for that descendant; it
+returns the descendant as a |type_expr|.
 
-The method |type_expr::rewrite| takes two arguments that will not vary among all
-calls made to copy entries from |type_array| to |type_expr::type_map|, namely
-the initial size |sz| of |type_expr::type_map|, and the number |n_args| of type
-arguments of the type constructors being defined. A third argument |it| will be
-an iterator into the list of vertex numbers linked from the current node |e|,
-which is used to compute the slot number |nr| in the local-referencing tabled
-type (constructor) to be returned. The |type_expr desc@;| for which |rewrite| is
-called is currently used only to see whether it refers to one of the left hand
-sides of |defs|, in which case |nr| is already stored as |desc.tabled_nr()|,
-but since it can also be obtained from~|it| in the same way as for other cases,
-and |it| needs to be incremented anyway, we only use |tabled_nr()| as a double
-check of this value. All in all, what really happens here is just using and then
+We have chosen to use a lambda here to have easy access (by reference) to the
+local variables of |add_typedefs| that it needs access to. Its argument |it|
+will be an iterator into the list of vertex numbers linked from an entry of
+|type_array|. It is mainly used to compute the corresponding slot number |nr| in
+|type_map| (for the descendant), from which a local tabled reference to it can
+be built. The type |tp| at the indicated index into |type_array| is currently
+called only to see whether it is already a local reference to one of the left
+hand sides of |defs|, in which case the |tabled_nr()| found there should match
+the |nr| computed. All in all, what really happens here is just using and then
 incrementing~|it|, and returning a |local_ref| computed from its value; the
 value |n_args| is used to provide standard list of type variable arguments that
 will cause mutually recursive type constructors to pass their arguments around
@@ -1880,16 +1874,16 @@ post-increment operator for |sl_list| iterators was deliberately left undefined,
 to avoid the temptation of incorrectly using it in the argument of the |erase|
 method, as would be appropriate for certain other iterator types.
 
-@< Function definitions @>=
-type_expr type_expr::rewrite
- (type_nr_type sz, unsigned int n_args,
-  sl_list<unsigned short>::const_iterator& it) const
-{ type_nr_type nr = sz+*it;
+@< Declare a local function |rewrite| @>=
+auto rewrite =
+  @[ [&] (sl_list<unsigned short>::const_iterator& it) -> type_expr @] @;
+{ const auto& tp = type_array[*it].tp;
+  type_nr_type nr = old_table_size+*it;
   ++it;
-  if (raw_kind()==tabled and tabled_nr()>=sz)
-    assert(nr == tabled_nr()); // this is what it was recorded from
+  if (tp.raw_kind()==tabled and tp.tabled_nr()>=old_table_size)
+    assert(nr == tp.tabled_nr()); // this is what it was recorded from
   return local_ref(nr,n_args);
-}
+}@+;
 
 @ Now the transfer of elements of |type_array| to |type_map| is fairly
 straightforward. Given that all descendants of tabled types are themselves also
@@ -1909,6 +1903,7 @@ specified in |defs| (for those entries that directly correspond to one of the
 defined types).
 
 @< Add entries to |type_map| according to the entries of |type_array|... @>=
+@< Declare a local function |rewrite| @>@;
 { for (type_nr_type i=0; i<type_array.size(); ++i)
   {
     const auto& data = type_array[i];
@@ -1918,19 +1913,16 @@ defined types).
     { default: tp = data.tp.copy();
     // primitive types and type variables are copied unchanged
     break; case row_type:
-      tp = type_expr::row
-        (data.tp.component_type().rewrite(old_table_size,n_args,oit));
+      tp = type_expr::row(rewrite(oit));
     break; case function_type:
       { auto tmp = // use temporary to force sequencing the |rewrite| calls
-          data.tp.func()->arg_type.rewrite(old_table_size,n_args,oit);
-        tp = type_expr::function
-           (std::move(tmp),
-            data.tp.func()->result_type.rewrite(old_table_size,n_args,oit));
+          rewrite(oit);
+        tp = type_expr::function(std::move(tmp),rewrite(oit));
       }
     break;case tuple_type: case union_type:
       { dressed_type_list aux;
         for (wtl_const_iterator it(data.tp.tuple()); not it.at_end(); ++it)
-          aux.push_back(it->rewrite(old_table_size,n_args,oit));
+          aux.push_back(rewrite(oit));
         tp = type_expr::tuple_or_union(data.tp.raw_kind(),aux.undress());
       }
     break; case tabled:
@@ -1974,7 +1966,7 @@ accept it.
 { assert(not rec.isMember(i)); // since we tested for this earlier
   dressed_type_list aux;
   for (wtl_const_iterator it(data.tp.tabled_args()); not it.at_end(); ++it)
-    aux.push_back(it->rewrite(old_table_size,n_args,oit));
+    aux.push_back(rewrite(oit));
   tp = type_expr::user_type(data.tp.tabled_nr(),aux.undress()).expanded();
 }
 
