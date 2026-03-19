@@ -1,6 +1,11 @@
 <hodge_deform.at
 <TWOHEIGHTS.at {for HT}
 
+set is_positive(KTypePol P) = bool:
+    let vint = vec: for c@mu in P do int_part(c) od
+    then vs = vec: for c@mu in P do s_part(c) od
+    in is_positive(vint) and vs.=
+
 {meant to compute zeroth level of Hodge}
 
 {analog of deform for zeroth of Hodge}
@@ -79,7 +84,7 @@ set Hodge_0A_irr(Param p) = KTypePol:
 			fi
 			od)
 
-
+{shouldn't use this version?}
 {compute Hodge_0_std and Hodge_0_irr simultaneously}
 set rec_fun Hodge_0(Param p) = (KTypePol,KTypePol):
     let rp = reducibility_points(p), prf = p.real_form
@@ -141,10 +146,11 @@ set rec_fun Hodge_0(Param p) = (KTypePol,KTypePol):
 					       else emptyK
 					       fi
 					    od)
-	       in (Hpstd, Hpirr)
+	       in assert(@: is_positive(Hpstd) and is_positive(Hpirr) and is_positive(Hpstd - Hpirr));
+	       (Hpstd, Hpirr)
 	 fi
 
-set herm_center_flag = {false} true
+set herm_center_flag = true
 
 set_type [hodge0_data = (KTypePol H0std, KTypePol H0irr, vec inds)]
 set (Hodge_hash_0, Hodge_hash_clear, print_HH_stats, HH_data) = ((Param -> (KTypePol, KTypePol)), ( -> ), ( -> ), ( -> (Param_hash, KTypePol_hash,[vec]))):
@@ -156,6 +162,11 @@ set (Hodge_hash_0, Hodge_hash_clear, print_HH_stats, HH_data) = ((Param -> (KTyp
     	 hodge_param_hash.clear();
 	 hodge_Kpol_hash.clear();
 	 answers:=[]
+    then HKH_index(int m) = KTypePol:
+    	 if m>=0
+	 then hodge_Kpol_hash.index(m)
+	 else -hodge_Kpol_hash.index(-m-1)
+	 fi
     then rec_fun HHinds(Param p) = vec:
      let N = hodge_param_hash.size()
      then () = if herm_center_flag
@@ -163,18 +174,21 @@ set (Hodge_hash_0, Hodge_hash_clear, print_HH_stats, HH_data) = ((Param -> (KTyp
 	       fi
      then n = hodge_param_hash.lookup(p)
      in if n < 0
-    	then let rp = reducibility_points(p), emptyK = null_K_module(p.real_form)
-       	       in if #rp = 0
+    	then let prf = p.real_form, rp = reducibility_points(p), emptyK = null_K_module(p.real_form)
+	     then delta = prf.distinguished_involution
+       	     in if #rp = 0
        	       	  then let ans = K_type_pol(p)
-	       	       then m = hodge_Kpol_hash.match(ans)
-	       	       in hodge_param_hash.match(p);
+	       	       then m = hodge_Kpol_hash.match(ans), N = hodge_param_hash.size(), n = -1
+	       	       in n:=hodge_param_hash.match(p);
 		       	  answers#:= (vec: [m,m]);
+			  assert(@:N=n and #answers = N+1);
 	       	       	  [m,m]
        	  elif rp~[0] < 1
-       	  then let ind = HHinds(Finalize(p*rp~[0]))
-	       in hodge_param_hash.match(p);
-	       	  answers#:= [ind[0],ind[0]];
-	       	  [ind[0],ind[0]]
+       	  then let ind = HHinds(Finalize(p*rp~[0])), N = hodge_param_hash.size(), n = -1
+	       	    in n:= hodge_param_hash.match(p);
+	       	       answers#:= [ind[0],ind[0]];
+		       assert(@: N = n and #answers = N+1);
+	       	       [ind[0],ind[0]]
        	  else let orp = orientation_nr(p) {henceforth p is reducible}
 	       then (B,Ppol,pols) = partial_KL_block(p)
 	       then sgns = for q in B do (-1)^(length(q)) od
@@ -187,45 +201,46 @@ set (Hodge_hash_0, Hodge_hash_clear, print_HH_stats, HH_data) = ((Param -> (KTyp
 				       fi
 			  od
 		      od
-	    then lowers = for q in B[:#B-1] {p is last in Bp}
-	    	     	  do HHinds(q)
-		     	  od
-	    then Hstds = for ind in lowers {p is last in Bp}
-	    	     	  do hodge_Kpol_hash.index(ind[0])
-			  od
-	    then Hirrs = for ind in lowers {p is last in Bp}
-	    	       	 do hodge_Kpol_hash.index(ind[1])
-			 od
-	    then last = null(#B-1)#1
-	    then Q = requisition(solve(P,last))
-	    then () = if hodge0_verbose
-	    	      then prints("graded comp series of p = ",Q); prints("P = ",P)
-		      fi
-	    then def = sum(p.real_form, for j:#B-1
+	       then last = null(#B-1)#1
+	       then Q = requisition(solve(P,last))
+	       then lower_inds = for j:#B-1 if (Q[j]!=0) or (P[j,#B-1]!=0) do j fi od
+	       then lowers = for j in lower_inds
+	    	     	     do HHinds(B[j])
+		     	     od
+	       then Hstds = for ind in lowers {p is last in Bp}
+	    	     	    do HKH_index(ind[0])
+			    od
+	       then Hirrs = for ind in lowers {p is last in Bp}
+	    	       	    do HKH_index(ind[1])
+			    od
+	    then def = sum(p.real_form, for j@k in lower_inds
        			do let q = B[j]
-			   in if Q[j] != 0 and orientation_nr(q) = orp
-			      then Q[j]* Hirrs[j]
+			   in if orientation_nr(q) = orp
+			      then Q[j]* Hirrs[k]
 			      else emptyK
 			      fi
 			od)
 	    then Hpstd = if #rp = 1
-	     	       	 then K_type_pol(p) + def
-			 else let Hrstd = hodge_Kpol_hash.index(HHinds(Finalize(p*rp~[1]))[0])
-		     	      in Hrstd + def
+	     	       	 then def + K_type_pol(p)
+			 else hodge_Kpol_hash.index(HHinds(Finalize(p*rp~[1]))[0]) + def
 			 fi
-            in Hstds #:=Hpstd;
+	    then N = hodge_param_hash.size()
+            in Hstds #:=Hpstd; lower_inds#:=#B-1;
 	       if hodge0_verbose
-	       then prints("at ",p,", def is ",def)
+	       then prints("at ",p,", def is ",def);
+	       	    prints("graded comp series of p = ",Q); prints("P = ",P)
 	       fi;
-	       let Hpirr = sum(p.real_form, for k: #B
-					    do if orientation_nr(B[k]) = orp
-					       then P[k,#B-1]*Hstds[k]
-					       else emptyK
-					       fi
-					    od)
+	       let Hpirr = sum(prf, for j@k in lower_inds
+				    do if orientation_nr(B[j]) = orp
+				       then P[j,#B-1]*Hstds[k]
+				       else emptyK
+				       fi
+				    od)
 	       then (a,b) = (hodge_Kpol_hash.match(Hpstd), hodge_Kpol_hash.match(Hpirr))
-	       in hodge_param_hash.match(p);
-	       	  answers#:=(vec: [a,b]);
+	       in answers#:=(vec: [a,b]);
+	       	  n:=hodge_param_hash.match(p);
+		  assert(@:is_positive(Hpstd) and is_positive(Hpirr) and is_positive(Hpstd - Hpirr));
+	       	  assert(@:N=n and #answers = N+1);
 	       	  [a,b]
 	 fi{#rp = 0}
 	 else answers[n]
@@ -233,7 +248,7 @@ set (Hodge_hash_0, Hodge_hash_clear, print_HH_stats, HH_data) = ((Param -> (KTyp
     in
     ( (Param -> (KTypePol,KTypePol)): (Param p):
        let ind = HHinds(p)
-       in (hodge_Kpol_hash.index(ind[0]), hodge_Kpol_hash.index(ind[1]))
+       in (HKH_index(ind[0]), HKH_index(ind[1]))
     , ( -> ): clearHH
     , ( -> ): @:prints("hodge_param_hash.size() = ",hodge_param_hash.size(),", hodge_Kpol_hash.size() = ", hodge_Kpol_hash.size(),", #answers = ",#answers)
     , ( -> (Param_hash, KTypePol_hash,[vec])): @:(hodge_param_hash, hodge_Kpol_hash, answers)
@@ -249,13 +264,22 @@ this function Hodge_twisted_hash_0 is meant to compute a-b. So the
 full extended multiplicity is (hodge - hodge_twisted)/2 + s*(hodge +
 hodge_twisted)/2. On an unfixed Param q, with twist q', the extended
 multiplicity in q+q' is (1+s)*hodge.}
+set = ((Split,KType) (c0,mu0), (Split,KType) (c1,mu1)) = bool:
+    c0 = c1 and mu0 = mu1
+
+{assume coeffs are all 1 or s; replace by 1 or -1}
+set s_index(KTypePol H) = KTypePol:
+    int_part(H) - s_part(H)
+{sum(, for c@mu in K_type_pol_extended(p,delta)
+				{sum of 2^r LKTs, each with 1 or s}
+		     	      	        do if c = 1 then mu else -mu fi od)}
 
 set (Hodge_twisted_hash_0, Hodge_twisted_hash_clear, print_HTH_stats, HTH_data) = ((Param -> (KTypePol, KTypePol)), ( -> ), ( -> ), ( -> (Param_hash, KTypePol_hash,[vec]))):
 (    let hodge_param_hash = make_Param_hash()
     then hodge_Kpol_hash = make_KTypePol_hash()
     then answers = [vec]: []
-    	 {size 2: locs of [int part(p_std) - s part(p_std), int_part(p_irr)- s_part(p_irr)]}
-	 {negative entry means mult KTypePol by s}
+    	 {size 2: locs of [int part(H_std) - s part(H_std), int_part(H_irr)- s_part(H_irr)]}
+	 {negative entry means mult KTypePol by -1}
     then clearHTH() = void:
     	 hodge_param_hash.clear();
 	 hodge_Kpol_hash.clear();
@@ -266,38 +290,47 @@ set (Hodge_twisted_hash_0, Hodge_twisted_hash_clear, print_HTH_stats, HTH_data) 
 	 else -hodge_Kpol_hash.index(-m-1)
 	 fi
     then rec_fun HTHinds(Param p) = vec:
-     let delta = p.real_form.distinguished_involution
+     let prf = p.real_form
+     then delta = prf.distinguished_involution
      then () = assert(@:is_fixed(delta,p),"Hodge_twisted requires fixed parameter")
      then N = hodge_param_hash.size()
      then () = if herm_center_flag
-     	       then p := herm_center(p)
+     	       then let pc = herm_center(p)
+     	       	    in assert(@:K_type_pol_extended(p,delta) = K_type_pol_extended(pc,delta));
+		       {check that herm_center doesn't flip p}
+		       p:=pc
 	       fi
      then n = hodge_param_hash.lookup(p)
      in if n < 0
-    	then let prf = p.real_form, rp = reducibility_points(p)
-	     then emptyK = null_K_module(prf), HTpnu= HT(prf,p.nu),
-	     	  delta = prf.distinguished_involution
+    	then let rp = reducibility_points(p)
+	     then emptyK = null_K_module(prf)
        	     in if #rp = 0
-       	       	then let ans = sum(prf, for c@mu in K_type_pol(finalize_extended(p*0,delta))
-		{sum of 2^r LKTs, each with 1 or s}
-		     	      	        do if c = 1 then mu else -mu fi od)
-		     then m = hodge_Kpol_hash.match(ans)
-	       	     in hodge_param_hash.match(p);
+       	       	then let ans = s_index(K_type_pol_extended(p,delta))
+		     then N = hodge_param_hash.size(), m = hodge_Kpol_hash.match(ans), n=-1
+	       	     in if hodge0_verbose
+	     	     	then prints(new_line,"Hodge_twisted_hash_0(",p,") is just LKT terms")
+			fi;
+			n:=hodge_param_hash.match(p);
 		       	answers#:= (vec: [m,m]);
+			assert(@:n = N and N=#answers-1);
 	       	       	[m,m]
        	  elif rp~[0] < 1
-       	  then let (coeff, prp) = first_term(finalize_extended(p*rp~[0],delta))
-	       then ind = HTHinds(prp)
-	       then v = vec: if coeff=1
-	       	      	     then [ind[0],ind[0]]
-			     else -[ind[0]+1,ind[0]+1]
+       	  then let (pr,boo) = scale_extended(p,delta,rp~[0])
+	       then () = if hodge0_verbose
+	     	       	 then prints(new_line,"Hodge_twisted_hash_0(",p,
+			      ") deforms to proper red point ",pr," = p*",rp~[0])
+		  	 fi
+	       then ind = HTHinds(pr), N = hodge_param_hash.size(), n = -1
+	       then v = vec: if boo
+	       	      	     then -[ind[0]+1,ind[0]+1]
+			     else [ind[0],ind[0]]
 			     fi
-	       in hodge_param_hash.match(p);
+	       in n:=hodge_param_hash.match(p);
 	       	  answers#:= v;
+		  assert(@:N=n and N = #answers-1);
 		  v
        	  else let orp = orientation_nr(p) {henceforth p is reducible}
 	       then (B,Ppol,pols) = partial_extended_KL_block(p,delta)
-	       then lower_inds = for q@j in B if HT(prf,q.nu) < HTpnu do j fi od
 	       then sgns = for q in B do (-1)^(length(q)) od
 	       then P = id_mat(#B)
 	       then () = for i:#B - 1
@@ -308,55 +341,64 @@ set (Hodge_twisted_hash_0, Hodge_twisted_hash_clear, print_HTH_stats, HTH_data) 
 				       	  fi
 			     od
 		         od
-	    then lowers = for j in lower_inds{p is last in Bp}
-	    	     	  do HTHinds(B[j])
-		     	  od
-	    then Hstds = for ind in lowers {p is last in Bp}
-	    	     	  do HKH_index(ind[0])
-			  od
-	    then Hirrs = for ind in lowers {p is last in Bp}
-	    	       	 do HKH_index(ind[1])
-			 od
-	    then last = null(#B-1)#1
-	    then Q = requisition(solve(P,last))
-	    then () = if hodge0_verbose
-	    	      then prints("graded comp series of p = ",Q); prints("P = ",P)
-		      fi
+	       {now the columns of P are irreducibles written in terms of standards}
+	       then last = null(#B-1)#1
+	       {this is the standard for p}
+	       then Q = requisition(solve(P,last))
+	       {PQ = last means the entries of Q are the mults of irrs in standard(p)}
+	       then lower_inds = for j:#B-1 if (Q[j]!=0) or (P[j,#B-1]!=0) do j fi od
+	       then lowers = for j in lower_inds{p is last in Bp}
+	    	     	     do HTHinds(B[j])
+		     	     od
+	       then Hstds = for ind in lowers {p is last in Bp}
+	    	     	    do HKH_index(ind[0])
+			    od
+	       then Hirrs = for ind in lowers {p is last in Bp}
+	    	       	    do HKH_index(ind[1])
+			    od
 	    then def = sum(p.real_form, for j@k in lower_inds
        			do let q = B[j]
-			   in if Q[j] != 0 and orientation_nr(q) = orp
+			   in if orientation_nr(q) = orp
 			      then Q[j]* Hirrs[k]
 			      else emptyK
 			      fi
 			od)
+	    then () = if hodge0_verbose
+	    	      then prints(new_line,"computing Hodge_twisted_hash_0(",p,") by KL");
+		      prints("twisted graded comp series of p is ",Q);
+		      prints("twisted char formulas are columns of P = ",P);
+		      prints("def is ",def)
+		      fi
 	    then Hpstd = if #rp = 1
-	     	       	 then let ans = sum(prf, for c@mu in K_type_pol(finalize_extended(p*0,delta))
+	     	       	 then let ans = s_index(K_type_pol_extended(p,delta))
 			      	      {sum of 2^r LKTs, each with 1 or s}
-		     	      	        do if c = 1 then mu else -mu fi od)
 			      in ans + def
-			 else let (c,pr) = first_term(finalize_extended(p*rp~[1],delta))
-			      then Hrstd = if c = 1
-			      	   	   then HKH_index(HTHinds(pr)[0])
-					   else -HKH_index(HTHinds(pr)[0])
-					   fi
-		     	      in Hrstd + def
+			 else let (pr,boo) = scale_extended(p,delta,rp~[1])
+			      then Hrstd = HKH_index(HTHinds(pr)[0])
+		     	      in if boo {there was a flip here}
+			      	 then -Hrstd + def
+				 else Hrstd + def
+				 fi
 			 fi
-            in Hstds #:=Hpstd; lower_inds#:=#B-1;
-	       if hodge0_verbose
-	       then prints("at ",p,", def is ",def)
-	       fi;
-	       let Hpirr = sum(p.real_form, for k: #lower_inds
-					    do if orientation_nr(B[lower_inds[k]]) = orp
-					       then P[lower_inds[k],#B-1]*Hstds[k]
+            in assert(@:first_term(Hpstd) = first_term(s_index(K_type_pol_extended(p,delta))));
+	       Hstds #:=Hpstd; lower_inds#:=#B-1;
+	       let Hpirr = sum(prf, for  j@k in lower_inds
+					    do if orientation_nr(B[j]) = orp
+					       then P[j,#B-1]*Hstds[k]
 					       else emptyK
 					       fi
 					    od)
-	       then (a,b) = (hodge_Kpol_hash.match(Hpstd), hodge_Kpol_hash.match(Hpirr))
-	       in hodge_param_hash.match(p);
+	       then (a,b) = (hodge_Kpol_hash.match(Hpstd), hodge_Kpol_hash.match(Hpirr)),
+	       	    N = hodge_param_hash.size(), n=-1
+	       in n:=hodge_param_hash.match(p);
 	       	  answers#:=(vec: [a,b]);
+		  assert(@:N=n and N=#answers-1);
 	       	  [a,b]
 	 fi{#rp = 0}
-	 else answers[n]
+	 else if hodge0_verbose
+	      then prints(new_line,"computing Hodge_twisted_hash_0(",p,") by lookup")
+	      fi;
+	      answers[n]
 	 fi {n<0}
     in
     ( (Param -> (KTypePol,KTypePol)): (Param p):
@@ -371,81 +413,11 @@ set (Hodge_twisted_hash_0, Hodge_twisted_hash_clear, print_HTH_stats, HTH_data) 
 set Hodge_extended_hash_0(Param p) = (KTypePol, KTypePol):
     let (Hstd,Hirr) = Hodge_hash_0(p)
     then (Hstdtw,Hirrtw) = Hodge_twisted_hash_0(p)
-    in (half(Hstd +Hstdtw) + s*half(Hstd-Hstdtw), half(Hirr +Hirrtw) + s*half(Hirr-Hirrtw))
-
-{
-set_type [hodge0_data = (KTypePol H0std, KTypePol H0irr, vec inds)]
-set Hodge_hash = (Param -> hodge0_data):
-    let hodge_param_hash = make_param_hash()
-    then hodge_Kpol_hash = make_KTypePol_hash()
-    then answers = [vec]: []
-    	 {for each entry in hodge_param_hash, indices of hodge_0_std and hodge_0_irr}
-    in (Param -> (KTypePol,KTypePol)): rec_fun (Param p) = hodge0_data: 
-       let N = hodge_param_hash.size()
-       then n = hodge_param_hash.match(p)
-       in if n = N
-       	  then let rp = reducibility_points(p)
-       	       in if #rp = 0
-       	       	  then let ans = K_type_pol(p)
-	       	       then m = hodge_Kpol_hash.match(ans)
-	       	       in answers#:=[m,m];
-	       	       	  (ans,ans,[m,m])
-       	  elif rp~[0] < 1
-       	  then let HH = Hodge_hash(Finalize(p*rp~[0])) {henceforth p is reducible}
-	       then answers#:= HH.inds
-	       in HH
-       	  else let orp = orientation_nr(p)
-	       then (B,Ppol,pols) = partial_KL_block(p)
-	       then sgns = for q in B do (-1)^(length(q)) od
-	       then P = id_mat(#B)
-	       then () = for i:#B - 1
-	    	       	 do  for j: #B - i - 1 from i+1
-		      	  do  P[i,j]:= if Ppol[i,j] = 0
-			    	       then 0
-				       else sgns[i]*sgns[j]*pols[Ppol[i,j]][0]
-				       fi
-			  od
-		      od
-	    then lowers = for q in B[:#B-1] {p is last in Bp}
-	    	     	  do Hodge_hash(q)
-		     	  od
-	    then Hstds = for q in B[:#B-1] {p is last in Bp}
-	    	     	  do Hodge_hash(q).H0std
-			  od
-	    then Hirrs = for  q in B[:#B-1]
-	    	       	 do Hodge_hash(q).H0irr
-	    then last = null(#B-1)#1
-	    then Q = requisition(solve(P,last))
-	    then () = if hodge0_verbose
-	    	      then prints("graded comp series of p = ",Q); prints("P = ",P)
-		      fi
-	    then def = sum(p.real_form, for j:#B-1
-       			do let q = B[j]
-			   in if Q[j] != 0 and orientation_nr(q) = orp
-			      then Q[j]* Hirrs[j]
-			      else emptyK
-			      fi
-			od)
-	    then Hpstd = if #rp = 1
-	     	       	 then K_type_pol(p) + def
-			 else let Hrstd = Hodge_hash(Finalize(p*rp~[1])).H0std
-		     	      in Hrstd + def
-			 fi
-            in Hstds #:=Hpstd;
-	       if hodge0_verbose
-	       then prints("at ",p,", def is ",def)
-	       fi;
-	       let Hpirr = sum(p.real_form, for k: #B
-					    do if orientation_nr(B[k]) = orp
-					       then P[k,#B-1]*Hstds[k]
-					       else emptyK
-					       fi
-					    od)
-	       then (a,b) = (hodge_Kpol_hash(Hpstd), hodge_Kpol_hash(Hpirr))
-	       then answers#:=[a,b]
-	       in (Hpstd, Hpirr,[a,b])
-	 fi
-}
+    then (Hestd, Heirr) = (half(Hstd +Hstdtw) + s*half(Hstd-Hstdtw),
+    	 	 	   half(Hirr +Hirrtw) + s*half(Hirr-Hirrtw))
+    in assert(is_positive(int_part(Hestd)) and is_positive(s_part(Hestd)) and
+       	      is_positive(int_part(Heirr)) and is_positive(s_part(Heirr)));
+       (Hestd, Heirr)
 
 set Hodge_jeff(Param p) = (K_type_pol(hodge_grading_std(p)[0]),
     		     	  K_type_pol(hodge_grading_irreducible(p)[0]))
@@ -472,6 +444,6 @@ set is_unitary_Hodge_0(Param p) = bool:
     else is_pure(Hodge_extended_hash_0_irr(p).convert_cform_hermitian)
     fi
 
-{this one only works in equal rank}
+{this one only works in equal rank ???}
 set is_unitary_Hodge_jeff(Param p) = bool:
     is_pure(Hodge_jeff_irr(p).convert_cform_hermitian)
