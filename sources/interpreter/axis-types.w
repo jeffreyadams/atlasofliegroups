@@ -1514,12 +1514,13 @@ bool textually_equal (const type_expr& x, const type_expr& y)
     case tuple_type: case union_type:
        return textually_equal_lists(x.tuple(),y.tuple());
     case tabled:
-       if (x.type_name()!=y.type_name())
-         return false; // distinguished by type names
-       return x.tabled_nr()==y.tabled_nr() and x.type_name()!=type_binding::no_id
-       @| ? textually_equal_lists(x.tabled_args(),y.tabled_args())
-       // check type arguments
-       @| : textually_equal(x.expanded(),y.expanded());
+       if (x.tabled_nr()==y.tabled_nr())
+         return textually_equal_lists(x.tabled_args(),y.tabled_args());
+       if (x.tabled_arity()!=y.tabled_arity() or x.type_name()!=y.type_name() @|
+        or x.is_recursive() or y.is_recursive())
+         return false; // |x| and |y| are distinguished by a decisive difference
+       return textually_equal(x.expanded(),y.expanded());
+         // otherwise pursue structural comparison
   }
 }
 @)
@@ -1919,7 +1920,7 @@ non-recursive ones, which we do in the same way as for simple type definitions.
       for (type_nr_type k=0; k<cur; ++k)
       { const auto& old_tp = type_map[k];
         if (not old_tp.recursive and
-            old_tp.name == cur_tp.name and @|
+            old_tp.name == cur_tp.name and old_tp.arity == cur_tp.arity and @|
             textually_equal(old_tp.tp,cur_tp.tp))
         @/{@; relocate[nr]=k;
           break;
