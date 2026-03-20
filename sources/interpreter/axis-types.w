@@ -1189,62 +1189,76 @@ bool type_expr::is_unstable() const
 @ We shall employ various forms of substitution for type variables, that are
 variations of the method |type_expr::copy|, but which do something special when
 encountering certain type variables. Most will be treated later, when we deal
-with second order types, but |simple_subst| is used (amongst others) to
-implement application of tabled type constructors, so we define it right away.
-It takes a |type_expr| (the right hand side of a type constructor definition)
-and a vector of argument expressions, and produces a copy of the former in which
-the latter are substituted for type variables numbered from~$0$ upwards. There
-is no restriction on the argument expressions, which are not inspected at all
-after they have been substituted, and the only a restriction on~|tp| is that one
-must not have |is_unstable(tp)|.
+with second order types, but |simple_subst| is used to implement application of
+tabled type constructors, so we define it right away. It takes a |type_expr|
+(the right hand side of a type constructor definition) and a vector of argument
+type expressions, and a bitmap that allows us to treat a number of tabled
+entries to be ``in our group'' for optimised parameter passing. It produces a
+copy of the type expression in which the argument types are substituted for type
+variables numbered from~$0$ upwards. There is no restriction on the argument
+types, which are not inspected at all after they have been substituted, and the
+only a restriction on~|tp| is that one must not have |is_unstable(tp)|.
 
 @< Declarations of exported functions @>=
 type_expr simple_subst
-  (const type_expr& tp, const std::vector<type_expr>& assign);
+  (const type_expr& tp,
+   const std::vector<type_expr>& assign,
+   const BitMap& group);
 
 @ While |simple_subst| is a variation of |type_expr::copy|, it is not a method
 of |type_expr|, so it cannot directly assign to private members. Instead, we use
 the factory methods like |type_expr::row| to build our result on the way back in
 a recursive traversal of the type, moving from the result of recursive calls (no
-|std::move| is needed, since these results are not stored in variables). Any
-type variables must be parameters of the type constructor, since such
-constructors cannot be defined in the scope of any bound type variables; in
-other words parameters are numbered from~$0$. We simply replace them by copies
-the corresponding |type_expr| from |assign|, which are required to exist. The
-|tabled| case should not arise when |simple_subst| is used to implement
-expansion of a tabled type, but it is allowed when it serves to implement the
-operation of a user defined type constructor. When this case arises,
-we are therefore translating a user type constructor call from the identifier
-table into a tabled constructor call, which is a form that type analysis
-functions can deal with later if needed. All that then needs to be done here is
-substitute for any type parameters that might occur in the argument list of the
-tabled type, which is quite similar to the substitutions made into the
-components of a tuple or union type.
+|std::move| is needed, since these results are not stored in variables).
+
+For the root call of |simple_subst|, the provided type |tp| is the body
+(|definiens|) of a type constructor, and any type variables occurring in |tp|
+must be parameters of the type constructor (type constructors cannot be defined
+in the scope of any fixed type variables); in other words parameters in |tp| are
+type variables numbered from~$0$. We simply replace them by copies the
+corresponding |type_expr| from |assign|, which are required to exist. In the
+|tabled| case, we do not expand the tabled definition, but do substitute into
+any type arguments in case of a type constructor application, which is quite
+similar to the substitutions made into the components of a tuple or union type.
+We do handle separately the case of a tabled type constructor defined in the
+same set of type equations as the one whose call we are expanding; the
+recognition of this case is the purpose of the |group| argument. For such
+(possibly recursive) referrals, the list of argument types cannot change, so we
+do not require there is one, and instead provide one that is copied from
+|assign| (we should not expand the tabled type to its |definiens| and apply
+|simple_subst| to that, since this would trigger an infinite recursion). This
+allows such in-group mutual referrals between defined type constructors to be
+recorded without argument lists, which matches their defining syntax.
 
 @< Function definitions @>=
 
 type_expr simple_subst
-  (const type_expr& tp, const std::vector<type_expr>& assign)
+  (const type_expr& tp,
+   const std::vector<type_expr>& assign, const BitMap& group)
 { switch (tp.raw_kind())
   { case primitive_type: return type_expr::primitive(tp.prim());
     case function_type: return
-      type_expr::function(simple_subst(tp.func()->arg_type,assign),
-                          simple_subst(tp.func()->result_type,assign));
+      type_expr::function(simple_subst(tp.func()->arg_type,assign,group),
+                          simple_subst(tp.func()->result_type,assign,group));
     case row_type: return
-      type_expr::row(simple_subst(tp.component_type(),assign));
+      type_expr::row(simple_subst(tp.component_type(),assign,group));
     case tuple_type:
     case union_type:
     { dressed_type_list aux;
       for (wtl_const_iterator it(tp.tuple()); not it.at_end(); ++it)
-        aux.push_back(simple_subst(*it,assign));
+        aux.push_back(simple_subst(*it,assign,group));
       return type_expr::tuple_or_union(tp.raw_kind(),aux.undress());
     }
     case tabled:
     // apply |assign| to argument types, then reconstruct |tabled| type
-    { dressed_type_list aux;
-      for (wtl_const_iterator it(tp.tabled_args()); not it.at_end(); ++it)
-        aux.push_back(simple_subst(*it,assign));
-      return type_expr::user_type(tp.tabled_nr(),aux.undress());
+    { auto nr = tp.tabled_nr(); dressed_type_list aux;
+      if (group.isMember(nr)) // in-group referral preserves argument list
+        for (const auto& t : assign)
+          aux.push_back(t.copy());
+      else // use of an out-group type constructor
+        for (wtl_const_iterator it(tp.tabled_args()); not it.at_end(); ++it)
+          aux.push_back(simple_subst(*it,assign,group));
+      return type_expr::user_type(nr,aux.undress());
     }
     case variable_type:
   @/{@; auto c = tp.typevar_count();
@@ -1307,11 +1321,16 @@ struct type_binding
 { static constexpr id_type no_id = -1;
   id_type name;
   unsigned short arity;
-  bool recursive;
+  bool recursive,starter;
   type_expr tp;
   std::vector<id_type> fields;
   type_binding(type_expr&& t, unsigned short arity)
-  : name(no_id), arity(arity), recursive(false), tp(std::move(t)), fields() @+{}
+  : name(no_id)
+  , arity(arity)
+  , recursive(false)
+  , starter(true)
+  , tp(std::move(t))
+  , fields() @+{}
 };
 @)
 class type_expr::defined_type_mapping : public std::vector<type_binding>
@@ -1321,6 +1340,19 @@ class type_expr::defined_type_mapping : public std::vector<type_binding>
     {@; assert (i<size()); return (*this)[i].tp; }
   unsigned short arity(type_nr_type i) const @+
     {@; assert (i<size()); return (*this)[i].arity; }
+  type_nr_type group_id (type_nr_type i) const
+    { do
+        if ((*this)[i].starter)
+          break;
+      while (i-->0);
+      return i;
+    }
+  type_nr_type next_group_id (type_nr_type i) const
+    { while (++i<size())
+        if ((*this)[i].starter)
+          break;
+      return i;
+    }
 };
 
 @ We need to define that declared static class member; it starts out empty.
@@ -1436,12 +1468,15 @@ type_expr type_expr::expanded () const
 { if (tag!=tabled)
     return copy();
   const auto arity = tabled_arity();
+  const auto nr = tabled_nr();
   assert(length(tabled_args())==arity);
   std::vector<type_expr> assign;
+  BitMap group(table_size());
+  group.fill(type_map.group_id(nr),type_map.next_group_id(nr));
   assign.reserve(arity);
   for (wtl_const_iterator it(tabled_args()); not it.at_end(); ++it)
     assign.push_back(it->copy());
-  return simple_subst(type_map.definiens(tabled_nr()),assign);
+  return simple_subst(type_map.definiens(nr),assign,group);
 }
 
 @ To add a simple non-recursive definition, in which the right hand side already
@@ -1934,6 +1969,7 @@ defined types).
     // create entry for |tp|, with arity |n_args|
     if (rec.isMember(i))
       type_map.back().recursive=true;
+    type_map.back().starter = i==0;
     if (i<n_defs)
       type_map.back().name = defs[i].first;
   }
