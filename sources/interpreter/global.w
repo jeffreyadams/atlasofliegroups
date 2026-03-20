@@ -299,16 +299,16 @@ shared_share Id_table::address_of(id_type id)
 
 @ The method |Id_table::swallow| transforms a |type_expr| from an external form
 produced by the parser into one used internally, updating the representation of
-user-defined types and type constructors, represented as nodes with
-|raw_kind()==tabled|. The parser stores the code for the type identifier as
-|tabled_nr()|, and our |Id_table| provides the type it is defined as. Due to the
-way type definitions are processed, this type is always |tabled|, holding the
-index into the static table |type_expr::type_map|; some later code essentially
-depends on that, so we feel free to assume it here as well. This has not always
-been the case: rather than calling the |user_type| factory method below, we
-could apply |simple_subst| to the |defined_type| with appropriate arguments, and
-this would cater for arbitrary defining type expressions with fairly little
-hassle.
+user-defined types and type constructors. The parser stores these as nodes with
+|raw_kind()==tabled|, but in it stores just the code for the type identifier; it
+is the task of |swallow| to replace it by the actual tabled number of the
+corresponding type (constructor). It used to be the case that for defined type
+identifiers |Id_table| could store any type rather than just one of the |tabled|
+kind. We then used |simple_subst| (with appropriate arguments), rather than
+|user_type| as we do below. The way a |tabled| constructor application is stored
+in the |Id_table| still bears a trace of this old organisation, in the form of a
+standard argument list; it was needed with |simple_subst|, but is no longer
+inspected.
 
 For any |type_expr| whose |raw_kind()| is not |tabled|, the recursive method
 |swallow| simply descends into its subexpressions. When a |tabled| case is
@@ -353,9 +353,10 @@ type_expr Id_table::swallow(const type_expr& tp) const
     }
     case tabled: // this is where something happens
     { const id_type id = tp.tabled_nr();
-      const auto* p = type_of(id);
+    @/const auto* p = type_of(id);
       assert(p!=nullptr); // the scanner ensures this
       const type& defined_type = *p;
+      assert(defined_type.kind()==tabled);
       unsigned int len=length(tp.tabled_args()), degree = defined_type.degree();
       if (len!=degree)
         @< Throw a |program_error| signalling an incorrectly applied type symbol
