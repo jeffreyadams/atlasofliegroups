@@ -1667,7 +1667,7 @@ std::vector<type_nr_type> type_expr::add_typedefs
 
 @)preorder::Preorder graph(type_array.begin(),type_array.end());
   auto cliques = graph.closure().cliques();
-@/BitMap rec(type_array.size());
+@/BitMap rec(type_array.size()), keep(type_array.size());
 @/
   @< Set the |rec| flag for members of |cliques|, and flag an error if
      any of them involves a previously defined recursive type constructor @>
@@ -1675,7 +1675,7 @@ std::vector<type_nr_type> type_expr::add_typedefs
      while setting the |recursive| flag from |rec|, and type names for those
      types that are given one in |defs| @>
 
-  std::vector<type_nr_type> relocate(type_array.size());
+  std::vector<type_nr_type> relocate(keep.size());
 @/@< For new members of |type_map| that are not |recursive|, test whether they
    are equivalent to any earlier entry... @>
   @< Remove redundant types from |type_map|, and adjust |relocate|
@@ -1880,6 +1880,8 @@ such entry in a clique, this means we are inn a forbidden situation.
 {
   for (const auto& clique : cliques)
     rec |= BitMap(type_array.size(),clique.wcbegin(),clique.wcend());
+  keep = rec;
+  keep.fill(0,n_defs);
   for (auto index : rec)
   { const type_expr& tp = type_array[index].tp;
     if (tp.raw_kind()==tabled)
@@ -1923,34 +1925,49 @@ separately after dereferencing it.
 @< Declare a local function |rewrite| @>=
 auto rewrite =
   @[ [&] (sl_list<unsigned short>::const_iterator& it) -> type_expr @] @;
-{ const auto& tp = type_array[*it].tp;
-  type_nr_type nr = old_table_size+*it;
-  ++it;
-  if (tp.raw_kind()==tabled and tp.tabled_nr()>=old_table_size)
-    assert(nr == tp.tabled_nr()); // this is what it was recorded from
-  return local_ref(nr);
+{ auto k=*it; ++it; // an index into |type_array|
+  if (keep.isMember(k))
+  { if (type_array[k].tp.raw_kind()==tabled and
+        type_array[k].tp.tabled_nr()>=old_table_size)
+       assert(old_table_size+k == type_array[k].tp.tabled_nr());
+    return local_ref(old_table_size+keep.position(k));
+  }
+  else
+    return std::move(type_array[k].tp);
 }@+;
 
 @ Now the transfer of elements of |type_array| to |type_map| is fairly
-straightforward. Given that all descendants of tabled types are themselves also
-tabled, we only need to descend one level into each type. All direct descendants
-must be passed through |rewrite| to convert them into a local |tabled|
-reference, after which a new type of the same |kind()| is constructed from these
-pieces. We store this type in a local variable |tp|, which is then appended as a
-new entry of |type_map|. (We could have directly used |type_map.emplace_back|
-with the type and |n_args|, instead of assigning to the intermediary |tp|, but
-this would make the already long calls to construct the type even longer.) The
-only complication in our code is the case where the type in |type_array| already
-has |raw_kind()==tabled|; we shall treat this in the next section.
+straightforward. We only copy nodes whose index is recorded in |keep|, namely
+those that are either one of the types defined in |defs|, or intermediate types
+in a recursion of one of them. The direct descendants of such a type are either
+also tabled, in which case they will be accessed through a |local_ref|, or else
+the are not tabled in which case the entire descendant type will be placed in
+|type_map|; we have seen that |rewrite| handles both cases. The only way in
+which a sub-type that is not tabled can have a descendant that is, is when it
+refers by name to one of the types being simultaneously defined, and that type
+turns out to not be recursive. But such links were already produced in their
+final form upon entry to |add_typedefs|, so we can still simply copy the
+sub-type as a descendant of a |type_map| entry.
+
+We store the new type constructed in a local variable |tp|, which is then moved
+to become a new entry of |type_map|. (We could have directly used
+|type_map.emplace_back| with the type and |n_args|, instead of assigning to the
+intermediary |tp|, but this would make the already long calls to construct the
+type even longer.) The only complication in our code is the rare case where the
+type in |type_array| already has |raw_kind()==tabled|; this can happen only if a
+type is defined non-recursively as an instantiation of an existing recursive
+tabled type, and we shall treat this in the next section.
 
 When we are done copying the entry, we set the |recursive| and |name| fields of
 the copied entry according to what we computed respectively to what was
 specified in |defs| (for those entries that directly correspond to one of the
-defined types).
+defined types). We also set the |starter| flag for the first type in the group
+(we always have |keep.isMember(0)| since this it the first of the types being
+defined), and clear it for all other ones.
 
 @< Add entries to |type_map| according to the entries of |type_array|... @>=
 @< Declare a local function |rewrite| @>@;
-{ for (type_nr_type i=0; i<type_array.size(); ++i)
+{ for (auto i : keep)
   {
     const auto& data = type_array[i];
     sl_list<unsigned short>::const_iterator oit=data.out.cbegin();
@@ -1986,28 +2003,22 @@ defined types).
   }
 }
 
-@ While we are in the process of creating type expression nodes, all of whose
-direct descendants are local references to other nodes, we can come across
-entries of |type_array| that \emph{themselves} have |tag==tabled|. This only
-arises for uses of previously tabled types, and since the non-recursive ones
-were expanded upon copying to |type_array|, we can only encounter recursive
-types or type constructor application. Such applications should not be found to
-be recursive in |rec| (through argument types that contain any of the left hand
-sides of |defs|), and this has already been tested for and ruled out.
+@ When we encounter a |tabled| type among the |type_array| entries marked in
+|keep|, it is necessarily and existing recursive one. We pass any arguments
+types through |rewrite| like the direct descendants of other kinds of type, and
+call |user_type| to construct the type. The complication of this case is that we
+want to avoid storing this |tabled| type directly in |type_map|. The solution is
+to call |expanded| to obtain a top-level expansion, which can be stored in in
+|type_map|.
 
-The complication this case has to deal with is that we want to avoid storing
-type expressions in |type_map| that are themselves tabled references. This is
-achieved by calling |expanded| after processing the type argument list (which
-proceeds similarly to tuple and union types) and building a |user_type| from the
-type constructor and the processed argument list. While necessary to ensure that
-any tabled type will require just a single expansion to produce a type with
-non-tabled |top_kind()|, which is essential for deciding equivalence between
-tabled types, this expansion does mean that the name of type constructor used in
-the right hand side of the definition cannot be reproduced on output of the
-defined type; the situation is similar for applications of non-recursive type
-constructors, as they were already expanded long ago. It would be quite hard
-make changes that avoid this somewhat unfortunate effect, so we currently just
-accept it.
+While necessary to ensure that any tabled type will require just a
+single expansion to produce a type with non-tabled |top_kind()|, which is
+essential for deciding equivalence between tabled types, this expansion does
+mean that the name of type constructor used in the right hand side of the
+definition cannot be reproduced on output of the defined type; the situation is
+similar for applications of non-recursive type constructors, as they were
+already expanded long ago. It would be quite hard make changes that avoid this
+somewhat unfortunate effect, so we currently just accept it.
 
 @< Apply |rewrite| to every type in |data.tp.tabled_args()|... @>=
 { assert(not rec.isMember(i)); // since we tested for this earlier
@@ -2027,7 +2038,7 @@ differently due to |name| fields.
    are equivalent to any earlier entry; if so, set the its slot in
    |relocate| to point to that entry, otherwise to point to itself @>=
 {
-  for (type_nr_type nr = 0; nr<type_array.size(); ++nr)
+  for (type_nr_type nr = 0; nr<relocate.size(); ++nr)
   { const auto cur = nr+old_table_size;
     relocate[nr] = cur; // by default refer to ourselves
     const auto& cur_tp = type_map[cur];
@@ -2059,9 +2070,9 @@ decrement the |relocate| entries by |removed| to reflect the sliding.
 @< Remove redundant types from |type_map|, and adjust |relocate|
    correspondingly @>=
 {
-  assert(type_map.size()==old_table_size+type_array.size());
+  assert(type_map.size()==old_table_size+relocate.size());
   auto it = type_map.begin()+old_table_size; type_nr_type removed = 0;
-  for (type_nr_type nr = 0; nr<type_array.size(); ++nr)
+  for (type_nr_type nr = 0; nr<relocate.size(); ++nr)
   { if (relocate[nr]!=old_table_size+nr)
     // then entry was found redundant, so drop it
     {
