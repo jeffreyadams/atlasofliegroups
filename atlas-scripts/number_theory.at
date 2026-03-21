@@ -114,13 +114,29 @@ in (int n) int:
    ;  n+:=bit_length(n) { skip forward by range used for candidates }
    od
 
-set search_probable_generator (int p, [int] divisors_phi_p) = int:
-   let phi_p=p-1 { assume |p| is probable prime, group exponent divides |p-1| }
-in for i:p-2 from 2
-   do if for d in divisors_phi_p do @: power_mod(i,phi_p\d,p)!=1 od.all
-      then return i
-      fi
+set_type phi_data = (int n, int phi_n, [int] prime_factors_phi)
+
+set phi_data_of (int n) = phi_data:
+   let phi_n = phi(n) in (n,phi_n,prime_divisors(phi_n))
+
+set prime_phi_data (int p) = phi_data: (p,p-1,prime_divisors(p-1))
+
+set is_multiplicative_generator (int i, phi_data(n,phi,factors)) = bool:
+  for p in factors do @: power_mod(i,phi\p,n)=1 od.none
+
+set is_multiplicative_generator (int i, int n) = bool:
+   is_multiplicative_generator (i,phi_data_of(n))
+
+set search_probable_generator (phi_data d) = int:
+   let n=d.n
+in for i:n-2 from 2
+   do if gcd(i,n)=1 and is_multiplicative_generator(i,d) then return i fi
    od; 1
+
+set search_probable_generator (int n) = int:
+   if test_Fermat(2,n) then prime_phi_data(n) else phi_data_of(n) fi.
+   search_probable_generator
+
 
 set expand (int_poly(X,a,), int k) = int_poly: { substitute X^k for X }
    ((## for i:#a-1 do a[i] # for :k-1 do int:0 od od) # a~[0],X).to_int_poly

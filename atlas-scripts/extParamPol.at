@@ -1,7 +1,10 @@
 <basic.at
 <polynomial.at
-<bigMatrices.at
-<hermitian.at
+<bigMatrices.at { for |tabulate_indices@([Param],mat)| and friends }
+<convert_c_form.at { for |conbvert_cform_hermitian| }
+<hermitian.at { for |is_weakly_unitary| }
+<extended_misc.at { for type |ExtParam| and functions on it }
+<extended.at { for |nu@ExtParam| }
 <ext_deform.at { for |ed_verbose| }
 
 { implement ParamPol for extended parameters }
