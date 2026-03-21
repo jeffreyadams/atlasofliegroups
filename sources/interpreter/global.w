@@ -1502,7 +1502,7 @@ void type_define_identifier
 @)
     type_nr_type k = type_expr::add_simple_typedef(id,tp.bake(),deg);
     global_id_table->add_type_def
-      (id,type::constructor(type_expr::local_ref(k,deg),deg),loc);
+      (id,type::constructor(type_expr::local_ref(k),deg),loc);
 @)
     if (not fields.empty())
     {
@@ -1902,7 +1902,7 @@ index~|i| into the vector.
       if (global_id_table->is_defined_type(it->id))
         clean_out_type_identifier(it->id);
       global_id_table->add_type_def
-        (it->id,type::constructor(type_expr::local_ref(type_nr,deg),deg),loc);
+        (it->id,type::constructor(type_expr::local_ref(type_nr),deg),loc);
     }
     @< Emit... @>
     if (it->id==type_binding::no_id)

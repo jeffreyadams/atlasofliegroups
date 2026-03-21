@@ -519,9 +519,10 @@ contents will be move assigned inside the factory function. It will prove
 convenient to handle tuple and union constructors together in a |tuple_or_union|
 factor function, to which we provide the actual tag wanted as an argument. There
 are two factory functions for tabled types: |user_type| to explicitly provide
-the parts to assemble, and |local_ref| that constructs a default argument list
-(as required when mutually recursive type constructors refer to each other) on
-the fly, given just the arity |n_args|.
+the parts to assemble, and |local_ref| supplies a given tabled type with an
+empty argument list, as is appropriate for mutual references between tabled
+types defined within a same group, and for types stored in the global identifier
+table (for which all other information about the type is found in |type_map|).
 
 @< Ordinary methods of the |type_expr| class @>=
 
@@ -566,12 +567,8 @@ static type_expr user_type(type_nr_type type_nr,type_list&& l)
   return result;
 }
 
-static type_expr local_ref(type_nr_type type_nr, unsigned int n_args)
-  // local reference within definition group
-{ type_list args;
-  for (unsigned int i=n_args; i-->0; )
-    args.push_front(type_expr::variable(i));
-  return user_type(type_nr,std::move(args));
+static type_expr local_ref(type_nr_type type_nr)
+@+{@; return user_type(type_nr,type_list());
 }
 
 
@@ -1931,7 +1928,7 @@ auto rewrite =
   ++it;
   if (tp.raw_kind()==tabled and tp.tabled_nr()>=old_table_size)
     assert(nr == tp.tabled_nr()); // this is what it was recorded from
-  return local_ref(nr,0);
+  return local_ref(nr);
 }@+;
 
 @ Now the transfer of elements of |type_array| to |type_map| is fairly
