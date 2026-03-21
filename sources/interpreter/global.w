@@ -1501,15 +1501,17 @@ void type_define_identifier
        also report the type definition proper @>
 @)
     type_nr_type k = type_expr::add_simple_typedef(id,tp.bake(),deg);
-    type_expr tabled_tp = type_expr::local_ref(k,deg);
-    // tabled type with |deg| arguments
-    global_id_table->add_type_def(id,type::constructor(tabled_tp.copy(),deg),loc);
+    global_id_table->add_type_def
+      (id,type::constructor(type_expr::local_ref(k,deg),deg),loc);
 @)
     if (not fields.empty())
     {
+      type_expr tabled_tp = type_expr::tabled_call(k);
+      // tabled type with |deg| arguments
       @< Bind in |group| any field identifiers in |fields| to the types of
-         their projector or injector functions, store the identifiers themselves
-         in |names|, and store the corresponding function values in |jectors| @>
+         their projector or injector functions constructed from |tabled_tp|
+         and |tp|; store the identifiers themselves in |names|,
+         and store the corresponding function values in |jectors| @>
       @< Add to |global_overload_table| the projector or injector function
          values from |jectors| @>
       type_expr::set_fields(k,std::move(names));
@@ -1881,8 +1883,8 @@ index~|i| into the vector.
   containers::sl_list<definition_group> store;
   for (auto it=defs.wcbegin(); not defs.at_end(it); ++it,++i)
     if (not it->fields.empty())
-    { type_expr tabled_tp = type_expr::local_ref(type_nrs[i],deg);
-      const auto& tp = tabled_tp.tabled_eq(); // a |type_map| entry
+    { type_expr tabled_tp = type_expr::tabled_call(type_nrs[i]);
+      const auto tp = tabled_tp.expanded();
       const auto& fields = it->fields;
       @/@< Append to |store| bindings for the identifiers in |fields| as
          injector or projector function for |tabled_tp|, the component types
@@ -1894,14 +1896,13 @@ index~|i| into the vector.
   {
     const auto& fields = it->fields;
     const auto type_nr = type_nrs[i];
-    type tabled_tp =
-      type::constructor(type_expr::local_ref(type_nr,deg),deg);
-    const type_expr& tp = tabled_tp.unwrap().tabled_eq();
+    const type_expr tp = type_expr::tabled_call(type_nr).expanded();
     if (it->id!=type_binding::no_id)
     {
       if (global_id_table->is_defined_type(it->id))
         clean_out_type_identifier(it->id);
-      global_id_table->add_type_def(it->id,std::move(tabled_tp),loc);
+      global_id_table->add_type_def
+        (it->id,type::constructor(type_expr::local_ref(type_nr,deg),deg),loc);
     }
     @< Emit... @>
     if (it->id==type_binding::no_id)
@@ -1909,7 +1910,7 @@ index~|i| into the vector.
                      << tp << std::endl;
     else
       *output_stream << "Type name '" << main_hash_table->name_of(it->id) @|
-        << "' defined as " << tp.expanded() << std::endl;
+        << "' defined as " << tp << std::endl;
     if (not fields.empty())
     { auto& group = *store_it;
       @< Add to |global_overload_table| functions for |fields| with types taken
