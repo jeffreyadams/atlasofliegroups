@@ -8815,7 +8815,8 @@ case field_ass_stat:
 @ If either no function at all doing the requested projection is found, or if
 the function found is not a projector, then we signal failure. Moving |pos|
 places forward in the linked list can be done by calling |std::next| after
-converting the raw node pointer |tuple_tp->tuple()| to a weak type list iterator.
+converting the raw node pointer |tuple_tp->tuple()| to a weak type list
+iterator.
 
 @< Look up a field of |*tuple_tp| named |selector|... @>=
 { std::ostringstream o;

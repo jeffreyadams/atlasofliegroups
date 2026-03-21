@@ -1362,28 +1362,30 @@ type_expr::defined_type_mapping type_expr::type_map;
 @ A number of additional |static| methods of |type_expr| serve to regulate
 access to the static class member |type_map|. While most of them simply serve as
 a hatch (dutch: ``doorgeefluik'', no good English equivalent) to pass on
-information, the method |matching_bindings| used to find fields to be used for a
-given (supposedly tabled) tuple or union type is not entirely trivial, and the
-methods |add_simple_typedef| and especially |add_typedefs| (used to enter a list
-of newly defined, potentially recursive types into |type_map|) are quite
-elaborate. While |add_simple_typedef| requires no processing of its |type| entry
-and can directly create a |type_map| entry, |add_typedefs| does need to
-pre-process its argument |defs|, a list of pairings of a type identifier to a
-type expression, the latter passed by non-owning pointer. The potentially
-recursive nature of these definitions lies in that they can not only refer,
-using the |tabled_variant|, to types already defined in the mapping, but also to
-the types they define themselves. For this purpose, those recursive type numbers
-start to count from |type_expr::table_size()| as it is before |add_typedefs|
-method is called. The return value is a list of the same length giving their
-type numbers after applying type equivalencing~; usually these will be the same
-numbers used initially, but some may have mapped to equivalent previously known
-types.
+information, the method |matching_bindings|, which is used to find fields to be
+used for a given (supposedly tabled) tuple or union type, is not entirely
+trivial, and the methods |add_simple_typedef| and especially |add_typedefs|
+(used to enter a list of newly defined, potentially recursive types into
+|type_map|) are quite elaborate. While |add_simple_typedef| requires no
+processing of its |type| entry and can directly create a |type_map| entry,
+|add_typedefs| does need to pre-process its argument |defs|, a list of pairings
+of a type identifier to a type expression, the latter passed by non-owning
+pointer. The potentially recursive nature of these definitions lies in that they
+can not only refer, using the |tabled_variant|, to types already defined in the
+mapping, but also to the types they define themselves. For this purpose, those
+recursive type numbers start to count from |type_expr::table_size()| as it is
+before |add_typedefs| method is called. The return value is a list of the same
+length giving their type numbers after applying type equivalencing~; usually
+these will be the same numbers used initially, but some may have mapped to
+equivalent previously known types.
 
 @< Static methods of |type_expr| that will access |type_map| @>=
 static type_nr_type table_size();
 static void reset_table_size(type_nr_type old_size);
 static const std::vector<id_type>& fields(type_nr_type type_number);
 static void set_fields (id_type type_number, std::vector<id_type>&& fields);
+static type_expr tabled_call(type_nr_type type_nr);
+  // formally applied tabled constructor
 static sl_list<const type_binding*> matching_bindings (const type& tp);
 static type_nr_type add_simple_typedef
   (id_type id, type_expr tp, unsigned int arity);
@@ -1417,6 +1419,25 @@ void type_expr::set_fields(id_type type_number, std::vector<id_type>&& fields)
    type_map[type_number].fields=fields;
 }
 
+@ The |type_map| does not store directly usable types in all cases, since
+(potentially) recursive type constructors do not provide argument lists when
+they refer to themselves or other constructors in their definition group.
+The appropriate arguments will be supplied when |expanded| is called with a list
+of argument types, but sometimes one does want a formal list of successive type
+variables to be applied (to get a generic instance of the constructor). The
+|static| method |tabled_call| builds an instantiation of a type constructor,
+which can then be expanded.
+
+@< Function definitions @>=
+type_expr type_expr::tabled_call(type_nr_type type_nr)
+  // formally applied tabled constructor
+{ type_list args;
+  for (unsigned int i=type_map.arity(type_nr); i-->0; )
+    args.push_front(type_expr::variable(i));
+  return user_type(type_nr,std::move(args));
+}
+
+
 @ The method |matching_bindings| is used to find |fields| associated to a given
 tuple or union type, in order to interpret a field assignment or a
 discrimination clause, respectively; it returns a list of non-owning pointers to
@@ -1431,9 +1452,9 @@ sl_list<const type_binding*> type_expr::matching_bindings (const type& tp)
 { auto tp_clean = tp.copy();
   tp_clean.wring_out(); // incorporate any pending type assignments
   sl_list<const type_binding*> result;
-  for (auto it=type_map.begin(); it!=type_map.end(); ++it)
-    if (not it->fields.empty() and tp_clean.has_unifier(it->tp))
-      result.push_back(&*it);
+  for (unsigned int i=0; i<table_size(); ++i)
+    if (not type_map[i].fields.empty() and tp_clean.has_unifier(tabled_call(i)))
+      result.push_back(&type_map[i]);
   return result;
 }
 
@@ -1917,7 +1938,7 @@ auto rewrite =
   ++it;
   if (tp.raw_kind()==tabled and tp.tabled_nr()>=old_table_size)
     assert(nr == tp.tabled_nr()); // this is what it was recorded from
-  return local_ref(nr,n_args);
+  return local_ref(nr,0);
 }@+;
 
 @ Now the transfer of elements of |type_array| to |type_map| is fairly
