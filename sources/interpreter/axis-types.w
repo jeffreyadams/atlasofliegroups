@@ -1748,11 +1748,10 @@ overlapping subexpressions that are thus duplicated, but efficiency is hardly a
 worry here since type definitions are rare and usually small. Since the main
 purpose of building this array is to represent cross references between the
 entries as a graph, we shall maintain a list of integers for the outgoing edges
-of this graph. Since the edges correspond to those directly descendant
-types~|desc| of |tp| for which |has_descendants(desc)| holds, this information
-suffices to later produce an entry of |type_map| corresponding to the node, with
-those descendants that are also present in |type_map| replaced by |tabled|
-references.
+of this graph. The edges correspond to all direct descendants of |tp|, so this
+information suffices to later produce an entry of |type_map| corresponding to
+the node, with those descendants that are also present in |type_map| replaced by
+|tabled| references.
 
 We also provide |begin| and |end| iterators that actually iterate over the |out|
 list.
@@ -1855,11 +1854,7 @@ that calls of |dissect_to| will correctly compute later indices. Then we make
 those calls for each right hand side in |defs|, which takes care of all
 descendant types, but places the |type_data| for the right hand side at the end
 of |type_array|; we then move it from there to the slot reserved for it at the
-beginning. We have to be careful that |dissect_to| cannot be applied for types
-without descendants, and although such types seem to be of limited utility as
-right hand sides of type definitions, we must be prepared to handle them.
-Fortunately this is quite easy: we copy the type that has no descendants, with
-an empty list of links.
+beginning.
 
 @< Copy right hand sides of |defs| to |type_array|, and add entries for
    any of their component types that have themselves any descendants @>=
@@ -1876,12 +1871,12 @@ an empty list of links.
 all their elements (which are indices into |type_array|) in the |BitMap rec@;|.
 After this is done, we traverse this union of cliques, to see if any of their
 |type_array| points to a previously defined recursive |tabled| type constructor,
-in which case we terminate |add_typedefs| by throwing a |program_error|. The
-entries of |type_array| have passed the |has_descendants| test, so any |tabled|
-type is necessarily an existing |tabled| type constructor, and the fact that we
-are in a clique implies that some type recursion is taking place through one of
-its arguments. The only additional test required to check that we are in a
-prohibited situation is that the type constructor used is itself recursive.
+in which case we terminate |add_typedefs| by throwing a |program_error|. We did
+not copy local type references within |defs| to |type_array|, and we have
+expanded away any non-recursive tabled types and type constructor
+instantiations, so any |tabled| type occurring as entry of |type_array| is
+necessarily an existing recursive |tabled| type or constructor; if we find any
+such entry in a clique, this means we are inn a forbidden situation.
 
 @< Set the |rec| flag for members of |cliques|, and flag an error if
      any of them involves a previously defined recursive type constructor @>=
@@ -1890,9 +1885,9 @@ prohibited situation is that the type constructor used is itself recursive.
     rec |= BitMap(type_array.size(),clique.wcbegin(),clique.wcend());
   for (auto index : rec)
   { const type_expr& tp = type_array[index].tp;
-    if (tp.raw_kind()==tabled and tp.tabled_nr()<type_expr::table_size()
-        and tp.is_recursive())
-    { std::ostringstream o;
+    if (tp.raw_kind()==tabled)
+    { assert(tp.tabled_nr()<type_expr::table_size() and tp.is_recursive());
+      std::ostringstream o;
       o << "Type definition recursion uses type constructor '"
       @| << main_hash_table->name_of(type_map[tp.tabled_nr()].name)
       @|<< "', itself recursive, which is not allowed";
@@ -1908,27 +1903,25 @@ but its direct descendants will typically be tabled references to other types
 tabled in |type_map| (though types that do not refer to |type_map| at all are
 also valid possibilities). The lambda |rewrite| will be called to construct the
 direct descendants of and entry written to |type_map|. It is given as argument
-an iterator pointing to an index into |type_array| for that descendant; it
-returns the descendant as a |type_expr|.
+an iterator into the list of outgoing edges of a |type_array| entry; it
+returns the corresponding descendant as a |type_expr|.
 
 We have chosen to use a lambda here to have easy access (by reference) to the
-local variables of |add_typedefs| that it needs access to. Its argument |it|
-will be an iterator into the list of vertex numbers linked from an entry of
-|type_array|. It is mainly used to compute the corresponding slot number |nr| in
-|type_map| (for the descendant), from which a local tabled reference to it can
-be built. The type |tp| at the indicated index into |type_array| is currently
+local variables of |add_typedefs| that it needs access to. Dereferencing the
+argument |it| returns a numeric index into |type_array|, from which we can
+compute the corresponding slot number |nr| in |type_map| (for the descendant),
+and can also access the type |tp| at the indicated index. The latter is currently
 called only to see whether it is already a local reference to one of the left
 hand sides of |defs|, in which case the |tabled_nr()| found there should match
 the |nr| computed. All in all, what really happens here is just using and then
-incrementing~|it|, and returning a |local_ref| computed from its value; the
-value |n_args| is used to provide standard list of type variable arguments that
-will cause mutually recursive type constructors to pass their arguments around
-unchanged.
+incrementing~|it|, and returning a |local_ref| computed from its value.
 
-In the code below it is tempting to try to write |nr=sz+*it++|, but the
-post-increment operator for |sl_list| iterators was deliberately left undefined,
-to avoid the temptation of incorrectly using it in the argument of the |erase|
-method, as would be appropriate for certain other iterator types.
+In the code below, it is tempting to try to write |nr=old_table_size+*it++|. But
+the post-increment operator for |sl_list| iterators was deliberately left
+undefined (to avoid the temptation of incorrectly using it in the argument of
+the |erase| method, as would be appropriate for certain other iterator types);
+therefore, that expression does not work, and we need to increment |it|
+separately after dereferencing it.
 
 @< Declare a local function |rewrite| @>=
 auto rewrite =
