@@ -722,9 +722,10 @@ appending output redirection. In any other state the character either is a
 single-character token with |code| equal to the character value, or a
 multi-character (relation) symbol composed of characters from |"<=>"|, with
 |token_type==OPERATOR|. The single-character versions have a special role in the
-parser, notably in applying user-define type constructors, but will still be
-used as if they were operator symbols in other contexts, which is why we set a
-(fairly low) |priority| value in all cases (except those with |state==initial|).
+parser, notably in instantiating user-defined type constructors, but will still
+be used as if they were operator symbols in other contexts, which is why we set
+a (fairly low) |priority| value in all cases (except those with
+|state==initial|).
 
 The usage of the single-character versions with type constructors does mean that
 we should not set |prevent_termination| for them, as type expressions can

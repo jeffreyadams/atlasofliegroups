@@ -305,10 +305,8 @@ is the task of |swallow| to replace it by the actual tabled number of the
 corresponding type (constructor). It used to be the case that for defined type
 identifiers |Id_table| could store any type rather than just one of the |tabled|
 kind. We then used |simple_subst| (with appropriate arguments), rather than
-|user_type| as we do below. The way a |tabled| constructor application is stored
-in the |Id_table| still bears a trace of this old organisation, in the form of a
-standard argument list; it was needed with |simple_subst|, but is no longer
-inspected.
+|user_type| as we do below. This is no longer the case: even in the case of a
+type constructor, |Id_table| stores a |tabled| type with an empty argument list.
 
 For any |type_expr| whose |raw_kind()| is not |tabled|, the recursive method
 |swallow| simply descends into its subexpressions. When a |tabled| case is
@@ -1458,7 +1456,7 @@ is marked by square brackets around the list of definition clauses in the latter
 case, and the placement of formal type parameters of the definition in case of a
 type constructor definition. In simple type constructor definitions the
 parameter list is postfixed to the constructor name in pointy brackets to
-resemble an application of the constructor, whereas in a grouped type
+resemble an instantiation of the constructor, whereas in a grouped type
 constructor definition the formal type parameter list, which is common to every
 member of the group, is inserted before the opening square bracket.
 
@@ -1789,7 +1787,7 @@ well).
 }
 
 @ We come here for any type subexpression of a right hand side that is given as
-a type identifier or as an application of an already defined type constructor.
+a type identifier or as an instantiation of an already defined type constructor.
 In case this is a previously defined type (constructor) we must replace the
 identifier code that parser temporarily stored as |tabled_nr()| of a |tabled|
 type, by the actual tabled number stored in |global_id_table| for that
