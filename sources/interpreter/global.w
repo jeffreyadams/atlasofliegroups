@@ -1485,7 +1485,7 @@ void type_define_identifier
   const source_location& loc)
 { type_ptr saf(t); id_pat field_pat(ip); // ensure clean-up
   type tp= type::constructor(global_id_table->swallow(*t),deg);
-  auto& fields = field_pat.sublist;
+  patlist& fields = field_pat.sublist;
   const auto n=length(fields);
   // |n==0| means no tuple/union, or no names were specified
 @)
@@ -1645,7 +1645,8 @@ void process_type_definitions
 @/  std::vector<std::pair<id_type,const_type_p> > b; b.reserve(n_defs);
     for (auto it=defs.wcbegin(); not defs.at_end(it); ++it)
       b.emplace_back(it->id,it->tp);
-    auto type_nrs = type_expr::add_typedefs(b,deg);
+    const auto old_table_size = type_expr::table_size();
+    type_expr::add_typedefs(b,deg);
 @)
     @< Update |global_id_table| with types and values (injector and  projector
        functions, if any) corresponding to the type definitions in |defs|, or
@@ -1853,37 +1854,37 @@ identifiers at all, and to throw a |program_error| in such cases.
 
 @ When we come here, the newly defined types from |defs| have been tested for
 equivalence with previous types and with each other, and added to the static
-class member of |type_expr|, so that their (new) type numbers available in the
-|type_nrs| array can be used with for instance the |type_expr::expanded| method.
+class member of |type_expr|, so that their (new) type numbers can be used with
+for instance the |type_expr::expanded| method.
 
 Three kinds of actions remain to be done. For each definition, its left hand
 side identifier has to be bound to a type expression in |global_id_table|, which
-will be of the |tabled| kind, referring to the internal definition just added at
-a position found in |type_nrs|. The other two actions only apply when the right
-hand side is a tuple or union type with specified field names: if so, projector
-respectively injector functions have to be bound to these field names in the
-|global_overload_table|, and the list of field names has to be added to the
-|type_expr| static data. The new overloads for field names might conflict with
-existing overloads, and to be certain that we don't leave matters in a partially
-updated state upon an error, we must make two passes over |defs|: one to test
-for problems (which might end up throwing an error), and if there are none, a
-second pass to actually make the changes.
+will be of the |tabled| kind, referring to the internal definition just added.
+The other two actions only apply when the right hand side is a tuple or union
+type with specified field names: if so, projector respectively injector
+functions have to be bound to these field names in the |global_overload_table|,
+and the list of field names has to be added to the |type_expr| static data. The
+new overloads for field names might conflict with existing overloads, and to be
+certain that we don't leave matters in a partially updated state upon an error,
+we must make two passes over |defs|: one to test for problems (which might end
+up throwing an error), and if there are none, a second pass to actually make the
+changes.
 
 Since testing the overloads for the field names involves constructing the types
 that will be bound to them, we stash them away in a list |store| of
 |definition_group| objects, from which they can be recovered in the second pass.
-Each pass needs to traverse the linked list~|defs| and in parallel the
-vector~|type_nrs|, for which we maintain an iterator~|it| into the list and an
-index~|i| into the vector.
+Each pass needs to traverse the linked list~|defs|, for which we maintain both
+an iterator~|it| into the list and a position~|i|.
 
 @< Update |global_id_table| with types and values... @>=
 { unsigned int i = 0; // position within |defs|
   containers::sl_list<definition_group> store;
   for (auto it=defs.wcbegin(); not defs.at_end(it); ++it,++i)
     if (not it->fields.empty())
-    { type_expr tabled_tp = type_expr::tabled_call(type_nrs[i]);
+    { auto type_nr = old_table_size+i;
+      type_expr tabled_tp = type_expr::tabled_call(type_nr);
       const auto tp = tabled_tp.expanded();
-      const auto& fields = it->fields;
+      const patlist& fields = it->fields;
       @/@< Append to |store| bindings for the identifiers in |fields| as
          injector or projector function for |tabled_tp|, the component types
          being taken from |tp| @>
@@ -1891,9 +1892,8 @@ index~|i| into the vector.
 @)
   auto store_it = store.wbegin(); // rewind the list of field lists
   for (auto it=(i=0,defs.wcbegin()); not defs.at_end(it); ++it,++i)
-  {
+  { auto type_nr = old_table_size+i;
     const auto& fields = it->fields;
-    const auto type_nr = type_nrs[i];
     const type_expr tp = type_expr::tabled_call(type_nr).expanded();
     if (it->id!=type_binding::no_id)
     {
@@ -1939,7 +1939,7 @@ function type through |definition_group::add|.
   {
     for (auto id_it=fields.wcbegin(); not fields.at_end(id_it);
          ++id_it,++tp_it)
-      if (id_it->kind==0x1)
+      if ((id_it->kind&0x1)!=0)
       // field selector present (|*id_it| is an |id_pat|)
       {
         type_expr fte = type_expr::function(tabled_tp.copy(),tp_it->copy());
@@ -1950,7 +1950,7 @@ function type through |definition_group::add|.
   else // |tp.raw_kind()==union_type|
   { for (auto id_it=fields.wcbegin(); not fields.at_end(id_it);
          ++id_it,++tp_it)
-      if (id_it->kind==0x1) // injector name present
+      if ((id_it->kind&0x1)!=0) // injector name present
       {
         type_expr fte = type_expr::function(tp_it->copy(),tabled_tp.copy());
         record.add(id_it->name,type::wrap(std::move(fte),0),id_it->kind);
@@ -2001,7 +2001,7 @@ instead); this avoids needing to allocate an actual static variable.
   }
   *output_stream << '.' << std::endl;
 @/
-  type_expr::set_fields(type_nrs[i],std::move(names));
+  type_expr::set_fields(type_nr,std::move(names));
 
 }
 
