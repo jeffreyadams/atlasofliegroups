@@ -1386,7 +1386,7 @@ static type_expr tabled_call(type_nr_type type_nr);
 static sl_list<const type_binding*> matching_bindings (const type& tp);
 static type_nr_type add_simple_typedef
   (id_type id, type_expr tp, unsigned int arity);
-static std::vector<type_nr_type> add_typedefs
+static void add_typedefs
  (const std::vector<std::pair<id_type,const_type_p> >& defs,
   unsigned int n_args);
 
@@ -1590,37 +1590,42 @@ bool textually_equal_lists (const_raw_type_list lx, const_raw_type_list ly)
 %
 We will now define the method |type_expr::add_typedefs|, which is subtle and
 requires quite a bit of work. This is due to our requirements about tabled
-types~: for recursive types, all types in their recursive cluster (mutual
-descendants) must be tabled and marked as recursive, and among remaining tabled
-types and type constructors there are no two equivalent ones. (The latter is no
-a strict necessity, since tabled types not marked as recursive will be expanded
-if needed in the equality test, so equivalence among them would ultimately be
-detected anyway.)
+types~: for recursive types, all (sub-)types in their recursive cluster (being
+mutual descendants of one another) must be tabled and marked as recursive. Also,
+we never want the definition stored for a tabled type to be another tabled type
+or instantiation of a tabled type constructor.
 
-Type equivalence is defined in a conceptually simple way: two type expressions
-are equivalent if they can be made identical by finitely many expansions of user
-type and type constructor definitions. (A less strict pure structural
-equivalence was used before the introduction of user type constructors, which
-equated recursive types for which no difference can be exhibited at any depth;
-now recursive types or type constructor instantiations introduced in distinct
-definitions are never equated. Cases where this would make a difference seem
-contrived, and we do not expect this change of type equivalence relation to
-affect users.)
+Type equivalence was intended to be defined in a conceptually simple way: two
+type expressions are equivalent if they can be made identical by finitely many
+expansions of user type and type constructor definitions. (A less strict pure
+structural equivalence was used before the introduction of user type
+constructors, which equated recursive types for which no difference can be
+exhibited at any depth. Cases where this would make a difference involve
+isomorphic recursive definition and seem contrived, and we do not expect this
+change of type equivalence relation to affect users.) In fact, to simplify
+implementation, we declare recursive types or instantiation of recursive type
+constructors introduced in distinct definitions to never be equated, which makes
+recursive type constructors behave similarly to the built-in constructors for
+tuple and union types. A restriction to way type recursion can be introduced
+will be given to ensure this implementation matches our intended type
+equivalence.
 
 Tabled types are introduced either by a call of |add_simple_typedef| above, or
 by a calls of |add_typedefs|. The latter actually introduces a group of tabled
 type constructors of the same arity, which is the number of type variables
 abstracted in the context of the grouped type definition (in which these type
 variables denote type parameters). Their right hand sides can mutually refer to
-types being defined, as well as using built-in or previously defined types and
-type constructors. We do however forbid an instantiation of any previously
-defined recursive type constructor to be involved in any (new) recursion among
-the types being defined, by having one of them as (type subexpression of) one of
-its arguments. The reason for this is that our rules for type equivalence never
-make (an instance of) a type (constructor) defined by one set of recursive
-equations equivalent to an instance of a type constructor defined by another set
-of recursive equations. This rule makes it impossible to honour a set of
-definitions that violates the given rule.
+types being defined. In these definitions, apart from built-in types and type
+constructions, we allow using existing tabled types and type constructors, whose
+definitions will be expanded at the top level. We do however forbid an
+instantiation of any previously defined recursive type constructor to be
+involved in any (new) recursion among the types being defined, by having one of
+them as (type subexpression of) one of its arguments. The reason for this is
+that our implementation of type equivalence never makes (an instance of) a type
+(constructor) defined by one set of recursive equations equivalent to an
+instance of a type constructor defined by another set of recursive equations.
+This makes it impossible to honour a set of definitions that violates the given
+rule.
 
 Since the type names being defined are not yet treated as type constructors,
 even if there are abstracted type variables, mutual references in the right hand
@@ -1631,31 +1636,30 @@ among such mutual references.
 @ Grouped type definitions define an oriented graph, where each vertex is a type
 subexpression of one of the right hand sides of the definitions. Edges are for
 direct descendance relations, or for references within the definition group. The
-parser represents the latter by |tabled| types with |tabled_nr()>=table_size()|.
-(The |tabled| case with |tabled_nr()<table_size()| can also occur, indicating an
-already tabled type, or type constructor instantiation; we shall treat such cases
-differently depending on the |is_recursive| predicate.) This graph can serve to
-detect actual recursion patterns in our set of type definitions, which appear as
-cliques for the relation of mutual reachability among vertices.
+parser (followed by some processing by the caller |process_type_definitions| of
+|add_typedefs|) represents the latter by |tabled| types with
+|tabled_nr()>=table_size()|. (The |tabled| case with |tabled_nr()<table_size()|
+can also occur, indicating an already tabled type, or type constructor
+instantiation; we shall treat such cases differently depending on the
+|is_recursive| predicate.) This graph can serve to detect actual recursion
+patterns in our set of type definitions, which appear as cliques for the
+relation of mutual reachability among vertices.
 
 To process a group of type definitions, we first decompose the right hand side
-type expressions into ``nodes'' for which all type subexpressions will (also)
-become tabled references. Then we determine the recursive cliques among these
-nodes, and mark all their members with the |recursive| flag. At this point we
-can check if any of the recursive nodes is an instantiation of a previously
-defined recursive type constructor (which apparently has at least one of the
-types being defined as argument or as type subexpression thereof), and reject
-the current type definition for that reason (as was mentioned above). Otherwise,
-we can use |type_expr::operator==| to test for equality among the remaining (not
-directly recursive) nodes, to weed out any repetition of some previously tabled
-constructor of the same arity. Finally we remove redundant tabled entries and
-readjust references to entries that as a consequence have been shifted in the
-table.
+type expressions into ``nodes'' of a graph; some of these will become tabled
+entries even if they are not a full right hand side type. Then we determine the
+recursive cliques among these nodes, and mark all their members in a bitmap
+|rec|. At this point we can check if any of the recursive nodes is an
+instantiation of a previously defined recursive type constructor (which
+apparently has at least one of the types being defined as argument or as type
+subexpression thereof), and reject the current type definition for that reason
+(as was mentioned above). Otherwise, copy those nodes that are either a right
+hand side or are involve in a type recursion to become entries of |type_map|.
 
 @h "preorder.h"
 
 @< Function definitions @>=
-std::vector<type_nr_type> type_expr::add_typedefs
+void type_expr::add_typedefs
   (const std::vector<std::pair<id_type,const_type_p> >& defs,
    unsigned int n_args)
 {
@@ -1674,16 +1678,6 @@ std::vector<type_nr_type> type_expr::add_typedefs
   @< Add entries to |type_map| according to the entries of |type_array|,
      while setting the |recursive| flag from |rec|, and type names for those
      types that are given one in |defs| @>
-
-  std::vector<type_nr_type> relocate(keep.size());
-@/@< For new members of |type_map| that are not |recursive|, test whether they
-   are equivalent to any earlier entry... @>
-  @< Remove redundant types from |type_map|, and adjust |relocate|
-     correspondingly @>
-  @< Renumber the tabled entries according to |relocate| @>
-  relocate.erase(relocate.begin()+n_defs,relocate.end());
-  // truncate to entries directly from |defs|
-  return relocate;
 }
 
 @ A first concern is which component types of the right hand sides should get a
@@ -1693,46 +1687,9 @@ in a recursion present in~|defs|, i.e., one that both descends from some type
 being defined and that has the same type as descendant, should get a slot in
 |type_array|. But we are going to use |type_array| precisely to find out such
 recursive relations, so it is not practical to already use recursion in a
-criterion for allocating slots in |type_array|. We therefore used to instead
-create such a slot for any type expression that has itself has some descendant
-type; by excluding primitive types, type variables, empty tuples, and tabled
-types with no arguments, this somewhat limited the number of type expressions
-that need a slot in |type_array|. However the criterion used to suppress copying
-to |type_array| then had to be applied again when interpreting which outgoing
-edges in the |type_array| graph correspond to which direct descendants, which is
-cumbersome. We therefore now prefer to copy all type subexpressions of |defs| to
-|type_array|, and once recursion has been detected, filter out unnecessary nodes
-when filling |type_map|.
-
-The function |has_descendants| below performs the test that used to be applied
-in deciding whether to copy a type expression to |type_array|; it is now unused.
-The way it handles instantiations of existing tabled type constructors
-nonetheless remains pertinent. If the constructor is marked as non-recursive, we
-replace the instantiation by its one-level expansion, effectively removing the
-instantiation from the graph used to detect recursions (in its place, the
-expansion and its subexpressions are copied to |type_array|, and will determine
-whether any recursion passed through them). However constructors marked as
-recursive are not expanded (to ensure termination), and their argument
-expressions are considered their direct descendants. If those arguments should
-turn out to cause any recursion of the current set of definitions, we shall then
-signal an error (our type algorithms cannot handle such recursions); for now
-however, this is of no concern.
-
-@< Local function definitions @>=
-bool has_descendants (const type_expr& tp)
-{
-  switch(tp.raw_kind())
-  { default: return false;
-    // |undetermined_type|, |primitive_type|, |variable_type|
-  case row_type: case function_type: case union_type:
-    return true;
-  case tuple_type: return tp.tuple()!=nullptr;
-  case tabled:
-    if (tp.tabled_nr()>=type_expr::table_size() or tp.tabled_arity()==0)
-      return false;
-    return tp.is_recursive() or has_descendants(tp.expanded());
-  }
-}
+criterion for allocating slots in |type_array|. We therefore copy all type
+subexpressions of |defs| to |type_array|, and once recursion has been detected,
+filter out unnecessary nodes when filling |type_map|.
 
 @ The |type_array| has entries of type |type_data| that we shall now detail.
 Each entry corresponds to a type subexpression contained in |defs|, but possibly
@@ -1768,8 +1725,8 @@ struct type_expr::type_data
   @+{@; return out.end(); }
 };
 
-@ We shall need some private methods of |type_expr| to fill |type_array| and then
-|type_map|, the first two of which are mutually recursive.
+@ We shall need some mutually recursive private methods of |type_expr| to fill
+|type_array|.
 
 @< Private methods of the |type_expr| class @>=
   struct type_data;
@@ -1905,15 +1862,16 @@ direct descendants of and entry written to |type_map|. It is given as argument
 an iterator into the list of outgoing edges of a |type_array| entry; it
 returns the corresponding descendant as a |type_expr|.
 
-We have chosen to use a lambda here to have easy access (by reference) to the
-local variables of |add_typedefs| that it needs access to. Dereferencing the
-argument |it| returns a numeric index into |type_array|, from which we can
+We have chosen to use for |rewrite| a lambda to have easy access (by reference)
+to the local variables of |add_typedefs| that it needs access to. Dereferencing
+the argument |it| returns a numeric index into |type_array|, from which we can
 compute the corresponding slot number |nr| in |type_map| (for the descendant),
-and can also access the type |tp| at the indicated index. The latter is currently
-called only to see whether it is already a local reference to one of the left
-hand sides of |defs|, in which case the |tabled_nr()| found there should match
-the |nr| computed. All in all, what really happens here is just using and then
-incrementing~|it|, and returning a |local_ref| computed from its value.
+and can also access the type |tp| at the indicated index. The latter is
+currently called only to see whether it is already a local reference to one of
+the left hand sides of |defs|, in which case the |tabled_nr()| found there
+should match the |nr| computed. All in all, what really happens here is just
+using and then incrementing~|it|, and returning a |local_ref| computed from its
+value.
 
 In the code below, it is tempting to try to write |nr=old_table_size+*it++|. But
 the post-increment operator for |sl_list| iterators was deliberately left
@@ -1921,6 +1879,10 @@ undefined (to avoid the temptation of incorrectly using it in the argument of
 the |erase| method, as would be appropriate for certain other iterator types);
 therefore, that expression does not work, and we need to increment |it|
 separately after dereferencing it.
+
+In case the descendant we are called for not going to be tabled, we return its
+complete type |type_array[k].tp|; since this (unnamed) entry was created for a
+single parent, it will not be needed again, so we can safely move from it.
 
 @< Declare a local function |rewrite| @>=
 auto rewrite =
@@ -2026,150 +1988,6 @@ somewhat unfortunate effect, so we currently just accept it.
   for (wtl_const_iterator it(data.tp.tabled_args()); not it.at_end(); ++it)
     aux.push_back(rewrite(oit));
   tp = type_expr::user_type(data.tp.tabled_nr(),aux.undress()).expanded();
-}
-
-@ Once the type definitions are installed in |type_map| with the necessary
-|recursive| attributes, we use |textually_equal| to find redundancies among the
-non-recursive ones, in the same way as was done for simple type definitions.
-Thus equivalent types can coexist in |type_map| provided they would be printed
-differently due to |name| fields.
-
-This compaction of |type_map| used to compensate for our rather wasteful way of
-filling |type_array| with type subexpressions. However, now that we already skip
-unnamed subexpressions not involved in any type recursion when transferring
-types from |type_array| to |type_map|, the utility of this compaction of
-|type_map| is very limited, especially since we allow coexistence of differently
-named equivalent tabled types. Indeed it can only eliminate types that are
-(1)~introduced in a grouped |set_type| command, but (2)~are unnamed and
-(therefore) non-recursive, and finally (3)~are equivalent to an earlier defined
-unnamed type. This makes it so unlikely to ever lead to a noticeable economy that
-we will certainly remove this part of the code soon.
-
-@< For new members of |type_map| that are not |recursive|, test whether they
-   are equivalent to any earlier entry; if so, set the its slot in
-   |relocate| to point to that entry, otherwise to point to itself @>=
-{
-  for (type_nr_type nr = 0; nr<relocate.size(); ++nr)
-  { const auto cur = nr+old_table_size;
-    relocate[nr] = cur; // by default refer to ourselves
-    const auto& cur_tp = type_map[cur];
-    if (not cur_tp.recursive)
-      for (type_nr_type k=0; k<cur; ++k)
-      { const auto& old_tp = type_map[k];
-        if (not old_tp.recursive and
-            old_tp.name == cur_tp.name and old_tp.arity == cur_tp.arity and @|
-            textually_equal(old_tp.tp,cur_tp.tp))
-        @/{@; relocate[nr]=k;
-          break;
-        }
-      }
-  }
-}
-
-@ We traverse |relocate|, and for each entry not pointing to itself, we conclude
-it is redundant, and implicitly remove the corresponding entry from |type_map|
-(by not moving it to the range below the output iterator~|it|, so that it will
-either get overwritten or erased in the final statement below). Once this
-happens for some entry, any further entries will slide down, even if they are
-not redundant; therefore we need to adjust |relocated| even though it always
-points to non-redundant entries. A counter |removed| tells how many redundant
-entries have so far been found. Dropping an entry means incrementing |removed|,
-and we also update the |relocate| entry if its target has slid down. As soon as
-|removed>0|, we start actually moving entries to implement sliding down, and
-decrement the |relocate| entries by |removed| to reflect the sliding.
-
-@< Remove redundant types from |type_map|, and adjust |relocate|
-   correspondingly @>=
-{
-  assert(type_map.size()==old_table_size+relocate.size());
-  auto it = type_map.begin()+old_table_size; type_nr_type removed = 0;
-  for (type_nr_type nr = 0; nr<relocate.size(); ++nr)
-  { if (relocate[nr]!=old_table_size+nr)
-    // then entry was found redundant, so drop it
-    {
-      ++removed; // forget |type_map[old_table_size+nr]|
-      if (relocate[nr]>=old_table_size) // then maybe our twin has slid down
-        relocate[nr] = relocate[relocate[nr]-old_table_size];
-        // so forward to its current location
-    }
-    else if (removed==0)
-      ++it; // include, but no copying is needed yet
-    else
-    {@; *it++ = std::move(type_map[old_table_size+nr]);
-      relocate[nr] -= removed;
-    } // slide
-  }
-  type_map.erase(it,type_map.end()); // remove everything not passed over by |it|
-}
-
-@ After removing and sliding entries in |type_map|, we must adjust any
-references to them within our current definitions. This is not algorithmically
-hard, but requires a bit of preparation to do conveniently. We want to replace
-certain type numbers~|nr| by |relocate[nr-old_table_size]| inside tabled types,
-which is best done by a method of |type_expr| (so as to have non-const access to
-the |tabled_variant|); we shall define such a method called |fix|. It needs to
-access to some variables local to the method |add_typedefs| that we are (still)
-defining, namely the |relocate| vector and the value |old_table_size|; we pack
-them into a structure |fix_data| to be passed as argument. (A \Cpp11 lambda
-expression could more easily capture local variables, but would lack the
-privilege to access a |tabled_variant| field.)
-
-@< Private methods of the |type_expr| class @>=
-struct fix_data
-{@; const std::vector<type_nr_type>& rel;
-  type_nr_type sz;
-};
-void fix(const fix_data& f);
-
-@~The references that we need to update are descendants of |type_map| entries,
-since we have broken up any deeper type expressions, they are always
-\emph{direct} descendants. We shall call the method |fix| (with an argument
-giving it access to the data it needs) for all such descendants, which most of
-the time are tabled references. Since |relocate| only applies to new additions
-to |type_map|, its indexing is shifted by |sz| (which will hold
-|old_table_size|), and we only adjust tabled references whose |tabled_nr()| is
-at least |sz|. For such a reference we replace the |nr| field by |rel[nr-sz]|.
-There is the possibility of encountering non-local tabled references, those with
-|tabled_nr()<sz|: an exiting user defined type or instantiation of a type
-constructor (and necessarily a recursive one, since the other ones have been
-expanded). For these their own |tabled_nr()| should not change, but since these
-are the unique kind of direct descendants that themselves can have descendants
-(namely type arguments to a type constructor), we need to recursively call |fix|
-for any such arguments. (By contrast local references have as arguments a
-standard list of type variables, which need no adjusting.)
-
-@< Function definitions @>=
-void type_expr::fix(const fix_data& f)
-{ if (tag!=tabled)
-    return;
-  if (tabled_variant.nr>=f.sz)
-    tabled_variant.nr=f.rel[tabled_variant.nr-f.sz];
-  else
-    for (wtl_iterator it(tabled_args()); not it.at_end(); ++it)
-      it->fix(f);
-}
-
-@ Here we do the actual renumbering. After preparing our unchanging |fix_data|,
-we run over all new |type_map| entries and apply a |fix| to all their direct
-descendants. The entry itself should never be |tabled|.
-
-@< Renumber the tabled entries according to |relocate| @>=
-{ fix_data r{relocate,old_table_size};
-  // bind reference and value for passing to |fix|
-  for (auto it = type_map.begin()+old_table_size; it!=type_map.end(); ++it)
-  { auto& tp = it->tp;
-    switch(tp.tag)
-    { default: // leave types without descendants unchanged
-    break; case row_type: tp.row_variant->fix(r);
-    break; case function_type:
-      tp.func_variant->arg_type.fix(r);
-      tp.func_variant->result_type.fix(r);
-    break; case tuple_type: case union_type:
-      for (wtl_iterator it(tp.tuple_variant); not it.at_end(); ++it)
-        it->fix(r);
-    break; case tabled: assert(false); // a |definiens| never should be |tabled|
-    }
-  }
 }
 
 
