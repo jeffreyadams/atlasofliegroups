@@ -2292,7 +2292,9 @@ SR_poly Rep_table::KL_column_at_s_to_height (StandardRepr p, level height_bound)
     if (not retained.set_to(x,q.height()<=height_bound))
       kl_tab.plug_hole(block.size()-1-x); // not interested in this parameter
   }
-  kl_tab.fill(); // fill whole table; we might go beyond |size()-1-start|
+  kl_tab.fill(); // fill whole table, except the plugged holes
+
+  retained.clear(z+1,block.size()); // only the part from |p| on interests us
 
   const RankFlags singular = block.singular(bm,gamma); // singular simple coroots
   for (auto elt: retained) // don't increment |it| here
@@ -2301,7 +2303,7 @@ SR_poly Rep_table::KL_column_at_s_to_height (StandardRepr p, level height_bound)
 
   assert(retained.isMember(z)); // since |p| was final
 
-  matrix::Vector<Split_integer> value_at_s;
+  matrix::Vector<Split_integer> value_at_s; // polynomial evaluations at $q=s$
   value_at_s.reserve(kl_tab.pol_store().size());
   for (auto& entry : kl_tab.pol_store())
   { Split_integer val (0);
