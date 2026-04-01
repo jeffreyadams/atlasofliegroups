@@ -2106,23 +2106,23 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
 // we assume that |queue| contains no terms of height exceeding |height_bound|
 {
   BlockElt start; block_modifier bm;
-  const auto& block = lookup_full_block(p,start,bm); // also makes |p| dominant
   const auto& gamma = p.gamma();
   assert(is_dominant_ratweight(root_datum(),gamma));
-  auto dual_block = blocks::Bare_block::dual(block);
-  kl::KL_table& kl_tab = dual_block.KL_tab(nullptr,1);
-  // create KL table only minimally filled
+  auto& block = lookup_full_block(p,start,bm); // also makes |p| dominant
+  kl::KL_table& KL_Q_tab // table of KL $Q$-polynomials; empty table first time
+    = block.dual_KL_tab(&KL_poly_hash);
 
-  // record heights for the block, and extract block terms fro; |queue|
+  // record heights for the block, and extract block terms from |queue|
   std::vector<level> heights(block.size());
-  level low_mark = height_bound+1; // lowest height of term in |queue|
+  level low_mark = height_bound+1; // lowest height of any term in |queue|
+  BitMap retained(block.size());
   sl_list<SR_poly::value_type> result;
   // where that |value_type| is |std::pair<const StandardRepr,Split_integer>|
   for (BlockElt z=0; z<block.size(); ++z)
   { StandardRepr q = sr(block.representative(z),bm,gamma);
-    heights[z] = q.height();
-    if (heights[z]<=height_bound)
+    if (retained.set_to(z,((heights[z]=q.height()) <= height_bound)))
     {
+      KL_Q_tab.unplug_hole(block.size()-1-z); // interested in this parameter
       auto it = queue.find(q);
       if (it==queue.end()) // then ensure a term for any |retained| is present
 	result.emplace_back(std::move(q),Split_integer(0));
@@ -2135,42 +2135,41 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
       }
     }
     else
-      kl_tab.plug_hole(block.size()-1-z); // not interested in this parameter
+      KL_Q_tab.plug_hole(block.size()-1-z); // not interested in this parameter
   }
-  kl_tab.fill(); // fill whole table; we might go beyond |size()-1-start|
+  KL_Q_tab.fill(); // fill whole table; we might go beyond |size()-1-start|
 
   int_Vector value_at_minus_1;
-  value_at_minus_1.reserve(kl_tab.pol_store().size());
-  for (const auto& entry : kl_tab.pol_store())
+  value_at_minus_1.reserve(KL_Q_tab.pol_store().size());
+  for (const auto& entry : KL_Q_tab.pol_store())
   { int val = 0;
     for (unsigned d=entry.size(); d-->0;)
       val = static_cast<int>(entry[d])-val; // Horner evaluate polynomial at -1
     value_at_minus_1.push_back(val);
   }
 
-  BitMap retained(block.size());
   const RankFlags singular = block.singular(bm,gamma); // singular simple coroots
   auto it = result.begin();
-  for (BlockElt z=0; z<block.size(); ++z)
-    if (heights[z]<=height_bound) // skip block element not recorded in |result|
-    // now |it->first == sr(block.representative(elt),bm,gamma)|
-    { if (retained.set_to(z,heights[z]>=low_mark and block.survives(z,singular)))
+  for (BlockElt z : retained) // run over block elements recorded in |result|
+    // now |it->first == sr(block.representative(z),bm,gamma)|
+    { if (heights[z]>=low_mark and block.survives(z,singular))
 	++it; // leave survivors at |gamma|
       else
       { assert(it->second.is_zero()); // |queue| cannot have non final parameter
+	retained.remove(z);
 	result.erase(it); // drop term; |it| now points to next term
       }
     }
   result.reverse(); // we shall need to traverse elements downwards in |block|
 
-  // viewed from |block|, the |kl_tab| is lower triangular
+  // viewed from |block|, the |KL_Q_tab| is lower triangular
   // build its transpose, restricted to |retained|, and evaluated at $q=-1$
   int_Matrix Q_mat (retained.size()); // initialise to identity matrix
   unsigned int i=0,j;
   unsigned int const top=block.size()-1;
   for (auto it=retained.begin(); it(); ++it,++i)
     for (auto jt=(j=i+1,std::next(it)); jt(); ++jt,++j)
-      Q_mat(i,j) = value_at_minus_1[kl_tab.KL_pol_index(top-*jt,top-*it)];
+      Q_mat(i,j) = value_at_minus_1[KL_Q_tab.KL_pol_index(top-*jt,top-*it)];
 
   int_Matrix signed_P = inverse_upper_triangular(Q_mat);
   BitMap odd_length(signed_P.n_rows());
@@ -2273,37 +2272,42 @@ SR_poly Rep_table::KL_column_at_s_to_height (StandardRepr p, level height_bound)
   if (p.height()>height_bound)
     return result;
 
-  BlockElt z; block_modifier bm;
-  auto& block = lookup_full_block(p,z,bm); // also makes |p| dominant
+  BlockElt start; block_modifier bm;
+  auto& block = lookup_full_block(p,start,bm); // also makes |p| dominant
 
   const auto& gamma = p.gamma();
   assert(is_dominant_ratweight(root_datum(),gamma));
-  auto dual_block = blocks::Bare_block::dual(block);
-  kl::KL_table& kl_tab = dual_block.KL_tab(nullptr,1);
-  // create KL table only minimally filled
 
   // now fill remainder up to height; prepare for restriction to this subset
   BitMap retained(block.size());
 
-  for (BlockElt x=0; x<block.size(); ++x)
-  { StandardRepr q = sr(block.representative(x),bm,gamma);
-    if (not retained.set_to(x,q.height()<=height_bound))
-      kl_tab.plug_hole(block.size()-1-x); // not interested in this parameter
+  for (BlockElt z=0; z<block.size(); ++z)
+  { StandardRepr q = sr(block.representative(z),bm,gamma);
+    retained.set_to(z,q.height()<=height_bound);
   }
-  kl_tab.fill(); // fill whole table, except the plugged holes
 
-  retained.clear(z+1,block.size()); // only the part from |p| on interests us
+  kl::KL_table& KL_Q_tab // table of KL $Q$-polynomials; empty table first time
+    = block.dual_KL_tab(&KL_poly_hash);
+  for (BlockElt z=0; z<block.size(); ++z)
+    if (retained.isMember(z))
+      KL_Q_tab.unplug_hole(block.size()-1-z);
+    else
+      KL_Q_tab.plug_hole(block.size()-1-z); // not interested in this parameter
+
+  KL_Q_tab.fill(); // fill whole table, except the plugged holes
+
+  retained.clear(start+1,block.size()); // only the part from |p| on interests us
 
   const RankFlags singular = block.singular(bm,gamma); // singular simple coroots
-  for (auto elt: retained) // don't increment |it| here
-    if (not block.survives(elt,singular))
-      retained.remove(elt); // at the dual (Q) side we just ignore non-finals
+  for (auto z: retained) // don't increment |it| here
+    if (not block.survives(z,singular))
+      retained.remove(z); // at the dual (Q) side we just ignore non-finals
 
-  assert(retained.isMember(z)); // since |p| was final
+  assert(retained.isMember(start)); // since |p| was final
 
   matrix::Vector<Split_integer> value_at_s; // polynomial evaluations at $q=s$
-  value_at_s.reserve(kl_tab.pol_store().size());
-  for (auto& entry : kl_tab.pol_store())
+  value_at_s.reserve(KL_Q_tab.pol_store().size());
+  for (auto& entry : KL_Q_tab.pol_store())
   { Split_integer val (0);
     for (unsigned d=entry.size(); d-->0;)
       val.times_s() += static_cast<int>(entry[d]); // Horner evaluate at s
@@ -2317,13 +2321,13 @@ SR_poly Rep_table::KL_column_at_s_to_height (StandardRepr p, level height_bound)
   { unsigned int i=0,j; unsigned int const top=block.size()-1;
     for (auto it=retained.begin(); it(); ++it,++i)
       for (auto jt=(j=i+1,std::next(it)); jt(); ++jt,++j)
-	Q_mat(i,j) = value_at_s[kl_tab.KL_pol_index(top-*jt,top-*it)];
+	Q_mat(i,j) = value_at_s[KL_Q_tab.KL_pol_index(top-*jt,top-*it)];
   }
 
   auto signed_P = inverse_upper_triangular(Q_mat);
   // with signs in place, the alternating sum is obtained without any effort
 
-  { const unsigned int j = retained.position(z); // final column
+  { const unsigned int j = retained.position(start); // final column
     auto it = retained.begin();
     for (unsigned int i=0; i<=j; ++i,++it)
       result.add_term(block.sr(*it,bm,gamma),signed_P(i,j));

@@ -55,6 +55,8 @@ namespace blocks {
 
 /******** type definitions **************************************************/
 
+class Bare_block; // predeclare a derived class
+
 // The class |BlockBase| serves external functionality, not block construction
 class Block_base
 {
@@ -97,7 +99,8 @@ protected: // all fields may be set in a derived class constructor
   // possible tables of Bruhat order and Kazhdan-Lusztig polynomials
   std::vector<std::unique_ptr<BlockEltList> > partial_Hasse_diagram;
   std::unique_ptr<BruhatOrder> d_bruhat;
-  std::unique_ptr<kl::KL_table> KL_tab_ptr;
+  std::unique_ptr<Bare_block> dual_ptr;
+  std::unique_ptr<kl::KL_table> KL_P_ptr,KL_Q_ptr;
 
 public:
 // constructors and destructors
@@ -200,7 +203,8 @@ public:
   kl::KL_table& KL_tab // create, fiil, and return KL table
     (KL_hash_Table* pol_hash, // extend hash table of KL polynomials if provided
      BlockElt limit=0, bool verbose=false) // default to silently fill entirely
-  { fill_KL_tab(limit,pol_hash,verbose); return *KL_tab_ptr; }
+  { fill_KL_tab(limit,pol_hash,verbose); return *KL_P_ptr; }
+  kl::KL_table& dual_KL_tab(KL_hash_Table* pol_hash); // create empty table
 
   bool has_KL_column(BlockElt j) const;
 

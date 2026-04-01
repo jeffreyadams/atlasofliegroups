@@ -101,7 +101,7 @@ KL_table::KL_table(const Block_base& b, KL_hash_Table* pol_hash)
   , own(pol_hash!=nullptr ? nullptr : new KLStore{Zero,One})
   , storage_pool(pol_hash!=nullptr ? pol_hash->pool() : *own)
 {
-  d_holes.fill();
+  d_holes.fill(); // by default request computation of all columns
 }
 
 /******** copy, assignment and swap ******************************************/
@@ -195,6 +195,12 @@ Poly_hash_export KL_table::polynomial_hash_table ()
 void KL_table::plug_hole(BlockElt y)
 { assert(y<d_holes.capacity());
   d_holes.remove(y);
+}
+
+void KL_table::unplug_hole(BlockElt y)
+{ assert(y<d_holes.capacity());
+  if (d_KL[y].size()==0) // action is only needed for not yet computed columns
+    d_holes.insert(y);
 }
 
 // Fill (or extend) the KL- and mu-lists up to |limit|
@@ -953,13 +959,14 @@ void KL_table::verbose_fill(BlockElt limit)
       BlockElt y_start = l==minLength ? first_hole() : length_less(l);
       BlockElt y_limit = l<maxLength ? length_less(l+1) : limit;
       for (BlockElt y=y_start; y<y_limit; ++y)
-      {
-	std::cerr << y << "\r";
+	if (d_holes.isMember(y))
+	{
+	  std::cerr << y << "\r";
 
-	nr_of_prim_nulls += fill_KL_column(klv,y,hash);
-	prim_size += d_KL[y].size();
-	d_holes.remove(y);
-      }
+	  nr_of_prim_nulls += fill_KL_column(klv,y,hash);
+	  prim_size += d_KL[y].size();
+	  d_holes.remove(y);
+	}
 
       // now length |l| is completed
       size_t p_capacity // currently used memory for polynomials storage
