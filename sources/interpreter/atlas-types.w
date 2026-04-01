@@ -1138,7 +1138,7 @@ formed.
 @< Function definitions @>=
 
 const WeylGroup& root_datum_value::W () const
-{ if (W_ptr.get()==nullptr)
+{ if (W_ptr==nullptr)
     W_ptr = std::make_shared<WeylGroup>(val.Cartan_matrix());
   return *W_ptr;
 }
@@ -1146,7 +1146,7 @@ const WeylGroup& root_datum_value::W () const
 shared_root_datum root_datum_value::dual() const
 { PreRootDatum pre(val); pre.dualise();
   auto result = build(std::move(pre));
-  if (result->W_ptr.get()==nullptr)
+  if (result->W_ptr==nullptr)
     W(),result->W_ptr = W_ptr;
     // ensure we have a Weyl group, then share pointer
   return result;
@@ -1371,13 +1371,13 @@ void root_datum_eq_wrapper (eval_level l)
 { shared_root_datum rd1 = get<root_datum_value>();
   shared_root_datum rd0 = get<root_datum_value>();
   if (l!=eval_level::no_value)
-    push_value(whether(rd0.get()==rd1.get())); // compare pointers
+    push_value(whether(rd0==rd1)); // compare pointers
 }
 void root_datum_neq_wrapper (eval_level l)
 { shared_root_datum rd1 = get<root_datum_value>();
   shared_root_datum rd0 = get<root_datum_value>();
   if (l!=eval_level::no_value)
-    push_value(whether(rd0.get()!=rd1.get())); // compare pointers
+    push_value(whether(rd0!=rd1)); // compare pointers
 }
 @)
 void datum_Cartan_wrapper(eval_level l)
@@ -3391,13 +3391,13 @@ void inner_class_eq_wrapper(eval_level l)
 { shared_inner_class G = get<inner_class_value>();
   shared_inner_class H = get<inner_class_value>();
   if (l!=eval_level::no_value)
-    push_value(whether(G.get()==H.get())); // test identical objects
+    push_value(whether(G==H)); // test identical objects
 }
 void inner_class_neq_wrapper(eval_level l)
 { shared_inner_class G = get<inner_class_value>();
   shared_inner_class H = get<inner_class_value>();
   if (l!=eval_level::no_value)
-    push_value(whether(G.get()!=H.get())); // test identical objects
+    push_value(whether(G!=H)); // test identical objects
 }
 
 @)
@@ -3929,14 +3929,14 @@ void real_form_eq_wrapper(eval_level l)
 { shared_real_form y = get<real_form_value>();
   shared_real_form x = get<real_form_value>();
   if (l!=eval_level::no_value)
-    push_value(whether(x.get()==y.get() or x->val==y->val));
+    push_value(whether(x==y or x->val==y->val));
 }
 
 void real_form_neq_wrapper(eval_level l)
 { shared_real_form y = get<real_form_value>();
   shared_real_form x = get<real_form_value>();
   if (l!=eval_level::no_value)
-    push_value(whether(x.get()!=y.get() and x->val!=y->val));
+    push_value(whether(x!=y and x->val!=y->val));
 }
 
 @*2 Dual real forms.
@@ -4367,7 +4367,7 @@ returned as a list of integral values.
 void fiber_partition_wrapper(eval_level l)
 { shared_real_form rf= get<real_form_value>();
   shared_Cartan_class cc(get<Cartan_class_value>());
-  if (rf->ic_ptr.get()!=cc->ic_ptr.get())
+  if (rf->ic_ptr!=cc->ic_ptr)
     throw runtime_error
     ("Inner class mismatch between real form and Cartan class");
 @.Inner class mismatch...@>
@@ -4428,7 +4428,7 @@ bits corresponding to the simple imaginary roots.
 void print_gradings_wrapper(eval_level l)
 { shared_real_form rf= get<real_form_value>();
 @/shared_Cartan_class cc(get<Cartan_class_value>());
-  if (rf->ic_ptr.get()!=cc->ic_ptr.get())
+  if (rf->ic_ptr!=cc->ic_ptr)
     throw runtime_error
     ("Inner class mismatch between real form and Cartan class");
 @.Inner class mismatch...@>
@@ -4948,7 +4948,7 @@ of the data structure that is constructed and stored here.
 
 @< Local function def...@>=
 bool is_dual(const shared_inner_class& ic0, const shared_inner_class& ic1)
-{ return ic0->dual_datum.get()==ic1->datum.get() and
+{ return ic0->dual_datum==ic1->datum and
   ic0->val.dualDistinguished()==ic1->val.distinguished();
 }
 void Fokko_block_wrapper(eval_level l)
@@ -5026,7 +5026,7 @@ void block_index_wrapper(eval_level l)
 { shared_KGB_elt y = get<KGB_elt_value>();
   shared_KGB_elt x = get<KGB_elt_value>();
   shared_Block b = get<Block_value>();
-  if (b->rf->ic_ptr.get()!=x->rf->ic_ptr.get())
+  if (b->rf->ic_ptr!=x->rf->ic_ptr)
     throw runtime_error("Real form not in inner class of block");
   if (not is_dual(b->rf->ic_ptr,y->rf->ic_ptr))
     throw runtime_error("Dual real form not in inner class of block");
@@ -9123,7 +9123,7 @@ void print_realweyl_wrapper(eval_level l)
 { shared_Cartan_class cc(get<Cartan_class_value>());
   shared_real_form rf= get<real_form_value>();
 @)
-  if (rf->ic_ptr.get()!=cc->ic_ptr.get())
+  if (rf->ic_ptr!=cc->ic_ptr)
     throw runtime_error("Inner class mismatch between arguments");
 @.Inner class mismatch...@>
   BitMap b(rf->val.innerClass().Cartan_set(rf->val.realForm()));

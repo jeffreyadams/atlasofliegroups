@@ -2255,7 +2255,7 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr sr) // |sr| must be final
 
 bool Rep_table::has_KL_column(StandardRepr sr) // |sr| must be final
 {
-  normalise(sr); // implies that |sr| it will appear at the top of its own block
+  normalise(sr); // implies that |sr| will appear at the top of its own block
   assert(is_final(sr));
 
   BlockElt z; block_modifier bm;

@@ -2702,7 +2702,7 @@ instances.
 void call_expression::evaluate(level l) const
 { function->eval();
   auto f = std::dynamic_pointer_cast<const function_base>(pop_value());
-  if (f.get()==nullptr)
+  if (f==nullptr)
     throw logic_error
       ("Non-function value found for function in a call expression");
   f->maybe_push(f); // provide shared pointer to self for recursive functions
@@ -5710,7 +5710,7 @@ this branch is chosen, and suppress creating a |frame| for the branch.
 discrimination expression.
 
 @< Check that |choices[k]| has not been filled before... @>=
-{ if (choices[k].second.get()!=nullptr)
+{ if (choices[k].second!=nullptr)
   { o << "Multiple branches with label "
       << main_hash_table->name_of(branch.label);
     throw expr_error(e,o.str());
@@ -5810,7 +5810,7 @@ all match for one of the candidates.
 branch was already defined.
 
 @< Use |branch| to set |default_choice| @>=
-{ if (default_choice.get()!=nullptr)
+{ if (default_choice!=nullptr)
     throw expr_error(e,"Multiple default branches present");
   default_choice = convert_expr(branch.branch,tp);
 }
@@ -5830,10 +5830,10 @@ the identifier pattern of defaulted branches be empty, the value from the
 {
   if (n_branches>n_variants)
     throw expr_error(e,"Spurious default branch present");
-  if (default_choice.get()!=nullptr)
+  if (default_choice!=nullptr)
   // if a default was given, insert for omitted branches
   { for (auto it=choices.begin(); it!=choices.end(); ++it)
-      if (it->second.get()==nullptr)
+      if (it->second==nullptr)
         *it = choice_part(id_pat(),default_choice);
               // share |default_choice| here
   }
@@ -5849,7 +5849,7 @@ among the variants.
 @< Report a missing branch @>=
 {
   auto it=choices.begin();
-  while(it->second.get()!=nullptr) ++it;
+  while(it->second!=nullptr) ++it;
   auto tag = candidates.front()->fields[it-choices.begin()];
   if (tag==type_binding::no_id)
     o << "Missing branch for anonymous variant " << it-choices.begin();
@@ -6965,7 +6965,7 @@ void counted_for_expression<flags>::print(std::ostream& out) const
 { if (has_frame(flags))
     out << " for " << main_hash_table->name_of(id) << ": " << *count;
   else out << " for : " << *count;  // omit nonexistent identifier
-  if (bound.get()!=nullptr)
+  if (bound!=nullptr)
     out << " from " << *bound;
   print_body(out,body,flags);
 }
@@ -7103,7 +7103,7 @@ anyway) we can omit trying to evaluate |bound| here.
 template <unsigned flags>
 void counted_for_expression<flags>::evaluate(level l) const
 { const auto n=(count->eval(),get<int_value>()->long_val());
-  const auto lwb=(bound.get()==nullptr
+  const auto lwb=(bound==nullptr
           ? 0 : (bound->eval(),get<int_value>()->long_val()));
   long long int c = n<0 ? 0 : n; // no negative size result
 
