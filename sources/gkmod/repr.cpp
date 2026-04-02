@@ -2263,6 +2263,15 @@ bool Rep_table::has_KL_column(StandardRepr sr) // |sr| must be final
   return block.has_KL_column(z);
 }
 
+bool Rep_table::has_KL_Q_column(StandardRepr sr) // |sr| must be final
+{
+  normalise(sr); // implies that |sr| will appear at the top of its own block
+
+  BlockElt z; block_modifier bm;
+  auto& block = lookup(sr,z,bm);
+  return block.has_KL_Q_column(z);
+}
+
 SR_poly Rep_table::KL_column_at_s_to_height (StandardRepr p, level height_bound)
 {
   normalise(p); // implies that |p| it will appear at the top of its own block

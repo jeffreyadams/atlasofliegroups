@@ -2303,9 +2303,6 @@ set is_descent ((vec,Param) ap) = bool: status(ap)<4
 set is_ascent ((int,Param) ip) = bool: not is_descent(ip)
 set is_ascent ((vec,Param) ap) = bool: not is_descent(ap)
 
-set lookup (Param p, [Param] block) = int:
-  let i=#block-1 in while i>=0 and block[i]!=p do i-:=1 od; i
-
 { (moved from hermitian.at) orientation_number_term(orientation_nr(p),q) =
   s^{[\ell_0(p)-\ell_0(q)]/2} which should be defined and gives 1 or s
 }
@@ -2548,6 +2545,8 @@ set index_in ([Param] L) = (Param->int): { an efficiency hack: }
      then P = G.null_module + for q@i in L do (i+1,q) od
   in (Param p) int: P[p].int_part-1
   fi
+
+set lookup (Param p, [Param] block) = int: index_in(block)(p)
 
 {                               Miscellaneous                           }
 

@@ -402,6 +402,10 @@ void Block_base::fill_Bruhat()
 bool Block_base::has_KL_column(BlockElt j) const
 { return KL_P_ptr!=nullptr and j<KL_P_ptr->first_hole(); }
 
+bool Block_base::has_KL_Q_column(BlockElt j) const
+{ return dual_ptr!=nullptr and KL_Q_ptr!=nullptr
+    and size()-1-j<KL_Q_ptr->first_hole(); }
+
 // computes and stores the KL polynomials
 void Block_base::fill_KL_tab(BlockElt limit,
 			     KL_hash_Table* pol_hash, bool verbose)

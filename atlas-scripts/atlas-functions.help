@@ -1162,6 +1162,18 @@ KL_sum_at_s_to_height: (Param,int->ParamPol): truncated version of KL_sum_at_s
   efficient than using KL_sum_at_s and truncating the result. When limit is
   negative no truncation is done, and this function should give the same result
   as KL_sum_at_s; yet the implementation remains different (via a dual block).
+stored_Q_polynomials: (Param,Param->(void|[Param,vec])) Q-polynomials if stored
+  The functions block_deform and KL_sum_at_s_to_height use the KL Q-polynomials
+  (which are the KL polynomials on the formal dual of the block), and these are
+  stored internally to avoid recomputation. This function gives access to those
+  rows of full Q-polynomials that were so computed and stored, represented as a
+  list of (parameter,polynomial) pairs: when called with parameter x, the result
+  will be a list of pairs (y,Q_{x,y}), with y running over all applicable (not
+  necessarily final) parameters in the block of x. Since this function will not
+  initiate the computation of any $Q$ polynomials, it is useful to know that
+  computing KL_sum_at_s_to_height(p,-1) forces the computation of all
+  Q-polynomials in the block of p, and that KL_sum_at_s_to_height(p,height(p)),
+  while forcing fewer computations, ensures success of stored_Q_polynomials(p).
 
 twisted_KL_sum_at_s: (Param->ParamPol): KL_sum_at_s, twisted KLV polynomials
   This does the same sum as KL_sum_at_s, but using twisted KLV polynomials

@@ -207,6 +207,7 @@ public:
   kl::KL_table& dual_KL_tab(KL_hash_Table* pol_hash); // create empty table
 
   bool has_KL_column(BlockElt j) const;
+  bool has_KL_Q_column(BlockElt j) const;
 
  protected:
   void set_Bruhat_covered (BlockElt z, BlockEltList&& covered);
