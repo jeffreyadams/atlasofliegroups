@@ -4551,7 +4551,7 @@ template <typename D> // |D| is a type derived from |value_base|
   return std::static_pointer_cast<const D>(pop_value());
 #else
   std::shared_ptr<const D> p=std::dynamic_pointer_cast<const D>(pop_value());
-  if (p.get()==nullptr)
+  if (p==nullptr)
   { std::ostringstream o; o << "Argument is no " << D::name();
     throw logic_error(o.str());
   }

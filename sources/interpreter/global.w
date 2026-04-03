@@ -4050,14 +4050,14 @@ character of a string into a numeric value.
 
 @< Local function definitions @>=
 
-void string_to_ascii_wrapper(eval_level l)
+void string_to_ASCII_wrapper(eval_level l)
 { shared_string c=get<string_value>();
   if (l!=eval_level::no_value)
     push_value(std::make_shared<int_value>
       (c->val.size()==0 ? -1 : (unsigned char)c->val[0]));
 }
 @)
-void ascii_char_wrapper(eval_level l)
+void ASCII_char_wrapper(eval_level l)
 { int c=get<int_value>()->int_val();
   if ((c<' ' and c!='\n') or c>'~')
   { std::ostringstream o;
@@ -4132,8 +4132,8 @@ install_function(string_geq_wrapper,">=","(string,string->bool)");
 install_folding_function(string_concatenate_wrapper,@|"##",
   "(string,string->string)",1);
 install_folding_function(concatenate_strings_wrapper,"##","([string]->string)");
-install_folding_function (string_to_ascii_wrapper,"ascii","(string->int)");
-install_folding_function(ascii_char_wrapper,"ascii","(int->string)");
+install_folding_function (string_to_ASCII_wrapper,"ASCII","(string->int)");
+install_folding_function(ASCII_char_wrapper,"ASCII","(int->string)");
 install_function(readline_completions_wrapper,@|"readline_completions",
    "(string->[string])");
 

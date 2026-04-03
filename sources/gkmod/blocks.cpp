@@ -166,7 +166,7 @@ Block_base::Block_base(const KGB& kgb)
   , dd(kgb.innerClass().root_datum().Cartan_matrix())
   , partial_Hasse_diagram()
   , d_bruhat(nullptr)
-  , KL_tab_ptr(nullptr)
+  , KL_P_ptr(nullptr)
 {
 } // |Block_base::Block_base|
 
@@ -176,7 +176,7 @@ Block_base::Block_base(unsigned int integral_rank)
   , dd()
   , partial_Hasse_diagram()
   , d_bruhat(nullptr)
-  , KL_tab_ptr(nullptr)
+  , dual_ptr(nullptr), KL_P_ptr(nullptr), KL_Q_ptr(nullptr)
 {}
 
 Block_base::Block_base(const Block_base& b) // copy constructor
@@ -184,7 +184,7 @@ Block_base::Block_base(const Block_base& b) // copy constructor
   , dd(b.dd)
   , partial_Hasse_diagram()
   , d_bruhat(nullptr) // don't care to copy; is empty in |Block::build| anyway
-  , KL_tab_ptr(nullptr)  // likewise
+  , dual_ptr(nullptr), KL_P_ptr(nullptr), KL_Q_ptr(nullptr)  // likewise
 {
 #ifdef VERBOSE // then show that we're called (does not actually happen)
   std::cerr << "copying a block" << std::endl;
@@ -370,6 +370,16 @@ containers::sl_list<BlockElt>
 
 // manipulators
 
+kl::KL_table& Block_base::dual_KL_tab(KL_hash_Table* pol_hash)
+{ // create empty table
+  if (dual_ptr==nullptr)
+    dual_ptr.reset(new Bare_block(Bare_block::dual(*this)));
+  if (KL_Q_ptr==nullptr)
+    KL_Q_ptr.reset(new kl::KL_table(*dual_ptr,pol_hash)); // and the |Q| table
+  return *KL_Q_ptr;
+}
+
+
 void Block_base::set_Bruhat_covered (BlockElt z, BlockEltList&& covered)
 {
   assert(z<size());
@@ -378,28 +388,32 @@ void Block_base::set_Bruhat_covered (BlockElt z, BlockEltList&& covered)
     assert(x<z);
 #endif
   partial_Hasse_diagram.resize(size()); // create empty slots for whole block
-  if (partial_Hasse_diagram[z].get()==nullptr)
+  if (partial_Hasse_diagram[z]==nullptr)
     partial_Hasse_diagram[z].reset(new BlockEltList(std::move(covered)));
 }
 // Construct the BruhatOrder. Commit-or-rollback is guaranteed.
 void Block_base::fill_Bruhat()
 {
-  if (d_bruhat.get()==nullptr) // if any order is previously stored, just use it
+  if (d_bruhat==nullptr) // if any order is previously stored, just use it
     d_bruhat.reset // otherwise compute it, maybe using |partial_Hasse_diagram|
       (new BruhatOrder(complete_Hasse_diagram(*this,partial_Hasse_diagram)));
 }
 
 bool Block_base::has_KL_column(BlockElt j) const
-{ return KL_tab_ptr.get()!=nullptr and j<KL_tab_ptr->first_hole();
-}
+{ return KL_P_ptr!=nullptr and j<KL_P_ptr->first_hole(); }
+
+bool Block_base::has_KL_Q_column(BlockElt j) const
+{ return dual_ptr!=nullptr and KL_Q_ptr!=nullptr
+    and size()-1-j<KL_Q_ptr->first_hole(); }
+
 // computes and stores the KL polynomials
 void Block_base::fill_KL_tab(BlockElt limit,
 			     KL_hash_Table* pol_hash, bool verbose)
 {
-  if (KL_tab_ptr.get()==nullptr) // do this only the first time
-    KL_tab_ptr.reset(new kl::KL_table(*this,pol_hash));
+  if (KL_P_ptr==nullptr) // do this only the first time
+    KL_P_ptr.reset(new kl::KL_table(*this,pol_hash));
   // now extend tables to contain |limit-1|, or fill entirely if |limit==0|
-  KL_tab_ptr->fill(limit,verbose);
+  KL_P_ptr->fill(limit,verbose);
 }
 
 // free function
@@ -1361,10 +1375,10 @@ ext_block::ext_block& common_block::extended_block
 // provide access to our polynomial hash table, creating it if necessary
 kl::Poly_hash_export common_block::KL_hash(KL_hash_Table* KL_pol_hash)
 {
-  if (KL_tab_ptr.get()==nullptr) // do this only the first time
-    KL_tab_ptr.reset(new kl::KL_table(*this,KL_pol_hash));
+  if (KL_P_ptr==nullptr) // do this only the first time
+    KL_P_ptr.reset(new kl::KL_table(*this,KL_pol_hash));
 
-  return KL_tab_ptr-> polynomial_hash_table();
+  return KL_P_ptr-> polynomial_hash_table();
 } // |common_block::KL_hash|
 
 #ifndef NDEBUG
@@ -1430,14 +1444,14 @@ void common_block::swallow
       c=embed[c]; // translate in place
     set_Bruhat_covered(embed[z],std::move(covered));
   }
-  if (sub.KL_tab_ptr!=nullptr)
+  if (sub.KL_P_ptr!=nullptr)
   {
     // ensure existence of polynomial hash table; wrap up reference to it
     kl::Poly_hash_export hash_object = KL_hash(KL_pol_hash);
-    assert (KL_tab_ptr.get()!=nullptr); // because |KL_hash| built |hash|
+    assert (KL_P_ptr!=nullptr); // because |KL_hash| built |hash|
 
     // now swallow the poylnomial hash table of |sub| into ours
-    KL_tab_ptr->swallow(std::move(*sub.KL_tab_ptr),embed,hash_object.ref);
+    KL_P_ptr->swallow(std::move(*sub.KL_P_ptr),embed,hash_object.ref);
   }
 
 #if 0
