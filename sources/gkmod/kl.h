@@ -134,6 +134,7 @@ class KL_table
 
   // If some column doesn't interest us, calling |plug_hole| makes it ignored }
   void plug_hole(BlockElt y); // callers responsibility that it won't be used
+  void unplug_hole(BlockElt y); // request ensuring |y| is computed on next fill
 
   // partial fill of columns for holes |<=limit|; fill all holes if |limit==0|
   void fill (BlockElt limit=0, bool verbose=false);

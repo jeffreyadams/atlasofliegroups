@@ -17,7 +17,7 @@
 set type_number (LieType t) = int:
   let codes = simple_factors(t) in assert(@:#codes<=1,"Non-simple Lie type");
   if =#codes then { pure torus } 7
-  else let (c,)=codes[0] in ascii(c)-ascii("A")
+  else let (c,)=codes[0] in ASCII(c)-ASCII("A")
   fi
 
 { same as previous applied to a RootDatum }

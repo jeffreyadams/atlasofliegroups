@@ -504,9 +504,9 @@ set strict_partitions = (int n) [Partition]:
 
 { test if partition is valid (nilpotent orbit) Jordan type in type ABCD }
 set is_valid (string type,Partition P) = bool:
-{ avoid constructing |Lie_type(type[0]+n|, to avoid choking on "B1" and such }
+{ avoid constructing |Lie_type(type[0]+n)|, to avoid choking on "B1" and such }
   P:=P.strip_to_partition; { avoid frequencies of 0 }
-  case ascii(type)-ascii("A")
+  case ASCII(type)-ASCII("A")
   in { type A } true
   , { type B } sum(P).is_odd and
     all(for mult in P.frequencies.even_places do mult.is_even od)
@@ -521,10 +521,10 @@ set is_valid (LieType t) = (Partition->bool):
    let codes = simple_factors(t)
    then (letter,r)= assert(#codes=1,"Non-simple Lie type"); codes[0]
    then n =
-      case ascii(letter)-ascii("A") in r+1, r+r+1, r+r, r+r
+      case ASCII(letter)-ASCII("A") in r+1, r+r+1, r+r, r+r
       else error("Exceptional ",t)
       esac
-in (Partition P) bool: #P = n and is_valid(letter,P)
+in (Partition P) bool: sum(P) = n and is_valid(letter,P)
 
 
 {	Combinatorics specifically for (Weyl groups of) types B,C,D	}

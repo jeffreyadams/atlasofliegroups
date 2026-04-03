@@ -1138,7 +1138,7 @@ formed.
 @< Function definitions @>=
 
 const WeylGroup& root_datum_value::W () const
-{ if (W_ptr.get()==nullptr)
+{ if (W_ptr==nullptr)
     W_ptr = std::make_shared<WeylGroup>(val.Cartan_matrix());
   return *W_ptr;
 }
@@ -1146,7 +1146,7 @@ const WeylGroup& root_datum_value::W () const
 shared_root_datum root_datum_value::dual() const
 { PreRootDatum pre(val); pre.dualise();
   auto result = build(std::move(pre));
-  if (result->W_ptr.get()==nullptr)
+  if (result->W_ptr==nullptr)
     W(),result->W_ptr = W_ptr;
     // ensure we have a Weyl group, then share pointer
   return result;
@@ -1371,13 +1371,13 @@ void root_datum_eq_wrapper (eval_level l)
 { shared_root_datum rd1 = get<root_datum_value>();
   shared_root_datum rd0 = get<root_datum_value>();
   if (l!=eval_level::no_value)
-    push_value(whether(rd0.get()==rd1.get())); // compare pointers
+    push_value(whether(rd0==rd1)); // compare pointers
 }
 void root_datum_neq_wrapper (eval_level l)
 { shared_root_datum rd1 = get<root_datum_value>();
   shared_root_datum rd0 = get<root_datum_value>();
   if (l!=eval_level::no_value)
-    push_value(whether(rd0.get()!=rd1.get())); // compare pointers
+    push_value(whether(rd0!=rd1)); // compare pointers
 }
 @)
 void datum_Cartan_wrapper(eval_level l)
@@ -3392,13 +3392,13 @@ void inner_class_eq_wrapper(eval_level l)
 { shared_inner_class G = get<inner_class_value>();
   shared_inner_class H = get<inner_class_value>();
   if (l!=eval_level::no_value)
-    push_value(whether(G.get()==H.get())); // test identical objects
+    push_value(whether(G==H)); // test identical objects
 }
 void inner_class_neq_wrapper(eval_level l)
 { shared_inner_class G = get<inner_class_value>();
   shared_inner_class H = get<inner_class_value>();
   if (l!=eval_level::no_value)
-    push_value(whether(G.get()!=H.get())); // test identical objects
+    push_value(whether(G!=H)); // test identical objects
 }
 
 @)
@@ -3930,14 +3930,14 @@ void real_form_eq_wrapper(eval_level l)
 { shared_real_form y = get<real_form_value>();
   shared_real_form x = get<real_form_value>();
   if (l!=eval_level::no_value)
-    push_value(whether(x.get()==y.get() or x->val==y->val));
+    push_value(whether(x==y or x->val==y->val));
 }
 
 void real_form_neq_wrapper(eval_level l)
 { shared_real_form y = get<real_form_value>();
   shared_real_form x = get<real_form_value>();
   if (l!=eval_level::no_value)
-    push_value(whether(x.get()!=y.get() and x->val!=y->val));
+    push_value(whether(x!=y and x->val!=y->val));
 }
 
 @*2 Dual real forms.
@@ -4368,7 +4368,7 @@ returned as a list of integral values.
 void fiber_partition_wrapper(eval_level l)
 { shared_real_form rf= get<real_form_value>();
   shared_Cartan_class cc(get<Cartan_class_value>());
-  if (rf->ic_ptr.get()!=cc->ic_ptr.get())
+  if (rf->ic_ptr!=cc->ic_ptr)
     throw runtime_error
     ("Inner class mismatch between real form and Cartan class");
 @.Inner class mismatch...@>
@@ -4429,7 +4429,7 @@ bits corresponding to the simple imaginary roots.
 void print_gradings_wrapper(eval_level l)
 { shared_real_form rf= get<real_form_value>();
 @/shared_Cartan_class cc(get<Cartan_class_value>());
-  if (rf->ic_ptr.get()!=cc->ic_ptr.get())
+  if (rf->ic_ptr!=cc->ic_ptr)
     throw runtime_error
     ("Inner class mismatch between real form and Cartan class");
 @.Inner class mismatch...@>
@@ -4949,7 +4949,7 @@ of the data structure that is constructed and stored here.
 
 @< Local function def...@>=
 bool is_dual(const shared_inner_class& ic0, const shared_inner_class& ic1)
-{ return ic0->dual_datum.get()==ic1->datum.get() and
+{ return ic0->dual_datum==ic1->datum and
   ic0->val.dualDistinguished()==ic1->val.distinguished();
 }
 void Fokko_block_wrapper(eval_level l)
@@ -5027,7 +5027,7 @@ void block_index_wrapper(eval_level l)
 { shared_KGB_elt y = get<KGB_elt_value>();
   shared_KGB_elt x = get<KGB_elt_value>();
   shared_Block b = get<Block_value>();
-  if (b->rf->ic_ptr.get()!=x->rf->ic_ptr.get())
+  if (b->rf->ic_ptr!=x->rf->ic_ptr)
     throw runtime_error("Real form not in inner class of block");
   if (not is_dual(b->rf->ic_ptr,y->rf->ic_ptr))
     throw runtime_error("Dual real form not in inner class of block");
@@ -8564,7 +8564,7 @@ void stored_twisted_full_deform_wrapper(eval_level l)
 }
 
 @ As an experiment, we provide variants of the |full_deform| function, and of
-its twisted counterpart, each with a time-out argument. These function return a
+its twisted counterpart, each with a time-out argument. These functions return a
 value of (the same) union type: if the computation does not finish in the
 allotted time, the return the first (void) variant of the union, and otherwise
 they wrap their result in the second (ordinary) variant of the union.
@@ -8602,7 +8602,11 @@ void timed_full_deform_wrapper(eval_level l)
                main_hash_table->match_literal("done")));
   // and inject into a union
 }
-@)
+
+@ The wrapper for the function |timed_twisted_full_deform| is quite similar.
+
+@< Local function def...@>=
+
 void timed_twisted_full_deform_wrapper(eval_level l)
 { auto period = get<int_value>()->long_val();
   shared_module_parameter p = get<module_parameter_value>();
@@ -8652,11 +8656,27 @@ computes
 $$
   \sum_{x\leq y}(-1)^{l(y)-l(x)}P_{x,y}[q:=s] * x
 $$
-There are in fact two kinds for this function: an ordinary one and one using
-twisted KLV polynomials, computed for the inner class involution. In addition,
-the first kind has a variant that limits its output to those parameter whose
-height does not exceed a given limit, and which can therefore in many cases be
-more efficient in producing those terms.
+Since this function plays an important role in computation, and may take a long
+time to terminate under certain conditions, we provide a number of variants to
+give the user finer control over the computational process.
+
+There is a variant |KL_sum_at_s_to_height| that limits its output to those
+parameters whose height does not exceed a given limit, and which can therefore
+in some cases be more efficient in producing those terms. Since the height limit
+selects a part near the \emph{end} of the block, while the recursion defining
+the polynomials $P_{x,y}$ for some~$y$ depends on the parameters~$x$
+coming \emph{before} it in the block, computing under a height limit gives no
+advantage for this recursion. Therefore the height limited version will compute
+in the formal dual of a block (which in passing implies it cannot use a partial
+block, and will replace any such block by the full block when called), which is
+ordered in the opposite direction, so that the recursion effectively goes in the
+opposite direction. The implemented KLV recursions applied to the dual block
+lead to the $Q$-polynomials for the original block. Once the relevant
+$Q$-polynomials are known, we can deduce the $P$-polynomials by the inversion of
+a triangular matrix of essentially the $Q$-polynomials. The utility of
+|KL_sum_at_s_to_height| is most likely found for parameters near the end of the
+block and for height limits sufficiently low to remove a substantial initial
+part of the block.
 
 @< Local function def...@>=
 void KL_sum_at_s_wrapper(eval_level l)
@@ -8680,11 +8700,16 @@ void KL_sum_at_s_to_ht_wrapper(eval_level l)
       (p->rf,p->rt().KL_column_at_s_to_height(p->val,limit)));
 }
 
-@ Here are two variants of the functions above: the first one returns
-immediately with failure indicated through a union type if the Kazhdan-Lusztig
-table for this real form is not already computed, and otherwise uses the already
-computed value; the second one gives both a height bound and a time-out period,
-so that it too uses a union value to distinguish failure and success.
+@ Here are two variants of the functions above. The first function is like
+|KL_sum_at_s|, but returns immediately if the Kazhdan-Lusztig table for this
+real form is not already computed; the purpose of this is to avoid a long
+computation when an alternative exists. In the absence of already computed
+values, the function indicates this by an empty first variant of a union type,
+whose the second variant indicates and returns the already computed value. The
+function |timed_KL_sum_at_s_to_height| is a variation of
+|KL_sum_at_s_to_height| in which, in addition of the height bound, a time-out
+period is also passed; again a union value is used to distinguish failure and
+success.
 
 @< Local function def...@>=
 void stored_KL_sum_at_s_wrapper(eval_level l)
@@ -8737,11 +8762,80 @@ void timed_KL_sum_at_s_to_ht_wrapper(eval_level l)
   // wrap into union
 }
 
-@ There is also a twisted variant of |KL_sum_at_s|. For now we do not define a
-height-bounded or time-limited version of this function, since these special
-cases are intended for strategic approaches to treating hard cases of unitary
-dual computations for simple groups, which are equal-rank and therefore do not
-require twisted computations.
+@ Since the system sometimes computes and stores the KLV $Q$-polynomials, we
+provide a function that can detect their presence and in that case return them.
+The polynomials are computed and stored for a whole column of the matrix of
+polynomials at once, but they are attached to a reversed and formally dualized
+block, which means that the correspondence to the $Q$ matrix involves both
+reversal of both indices and transposition. It there is efficient to have a
+function that takes only one parameter~$x$ as argument, and upon success returns
+a list of all cases of nonzero polynomials $Q_{x,y}$ with~$y$ in (the remainder
+of) the block of~$x$.
+
+@< Local function def...@>=
+void stored_KL_Q_wrapper(eval_level l)
+{ own_module_parameter p = get_own<module_parameter_value>();
+  test_standard(*p,"Cannot compute Kazhdan-Lusztig Q polynomials");
+  if (l!=eval_level::no_value)
+  {
+    if (p->rt().has_KL_Q_column(p->val))
+    {
+      BlockElt x; repr::block_modifier bm;
+      auto& block = p->rt().lookup_full_block(p->val,x,bm);
+        // also makes |p->val| dominant
+      const auto& gamma = p->val.gamma();
+      const auto last = block.size()-1;
+      kl::KL_table& KL_Q_tab = block.dual_KL_tab(nullptr);
+      sl_list<BlockElt> ys;
+      @< Collect in |ys| block elements |y| with nonzero polynomial $Q_{x,y}$ @>
+      own_row col = std::make_shared<row_value>(ys.size());
+      @< Transfer elements of |ys| to pairs in |col| @>
+      push_value(std::make_shared<union_value>
+        (1,std::move(col),main_hash_table->match_literal("some")));
+    }
+    else
+    { auto nil = std::make_shared<tuple_value>(0); // the void
+      push_value(std::make_shared<union_value>(0,std::move(nil),
+                 main_hash_table->match_literal("none")));
+    }
+  }
+}
+
+@ Collecting the block elements that we need in the result is straightforward:
+for each block element~|y| we test whether $Q_{x,y}\neq0$, in which case we
+include it into~|ys|. Since the zero polynomial is always stored in position~$0$
+of the table of polynomials, we can simply check whether the method
+|KL_table::KL_pol_index| returns a zero index.
+
+@< Collect in |ys| block elements |y| with nonzero polynomial $Q_{x,y}$ @>=
+{ for (BlockElt y=x; y<block.size(); ++y)
+    if (KL_Q_tab.KL_pol_index(last-y,last-x)!=0)
+      ys.push_back(y);
+}
+
+@ Constructing a list of pairs of a parameter (the first index) and the
+$Q$-polynomial is a bit more laborious, but still straightforward.
+
+@< Transfer elements of |ys| to pairs in |col| @>=
+{ unsigned int i=0;
+  for (BlockElt y: ys)
+  {
+    std::shared_ptr<tuple_value> tup = std::make_shared<tuple_value>(2);
+    const auto& pol = KL_Q_tab.KL_pol(last-y,last-x);
+    tup->val[0] = std::make_shared<module_parameter_value>
+       (p->rf,p->rt().sr(block.representative(y),bm,gamma));
+    tup->val[1] = std::make_shared<vector_value>@|(
+      std::vector<int>(pol.begin(),pol.end()));
+    col->val[i++] = std::move(tup);
+  }
+}
+
+@ Here is a final variation of |KL_sum_at_s|, which uses twisted KLV polynomials
+(for the inner class involution). For now we do not define an variants of
+|twisted_KL_sum_at_s| corresponding to the variation of |KL_sum_at_s| given
+above, because those were intended for strategic approaches to treating hardest
+cases of unitary dual computations for simple groups; since those are
+equal-rank, they do not require twisted counterparts.
 
 @< Local function def...@>=
 void twisted_KL_sum_at_s_wrapper(eval_level l)
@@ -8968,6 +9062,8 @@ install_function(stored_KL_sum_at_s_wrapper,@|"stored_KL_sum_at_s"
 		,"(Param->|ParamPol)");
 install_function(timed_KL_sum_at_s_to_ht_wrapper,@|"KL_sum_at_s_to_height"
 		,"(Param,int,int->|ParamPol)");
+install_function(stored_KL_Q_wrapper,@|"stored_KL_Q_polynomials"
+		,"(Param->|[Param,vec])");
 install_function(twisted_KL_sum_at_s_wrapper,@|"twisted_KL_sum_at_s"
                 ,"(Param->ParamPol)");
 install_function(KL_column_wrapper,@|"KL_column","(Param->[int,Param,vec])");
@@ -9216,7 +9312,7 @@ void print_realweyl_wrapper(eval_level l)
 { shared_Cartan_class cc(get<Cartan_class_value>());
   shared_real_form rf= get<real_form_value>();
 @)
-  if (rf->ic_ptr.get()!=cc->ic_ptr.get())
+  if (rf->ic_ptr!=cc->ic_ptr)
     throw runtime_error("Inner class mismatch between arguments");
 @.Inner class mismatch...@>
   BitMap b(rf->val.innerClass().Cartan_set(rf->val.realForm()));

@@ -88,7 +88,7 @@ in
 )
 
 set orbit (string type,Symbol S) = Orbit:
-  case ascii(type)-ascii("B") in orbit_B(S), orbit_C(S)
+  case ASCII(type)-ASCII("B") in orbit_B(S), orbit_C(S)
   else error("wrong type")
   esac
 set orbit (RootDatum rd,Symbol S) = Orbit:
