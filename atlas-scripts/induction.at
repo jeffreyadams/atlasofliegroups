@@ -330,6 +330,7 @@ set coherent_std_imaginary (WeylElt w,Param p) = ParamPol:
 {find w so that w*lambda_dom=lambda, this should be in the imaginary Weyl group
  then compute coherent continuation by passing to the cuspidal Levi M
 }
+{NO GOOD for ext_K_type_formula}
 set standardize (Param p) = ParamPol:
   if is_standard(p) then ParamPol:p
   else p:=p.to_no_Cplus
@@ -453,6 +454,32 @@ set theta_induce_standard (Param p_L,RealForm G) = ParamPol:
     result
   fi
 
+{. Theta-stable (cohomological) parabolic induction of a extended standard module for
+   the Levi L of a theta-stable parabolic; if outside of weakly good range,
+   must apply finalize_extended..}
+set ext_theta_induce_standard (Param p_L,RealForm G) = ParamPol:
+  let L=real_form(x(p_L)), x_G=embed_KGB(x(p_L),G)
+  then shift=rho(G)-rho(L)
+  in assert(@:parabolic_is_theta_stable(make_parabolic(L,G)),
+  "L is not Levi of theta_stable parabolic");
+    if ind_verbose
+    then prints("ext_theta_induce_standard of parameter on L: ",p_L)
+    ; prints("shift (rho_G-rho_L): ", shift)
+    fi;
+  let p_G=parameter(x_G,lambda(p_L)+shift,nu(p_L))
+  in if ind_verbose then prints("p_G before standardization:", p_G) fi;
+  if is_standard(p_G)
+  then
+    if ind_verbose then prints("p_G is standard: ", p_G, ParamPol: p_G) fi;
+    p_G
+  else if ind_verbose then prints("Need to standardize:", p_G) fi;
+       let result = sum(G, for c@p in standardize(p_G)
+    	       	 	   do c*finalize_extended(p, G.distinguished_involution)
+			   od)
+       in if ind_verbose then prints("p_G standardized:", result) fi;
+    result
+  fi
+
 {. Given a ParamPol P, form a new ParamPol by theta-inducing each
    summand. .}
 set theta_induce_parampol (ParamPol P, RealForm G)=ParamPol:
@@ -496,6 +523,12 @@ set theta_induce_irreducible (ParamPol P,RealForm G) = ParamPol:
    let result=null_module(G) in
    for coeff@p in P do result+:=coeff*theta_induce_irreducible_final(p,G) od;
    result
+
+set ext_theta_induce_standard (KType tauL,RealForm G) = KTypePol:
+    let pL = parameter(tauL)
+    in sum(G, for c@p in ext_theta_induce_standard(pL,G)
+    	      do c*K_type_pol_extended(p,G.distinguished_involution)
+	      od)
 
 set delta_on_simple(InnerClass ic) = [int]:
     let (r,SR,delta) = (ic.semisimple_rank, ic.simple_roots, ic.distinguished_involution)

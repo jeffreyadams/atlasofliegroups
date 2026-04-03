@@ -54,8 +54,8 @@ set is_done(maybe_KTP P) = bool:
 
 set is_done(maybe_PP P) = bool:
     case P
-    | timed_out_PP: false
-    | done_PP: true
+    | none: false
+    | some: true
     esac
 
 set character_formula (Param p) = ParamPol:
@@ -142,13 +142,15 @@ set diff_frac = rat: 1/3 {1/4 better than 1/8 for E7_s spherical}
 {formerly (GAM - LAM)*diff_frac}
 is_unitary_to_ht could be faster. So largest reasonable target height
 is (GAM-LAM)*diff_frac. INCREASE to use to_ht more often}
-set diff_char_frac = rat: 1/8 {1/8 and 1/12 used a bit more memory and time in
+{3/4 best for Spin(6,6) after 3/31/26 MvL improvements}
+set diff_char_frac = rat: 1/4 {1/8 and 1/12 used a bit more memory and time in
     		     	       spherical E7_s}
 		{2/5/26: for Spin(6,6), .20 was faster than .15 or .25}
 		{2/12/26: 1/3 was better than 1/5 or 1/2 for E7_s (20925,[ 1, 2, 2, 1, 1, 2, 2 ]/1)}
 		{2/14/26: 1/4 better than 1/3 for E7_s[20000:20025]}
 		{2/15/26: 1/8 much better than 1/4 20800-20810}
-set diff_KGB_char_frac = rat: 9/10
+		{4/2/26: 1/4 best for Spin(6,6), with diff_KGB_char_frac 1/2?}
+set diff_KGB_char_frac = rat: 1/2 {9/10} {switch 4/2/26 based on Spin(6,6), E7_s near 17000}
 
 {if LAM < lam_frac*GAM (big nu), don't try to_ht }
 set lam_frac = rat: 1/6 {2/3}
@@ -277,27 +279,34 @@ set KL_sum_at_s(Param p) = ParamPol:
 set KL_new_count = int:0
 set KL_false_low_count = int:0
 
+set stored_count = int:0
+set unstored_count = int:0
 set KL_sum_at_s_to_ht_new(int HT) = (Param p) ParamPol: {should check whether library knows KL_sum_at_s, use that}
     let start = elapsed_ms()
     in if HT < 0
        then KL_sum_at_s(p)
        else let mKLS = stored_KL_sum_at_s(p)
        	    in case mKLS
-	       | timed_out_PP: if low_char(p,HT)
-       	       	 	    then charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use();
-			    	 KL_sum_at_s_to_height(p,HT) 
-       			    else let (below,) = height_split(KL_sum_at_s(p),HT)
+	       | none: unstored_count+:=1;
+	       	 	       if low_char(p,HT)
+       	       	 	       then let ans = KL_sum_at_s_to_height(p,HT)
+			    	    in charTimeToHt +:= elapsed_ms() - start;
+				       char_counter_to_ht.use();
+			    	       ans
+       			       else let (below,) = height_split(KL_sum_at_s(p),HT)
     	    		    	 in KL_false_low_count+:=1; below
 			    fi
-	       | done_PP(KLS): let (below,) = height_split(KLS,HT)
-    	       	 	    in KL_new_count +:= 1;
-			       charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use();
-			       below
+	       | some(KLS): stored_count+:=1;
+	       	 	       let (below,) = height_split(KLS,HT)
+    	       	 	       in KL_new_count +:= 1;
+			       	  charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use();
+			          below
 	       esac
        fi
 
-set KL_sum_to_ht_new_flag = false
+set KL_sum_to_ht_new_flag = {true} false
 
+{should test that x is pretty big??}
 set KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol: {should check
     whether library knows KL_sum_at_s, use that}
     if KL_sum_to_ht_new_flag then return  KL_sum_at_s_to_ht_new(HT)(p) fi;
@@ -305,20 +314,62 @@ set KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol: {should check
     in if HT < 0
        then KL_sum_at_s(p)
        elif low_char(p,HT)
-       then charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use(); KL_sum_at_s_to_height(p,HT)
+       then let ans = KL_sum_at_s_to_height(p,HT)
+       	    in charTimeToHt +:= elapsed_ms() - start;
+	       char_counter_to_ht.use();
+	       ans
        else let (below,) = height_split(KL_sum_at_s(p),HT), middle = elapsed_ms()
     	    in KL_false_low_count+:=1; below
        fi
 
-
-set KL_sum_at_s_to_ht_inter(int HT) = (Param p,int time) maybe_PP:
+set KL_sum_at_s_to_ht_new_inter(int HT) = (Param p,int time) maybe_PP:
     let start = elapsed_ms()
     in if  HT < 0
-       then KL_sum_at_s(p).done_PP
+       then KL_sum_at_s_to_height(p, -1, time)
+       else let mKLS = stored_KL_sum_at_s(p)
+       	    in case mKLS
+	       | none: unstored_count+:=1;
+	       	 	       if low_char(p,HT)
+       	       	 	       then let ans = KL_sum_at_s_to_height(p,HT,time)
+			    	    in charTimeToHt +:= elapsed_ms() - start;
+				       char_counter_to_ht.use();
+			    	       ans
+       			       else let ans = KL_sum_at_s_to_height(p,-1,time)
+			       	    in charTimeToHt +:= elapsed_ms() - start;
+				       char_counter_to_ht.use();
+				       KL_false_low_count+:=1;
+    	    		    	       case ans
+				       | none: ans
+				       | some(KLS): let (below,) = height_split(KLS, HT)
+				       	 	    in below.some
+				       esac
+			       fi
+	       | some(KLS): stored_count+:=1;
+	       	 	       let (below,) = height_split(KLS,HT)
+    	       	 	       in KL_new_count +:= 1;
+			       	  charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use();
+			          below.some
+	       esac
+        fi
+
+{
        elif low_char(p,HT)
        then KL_sum_at_s_to_height(p,HT,time) next charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use()
        else let (below,) = height_split(KL_sum_at_s(p),HT)
-    	    in below.done_PP
+    	    in below.some
+       fi
+}
+
+{should test that x is pretty big??}
+set KL_sum_at_s_to_ht_inter(int HT) = (Param p,int time) maybe_PP:
+    if KL_sum_to_ht_new_flag then return KL_sum_at_s_to_ht_new_inter(HT)(p, time) fi;
+    let start = elapsed_ms()
+    in if  HT < 0
+       then KL_sum_at_s(p).some
+       elif low_char(p,HT)
+       then KL_sum_at_s_to_height(p,HT,time) next charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use()
+       else let (below,) = height_split(KL_sum_at_s(p),HT)
+    	    in below.some
        fi
 
 set twisted_KL_sum_at_s(Param p) = ParamPol:
@@ -382,19 +433,32 @@ set composition_series_to_height(Param p, int HT) = ParamPol:
 set composition_series_to_height (ParamPol P,int HT) = ParamPol:
     sum(P.real_form, for c@q in P do composition_series_to_height(q, HT) od)
 
+set CSB_KGB_char_frac = 9/10
+set CSB_frac = 1/8
+set lowCSB_time = int:0
+set CS_time = int:0
+
+set lowCSB(Param p, int HT) = bool:
+    if (HT < 0) then return  false fi;
+    let start = elapsed_ms()
+    then ans = p.x.number > CSB_KGB_char_frac*KGB_size(p.real_form)
+	       and (HT < CSB_frac*GAM(p)) {forces LAM < CSB_frac*GAM}
+    in lowCSB_time +:= (elapsed_ms() - start);
+       ans
+
 set composition_series_to_ht(ParamPol P, int HT) = ParamPol:
   if HT.< then return composition_series(P) fi;
   P:=to_ht_PP(HT)(P);
   if #P = 0 then return P fi;
-  let p0 = first_param(P)
-  in if not low_char(p0,HT)
+  let p0 = first_param(P), start = elapsed_ms()
+  in if not lowCSB(p0,HT)
      then to_ht_PP(HT)(composition_series(P))
      else null_module(P) +
      	  while !=P { non null module }
   	  do let (coef,p):term=first_term(P)
      	  in P -:= coef*character_formula_to_ht(p,HT)
      	  ; term
-  	  od
+  	  od next CS_time +:= elapsed_ms() - start
      fi
 set composition_series_to_ht (Param p,int H) = ParamPol: composition_series_to_ht(ParamPol: p, H)
 
@@ -474,13 +538,14 @@ set dualB(Param p) = Param:
     then dx = KGB_elt(dGi,dtheta,dtf)
     in parameter(dx, dlambda, dgamma)
 
+
 {this appears to work even if p is not final, although I'm not sure why}
 {mult of irr q in std p <-> coeff of std pd in char of irr qd}
 {low_diff_char(p,H) is a terrible way to decide whether to use this}
 set composition_series_to_heightB(Param p, int H) = ParamPol:
     if H.< then return composition_series(p) fi;
     let start = elapsed_ms()
-    then answer = if low_diff_char(p,H)
+    then answer = if lowCSB(p,H)
     	 	  then let Bp = partial_block(p), H0 = height(p)
     		       then BpH_js = for q@j in Bp do if q.height <= H
 				     	     	      then [j]
@@ -494,10 +559,11 @@ set composition_series_to_heightB(Param p, int H) = ParamPol:
     		  else let (below,) = height_split(composition_series(p),H)
        	 	       in s_to_1(below)
     		  fi
-     then () = charTime+:= elapsed_ms() - start
-     then () = char_counter.use()
-     in answer
- 
+     {then () = charTime+:= elapsed_ms() - start}
+     {then () = char_counter.use()}
+     in CS_time +:= elapsed_ms() - start;
+     	answer
+
 set composition_series_to_heightB(ParamPol P, int H) = ParamPol:
     map(((Param->ParamPol): (Param p): composition_series_to_heightB(p, H)), P)
 

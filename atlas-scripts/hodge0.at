@@ -261,7 +261,7 @@ called p; the other is s*p. If mu appears with mult m in
 Hodge_0(delta-fixed p), then on the extended group, mu appears as
 (a+bs)mu, with a+b = m. The function Hodge_hash_0 computes m = a+b;
 this function Hodge_twisted_hash_0 is meant to compute a-b. So the
-full extended multiplicity is (hodge - hodge_twisted)/2 + s*(hodge +
+full extended multiplicity is (hodge + hodge_twisted)/2 + s*(hodge -
 hodge_twisted)/2. On an unfixed Param q, with twist q', the extended
 multiplicity in q+q' is (1+s)*hodge.}
 set = ((Split,KType) (c0,mu0), (Split,KType) (c1,mu1)) = bool:
@@ -437,6 +437,12 @@ set Hodge_extended_hash_0_irr(Param p) = KTypePol:
     let (,ans) = Hodge_extended_hash_0(p) in ans
 
 set Hodge_jeff_irr(Param p) = K_type_pol(hodge_grading_irreducible(p)[0])
+
+set is_unitary_Hodge_0_new(Param p) = bool:
+    if is_equal_rank(p.real_form)
+    then is_pure(Hodge_hash_0_irr(p).convert_cform_hermitian)
+    else is_pure(Hodge_extended_hash_0_irr(p).new_convert_cform_hermitian)
+    fi
 
 set is_unitary_Hodge_0(Param p) = bool:
     if is_equal_rank(p.real_form)
