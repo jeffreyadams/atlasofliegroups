@@ -68,7 +68,30 @@ all(for i:#A.signs do A.signs[i]=B.signs[i] od)
 
 set null_K_orbit(string label)=KOrbit:([],label)
 
-set sign_char(int n)=string: if is_even(n) then "+" else "-" fi
+{n>0} 
+set sign_char(int n)=string:
+assert(n>=0, "n<0 in sign_char");
+if is_even(n) then "+" else "-" fi
+
+{z is either an integer n or an integer*s}
+set sign_char(Split z)=string:
+assert(is_pure(z), "z is not pure");
+if s_part(z)=0 then {z is an integer}
+ let w=int_part(z) in
+  if w>0 then
+     if is_even(w) then "+" else "-" fi
+  else
+     if is_even(w) then "*" else "=" fi
+  fi
+else {z is n*s}
+ let w=s_part(z) in
+  if w>0 then
+     if is_even(w) then "-" else "+" fi
+  else
+     if is_even(w) then "=" else "*" fi
+  fi
+fi
+
 
 set alt_string_plus(int k)=string:concat(for i:k do sign_char(i) od)
 set alt_string_minus(int k)=string:concat(for i:k do sign_char(i+1) od)
@@ -264,9 +287,30 @@ set K_orbit(KLocalSystem M)=KOrbit:
 set signature(KLocalSystem Z)=Split:signature(K_orbit(Z))
 
 {KLocalSystem might have negative number is a+bs, make these positive}
-set partition(KLocalSystem M)=Partition:partition(K_orbit(M))  
+set partition(KLocalSystem M)=Partition:partition(K_orbit(M))
 
 set show(KLocalSystem M)=void:show(K_orbit(M))
+
+{just like K orbit but also  print signs}
+set show(KLocalSystem (signs,label))=void:
+let abs_signs=for z in signs  do abs(int_part(z)) + s*abs(s_part(z)) od in 
+for i:#signs downto 0 do
+ let rows=signed_rows(i,abs_signs[i]) in
+ for row in rows do prints(row,"  ",signs[i]) od
+od
+
+
+{set show(KLocalSystem (signs,label))=void:
+for i:#signs downto 0 do
+ let rows=signed_rows(i,signs[i]) in
+ for row in rows do prints(row, " ", signs[i]) od
+od
+}
+
+
+
+
+
 set show_short(KLocalSystem M)=void:show_short(K_orbit(M))
 set show([KLocalSystem] list)=void:
 let ()=if #list>1 then prints(#list, " KLocalSystems") else prints(#list, " KLocalSystem") fi in 
@@ -321,7 +365,7 @@ assert(is_in(label,["C","C~"]), "involution only defined in types C,C~");
 (for z@i in signs do if i%4=2 then -z else z fi od,label)
 
 set involution_power(KLocalSystem M,int n)=KLocalSystem:
-if is_even(n) then involution(M) else M fi
+if is_odd(n) then involution(M) else M fi
 
 {augmention is NOT the same as (9.4)(iii)
  (9.4)(iii) says: augmenting by (p,q) adds a first column of length c_1(orbit)+p+q
@@ -421,7 +465,8 @@ if #transpose(target)=1 {target only has 1 column} then
 fi
 
 set shift_right(KLocalSystem M)=KLocalSystem:
-([0*s]##for z in M.signs do s*z od,M.label)
+{([0*s]##for z in M.signs do s*z od,M.label)}
+([0*s]##for z in M.signs do z od,M.label)  {claude}
 
 {set theta_before_twist(KLocalSystem M, Orbit target, ClassicalSignature S_target, ClassicalSignature S_source)}
 set theta_before_twist(KLocalSystem M, Orbit target, ClassicalSignature S_target)=[KLocalSystem]:
@@ -478,8 +523,8 @@ elif S_target.label="C*" then
   let ()=if theta_verbose then prints("theta returned (C*):", [augment]) fi in 
  [augment] fi
 elif is_in(S_target.label,["C","C~"]) then
- let epsilon=if S_target.label="C~" then -1 else 0 fi then
- ()=if theta_verbose then prints("case type (C/C~): ", S_target.label," epsilon=", epsilon) fi then
+ let C_Ctilde_shift=if S_target.label="C~" then -1 else 0 fi then
+ ()=if theta_verbose then prints("case type (C/C~): ", S_target.label," C_Ctilde_shift=", C_Ctilde_shift) fi then
  ()=if theta_verbose then prints("delta=",delta) fi then
  truncations=[KLocalSystem]:
   if delta = 0
@@ -499,13 +544,14 @@ elif is_in(S_target.label,["C","C~"]) then
  let  ()=if theta_verbose then prints("shift: ", shift, "  signature(shift): ", signature(shift)) fi in
   let (valid,augment)=augmentation(shift,z_target-signature(shift)) in
   if valid then [augment] else [] fi od then
- ()=if theta_verbose then prints("special case C~") fi then
+ ()=if theta_verbose then prints("special case C/C~") fi then
  ()=if theta_verbose then prints("augments:", augments);for t in augments do show(t) od fi then
  involutions=for augment in augments do
-{  involution_power(augment,h(p(z_target)-q(z_target)+epsilon)) od then}{No: p,q of the source, not target, in this case}
-let   power=p(z_source)-q(z_source)+epsilon  in
- if theta_verbose then prints("involution power (C/C~)=", power) fi;
-  involution_power(augment,h(power)) od then
+{  involution_power(augment,h(p(z_target)-q(z_target)+C_Ctilde_shift)) od then}{No: p,q of the source, not target, in this case}
+ let ()=if theta_verbose then prints("p',q',epsilon=", p(z_source), " ", q(z_source), " ", C_Ctilde_shift) fi in 
+let   power=h(p(z_source)-q(z_source)+C_Ctilde_shift)  in
+ if theta_verbose then prints("involution power (C/C~)=", power, new_line, "after twist:", involution_power(augment,power)) fi;
+  involution_power(augment,power) od then
  ()=if theta_verbose then prints("involutions:", involutions);for t in involutions do show(t) od fi then
  ()=if theta_verbose then prints("involutions orbits:");for Z in involutions do prints(Z, " ", orbit(Z)) od fi in
   let ()=if theta_verbose then prints("theta returned (C/C~):", involutions) fi in 
@@ -540,23 +586,66 @@ set tensor_plus_minus(KLocalSystem Z)=KLocalSystem:
  (for z in Z.signs do bar(z) od,Z.label)
 
 {actual theta: theta_before_twist followed by twists of (4.17)}
-set theta_actual(ExtendedPaintedBiPartition X_target,KLocalSystem M_source, Orbit target,
+set theta_actual_old(ExtendedPaintedBiPartition X_target,KLocalSystem M_source, Orbit target,
 ClassicalSignature S_target, ClassicalSignature S_source)=
 if theta_verbose then prints("in theta_actual with EPBP:", X_target, new_line, "M_source=", M_source, new_line,
 "orbit target: ", target, new_line, "going to compute theta_before_twist") fi;
 let theta_before=theta_before_twist(M_source,target,S_target) then
 ()=if theta_verbose then prints("computed theta_before:");for X in theta_before do prints(X) od;prints("end of theta_before") fi in
 for Y in theta_before do
-  if theta_verbose then prints("for Y in theta_before with Y=", Y, new_line) fi;
-  if is_in (Y.label,["B","D"]) then
-   if theta_verbose then prints("Y.label in B,D: ", Y.label, new_line, "X_target=", X_target, new_line, "epsilon(X_target)=", epsilon(X_target)) fi;
-   if epsilon(X_target)=0 then Y else tensor_plus_minus(Y) fi
-  elif is_in(Y.label,["C","C~"]) then
-   if theta_verbose then prints("Y.label in C/C~: ", Y.label, new_line, "X_target=", X_target, new_line, "epsilon(X_target)=", epsilon(X_target)) fi;
-   if epsilon_extended(X_target)=0 then Y else tensor_det_1(Y)   fi
-  else
+ if theta_verbose then prints("for Y in theta_before with Y=", Y, new_line) fi;
+ {----case B or D ----}
+ if is_in (Y.label,["B","D"]) then
+   if theta_verbose then prints("extra twist case B/D?", new_line, "Y.label in B,D: ", Y.label, new_line, "X_target=", X_target, new_line, "epsilon(X_target)=", epsilon(X_target)) fi;
+   if epsilon(X_target)=0 then if theta_verbose then print("no twist") fi;Y 
+{     else if theta_verbose then  prints("yes extra twist") fi;tensor_plus_minus(Y) }
+     else if theta_verbose then  prints("yes extra twist") fi;sign_twist(Y,s) {according to claude}
+   fi
+ {--- case C or C~---}
+ {claude:}
+ elif is_in(Y.label,["C","C~"]) then
+   if theta_verbose then prints("no extra twist for C/C~") fi;Y
+
+{ elif is_in(Y.label,["C","C~"]) then
+   if theta_verbose then prints("extra gtwist case C/C~", new_line, "Y.label in C/C~?: ", Y.label, new_line, "X_target=", X_target, new_line, "epsilon(X_target)=", epsilon(X_target)) fi;
+   if epsilon_extended(X_target)=0 then if theta_verbose then prints("no extra twist") fi;Y
+{        else if theta_verbose then prints("yes extra twist") fi;tensor_det_1(Y) }
+{        else if theta_verbose then prints("yes extra twist") fi;sign_twist(Y,1+s) {according to claude}}}
+{        else if theta_verbose then prints("yes extra twist") fi;involution(Y) {according to claude}}
+{   fi}
+ {--- all other cases}
+ else
    Y
-  fi
+ fi
+od
+
+set theta_actual(ExtendedPaintedBiPartition X_target,KLocalSystem M_source, Orbit target,
+ClassicalSignature S_target, ClassicalSignature S_source)=
+if theta_verbose then prints("in theta_actual with EPBP:", X_target, new_line, "M_source=", M_source, new_line,
+"orbit target: ", target, new_line, "going to compute theta_before_twist") fi;
+let M_source_in =
+  if is_in(S_target.label,["C","C~"]) and epsilon_extended(X_target)!=0
+  then if theta_verbose then prints("pre-twist M_source with (1+s)") fi;
+       sign_twist(M_source,1+s)
+  else M_source
+  fi then
+theta_before=theta_before_twist(M_source_in,target,S_target) then
+()=if theta_verbose then prints("computed theta_before:");for X in theta_before do prints(X) od;prints("end of theta_before") fi in
+for Y in theta_before do
+ if theta_verbose then prints("for Y in theta_before with Y=", Y, new_line) fi;
+ {----case B or D ----}
+ if is_in (Y.label,["B","D"]) then
+   if theta_verbose then prints("extra twist case B/D?", new_line, "Y.label in B,D: ", Y.label, new_line, "X_target=", X_target, new_line, "epsilon(X_target)=", epsilon(X_target)) fi;
+   if epsilon(X_target)=0 then if theta_verbose then print("no twist") fi;Y
+     else if theta_verbose then prints("yes extra twist") fi;sign_twist(Y,s)
+   fi
+ {--- case C or C~: pre-twist applied to source, no post-twist needed ---}
+ elif is_in(Y.label,["C","C~"]) then
+   if theta_verbose then prints("no post-twist for C/C~ (pre-twist applied to source)") fi;Y
+ {--- all other cases}
+ else
+   Y
+ fi
 od
   
 {----------generating orbits-------------}
@@ -655,7 +744,8 @@ if theta_verbose then
  prints("in theta_one_level (a): ", new_line,"target level=",target_level, new_line, "Z=",Z)
 fi;
 {let value=theta(chain[start_level],Z,orbit(chain[start_level]),signature(chain[start_level]),signature(chain[start_level+1])) in}
-let value=theta_actual(chain[target_level],Z,orbit(chain[start_level]),signature(chain[start_level]),signature(chain[start_level+1])) in
+let value=theta_actual(chain[target_level],Z,orbit(chain[target_level]),signature(chain[target_level]),
+(Z.label,signature(Z))) in
 if theta_verbose then
  prints("finished theta_one_level: chain=", chain, new_line, "target level=", target_level,new_line,
  "Z=", Z, new_line, "return value=", value) fi;
@@ -680,7 +770,8 @@ for Z in list do prints(Z, " ", orbit(Z)) od fi in
  prints("signature_source: ", signature(chain[start_level]),
  new_line,"signature_target: ", signature(chain[target_level])) fi in
 {theta(chain[start_level],Z,orbit(chain[start_level]),signature(chain[start_level]),signature(chain[start_level+1])) od}
-prints("OK");theta_actual(chain[target_level],Z,orbit(chain[target_level]),signature(chain[target_level]),signature(chain[start_level])) od
+prints("OK");theta_actual(chain[target_level],Z,orbit(chain[target_level]),
+signature(chain[target_level]),(Z.label,signature(Z))) od
 
 set theta_recurse([ExtendedPaintedBiPartition] chain,int main_start_level,[KLocalSystem] list)= let
 ()=prints("theta_recurse(1): main_start_level=", main_start_level) in

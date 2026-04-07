@@ -105,18 +105,30 @@ if (Z.bi_label="B+" and
   row[0]:=1;
   Pnew~[0]:=row; (Pnew,dZ.Q,dZ.bi_label)
 elif
-    Z.bi_label="D" and
+  Z.bi_label = "D" then
+    let c1 = #column_of(Z.P)(0) then      { c1(ι) }
+    c2 = #column_of(Z.P)(1) then      { c2(ι) }
+    c1j = #column_of(Z.Q)(0) in       { c1(j) }
+    if
+     c2 > 0 and
+     c2 = c1j + 1 and
+     column_of(Z.P)(1)~[0] = 3 and         { last entry of col 2 of P is c }
+     all(for i:c1-c2+1 from c2-1 do
+{         find([2,4],column_of(Z.P)(0)~[0])!=-1 od) then  { col 1 of P, rows c2..c1 are r or d }}
+         find([2,4],column_of(Z.P)(0)[i])!=-1 od) then  { col 1 of P, rows c2..c1 are r or d }{according to claude}
+{    Z.bi_label="D" and
     number_rows(Z.Q)>=3 and
     #Z.Q[1]=#Z.Q[2] and  {columns 2 and 3}
     column_of(Z.P)(0)[#column_of(Z.P)(1)-1]=2 and
     column_of(Z.P)(1)~[0]=3 and
-    find([2,4],column_of(Z.P)(0)~[0])!=-1
- then
+    find([2,4],column_of(Z.P)(0)~[0])!=-1}
   let ()=prints("special case 2") in
   let Pnew=dZ.P then 
   row=Pnew~[0] in
   row[0]:=2;
-  Pnew~[0]:=row;(Pnew,dZ.Q,dZ.bi_label)
+  Pnew~[0]:=row;
+  (Pnew,dZ.Q,dZ.bi_label)  
+  else dZ fi
 else
  dZ
 fi
