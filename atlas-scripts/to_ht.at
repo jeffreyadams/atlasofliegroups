@@ -208,32 +208,24 @@ set oriented_KL_sum_to_ht  (int N, int time) = (Param p)ParamPol:
 	    od
 }
 
+{tried NOT using low to decide 3/1/26 to 4/1/26}
+{whether to consider using full_deform_to_height}
+set low_test_c_flag = true
+
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
 {.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
 set c_form_irreducible_to_ht_MvL (Param p,int HT) = KTypePol:
-  {
-  if not ({to_ht_over_u_flag} {strict_}low(p,HT))
+  if HT < 0 then return c_form_irreducible(p) fi;
+  if {p.x.number < (9/10)*p.real_form.KGB_size} not predictor_flag and
+  ((not low_test_c_flag) or (not low(p,HT)))
   then HF_false_low_count+:=1; return c_form_irreducible_cut(p,HT)
-  fi;
-  } {try NOT using low to decide 3/1/26}
+  fi; {from now on low_test_c_flag is true, and low(p,HT) is true}
   if not(herm_report)
   then
   let P=oriented_KL_sum_to_ht(HT)(p), count=0 then nP=#P
   then f(Param q) = KTypePol:
     	let start = elapsed_ms()
 	in full_deform_to_ht(q,HT)
-	{
-	if deformed_hash_flag
-	   then deformedHash.entry(q,HT)
-	   else full_deform_to_ht(q,HT)
-	   fi}
-{
-	full_deform_to_ht(q,HT)
-	in if deformed_hash_flag
-	   then deformedHash.append_time(q,HT,ans,elapsed_ms() - start)
-	   fi;
-	   ans
-}
   in map(f, P)
   else
   let P=oriented_KL_sum_to_ht(HT)(p), count=0 then nP=#P
@@ -244,11 +236,7 @@ set c_form_irreducible_to_ht_MvL (Param p,int HT) = KTypePol:
 		 let start = elapsed_ms()
 		 {then ans =
 		 full_deform_to_ht(q,HT)}
-		 in full_deform_to_ht(q,HT) {deformedHash.entry(q,HT)}
-		 {if deformed_hash_flag
-		    then deformedHash.append_time(q,HT,ans,elapsed_ms() - start)
-		    fi;
-		    ans}
+		 in full_deform_to_ht(q,HT) 
   in prints("Fully deforming ",nP," terms"); map(f, P)
   fi
 
@@ -258,17 +246,12 @@ set c_form_irreducible_to_ht_MvL (Param p,int HT) = KTypePol:
 {finishes without interruption if all terms already deformed}
 set c_form_irreducible_to_ht_MvL (Param p,int HT, int time ) = maybe_KTP:
   if HT < 0 then return c_form_irreducible(p, time) fi;
-  {
-  if not ({to_ht_over_u_flag} {strict_}low(p,HT))
+  if  {p.x.number < (9/10)*p.real_form.KGB_size} not predictor_flag and
+  ((not low_test_c_flag) or (not low(p,HT)))
   then HF_false_low_count+:=1; return c_form_irreducible_cut(p,HT,time)
-  fi;
-  } {try NOT using low to decide 3/1/26}
-   let ori_nr_p = orientation_nr(p), expiration = elapsed_ms() + time
-   then oriented_KL_sum = ParamPol: null_module(p) +
-      	for c@q in KL_sum_at_s_to_ht(HT)(p)
-      	do (c*orientation_nr_term(ori_nr_p,q),q)
-      	od
-    then list = monomials(oriented_KL_sum)
+  fi; {from now on low_test_c_flag is true, and low(p,HT) is true}
+  let P = oriented_KL_sum_to_ht(HT)(p), expiration = elapsed_ms()+time
+    then list = monomials(P)
     then inf_indices = for q in list do defHashTime.param_lookup(q) od
     then indices = for q in list do defHashHtTime.param_lookup(q) od
     then unknown_ks = for p@k in list
@@ -278,13 +261,13 @@ set c_form_irreducible_to_ht_MvL (Param p,int HT, int time ) = maybe_KTP:
 		      od
      in if #unknown_ks = 0
 	then map( (Param q) KTypePol:
-	      	 full_deform_to_ht(q,HT), oriented_KL_sum).done
+	      	 full_deform_to_ht(q,HT), P).done
 	else full_deform_to_ht(list[unknown_ks~[0]],HT, time);
     	     map( (Param q) maybe_KTP: if expiration - elapsed_ms() < 0
       	     	       		  then timed_out()
       				  else full_deform_to_ht(q, HT, expiration - elapsed_ms())
       				  fi
-      				  , oriented_KL_sum)
+      				  , P)
 	fi {#unknown_ks}
 
 
@@ -292,21 +275,21 @@ set c_form_irreducible_to_ht_MvL (Param p,int HT, int time ) = maybe_KTP:
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
 {.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
 set c_form_irreducible_to_ht (Param p,int HT) = KTypePol:
-  {
-  if not low(p,HT)
+  if HT < 0 then return c_form_irreducible(p) fi;
+  if  {p.x.number < (9/10)*p.real_form.KGB_size} not predictor_flag and
+      ((not low_test_c_flag) or (not low(p,HT)))
   then HF_false_low_count+:=1; return c_form_irreducible_cut(p,HT)
-  fi;
-  } {try NOT using low to decide 3/1/26}
+  fi; {from now on low_test_c_flag is true, and low(p,HT) is true}
   map(c_form_std_to_ht_MvL(HT), oriented_KL_sum_to_ht(HT)(p) )
  
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
 {.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
 set c_form_irreducible_to_ht (Param p,int HT, int time) = maybe_KTP:
-  {
-  if not low(p,HT)
+  if HT < 0 then return c_form_irreducible(p, time) fi;
+  if  {p.x.number < (9/10)*p.real_form.KGB_size} not predictor_flag and
+  ((not low_test_c_flag) or (not low(p,HT)))
   then HF_false_low_count+:=1; return c_form_irreducible_cut(p,HT,time)
-  fi;
-  } {try NOT using low to decide 3/1/26}
+  fi; {from now on low_test_c_flag is true, and low(p,HT) is true}
   map(c_form_std_to_ht_MvL(HT,time), oriented_KL_sum_to_ht(HT)(p) )
 
 { utility: compute fixed and unfixed contributions to c-form on irreducible(p)
@@ -387,18 +370,15 @@ set twisted_c_form_irreducible_to_ht_MvL (Param p,int HT, int time) = maybe_KTP:
 initial term.}
 set hermitian_form_irreducible_to_ht_MvL (Param p,int HT) = KTypePol:
   {if not ({to_ht_over_u_flag} strict_low(p,HT)) then return to_ht(hermitian_form_irreducible(p),HT) fi;}
-  {unitary_test_counter.use();}
-  {if HT > height(p) + 20 then prints(p,HT) fi;}
   let start_time = elapsed_ms(){, deformed_flag_hold = deformed_hash_flag}
-  {then () = deformed_hash_flag := true}
   then answer =
        if is_equal_rank(real_form(p))
-       then c_form_irreducible_to_ht_MvL(p,HT) { not twisted, in equal rank case this is faster }
+       then c_form_irreducible_to_ht_MvL(p,HT)
+       { not twisted, in equal rank case this is faster }
        else  check_hermitian(p,true); twisted_c_form_irreducible_to_ht_MvL(p,HT)
        fi.convert_cform_hermitian
   in unitaryTime+:=elapsed_ms() - start_time;
      was_tested_to_ht(p,HT, elapsed_ms() - start_time,is_pure(answer));
-     {deformed_hash_flag:=deformed_flag_hold;}
      answer
 
 {.Hermitian form to ht on a irreducible module, normalization from its

@@ -1736,6 +1736,31 @@ set next_heightC = ((Param,int) -> int):
     else height(new_taus)
     fi
 
+set next_height_form_time = int:0
+
+{if we know p unitary to HT, next height where something could change}
+set next_height_form = ((Param,int) -> int):
+    let q = Param: SL(2,R).trivial, start_time = int:0
+    then CF = KL_sum_at_s(q)
+    {then HT_bound = GAM(p) {to_ht to HT_bound is is_unitary}}
+    then current_height = int: -1
+ in ((Param,int) -> int): (Param p, int HT):
+    start_time:=elapsed_ms();
+    if not p=q
+    then CF := KL_sum_at_s(q:=p)
+    fi;
+    {if next_heightD_verbose
+	 then prints("about to compute K-char to height ",current_bound) fi;
+    	 KCF:=  K_type_pol(character_formula_to_ht(1*p,current_bound));
+	 current_height:=height(q)-1;
+	 taus_so_far:= null_K_module(q.real_form);
+	 new_taus := null_K_module(q.real_form)
+    fi;}
+    let (,above) = height_split(CF,HT)
+    in if above.= then -1
+       else height(above)
+       fi next next_height_form_time+:=elapsed_ms()-start_time
+
 set next_heightC_zero_flag = true
 
 set next_heights(Param p, int D) = [int]:
@@ -2367,13 +2392,14 @@ set is_unitary_test_big_SIMPLE_interrupt_old(Param p, int step) = bool:
       fi
 
 {increase the interruptible times by this}
-set to_ht_factor = rat: 5
-set u_factor = rat: 2
+set to_ht_factor = rat: 12 {was 5; 1 bad at 20890 4/7/26}
+set u_factor = rat: 12 {2; changed to 1 4/7/26}
 
 {if (predicted u_time)/(predicted to_ht_time) is exceeds prefer_u_factor, then skip u
 in favor of to_ht. Increasing u_factor allows more u tests.}
-set prefer_u_factor = rat: 3/2  {6/1 3/5/26 commit} {2/1} {4/1 after a little E8_q testing}
-
+set prefer_u_factor = rat: 3 {4 was bad 20890}
+{3/2 changed 4/7/26} {6/1 3/5/26 commit} {2/1} {4/1 after a little E8_q testing}
+{if this is too small, end up with repeated pos is_unitary_to_ht}
 
 
 {"step" is how many steps up in to_ht list to start}
@@ -2396,15 +2422,15 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
   then result = 0, mu = LKTs(p)[0], ht = height(p)
   then taus = [KType]:[]
   then tau_bd = KType:mu
-  then ht = int: height(p) {(tau_bd)}
-  then () = if next_heightC_flag
+  {then ht = int: height(p) {(tau_bd)}}
+  then () = {if next_heightC_flag
        	    then for j:step
 	    	 do ht := next_heightC(p,ht)
 		 od
-       	    else taus := next_taus(p,step);
+       	    else} taus := next_taus(p,step);
 	    	 tau_bd := taus~[0];
-  		 ht := height(tau_bd)
-	    fi;
+  		{ ht := height(tau_bd)
+	    fi;}
 	    ht := min(GAM,height(tau_bd))
   then () = if ht < 0 {p is finite-dimensional; we're in FPP, so 1-diml}
        	    then return true
@@ -2423,7 +2449,7 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
 	    	        ", u_time = ", print_time_string(u_time))
 	    fi
   then () = while result = 0
-       	    do if{A} u_time <= prefer_u_factor*to_ht_time {floor(u_factor*u_time) < 2*to_ht_factor*to_ht_time}
+       	    do if{A} u_time <= prefer_u_factor*to_ht_time
 	       then let start_u = elapsed_ms()
 	       	    then () = result := is_unitary_hash_big_SIMPLE(p, floor(u_factor*u_time))
 		    in test_time:= elapsed_ms() - start_u;
@@ -2457,7 +2483,8 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
 			     else result:=0;
 			     	  add_to_u_to_ht(p,ht)
 			     fi;
-			     if next_heightC_flag
+			     ht:= min(next_height_form(p,ht),top_ht)
+			     {if next_height_for_flag
 			     then old_ht := ht;
 			     	  ht:= next_heightC(p,ht)
 			     else tau_bd := next_to_lowest(tau_bd);
@@ -2467,11 +2494,12 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
 				       {else next_height(p,ht)
 				       fi}
 				   {if ht < 0 then return true fi} {one-diml case}
-			      fi
+			      fi}
 			 fi{result.>};
-			 to_ht_time:=max(u_predictor_to_ht(p,ht,u_time + 10), (3*to_ht_time)\2);
+			 to_ht_time:= max(u_predictor_to_ht(p,ht,to_ht_time), (3*to_ht_time)\2);
 			 if test_interrupt_verbose
-			 then prints("  Predicted to_ht_time now ",print_time_string(to_ht_time))
+			 then prints("  Predicted to_ht_time for ht = ",ht," is ",
+			      print_time_string(to_ht_time))
 			 fi
 	           fi{B} {u_time > prefer_u_factor * to_ht_time}
 	    od
@@ -2508,10 +2536,10 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
 	    	 do ht := next_heightC(p,ht)
 		 od
        	    else taus := next_taus(p,step);
-	    	 tau_bd := taus~[0];
-  		 ht := height(tau_bd)
+	    	 tau_bd := taus~[0]
+  		 {ht := height(tau_bd)}
 	    fi;
-	    ht:=min(ht,GAM)
+	    ht:=min(height(tau_bd),GAM)
   then () = if ht < 0 {p is finite-dimensional; we're in FPP, so 1-diml}
        	    then return true
 	    fi
@@ -2528,7 +2556,7 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
 	    	        ", u_time = ", print_time_string(u_time))
 	    fi
   then () = while result = 0
-       	    do if{A} u_time > prefer_u_factor * to_ht_time{ floor(to_ht_factor*to_ht_time) < 2*floor(u_factor*u_time)}
+       	    do if{A} u_time > prefer_u_factor * to_ht_time
 	       then let start_to_ht = elapsed_ms()
 	       	    in 	result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,floor(to_ht_factor*to_ht_time));
 	       	    	test_time:=elapsed_ms() - start_to_ht;
@@ -2541,15 +2569,17 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
 			if result.> and ht >= top_ht then break fi;
 		     	if result.> {got a (useless) positive result at ht; move up} 
 			then result:=0;
-			     if next_heightC_flag
+			     add_to_u_to_ht(p,ht);
+			     ht:= min(next_height_form(p,ht), top_ht)
+			     {if next_heightC_flag
 			     then ht:= next_heightC(p,ht)
 			     else old_ht:=ht;
 			     	  tau_bd := next_to_lowest(tau_bd);
 				  ht := height(tau_bd)
 			     fi;
-			     ht :=min(ht,GAM)
+			     ht :=min(ht,GAM)}
 			fi;
-			to_ht_time := u_predictor_to_ht(p,ht,u_time + 10);
+			to_ht_time := max(u_predictor_to_ht(p,ht,to_ht_time), (3*to_ht_time)\2);
 			if test_interrupt_verbose
 			then prints("  Predicted to_ht_time for ht = ",ht," is ",
 			     print_time_string(to_ht_time))
@@ -2666,12 +2696,11 @@ set is_unitary_test_big_SIMPLE_interrupted_Ufirst(Param p, int time) = int:
         {floor((p.infinitesimal_character)*G.two_rho_check)}
        {unitary to top_ht implies unitary}
   then tau_bd = KType: mu
-  then () = if next_heightC_flag
+  then () = {if next_heightC_flag
        	    then ht := next_heightC(p,ht)
-       	    else tau_bd := next_to_lowest(mu);
-  		 ht := height(tau_bd)
-	    fi;
-	    ht := min(ht,GAM)
+       	    else} tau_bd := next_to_lowest(mu);
+  	    {fi;}
+	    ht := min(height(tau_bd),GAM)
   then (u_time, to_ht_time) = adjust_to_ht_over_u(p,ht), test_time = int:0
   {then u_time = int:  u_predictor(p,-1), to_ht_time = int: u_predictor(p,ht)}
   then () = if test_interrupt_verbose
@@ -2712,15 +2741,15 @@ set is_unitary_test_big_SIMPLE_interrupted_Ufirst(Param p, int time) = int:
 		   then big_unitary_hash.umatch(p);
 		   	break
 	       	   elif result.> {got a useless result from to_ht}
-	       	   then if next_heightC_flag
+	       	   then {if next_heightC_flag
 			then {old_ht := ht;}
-			     ht:= next_heightC(p,ht)
+			     ht:= next_height_form(p,ht)
 			else tau_bd := next_to_lowest(tau_bd);
 			     {old_ht := ht;}
 			     ht:= height(tau_bd)
-			fi;
-			ht:=min(ht,GAM);
-			to_ht_time := u_predictor_to_ht(p,ht,u_time+10);
+			fi;}
+			ht:=min(next_height_form(p,ht),GAM);
+			to_ht_time := max(u_predictor_to_ht(p,ht,to_ht_time+10), (3*to_ht_time)\2);
 			result := 0;
 			if test_interrupt_verbose
 			then prints("  Predicted to_ht_time now ",print_time_string(to_ht_time))
@@ -2788,13 +2817,14 @@ set is_unitary_test_big_SIMPLE_interrupted(Param p, int time) = int:
 		       then big_unitary_hash.umatch(p);
 		       	    break
 		       elif result.> {got a useless result}
-	       	       then if next_heightC_flag
+	       	       then {if next_heightC_flag
 		       	    then ht:= next_heightC(p,ht)
 		       	    else tau_bd := next_to_lowest(tau_bd);
 			    	 ht := height(tau_bd)
-		            fi;
+		            fi;}
+			    ht:= next_height_form(p,ht);
 		       	    result:=0;
-		       	    to_ht_time := u_predictor_to_ht(p,ht, u_time+10)
+		       	    to_ht_time := max(u_predictor_to_ht(p,ht, u_time+10), (3*to_ht_time)\2)
 		  fi {result.<}
 	       fi; {A} { u_time > prefer_u_factor * to_ht_time}
 	       if{B}  u_time <= prefer_u_factor * to_ht_time {floor(u_factor*u_time) < 2*floor(to_ht_factor*to_ht_time)}
