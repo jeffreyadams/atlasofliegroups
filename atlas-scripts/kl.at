@@ -96,6 +96,11 @@ set KL_rate = rat:
     then  (,m,,) = KL_block(E6_s.trivial) {size of E6_s block above trivial}
     in (elapsed_ms() - start)/m^2
 
+set KL_rate(RealForm G) = rat:
+    let start = elapsed_ms()
+    then  (,m,,) = KL_block(G.trivial) {size of G block above trivial}
+    in (elapsed_ms() - start)/m^2
+
 {predicted time in milliseconds to compute KL in block of p}
 set KL_predictor_full(Param p) = int: floor((#full_block(p))^2 * KL_rate) {next prints("we're in KL_pred_full at ",p)}
 {maybe better? use number of extremal pairs in full block??
