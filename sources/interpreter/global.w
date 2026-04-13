@@ -448,11 +448,13 @@ class overload_data
 { shared_function val;
 @+func_type tp;
 @+unsigned int degree;
+@+bool type_aware;
   source_location loc;
 public:
-  overload_data(shared_function&& val,func_type&& t, unsigned int deg,
+  overload_data(shared_function&& val,func_type&& t, unsigned int deg, bool ta,
                 const source_location& loc)
-  : val(std::move(val)), tp(std::move(t)), degree(deg), loc(loc) @+{}
+  : val(std::move(val)), tp(std::move(t)), degree(deg), type_aware(ta), loc(loc)
+  @+{}
   overload_data (overload_data&& x) = default;
   overload_data& operator=(overload_data&& x) = default;
    // no copy-and-swap needed
@@ -461,6 +463,7 @@ public:
   const func_type& f_tp() const @+{@; return tp; }
   unsigned int poly_degree() const@+{@; return degree; }
   bool is_polymorphic() const@+{@; return degree>0; }
+  bool is_type_aware() const@+{@; return type_aware; }
   const source_location& location() const@+{@; return loc; }
 };
 
@@ -507,7 +510,7 @@ public:
     return p==table.end() ? nullptr : &p->second;
   }
   void add(id_type id, shared_function v, const type& t,
-          const source_location& loc); // insertion
+          const source_location& loc, bool type_aware=false); // insertion
   bool remove(id_type id, const type_expr& arg_t); //deletion
 };
 
@@ -635,14 +638,16 @@ overloaded instances.
 
 @< Global function def... @>=
 void overload_table::add
-  (id_type id, shared_function val, const type& tp, const source_location& loc)
+  (id_type id, shared_function val, const type& tp, const source_location& loc,
+   bool type_aware)
 { assert (tp.top_kind()==function_type);
   func_type ftype(tp.f_type());
   auto its = table.equal_range(id);
   if (its.first==its.second) // a fresh overloaded identifier
   {
     auto pos=table.emplace_hint(its.first,id,variant_list());
-    pos->second.emplace_back(std::move(val), std::move(ftype), tp.degree(),loc);
+    pos->second.emplace_back
+      (std::move(val), std::move(ftype), tp.degree(), type_aware, loc);
   }
   else
     @< Insert an overload for function |val| with function type |ftype| and
@@ -662,9 +667,10 @@ case, the iterator returned points at the node to overwrite.
   bool overwrite;
   auto it=locate_overload(id,slot,ftype.arg_type,overwrite); // may |throw|
   if (overwrite)     // equality found
-    *it = overload_data(std::move(val),std::move(ftype),tp.degree(),loc);
+    *it = overload_data
+          (std::move(val),std::move(ftype),tp.degree(),type_aware,loc);
   else
-    slot.emplace(it,std::move(val),std::move(ftype),tp.degree(),loc);
+    slot.emplace(it,std::move(val),std::move(ftype),tp.degree(),type_aware,loc);
 }
 
 @ The |remove| method allows removing an entry from the overload table, for
@@ -3009,35 +3015,31 @@ if (tp.func()->arg_type.top_kind()==variable_type)
 }
 
 @ While mentioning |print| and friends, there is a new form of these functions
-that differ from them in that the wrapper receives an explicit |type| argument
-that we found for its actual argument, so that their behaviour can adapt to this
-information (rather than just use the structure of the argument value found on
-the runtime stack). These get installed by |install_type_aware_function|. Apart
-from using type aware versions of |wrapper| and |builtin|, this as actually
-simpler than |install_function|, since the types associated to these built-in
-functions are very simple: they take the form \.{(*->T)} for some monomorphic
-type~\.T. So we can skip various steps here, like wrapping up a |type| to detect
-any polymorphism and appending an argument type to~|name| (instead a similar
-change will be made every time a |type_aware_instance| is created). There is one
-twist though, in that the |overload_table::add| method takes a |type| argument,
-even though it stores only the |function_type| instance of a |type_expr|; this
-is actually just to pass the |degree()| information together with the
-|type_expr|. We do not want to convert the undetermined argument type into a
-polymorphic variable as |type::wrap| would do, so we (ab)use |type::constructor|
-instead (even though this has nothing to do with type constructors), which
-refrains from transforming the |type_expr| passed to it.
+that differs from them in that the wrapper receives an explicit |type| argument
+that we found for the argument expression of the call, so that their behaviour
+can adapt to this information (rather than just use the structure of the
+argument value found on the runtime stack). These get installed by
+|install_type_aware_function|. Apart from using type aware versions of |wrapper|
+and |builtin|, this as actually a bit simpler than |install_function|, as we can
+appending an argument type to~|name| (instead a similar change will be made
+every time a |type_aware_instance| is created), and we don't need to deduce the
+|variadic| value (as we don't use the |builtin_value| class type, replacing it
+with |type_aware_builtin| that implicitly has the variadic property).
 
 @< Global function def... @>=
 std::shared_ptr<const type_aware_builtin> install_type_aware_function
  (type_aware_wrapper f,@|const char*name, const char* type_string)
-{ type_expr te = mk_type_pattern(type_string);
-  if (te.raw_kind()!=function_type or
-      te.func()->arg_type.raw_kind()!=undetermined_type)
+{ unsigned int var_count;
+  type_expr te = mk_type_expr(type_string,var_count);
+  type tp = type::wrap(te,0); // no fixed type variables at outer scope
+  assert(tp.degree()==var_count);
+  if (tp.top_kind()!=function_type or
+      tp.func()->arg_type.raw_kind()!=variable_type)
     throw logic_error ("Wrong type for type aware built-in: "+std::string(name));
 @/
   auto val = std::make_shared<const type_aware_builtin>(f,name);
 @/global_overload_table->add @| (main_hash_table->match_literal(name),
-            val,type::constructor(std::move(te),0),source_location());
+            val,std::move(tp),source_location(),true);
 @/return val;
 }
 
@@ -4285,9 +4287,9 @@ thing as covariant type aware functions.
 void type_aware_print_wrapper(eval_level l, const type& tp)
 {
   *output_stream << '{' << tp << ":}";
-  *output_stream << *pop_value() << std::endl;
-  if (l==eval_level::single_value)
-    wrap_tuple<0>(); // don't forget to return an empty value if asked for
+  *output_stream << *execution_stack.back() << '\n';
+  if (l!=eval_level::single_value) // in |single_value| case we are done
+    push_expanded(l,pop_value()); // otherwise remove and possibly expand value
 }
 
 @ The other definitions are equally straightforward. The generic size-of wrapper
@@ -4518,7 +4520,7 @@ install_function(print_wrapper,"print","(T->T)");
 install_function(prints_wrapper,"prints","(T->)");
 install_function(to_string_wrapper,"to_string","(T->string)");
 install_function(error_wrapper,"error","(T->X)");
-install_type_aware_function(type_aware_print_wrapper,"Print","(*->)");
+install_type_aware_function(type_aware_print_wrapper,"Print","(T->T)");
 install_function(sizeof_wrapper,"#","([T]->int)");
 install_function(sizeof_string_wrapper,"#","(string->int)");
 install_function(sizeof_vector_wrapper,"#","(vec->int)");
