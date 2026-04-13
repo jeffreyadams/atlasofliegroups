@@ -646,7 +646,7 @@ void overload_table::add
   }
   else
     @< Insert an overload for function |val| with function type |ftype| and
-       degree |deg| into the list of variants at |its->first.second|,
+       degree |tp.degree()| into the list of variants at |its->first.second|,
        or throw an error if there is an incompatibility with a
        previously existing variant @>
 }
@@ -2912,28 +2912,32 @@ functionality; they adapt the calling convention (transfer of values) and
 perform checks to ensure the preconditions of the library functions are met.
 
 Handling of wrapper functions themselves, which are accessed through a table, is
-done through values of the function pointer type |wrapper_function| defined
-in \.{axis-types.w}. Arguments and results of wrapper functions are passed as
-|shared_value| on the runtime stack, and are not mentioned in the type
-|wrapper_function|. Functions accessed through these pointers do however take a
-|eval_level| parameter, which serves the same function as for the |evaluate|
-method of (classes derived from |expression_base|, as described in \.{axis.w},
-namely to inform the wrapper whether in the run time situation a result value is
-needed at all, and if so whether it should be expanded on the |execution_stack|
-in case it is a tuple.
+done through values of the function pointer types |wrapper_function| or
+|type_aware_wrapper|, which are defined in \.{axis-types.w}. Arguments and
+results of wrapper functions are passed as |shared_value| pointers on the
+runtime stack, and are not mentioned in these types. Functions accessed through
+these pointers do however take an |eval_level| argument; |type_aware_wrapper| in
+addition takes an explicit |type| argument (derived by the type checker). The
+|eval_level| argument serves the same function as for the
+|expressions_base::evaluate| method (as described in \.{axis.w}), namely to
+inform the wrapper whether in the run time situation a result value is needed at
+all, and if so whether it should be expanded on the |execution_stack| in case it
+is a tuple.
 
 The following functions will greatly facilitate the later repetitive task of
 installing wrapper functions into the |global_overload_table|. The basic form
-|install_function| returns a shared pointer to constant |builtin| after
-installing it; while usually ignored, this return value can be used by the
-caller to associate this built-in to other ones; a typical example of this is
-the successor function that can be called in certain cases where the function
-found in the |global_overload_table| is actually integer addition. The form
+|install_function| returns a |shared_builtin| pointing to the value installed;
+it while usually be ignored, but the caller can use this pointer to associate
+this built-in to other ones; a typical example of this is the built-in successor
+function, which can be implicitly called in certain cases where the function
+found in the |global_overload_table| was actually integer addition. While
+|shared_builtin| is a pointer to |const|, the pointer returned by
 |install_special_function| does give non-|const| access to the object just
 created, which allows subsequently associating one or more other built-in
 functions in this manner. The function |install_folding_function| is a variation
 of |install_special_function| that already installs a constant-folding compile
-time adaptation.
+time adaptation. Finally |install_type_aware_function| is a variation of
+|install_function| for type aware built-in functions.
 
 @< Declarations of exported functions @>=
 shared_builtin install_function
@@ -2945,14 +2949,13 @@ std::shared_ptr<special_builtin> install_special_function
 std::shared_ptr<special_builtin> install_folding_function
  (wrapper_function f,@|const char*name, const char* type_string,
   unsigned char hunger=0);
+std::shared_ptr<const type_aware_builtin> install_type_aware_function
+ (type_aware_wrapper f,@|const char*name, const char* type_string);
 
 @ We start by determining the specified type, and building a print-name for
 the function that appends the argument type (since there will potentially be
 many instances with the same name). Then we construct a |builtin_value| object
-and finally add it to |global_overload_table|. Although currently there are no
-built-in functions with void argument type, we make a provision for them in
-case they would be needed later; notably they should not be overloaded and are
-added to |global_id_table| instead.
+and finally add it to |global_overload_table|.
 
 @< Global function def... @>=
 shared_builtin install_function
@@ -3004,6 +3007,40 @@ if (tp.func()->arg_type.top_kind()==variable_type)
     (main_hash_table->match_literal(name),val,std::move(tp),source_location());
   return { nullptr };
 }
+
+@ While mentioning |print| and friends, there is a new form of these functions
+that differ from them in that the wrapper receives an explicit |type| argument
+that we found for its actual argument, so that their behaviour can adapt to this
+information (rather than just use the structure of the argument value found on
+the runtime stack). These get installed by |install_type_aware_function|. Apart
+from using type aware versions of |wrapper| and |builtin|, this as actually
+simpler than |install_function|, since the types associated to these built-in
+functions are very simple: they take the form \.{(*->T)} for some monomorphic
+type~\.T. So we can skip various steps here, like wrapping up a |type| to detect
+any polymorphism and appending an argument type to~|name| (instead a similar
+change will be made every time a |type_aware_instance| is created). There is one
+twist though, in that the |overload_table::add| method takes a |type| argument,
+even though it stores only the |function_type| instance of a |type_expr|; this
+is actually just to pass the |degree()| information together with the
+|type_expr|. We do not want to convert the undetermined argument type into a
+polymorphic variable as |type::wrap| would do, so we (ab)use |type::constructor|
+instead (even though this has nothing to do with type constructors), which
+refrains from transforming the |type_expr| passed to it.
+
+@< Global function def... @>=
+std::shared_ptr<const type_aware_builtin> install_type_aware_function
+ (type_aware_wrapper f,@|const char*name, const char* type_string)
+{ type_expr te = mk_type_pattern(type_string);
+  if (te.raw_kind()!=function_type or
+      te.func()->arg_type.raw_kind()!=undetermined_type)
+    throw logic_error ("Wrong type for type aware built-in: "+std::string(name));
+@/
+  auto val = std::make_shared<const type_aware_builtin>(f,name);
+@/global_overload_table->add @| (main_hash_table->match_literal(name),
+            val,type::constructor(std::move(te),0),source_location());
+@/return val;
+}
+
 
 @ Here is a variation that installs a function whose |builtin_value| stored is
 actually an object of derived class |special_builtin|, whose |build_call| can be
@@ -4153,6 +4190,7 @@ void print_wrapper(eval_level l);
 void prints_wrapper(eval_level l);
 void to_string_wrapper(eval_level l);
 void error_wrapper(eval_level l);
+void type_aware_print_wrapper(eval_level l,const type& tp);
 void sizeof_wrapper(eval_level l);
 void sizeof_vector_wrapper(eval_level l);
 void sizeof_ratvec_wrapper(eval_level l);
@@ -4239,6 +4277,18 @@ void error_wrapper(eval_level l)
   throw runtime_error(o.str());
 }
 
+@ We call |Print| the type aware version of |print|, our first type aware
+function. Unlike |print| it cannot return its argument, since there is no such
+thing as covariant type aware functions.
+
+@< Global function definitions @>=
+void type_aware_print_wrapper(eval_level l, const type& tp)
+{
+  *output_stream << '{' << tp << ":}";
+  *output_stream << *pop_value() << std::endl;
+  if (l==eval_level::single_value)
+    wrap_tuple<0>(); // don't forget to return an empty value if asked for
+}
 
 @ The other definitions are equally straightforward. The generic size-of wrapper
 is used to find the length of any ``row-of'' value, and the others are adapted
@@ -4468,6 +4518,7 @@ install_function(print_wrapper,"print","(T->T)");
 install_function(prints_wrapper,"prints","(T->)");
 install_function(to_string_wrapper,"to_string","(T->string)");
 install_function(error_wrapper,"error","(T->X)");
+install_type_aware_function(type_aware_print_wrapper,"Print","(*->)");
 install_function(sizeof_wrapper,"#","([T]->int)");
 install_function(sizeof_string_wrapper,"#","(string->int)");
 install_function(sizeof_vector_wrapper,"#","(vec->int)");

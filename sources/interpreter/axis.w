@@ -1464,17 +1464,22 @@ void identifier::print(std::ostream& out) const
 
 @*1 Global identifiers.
 %
- When during type checking an identifiers binds to a value in the global
+When during type checking an identifiers binds to a value in the global
 identifier table, it will be converted into a |global_identifier| object.
-Since a value is already available at this time, we can record the location of
-the (pointer to the shared) value in the |global_identifier| object. Apart
-from avoiding look-up at evaluation time, this binding can remain intact in
-case the global identifier should be defined anew using the |add| method of
-the identifier table, and will continue to access the old value. This
-precaution is necessary because (in contrast to assignment) a new definition
-may change the type of the identifier, but the applied identifier expression
-has already been type-checked and should not be allowed to return a value of a
-different type than it did originally.
+It records the location of the (pointer to the shared) value in the object,
+form of a |shared_share| smart pointer defined in \.{global.h}.
+
+@< Includes needed in the header file @>=
+
+#include "global.h" // for |shared_share|
+
+@ Apart from avoiding look-up at evaluation time, this binding can remain intact
+in case the global identifier should be defined anew using the |add| method of
+the identifier table, and will continue to access the old value. This precaution
+is necessary because (in contrast to assignment) a new definition may change the
+type of the identifier, but the applied identifier expression has already been
+type-checked and should not be allowed to return a value of a different type
+than it did originally.
 
 We add a Boolean template parameter to this class, in order to have a variant
 where the evaluation empties the variable itself, which the compiler can employ
@@ -1924,6 +1929,16 @@ Whenever an argument matches, be it exact or inexact, |conform_types| will be
 called for the variant result type and the expected |tp|; this may throw an
 error, also aborting the matching process.
 
+In a recent addition to the language, we allow built-in functions that can
+operate with arguments of any type but (unlike truly generic functions) need to
+be explicitly informed of that type at runtime. This means we cannot compile
+calls of such functions when the argument type involves unbound type variables,
+and entries for such functions in the overload table are distinguished by the
+fact that their argument type is specified as an |undetermined_type| (where
+generic functions specify a type variable as argument type). Such entries need
+to be singled out immediately to avoid methods like |type::matches|, which are
+not designed for this, to be exposed to undetermined argument types.
+
 @< Try to find an element of |variants| whose |arg_type| exactly matches...@>=
 {
   const unsigned int apt_deg = a_priori_type.degree();
@@ -1931,6 +1946,9 @@ error, also aborting the matching process.
   const overload_data* prev_match=nullptr;
   for (const auto& variant : variants)
   {
+    if (variant.f_tp().arg_type.raw_kind()==undetermined_type)
+      @< Record and |return| a match if |a_priori_type| has a concrete type;
+         otherwise |continue| @>
     unsigned int shift_amount;
     if (a_priori_type.matches
          (variant.f_tp().arg_type,variant.poly_degree(),shift_amount))
@@ -1954,7 +1972,7 @@ error, also aborting the matching process.
 @/ // |res_type| is recorded in |tp|, and |arg_type| has served and is forgotten
     }
     a_priori_type.clear(apt_deg);
-      // remove type variable introduced by |match|
+      // remove type variable introduced by |matches|
    }
 @)
    if (result!=nullptr) // then a unique match was found
@@ -1987,7 +2005,7 @@ id_type equals_name()
 @ Having found a match (exact or inexact; the code below is included twice), and
 having converted the argument expression to |arg|, we need to construct a
 function call object. The overload table contains an already evaluated function
-value~|variant.value()|, which is has type |shared_function|, more specific than
+value~|variant.value()|, which has type |shared_function|, more specific than
 |shared_value| as it points to a value that represents a function object. Such
 values can either hold a built-in function, or a user-defined function together
 with its evaluation context, and we shall add to the list of possibilities
@@ -2143,6 +2161,37 @@ the same.
   }
 }
 
+@ Type aware built-in functions can operate on any type that does not contain
+abstracted type variables. If given an argument with such a type, they will
+match without considering any further overloads (such bindings are expected to
+be the only, or in any case first, overload for the name), while for abstract
+types this binding is ignored, by calling |continue| to skip to the next
+|variant|. Matching consists of first spawning a |type_aware_instance| of the
+built-in function, for which we then call the |build_call| method to produce a
+call of this instance with the argument. The name that will be printed for the
+function in the call is the one constructed for the |type_aware_instance|
+(rather than the name of the identifier used, which lacks the specialising type;
+in any case there currently is no mechanism allowing the user to bind type aware
+built-ins to a different identifier while retaining its type aware character).
+
+@< Record and |return| a match if |a_priori_type| has a concrete type;
+   otherwise |continue| @>=
+{ if (a_priori_type.is_concrete())
+  {
+    const auto& b =
+      std::dynamic_pointer_cast<const type_aware_builtin>(variant.value());
+    assert(b!=nullptr);
+    auto f = std::make_shared<type_aware_instance>
+             (b->spawn(std::move(a_priori_type)));
+    expression_ptr arg = n_args==1 ? std::move(arg_vector[0])
+			 : expression_ptr(std::move(tup_exp));
+    std::ostringstream o; f->print(o);
+    expression_ptr call = f->build_call(f,o.str(),std::move(arg),e.loc);
+    return call;
+  }
+  continue;
+}
+
 @ Many expression types listed in |enum expr_kind@;| have an interpretation that
 is insensible to the type expected by the context, so that any type mismatch can
 only be accommodated by a conversion applied externally. For these expression
@@ -2208,20 +2257,25 @@ built-in functions, while leaving the particulars of user defined functions
 (also known as $\lambda$-expressions) and other types aside until somewhat
 later. This corresponds more or less to the development history of the
 interpreter, in which initially only built-in functions were catered for;
-however many of the aspects that we deal with right away, notably function
-overloading, are in fact much more recent additions than user-defined
-functions were.
+however, many of the aspects that we deal with right away, notably function
+overloading, are in fact more recent additions than user-defined functions were.
 
-There will be several classes of expressions to represent function calls,
-differing in the degree to which the called function has been identified
-during type analysis. An intermediate class |call_base| between
-|expression_base| and these classes is derived, to group some functionality
-common to them. All call expressions take a general argument expression, and
-location information is stored to allow the calling expression to be
-identified during an error trace-back. Apart from the location information, an
-error trace will also provide a name of the called function (which is more
-readable than trying to reproduce the whole function call expression), which
-will be obtained from the virtual method |function_name|.
+The treatment of function calling involves two types of classes: those that
+represent executable expressions like function calls (which are derived from
+|expression_base|), and those that represent functions as runtime values, like
+those that are stored in the global overload table or passed around as function
+values (which are derived from |value_base|).
+
+There will be several classes of executable expressions representing function
+calls, differing in the degree to which the called function has been identified
+during type analysis. We define an intermediate class |call_base| between
+|expression_base| and these classes, to group some functionality common to them.
+All call expressions take a general argument expression, and location
+information is stored to allow the calling expression to be identified during an
+error trace-back. Apart from the location information, an error trace will also
+provide a name of the called function (which is more readable than trying to
+reproduce the whole function call expression), which will be obtained from the
+virtual method |function_name|.
 
 @< Type def... @>=
 struct call_base : public expression_base
@@ -2235,17 +2289,20 @@ struct call_base : public expression_base
 };
 @)
 
-@ We similarly define an intermediate class |function_base| between |value_base|
-and the concrete classes that will define function objects, like built-in
-functions. The main (virtual) methods introduced here are |apply|, which will
-serve in |call_expression::evaluate| below to implement a call of the function
-object once arguments have been evaluated to the stack, and |build_call| that is
-instead used to build a specialised call expression when a function value is
-identified at analysis time (in overloaded calls). In addition |argument_policy|
-tells how the function object wants its arguments prepared, |maybe_push| is a
-hook that does nothing except for recursive functions that use it for their
-implementation, and |report_origin| which serves in forming an back-trace in
-case of errors during execution of the function.
+@ Turning to runtime function values, we similarly define an intermediate class
+|function_base| between |value_base| and the concrete classes that will define
+function objects, like built-in functions. The main (virtual) methods introduced
+here are |apply|, which will serve in |call_expression::evaluate| below to
+implement a call of the function object once arguments have been evaluated to
+the stack, and |build_call| that is instead used to build a specialised call
+expression when a function value is identified at analysis time (in overloaded
+calls). In addition there are |argument_policy|, which informs its user about
+how the function object wants its arguments prepared, and~|report_origin|, which
+serves in forming an back-trace in case of errors during execution of the
+function. Finally a virtual method |maybe_push| is provided that is designed to
+allow functionality for certain derived classes to be implemented and which do
+nothing for other ones: it is a hook used in the mechanism that allows
+recursive functions to access their own value for recursive calling.
 
 @s eval_level vector
 
@@ -2260,26 +2317,28 @@ struct function_base : public value_base
   static const char* name() @+{@; return "function value"; }
 @)
   virtual void apply(eval_level l) const=0;
-    // go; arg.\ values on |execution_stack|
+    // go; find arguments on |execution_stack|
   virtual eval_level argument_policy() const=0;
     // form to prepare arguments in
-  virtual void maybe_push(const std::shared_ptr<const function_base>& p) const
-    @+{}
   virtual void report_origin(std::ostream& o) const=0;
     // tell where we are from
   virtual expression_ptr build_call
     (const shared_function& master,const std::string& name,
      expression_ptr&& arg, const source_location& loc) const=0;
+  virtual void maybe_push(const std::shared_ptr<const function_base>& p) const
+    @+{}
 };
 
 
-@ We start with introducing a type for representing general function calls
-after type checking. This is the general form where function can be given by
-any kind of expression, not necessarily an applied identifier; indeed most
-cases where a named function is called will handled by another kind of
-expression, the overloaded call. In contrast with that, this type of call will
-dynamically evaluate the function part (as opposed to argument) of the call,
-possibly resulting in different functions between evaluations.
+@ Returning to call expressions, we start with introducing a type for
+representing general function calls after type checking. In this form, the
+function can be given by any kind of expression, not necessarily an applied
+identifier; indeed most cases where a named function is called will handled by
+another kind of expression, the overloaded call. In contrast with that, this
+type of call will evaluate the function part of the call at runtime (whereas the
+argument part is evaluated at runtime in \emph{all} types of call), which
+evaluation can result in different functions between evaluations, even functions
+with different kinds of internal representations (built-in or user defined).
 
 @< Type def... @>=
 struct call_expression : public call_base
@@ -2312,33 +2371,40 @@ void call_expression::print(std::ostream& out) const
   else out << '(' << *argument << ')';
 }
 
-@ When a call involves a built-in function, what is executed is a value of
-type |wrapper_function|, which is a |typedef| for a specific kind of function
-pointer, defined in \.{global.h}.
+@ We switch back to function values, starting with ones giving access to a
+built-in function. When a call involves a built-in function, what is executed is
+a value of type |wrapper_function| held inside the function value; this is a
+|typedef|, defined in \.{axis-types-fwd.h}, for a specific kind of function
+pointer.
 
 @< Includes needed in the header file @>=
 
-#include "global.h" // for |wrapper_function|
+#include "axis-types-fwd.h" // for |wrapper_function|, |type_aware_wrapper|
 
-@ The class of dynamic values holding a wrapper function is called
-|builtin_value|. Besides the function pointer it also stores a print name,
-which is used when the wrapper function, rather than being called, gets
-printed as (part of) a value in its own right; it is also used when reporting
-an error during the execution of the built-in function. Most |builtin_value|
-instances are constructed at start-up time when functions are entered into the
-global overload table; their |print_name| will stick, even if the user binds
-it to a new name.
+@ A function value holding a wrapper function is called a |builtin_value|.
+Besides the function pointer it also stores a print name, which is used when the
+function value, rather than being called, gets printed as (part of) a value in
+its own right; it is also used when reporting an error during the execution of
+the built-in function. Most |builtin_value| instances are constructed at
+start-up time when functions are entered into the global overload table; their
+|print_name| will stick to the function value, even if the user should bind that
+value to a new name.
 
 Some built-in functions like |print| accept arguments of any types, and in
-particular tuples of any length. For such functions there is no use in
-adopting the approach used for other built-in functions of expanding argument
-tuples on the stack; instead the argument is always considered as one value.
-We cater for the distinction between the two variants at run-time by
-making this a class template with a Boolean template argument |variadic|. This
-is necessary because operator casts make it possible to use specialisations
-of variadic functions as function values (of the correspondingly specialised
-type), so they can occur not only in overloaded calls, but in any place that
-other built-in or user-defined functions can.
+particular tuples of any length. For such functions there is no use in adopting
+the approach used for other built-in functions of expanding argument tuples on
+the stack; instead the argument is always considered as one value. We cater for
+the distinction between the two variants at run-time by making this a class
+template with a Boolean template argument |variadic|. Representing this
+distinction in the function value rather than in the call expression is
+necessary because one can create specialisations of variadic functions without
+using a call expression, namely by specifying just the argument type(s) in an
+operator cast (which can even cast to a generic argument type so that no actual
+specialisation takes place). Such specialisation can be used not only in calls,
+but in any place that other built-in or user-defined functions can, and then
+eventually be used in a call where the argument policy of the function cannot be
+determined during type checking; instead it will be determined by calling the
+virtual method |argument_policy|.
 
 As another supplementary information, we store an indication of whether this
 built-in function wants to produce its result by modifying one of its arguments;
@@ -2379,16 +2445,100 @@ template <bool variadic>
   builtin_value(const builtin_value& v) = delete;
 };
 
-@ While syntactically more complicated than ordinary function calls, the call
-of overloaded functions is actually more direct at run time, because the
-function is necessarily referred to by an identifier (or operator) instead of
-by an arbitrary expression, and overloading resolution results in that
-identifier being replaced by a function \emph{value}, known at analysis time.
-Different kinds of function values, derived from |function_base|, can then
-give rise to different kind of overloaded calls. We introduce
-|overloaded_call| as another abstract class between |call_base| and those
-kinds of call; its main purpose is to store a name that reflects how
-overloading was resolved.
+@ Another kind of special function is the type-aware builtin function. Instances
+of these functions will be provided with the |type| that the type checker has
+derived for their argument, so that their implementation can adapt its behaviour
+accordingly. This rather late addition to the repertoire of function values is
+intended to allow improved versions of functions like |print| to be defined,
+replacing the old behaviour that dynamically adapts to the actual runtime
+value by calling the (recursively defined) virtual method |value_base::print|.
+By having access to the type that was derived for the argument, the printing can
+be adapted in ways that are not otherwise possible. This possibility is
+important notably to enable introducing opaque types (and type constructors),
+that are primitive to the type checker although actual values will be of some
+existing implementation type; the virtual method based printing function bases
+its behaviour only on the underlying value, and cannot change it for values
+handled under a used defined opaque type.
+
+Two classes are involved with these functions: the function value stored in the
+|overload_table| will be of type |type_aware_builtin|, and once a concrete
+argument type is deduced, it can be used to spawn a |type_aware_instance| from
+it. Only the latter can be actually used in a function call.
+
+We start with |type_aware_instance|, which is very similar to that of the
+|builtin_value| class template. But the changes to the types of several members
+make it unattractive to try to extend that template to encompass this new class.
+
+@< Type definitions @>=
+struct type_aware_instance : public function_base
+{
+  type_aware_wrapper val;
+@+type arg_type;
+@+std::string print_name;
+@)
+  type_aware_instance(type_aware_wrapper f,std::string name,type tp)
+  : val(f), arg_type(std::move(tp)), print_name(std::move(name)) @+ {}
+  virtual void print(std::ostream& out) const@+
+  {@; out << '{' << print_name << "}@@" << arg_type; }
+  virtual void apply(eval_level l) const @+
+    {@; (*val)(l,arg_type); } // apply function pointer
+  virtual eval_level argument_policy() const
+   @+{@; return eval_level::single_value; }
+  virtual void report_origin(std::ostream& o) const @+
+  {@; o << "built-in instance"; }
+  virtual expression_ptr build_call
+    (const shared_function& master,const std::string& name,
+     expression_ptr&& arg, const source_location& loc) const;
+@)
+  static const char* name() @+
+    {@; return "type aware built-in function instance"; }
+  type_aware_instance(type_aware_instance&& v) = default;
+};
+
+@ We derive |type_aware_builtin| from |function_base| just to allow its values
+to be stored in the |overload_data| structure; the class does not implement
+directly applying it to argument values. Nonetheless in order to be a concrete
+class, the methods |apply| and |build_call| are given \foreign{pro forma}
+trivial implementations.
+
+@< Type definitions @>=
+struct type_aware_builtin : public function_base
+{
+  type_aware_wrapper val;
+@+std::string print_name;
+@)
+  type_aware_builtin(type_aware_wrapper f,std::string name)
+  : val(f), print_name(std::move(name)) @+ {}
+  virtual void print(std::ostream& out) const
+  @+{@; out << '{' << print_name << '}'; }
+  virtual void apply(eval_level l) const @+{} // cannot apply directly
+  virtual eval_level argument_policy() const
+   @+{@; return eval_level::single_value; }
+  virtual void report_origin(std::ostream& o) const @+
+  {@; o << "built-in"; }
+  virtual expression_ptr build_call
+    (const shared_function&,const std::string&,
+     expression_ptr&&, const source_location&) const
+     @+{@; return nullptr; }
+  static const char* name() @+
+    {@; return "type aware built-in function instance"; }
+@)
+  type_aware_instance spawn (type arg_type) const
+  {@; return type_aware_instance(val,print_name,std::move(arg_type)); }
+};
+
+@ Back to executable expressions for function calls. The call of an overloaded
+function, while requiring more syntactic analysis than needed to produce a
+general |call_expression|, is actually more direct at run time. This is so
+because the function is necessarily referred to by an identifier (or operator)
+instead of by an arbitrary expression, and overloading resolution results in
+that identifier being replaced by a function \emph{value}, known at analysis
+time. Different kinds of function values, all derived from |function_base|, can
+then give rise to different kind of overloaded calls. We introduce
+|overloaded_call| as another abstract class between |call_base| and those kinds
+of call; its main purpose is to store a name that reflects how overloading was
+resolved.
+
 @< Type definitions @>=
 struct overloaded_call : public call_base
 { std::string name;
@@ -2427,17 +2577,17 @@ stored function pointer, which is needed every time the
 |overloaded_builtin_call| is executed, so we do copy this pointer into a member
 |f_ptr| of the latter, which avoid an extra indirection when using it.
 
-When accessed through overloading, the condition whether a built-in function
-is variadic or not is known at compile time, so we can make this a class
-template with a |variadic| template argument, just like |builtin_value|;
-indeed the template argument serves exclusively to adapt the type of the
-member~|f|. An additional constructor without |name| argument is provided for
-convenience to places where our interpreter directly produces calls to
-certain built-in functions, without going through the overload table; the
-function name is then deduced from the one stored in the |builtin_value|.
-The first constructor take the shared pointer |fun| is by value since it is most
-often, but not always, held in a local variable of the caller from which it can
-be moved; for the second constructor we pass by constant reference since the
+When accessed through overloading, the condition whether a built-in function is
+variadic or not is known at compile time, so we can make this a class template
+with a |variadic| template argument, just like |builtin_value|; indeed the
+template argument serves exclusively to adapt the type of the member~|f|. An
+additional constructor without |name| argument is provided for convenience, to
+be used in places where our interpreter directly produces calls to certain
+built-in functions, without going through the overload table; the function name
+is then deduced from the one stored in the |builtin_value|. The first
+constructor takes the shared pointer |fun| by value since it is most often,
+but not always, held in a local variable of the caller from which it can be
+moved; for the second constructor we pass by constant reference since the
 argument will not come from a local variable.
 
 @< Type definitions @>=
@@ -2466,8 +2616,38 @@ template <bool variadic>
   virtual void evaluate(level l) const;
 };
 @)
-typedef overloaded_builtin_call<false> builtin_call;
-typedef overloaded_builtin_call<true> variadic_builtin_call;
+using builtin_call = overloaded_builtin_call<false>;
+using variadic_builtin_call = overloaded_builtin_call<true>;
+
+@ There is a related class definition for calls of |type_aware_builtin| values;
+since including \&{overloaded} in the name, as would be natural, would make the
+name too unwieldy for practice, it is simply called |type_aware_builtin_call|.
+Its definition remains close to that of the |overloaded_builtin_call| template.
+
+@< Type definitions @>=
+struct type_aware_builtin_call : public overloaded_call
+{ typedef std::shared_ptr<const type_aware_instance> ptr_to_aware_builtin;
+@)
+  ptr_to_aware_builtin f;
+   // points to the full |type_aware_builtin|, for back-tracing
+  type_aware_wrapper f_ptr; // shortcut to implementing function
+@)
+  type_aware_builtin_call
+    (ptr_to_aware_builtin fun,
+     const std::string& name,
+     expression_ptr&& arg,
+     const source_location& loc)
+@/: overloaded_call(name,std::move(arg),loc)
+  , f(std::move(fun)), f_ptr(f->val) @+ {}
+  type_aware_builtin_call
+    (const ptr_to_aware_builtin& fun,
+     expression_ptr&& arg,
+     const source_location& loc)
+@/: overloaded_call(fun->print_name,std::move(arg),loc)
+  , f(fun), f_ptr(fun->val) @+ {}
+  virtual ~type_aware_builtin_call() = default;
+  virtual void evaluate(level l) const;
+};
 
 @ A |builtin_value| can turn itself into an |overloaded_builtin_call| when
 provided with a shared pointer |master| to itself, an argument expression, a
@@ -2487,14 +2667,27 @@ expression_ptr builtin_value<variadic>::build_call
     overloaded_builtin_call<variadic>(f,name,std::move(arg),loc));
 }
 
+@ The method |type_aware_instance::build_call| follows a very similar pattern.
+
+@< Function def... @>=
+expression_ptr type_aware_instance::build_call
+    (const shared_function& master,const std::string& name,
+     expression_ptr&& arg, const source_location& loc) const
+{ assert(master.get()==this);
+  auto f=std::static_pointer_cast<const type_aware_instance>(master);
+  return expression_ptr(new @|
+    type_aware_builtin_call(f,name,std::move(arg),loc));
+}
+
+
 @ Sometimes we want a builtin operator to have special behaviour at compile
 time, in the sense that when an application is formed with the global overload
 table matching the |builtin_value| for this operator, the virtual |build_call|
 method inspects the arguments and in some cases replaces the operator by another
 builtin function with a part of the arguments; the typical example is an
 application $E+1$ that transforms itself into |succ(E)|. To accommodate this we
-define a class derived from |builtin_value| that provides an alternative |apply|
-method that tries this substitution before reverting to
+define a class derived from |builtin_value| that provides an alternative
+|build_call| method, which tries this substitution before reverting to
 |builtin_value::build_call| if special argument values were not found.
 
 @< Type definitions @>=
@@ -2562,6 +2755,26 @@ void variadic_builtin_call::evaluate(level l) const
 @)
   try
   {@; (*f_ptr)(l); } // call the built-in function
+  @< Catch block for exceptions thrown within call of |f| with |arg_string| @>
+}
+
+@ For |type_aware_builtin_call::evaluate| the only difference is that a
+|type_aware_wrapper| takes a |const type&| reference as second argument, for
+which we provide the |arg_type| that was stored when the |type_aware_instance|
+pointed to by its member~|f| was created.
+
+@< Function definitions @>=
+void type_aware_builtin_call::evaluate(level l) const
+{ std::string arg_string;
+  argument->eval(); ; // always evaluate to single value
+  if (verbosity>0) // then record argument(s) as string
+  {@; std::ostringstream o;
+    o << *execution_stack.back();
+    arg_string = o.str();
+  }
+@)
+  try
+  {@; (*f_ptr)(l,f->arg_type); } // call the built-in function
   @< Catch block for exceptions thrown within call of |f| with |arg_string| @>
 }
 
@@ -2736,22 +2949,24 @@ We now discuss the treatment of function calls at the time of type analysis,
 and how the instances of classes derived from |call_base| come to be.
 
 When we type-check a function call, we must expect the function part to be any
-type of expression. But when it is a single identifier (possibly an operator
-symbol) for which one or more overloads are defined then we attempt overload
-resolution, unless the same identifier is locally bound with function type as
-such bindings take precedence (however we ignore a possible binding for the
-identifier in the global identifier table, even if it should have function
-type). In all other cases (including that of a local function identifier), the
-known type of the function expression gives the argument and result
-types, and can be used to help converting the argument expression and the call
-expression itself. Thus in such cases we first get the type of the expression
-in the function position, requiring only that it be a function type, then
-type-check and convert the argument expression using the obtained result type,
-and build a converted function call~|call|. Finally (and this is done by
-|conform_types|) we test if the required type matches the return type (in
-which case we simply return~|call|), or if the return type can be coerced to
-it (in which case we return |call| as transformed by |coerce|); if neither is
-possible |conform_types| will throw a~|type_error|.
+kind of expression. But if it is a single identifier (possibly an operator
+symbol) for which one or more overloads are defined, then we attempt overload
+resolution, unless the same identifier is locally bound with function type,
+since such bindings take precedence. Note that when at least one overload of an
+identifier is defined, a binding that the identifier might have in the global
+identifier table is ignored in calls using that identifier, even if the binding
+has a function type. In cases where no overload resolution is attempted
+(including that of a local function identifier), the known type of the function
+expression gives the argument and result types, and can be used to help
+converting the argument expression and the call expression itself. Thus in such
+cases we first get the type of the expression in the function position,
+requiring only that it be a function type, then type-check and convert the
+argument expression using the obtained result type, and build a converted
+function call~|call|. Finally (and this is done by |conform_types|) we test if
+the required type matches the return type (in which case we simply
+return~|call|), or if the return type can be coerced to it (in which case we
+return |call| as transformed by |coerce|); if neither is possible
+|conform_types| will throw a~|type_error|.
 
 @:type-check calls@>
 
@@ -2794,12 +3009,12 @@ possible to give a more specific error message, which we do here.
 @ When a call expression has an identifier in the place of the function (as is
 often the case; this also includes all operators applied in formulae), we
 prepare a call to the function |resolve_overload| defined above in
-section@#resolve_overload@>. Before doing that, we check if the identifier has
-a local binding with function type, in which we fall through the code below to
+section@#resolve_overload@>. Before doing that, we check if the identifier has a
+local binding with function type, in which we fall through the code below to
 make a |call_expression| as in the general case, without any overloading. The
 call is also omitted when the identifier is absent from the overload table
-altogether; in that case it might still be a global identifier with function
-type.
+altogether; in that case it might still be defined as a global identifier with
+function type.
 
 @< Convert and |return| an overloaded function call... @>=
 { const id_type id =call.fun.identifier_variant;

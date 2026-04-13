@@ -479,7 +479,7 @@ const type_expr& component_type () const @+
     {@; assert(tag==row_type); return *row_variant; }
  type_expr& component_type () @+
     {@; assert(tag==row_type); return *row_variant; }
-const_raw_type_list tuple () const @+
+const_raw_type_list tuple () const
     {@; assert(tag==tuple_type or tag==union_type); return tuple_variant; }
   raw_type_list tuple () @+
     {@; assert(tag==tuple_type or tag==union_type); return tuple_variant; }
@@ -494,7 +494,7 @@ unsigned short tabled_arity() const; // number of arguments taken
 bool is_recursive() const; // whether |tabled| type is recursive
 id_type type_name () const; // identifier corresponding to |tabled_variant|
 type_expr expanded () const; // top level expansion of |tabled_variant|
-type_expr& expand ()
+type_expr& expand () @+
 {@; if (tag==tabled)
       *this = expanded();
     return *this;
@@ -2449,9 +2449,9 @@ public:
     (const type_expr& tp, unsigned int shift_amount=0) const;
   bool unify(const type_expr& P, const type_expr& Q);
 @)
+  bool is_free_in(const type_expr& tp, unsigned int nr) const;
 private:
   static bool null(const type_ptr& p)@+{@; return p==nullptr; }
-  bool is_free_in(const type_expr& tp, unsigned int nr) const;
 };
 
 @ Sometimes we want to make a copy of a |type_assignment|, and since the |equiv|
@@ -2912,18 +2912,20 @@ that can be consistently substituted for.
 The class |type| defined below provides data and methods to help administrate
 polymorphic types: they allow identifying which type variables are polymorphic,
 and may also represent substitutions that are already made for certain type
-variables. It does not entirely hide the |type_expr| functionality, since many
-of the methods to be implemented, like the already introduced |substitution|,
-are defined by structural recursion over~|type_expr|. Adapting the main type
-checking function |convert_expr| to communicate with its caller using |type|
-rather than |type_expr| was a particularly difficult change, since it cut across
-such a large part of the interpreter. The change was worth making though, as it
-clarified what functionality is needed for polymorphic types. In the old
-approach where, in contexts with a polymorphic type requirement, we passed a
-necessarily weaker type pattern derived from it to the type checker, certain
-uses of overloaded symbols needed disambiguation by the user where this can now
-be done automatically; in addition the caller was forced to re-check after the
-fact any polymorphic constraints that were not passed down.
+variables. The |type| class does not entirely hide the |type_expr|
+functionality, since many of the methods to be implemented, like the already
+introduced |substitution|, are defined by structural recursion over~|type_expr|.
+Adapting the main type checking function |convert_expr| to communicate with its
+caller using |type| rather than |type_expr| was a particularly difficult change
+to implement, since it cuts across such a large part of the interpreter, but
+well worth making. In contexts with a polymorphic type requirement, our old
+approach would leave undetermined any type subexpressions that are now type
+variables; where a same variable occurs more than once, this type pattern passed
+to the type checker gave a weaker constraint than the polymorphic type now does.
+This meant that certain uses of overloaded symbols needed disambiguation by the
+user where this can now be done automatically; in addition the caller was forced
+to re-check after the fact any polymorphic constraints that were not passed
+down.
 
 Polymorphic types arise in type checking when identifiers and functions with a
 recorded polymorphic type are used. When combined in for instance function
@@ -2937,22 +2939,20 @@ without any operations given for it. These type variables may end up in the
 the scope in which they were introduced, they become polymorphic type variables.
 The latter are implicitly universally quantified, and they can be substituted
 for during unification. An important quantity that |type| records in addition to
-its |type_expr|, is the threshold between type variables still in scope
+its |type_expr|, is the threshold between abstract type variables still in scope
 (numbered below the threshold), and polymorphic type variables (numbered from
-the threshold upwards). When we are manipulating |type_expr| values, this
-threshold is stored in somewhere the context. Thus polymorphic type variables
-``float on top'' of the fixed type variables. This often creates the necessity
-to renumber polymorphic type variables, which is annoying; it is inevitable
-however, since even if we had kept a separate pool of polymorphic variables,
-unification would require sets of polymorphic type variables, from separate
-subexpressions, to be made disjoint.
+the threshold upwards). Thus polymorphic type variables ``float on top'' of the
+fixed type variables, which annoyingly often creates the necessity to renumber
+polymorphic type variables. This is inevitable however, since even if we had
+kept a separate pool of polymorphic variables, unification would require sets of
+polymorphic type variables, from separate subexpressions, to be made disjoint.
 
 Polymorphic types are most often function types, and the main use of
 polymorphism and unification occurs when we resolve function overloading.
-However, unification can also occur where no overloading is involved, when using
-variables with a previously determined polymorphic type, and if two such types
-are combined in a function application, say, unification is applied producing
-yet another (possibly) polymorphic type. Also, some expressions can be given a
+However, unification can also occur where no overloading is involved: when using
+variables with a previously determined polymorphic type, if two such types are
+combined say in a function application, unification is applied producing yet
+another (possibly) polymorphic type. Also, some expressions can be given a
 non-function polymorphic type, of which the most common example is the empty row
 display, which in a context that does not expect any particular component type
 is given the polymorphic type \.{[A]}. Similar examples arise for an application
@@ -2961,19 +2961,20 @@ type that remains polymorphic in the \emph{other} variants of the union.
 
 Note that when a context expects a polymorphic type, this does not mean it
 \emph{requires} an expression having that exact type, but just an instance of
-it. No mechanism is provided to cast to a polymorphic type, and we rule out the
-possibility of assigning to a variable of polymorphic type (which, to ensure
-type safety, would need to require the assigned value to be sufficiently
-polymorphic). To achieve the latter, we stipulate that whenever an identifier is
-found to have a polymorphic type at its initialisation, it is implicitly given
-the constant attribute, ruling out later assignments to it. As there are usually
-not many different values with a given polymorphic type anyway, this is not
-expected to be a severe restriction for user. Note that in the scope of
-abstracted type variables, they are not yet polymorphic, so they \emph{can}
-occur in cast and in types of assignable variables. Also, in case the initial
-value of a variables should be accidentally polymorphic (as commonly occurs in
-case of initialisation to an empty row expression), one can use a cast to remove
-the polymorphism, which will make the variable assignable.
+it. No syntax is provided to specify a cast to a polymorphic type. Also,
+although user variables are allowed to have a polymorphic type, we rule out the
+possibility of assigning to such variables by implicitly giving them the
+constant attribute. The reason for this is that such an assignment would
+effectively cast the assigned expression to the polymorphic type, and to ensure
+type safety, the type checker would need to require the assigned value to
+be \emph{sufficiently polymorphic}. There are usually not many different values
+with a given polymorphic type anyway, so forbidding such assignments is not
+expected to severely hinder users. Note that in the scope of abstracted type
+variables, they are not yet polymorphic, so they \emph{can} occur in cast and in
+types of assignable variables. In cases where the initial value of a variables
+could be accidentally polymorphic (as happens when initialising to an empty row
+expression), one can use a cast to remove the polymorphism, thus making the
+variable assignable.
 
 @ The main information added by a |type| to the |type_expr| it contains, is the
 range of type variable numbers that are considered to be polymorphic. This is
@@ -3023,6 +3024,7 @@ public:
   static type wrap_tuple(sl_list<type>&& components, unsigned int floor);
   static type constructor(type_expr&& te, unsigned int degree);
   static type bottom(unsigned int fix_count); // a polymorphic type variable
+@)
   type(type&& tp) = default;
   type& operator=(type&& tp) = default;
   type copy() const @+
@@ -3072,6 +3074,7 @@ unsigned int ceil() const @+{@; return floor()+degree(); }
 bool is_polymorphic() const @+{@; return not a.full(); }
 bool is_clean() const @+{@; return a.empty(); }
 bool is_bottom() const @+{@; return a.is_polymorphic(te); }
+bool is_concrete() const; // absence of abstract (fixed) type variables
 const type_expr& unwrap() const @+{@; return te ; }
 bool is_void() const @+ {@; return top_expr().is_void(); }
 
@@ -3239,6 +3242,22 @@ func_type type::f_type() const
   type_expr te = assign().substitution(top.expanded());
   return std::move(*te.func());
 }
+
+@ The method |type::is_concrete| tests for the absence of abstracted type
+variables, which are those that are numbered less than |floor()|. It does so
+with the aid of |type_Assignment::is_free_in|, which takes care to take into
+account indirect containment through polymorphic variables with a pending type
+assignment in~|a|; the implementation is therefore quite simple.
+
+@< Function definitions @>=
+bool type::is_concrete() const
+{
+  for (unsigned int v=0; v<floor(); ++v)
+    if (a.is_free_in(te,v))
+      return false;
+  return true;
+}
+
 
 @ The method |raise_floor| is used to ensure that certain type variables (that
 are or become fixed in the context) will not be in use as polymorphic type
@@ -4765,6 +4784,7 @@ efficiency reasons) provided systematically in the library.
 
 @< Type declarations @>=
 using wrapper_function = @[void (* )(eval_level)@];
+using type_aware_wrapper = @[void (*)(eval_level, const type&)@];
 struct function_base; // a type derived from |value_base|, defined in \.{axis.w}
 using shared_function = std::shared_ptr<const function_base>;
 // specialises |shared_value|
@@ -4774,6 +4794,7 @@ using builtin = builtin_value<false>;
 using shared_builtin = std::shared_ptr<const builtin>;
 using shared_variadic_builtin = std::shared_ptr<const builtin_value<true> >;
 struct special_builtin; // derived from |builtin|, defined in \.{axis.w}
+struct type_aware_builtin; // derived from |function_base|
 
 @* Implicit conversion of values between types.
 %
