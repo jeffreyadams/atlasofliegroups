@@ -127,9 +127,9 @@ in if not twist(delta_check,O_check)=O_check
    in {prints("rd_int:",rd_int, new_line, "st_int.rd: ", st_int.root_datum)
    ;}  let O_check_int = integral_descent(O_check)
    in if cells_verbose then prints("computing packet for:", O_check_int) fi
-   ;  let (bc,wp) = weak_packet_int(st_int,O_check_int,all,gamma_final)
-   in if {G.is_split and } =#wp then prints("ALERT: , empty packet") fi
-   ;  (bc,wp)
+   ;  let (bc,wp) = weak_packet_int(st_int,O_check_int,all,gamma_final) in  (bc,wp)
+   {in if {G.is_split and } =#wp then prints("ALERT: , empty packet") fi
+   ;  (bc,wp)}
 fi
 
 set weak_packet (ComplexNilpotent O_check,RealForm G) =
@@ -710,3 +710,26 @@ parameters(weak_packets(G))
 
 set unipotent_representations_by_orbit(RealForm G)=[[Param]]:
 let wp=weak_packets(G) in for (,b) in wp do parameters(b) od
+
+{weak unipotent packet for a classical group, orbit given by a partition}
+set unipotent_representations(Orbit orbit,RealForm G)=[Param]:
+let n=rank(G) in
+if type_number(G)=1 {type B}
+ then
+ assert(is_valid("C",orbit), "not an orbit of type C");
+ let dual_orbit=nilpotent_orbit_Sp(orbit) in
+ parameters(weak_packet(dual_orbit,G))
+elif type_number(G)=2 or type_number(G)=0 and rank(G)=1 {type C, including SL(2)}
+ then
+ assert(is_valid("B",orbit), "not an orbit of type B");
+ let dual_orbit=nilpotent_orbit_SO(orbit) in
+ parameters(weak_packet(dual_orbit,G))
+elif type_number(G)=3 {type D}
+ then
+ assert(is_valid("D",orbit), "not an orbit of type D");
+ let dual_orbit=nilpotent_orbit_SO(orbit,false) in
+ parameters(weak_packet(dual_orbit,G))
+else
+ prints("bad");
+ [Param]:[]
+fi

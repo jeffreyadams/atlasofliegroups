@@ -2,7 +2,7 @@
 <bmsz_descent.at
 
 
-set theta_verbose=true
+set theta_verbose=false
 set_type ClassicalSignature=(string label, Split z)
 set p(ClassicalSignature S)=int: int_part(S.z)
 set q(ClassicalSignature S)=int: s_part(S.z)
@@ -770,11 +770,10 @@ for Z in list do prints(Z, " ", orbit(Z)) od fi in
  prints("signature_source: ", signature(chain[start_level]),
  new_line,"signature_target: ", signature(chain[target_level])) fi in
 {theta(chain[start_level],Z,orbit(chain[start_level]),signature(chain[start_level]),signature(chain[start_level+1])) od}
-prints("OK");theta_actual(chain[target_level],Z,orbit(chain[target_level]),
+theta_actual(chain[target_level],Z,orbit(chain[target_level]),
 signature(chain[target_level]),(Z.label,signature(Z))) od
 
-set theta_recurse([ExtendedPaintedBiPartition] chain,int main_start_level,[KLocalSystem] list)= let
-()=prints("theta_recurse(1): main_start_level=", main_start_level) in
+set theta_recurse([ExtendedPaintedBiPartition] chain,int main_start_level,[KLocalSystem] list)= 
 for j:main_start_level downto 1 do let
   ()=if theta_verbose then prints("===================================",
              new_line, "main start level: ", main_start_level, new_line,

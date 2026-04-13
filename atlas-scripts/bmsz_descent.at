@@ -175,6 +175,8 @@ set descent(ExtendedPaintedBiPartition (Z,S))=ExtendedPaintedBiPartition:
 (descent(Z),descent_ext(S))
 set orbit(ExtendedPaintedBiPartition Z)=orbit(painted_bi_partition(Z))
 set label(ExtendedPaintedBiPartition Z)=string:label(painted_bi_partition(Z))
+set =(ExtendedPaintedBiPartition A,ExtendedPaintedBiPartition B)=bool:
+ A.painted_bi_partition=B.painted_bi_partition and A.S=B.S
 set descent_chain(ExtendedPaintedBiPartition Z)=[ExtendedPaintedBiPartition]:
 let rv=[Z] in
 while size(rv~[0])>0 do

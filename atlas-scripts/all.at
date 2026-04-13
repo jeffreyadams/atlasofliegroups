@@ -26,6 +26,7 @@
 <cyclotomic_field_bracket.at
 <tits_centralizer.at
 <bruhat.at
+<W_reps_type_BC.at
 <stable.at
 <GK_dimension.at
 <restricted_roots.at
@@ -60,3 +61,4 @@
 <adams_johnson.at
 <speh.at
 <bmsz.at
+<bmsz_claude.at

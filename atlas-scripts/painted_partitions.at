@@ -172,7 +172,7 @@ set painted_partitions(Partition P)=[PaintedPartition]:
 set_type PaintedBiPartition=(PaintedPartition P,PaintedPartition Q,string bi_label)
 set label_of(string bi_label)=string:if is_in(bi_label,["B+","B-"]) then "B" else bi_label fi
 set label(PaintedBiPartition Z)=string:label_of(bi_label(Z))
-
+set =(PaintedBiPartition A,PaintedBiPartition B)=bool:equal(A.P,B.P) and equal(A.Q,B.Q)
 set size(PaintedBiPartition (P,Q,))=int:size(P)+size(Q)
 set count(PaintedBiPartition (P,Q,),int symbol)=int:count(P,symbol)+count(Q,symbol)
 
