@@ -1279,19 +1279,28 @@ set u_predictor_old(Param p, int time) = int:
 	     near x_open is known, then the predecessors are often nearly known}
        	     ans next predictor_time+:= elapsed_ms() - start_pred; predictor_count+:=1
 
+set GAM_HT_EXP = int: 1
+set PB_EXP = int: 0
+
 {assume all terms in qlist same inf char}
-set GAM_HTs([Param] qlist) = [int]:
+set GAM_HTs_noPKL([Param] qlist) = [int]:
     let GAM = GAM(qlist[0])
-    in for q in qlist do GAM - height(q) od
+    in for q in qlist do (GAM - height(q))^GAM_HT_EXP od
+
+set GAM_HTs([Param] qlist) = [int]:
+    if PB_EXP = 0 then return GAM_HTs_noPKL(qlist) fi;
+    let GAM = GAM(qlist[0])
+    in for q in qlist do (#partial_block(q)^PB_EXP) * ((GAM - height(q))^GAM_HT_EXP) od
+
 
 {predict times for full_deform on qlist based on some data}
-{some_times is a list of times of size #qlist, 0 if know nothing}
+{some_times is a list of times of size #qlist, -1 if know nothing}
 {result is full list of predicted times}
 set pred([Param] qlist,[int] some_times) = [int]:
-    let sums = [int]: [0,0] {first coord is from GAM_HT, second from some_times}
+    let sums = [int]: [1,0] {first coord is from GAM_HT, second from some_times}
     then GAM_HTs = GAM_HTs(qlist), factor = 1/1
     in for T@j in some_times
-       do if T.!= then sums+:=[GAM_HTs[j],T] fi
+       do if T.>= then sums+:=[GAM_HTs[j],T] fi
        od;
        factor := sums[1]/sums[0];
        for n in GAM_HTs do floor(n*factor) od
@@ -1300,6 +1309,11 @@ set u_predictor_old(Param p) = int:
     u_predictor_old(p,20*interrupt_base_time) {change 5 to 10 4/7/26; 20 4/9}
 
 set u_predictor_old_flag = false
+
+set from_scratch_flag = false
+
+{how many full_deforms to look at to estimate time}
+set num_trials = int: 2
 
 {predicted time in milliseconds to complete is_unitary(p)}
 set u_predictor(Param p, int time) = int:
@@ -1313,41 +1327,49 @@ set u_predictor(Param p, int time) = int:
     then times = [int]: for q in list do defHashTime.time_lookup(q) od
     {have we computed full_deform? time needed if yes, -1 if no}
     then unknown_indices = [int]: for T@j in times if T < 0 do j fi od
-    {then num_filled_unknown = int: 0}
-    then () = if #unknown_indices > 0 {there are unknown full_deforms; work on one}
-    	      then let ind = #unknown_indices\3
-	      	   then j = unknown_indices[ind] {this is a tough one}
-		   then q = list[j]
-	      	   then RT = defHashTime.time_record_bounded(q,(2*time)\3 + interrupt_base_time)
-		   in if RT >= 0 then {num_filled_unknown+:=1;} unknown_indices:=delete(unknown_indices,ind)
-		      else didnt_finish_u_count +:= 1
-		      fi;
-		      times[j] := RT
-	      fi
-    then () = if #unknown_indices > 1 {there are more unknown full_deforms; work on one}
-    	      then let ind = (2*#unknown_indices)\3
-	      	   then j = unknown_indices[ind] {this is an easier one}
-		   then q = list[j]
-	      	   then RT = defHashTime.time_record_bounded(q,time\3 + interrupt_base_time)
-		   in if RT >= 0 then {num_filled_unknown+:=1;} unknown_indices:=delete(unknown_indices,ind)
-		   else didnt_finish_u_count +:= 1
-		   fi;
-		   times[j] := RT
-	      fi
-    then est_times = for T in times if T != -1 do if T<0 then -5*T else T+1 fi fi od
-    	 {(abs(t+1)) -1 truer, but avoid 0}
-    then N = #list, ne = #est_times, un = #unknown_indices
+    then () = num_trials:= min(#unknown_indices\rk^2,1)
+    then () = for k:num_trials
+    	      do if #unknown_indices > 0 {there are unknown full_deforms; work on one}
+    	      	 then let ind = (k+1)*#unknown_indices\(num_trials+1)
+	      	      then j = unknown_indices[ind] {these get easier as k increases}
+		      then q = list[j]
+	      	      then RT = defHashTime.time_record_bounded(q,(time)\2^(k+1) +
+		   	     interrupt_base_time)
+		      in if RT >= 0 then unknown_indices:=delete(unknown_indices,ind)
+		      	 else didnt_finish_u_count +:= 1
+		      	 fi;
+		      	 times[j] := RT
+		  else break
+	          fi
+	      od
+     then data_inds = [int]:[]
+     then data_times_long = for T@j in times
+    	 		  do if T = -1 then -1
+			     elif T<0 then data_inds#:=j; -5*T
+			     else data_inds#:=j; T
+			     fi
+			  od
+    then N = #list, data_n = #data_inds, un = #unknown_indices
+    then pred_list = pred(list, data_times_long)
+    then pred = if from_scratch_flag
+       	      	then sum(pred_list)
+		else sum(for j in unknown_indices do pred_list[j] od) +
+		   		((N-un)*interrupt_base_time)\10
+		fi
+    then data_times = for j in data_inds do data_times_long[j] od,
+    	 pred_data_times = for j in data_inds do pred_list[j] od
     in if predictor_verbose
-	     	then prints(new_line,"Start predicting to height -1 param ",p);
-		     prints("(#terms,#unknown,#estimated) = (N,un,ne) = (",N,",",un,",",ne,
-		     	    "), estimated times = ",est_times)
-       fi; {DANGER: IBT/40 insuff to do lookups! Need to get something at runtime.}
-       let pred_list = pred(list, est_times)
-       then pred = sum(for j in unknown_indices do pred_list[j] od) + ((N-un)*interrupt_base_time)\10
-       in if predictor_verbose
-       	  then prints("prediction = ", print_time_string(pred))
-       	  fi;
-       	  pred next predictor_time+:= elapsed_ms() - start_pred; predictor_count+:=1
+       then prints(new_line,"Start predicting to height -1 param ",p);
+	    prints("(#terms,#unknown,#data_pts) = (N,un,data_n) = (",N,",",un,",",data_n,")");
+	    prints("data_times = ",data_times);
+	    if from_scratch_flag then prints("pred_data_times = ", pred_data_times) fi;
+            prints(if from_scratch_flag then "from scratch " else "" fi,
+	       		"prediction = ", print_time_string(pred), " in time ",
+		       print_time_string(elapsed_ms() - start_pred))
+        fi;
+	predictor_time+:= elapsed_ms() - start_pred;
+	predictor_count+:=1;
+       	pred
 
 set u_predictor(Param p) = int:
     u_predictor(p,20*interrupt_base_time) {change 5 to 10 4/7/26; 20 4/9}
@@ -1375,7 +1397,7 @@ set u_predictor_to_ht_old(Param p, int HT, int time) = int:
     	      	      then let j = unknown_indices[0]
 		      	   {for low HT, zeroth term can be only non-trivial one}
 	      	      	   then q = list[j]
-	      	      	   then RT = defHashHtTime.time_record_to_ht_bounded(q,HT,(2*time)\3 +1)
+	      	      	   then RT = defHashHtTime.time_record_to_ht_bounded(q,HT,time{(2*time)\3 +1})
 		      	    in if RT >= 0
 			       then num_filled_unknown+:=1; if j=0 then est_start:=1 fi
 			       else didnt_finish_ht_count +:= 1
@@ -1424,57 +1446,61 @@ u_predictor_to_ht_old(p, HT, 10*interrupt_base_time)
 set u_predictor_to_ht(Param p, int HT, int time) = int:
     if u_predictor_old_flag then return u_predictor_to_ht_old(p,HT,time) fi;
     if HT < 0 then return u_predictor(p) fi;
-    let WSF = max(interrupt_base_time\5, worst_so_far(p,HT)), {change \10 to \5 4/5/26}
-    	start_pred = elapsed_ms()
-    in if not predictor_flag
-       then WSF
-       else let delta = p.real_form.distinguished_involution, est_start = 0
+    if not predictor_flag
+    then return max(interrupt_base_time\5, worst_so_far(p,HT))
+    fi;
+    let delta = p.real_form.distinguished_involution, start_pred = elapsed_ms()
        	    {if we can finish computing zeroth full_deform, rest are
 	     better estimated from 1}
-	    then list = {is_unitary runs over terms in KL_sum_to_ht(p,HT)}
-		       for q in monomials(KL_sum_at_s_to_ht(HT)(p))
-		       if is_fixed(delta,q) do q fi od, rk = delta.n_rows
-	    then times =  [int]: for q in list do defHashHtTime.time_lookup_to_ht(q,HT) od
-    	    then unknown_indices = [int]: for T@j in times if T < 0 do j fi od
-    	    {then num_filled_unknown = int: 0, un = #unknown_indices}
-    	    then () = if #unknown_indices > 0 {there are unknown full_deforms; work on one}
-    	      	      then let j = unknown_indices[0]
-		      	   {for low HT, zeroth term might be only non-trivial one}
-	      	      	   then q = list[j]
-	      	      	   then RT = defHashHtTime.time_record_to_ht_bounded(q,HT,(2*time)\3 +1)
-		      	    in if RT >= 0
-			       then unknown_indices:=delete(unknown_indices,0)
-			       else didnt_finish_ht_count +:= 1
-			       fi;
-			       times[j] := RT
-	      	      fi
-    	    then () = if #unknown_indices > 0 {there are more unknown full_deforms; work on next}
-    	      	      then let j = unknown_indices[0]
-	      	      	   then q = list[j]
-	      	      	   then RT = defHashHtTime.time_record_to_ht_bounded(q,HT,time\3 +1)
-		      	    in if RT >= 0
-			       then unknown_indices:=delete(unknown_indices,0)
-			       else didnt_finish_ht_count +:= 1
-			       fi;
-			       times[j] := RT
-	      	      fi
-	    then est_times = for T in times if T!=-1 do if T < 0 then -5*T else (T+1) fi fi od
-	    then N = #times, ne = #est_times, un = #unknown_indices
-    	    in if predictor_verbose
-	       then prints(new_line,"Start predicting to height ", HT, " param ",p);
-		    prints("(#terms,#unknown,#estimated) = (N,un,ne) = (",N,",",un,",",ne,
-		     	    "), est times = ",est_times)
-	       fi;
-       	       let pred_list = pred(list, est_times)
-	       then pred = sum(for j in unknown_indices do pred_list[j] od) + ((N-un)*interrupt_base_time)\10
-	       in if predictor_verbose
-		  then prints("prediction ",print_time_string(pred), " in time ",
+    then list = {is_unitary runs over terms in KL_sum_to_ht(p,HT)}
+		for q in monomials(KL_sum_at_s_to_ht(HT)(p))
+		    if is_fixed(delta,q) do q fi od, rk = delta.n_rows
+    then times =  [int]: for q in list do defHashHtTime.time_lookup_to_ht(q,HT) od
+    then unknown_indices = [int]: for T@j in times if T < 0 do j fi od
+    then () = num_trials:= min(#unknown_indices\rk,1)
+    then () = for k:num_trials
+    	      do if #unknown_indices > 0 {there are unknown full_deforms; work on one}
+	      	 then let ind = k*#unknown_indices\(num_trials+1)
+    	      	      then j = unknown_indices[ind] {these get easier as k increases}
+		      	  {for low HT, zeroth term might be only difficult one}
+	      	      then q = list[j]
+	      	      then RT = defHashHtTime.time_record_to_ht_bounded(q,HT,time\2^(k+1))
+		      in if RT >= 0
+			 then unknown_indices:=delete(unknown_indices,ind)
+			 else didnt_finish_ht_count +:= 1
+			 fi;
+			 times[j] := RT
+		  else break
+	      	  fi
+	      od
+     then data_inds = [int]:[]
+     then data_times_long = for T@j in times
+    	 		  do if T = -1 then -1
+			     elif T<0 then data_inds#:=j; -5*T
+			     else data_inds#:=j; T
+			     fi
+			  od
+     then N = #list, data_n = #data_inds, un = #unknown_indices
+     then pred_list = pred(list, data_times_long)
+     then pred = if from_scratch_flag
+       	    	    then sum(pred_list)
+		    else sum(for j in unknown_indices do pred_list[j] od) +
+		    	 	 ((N-un)*interrupt_base_time)\10
+		    fi
+     then data_times = for j in data_inds do data_times_long[j] od,
+    	 pred_data_times = for j in data_inds do pred_list[j] od
+     in if predictor_verbose
+	then prints(new_line,"Start predicting to height ", HT, " param ",p);
+	     prints("(#terms,#unknown,#data_timess) = (N,un,ne) = (",N,",",un,",",data_n,")");
+	     prints("data_times = ",data_times);
+	     if from_scratch_flag then prints("pred_data_times = ", pred_data_times) fi;
+             prints(if from_scratch_flag then "from scratch " else "" fi,
+	       		"prediction = ", print_time_string(pred), " in time ",
 		       print_time_string(elapsed_ms() - start_pred))
-		  fi;
-		  predictor_time+:= elapsed_ms() - start_pred;
-		  predictor_count+:=1;
-		  pred
-	  fi
+	 fi;
+	 predictor_time+:= elapsed_ms() - start_pred;
+	 predictor_count+:=1;
+	 pred
 
 {predicted time in milliseconds to complete is_unitary{to_ht}(p,{HT})}
 set u_predictor_to_ht(Param p, int HT) = int:
