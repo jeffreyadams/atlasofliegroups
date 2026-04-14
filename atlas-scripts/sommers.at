@@ -32,19 +32,36 @@ set star (bool b) = string: { return a star if the condition is met, else empty 
 set print_nilpotent_orbit_partitions(RootDatum rd)=
 let orbits=nilpotent_orbit_partitions(rd) then
 header=["Partition","H","diagram","symbol","Sp","dim","cent","A(O)","dual"] then
-values=for P in orbits do
-let orbit=complex_nilpotent_from_partition(rd,P) in
+values=for P in orbits do 
+let orbit=complex_nilpotent_from_partition(rd,P) in 
  [P.to_string,
  semisimple_element(rd,P).to_string,
  orbit.diagram.to_string,
  P.symbol.normalize.to_string,
  P.special_star,
  dim_nilpotent_partition(rd,P).to_string,
-{ orbit.centralizer.nice_format,}"*",
+ orbit.centralizer.nice_format,
  orbit.component_datum.orders.to_string,
- P.dual_orbit.to_string]
+ P.dual_orbit.to_string
+]
  od in
  tabulate(header#values,"lllllllll",2," ")
+
+set print_symbols_bipartitions(RootDatum rd)=
+let orbits=nilpotent_orbit_partitions(rd) then
+header=["Partition","H","diagram","symbol","BiPartition"] then
+values=for P in orbits do 
+let orbit=complex_nilpotent_from_partition(rd,P) in 
+ [P.to_string,
+ semisimple_element(rd,P).to_string,
+ orbit.diagram.to_string,
+ P.symbol.normalize.to_string,
+ wrep(P).to_string
+]
+ od in
+ tabulate(header#values,"lllll",2," ")
+
+
 
 set print_nilpotent_orbit_partitions_special_only(RootDatum rd)=
 let orbits=nilpotent_orbit_partitions(rd) then

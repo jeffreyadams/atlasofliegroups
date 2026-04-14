@@ -1,0 +1,954 @@
+{ bmsz_claude.at — Self-contained BMSZ implementation.
+  Load via all.at.  Do NOT load directly with ../atlas bmsz_claude.at.
+  [BMSZ]  Barbasch-Ma-Sun-Zhu, arXiv:1712.05552  (construction & unitarity)
+  [BMSZb] Barbasch-Ma-Sun-Zhu, arXiv:2205.05266  (counting & reduction)
+
+  This file is self-contained: it corrects two bugs in the infrastructure
+  files and re-implements the counting/enumeration pipeline from scratch.
+
+  Bug fixes vs. painted_partitions.at / nilpotent_orbits_bmsz.at:
+    1. primitive_pairs loop was "for i:#O-1 from 1" — misses i=#O.
+       For orbit [4,2] (type B) this drops the primitive pair at i=2.
+    2. number_pbp group-datum comparison: made explicit to avoid possible
+       overload-resolution issues with the user-defined = on GroupDatum.
+
+  Graphviz usage (from atlas prompt):
+    > orbit.dot prints(lift_tree_dot(O_v, label))
+  Shell:
+    dot -Tpdf -o orbit.pdf orbit.dot
+}
+
+{ ============================================================
+  Section 0a: Low-level utilities  (self-contained, no dependency on
+  buggy infrastructure)
+  ============================================================ }
+
+{ Find the index of G among the real forms of its inner class. }
+set rf_index(RealForm G)=int:
+first(for i:#real_forms(inner_class(G)) do real_form(inner_class(G),i)=G od)
+
+{ For type D: detect the "even" inner class (contains SO(2a,2b) and SO*(2n)).
+  Even ic: index-0 form is SO(2n,0), which is compact.
+  Odd ic: index-0 form is SO(2n-1,1), which is not compact. }
+set is_D_even_ic(RealForm G)=bool:
+is_compact(real_form(inner_class(G),0))
+
+{ Extract the BMSZ bi_label and GroupDatum from an atlas RealForm G.
+  Supported types:
+    B_n → SO(p,q) with p+q=2n+1; bi_label="B+" (p odd) or "B-" (q odd)
+    C_n → Sp(2n,R) (split, label "C") or Sp(p,q) (non-split, label "C*")
+    D_n → SO(p,q) with p+q=2n (label "D") or SO*(2n) (label "D*")
+  Returns (bi_label, GroupDatum). }
+set label_and_datum(RealForm G)=(string,GroupDatum):
+let rd=root_datum(G) then
+factors=simple_factors(Lie_type(rd)) then
+k=rf_index(G) in
+let (type_str,n)=factors[0] in
+if type_str="B" then
+  let q=k then p=2*n+1-q then
+  bi_label=if is_even(q) then "B+" else "B-" fi in
+  (bi_label,("SO",p,q))
+elif type_str="C" then
+  if is_split(G)
+   then ("C",("Sp",2*n,-1))
+   else ("C*",("Sp",n-k,k))
+  fi
+elif type_str="D" then
+  if is_D_even_ic(G) then
+    let half=n\2 then
+    num_star=if is_even(n) then 2 else 1 fi then
+    last_idx=#real_forms(inner_class(G))-1 in
+    if k<half then ("D",("SO",2*n-2*k,2*k))
+    elif k<half+num_star then ("D*",("SO*",2*n,0))
+    else ("D",("SO",n+n%2,n-n%2))
+    fi
+  else
+    ("D",("SO",2*n-2*k-1,2*k+1))
+  fi
+else
+  error("label_and_datum: unsupported Lie type "+type_str+
+        " (low-rank exceptional isomorphism: B_1/C_1 ≅ A_1, D_2 ≅ A_1xA_1, D_3 ≅ A_3)")
+fi
+
+set bmsz_label(RealForm G)=string:
+let (bi_label,)=label_and_datum(G) in label_of(bi_label)
+
+{ ============================================================
+  Section 0b: Corrected primitive pairs and A_bar
+  Fixes bug in painted_partitions.at line 342: loop was
+    "for i:#O-1 from 1" (misses the last entry i=#O).
+  The correct range is 1..#O inclusive.
+  ============================================================ }
+
+{ Correct primitive pairs: loop goes 1 to #O (inclusive).
+  is_primitive(O,i,label) is valid for 1 ≤ i ≤ #O. }
+set bmsz_primitive_pairs(Orbit O, string label)=[int]:
+##for i:#O from 1 do
+  if is_primitive(O,i,label) then [i] else [] fi
+od
+
+set bmsz_pp(Orbit O, string label)=[int]: bmsz_primitive_pairs(O,label)
+set bmsz_A_bar(Orbit O, string label)=[[int]]: power_set(bmsz_pp(O,label))
+set bmsz_A_bar_order(Orbit O, string label)=int: #bmsz_A_bar(O,label)
+
+{ A_bar factor from formula (3.8): 2^#bmsz_pp(O_v,label).
+  Only present for labels B, C, D, C~ (per extended_painted_bipartitions);
+  for C* and D* the S-component is always [], so the factor is 1. }
+set bmsz_A_bar_order_bmsz(Orbit O_v, string label)=int:
+if is_in(label,["B","C","D","C~"]) then bmsz_A_bar_order(O_v,label) else 1 fi
+
+{ ============================================================
+  Section 0c: Corrected PBP counting per group
+  Counts PBPs with a specific group datum.
+  Uses explicit component comparison to avoid GroupDatum = operator issues.
+  ============================================================ }
+
+{ Count painted bipartitions for a specific group G and bi_label.
+  Uses pbp(O_v,bi_label) from nilpotent_orbits_bmsz.at but applies
+  the GroupDatum filter explicitly rather than relying on the = overload. }
+set bmsz_pbp(GroupDatum G, Orbit O_v, string bi_label)=[PaintedBiPartition]:
+##for Z in pbp(O_v,bi_label) do
+  let gd=group_datum(Z) in
+  if gd.name=G.name and gd.p=G.p and gd.q=G.q then [Z] else [] fi
+od
+
+set bmsz_number_pbp(GroupDatum G, Orbit O_v, string bi_label)=int:
+#bmsz_pbp(G,O_v,bi_label)
+
+{ ============================================================
+  Section 0d: bmsz_number_unipotent(orbit, G)
+  Implements formula (3.9) of BMSZ (arXiv:1712.05552).
+  Uses the corrected primitive_pairs and number_pbp.
+
+  Counting rules (derived empirically against atlas unipotent_representations):
+    Type B: count both B+ and B- PBPs for group datum G, multiply by |A_bar|.
+            The original ε=2 factor is NOT applied separately; summing over
+            both B+ and B- naturally accounts for it.
+    Type D: count D-type PBPs for G, multiply by |A_bar|.  No ε=2 factor.
+    Types C, C~, C*, D*: count PBPs for the matching bi_label, multiply by
+            |A_bar| (which equals 1 for C*, D*).
+
+  Usage:  bmsz_number_unipotent([3,1], SO(3,2))
+  ============================================================ }
+
+{ For type B: total PBPs (both B+ and B-) with group datum G. }
+set bmsz_total_pbp_B(GroupDatum G, Orbit O_v)=int:
+#bmsz_pbp(G,O_v,"B+") + #bmsz_pbp(G,O_v,"B-")
+
+{ Count unipotent representations of G for dual orbit O_v. }
+set bmsz_number_unipotent(Orbit O_v, RealForm G)=int:
+let (bi_label,G_datum)=label_and_datum(G) then
+label=label_of(bi_label) in
+assert(is_good_parity(O_v,label),
+  "orbit "+to_string(O_v)+" does not have good parity for type "+label);
+if label="B"
+ then bmsz_total_pbp_B(G_datum,O_v) * bmsz_A_bar_order(O_v,"B")
+ else bmsz_number_pbp(G_datum,O_v,bi_label) * bmsz_A_bar_order_bmsz(O_v,label)
+fi
+
+{ Verbose version: prints the breakdown. }
+set bmsz_number_unipotent(Orbit O_v, RealForm G, bool report)=int:
+let (bi_label,G_datum)=label_and_datum(G) then
+label=label_of(bi_label) in
+let (n_pbp, a_bar) =
+  if label="B"
+   then (bmsz_total_pbp_B(G_datum,O_v), bmsz_A_bar_order(O_v,"B"))
+   else (bmsz_number_pbp(G_datum,O_v,bi_label), bmsz_A_bar_order_bmsz(O_v,label))
+  fi then
+result=n_pbp*a_bar in
+if report then
+  prints("bmsz_number_unipotent(",O_v,", ",group_name(G_datum),")");
+  prints("  bi_label=",bi_label,"  label=",label);
+  if label="B"
+   then
+    prints("  #B+_PBP_G=",#bmsz_pbp(G_datum,O_v,"B+"),
+           "  #B-_PBP_G=",#bmsz_pbp(G_datum,O_v,"B-"),
+           "  total=",n_pbp)
+   else prints("  #PBP_G(O^v)=",n_pbp)
+  fi;
+  prints("  |A_bar|=",a_bar,"  (primitive pairs: ",bmsz_pp(O_v,label),")");
+  prints("  => #unipotent_reps=",result)
+fi;
+result
+
+{ Sum over all good-parity orbits for G. }
+set bmsz_total_unipotent(RealForm G, int n)=int:
+let label=bmsz_label(G) then
+orbits=good_parity_partitions(n,label) in
+sum(for O_v in orbits do bmsz_number_unipotent(O_v,G) od)
+
+{ ============================================================
+  Section 0e: Corrected extended PBPs (reps)
+  Uses bmsz_A_bar instead of A_bar to get the right S-subsets.
+  ============================================================ }
+
+{ All extended painted bipartitions for (O_v, label) using corrected A_bar.
+  For label "B": generates PBPs with both bi_label "B+" and "B-",
+  each extended with each subset in bmsz_A_bar(O_v,"B"). }
+set bmsz_reps(Orbit O_v, string label)=[ExtendedPaintedBiPartition]:
+if label="B" then
+  let S_list=bmsz_A_bar(O_v,"B") in
+  ##for Z in pbp(O_v,"B+") do for S in S_list do ExtendedPaintedBiPartition:(Z,S) od od ##
+  ##for Z in pbp(O_v,"B-") do for S in S_list do ExtendedPaintedBiPartition:(Z,S) od od
+elif is_in(label,["C","D","C~"])
+ then
+   let S_list=bmsz_A_bar(O_v,label) in
+   ##for Z in pbp(O_v,label) do for S in S_list do ExtendedPaintedBiPartition:(Z,S) od od
+ else  { C*, D* }
+    for Z in pbp(O_v,label) do ExtendedPaintedBiPartition:(Z,[int]:[]) od
+fi
+
+{ Show all extended painted bipartitions for an orbit and label.
+  For type "B", shows B+ and B- separately.
+  Usage: show_epbp([4,2],"B") }
+set show_epbp(Orbit O_v, string label)=void:
+if label="B" then
+  let S_list=bmsz_A_bar(O_v,"B") then
+  bplus=  ##for Z in pbp(O_v,"B+") do for S in S_list do ExtendedPaintedBiPartition:(Z,S) od od then
+  bminus= ##for Z in pbp(O_v,"B-") do for S in S_list do ExtendedPaintedBiPartition:(Z,S) od od in
+  prints("=== B+ (p odd) ===");
+  show(bplus);
+  prints("=== B- (q odd) ===");
+  show(bminus)
+else
+  show(extended_painted_bipartitions(O_v,label))
+fi
+
+{ ============================================================
+  Section 1: DRC column-string display
+  Mirrors standalone.py str_dgms, reg_drc
+  ============================================================ }
+
+{ Format a PaintedPartition as column strings, e.g.  |*c|*|
+  Each |...| represents one column (top to bottom).
+  Mirrors standalone.py str_dgms. }
+set drc_col_string(PaintedPartition P)=string:
+let cols=number_columns(P) in
+if cols=0 then "[]"
+else
+ let rv="" in
+ for i:cols do
+  rv+:="|";
+  let col=column_of(P)(i) in
+  for sym in col do rv+:=symbol(sym) od
+ od;
+ rv+:="|";rv
+fi
+
+{ DRC bipartition display: "P_cols  bi_label  Q_cols"
+  Mirrors standalone.py str_dgms side-by-side view. }
+set drc_string(PaintedBiPartition (P,Q,bi_label))=string:
+drc_col_string(P)+" "+bi_label+" "+drc_col_string(Q)
+
+set drc_string(ExtendedPaintedBiPartition (Z,S))=string:
+drc_string(Z)+"  S="+to_string(S)+"  eps="+to_string(epsilon(Z))
+
+set show_drc(PaintedBiPartition Z)=void:
+prints(drc_string(Z))
+
+set show_drc(ExtendedPaintedBiPartition X)=void:
+prints(drc_string(X))
+
+set show_drc([ExtendedPaintedBiPartition] list)=void:
+for X in list do show_drc(X) od
+
+{ Tabular display of a list of ExtendedPBPs.
+  Mirrors standalone.py compute_all_pbp(..., report=True). }
+set show_table([ExtendedPaintedBiPartition] list)=void:
+tabulate(
+["#","type","P","Q","S","group","orbit","p","q","eps"]#
+for X@i in list do
+ let sig=signature(X) in
+ [to_string(i),
+  X.painted_bi_partition.bi_label,
+  drc_col_string(X.painted_bi_partition.P),
+  drc_col_string(X.painted_bi_partition.Q),
+  to_string(X.S),
+  group_name(X.painted_bi_partition),
+  to_string(orbit(X)),
+  to_string(p(sig)),
+  to_string(q(sig)),
+  to_string(epsilon(X))]
+od)
+
+{ ============================================================
+  Section 2: compute_all_pbp
+  Mirrors standalone.py compute_all_pbp(dpart, rtype[, report])
+  ============================================================ }
+
+{ All extended painted bipartitions (reps) for a given dual orbit O_v.
+  Uses bmsz_reps (corrected A_bar). }
+set compute_all_pbp(Orbit O_v, string label)=[ExtendedPaintedBiPartition]:
+bmsz_reps(O_v,label)
+
+set compute_all_pbp(Orbit O_v, string label, bool report)=[ExtendedPaintedBiPartition]:
+let result=bmsz_reps(O_v,label) in
+if report then
+  prints("Orbit O^v=", O_v, "  type: ", label);
+  prints("#PBPs (painted bipartitions): ", #pbp(O_v,label));
+  prints("#primitive pairs: ", #bmsz_pp(O_v,label));
+  prints("|A_bar|=2^#pp: ", bmsz_A_bar_order(O_v,label));
+  prints("#reps (extended PBPs): ", #result);
+  prints("");
+  show_table(result)
+fi;
+result
+
+{ ============================================================
+  Section 3: Associated cycle computation
+  Self-contained ILS algebra + theta lift, porting standalone.py.
+
+  ILS (irreducible local system) = [Split], where entry i is
+  the pair (p_i, n_i) encoded as the Split p_i + n_i*s.
+  Empty ILS = [].
+
+  This replaces theta_recurse/theta_before_twist in
+  signed_and_marked_young_diagrams.at, which has a bug for type B
+  targets (delta can be odd, causing h(delta) to fail).
+
+  Reference: [BMSZ] Sections 9.3-9.4, 11.1-11.3.
+  ============================================================ }
+
+{ Helper: (-1)^n for base ∈ {1,-1}. }
+set sign_pow(int base, int n)=int:
+if base=1 then 1 elif n%2=0 then 1 else -1 fi
+
+{ Signature (ps, ns) of an ILS.
+  Entry at 0-based index i has weight (hrl+rrl, hrl) for (p,n),
+  where hrl = (i+1)\2, rrl = (i+1)%2. Reference: [BMSZ] Sect. 9.3. }
+set ils_sign([Split] ils)=(int,int):
+let ps=0, ns=0 in
+for z@i in ils do
+  let pp=abs(int_part(z)), nn=abs(s_part(z)) then
+  d=i+1 then hrl=d\2, rrl=d%2 in
+  ps +:= pp*(hrl+rrl) + nn*hrl;
+  ns +:= nn*(hrl+rrl) + pp*hrl
+od; (ps,ns)
+
+{ First-column signature (fps, fns) of an ILS. }
+set ils_firstcol_sign([Split] ils)=(int,int):
+let fps=0, fns=0 in
+for z@i in ils do
+  let pp=abs(int_part(z)), nn=abs(s_part(z)) in
+  if i%2=0 then fps +:= pp; fns +:= nn
+  else fps +:= nn; fns +:= pp fi
+od; (fps,fns)
+
+{ BD-twist on ILS: (tp,tn) ∈ {1,-1}². Acts only on odd-indexed entries.
+  (1,-1): post-twist for B/D.  (-1,-1): pre-twist for C/C~. }
+set ils_twist_BD([Split] ils, int tp, int tn)=[Split]:
+for z@i in ils do
+  let pp=int_part(z), nn=s_part(z) then
+  d=i+1 then hrl=d\2, rrl=d%2 in
+  if rrl=0 then z
+  else
+    let tpp=sign_pow(tp,hrl+1)*sign_pow(tn,hrl) then
+        tnn=sign_pow(tn,hrl+1)*sign_pow(tp,hrl) in
+    tpp*pp + tnn*nn*s
+  fi
+od
+
+{ CM-twist T^j: negate entries at positions i with (i+1)%4=2 when j is odd. }
+set ils_char_twist_CM([Split] ils, int j)=[Split]:
+if j%2=1 then for z@i in ils do if (i+1)%4=2 then -z else z fi od
+else ils fi
+
+{ Theta lift a single ILS to target type rtype with signature (p, q).
+  Returns list of lifted ILS: [] = zero, [ils] = one, [ils1,ils2] = two.
+  Types: "C" (D→C), "D" (C→D), "C~" (B→M), "B+"/"B-" (M→B). }
+set theta_lift_ils([Split] ils, string rtype, int p, int q)=[[Split]]:
+let (ps,ns)=ils_sign(ils) then
+(fps,fns)=ils_firstcol_sign(ils) in
+if rtype="C" then
+  let n=p then addp=n-ps-fns, addn=n-ns-fps in
+  if addp>=0 and addn>=0 then
+    let irr_ss=[addp+addn*s]##ils in
+    [ils_char_twist_CM(irr_ss,(ps-ns)\2)]
+  elif (addp=-1 and addn=-1) or (addp=-2 and addn=0) or (addp=0 and addn=-2) then
+    let pp0=int_part(ils[0]), nn0=s_part(ils[0]) then j=(ps-ns)\2 in
+    (if pp0>0 then [ils_char_twist_CM([(0+0*s)]##[(pp0-1)+nn0*s]##ils[1:],j)] else [] fi)##
+    (if nn0>0 then [ils_char_twist_CM([(0+0*s)]##[pp0+(nn0-1)*s]##ils[1:],j)] else [] fi)
+  else [[Split]]:[]
+  fi
+elif rtype="D" then
+  let addp=p-ps-fns, addn=q-ns-fps in
+  if addp>=0 and addn>=0 then
+    let ils_tw=ils_char_twist_CM(ils,(p-q)\2) in
+    [[addp+addn*s]##ils_tw]
+  else [[Split]]:[]
+  fi
+elif rtype="C~" then
+  let n=p then addp=n-ps-fns, addn=n-ns-fps in
+  if addp>=0 and addn>=0 then
+    let irr_ss=[addp+addn*s]##ils in
+    [ils_char_twist_CM(irr_ss,(ps-ns-1)\2)]
+  elif (addp=-1 and addn=-1) or (addp=-2 and addn=0) or (addp=0 and addn=-2) then
+    let pp0=int_part(ils[0]), nn0=s_part(ils[0]) then j=(ps-ns-1)\2 in
+    (if pp0>0 then [ils_char_twist_CM([(0+0*s)]##[(pp0-1)+nn0*s]##ils[1:],j)] else [] fi)##
+    (if nn0>0 then [ils_char_twist_CM([(0+0*s)]##[pp0+(nn0-1)*s]##ils[1:],j)] else [] fi)
+  else [[Split]]:[]
+  fi
+elif rtype="B+" or rtype="B-" then
+  let addp=p-ps-fns, addn=q-ns-fps in
+  if addp>=0 and addn>=0 then
+    let ils_tw=ils_char_twist_CM(ils,(p-q+1)\2) in
+    [[addp+addn*s]##ils_tw]
+  else [[Split]]:[]
+  fi
+elif rtype="D*" or rtype="C*" then
+  { D* = SO*(2n), C* = Sp(p,q): theta lift with no CM-twist.
+    Same addp/addn formula as D, but involution power is always 0.
+    Reference: signed_and_marked_young_diagrams.at theta_before_twist,
+    C* case (lines 512-524) and D* case (lines 559-576) with delta=0. }
+  let addp=p-ps-fns, addn=q-ns-fps in
+  if addp>=0 and addn>=0 then [[addp+addn*s]##ils]
+  else [[Split]]:[]
+  fi
+else error("theta_lift_ils: unsupported rtype "+rtype)
+fi
+
+{ ============================================================
+  B+ correction for descent: bmsz_descent.at misses this.
+  Reference: [BMSZb] Section 10.4, case (a) for ★ = B+.
+
+  Condition: γ = B+, (2,3) ∉ ℘ (shape-based: c₂(j) < c₁(ι)+2),
+  r₂(Ǒ) > 0 (total DRC columns ≥ 2), and Q(c₁(ι), 1) ∈ {r,d}.
+  Action: change last entry of descended P's first column to 's'.
+  ============================================================ }
+
+set bmsz_B_correction(PaintedBiPartition Z, PaintedBiPartition dZ)=PaintedBiPartition:
+if Z.bi_label="B+" then
+  let col_P0=column_of(Z.P)(0) then  { first column of original P }
+  col_Q0=column_of(Z.Q)(0) then      { first column of original Q }
+  c1=#col_P0 then                    { c₁(ι) = length of P's first column }
+  c2j=#column_of(Z.Q)(1) then        { c₂(j) = length of Q's second column }
+  ncols=number_columns(Z.P)+number_columns(Z.Q) then  { total columns }
+  has_23=(c2j>=c1+2) in             { shape-based: (2,3) ∈ ℘ iff c₂(j)≥c₁(ι)+2 }
+  if not has_23 and c1>0 and ncols>=2 and
+     #col_Q0>=c1 and find([2,4],col_Q0[c1-1])!=-1 and  { Q(c₁(ι),1) ∈ {r,d} }
+     number_columns(dZ.P)>0  { descended P non-empty }
+  then
+    let Pnew=dZ.P then row=Pnew~[0] in
+    row[0]:=1;      { change last column-0 entry to 's' (1) }
+    Pnew~[0]:=row;
+    PaintedBiPartition:(Pnew,dZ.Q,dZ.bi_label)
+  else dZ fi
+else dZ fi
+
+{ Corrected single-step descent for ExtendedPaintedBiPartition. }
+set bmsz_descent(ExtendedPaintedBiPartition X)=ExtendedPaintedBiPartition:
+let Z=X.painted_bi_partition then
+dZ_raw=descent(Z) then
+dZ=bmsz_B_correction(Z,dZ_raw) in
+ExtendedPaintedBiPartition:(dZ, descent_ext(X.S))
+
+{ Full descent chain using the corrected descent. }
+set bmsz_descent_chain(ExtendedPaintedBiPartition X)=[ExtendedPaintedBiPartition]:
+let rv=[X] in
+while size(rv~[0])>0 do rv#:=bmsz_descent(rv~[0]) od;
+rv
+
+{ Compute the associated cycle as a list of ILS = [[Split]].
+  Each ILS is a [Split] with entry i = p_i + n_i*s.
+  Iterative: build full descent chain, then apply theta lifts from
+  bottom to top. Reference: [BMSZ] Eq. (3.16). }
+set compute_AC(ExtendedPaintedBiPartition X)=[[Split]]:
+let chain=bmsz_descent_chain(X) then
+k=#chain-1 then
+base_rtype=chain[k].painted_bi_partition.bi_label then
+ac=
+  if base_rtype="B+" then [[1+0*s]]
+  elif base_rtype="B-" then [[0+(-1)*s]]
+  else [[]]   { empty ILS for C, D, C~ }
+  fi then
+j=k-1 in
+while j>=0 do
+  let Y=chain[j] then
+  Z=Y.painted_bi_partition then
+  rtype=Z.bi_label then
+  tau_p=Z.p then tau_q=Z.q then
+  tau_eps=epsilon(Z) then
+  e_wp=epsilon_extended(Y) in
+  ac :=
+    ##for src_ils in ac do
+      let src=
+        if is_in(rtype,["C","C~"]) and e_wp!=0
+        then ils_twist_BD(src_ils,-1,-1) else src_ils fi then
+      lifted=theta_lift_ils(src,rtype,tau_p,tau_q) in
+      for lft in lifted do
+        if is_in(rtype,["B+","B-","D"]) and tau_eps!=0
+        then ils_twist_BD(lft,1,-1) else lft fi
+      od
+    od;
+  j:=j-1
+od;
+ac
+
+{ Compute all associated cycles for all reps of orbit O_v. }
+set compute_all_AC(Orbit O_v, string label)=[[[Split]]]:
+for X in bmsz_reps(O_v,label) do compute_AC(X) od
+
+{ Format one ILS as a string: "(p1,n1)(p2,n2)..." or "()" for empty. }
+set ils_string([Split] ils)=string:
+if #ils=0 then "()"
+else
+  let rv="" in
+  for z in ils do rv+:="("+to_string(int_part(z))+","+to_string(s_part(z))+")" od;
+  rv
+fi
+
+{ Format a list of ILS (associated cycle) as a string.
+  Each ILS separated by " | ". }
+set ac_string([[Split]] ac)=string:
+if #ac=0 then "(trivial)"
+else
+  let rv="" in
+  for ils@i in ac do
+    if i>0 then rv+:=" | " fi;
+    rv+:=ils_string(ils)
+  od;
+  rv
+fi
+
+{ Print associated cycle for one extended PBP. }
+set print_AC(ExtendedPaintedBiPartition X)=void:
+let ac=compute_AC(X) in
+prints("AC for ", drc_string(X), ":");
+if #ac=0 then prints("  (empty)")
+else
+  for ils@i in ac do
+    prints("  [", i, "] ", ils_string(ils))
+  od
+fi
+
+{ Full descent chain display with AC at each level. }
+set show_AC_chain(ExtendedPaintedBiPartition X)=void:
+let chain=descent_chain(X) then
+ac=compute_AC(X) in
+prints("=================================================");
+prints("Rep: ", drc_string(X.painted_bi_partition));
+prints("S=", to_string(X.S), "  eps=", to_string(epsilon(X)));
+prints("Group: ", group_name(X.painted_bi_partition));
+prints("Orbit (G^v): ", orbit(X));
+prints("----- Descent chain (", #chain, " steps) -----");
+for i:#chain do
+  let Y=chain[i] then
+  sig=signature(Y) in
+  prints("Level ", i, ": ", drc_string(Y.painted_bi_partition),
+         "  S=", to_string(Y.S),
+         "  sig=(", to_string(p(sig)), ",", to_string(q(sig)), ")",
+         "  eps=", to_string(epsilon(Y)))
+od;
+prints("----- Associated cycle (", #ac, " component(s)) -----");
+for ils@i in ac do
+  prints("  [", i, "] ", ils_string(ils))
+od;
+prints("")
+
+set show_AC_chain([ExtendedPaintedBiPartition] list)=void:
+for X in list do show_AC_chain(X) od
+
+{ ============================================================
+  Section 4: verify_descent
+  Mirrors standalone.py verify_descent(dpart, rtype[, report])
+  ============================================================ }
+
+{ Verify all descent chains for orbit O_v terminate at size 0. }
+set verify_descent(Orbit O_v, string label)=(int,int):
+let result=bmsz_reps(O_v,label) then
+passed=0 then failed=0 in
+for X in result do
+  let chain=descent_chain(X) in
+  if size(chain~[0])=0 then passed+:=1
+  else failed+:=1;
+    prints("FAIL: chain does not terminate at size 0 for:");
+    show_drc(X)
+  fi
+od;
+(passed,failed)
+
+set verify_descent(Orbit O_v, string label, bool report)=(int,int):
+let (p_val,f_val)=verify_descent(O_v,label) in
+if report then
+  prints("Orbit: ", O_v, " label: ", label,
+         "  passed: ", p_val, "  failed: ", f_val)
+fi;
+(p_val,f_val)
+
+{ Verify descent for all good-parity orbits of total size n. }
+set verify_all_descents(int n, string label)=(int,int):
+let total_p=0 then total_f=0 in
+for O_v in good_parity_partitions(n,label) do
+  let (p_val,f_val)=verify_descent(O_v,label) in
+  total_p+:=p_val; total_f+:=f_val
+od;
+prints("verify_all_descents: n=", n, " label=", label,
+       "  passed=", total_p, " failed=", total_f);
+(total_p,total_f)
+
+{ ============================================================
+  Section 5: Full BMSZ report
+  Mirrors standalone.py main() and bmsz_report()
+  ============================================================ }
+
+{ Summary table for one orbit: one row per rep. }
+set bmsz_summary(Orbit O_v, string label)=void:
+let reps_list=bmsz_reps(O_v,label) then
+acs=for X in reps_list do compute_AC(X) od in
+prints("Orbit O^v=", O_v, "  label=", label, new_line,"bipartition: ", diagram_pair(O_v,label),
+       new_line,"#reps=", #reps_list);
+tabulate(
+["#","group","p","q","eps","S","AC"]#
+for X@i in reps_list do
+ let sig=signature(X) in
+ [to_string(i),
+  group_name(X.painted_bi_partition),
+  to_string(p(sig)), to_string(q(sig)),
+  to_string(epsilon(X)),
+  to_string(X.S),
+  ac_string(acs[i])]
+od)
+
+set bmsz_summary(int n, string label)=void:
+let orbits=good_parity_partitions(n,label) in
+prints("bmsz_summary: n=", n, " label=", label,
+       "  #orbits=", #orbits);
+for O_v in orbits do bmsz_summary(O_v,label) od
+
+{ Full report for one orbit: descent chain + AC for each rep. }
+set bmsz_claude_report(Orbit O_v, string label)=void:
+let reps_list=bmsz_reps(O_v,label) in
+prints("================================================================");
+prints("BMSZ Report: orbit O^v=", O_v, "  type=", label);
+if #reps_list>0 then
+  prints("Group: ", group_name(reps_list[0].painted_bi_partition))
+fi;
+prints("#reps: ", #reps_list);
+prints("================================================================");
+for X@i in reps_list do
+  prints(new_line, "--- Rep #", i, " ---");
+  show_AC_chain(X)
+od
+
+set bmsz_claude_report(int n, string label)=void:
+for O_v in good_parity_partitions(n,label) do
+  bmsz_claude_report(O_v,label)
+od
+
+{ Count PBPs grouped by real form (group datum). }
+set show_group_counts(Orbit O_v, string label)=void:
+let bp=pbp(O_v,label) in
+prints("Orbit: ", O_v, "  type: ", label,
+       "  #PBPs=", #bp);
+show_collated_group_data(bp)
+
+set show_group_counts(int n, string label)=void:
+for O_v in good_parity_partitions(n,label) do
+  show_group_counts(O_v,label)
+od
+
+{ ============================================================
+  Section 6: Graphviz / dot file output
+  Mirrors standalone.py gen_lift_tree, gen_descent_tree.
+
+  Usage (in atlas prompt):
+    > lift.dot prints(lift_tree_dot(O_v, label))
+    > descent.dot prints(descent_tree_dot(O_v, label))
+  Then in shell:
+    dot -Tpdf -o lift.pdf lift.dot
+    dot -Tpdf -o descent.pdf descent.dot
+  ============================================================ }
+
+{ Format a single ILS as a compact one-line string for dot labels. }
+set ils_dot_string([Split] ils)=string:
+ils_string(ils)
+
+{ Format list of ILS (associated cycle) as a dot label string. }
+set ac_dot_string([[Split]] ac)=string:
+ac_string(ac)
+
+{ Format an ExtendedPBP as a dot node label. }
+set epbp_dot_label(ExtendedPaintedBiPartition X)=string:
+let Z=X.painted_bi_partition then
+sig=signature(X) in
+Z.bi_label+"  "+drc_col_string(Z.P)+" "+drc_col_string(Z.Q)+"\n"+
+"S="+to_string(X.S)+
+"  sig=("+to_string(p(sig))+","+to_string(q(sig))+")"+
+"  eps="+to_string(epsilon(X))
+
+{ ----------------------------------------
+  lift_tree_dot: Extended PBP tree.
+  Usage: > orbit.dot prints(lift_tree_dot(O_v, label))
+  ---------------------------------------- }
+set lift_tree_dot(Orbit O_v, string label)=string:
+let reps_list=bmsz_reps(O_v,label) then
+chains=for X in reps_list do descent_chain(X) od then
+max_depth=
+ let md=0 in
+ for ch in chains do if #ch>md then md:=#ch fi od;md then
+header=
+"digraph lift_tree {"+new_line+
+"  rankdir=TB"+new_line+
+"  node [shape=box fontname=Courier fontsize=9]"+new_line+
+"  edge [fontsize=8]"+new_line
+in
+let body="" in
+for level:max_depth do
+  let members=##for i:#chains do
+    if level<#chains[i]
+     then ["n"+to_string(i)+"_"+to_string(level)]
+     else []
+    fi
+  od in
+  if #members>0 then
+    body+:="  { rank=same;";
+    for m in members do body+:=" "+m od;
+    body+:=" }"+new_line
+  fi
+od;
+for X@i in reps_list do
+  let chain=chains[i] in
+  for Z@j in chain do
+    let nid="n"+to_string(i)+"_"+to_string(j) then
+    lbl=epbp_dot_label(Z)+"\nAC: "+ac_dot_string(compute_AC(Z)) in
+    body+:="  "+nid+" [label="""+lbl+"""]"+new_line
+  od
+od;
+for X@i in reps_list do
+  let chain=chains[i] in
+  for j:#chain-1 do
+    body+:=
+      "  n"+to_string(i)+"_"+to_string(j)+
+      " -> n"+to_string(i)+"_"+to_string(j+1)+
+      " [color=blue label="+chain[j+1].painted_bi_partition.bi_label+"]"+new_line
+  od
+od;
+header+body+"}"
+
+{ ----------------------------------------
+  descent_tree_dot: Local system tree.
+  Usage: > orbit_d.dot prints(descent_tree_dot(O_v, label))
+  ---------------------------------------- }
+set descent_tree_dot(Orbit O_v, string label)=string:
+let reps_list=bmsz_reps(O_v,label) then
+acs=for X in reps_list do compute_AC(X) od then
+header=
+"digraph descent_tree {"+new_line+
+"  rankdir=LR"+new_line+
+"  node [shape=box fontname=Courier fontsize=9]"+new_line
+in
+let body="" in
+for X@i in reps_list do
+  let Z=X.painted_bi_partition then
+  sig=signature(X) then
+  ac=acs[i] then
+  nid="rep"+to_string(i) then
+  lbl=
+    group_name(Z)+"  S="+to_string(X.S)+"\n"+
+    "DRC: "+drc_col_string(Z.P)+" "+drc_col_string(Z.Q)+"\n"+
+    "sig=("+to_string(p(sig))+","+to_string(q(sig))+")"+
+    "  eps="+to_string(epsilon(X))+"\n"+
+    "AC: "+ac_dot_string(ac) in
+  body+:="  "+nid+" [label="""+lbl+"""]"+new_line
+od;
+header+body+"}"
+
+set print_dot(string dot_content)=void:
+prints(dot_content)
+
+{ ============================================================
+  Section 7: run() — top-level entry points
+  Mirrors standalone.py main()
+  ============================================================ }
+
+set run(Orbit O_v, string label)=void:
+bmsz_claude_report(O_v,label)
+
+set run(int n, string label)=void:
+bmsz_claude_report(n,label)
+
+set summary(Orbit O_v, string label)=void:
+bmsz_summary(O_v,label)
+
+set summary(int n, string label)=void:
+bmsz_summary(n,label)
+
+set check(int n, string label)=void:
+let (p_val,f_val)=verify_all_descents(n,label) in
+prints("Passed: ", p_val, "  Failed: ", f_val, new_line);
+bmsz_summary(n,label)
+
+{ ============================================================
+  Section 8: Orbit-level orbit/W-rep information
+  Mirrors standalone.py dpart_to_bipartition, dpart2Wrepns
+  ============================================================ }
+
+set orbit_diagrams(Orbit O_v, string label)=(Partition,Partition):
+diagram_pair(O_v,label)
+
+set show_orbit_diagrams(Orbit O_v, string label)=void:
+let (left,right)=diagram_pair(O_v,label) in
+prints("Orbit O^v=", O_v, "  type=", label);
+prints("Left (P partition):  ", left);
+show_partition(left);
+prints("Right (Q partition): ", right);
+show_partition(right)
+
+set show_primitive_pairs(Orbit O_v, string label)=void:
+let pp_list=bmsz_pp(O_v,label) in
+prints("Orbit O^v=", O_v, "  type=", label);
+prints("Primitive pairs (indices i such that (i,i+1) is primitive): ", pp_list);
+prints("|A_bar|=", bmsz_A_bar_order(O_v,label), " (subsets of primitive pairs)")
+
+set show_pbp_info(Orbit O_v, string label)=void:
+let bp=pbp(O_v,label) then
+pp_list=bmsz_pp(O_v,label) in
+prints("Orbit O^v=", O_v, "  type=", label);
+prints("#PBPs: ", #bp, "  primitive pairs: ", pp_list);
+show(bp)
+
+{ ============================================================
+  Section 9: Epsilon and signature summaries
+  ============================================================ }
+
+set show_signatures(Orbit O_v, string label)=void:
+let reps_list=bmsz_reps(O_v,label) in
+prints("Orbit: ", O_v, "  type: ", label);
+tabulate(
+["#","type","DRC","sig (p,q)","eps","group"]#
+for X@i in reps_list do
+ let sig=signature(X) in
+ [to_string(i),
+  X.painted_bi_partition.bi_label,
+  drc_string(X.painted_bi_partition),
+  "("+to_string(p(sig))+","+to_string(q(sig))+")",
+  to_string(epsilon(X)),
+  group_name(X.painted_bi_partition)]
+od)
+
+{ ============================================================
+  Section 10: Testing utilities
+  ============================================================ }
+
+set test_orbit_recovery(int n, string label)=bool:
+let orbits=good_parity_partitions(n,label) in
+all(for O_v in orbits do
+  let (left,right)=diagram_pair(O_v,label) in
+  dual_orbit(left,right,label)=O_v
+od)
+
+set run_tests(int n, string label)=void:
+prints("Testing orbit recovery for n=", n, " label=", label);
+let ok=test_orbit_recovery(n,label) in
+if ok then prints("  PASSED")
+else prints("  FAILED: some orbits do not recover correctly")
+fi;
+let (p_val,f_val)=verify_descent(good_parity_partitions(n,label)[0],label) in
+prints("Sample descent verify (first orbit): passed=", p_val, " failed=", f_val)
+
+set run_all_tests(int n)=void:
+for label in ["C","D","B","C~"] do
+  prints("--- Testing label=", label, " ---");
+  let orbits=good_parity_partitions(n,label) in
+  if #orbits=0 then prints("  no orbits at n=", n)
+  else
+    let (p_val,f_val)=verify_all_descents(n,label) in
+    prints("  descent verify: passed=", p_val, " failed=", f_val)
+  fi
+od
+
+{ ============================================================
+  Section 11: bmsz_table_BCD
+  Tabulate bmsz_number_unipotent vs. atlas unipotent_representations
+  for all B/C/D groups of rank 2-4 (D: rank 4 only).
+
+  Column #bmsz: formula (3.9) count (corrected primitive pairs + PBP count).
+  Column #atlas: unipotent_representations count.
+  Asterisk (*) if they disagree.
+
+  Note: bmsz_number_unipotent counts representations of G directly
+  (no SO vs O correction needed — formula (3.9) gives the SO count).
+  ============================================================ }
+
+{ SO(p,q) real forms for type B_n: q = 0, 1, ..., n. }
+set B_n_groups(int n)=[RealForm]:
+for k:n+1 do SO(2*n+1-k,k) od
+
+{ Sp(p,q) real forms for type C_n (p+q=n, p≥q) plus Sp(2n,R). }
+set C_n_groups(int n)=[RealForm]:
+(for k:n\2+1 do Sp(n-k,k) od) ## [Sp_R(2*n)]
+
+{ All D_4 real forms. }
+set D4_groups()=[RealForm]:
+[SO(8,0), SO(6,2), SO_star(8), SO_star(8,true,SO(8)), SO(4,4),
+ SO(7,1), SO(5,3)]
+
+{ One table row: [group, bi_label, orbit, #bmsz, #atlas (* if mismatch)]. }
+set bmsz_row(RealForm G, Orbit O_v)=[string]:
+let (bi_label,G_datum)=label_and_datum(G) then
+bmsz_n=bmsz_number_unipotent(O_v,G) then
+atlas_n=#unipotent_representations(O_v,G) in
+[group_name(G_datum), bi_label, to_string(O_v),
+ to_string(bmsz_n),
+ to_string(atlas_n) + if atlas_n=bmsz_n then "" else "*" fi]
+
+set bmsz_B_rows(int n)=[[string]]:
+let groups=B_n_groups(n) then
+orbits=good_parity_partitions(n,"B") in
+##for G in groups do for O_v in orbits do bmsz_row(G,O_v) od od
+
+set bmsz_C_rows(int n)=[[string]]:
+let groups=C_n_groups(n) then
+orbits=good_parity_partitions(n,"C") in
+##for G in groups do for O_v in orbits do bmsz_row(G,O_v) od od
+
+set bmsz_D4_rows()=[[string]]:
+let groups=D4_groups() then
+orbits=good_parity_partitions(4,"D") in
+##for G in groups do for O_v in orbits do bmsz_row(G,O_v) od od
+
+{ Master table: B_n (n=2..4), C_n (n=2..4), D_4.
+  Rank 1 is skipped (exceptional isomorphism B_1 ≅ C_1 ≅ A_1). }
+set bmsz_table_BCD()=void:
+tabulate(
+  [["group","bi_label","orbit","#bmsz","#atlas"]] ##
+  (##for n:3 do bmsz_B_rows(n+2) od) ##
+  (##for n:3 do bmsz_C_rows(n+2) od) ##
+  bmsz_D4_rows()
+)
+
+{ ============================================================
+  Section 12: Standalone.py comparison helpers
+  Functions to reproduce standalone.py output for comparison.
+  ============================================================ }
+
+{ Show all PBPs for orbit O_v with their group, orbit, signature, epsilon.
+  Mirrors standalone.py compute_all_pbp(dpart, rtype, report=True). }
+set show_all_pbp(Orbit O_v, string label)=void:
+let result=compute_all_pbp(O_v,label,true) in
+prints("#total extended PBPs: ", #result)
+
+{ Count PBPs by group for one orbit.
+  Mirrors standalone.py's group counting output. }
+set count_by_group(Orbit O_v, string label)=void:
+let reps_list=bmsz_reps(O_v,label) in
+prints("Orbit O^v=",O_v,"  label=",label,"  #reps=",#reps_list);
+let groups=for X in reps_list do group_name(X.painted_bi_partition) od in
+let seen=[string]:[] in
+for g in groups do
+  if not(is_member(seen)(g)) then
+    seen#:=g;
+    let cnt=0 in
+    for h in groups do if h=g then cnt+:=1 fi od;
+    prints("  ",g,": ",cnt)
+  fi
+od
+
+{ Check bmsz_number_unipotent for all good-parity orbits of rank n and type label. }
+set bmsz_check(int n, string label)=void:
+let orbits=good_parity_partitions(n,label) in
+prints("Checking n=",n," label=",label,"  #orbits=",#orbits);
+for O_v in orbits do
+  prints("  O^v=",O_v);
+  prints("    pp=",bmsz_pp(O_v,label),"  |A_bar|=",bmsz_A_bar_order(O_v,label))
+od
