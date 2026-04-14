@@ -1927,12 +1927,14 @@ case an ambiguity is found.
 
 In a recent addition to the language, we allow built-in functions that can
 operate with arguments of any type but (unlike truly generic functions) need to
-be explicitly informed of that type at runtime. Whether |variant| holds such a
-function is indicated by the |is_type_aware| method. The argument matching
-process for these functions is different, so they are singled out below.
-Although these functions have a generic type that mostly controls their
-matching, this genericness is somewhat limited, so they may end up
-rejecting an exact match that was found. The remaining cases of an exact match
+be explicitly informed of that type at runtime. Variants that hold such a
+function satisfy the |is_type_aware| predicate. While they have a generic type
+that can be used for matching, they have an implicit restriction that the
+argument type must satisfy |is_concrete|, namely it must not contain any
+abstract type (not bound in a polymorphic type) variables. We reject the exact
+match in such cases, ignoring it completely. When type aware variants do match,
+they need some extra processing to create an instance of the built-in function
+value that records the argument type. The remaining cases of an exact match
 produce the call in much the same way as for inexact matches, so they share a
 module of common code; in order to be able to do so, the |a_priori_type| found
 is transferred to a |type_expr| variable |arg_type|.
@@ -1952,14 +1954,15 @@ error, also aborting the matching process.
     if (a_priori_type.matches
          (variant.f_tp().arg_type,variant.poly_degree(),shift_amount))
     { // exact match
+      if (variant.is_type_aware() and not a_priori_type.is_concrete())
+        continue;
       if (prev_match!=nullptr)
         @< Throw an error reporting an ambiguous exact match @>
       expression_ptr call;
       expression_ptr arg = n_args==1 ? std::move(arg_vector[0])
 			 : expression_ptr(std::move(tup_exp));
       if (variant.is_type_aware())
-        @< If |a_priori_type| has a concrete type, assign to |call| a call
-           expression; otherwise |continue| @>
+        @< Assign a type aware call expression to |call| @>
       else
       { const type_expr& arg_type = a_priori_type.unwrap();
           // actual argument type
@@ -2065,33 +2068,24 @@ test \emph{can} be made here, since we have the argument type in the variable
            (variant.value(),name.str(),std::move(arg),e.loc);
 }
 
-@ Type aware built-in functions can operate on any type that does not contain
-abstracted type variables. If given an argument with such a type, they will
-match without considering any further overloads (such bindings are expected to
-be the only, or in any case first, overload for the name), while for abstract
-types this binding is ignored, by calling |continue| to skip to the next
-|variant|. Matching consists of first spawning a |type_aware_instance| of the
-built-in function, for which we then call the |build_call| method to produce a
-call of this instance with the argument. The name that will be printed for the
-function in the call is the one constructed for the |type_aware_instance|
-(rather than the name of the identifier used, which lacks the specialising type;
-in any case there currently is no mechanism allowing the user to bind type aware
-built-ins to a different identifier while retaining its type aware character).
+@ Matching a type aware variant consists of first spawning a
+|type_aware_instance| of the built-in function, for which we then call the
+|build_call| method to produce a call of this instance with the argument. The
+instance produces a name for the function that incorporates the argument type,
+and this is recorded in the call expression. This name is not taken from the
+identifier that is being matched for (as is done for normal overloaded calls),
+but since there currently is no mechanism allowing the user to bind type aware
+built-ins to a different identifier (while retaining its type aware character),
+this should make no difference.
 
-@< If |a_priori_type| has a concrete type, assign to |call| a call expression;
-   otherwise |continue| @>=
-{ if (a_priori_type.is_concrete())
-  {
-    const auto& b =
-      std::dynamic_pointer_cast<const type_aware_builtin>(variant.value());
-    assert(b!=nullptr);
-    auto f =
-      std::make_shared<type_aware_instance>(b->spawn(a_priori_type.copy()));
-    std::ostringstream o; f->print(o);
-    call = f->build_call(f,o.str(),std::move(arg),e.loc);
-  }
-  else
-    continue;
+@< Assign a type aware call expression to |call| @>=
+{
+  const auto& b =
+    std::static_pointer_cast<const type_aware_builtin>(variant.value());
+  auto f =
+    std::make_shared<type_aware_instance>(b->spawn(a_priori_type.copy()));
+  std::ostringstream o; f->print(o);
+  call = f->build_call(f,o.str(),std::move(arg),e.loc);
 }
 
 @ Inexact matches are only considered for variants with a completely specific
@@ -2231,19 +2225,33 @@ definitions will be in the overload table even if just one definition is
 present; in the latter case the ``Failed to match'' error might seem
 unnecessarily vague, so we produce instead a more specific |type_error|, whose
 message will also mention that the type that was expected by the unique
-instance.
+instance. In the case where an identifier has a unique overload which is a type
+aware function, the |type_error| message that would thus be generated for
+(forbidden) abstract argument types would be confusing, even if strictly
+speaking correct, so in that case we replace the message by a more explicit one.
 
 @< Complain about failing overload resolution @>=
-if (variants.singleton())
-  throw type_error(args,a_priori_type.unwrap().copy(),
-                   variants.front().f_tp().arg_type.copy());
-else
 { std::ostringstream o;
-  o << "Failed to match '"
-    << main_hash_table->name_of(id) @|
-    << "' with argument type "
-    << a_priori_type;
-  throw expr_error(e,o.str());
+  if (variants.singleton())
+  {
+    if (variants.front().is_type_aware())
+    { o << "Type aware function '"
+        << main_hash_table->name_of(id) @|
+      << "' cannot be call with abstract argument type "
+      << a_priori_type;
+      throw expr_error(e,o.str());
+    }
+    else
+      throw type_error(args,a_priori_type.unwrap().copy(),
+                       variants.front().f_tp().arg_type.copy());
+  }
+  else
+  { o << "Failed to match '"
+      << main_hash_table->name_of(id) @|
+      << "' with argument type "
+      << a_priori_type;
+    throw expr_error(e,o.str());
+  }
 }
 
 @* Function calls.
@@ -2450,20 +2458,20 @@ template <bool variadic>
   builtin_value(const builtin_value& v) = delete;
 };
 
-@ Another kind of special function is the type-aware builtin function. Instances
-of these functions will be provided with the |type| that the type checker has
-derived for their argument, so that their implementation can adapt its behaviour
-accordingly. This rather late addition to the repertoire of function values is
-intended to allow improved versions of functions like |print| to be defined,
-replacing the old behaviour that dynamically adapts to the actual runtime
-value by calling the (recursively defined) virtual method |value_base::print|.
-By having access to the type that was derived for the argument, the printing can
-be adapted in ways that are not otherwise possible. This possibility is
-important notably to enable introducing opaque types (and type constructors),
-that are primitive to the type checker although actual values will be of some
-existing implementation type; the virtual method based printing function bases
-its behaviour only on the underlying value, and cannot change it for values
-handled under a used defined opaque type.
+@ Another kind of special function is the type aware built-in function.
+Instances of these functions will be provided with the |type| that the type
+checker has derived for their argument, so that their implementations can adapt
+their behaviour accordingly. This rather late addition to the repertoire of
+function values is intended to allow improved versions of functions like |print|
+to be defined, replacing the old behaviour that dynamically adapts to the actual
+runtime value by calling the (recursively defined) virtual method
+|value_base::print|. By having access to the type that was derived for the
+argument, the printing can be adapted in ways that are not otherwise possible.
+This possibility is important notably to enable introducing opaque types (and
+type constructors), that are primitive to the type checker although actual
+values will be of some existing implementation type; the virtual method based
+printing function bases its behaviour only on the underlying value, and cannot
+change it for values handled under a used defined opaque type.
 
 Two classes are involved with these functions: the function value stored in the
 |overload_table| will be of type |type_aware_builtin|, and once a concrete
