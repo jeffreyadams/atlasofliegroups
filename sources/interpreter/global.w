@@ -4286,7 +4286,8 @@ thing as covariant type aware functions.
 @< Global function definitions @>=
 void type_aware_print_wrapper(eval_level l, const type& tp)
 {
-  *output_stream << '{' << tp << ":}";
+  *output_stream <<
+    "{[" << tp.floor() << ',' << tp.degree() << ']' << tp << ":}";
   *output_stream << *execution_stack.back() << '\n';
   if (l!=eval_level::single_value) // in |single_value| case we are done
     push_expanded(l,pop_value()); // otherwise remove and possibly expand value

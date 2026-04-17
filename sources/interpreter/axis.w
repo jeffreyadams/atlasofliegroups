@@ -1612,10 +1612,13 @@ template<bool pilfer>
 @*1 Type-checking applied identifiers.
 %
 When type-checking an applied identifier, we first look in
-|layer::lexical_context| for a binding of the identifier; if found it will be
-a local identifier, and otherwise we look in |global_id_table|. If found in
-either way, the associated type must equal the expected type (if any), or be
-convertible to it using |coerce|.
+|layer::lexical_context| for a binding of the identifier; if found it will be a
+local identifier, and otherwise we look in |global_id_table|. If found in either
+way, the associated type must equal the expected type (if any), or be
+convertible to it using |coerce|. If found neither as local nor as global
+identifier but the identifier is known in the global overload table, we make an
+attempt to get a variant from there (without any operator cast as would usually
+be required) if a unique variant present could be validly used in the context.
 
 Our answer to the question what to do if the identifier has a type |*id_t| that
 is more general than the type~|tp| required by the context has changed over
@@ -1652,19 +1655,18 @@ case applied_identifier:
 @ When an identifier is encountered that can be found neither in the current
 |lexical_context| nor in the |global_id_table|, the interpreter (in version~1 of
 the \.{axis} language) used to simply flag an error. But as a service to the
-user, we now instead try to get a value from the |global_overload_table|,
-provided there is a unique instance of the identifier there that matches the
-type requirement |tp| from the context (which may be no requirement at all).
-We make a distinction between the case where just a single variant is known in
-the overload table, which we treat essentially as if that value had been held in
-a variable of function type instead, and cases where multiple variants of the
-same identifier are defined; in the latter case we only succeed if exactly one
-of the variants meets the requirements of |tp|. The distinction is mainly made
-so that we can give more meaningful error messages when our attempt fails.
-If |tp| does not accept any function type to begin with, we just skip the
-attempt to use the overload table, and if it does accept function types but none
-of the defined variants matches it, we also fall through this code; in either
-case that will result in a simple ``undefined identifier'' error message.
+user, we now instead try to get a value from the |global_overload_table| if this
+can be unambiguously done. We make a distinction between the case where just a
+single variant is known in the overload table, which we treat essentially as if
+that value had been held in a variable of function type instead, and cases where
+multiple variants of the same identifier are defined; in the latter case we only
+succeed if exactly one of the variants meets the requirements of |tp|. The
+distinction is mainly made so that we can give more meaningful error messages
+when our attempt fails. If |tp| does not accept any function type to begin with,
+we just skip the attempt to use the overload table, and if it does accept
+function types but none of the defined variants matches it, we also fall through
+this code; in either case that will result in a simple ``undefined identifier''
+error message.
 
 @< See if a unique member of |*vars| matches |tp|, and if so |return| a
    |capture_expression| holding the value of that variant @>=
@@ -1685,10 +1687,20 @@ case that will result in a simple ``undefined identifier'' error message.
 specialise |tp| to the function type of |variant|, which |functype_absorb|
 defined below does, returning whether it succeeded. In case of failure, we throw
 a |type_error|, just like we would for a variable used in a context requiring a
-different type.
+different type. When processing an applied identifier, we ignore any type aware
+built-in that might be bound to it in the overload table, since the cases where
+the context would allow for a single concrete instance of it are rare and hard
+to pin down (notably |tp.is_concrete()| is not sufficient), and using an
+operator cast is better suited to achieve this. Therefore if the unique variant
+present is such a function, we signal an error saying not to do that.
 
 @< If the unique element of |*vars| matches |tp|, |return| its value...@>=
 { const auto& variant = vars->front();
+  if (variant.is_type_aware())
+  { o << "Type aware function '" << main_hash_table->name_of(id) @|
+      << "' cannot be used (without argument type) as value";
+    throw expr_error(e,o.str());
+  }
   if (functype_absorb(tp,variant))
   { o << main_hash_table->name_of(id) << '@@' << tp.arg_type();
     return expression_ptr(new capture_expression(variant.value(),o.str()));
@@ -1707,9 +1719,9 @@ numbered from~$0$, while |tp| has a possibly nonzero |floor()| value that needs
 to be respected. This means that if we should use |unify_specialise| twice for
 this task, both argument and result type should be properly shifted first. It is
 a bit more straightforward to instead first construct a |type_expr| from the
-|func_type| with the proper shifts, and then use |unify| with that type. We so
-using a helper function |get_type|, which also will come in handy when reporting
-errors related to types in the overload table.
+|func_type| with the proper shifts, and then use |unify| with that type. We do
+so using a helper function |get_type|, which also will come in handy when
+reporting errors related to types in the overload table.
 
 @< Local function definitions @>=
 inline type_expr get_ftype(const func_type& ftp)
@@ -1722,17 +1734,18 @@ inline bool functype_absorb (type& tp, const overload_data& entry)
 }
 
 @ In the case where there is more than one variant to choose from, we filter
-them for one that makes |functype_absorb| succeed. In case of a failure, we must
-undo any type assignments that the failed attempt to match may have made. Since
-this must be done repeatedly, it is simplest to just initially apply any
-assignment that might be pending, by calling |tp.wring_out|, after which any
-type assignments produced by |functype_absorb| must be new, and can be undone by
-calling |tp.clear|. The fact that we call |tp.wring_out| does mean that callers
-to |convert_expr| cannot expect that changes to |tp| are limited to acquiring
-type assignments; we do not believe any caller makes that assumption, but if
-that should turn out to be the case, the code below must be more careful: it
-should instead record |tp.polymorphics()| initially, and then use
-|restore_polymorphics| instead of |clear|.
+them for one that makes |functype_absorb| succeed, ignoring completely any type
+aware variants. In case of a failure of |functype_absorb|, we must undo any type
+assignments that the failed attempt to match may have made. Since this must be
+done repeatedly, it is simplest to just initially apply any assignment that
+might be pending, by calling |tp.wring_out|, after which any type assignments
+produced by |functype_absorb| must be new, and can be undone by calling
+|tp.clear|. The fact that we call |tp.wring_out| does mean that callers to
+|convert_expr| cannot expect that changes to |tp| are limited to acquiring type
+assignments; we do not believe any caller makes that assumption, but if that
+should turn out to be the case, the code below must be more careful: it should
+instead record |tp.polymorphics()| initially, and then call
+|tp.restore_polymorphics| instead of |tp.clear|.
 
 @< If a unique variant among |*vars| unifies to the type |tp|... @>=
 { tp.wring_out(); // ensure no assignments are pending
@@ -1740,7 +1753,7 @@ should instead record |tp.polymorphics()| initially, and then use
   expression_ptr result;
   for (const auto& variant : *vars)
   {
-    if (functype_absorb(tp,variant))
+    if (not variant.is_type_aware() and functype_absorb(tp,variant))
     { if (result!=nullptr)
         @< Throw an error reporting ambiguous overloaded symbol usage @>
       o << main_hash_table->name_of(id) << '@@' << tp.arg_type();
@@ -2537,7 +2550,9 @@ struct type_aware_builtin : public function_base
     {@; return "type aware built-in function instance"; }
 @)
   type_aware_instance spawn (type arg_type) const
-  {@; return type_aware_instance(val,print_name,std::move(arg_type)); }
+  {@; arg_type.wring_out();
+    return type_aware_instance(val,print_name,std::move(arg_type));
+  }
 };
 
 @ Back to executable expressions for function calls. The call of an overloaded
@@ -7561,32 +7576,40 @@ case cast_expr:
 @ Another kind of cast is the operator cast, which selects an operator or
 overloaded function instance as it would for arguments of specified types, but
 without giving actual arguments, so that the selected function itself can be
-handled as a value. In other words, and operator cast accesses a value in the
+handled as a value. In other words, an operator cast accesses a value in the
 global overload table by providing its name and argument types. Since in
 successful cases we find a bare |shared_function| in the table, we must (as we
 did for~`\.\$') use the |capture_expression| class to serve as wrapper that upon
 evaluation will return the value again.
 
 We do two attempts to match the specified type |c_type| to an entry in the
-|global_overload_table|. In the first we deduce from |c_type| a type as it would
-be specified in a table entry for an exact match. Then as a second try, we try
-to find a unique polymorphic overload that accepts |c_type| as it would in a
-function call, and if one is found we use that. Although an exact match would
-also be found in the second try, the first one allows specifying any overload,
-even if the exact type of that overload also matches another, more general,
-polymorphic overload. (In that case it is not possible to call the intended
-overload through ordinary overload resolution, since no match to it would ever
-be unique; we do want to be able to specify it in an operator cast, if only to
-be able to apply \.{forget}, and thereby get rid of the useless overload.)
+|global_overload_table|. In the first we deduce from |c_type| a type that might
+be recognised by |overload_table::entry| if a variant has precisely that type
+specification (which might be polymorphic). If nothing is found, then as a
+second possibility, we try to find a unique (polymorphic) overload that would
+accept |c_type| as ``exact match'' in a function call (meaning that unification
+succeeds), and if one is found we use that. Although a type that succeeds in the
+first try would also match in the second try, that second match might not be
+unique, which is why we need the first try as well. Indeed, if the exact type of
+some overload also matches another more polymorphic overload, it would be
+impossible to select the former overload. (In that case it is not possible to
+call that overload through ordinary overload resolution, since no match to it
+would ever be unique; we do want to be able to specify it in an operator cast,
+giving access to an otherwise unreachable stored value. We also want to be able
+to specify such an overload in order to forget it and thus remove the ambiguity;
+in fact, the \.{forget} command does not invoke the code below, and it calls
+|overload_table::remove| rather than |overload_table::entry|, but both of them
+need to pass the exact type stored in order to select a variant.)
 
 For the first try we use the method |overload_table::entry|, which in the call
 below finds an entry at symbol |c->oper|, if there exists one, whose argument
-type with any polymorphic variables shifted up by |fc| is |c_type|. That shift
-is what we want, because at the point where the operator cast is written, any
-polymorphic types introduced start at |fc|, while in the overload table there
-are no fixed type variables and they start at~$0$. When |overload_table::entry|
-returns a null pointer no exact match was found, and we pas to the second try,
-which uses |overload_table::variants|.
+type with any polymorphic variables shifted up by |fc| is equal to |c_type|.
+That shift is what we want, because at the point where the operator cast is
+written, any polymorphic types introduced start at |fc|, while in the overload
+table there are no fixed type variables and they start at~$0$. When
+|overload_table::entry| returns a null pointer, this means that no exact match
+was found; we then pass to the second try, which uses
+|overload_table::variants| rather than |entry|.
 
 @< Cases for type-checking and converting... @>=
 case op_cast_expr:
@@ -7598,9 +7621,11 @@ case op_cast_expr:
   type deduced_type = type::wrap(gen_func_type,fc);
   if (@[const auto* entry = global_overload_table->entry(c->oper,c_type,fc)@])
   {
-    result.reset(new capture_expression(entry->value(),o.str()));
-    bool success = functype_absorb(deduced_type,*entry);
-    assert(success); ndebug_use(success);
+    if (not entry->is_type_aware()) // type aware variant requires specific type
+    { result.reset(new capture_expression(entry->value(),o.str()));
+      bool success = functype_absorb(deduced_type,*entry);
+      assert(success); ndebug_use(success);
+    }
   }
   else
   {
@@ -7620,36 +7645,54 @@ case op_cast_expr:
 }
 break;
 
-@ Contrary to ordinary casts, operator casts can specify a polymorphic
-(argument) type, and this is indeed a natural way to select a polymorphic
-variant; of course overloaded entries can have a polymorphic type as well.
-Finding the right variant then resembles overloading resolution in function
-calls, and can be done using the |type::matches| method; here too we insist of
-having a unique variant match the specified parameter type. Our logic follows
-that overload resolution closely, including the fact that a match is stored away
-temporarily to see if a second matching variant exists, in which case we throw
-an error for ambiguity instead of returning the initial match. Here too the call
-of |matches| sets a possibly nonzero |shift_amount| by which the polymorphic
-type variables from the overloaded binding are to be shifted upwards to steer
-clear of any type variables (fixed or not) in |target|; the need to do so arises
-even when |target| is monomorphic but involves type variables fixed in the
-context. A difference is that here we need construct the entire function type
+@ When a variant does not match the specified type identically, we can still
+accept the operator case if unification succeeds. This can be either because the
+specified type is an instance of a more generic variant specification (in which
+case the function extracted will have a more specific type than the variant in
+the table), or because the specified type is more generic (as long as it selects
+a unique variant; this may simply be a terse way to select a variant without
+spelling out its type in full). Finding the right variant in the table then
+resembles overloading resolution in function calls, and can be done using the
+|type::matches| method; here too we insist of having a unique variant match the
+specified parameter type. Our logic follows that overload resolution closely,
+including the fact that a match is stored away temporarily to see if a second
+matching variant exists, in which case we throw an error for ambiguity instead
+of returning the initial match. Here too the call of |matches| sets a possibly
+nonzero |shift_amount| by which the polymorphic type variables from the
+overloaded binding are to be shifted upwards to steer clear of any type
+variables (fixed or not) in |target|; the need to do so arises even when
+|target| is monomorphic but involves type variables fixed in the context. A
+difference is that here we need construct the entire function type
 |deduced_type| obtained by unification, rather than just the return type. The
 factory function |type_expr::function| will move from its argument types, so we
 perform two separate substitutions to provide those. If nothing is found here,
 we fall through this code, leading to a ``no instance found'' error.
 
+A type aware variant may match here, but only if the specified type |target|
+contains neither polymorphic type variables, nor abstract types introduced in
+the context, so that we can form an instance of the type aware built-in that is
+fully informed about the argument type. If that condition is not met, we just
+ignore any type aware variant by invoking |continue|.
+
 @< See if |target| matches the argument type of a unique variant... @>=
 {
+  if (variant.is_type_aware() and (target_deg>0 or not target.is_concrete()))
+    continue;
   unsigned int op_deg = variant.poly_degree(), shift_amount;
   if (target.matches(variant.f_tp().arg_type,op_deg,shift_amount))
   {
     if (prev_match!=nullptr)
       @< Throw an error reporting an ambiguous match in operator cast @>
-    @< Write to |o| the name of operator |c->oper| with the argument type of
-       |variant|, to which the substitutions in |target.assign()| have been
-       applied @>
-    result.reset(new capture_expression(variant.value(),o.str()));
+    if (variant.is_type_aware())
+      @< Build an instance of the |variant| with argument type |target|,
+         and make |result| point to it @>
+    else
+    {
+      @< Write to |o| the name of operator |c->oper| with the argument type of
+         |variant|, to which the substitutions in |target.assign()| have been
+         applied @>
+      result.reset(new capture_expression(variant.value(),o.str()));
+    }
     auto te = type_expr::function @|
       (target.assign().substitution(variant.f_tp().arg_type,shift_amount)
       ,target.assign().substitution(variant.f_tp().result_type,shift_amount)
@@ -7695,6 +7738,24 @@ match the specified type.
     o << ']';
 }
 
+@ In the case of type aware functions, the |capture_expression| actually
+captures an instance spawned from the |variant.value()| found in the table,
+rather than that value itself. The code below is similar to what was saw for
+resolving an overloaded call of a type aware built-in, except that we capture
+the function value rather than build a call. The methods of the classes used,
+together with the unchanged type handling in processing of operator casts,
+ensure that things will behave properly when the captured function value later
+gets applied to arguments.
+
+@< Build an instance of the |variant| with argument type |target|,
+   and make |result| point to it @>=
+{ const auto& b =
+    std::static_pointer_cast<const type_aware_builtin>(variant.value());
+  auto f =
+    std::make_shared<type_aware_instance>(b->spawn(target.copy()));
+  f->print(o);
+  result.reset(new capture_expression(std::move(f),o.str()));
+}
 
 @* Assignments.
 %
