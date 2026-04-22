@@ -358,7 +358,7 @@ tabulate(for (P,Q,bi_label) in list do
 
 
 set number_unipotent(Orbit O_v,string label)=int:
-if label="B" or label="D" and size(O_v)=0
+if label="B" or (label="D" and size(O_v)!=0)
  then 2*number_pbp(O_v,label)*A_bar_order(O_v,label)
  else number_pbp(O_v,label)*A_bar_order(O_v,label)
 fi
