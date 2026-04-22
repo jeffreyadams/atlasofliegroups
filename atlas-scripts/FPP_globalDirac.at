@@ -1007,7 +1007,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
        	      ", number of utests = ", unitary_test_counter.use_count() - oldUcounter);
        	    prints("Time spent in char = ",print_time_string(charTime),
        	      " for ", char_counter.use_count() - oldCcounter," calcs: ; ",
-	      "time spent in char_to_ht = ",print_time_string(charTime),
+	      "time spent in char_to_ht = ",print_time_string(charTimeToHt),
        	      " for ", char_counter_to_ht.use_count() - oldCTHcounter," calcs");
 	      {", time spent in red_count = ",  print_time_string(red_count_time));}
 	    prints("Time in localFD_1Dirac2* = ", print_time_string(FD12Time + FD12bzTime),
