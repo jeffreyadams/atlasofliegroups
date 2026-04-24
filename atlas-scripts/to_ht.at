@@ -48,7 +48,10 @@ set c_form_irreducible_to_ht_MvL (Param p,int HT) = KTypePol:
   then f(Param q) = KTypePol:
     	let start = elapsed_ms()
 	in full_deform_to_ht(q,HT)
-  in map(f, P)
+  in if back_form_ht_flag
+     then back_map(f, P)
+     else map(f, P)
+     fi
   else
   let P=oriented_KL_sum_to_ht(HT)(p), count=0 then nP=#P
   then
@@ -70,22 +73,35 @@ set c_form_irreducible_to_ht_MvL (Param p,int HT, int time ) = maybe_KTP:
   if HT < 0 then return c_form_irreducible(p, time) fi;
   let P = oriented_KL_sum_to_ht(HT)(p), expiration = elapsed_ms()+time
     then list = monomials(P)
-    then inf_indices = for q in list do defHashTime.param_lookup(q) od
-    then indices = for q in list do defHashHtTime.param_lookup(q) od
-    then unknown_ks = for p@k in list
-    	 	      if defHashHtTime.time_lookup_to_ht(p,HT) <= -1
+    {then inf_indices = for q in list do defHashTime.param_lookup(q) od}
+    {then indices = for q in list do defHashHtTime.param_lookup(q) od}
+    then unknown_ks = for q@k in list
+    	 	      if defHashHtTime.time_lookup_to_ht(q,HT) <= -2
 		      do k
 		      fi
 		      od
      in if #unknown_ks = 0
-	then map( (Param q) KTypePol:
+	then if back_form_ht_flag
+	     then back_map( (Param q) KTypePol:
 	      	 full_deform_to_ht(q,HT), P).done
-	else full_deform_to_ht(list[unknown_ks~[0]],HT, time);
-    	     map( (Param q) maybe_KTP: if expiration - elapsed_ms() < 0
+	     else map( (Param q) KTypePol:
+	      	 full_deform_to_ht(q,HT), P).done
+	     fi
+	else if back_form_ht_flag
+	     then prints("in cfithMvL, unknown_ks = ",unknown_ks);
+		  full_deform_to_ht(list[unknown_ks~[0]],HT, time);
+    	     	  back_map( (Param q) maybe_KTP: if expiration - elapsed_ms() < 0
       	     	       		  then timed_out()
       				  else full_deform_to_ht(q, HT, expiration - elapsed_ms())
       				  fi
       				  , P)
+	     else full_deform_to_ht(list[unknown_ks~[0]],HT, time);
+    	     	  map( (Param q) maybe_KTP: if expiration - elapsed_ms() < 0
+      	     	       		  then timed_out()
+      				  else full_deform_to_ht(q, HT, expiration - elapsed_ms())
+      				  fi
+      				  , P)
+	     fi
 	fi {#unknown_ks}
 
 
@@ -93,13 +109,19 @@ set c_form_irreducible_to_ht_MvL (Param p,int HT, int time ) = maybe_KTP:
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
 {.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
 set c_form_irreducible_to_ht (Param p,int HT) = KTypePol:
-  map(c_form_std_to_ht(HT), oriented_KL_sum_to_ht(HT)(p) )
- 
+  if back_form_ht_flag
+  then back_map(c_form_std_to_ht(HT), oriented_KL_sum_to_ht(HT)(p) )
+  else map(c_form_std_to_ht(HT), oriented_KL_sum_to_ht(HT)(p) )
+  fi
+
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
 {.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
 set c_form_irreducible_to_ht (Param p,int HT, int time) = maybe_KTP:
   if HT < 0 then return c_form_irreducible(p, time) fi;
-  map(c_form_std_to_ht(HT,time), oriented_KL_sum_to_ht(HT)(p) )
+  if back_form_ht_flag
+  then back_map(c_form_std_to_ht(HT,time), oriented_KL_sum_to_ht(HT)(p) )
+  else map(c_form_std_to_ht(HT,time), oriented_KL_sum_to_ht(HT)(p) )
+  fi
 
 { utility: compute fixed and unfixed contributions to c-form on irreducible(p)
   no deformation is done, but orientation numbers are included;
@@ -138,7 +160,10 @@ set twisted_c_form_irreducible_to_ht (Param p,int HT) = KTypePol:
 { |1+s| divides |unfixed|, no need for |scale_extended|; take half at |nu=0| }
   in
   if not herm_report
-  then map(twisted_c_form_std_to_ht(HT),fixed)+half(unfixed.K_type_pol)
+  then if back_form_ht_flag
+       then back_map(twisted_c_form_std_to_ht(HT),fixed)+half(unfixed.K_type_pol)
+       else map(twisted_c_form_std_to_ht(HT),fixed)+half(unfixed.K_type_pol)
+       fi
   else let nf = #fixed, count=0
   then 
     f(Param p) = if count<11 or count%10=0 or nf-count<=10
@@ -156,7 +181,10 @@ set twisted_c_form_irreducible_to_ht (Param p,int HT, int time) = maybe_KTP:
   !empty_K = null_K_module(p.real_form), flag = true
 { |1+s| divides |unfixed|, no need for |scale_extended|; take half at |nu=0| }
 {fixed has the role of P in c_form_irreducible_to_ht_MvL}
-   then Q = map(twisted_c_form_std_to_ht_MvL(HT,time),fixed)
+   then Q = if back_form_ht_flag
+       	    then back_map(twisted_c_form_std_to_ht_MvL(HT,time),fixed)
+       	    else map(twisted_c_form_std_to_ht_MvL(HT,time),fixed)
+	    fi
    in case Q
       | timed_out: timed_out()
       | done(r): (r + half(unfixed.K_type_pol)).done
@@ -202,7 +230,6 @@ set hermitian_form_irreducible_to_ht_MvL (Param p,int HT,int time) = maybe_KTP:
 	     	ans.done
   esac
   in unitaryTime+:=elapsed_ms() - start_time;
-     {deformed_hash_flag:=deformed_flag_hold;}
      answer
 
 set hermitian_form_irreducible_to_ht (Param p,int HT) = KTypePol:

@@ -2160,6 +2160,17 @@ set map ((KType->KTypePol)f, KTypePol P) = KTypePol:
 set map ((Param->KTypePol)f, ParamPol P) = KTypePol:
   sum(P.real_form,for c@p in P ~do c*f(p) od)
 
+{next four start with small x (discrete series) and go up}
+set bsck_map ((KType->KType)f, KTypePol P) = KTypePol:
+  0*P + for c@p in P do (c,f(p)) od
+set back_map ((Param->KType)f, ParamPol P) = KTypePol:
+  P.real_form.null_K_module + for c@p in P do (c,f(p)) od
+
+set back_map ((KType->KTypePol)f, KTypePol P) = KTypePol:
+  sum(P.real_form,for c@p in P do c*f(p) od)
+set back_map ((Param->KTypePol)f, ParamPol P) = KTypePol:
+  sum(P.real_form,for c@p in P do c*f(p) od)
+
 set half (KTypePol P) = KTypePol: 0*P+ for c@t in P do (half(c),t) od
 { inverse of multiplication *@(int,KTypePol); don't confuse with scaling }
 set divide_by (int n, KTypePol P) = KTypePol: 0*P+ for c@t in P do (c/n,t) od
