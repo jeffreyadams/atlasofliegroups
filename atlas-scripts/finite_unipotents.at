@@ -29,18 +29,17 @@ set number_unipotents_simple(RootDatum rd)=
 assert(is_simple(rd.derived),"Derived root datum is not simple");
 if is_abelian(rd) then 1 else
 let (type,rank)=rd.Lie_type.simple_factors[0] in
-{ascii(type)=A:65,...G:71
-ascii(type)-65=0,...,6}
-case ascii(type)-65
- in
-  #partitions(rank+1),{A}
-  number_unipotents_BC(rank),      {B}
-  number_unipotents_BC(rank),	   {C}
-  number_unipotents_D(rank),	   {D}
-  case rank-6 in 30,76,166 esac, {E}
-  37, {F}
-  10  {G}
-esac
+{ASCII(type)=A:65,...,G:71
+ ASCII(type)-65=0,...,6}
+  case ASCII(type)-ASCII("A")
+  in #partitions(rank+1) {A}
+  , number_unipotents_BC(rank) {B}
+  , number_unipotents_BC(rank) {C}
+  , number_unipotents_D(rank)  {D}
+  , case rank-6 in 30,76,166 esac {E}
+  , 37 {F}
+  , 10 {G}
+  esac
 fi
 
 {number unipotents in non-simple case}

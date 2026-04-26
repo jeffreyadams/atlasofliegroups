@@ -21,8 +21,9 @@ set lambda_plus_rho_res_T (KGBElt x,ratvec lambda) = ratvec:
 { formula: mu(p) = < torus_factor(x)+rho^\vee , (1+theta_x)(lambda+rho)/2 > }
 set mu (Param p) = rat:
 { Since |p.x.torus_factor| is unchanged under right multiplication by
-  |1+x.involution|, the following formula is equivalent to the original one:
+  |1+x.involution|/2, the following formula is equivalent to the original one:
   (p.x.torus_factor+p.real_form.rho_check) * lambda_plus_rho_res_T(p.x,p.lambda)
+  (/2 added 3/24/26)
 }
   p.real_form.rho_check * lambda_plus_rho_res_T(p.x,p.lambda) +
   p.x.torus_factor*(p.lambda+p.root_datum.rho)
@@ -130,3 +131,19 @@ set convert_cform_hermitian (KTypePol P)= KTypePol:
    else convert_cform_hermitian
            (P,P.real_form.distinguished_involution,first_K_type(P))
    fi
+
+
+{March 24 2026: addressing hodge0 trouble}
+{claim mu(tau) congruent to square(G)*lambdar mod Z}
+{"shift" is a SINGLE chosen square root of p(square(G)); should NOT
+be revised for each tau}
+set new_convert_cform_hermitian(KTypePol P) = KTypePol:
+    if =#P then P
+    else let tau0 = first_K_type(P)
+    	 then z = tau0.real_form.square, lambdar0 = tau0.lambda_rho
+	 then shift = -z*lambdar0
+    	 in sum(P.real_form,for c@tau in P
+    		    	    do {let z = tau.real_form.square, lambdar = tau.lambda_rho
+    	      	               in} c*((mu(tau) {-z*lambdar} +shift).rat_as_int.exp_s)*tau
+		    	    od)
+    fi

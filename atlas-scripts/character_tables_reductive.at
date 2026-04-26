@@ -11,7 +11,7 @@
 
 set simple_character_table (LieType lt) = CharacterTable:
 (  let (letter,rank)=lt.simple_type { this also asserts that |lt| is simple }
-in case ascii(letter)-ascii("A")
+in case ASCII(letter)-ASCII("A")
    in let (table,,) = character_table_A(SL(rank+1)) in table
    ,  let (table,,) = character_table_B(rank) in table
    ,  let (table,,) = character_table_C(rank) in table
@@ -24,7 +24,7 @@ in case ascii(letter)-ascii("A")
 )
 
 set character_table_simple (RootDatum rd,string letter,int n) = CharacterTable:
-   case ascii(letter)-ascii("A")
+   case ASCII(letter)-ASCII("A")
    in let (table,,) = character_table_A(rd) in table
    ,  let (table,,) = character_table_B(rd) in table
    ,  let (table,,) = character_table_C(rd) in table

@@ -468,11 +468,11 @@ set binary = (int->string):
   (int n)string: if n.< then "-"##f(-n) else f(n) fi
 
 set digits36 = (int->string): { map digits in base up to 36 to a letter }
-  let !shift = "A".ascii-10
-  in (int k)string: if k<=9 then k.to_string else ascii(k+shift) fi
+  let !shift = "A".ASCII-10
+  in (int k)string: if k<=9 then k.to_string else ASCII(k+shift) fi
 
 set hexadecimal = (int->string):
-  let !shift = "A".ascii-10 then f=to_base(16,digits36@int)
+  let !shift = "A".ASCII-10 then f=to_base(16,digits36@int)
   in (int n)string: if n.< then "-"##f(-n) else f(n) fi
 
 {		some transformations of sequences of numbers		}
@@ -539,7 +539,7 @@ in sign
 
 {                               Strings                                 }
 
-set !new_line = ascii(10) { including this in a string passes to a new line }
+set !new_line = ASCII(10) { including this in a string passes to a new line }
 
 set char_index (string c, string s) = int: first(#s,(int i)bool: c=s[i])
 
@@ -1121,7 +1121,7 @@ set is_simple (LieType t) = bool: t.derived_is_simple and =t.central_torus_rank
 { compute |t.semisimple.adjoint.two_rho| without constructing a |RootDatum| }
 set adjoint_2rho (LieType t) = vec: { $2\rho$ on basis of simple roots }
   for (letter,n) in simple_factors(t)
-  do case ascii(letter)-ascii("A")
+  do case ASCII(letter)-ASCII("A")
      in { A } for i:n from 1 do i*(1+n-i) od
      ,  { B } for i:n from 1 do i*(n+n-i) od
      ,  { C } for i:n from 1 do i*(1+n+n-i)   \ if i<n then 1 else 2 fi od
@@ -1139,7 +1139,7 @@ set adjoint_2rho (LieType t) = vec: { $2\rho$ on basis of simple roots }
 { similarly $2\check\rho$ on basis of simple coroots }
 set simply_connected_2rho_check (LieType t) = vec:
   for (letter,n) in simple_factors(t)
-  do case ascii(letter)-ascii("A")
+  do case ASCII(letter)-ASCII("A")
      in { A } for i:n from 1 do i*(1+n-i) od
      ,  { B } for i:n from 1 do i*(1+n+n-i)   \ if i<n then 1 else 2 fi od
      ,  { C } for i:n from 1 do i*(n+n-i) od
@@ -2160,6 +2160,17 @@ set map ((KType->KTypePol)f, KTypePol P) = KTypePol:
 set map ((Param->KTypePol)f, ParamPol P) = KTypePol:
   sum(P.real_form,for c@p in P ~do c*f(p) od)
 
+{next four start with small x (discrete series) and go up}
+set bsck_map ((KType->KType)f, KTypePol P) = KTypePol:
+  0*P + for c@p in P do (c,f(p)) od
+set back_map ((Param->KType)f, ParamPol P) = KTypePol:
+  P.real_form.null_K_module + for c@p in P do (c,f(p)) od
+
+set back_map ((KType->KTypePol)f, KTypePol P) = KTypePol:
+  sum(P.real_form,for c@p in P do c*f(p) od)
+set back_map ((Param->KTypePol)f, ParamPol P) = KTypePol:
+  sum(P.real_form,for c@p in P do c*f(p) od)
+
 set half (KTypePol P) = KTypePol: 0*P+ for c@t in P do (half(c),t) od
 { inverse of multiplication *@(int,KTypePol); don't confuse with scaling }
 set divide_by (int n, KTypePol P) = KTypePol: 0*P+ for c@t in P do (c/n,t) od
@@ -2328,9 +2339,6 @@ set is_descent ((vec,Param) ap) = bool: status(ap)<4
 
 set is_ascent ((int,Param) ip) = bool: not is_descent(ip)
 set is_ascent ((vec,Param) ap) = bool: not is_descent(ap)
-
-set lookup (Param p, [Param] block) = int:
-  let i=#block-1 in while i>=0 and block[i]!=p do i-:=1 od; i
 
 { (moved from hermitian.at) orientation_number_term(orientation_nr(p),q) =
   s^{[\ell_0(p)-\ell_0(q)]/2} which should be defined and gives 1 or s
@@ -2623,6 +2631,8 @@ set index_in ([Param] L) = (Param->int): { an efficiency hack: }
      then P = G.null_module + for q@i in L do (i+1,q) od
   in (Param p) int: P[p].int_part-1
   fi
+
+set lookup (Param p, [Param] block) = int: index_in(block)(p)
 
 {                               Miscellaneous                           }
 

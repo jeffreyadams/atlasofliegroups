@@ -15,6 +15,7 @@
 <FPP_lambdas.at
 <weak_unip.at {for check_wk_unip}
 <smallQ.at {for theta_stable_data_small}
+<sort.at {for sort_by_height}
 {BREAK HERE?}
 
 set old_test_interrupt_flag = false
@@ -607,10 +608,10 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 				  then let ans = K_type_pol(character_formula(p))
 				       then () = D:=-1
 				       in ans
-				  elif ({to_ht_over_u_flag} {strict_}low(p,D)) {added strict 12/13/25}
-     	  			  then HF_false_low_count+:=1;
-				       hermitian_form_irreducible_to_ht(p,D)
-				  else hermitian_form_irreducible_cut(p,D)
+				  {elif ({to_ht_over_u_flag} {strict_}low(p,D)) {added strict 12/13/25}
+     	  			  then HF_false_low_count+:=1;}
+				  else hermitian_form_irreducible_to_ht(p,D) 
+				  {else hermitian_form_irreducible_cut(p,D)} {try omitting low(p,D) 4/20/26}
 				  fi
 		  then N = nuhashes[rfnum].size()
 		  then H = impure_height(sigD)
@@ -642,11 +643,11 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 			    then sigD = if uhashes[rfnum].lookup(p).>=
 					then D:=-1;
 					     K_type_pol(character_formula(p))
-					elif {strict_}low(p,D)
+					{elif {strict_}low(p,D)
 					     {strict 12/13/25}{low(p.x,p.lambda,N)}
-					then HF_false_low_count+:=1;
-					     hermitian_form_irreducible_to_ht(p,D)
-					else hermitian_form_irreducible_cut(p,D)
+					then HF_false_low_count+:=1;}
+					else hermitian_form_irreducible_to_ht(p,D)
+					{else hermitian_form_irreducible_cut(p,D)} {try omitted low(p,D) 4/20/26}
 					fi
 			    then N = nuhashes[rfnum].size(), H = impure_height(sigD)
 			    then () = if H = -1
@@ -766,18 +767,18 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		  let m_sigD = if uhashes[rfnum].lookup(p).>=
 				    then D:= -1;
 				       	 K_type_pol(character_formula(p)).done
-				    elif (low(p,D))
-     	  			    then HF_false_low_count+:=1;
-				    	 if test_interrupt_verbose
+				    {elif (low(p,D))
+     	  			    then HF_false_low_count+:=1;}
+				    else if test_interrupt_verbose
 		       		    	 then
 			prints("in add_param_interrupt, calling hermitian_form_irreducible_to_ht_MvL")
 					  fi;
 				    hermitian_form_irreducible_to_ht_MvL(p,D,time)
-				    else if test_interrupt_verbose
+				    {else if test_interrupt_verbose
 		       		    	 then
 			prints("in add_param_interrupt, calling hermitian_form_irreducible_cut")
 					  fi;
-				    hermitian_form_irreducible_cut(p,D,time)
+				    hermitian_form_irreducible_cut(p,D,time)}
 				  fi
 		        then sigD = case m_sigD
 		       	       	    | timed_out: return (-1,-1,-1,false); 0*K_type_pol(p)
@@ -812,11 +813,11 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 			    then m_sigD = if uhashes[rfnum].lookup(p).>=
 					  then D:= -1;
 					       K_type_pol(character_formula(p)).done
-					  elif ({to_ht_over_u_flag} {strict_}low(p,D))
+					  {elif ({to_ht_over_u_flag} {strict_}low(p,D))
 					  {strict 12/13/25}{low(p.x,p.lambda,N)}
-					  then HF_false_low_count+:=1;
-					       hermitian_form_irreducible_to_ht_MvL(p,D,time)
-					  else hermitian_form_irreducible_cut(p,D,time)
+					  then HF_false_low_count+:=1;}
+					  else hermitian_form_irreducible_to_ht_MvL(p,D,time)
+					  {else hermitian_form_irreducible_cut(p,D,time)}
 					fi
 		             then sigD = case m_sigD
 		       	       	       	 | timed_out: return (-1,-1,-1,false); 0*K_type_pol(p)
@@ -1455,10 +1456,14 @@ set number_xl_pairs(RealForm G)=int:big_unitary_hash.xl_sizes_cumulative(G)~[0]
 {print xl_pair in format: x_number:lambda}
 set print_xl_pair(RealForm G,int j)=void:
   let (x,lambda)=xl_pair(G,j) in prints(x.number,":", lambda)
+
 {uses the results stored in big_unitary_hash.}
 set branch_irr_hash(Param p, int D) = KTypePol:
     let CF = character_formula_to_ht(p,D)
     in big_unitary_hash.branch(K_type_pol(CF),D)
+
+set branch_std_hash(KTypePol P, int D) = KTypePol:
+    big_unitary_hash.branch(P,D)
 
 {. The next family of functions all need simple derived group. Always
 |vd.list| should be ALL vertices in the FPP; Lvd.list will be all infl
@@ -1545,6 +1550,77 @@ set list_all_finished(RealForm G) = [(KGBElt,ratvec)]:
        od.##
 {how much to scale semisimple rank to get ht trial jump}
 
+set next_to_lowest(KType mu) = KType:
+    let HT = height(mu)+1
+    then NTL = null_K_module(mu)
+    then () = while NTL.=
+	      do NTL := big_unitary_hash.K_type_formula_to_ht(mu,HT) - mu;
+		 HT+:=1
+	      od
+    in first_K_type(NTL)
+
+set next_to_lowests(KType mu) = [KType]:
+    let HT = height(mu)+1
+    then NTL = null_K_module(mu)
+    then () = while NTL.=
+	      do NTL := big_unitary_hash.K_type_formula_to_ht(mu,HT) - mu;
+		 HT+:=1
+	      od
+    then (bottom,) = height_split(NTL,HT)
+    in monomials(bottom)
+
+{list of (some) KTypes above mu to ht HT}
+set next_to_lowest_new = ((KType,int) -> [KType]):
+    let KHash = make_KType_hash()
+    then next_types = [vec]: [] {for each KType in Khash, a list of certain WEAKLY higher ones}
+    then next_hts = [int]: [] {for each KType in Khash, lowest ht in next_to_lowest (if computed) or ht}
+    then add_KType(KType mu) = int: {put tau in Khash, record location}
+    	 let I = KHash.size()
+	 then i = KHash.match(mu)
+	 in if i=I
+	    then next_types #:= (vec: []);
+	    	 next_hts #:= height(mu)
+	    fi;
+	    i
+    then add_NTL(KType mu) = (int,vec):
+    	 let i = add_KType(mu)
+	 then NTL = next_types[i]
+	 in if (#NTL).= {same as next_hts[i] = height(mu)}
+	    then let NTLtaus = next_to_lowests(mu)
+	    	 in next_types[i] := (vec: for tau in NTLtaus
+	      	    	   	     	   do add_KType(tau)
+			 		   od);
+	    	    next_hts[i] := min(for tau in NTLtaus do height(tau) od)
+	     fi;
+	     (i,next_types[i])
+    in ((KType,int) -> [KType]): (KType mu, int HT):
+    if HT <= height(mu) then return [] fi;
+    let i = add_KType(mu), H0 = height(mu) {always biggest height on to_do}
+    then to_do = [int]: [i] {these will be K-types we need to move up from}
+    then answer = [int]: []
+    in while #to_do > 0 and H0 < HT
+       do { prints("answer = ",answer,", to_do = ",to_do,", H0 = ",H0);}
+	  let TD = #to_do
+       	  in for j@ind in to_do
+       	     do let (,NTL) = add_NTL(KHash.index(j))
+	     	in {prints("NTL = ",NTL,", next_hts[j] = ",next_hts[j]); }
+		   if next_hts[j] <= HT
+	     	   then for k in NTL if height(KHash.index(k)) <= HT
+		     	do answer#:=k;
+		     	to_do#:=k
+		     fi od
+		   fi
+	      od;
+	      to_do:= to_do[TD:].sort_u;
+	      if #to_do > 0 then H0 := min(for j in to_do do height(KHash.index(j)) od) fi
+        od; {while #to_do}
+	answer := answer.sort_u;
+	for k in answer do KHash.index(k) od.sort_by_height
+
+set next_to_lowest_new(Param p,int HT) = [KType]:
+    let LKTs = LKTs(p)
+    in for mu in LKTs do next_to_lowest_new(mu,HT) od.##.sort_by_height
+
 {these functions were in unity.at; give useful heights to which to try unitarity}
 
 {. gives (one of) the K-types of lowest height above mu in the
@@ -1562,14 +1638,7 @@ set next_to_lowest_old(KType mu, int step) = KType:
 	      od
     in last_K_type(form)
 
-set next_to_lowest(KType mu) = KType:
-    let HT = height(mu)+1
-    then NTL = null_K_module(mu)
-    then () = while NTL.=
-	      do NTL := big_unitary_hash.K_type_formula_to_ht(mu,HT) - mu;
-		 HT+:=1
-	      od
-    in first_K_type(NTL)
+
 
 {SHOULD MAKE A FORMULA USING irr p restricted to K}
 
@@ -1577,8 +1646,8 @@ set next_to_lowest(KType mu) = KType:
 set next_height(KType mu)  = int:
     height(next_to_lowest(mu))
 
-{. next height AFTER HT at which p has a K-type}
-set next_height(Param p, int HT) = int:
+{. next height AFTER HT at which irreducible p has a K-type}
+{set next_height(Param p, int HT) = int:
     if HT < height(p) then return height(p) fi;
     let PK = K_type_pol(character_formula(p))
     then PKH = big_unitary_hash.branch(PK,HT)
@@ -1586,9 +1655,80 @@ set next_height(Param p, int HT) = int:
     in if PKplus.=
        then -1
        else height(first_K_type(PKplus))
-       fi
+       fi}
 
-{. height of a smallest non-lowest K_type of p .}
+
+set next_height_time = int:0
+
+{if we know p unitary to HT, AND have K-char to GAM(p), next height where something could change}
+set next_height = ((Param,int,KTypePol) -> int):
+    let q = Param: SL(2,R).trivial, start_time = int:0
+    then HT_bound = GAM(q) {unitary_to_ht(HT_bound) means is_unitary}
+    then qKCF = K_type_pol(KL_sum_at_s_to_ht(HT_bound)(q))
+    then hts = [int]:[]
+ in ((Param,int,KTypePol) -> int): (Param p, int HT, KTypePol KCF):
+    start_time:=elapsed_ms();
+    if not p=q
+    then HT_bound := GAM(p); qKCF := to_ht(KCF,HT_bound);
+    	 hts := for tau in monomials(branch_std_hash(qKCF,HT_bound)) do height(tau) od
+    fi;
+    let j = first(for x in hts do x > HT od)
+    in if j<0
+       then -1
+       else hts[j] {next hts:=hts[j+1:] this messes up repeated calls}
+       fi next next_height_time+:=elapsed_ms()-start_time
+
+{if we know p unitary to HT, next height where something could change}
+{
+set next_height = ((Param,int) -> int):
+    let q = Param: SL(2,R).trivial, start_time = int:0
+    then HT_bound = GAM(q) {unitary_to_ht(HT_bound) means is_unitary}
+    then qKCF = K_type_pol(KL_sum_at_s_to_ht(HT_bound)(q))
+    then hts = [int]:[]
+ in ((Param,int) -> int): (Param p, int HT):
+    start_time:=elapsed_ms();
+    if not p=q
+    then HT_bound := GAM(p); qKCF := K_type_pol(KL_sum_at_s_to_ht(HT_bound)(q:=p));
+    	 hts := for tau in monomials(branch_std_hash(qKCF,HT_bound)) do height(tau) od
+    fi;
+    let j = first(for x in hts do x > HT od)
+    in if j<0
+       then -1
+       else hts[j] {next hts:=hts[j+1:] this messes up repeated calls}
+       fi next next_height_time+:=elapsed_ms()-start_time
+}
+
+set next_height(Param p, int HT) = int:
+    let ans = HT+1, start_time = elapsed_ms()
+    then list = next_to_lowest_new(p, ans)
+    in while height(list~[0]) < HT
+       do ans +:= 1;
+       	  list := next_to_lowest_new(p,ans)
+       od;
+       next_height_time+:=elapsed_ms()-start_time;
+       ans
+
+set next_height_bad(Param p, int HT) = int:
+      if HT < height(p) then return height(p) fi;
+      let tau = LKTs(p)[0], start_time = elapsed_ms()
+      then () = while height(tau) <= HT do tau := tensor_p_big(tau) od
+      then bound = height(tau)
+      then PK = K_type_pol(character_formula_to_ht(1*p, bound))
+      then PKH = big_unitary_hash.branch(PK, HT)
+      then PKplus = PK - sum(p.real_form, for c@m in PKH do c*big_unitary_hash.K_type_formula_to_ht(m, bound) 
+  od)
+      in if PKplus.=
+         then -1
+         else height(first_K_type(PKplus))
+         fi next next_height_time+:=elapsed_ms()-start_time
+
+{
+called by is_unitary_test_big_SIMPLE_interrupt_Ufirst, is_unitary_test_big_SIMPLE_interrupt
+is_unitary_test_big_SIMPLE_interrupted_Ufirst, is_unitary_test_big_SIMPLE_interrupted,
+is_unitary_next_big_SIMPLE
+}
+
+{. height of a smallest non-lowest K_type of standard p .}
 set next_height(Param p) = int:
     min(for mu in LKTs(p) do height(next_to_lowest(mu)) od)
 
@@ -1735,6 +1875,7 @@ set next_heightC = ((Param,int) -> int):
     then -1
     else height(new_taus)
     fi
+
 
 set next_heightC_zero_flag = true
 
@@ -2367,13 +2508,14 @@ set is_unitary_test_big_SIMPLE_interrupt_old(Param p, int step) = bool:
       fi
 
 {increase the interruptible times by this}
-set to_ht_factor = rat: 5
-set u_factor = rat: 2
+set to_ht_factor = rat: 4 {was 5; 1 bad at 20890 4/7/26} {4 4/18/26}
+set u_factor = rat: 3/2 {2; changed to 1 4/7/26}
 
 {if (predicted u_time)/(predicted to_ht_time) is exceeds prefer_u_factor, then skip u
 in favor of to_ht. Increasing u_factor allows more u tests.}
-set prefer_u_factor = rat: 3/2  {6/1 3/5/26 commit} {2/1} {4/1 after a little E8_q testing}
-
+set prefer_u_factor = rat: 3/2 {4 was bad 20890}
+{3/2 changed 4/7/26} {6/1 3/5/26 commit} {2/1} {4/1 after a little E8_q testing}
+{if this is too small, end up with repeated pos is_unitary_to_ht}
 
 
 {"step" is how many steps up in to_ht list to start}
@@ -2396,20 +2538,20 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
   then result = 0, mu = LKTs(p)[0], ht = height(p)
   then taus = [KType]:[]
   then tau_bd = KType:mu
-  then ht = int: height(p) {(tau_bd)}
-  then () = if next_heightC_flag
+  {then ht = int: height(p) {(tau_bd)}}
+  then () = {if next_heightC_flag
        	    then for j:step
 	    	 do ht := next_heightC(p,ht)
 		 od
-       	    else taus := next_taus(p,step);
+       	    else} taus := next_taus(p,step);
 	    	 tau_bd := taus~[0];
-  		 ht := height(tau_bd)
-	    fi;
+  		{ ht := height(tau_bd)
+	    fi;}
 	    ht := min(GAM,height(tau_bd))
   then () = if ht < 0 {p is finite-dimensional; we're in FPP, so 1-diml}
        	    then return true
 	    fi
-  then old_ht = ht
+  then old_ht = ht, u_count = 0, to_ht_count=0
   then top_ht = GAM
        {floor((p.infinitesimal_character)*G.two_rho_check)}
        {unitary to top_ht implies unitary}
@@ -2423,28 +2565,37 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
 	    	        ", u_time = ", print_time_string(u_time))
 	    fi
   then () = while result = 0
-       	    do if{A} u_time <= prefer_u_factor*to_ht_time {floor(u_factor*u_time) < 2*to_ht_factor*to_ht_time}
-	       then let start_u = elapsed_ms()
+       	    do if{A} u_time <= prefer_u_factor*to_ht_time
+	       then u_count+:=1;
+	       	    let start_u = elapsed_ms()
 	       	    then () = result := is_unitary_hash_big_SIMPLE(p, floor(u_factor*u_time))
 		    in test_time:= elapsed_ms() - start_u;
 		       if test_interrupt_verbose
 		       then prints("result ",result," from is_unitary, in time ",
 				      print_time_string(test_time),
-				     "; total = ", print_time_string(elapsed_ms() - start))
+				     "; total = ", print_time_string(elapsed_ms() - start));
+				     prints(u_count," u_tests so far.")
 		       fi;
 		       if result!=0
 		       then break
-		       else u_time:=max(u_predictor(p), 3*u_time\2)
+		       else u_time:=max(u_predictor(p,10*interrupt_base_time*(u_count+1)),
+					(u_count+1)*u_time)
 		       fi
 	        fi{A}; { u_time <= prefer_u_factor * to_ht_time  }
 	       	if{B}  u_time > prefer_u_factor * to_ht_time {to_ht_factor*to_ht_time < 2*floor(u_factor*u_time)}
-	       	then let start_to_ht = elapsed_ms()
-	       	     in result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,floor(to_ht_factor*to_ht_time));
+	       	then to_ht_count+:=1;
+		     let start_to_ht = elapsed_ms()
+	       	     in if test_interrupt_verbose
+	       	       	then prints("Starting is_unitary_to_ht ",ht," at time ",
+			     print_time_string(elapsed_ms() - start))
+			fi;
+		     	result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,floor(to_ht_factor*to_ht_time));
 	       	    	test_time:=elapsed_ms() - start_to_ht;
 	       		if test_interrupt_verbose
 	       	       	then prints("result ", result, " from to_ht ",ht,", in time ",
 			      	   print_time_string(test_time),
-				   "; total = ", print_time_string(elapsed_ms() - start))
+				   "; total = ", print_time_string(elapsed_ms() - start));
+				    prints(to_ht_count," to_ht tests so far.")
 			fi;
 		     	if result.<
 		     	then big_unitary_hash.numatch_height(p,ht);
@@ -2457,21 +2608,14 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
 			     else result:=0;
 			     	  add_to_u_to_ht(p,ht)
 			     fi;
-			     if next_heightC_flag
-			     then old_ht := ht;
-			     	  ht:= next_heightC(p,ht)
-			     else tau_bd := next_to_lowest(tau_bd);
-			     	  old_ht := ht;
-			     	  ht:= {if elapsed_ms() - start <1000
-			     	       then} min(GAM,height(tau_bd))
-				       {else next_height(p,ht)
-				       fi}
-				   {if ht < 0 then return true fi} {one-diml case}
-			      fi
+			     ht:= next_height(p,ht);
+			     if ht < 0 then result:=1; big_unitary_hash.umatch(p); break fi
 			 fi{result.>};
-			 to_ht_time:=max(u_predictor_to_ht(p,ht,u_time + 10), (3*to_ht_time)\2);
+			 to_ht_time:=max(u_predictor_to_ht(p,ht),3*to_ht_time\2);
 			 if test_interrupt_verbose
-			 then prints("  Predicted to_ht_time now ",print_time_string(to_ht_time))
+			 then prints("  Predicted to_ht_time for ht = ",ht," is ",
+			      print_time_string(to_ht_time), " at total time ",
+			      print_time_string(elapsed_ms() - start))
 			 fi
 	           fi{B} {u_time > prefer_u_factor * to_ht_time}
 	    od
@@ -2500,35 +2644,25 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
 	    fi
   then () = p := herm_center(p)
   then result = 0, mu = LKTs(p)[0]
-  then taus = [KType]: [] {next_taus(p,step)}
-  then tau_bd = KType: mu {taus~[0]}
-  then ht = int: height(p) {(tau_bd)}
-  then () = if next_heightC_flag
-       	    then for j:step
-	    	 do ht := next_heightC(p,ht)
-		 od
-       	    else taus := next_taus(p,step);
-	    	 tau_bd := taus~[0];
-  		 ht := height(tau_bd)
-	    fi;
-	    ht:=min(ht,GAM)
-  then () = if ht < 0 {p is finite-dimensional; we're in FPP, so 1-diml}
-       	    then return true
+  then ht = int: height(p)
+  then () = for j:step
+	    do ht := next_height(p,ht)
+	    od
+  then () = if ht < 0
+       	    then ht := GAM
 	    fi
   then old_ht = ht
   then top_ht = GAM
        {floor((p.infinitesimal_character)*G.two_rho_check)}
        {unitary to top_ht implies unitary}
   then (u_time, to_ht_time) = adjust_to_ht_over_u(p,ht)
-  then {u_time = int: u_predictor(p,-1), {interrupt_base_time,}
-       to_ht_time = int: u_predictor(p,ht), {interrupt_base_time,}}
-       test_time = int:0, start = elapsed_ms()
+  then test_time = int:0, start = elapsed_ms()
   then () = if test_interrupt_verbose
        	    then prints("starting to_ht_time = ", print_time_string(to_ht_time),
 	    	        ", u_time = ", print_time_string(u_time))
 	    fi
   then () = while result = 0
-       	    do if{A} u_time > prefer_u_factor * to_ht_time{ floor(to_ht_factor*to_ht_time) < 2*floor(u_factor*u_time)}
+       	    do if{A} u_time > prefer_u_factor * to_ht_time
 	       then let start_to_ht = elapsed_ms()
 	       	    in 	result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,floor(to_ht_factor*to_ht_time));
 	       	    	test_time:=elapsed_ms() - start_to_ht;
@@ -2541,15 +2675,11 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
 			if result.> and ht >= top_ht then break fi;
 		     	if result.> {got a (useless) positive result at ht; move up} 
 			then result:=0;
-			     if next_heightC_flag
-			     then ht:= next_heightC(p,ht)
-			     else old_ht:=ht;
-			     	  tau_bd := next_to_lowest(tau_bd);
-				  ht := height(tau_bd)
-			     fi;
-			     ht :=min(ht,GAM)
+			     add_to_u_to_ht(p,ht);
+			     ht:= next_height(p,ht);
+			     if ht < 0 then result:=1; break fi {there was no greater height to test to!}
 			fi;
-			to_ht_time := u_predictor_to_ht(p,ht,u_time + 10);
+			to_ht_time := max(u_predictor_to_ht(p,ht{,interrupt_base_time\2}), (3*to_ht_time)\2);
 			if test_interrupt_verbose
 			then prints("  Predicted to_ht_time for ht = ",ht," is ",
 			     print_time_string(to_ht_time))
@@ -2665,15 +2795,9 @@ set is_unitary_test_big_SIMPLE_interrupted_Ufirst(Param p, int time) = int:
   then result = 0, mu = LKTs(p)[0], ht = height(p), top_ht = GAM
         {floor((p.infinitesimal_character)*G.two_rho_check)}
        {unitary to top_ht implies unitary}
-  then tau_bd = KType: mu
-  then () = if next_heightC_flag
-       	    then ht := next_heightC(p,ht)
-       	    else tau_bd := next_to_lowest(mu);
-  		 ht := height(tau_bd)
-	    fi;
-	    ht := min(ht,GAM)
+  then () = ht := next_height(p,ht);
+       	    if ht < 0 then return 1 fi
   then (u_time, to_ht_time) = adjust_to_ht_over_u(p,ht), test_time = int:0
-  {then u_time = int:  u_predictor(p,-1), to_ht_time = int: u_predictor(p,ht)}
   then () = if test_interrupt_verbose
        	    then prints("starting to_ht_time = ", print_time_string(to_ht_time),
 	    	        ", u_time = ", print_time_string(u_time))
@@ -2696,7 +2820,7 @@ set is_unitary_test_big_SIMPLE_interrupted_Ufirst(Param p, int time) = int:
 		       	      fi
 		  	 fi {result.!=}
 	       fi; {A} {u_time <= prefer_u_factor * to_ht_time}
-	       if{B} u_time > prefer_u_factor * to_ht_time {floor(to_ht_factor*to_ht_time) < 2*floor(u_factor*u_time)}
+	       if{B} u_time > prefer_u_factor * to_ht_time 
 	       then let start_to_ht = elapsed_ms()
 		    in result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,floor(to_ht_factor*to_ht_time));
 	       	       test_time:=elapsed_ms() - start_to_ht;
@@ -2712,15 +2836,9 @@ set is_unitary_test_big_SIMPLE_interrupted_Ufirst(Param p, int time) = int:
 		   then big_unitary_hash.umatch(p);
 		   	break
 	       	   elif result.> {got a useless result from to_ht}
-	       	   then if next_heightC_flag
-			then {old_ht := ht;}
-			     ht:= next_heightC(p,ht)
-			else tau_bd := next_to_lowest(tau_bd);
-			     {old_ht := ht;}
-			     ht:= height(tau_bd)
-			fi;
-			ht:=min(ht,GAM);
-			to_ht_time := u_predictor_to_ht(p,ht,u_time+10);
+	       	   then ht:= next_height(p,ht);
+		   	if ht < 0 then break fi;
+			to_ht_time := max(u_predictor_to_ht(p,ht{,interrupt_base_time\2}), (3*to_ht_time)\2);
 			result := 0;
 			if test_interrupt_verbose
 			then prints("  Predicted to_ht_time now ",print_time_string(to_ht_time))
@@ -2757,22 +2875,18 @@ set is_unitary_test_big_SIMPLE_interrupted(Param p, int time) = int:
     	    then return is_unitary(p,time) {prints("FPP DANGER TO HT at ",p)}
 	    fi
   then () = p := herm_center(p)
-  then result = 0, ht = height(p), top_ht = GAM, tau_bd = LKTs(p)[0]
+  then result = 0, ht = height(p), top_ht = GAM
        {floor((p.infinitesimal_character)*G.two_rho_check)}
        {unitary to top_ht implies unitary}
-  then () = if next_heightC_flag
-       	    then ht := next_heightC(p,ht)
-       	    else tau_bd := next_to_lowest(tau_bd);
-  	    	 ht := height(tau_bd)
-	    fi
+  then () = ht := next_height(p,ht);
+       	    if ht < 0 then return 1 fi {no heights to test, so unitary}
   then (u_time, to_ht_time) = adjust_to_ht_over_u(p,ht), test_time = int:0
-  {then u_time = int:  u_predictor(p,-1), to_ht_time = int: u_predictor(p,ht)}
   then () = if test_interrupt_verbose
        	    then prints("starting to_ht_time = ", print_time_string(to_ht_time),
 	    	        ", u_time = ", print_time_string(u_time))
 	    fi
   then () = while result = 0 and elapsed_ms() - start < time
-       	    do if{A} u_time > prefer_u_factor * to_ht_time  {floor(to_ht_factor*to_ht_time) < 2*floor(u_factor*u_time)}
+       	    do if{A} u_time > prefer_u_factor * to_ht_time
 	       then let start_to_ht = elapsed_ms()
 	       	    in result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,floor(to_ht_factor*to_ht_time));
 	       	       test_time:=elapsed_ms() - start_to_ht;
@@ -2788,19 +2902,15 @@ set is_unitary_test_big_SIMPLE_interrupted(Param p, int time) = int:
 		       then big_unitary_hash.umatch(p);
 		       	    break
 		       elif result.> {got a useless result}
-	       	       then if next_heightC_flag
-		       	    then ht:= next_heightC(p,ht)
-		       	    else tau_bd := next_to_lowest(tau_bd);
-			    	 ht := height(tau_bd)
-		            fi;
+	       	       then ht:= next_height(p,ht);
+		       	    if ht < 0 then return 1 fi; {no greater height to test}
 		       	    result:=0;
-		       	    to_ht_time := u_predictor_to_ht(p,ht, u_time+10)
+		       	    to_ht_time := max(u_predictor_to_ht(p,ht), (3*to_ht_time)\2)
 		  fi {result.<}
 	       fi; {A} { u_time > prefer_u_factor * to_ht_time}
-	       if{B}  u_time <= prefer_u_factor * to_ht_time {floor(u_factor*u_time) < 2*floor(to_ht_factor*to_ht_time)}
+	       if{B}  u_time <= prefer_u_factor * to_ht_time 
 	       then let start_u = elapsed_ms()
 	       then () = result := is_unitary_hash_big_SIMPLE(p, floor(u_factor*u_time));
-			 {is_unitary(p, floor(u_factor*u_time));}
 		       	 test_time:= elapsed_ms() - start_u;
 	       		 if test_interrupt_verbose
 		       	 then prints("result ",result," from is_unitary, in time ",
@@ -2952,12 +3062,8 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst_old(Param p, int HT) = bool:
 			     break
 		       elif result.>
 		       then add_to_u_to_ht(p,HT)
-		       else to_ht_time:=max(u_predictor_to_ht(p,HT,u_time + 10), (3*to_ht_time)\2)
-		       {to_ht_time:= u_predictor_to_ht(p,HT,u_time+10)}
-			     {if test_interrupt_verbose
-	       	       	     then prints("  to_ht_time now ", print_time_string(to_ht_time))
-			     fi}
-		  	fi { result.<}
+		       else to_ht_time:=max(u_predictor_to_ht(p,HT), (3*to_ht_time)\2)
+		       fi { result.<}
 		fi {B} {u_time > prefer_u_factor * to_ht_time}
 	    od
    in if test_interrupt_verbose
@@ -3012,8 +3118,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
 		       then break
 		       else {(u_time,to_ht_time) := adjust_to_ht_over_u(p,HT);}
 		       	    u_time := u_predictor(p);
-		       	    to_ht_time:= to_ht_time:=max(u_predictor_to_ht(p,HT,u_time + 10), (3*to_ht_time)\2);
-			    {u_predictor_to_ht(p,HT, u_time +10);}
+		       	    to_ht_time:= to_ht_time:=max(u_predictor_to_ht(p,HT), (3*to_ht_time)\2);
 		       	    if test_interrupt_verbose
 			    then prints("  (u_time,to_ht_time) now (", print_time_string(u_time),",",
 			    	 print_time_string(to_ht_time),")")
@@ -3036,8 +3141,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
 		       then add_to_u_to_ht(p,HT)
 		       else {(u_time, to_ht_time) := adjust_to_ht_over_u(p,HT);}
 		       	    u_time := u_predictor(p);
-		       	    {to_ht_time:= to_ht_time:=max(u_predictor_to_ht(p,HT,u_time + 10), (3*to_ht_time)\2);}
-			    {u_predictor_to_ht(p,HT, u_time + 10);}
+		       	    to_ht_time:=max(u_predictor_to_ht(p,HT), (3*to_ht_time)\2);
 			    if test_interrupt_verbose
 			    then prints("  (u_time,to_ht_time) now (", print_time_string(u_time),",",
 			    	 print_time_string(to_ht_time),")")
@@ -3066,7 +3170,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
   if test_interrupt_verbose
   then prints(new_line,"Starting is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst, p = ",p, ", HT = ",HT)
   fi;
-  let G = p.real_form, start = elapsed_ms()
+  let G = p.real_form, start = elapsed_ms(), to_ht_count=0, u_count=0
   then FPP_flag = is_FPP(G,p.infinitesimal_character)
   then () = if not FPP_flag
 	    then return is_unitary_to_ht(p,HT) {prints("FPP DANGER TO HT at ",p)}
@@ -3082,11 +3186,13 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
        	    do if{A}  u_time > prefer_u_factor * to_ht_time {floor(to_ht_factor*to_ht_time) < 2*floor(u_factor*u_time)}
 	       then let start_to_ht = elapsed_ms()
 	       	    then () = result := is_unitary_to_ht_big_SIMPLE_interrupt(p,HT,floor(to_ht_factor*to_ht_time));
+		    	      to_ht_count+:=1;
 	       	              test_time:=elapsed_ms() - start_to_ht;
 	       	    	      if test_interrupt_verbose
 	       	       	      then prints("result ", result, " from to_ht ",HT,", in time ",
 			      	   print_time_string(test_time),
-				   "; total = ", print_time_string(elapsed_ms() - start))
+				   "; total = ", print_time_string(elapsed_ms() - start));
+				   prints(to_ht_count," to_ht tests so far.")
 			      fi
 	       	    in if result.<
 		       then {big_unitary_hash.numatch_height(p,HT);}
@@ -3096,7 +3202,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
 		       	    break
 		       else {(u_time,to_ht_time): = adjust_to_ht_over_u(p,HT);}
 		       	    u_time := u_predictor(p);
-		       	    to_ht_time:= max(u_predictor_to_ht(p,HT,u_time+10),(3*to_ht_time)\2);
+			    to_ht_time:=max(u_predictor_to_ht(p,HT), 3*to_ht_time\2);
 			    if test_interrupt_verbose
 			    then prints("  (u_time,to_ht_time) now (", print_time_string(u_time),",",
 			    	 print_time_string(to_ht_time),")")
@@ -3115,18 +3221,17 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
 				   "; total = ", print_time_string(elapsed_ms() - start))
 			 fi
 	       	    in if result.= {no result from is_unitary}
-	       	       then u_time := u_predictor(p,-1);
-		       	    {to_ht_time:= u_predictor_to_ht(p,HT);}
+	       	       then u_time := max(u_predictor(p,10*interrupt_base_time*(u_count+1)),
+		       	    	   (u_count+1)*u_time);
 			    if test_interrupt_verbose
 			    then prints("  (u_time,to_ht_time) now (", print_time_string(u_time),",",
-			    	 print_time_string(to_ht_time),")")
+			    	 print_time_string(to_ht_time),")");
+				 prints(u_count," u_tests so far.")
 			    fi
 			elif is_pure(form).> {from here result \ne 0}
-			then {big_unitary_hash.umatch(p);}
-			     break
+			then break
 			elif is_pure(form).<
-			then {big_unitary_hash.numatch(p);}
-			     break
+			then break
 			fi;
 			if result.<
 			then {big_unitary_hash.numatch_height(p,HT);}
@@ -3136,12 +3241,6 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
 			     break
 			fi
 	       fi{C}{;} {u_time <= prefer_u_factor * to_ht_time }
-	       {if result = -1
-	       then big_unitary_hash.numatch_height(p,HT)
-	       elif result = 1
-	       then add_to_u_to_ht(p,HT)
-	       else ()
-	       fi}
 	    od
    in if test_interrupt_verbose
       then prints("Finish is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst, time ",
@@ -3164,11 +3263,11 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_pick(Param p, int HT) = bool:
 set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
     {if not predictor_flag then return is_unitary_to_hts_big_SIMPLE(p,HTs) fi;}
   if (stat_holder:=status(p,HTs~[0])).!= then return stat_holder > 0 fi; {D}
-  HTs:= for HT in HTs do if HT>=height(p) do HT fi od.##;
+  HTs:= for HT in HTs if HT>=height(p) do HT fi od;
   {remove  status saves 200/7200 Spin(4,4), but requires repeating tests in Spin(5,5).
   Better kept: avoids 17 negative is_unitary retests in Spin(6,6), savve 2 mb/300, 1.8 sec/360}
   if old_testing_flag then return is_unitary_to_hts_big_SIMPLE(p,HTs) fi;
-  let GAM = GAM(p) in HTs:= for ht in HTs do if ht <= GAM do ht fi od.##;
+  let GAM = GAM(p) in HTs:= for ht in HTs do if ht < GAM then ht else GAM fi od;
   if #HTs = 0 then return is_unitary_hash_big_SIMPLE(p) fi;
   if #HTs = 1 then return is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(p, HTs[0]) fi;
   if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
@@ -3205,7 +3304,6 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
 				   "; total = ", print_time_string(elapsed_ms() - start));
 			    prints(to_ht_count," to_ht tests so far.")
 		        fi;
-			      {prints(to_ht_count," to_ht tests so far.")}
 	       	       if result.>
 	       	       then add_to_u_to_ht(p,HT);
 		       	    if HT=HTlast
@@ -3222,18 +3320,15 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
 			elif result.<
 	       	        then big_unitary_hash.numatch_height(p,HT);
 			     break
-			else to_ht_time:=max(u_predictor_to_ht(p,HT),(3*to_ht_time)\2 );
+			else to_ht_time:=max(u_predictor_to_ht(p,HT), 3*to_ht_time\2);
 			     if test_interrupt_verbose
 			     then prints("  Predicted to_ht_time now ",print_time_string(to_ht_time))
 			     fi
 			fi {result.>}
 		fi; {A} { u_time > prefer_u_factor * to_ht_time}
-	        if {B}  u_time <= prefer_u_factor * to_ht_time{floor(u_factor*u_time) < 2*floor(to_ht_factor*to_ht_time)}
+	        if {B}  u_time <= prefer_u_factor * to_ht_time
 		then let start_u = elapsed_ms()
-		     {then () = push_deform_flag:=true}
-		     {then depth = is_unitary_depth(p,floor(u_factor*u_time))}
 		     then form = big_unitary_hash.sig_entry_interrupt(p,-1 ,floor(u_factor*u_time))
-		     {then form = hermitian_form_irreducible(p,floor(u_factor*u_time))}
 	       	     in u_count+:=1;
 		     	test_time:= elapsed_ms() - start_u;
 			result:=is_pure(to_ht(form,HTlast));
@@ -3243,9 +3338,8 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
 				   "; total = ", print_time_string(elapsed_ms() - start));
 			     prints(u_count," u_tests so far.")
 			fi;
-			{prints(u_count," u_tests so far.");}
 			if result != 0 then break fi;
-			u_time:=max(u_predictor(p), (3*u_time)\2);
+			u_time:=max(u_predictor(p,10*interrupt_base_time*(u_count+1)), (u_count+1)*u_time);
 			if test_interrupt_verbose
 			then prints("  Predicted u_time now ",print_time_string(u_time))
 			fi
@@ -3271,7 +3365,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_Ufirst(Param p, [int] HTs) = bool:
   {remove  status saves 200/7200 Spin(4,4), but requires repeating tests in Spin(5,5).
   Better kept: avoids 17 negative is_unitary retests in Spin(6,6), savve 2 mb/300, 1.8 sec/360}
   if old_testing_flag then return is_unitary_to_hts_big_SIMPLE(p,HTs) fi;
-  let GAM = GAM(p) in HTs:= for ht in HTs do if ht <= GAM do ht fi od.##;
+  let GAM = GAM(p) in HTs:= for ht in HTs do if ht <= GAM then ht else GAM fi od;
   if #HTs = 0 then return is_unitary_hash_big_SIMPLE(p) fi;
   if #HTs = 1 then return is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(p, HTs[0]) fi;
   if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
@@ -3310,7 +3404,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_Ufirst(Param p, [int] HTs) = bool:
 			fi;
 			{prints(u_count," u_tests so far.");}
 			if result != 0 then break fi;
-			u_time:=max(u_predictor(p), (3*u_time)\2) {u_predictor(p)};
+			u_time:=max(u_predictor(p,10*interrupt_base_time*(u_count+1)), (u_count+1)*u_time);
 			if test_interrupt_verbose
 			then prints("  Predicted u_time now ",print_time_string(u_time))
 			fi
@@ -3347,7 +3441,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_Ufirst(Param p, [int] HTs) = bool:
 			elif result.<
 	       	        then big_unitary_hash.numatch_height(p,HT);
 			     break
-			else to_ht_time:=max(u_predictor_to_ht(p,HT),(3*to_ht_time)\2);
+			else to_ht_time:=max(u_predictor_to_ht(p,HT), 3*to_ht_time\2);
 			     if test_interrupt_verbose
 			     then prints("  Predicted to_ht_time now ",print_time_string(to_ht_time))
 			     fi
@@ -3573,13 +3667,13 @@ set is_unitary_next_big_SIMPLE(Param p) = bool:
     then FPP_flag = is_FPP(G,p.infinitesimal_character)
     then () = if not FPP_flag
 	      then if NU > LAM*nu_frac
-		   then let n=next_heightB(p)
-			in if (n+1).=
+		   then let HT=next_height(p,height(p))
+			in if HT < 0
 			   then return true
-			   elif is_unitary_to_ht_big(p,n)
+			   elif is_unitary_to_ht_big(p,HT)
 			   then return is_unitary_hash_big_SIMPLE(p)
 			   else big_unitary_hash.numatch(p); return false {NOT unitary_to_ht}
-			   fi {n=-1}
+			   fi {HT < 0}
 		   else return is_unitary_hash_big_SIMPLE(p)
 		   fi {NU > LAM}
 	       fi {not FPP_flag}
@@ -5370,7 +5464,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 			      DiracBestTest(p0,HT,KCF));}
 			      [v##[m,#monomials(P)]]
 			 fi
-		   od.##
+		     od.##
     {then () = prints("answer0 = ",answer0)}
     {then candps = for v in answer0 do parameter(x,lambda,Lvd.list[v[0]]) od}
     {then () = prints("down to ",count(for p in candps do is_unitary(Finalize(p)) od)," unitary verts")}
