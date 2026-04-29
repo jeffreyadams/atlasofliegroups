@@ -1761,19 +1761,21 @@ fancy_tester) = void:
 			    od
 		       else xlambdas
 	      	       fi
-    then () = if disconn_flag
+    {then () = if disconn_flag
     	      then for (x,lambda) in list_all_finished(G)
 	      	   do let (xt,lambdat) = (inverse_embed_KGB2(x, Gsc, M), M*lambda)
-	      	      in finish(xt,lambda)
+	      	      in for p in big_unitary_hash.uhash(G).list()
+		      	 if p.x = x and p.lambda = lambda
+			 do big_unitary_hash.match(parameter(xt,lambdat,M*p.nu))
+			 fi od;
+			 finish(xt,lambda)
 	      	   od
-	       fi
+	       fi} {expensive and not needed??}
     then Uhash = if disconn_flag {this will hold the unitary reps on Gsc}
     	      	 then big_unitary_hash.uhash(Gsc) {make_Param_hash()}
 		 {this is for unitary reps of Gsc that factor to G}
 		 else UhashG
 		 fi
-    {then () = pol_hash.clear()} {in recursive calls, this screws up bigger G, which has
-    	  already indexed some K_chars here.}
     then () = if FPP_report_flag
     	      then {clear_report_tested();} DTcount:=0; DBTcount:=0
 	      fi
@@ -1813,7 +1815,7 @@ fancy_tester) = void:
 	      fi
     then xlambdatimes = [int]: null(#xlambdas)
     then answerCards = [int]: null(#xlambdas) {number of unitary parameters found}
-    then oldUhash = Uhash.size()
+    then oldUhash = Uhash.size(), oldUhashG = UhashG.size()
     {then () = adjust_global_top(Gsc)}
     {then () = if by_zero_flag
     	      then global_faces_by_zero := low_FPP_faces_by_zero(global_faces)
@@ -1823,6 +1825,7 @@ fancy_tester) = void:
 	 currentUtime = unitaryTime, currentCtime = charTime, currentCTHtime = charTime,
 	 oldCcounter = char_counter.use_count(), currentCcounter = char_counter.use_count(),
 	 oldCTHcounter = char_counter_to_ht.use_count(), currentCTHcounter = char_counter_to_ht.use_count()
+    then CUH = currentUhash
 		   {start_min_L_bottom_factors = minBottomData.min_L_bottom_factors_time()}
     then () = if every_lambda_deets_flag
 	      then face_verbose := old_face_verbose; time_verbose := old_time_verbose;
@@ -1830,20 +1833,27 @@ fancy_tester) = void:
 	       fi
     then () = for (x,lambda)@k in xlambdas
     	      do {xlambdas}
-	        predictor_flag:= x.number > adjust_frac*KGB_size(G);
-		test_next(x);
-		test_edge(x);
-		if twist(x) != x {start 1545}
-		 then big_unitary_hash.finishx(x)
+	      let (x_sc,lambda_sc) = xlambdas_sc[k]
+	      in
+	        predictor_flag:= x_sc.number > adjust_frac*KGB_size(Gsc);
+		test_next(x_sc);
+		test_edge(x_sc);
+		CUH := Uhash.size();
+		if twist(x_sc) != x_sc
+		then big_unitary_hash.finishx(x);
+		     big_unitary_hash.finishx(x_sc)
+		fi;
+		if twist(x) != x {start 1836, close 2009}
+		 then big_unitary_hash.finishx(x) {such x can support no final unitary p}
 		 elif is_finished(x,lambda) {this includes possibility that x is finished}
 		 then if FPP_report_flag
 		      then prints("Already computed (",x,",",lambda,")")
 		      fi
-		 else let xtwists = isotwistKGBs(x), twists = all_lambda_differential_0(x)
-		      then tw = first(for y in xtwists[1:] do is_finished(y, lambda) od)
+		 else let xtwists = isotwistKGBs(x_sc), twists = all_lambda_differential_0(x_sc)
+		      then tw = first(for y_sc in xtwists[1:] do is_finished(y_sc, lambda_sc) od)
 		      then twnum = if tw.>=
-		     	  	   then last(for (y,tau) in xlambdas[k:]
-				       	    do y=xtwists[tw+1] and tau = lambda
+		     	  	   then last(for (y_sc,tau_sc) in xlambdas_sc[k:]
+				       	    do y_sc=xtwists[tw+1] and tau_sc = lambda_sc
 					    od)
 				    else -1
 				    fi
@@ -1859,42 +1869,56 @@ fancy_tester) = void:
 			       	     fi
 			  	 fi
 		      then () = if tw.>=
-		     	       	then for p in Uhash.list()
-			       	     do if p.x = xtwists[tw+1] and p.lambda = lambda
-				       	then Uhash.match(parameter(x,lambda,p.nu))
+		     	       	then for psc in Uhash.list()
+			       	     do if psc.x = xtwists[tw+1] and psc.lambda = lambda
+				       	then Uhash.match(parameter(x,lambda,psc.nu))
 				       	fi
 				     od;
+				     {if disconn_flag
+				     then for psc in Uhash.list()[CUH:]
+				     	  do for p in sc_descends(psc, G, M)
+					     do UhashG.match(p)
+					     od
+					  od
+				     fi;}
 				     if FPP_report_flag and every_lambda_flag
 		   		     then prints("Matching (",x,",",lambda,") with previously computed")
 				     fi;
+				     finish(x_sc,lambda_sc);
 				     finish(x,lambda)
 				fi
-		      then (xcont,lambdacont) = contragredient(x,lambda)
+		      then (xcont,lambdacont) = contragredient(x_sc,lambda_sc)
 		      then () = if tw.< and is_finished(xcont,lambdacont)
 			        then for p in Uhash.list()
 			       	     do if p.x = xcont and p.lambda = lambdacont
-				        then Uhash.match(contragredient(p))
-				        fi
+				        then let pc = contragredient(p)
+					     in Uhash.match(pc){;
+					     if disconn_flag
+				     	     then for q in sc_descends(pc, G, M)
+					     	  do UhashG.match(q)
+					     	  od
+					     fi}
+				         fi
 				     od;
 				     if FPP_report_flag and every_lambda_flag
 		   		     then prints("Contragredient of (",x,",",lambda,") was previously computed")
 				     fi;
 				     tw:=0;
+				     finish(x_sc,lambda_sc);
 				     finish(x,lambda)
 			         fi
-	      	     in if tw.< {still have work to do close 1545; here 1581}
-		     	then FPP_def_adjust(x);
-			     let revert_steve_flag = revert_steve_flag(x,lambda)
+	      	     in if tw.< {still have work to do close 1836; here 1908}
+		     	then FPP_def_adjust(x_sc);
+			     let revert_steve_flag = revert_steve_flag(x_sc,lambda_sc)
 			     then startminxl = good_hash.size(), startmorexl = more_good_hash.size()
 			     then local_test_bl_flag = bool:
 			     	  if hard_test_flag
-				  then hard_test_bl(x,lambda)
+				  then hard_test_bl(x_sc,lambda_sc)
 			     	  elif easy_test_flag
-				  then easy_test_bl(x)
+				  then easy_test_bl(x_sc)
 				  else true
 				  fi
-		 	     in let startxl = elapsed_ms(), startUhash = Uhash.size(),
-			     	    (x_sc,lambda_sc) = xlambdas_sc[k],
+		 	     in let startxl = elapsed_ms(), startUhash = UhashG.size(),
 		     		   startUcounter = unitary_test_counter.use_count(),
 				   startUtime = unitaryTime, theta = x.involution,
 				   startCcounter = char_counter.use_count(),
@@ -1905,21 +1929,22 @@ fancy_tester) = void:
 		 		 then (Lvd, Perm2) = LPmss[k] {already lives on Gsc}
 		 		 then () = if every_lambda_flag and FPP_report_flag
       	      	   	      then prints("     start #", k, " = (",x,",",lambda,"), Uhash.size() = ",
-			      Uhash.size(), ", runtime = ", print_time_string(elapsed_ms() - start),
+			      UhashG.size(), ", runtime = ", print_time_string(elapsed_ms() - start),
 			      ", #uparams so far = ",sum(answerCards));
 		   		   prints("  ------------------")
         	   		   fi {every_lambda_flag}
 		 then startLF = elapsed_ms(){, startDTcount = DTcount}
-	 	 then p0 = parameter(x,lambda, 0*lambda)
-		 in if test_no_unitary(x,lambda,Lvd) {here 1600; close 1685}
+	 	 then p0 = parameter(x_sc,lambda_sc, 0*lambda_sc)
+		 in if test_no_unitary(x_sc,lambda_sc,Lvd) {here 1905; close 2007}
 		    then ()
-		    else adjust_Dirac_flags(x);
+		    else adjust_Dirac_flags(x_sc);
 		    	 let startDTcount = DTcount
 		    	 then LF = [[FaceVertsIndex]]:
 		      	   if revert_steve_flag
 			   then [[]]
 		      	   elif by_zero_flag {and height(parameter(x,lambda,0*lambda)) > 0}
-		      	   then localFD_1Dirac2_by_zero(x_sc, lambda_sc, Lvd, Perm2)
+		      	   then {prints("data = ",(x_sc,M*lambda,Lvd,Perm2));}
+			   	localFD_1Dirac2_by_zero(x_sc, lambda_sc, Lvd, Perm2)
 			   else localFD_1Dirac2(x_sc, lambda_sc, Lvd, Perm2)
 			   fi
 		        then () = if every_lambda_deets_flag and FPP_report_flag and not revert_steve_flag
@@ -1943,7 +1968,8 @@ fancy_tester) = void:
 			     	       then local_test_GEO_hash_bottom_layer(x_sc,
 						lambda_sc, Lvd, LF, pol_hash, Uhash, fancy_tester)
 				       elif one_level_revert_flag
-				       then local_test_GEO_hash_one_level(x_sc, lambda_sc, Lvd,
+				       then {prints("LF = ",LF);}
+				       	    local_test_GEO_hash_one_level(x_sc, lambda_sc, Lvd,
 				       	    	LF, pol_hash, Uhash, fancy_tester)
 				       elif real_dumb_revert_flag
 				       then local_test_GEO_hash_real_dumb(x_sc, lambda_sc, Lvd,
@@ -1953,7 +1979,12 @@ fancy_tester) = void:
 				       fi
 			 then () = finish(x_sc, lambda_sc)
 			 then () = if disconn_flag
-			      	   then finish(x,lambda)
+			      	   then for psc in Uhash.list()[CUH:]
+				   	do for p in sc_descends(psc, G, M)
+					   do UhashG.match(p)
+					   od
+					od;
+				   finish(x,lambda)
 				   fi
 			 then () = answerCards[k] := #answer
 			 then () = if Uparamhash_flag
@@ -1976,7 +2007,7 @@ fancy_tester) = void:
 				  fi in Q.Levi.Lie_type,
 				  ",",test_string);
 			         prints("    #LF = ", for L in LF do #L od, "; #unitary params = ", answerCards[k],
-				 ", #new unitary = ", Uhash.size() - startUhash,
+				 ", #new unitary = ", UhashG.size() - oldUhashG,
 				 ", #tests for this lambda = ", currentUcounter - startUcounter,
 				 ", unitary time = ", print_time_string(currentUtime - startUtime));
 				 prints("    #char calcs for this lambda = ", currentCcounter - startCcounter,
@@ -2004,17 +2035,17 @@ fancy_tester) = void:
 				 prints("  ------------------")
 			    fi
 		    fi{#LF[0] = 0}
-		   fi {test_no_unitary line 1600}
+		   fi {test_no_unitary line 1905}
 		 fi {tw.< line 1581}
-		 fi {twist(x)!=x line 1545}
+		 fi {twist(x)!=x line 1836}
 		 od{xlambdas}
-    then () = if disconn_flag
+    {then () = if disconn_flag
 	      then for j: Uhash.size()
 		   do for p in sc_descends(Uhash.index(j), G, M)
 		      do UhashG.match(p)
 		      od
 		   od
-	       fi
+	       fi} {done at each lambda}
     then () = face_verbose:=old_face_verbose; time_verbose:=old_time_verbose;
     	      test_verbose:=old_test_verbose; test_slightly_verbose:=old_test_slightly_verbose
     then longest = max_loc(xlambdatimes)
@@ -2091,6 +2122,8 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
     	      	   then derived_cover_real_form_info(G)
 	      	   else (G,id_mat(G.rank))
 	      	   fi
+{FPP_vertices of Gsc are a REORDERING of M*(FPP_vertices(G). So Perm2 is DIFFERENT on Gsc. I missed
+this for a long time, leading to wrong answers for PSU(2,2).}
     then xs_sc = if disconn_flag
     	       	 then for x in xs do inverse_embed_KGB2(x, Gsc, M) od
 	      	 else xs
@@ -2157,36 +2190,40 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 	      test_verbose :={true}old_test_verbose; test_slightly_verbose := {true}old_test_slightly_verbose
 	      fi
     then () = for x@j in xs
-    	      do {xs}
-	 predictor_flag:= x.number > adjust_frac*KGB_size(G);
-	 test_next(x);
-	 test_edge(x);
+    	      do {xs} let x_sc = xs_sc[j] then CUH = Uhash.size() in
+	 predictor_flag:= x_sc.number > adjust_frac*KGB_size(Gsc);
+	 test_next(x_sc);
+	 test_edge(x_sc);
 	 if twist(x) != x
-	 then big_unitary_hash.finishx(x)
+	 then big_unitary_hash.finishx(x); {such x can support no final unitary p}
+	      big_unitary_hash.finishx(x_sc)
 	 fi;
-	 let revert_steve_flag = revert_steve_flag(x){prefer_steve_long_flag and (x.number = KGB_size(G) - 1)}
+	 let revert_steve_flag = revert_steve_flag(x_sc)
+	 {prefer_steve_long_flag and (x.number = KGB_size(G) - 1)}
 	 then former_time = current, formerUhash = currentUhash, formerUcounter = currentUcounter, x_sc = xs_sc[j],
 	     formerUtime = unitaryTime, formerCcounter = currentCcounter, formerCharTime = charTime,
 	     former_red_count_time = red_count_time,  startmorebadx = more_bad_hash.size(),
 	     startmorex = more_good_hash.size(), startminbadx = bad_hash.size(), startminx = good_hash.size()
-	 then xtwists = isotwistKGBs(x), twists = all_lambda_differential_0(x)
+	 then xtwists = isotwistKGBs(x_sc), twists = all_lambda_differential_0(x_sc)
 	 then N1 = #FPP_lambdas(x)
 	 then full_N1 = to_bitset([N1])-1
-	 then known_x = big_unitary_hash.x_known(G)
+	 then known_x = big_unitary_hash.x_known(G), known_x_sc = big_unitary_hash.x_known(Gsc)
 	 then () = skipx:= is_member_bitset(x.number,known_x)
-	 then tw = first(for y in xtwists[1:] do is_member_bitset(y.number, known_x) od)
-	      {there's a twist of x which is known}
-	 then xtwist = if tw.>= and not skipx
+	 then tw = first(for y in xtwists[1:] do is_member_bitset(y.number, known_x_sc) od)
+	      {there's a twist of x_sc which is known}
+	 then xtwist_sc = if tw.>= and not skipx
 	      	       then skipx := true;
 		       	    xtwists[tw+1]
-		       else x
+		       else x_sc
 		       fi
-	 then twnum = last(for y in xs[:j] do y=xtwist od)
+         then xtwist = embed_KGB(xtwist_sc,G,M)
+	 then twnum = last(for y_sc in xs_sc[:j] do y_sc=xtwist od)
 	 then () = if{A} twnum.>=  {now xtwist is xs[twnum]}
-	      	   then answerCards[j]:= answerCards[twnum]; {this is too low if xtwist wasn't calculated here}
+	      	   then answerCards[j]:= answerCards[twnum];
+		   	{this is too low if xtwist wasn't calculated here}
 	    	   	if Uparamhash_flag
 	    	 	then for p in Uparamhash.list()
-	              	     do if p.x = xtwists[tw]
+	              	     do if p.x = xtwist
 		      	     	then Uparamhash.match(parameter(x,p.lambda,p.nu))
 		    	 	fi
 		      	     od
@@ -2221,17 +2258,18 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 		     fi{B}
 	  then () = if xcont != x
 		    then {prints("skipping x = ",x.number," for xcont = ",xcont.number);}
-		       	 for p in Uhash.list()
+		       	 for p in UhashG.list()
 	      	       	 do if p.x = xcont
-		       	    then Uhash.match(contragredient(p))
+		       	    then UhashG.match(contragredient(p))
 		    	    fi
 		       	 od;
 		         big_unitary_hash.finish(x,full_N1); {mark as done all lambdas for x}
 		       	 big_unitary_hash.finishx(x)
 		     fi
 	 then () = if {C} skipx = false
-	 then FPP_def_adjust(x);
+	 then FPP_def_adjust(x_sc);
 	      let lambdas = FPP_lambdas(x)
+	      then lambdas_sc = for lambda in lambdas do M*lambda od
 	      then local_test_bl_flag =
 	      	   if easy_test_flag and not hard_test_flag
 		   then easy_test_bl(x)
@@ -2248,15 +2286,14 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 		   	prints("  ------------------")
         	   fi
 	 then () = for lambda@index in lambdas {ought to look at contragredient(x,lambda) here!}
-	      	   do let lamthlam = ((1+x.involution)*lambda).numer
-		      then (Lvd1, Perm2) = if FPP_def_flag
-		      	   	  	   then deform_trim(LPm_table.LPm_entry(G,x.involution,lamthlam),x,lambda)
-		      	   	  	   else LPm_table.LPm_entry(G,x.involution,lamthlam)
+	      	   do let lambda_sc = lambdas_sc[index]
+		      then lamthlam = ((1+x_sc.involution)*lambda_sc).numer
+		      then (Lvd, Perm2) = if FPP_def_flag
+		      	   	  	   then deform_trim(LPm_table.LPm_entry(Gsc,x_sc.involution,lamthlam),x_sc,lambda_sc)
+		      	   	  	   else LPm_table.LPm_entry(Gsc,x_sc.involution,lamthlam)
 					   fi
-		      then Lvd = if disconn_flag
-		      	       	 then to_vertex_data(for v in Lvd1.list do M*v od, Lvd1.pair_start)
-			   	 else Lvd1
-				 fi
+		      {error before 4.28.26 was that Perm2 was never lifted to its (different!)
+		      value on Gsc}
 		      then  startlambda = elapsed_ms(), startUhash = Uhash.size(), startUcounter =
 		      	    unitary_test_counter.use_count(), startUtime = unitaryTime,
 			    startminxl = good_hash.size(), startminbadlambda = bad_hash.size(),
@@ -2280,12 +2317,13 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 		      {then revert_steve_flag = revert_steve_flag(x,lambda)}
 		     in if {test_neither}test_no_unitary(x,lambda,Lvd)
 		       	then {none_count +:= 1;} {prints("SKIPPED ",x,",",lambda);} ()
-		    	else adjust_Dirac_flags(x);
+		    	else adjust_Dirac_flags(x_sc);
 			     let LF = [[FaceVertsIndex]]:
 			     	      if revert_steve_flag then [[]]
 				      elif by_zero_flag {and dominant(G,lamthlam)*G.two_rho_check > 0}
- 		      	      	      then localFD_1Dirac2_by_zero(x_sc, M*lambda, Lvd, Perm2)
-			   	      else localFD_1Dirac2(x, lambda, Lvd, Perm2)
+ 		      	      	      then {prints("data = ",(x_sc,lambda_sc,Lvd,Perm2));}
+				      	   localFD_1Dirac2_by_zero(x_sc, lambda_sc, Lvd, Perm2)
+			   	      else localFD_1Dirac2(x_sc, lambda_sc, Lvd, Perm2)
 			   	      fi
 		             then () = if every_lambda_deets_flag and FPP_report_flag and not revert_steve_flag
     	      	      	      	then prints("time for localFD_1Dirac2* = ",
@@ -2300,45 +2338,22 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 			       	      if revert_steve_flag
 			       	      then edge_offset:=1;
 				      	   steve_graph_flag:=false{true};
-				      	   local_test_GEO_hash_steve(x_sc, M*lambda, Lvd, Uhash,
+				      	   local_test_GEO_hash_steve(x_sc, lambda_sc, Lvd, Uhash,
 				      	   fancy_tester)
 			       	      elif local_test_bl_flag
-			     	      then local_test_GEO_hash_bottom_layer(x_sc, M*lambda, Lvd, LF,
+			     	      then local_test_GEO_hash_bottom_layer(x_sc, lambda_sc, Lvd, LF,
 				      	   pol_hash, Uhash, fancy_tester)
 				      elif one_level_revert_flag
-				      then local_test_GEO_hash_one_level(x_sc, M*lambda, Lvd,
+				      then {prints("LF = ",LF);}
+				      	   local_test_GEO_hash_one_level(x_sc, lambda_sc, Lvd,
 				      	   LF, pol_hash, Uhash, fancy_tester)
 				      elif real_dumb_revert_flag
-				      then local_test_GEO_hash_real_dumb(x_sc, M*lambda, Lvd,
+				      then local_test_GEO_hash_real_dumb(x_sc, lambda_sc, Lvd,
 				      	   LF, pol_hash, Uhash, fancy_tester)
-				      else local_test_GEO_hash2(x_sc, M*lambda, Lvd,
+				      else local_test_GEO_hash2(x_sc, lambda_sc, Lvd,
 				      	   LF, pol_hash, Uhash, fancy_tester)
 				      fi
 			       then () = tempanswerCards[index] := #answer
-			       {better to do next when y_sc is called for}
-			       {then y_scs = isotwistKGBs(x_sc)
-			       then () = for qsc in answer
-				       	 do for y_sc in y_scs
-				     	    do let rsc = parameter(y_sc, qsc.lambda, qsc.nu)
-				     	       then () = Uparamhash.match(rsc)
-			             	       then () = if disconn_flag
-					       	       	 then for r in sc_descends(rsc,G,M)
-						    	      do Uparamhash.match(r)
-						    	      od
-					       	  	 fi
-					        in for tsc in monomials(finalize(rsc))
-				           	   do Uhash.match(tsc);
-					      	      if disconn_flag
-					      	      then for t in sc_descends(tsc,G,M)
-						      	   do UhashG.match(t)
-						   	   od
-					       	       fi
-					    	   od {tsc}
-				      	     od {y_sc}
-				    	   od{qsc}
-			         then () = for y_sc in y_scs
-					   do finish(y_sc,M*lambda)
-					   od}
  			 	 then () = templambdatimes [index] := elapsed_ms() - startlambda
 			 	 in if every_lambda_flag and FPP_report_flag
 				    then prints("  ",print_time_string(templambdatimes[index]),
@@ -2373,8 +2388,8 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
                  od {lambdas} {good_entries} {would be easy enough to get [Param] for each (x,lambda),
 		    	      		     but for now just put unitary reps in Uhash}
     	   then () = if disconn_flag
-	   	     then for j: Uhash.size()
-		     	  do for p in sc_descends(Uhash.index(j), G, M)
+	   	     then for psc in Uhash.list()[CUH:]
+		     	  do for p in sc_descends(psc, G, M)
 			     do UhashG.match(p)
 			     od
 			  od
