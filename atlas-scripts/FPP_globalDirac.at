@@ -85,7 +85,7 @@ set steve_tester_flag = true
 at FPP reducibility points, steve has been slower than
 one_level. Sigh.}
 {But after 2/18 major revisions, maybe faster again?}
-set prefer_steve_long_flag = {true} false
+set prefer_steve_long_flag = true {false}
 
 set revert_steve_flag(KGBElt x) = bool:
     let G = x.real_form
@@ -1123,7 +1123,8 @@ then coh_ind_unip_few(G,Uhash)}
     then () = for (x,lambda)@k in xlambdasW
     	      do {xlambdasW}
 	      	{predictor_flag:= x.number > adjust_frac*KGB_size(G);}
-		predictor_flag:=false; {not sure about this change 2/19/26}
+		{predictor_flag:=false;} {not sure about this change 2/19/26}
+					 {undo 4/29/26}
 		test_next(x);
 	      	if twist(x) != x
 		then big_unitary_hash.finishx(x)
@@ -1338,7 +1339,8 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
     then () = for x@j in xs
     	      do {xs}
 	 {predictor_flag:= x.number > adjust_frac*KGB_size(G);}
-	 predictor_flag:=false; {not sure about this 2/19/26}
+	 {predictor_flag:=false;} {not sure about this 2/19/26}
+	 			  {undo 4/29/26}
 	 test_next(x);
 	 if twist(x) != x
 	 then big_unitary_hash.finishx(x)

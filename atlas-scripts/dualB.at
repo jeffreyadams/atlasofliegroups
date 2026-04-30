@@ -1,0 +1,138 @@
+< basic.at {for abs}
+< parameters.at {for dual_inner_class}
+< translate.at {for translate_param_by}
+
+set pos_part(Split s) = int:
+    let (a,b) = %s in abs(a+b)
+
+set endo_ic(Param p) = inner_class(integrality_datum(p),p.x.involution)
+
+{one root from each non-real, non-imag pos pair (alpha, theta*alpha)}
+{well-defined up to (1-theta)alpha}
+set rho_C(RootDatum rd, mat theta) = vec:
+    let zero = null(rd.rank)
+    in sum(rd.rank, for alpha@j in rd.posroots
+    		    do let k = root_index(rd,theta*alpha)
+		        in if k > j {k=j is imag; k = -j-1 is real}
+		       	   then alpha
+		       	   else zero
+			   fi
+		    od)
+
+{one root from each non-real, non-imag pos pair (alpha, -theta*alpha)}
+{well-defined up to (1+theta)alpha}
+set rho_minus_C(RootDatum rd, mat theta) = vec:
+    let zero = null(rd.rank)
+    in sum(rd.rank, for alpha@j in rd.posroots
+    		    do let k = root_index(rd,theta*alpha)
+		        in if -k-1 > j {k=j is imag; k = -j-1 is real}
+		       	   then alpha
+		       	   else zero
+			   fi
+		    od)
+
+set rho_check_C(RootDatum rd, mat theta) = vec:
+    let zero = null(rd.rank)
+    in sum(rd.rank, for alpha@j in rd.posroots
+    		    do let k = root_index(rd,theta*alpha)
+		        in if k > j {k=j is imag; k = -j-1 is real}
+		       	   then rd.poscoroots[j]
+		       	   else zero
+			   fi
+		    od)
+
+set rho_check_minus_C(RootDatum rd, mat theta) = vec:
+    let zero = null(rd.rank)
+    in sum(rd.rank, for alpha@j in rd.posroots
+    		    do let k = root_index(rd,theta*alpha)
+		        in if -k-1 > j {k=j is imag; k = -j-1 is real}
+		       	   then rd.poscoroots[j]
+		       	   else zero
+			   fi
+		    od)
+
+{this one is broken:
+set p = parameter(E7_s,20530,[-1,-1,1,1,4,0,0]/1,[0,0,0,0,1,0,0]/3)
+}
+set endo(Param p) = Param:
+    let endoic = endo_ic(p), x = p.x, rd = p.root_datum
+    then theta = x.involution
+    then rho_shift =  rd.rho  - endoic.rho
+    then lambda_shift =  rho_i(x)  - rho_i(endoic,theta) + rho_C(rd,theta) - rho_C(endoic,theta)
+    then nu_shift = p.x.rho_r  - rho_r(endoic,theta) + rho_minus_C(rd,theta) - rho_minus_C(endoic,theta)
+    then corho_shift = rho_check_minus_C(rd,theta) - rho_check_minus_C(endoic,theta)
+    {then endgamma = p.infinitesimal_character+rho_shift_r}
+    then endox = KGB_elt(endoic, x.involution, x.torus_factor - corho_shift)
+    in parameter(endox, p.lambda + lambda_shift, p.nu + nu_shift)
+
+{note torus_factor(x) = base_grading_vector + vec; vec is more or less torus_bits(x)}
+set dualB(Param p) = Param:
+    let rd = p.root_datum, dGi = dual_inner_class(p), gamma = p.infinitesimal_character, x = p.x
+    then endoic = endo_ic(p), theta = x.involution
+    then rho_shift =  rd.rho  - endoic.rho
+    then lambda_shift =  rho_i(x)  - rho_i(endoic,theta) + rho_C(rd,theta) - rho_C(endoic,theta)
+    then dgamma = base_grading_vector(p.real_form) + rho(dGi), theta = x.involution
+    then dtheta = -(x.involution).^
+    then dtf = gamma + rho_shift  - p.lambda - lambda_shift
+    then dlambda = dgamma - torus_factor(x)
+    then dx = KGB_elt(dGi,dtheta,dtf)
+    in parameter(dx, dlambda, dgamma)
+
+set dual_diffs_time = int:0
+{for use in kl.at, picking between KL_sum_at_s(p) and
+KL_sum_at_s_to_ht(p,HT) to decide: whether to prefer
+KL_sum_at_s_to_ht(p,HT): first int corresponds to difficulty of
+KL_sum_at, and second to difficulty of KL_sum_at_s_to_ht.
+Assume p is final, HT > height(p)}
+set dual_diffs(Param p, int HT) = (int,int):
+    p:=first_param(finalize(p));
+    let PB = partial_block(p), tworho = p.real_form.two_rho, start = elapsed_ms()
+    then lows = for q in PB if height(q)<=HT do q fi od {these are the terms that can appear in KL_sum_to_ht}
+    then preg = parameter(p.x,p.lambda+tworho, p.nu+tworho)
+    then q = lows~[0] {closest to ds contrib to KL_sum_to_ht}
+    then qreg = parameter(q.x,q.lambda+tworho, q.nu + tworho)
+    in (#partial_block(preg), #partial_block(dualB(qreg))) next dual_diffs_time +:= elapsed_ms() - start
+
+set reg_block(Param p) = (([Param],int),vec):
+    p:=first_param(finalize(p));
+    let tworho = p.real_form.two_rho, start = elapsed_ms()
+    then preg = translate_param_by(p,tworho)
+    in (block(preg),tworho) next dual_diffs_time+:= elapsed_ms() - start
+
+set short_dual_diffs(Param p, int HT) = (int,int,int):
+    let ((B,m),tworho) = reg_block(p), start = elapsed_ms() {m+1 is upper bound for #partial_block(preg)}
+    then dq = int:0 {will be distance after preg of last lowreg in PBreg}
+    in for qreg@j in B[m:]
+       do let q = translate_param_by(qreg,-tworho)
+     	  in if height(q) > HT then break
+	     elif is_final(q) then dq:=j
+	     fi
+       od; {now last lowreg is at dq+m}
+       dual_diffs_time +:=elapsed_ms() - start;
+       (#B,m+1,#B-dq-m) {small m means KL_sum easier, small #B-dq-m means to_ht easier.}
+
+set short_dual_diffs([Param] B, int m, int HT, vec tworho) = (int,int,int):
+    let dq = int:0, start = elapsed_ms(){will be distance after preg of last lowreg in B}
+    in for qreg@j in B[m:]
+       do let q = translate_param_by(qreg,-tworho)
+     	  in if height(q) > HT then break
+	     elif is_final(q) then dq:=j
+	     fi
+       od; {now last lowreg is at dq+m}
+       dual_diffs_time +:=elapsed_ms() - start;
+       (#B,m+1,#B-dq-m) {small m means KL_sum easier, small #B-dq-m means to_ht easier.}
+
+
+set dual_mult = int: 128
+{bigger for more to_ht}
+
+{whether to prefer KL_sum_at_s_to_ht (TRUE) or KL_sum (FALSE)} 
+{TRUE means preg very close to the bottom of big block}
+set low_dual(Param p, int HT) = bool:
+    if p.x.number < (1/2)*p.real_form.KGB_size then return false fi;
+    let ((B,m),tworho) = reg_block(p)
+    in if #B < 50 then return false fi;
+    let (Bsize, D, DHT) = short_dual_diffs(B,m,HT,tworho)
+    in dual_mult*DHT < D
+
+{add a version for is_unitary??, analogous to low_diff(p,HT) vs low_diff_char(p,HT) in kl.at}

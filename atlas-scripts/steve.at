@@ -1,6 +1,7 @@
 < basic {for infinitesimal character}
 < aff_cube.at {for local_FPP_extrema}
 < FPP_faces_herm.at {for unitarity tests}
+< FPP_lambdas.at {for edge_defs}
 < hash.at {for hash tables}
 < FPP_localDirac.at { for |unipotents_to_hash| }
 < red_points.at {for red_points}
@@ -1174,29 +1175,38 @@ set report_steve_clear() = void:
 set warmup_time = int: 0
 set warmup_flag = true
 
+{4.30.26: OK simply to ELIMINATE nonunitary entries of any sort, even if they might be unitary to HT;
+just don't enter in steve_hash_small}
 {put known statuses into steve_hash_small}
 set warmup(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [[FaceVertsIndex]] FVIs) = [[FaceVertsIndex]]:
     if warmup_flag = false then return FVIs fi;
     {skipping saves 122/446 in Spin(4,4); 122/221 in steve}
-    let start= elapsed_ms()
+    let start= elapsed_ms(), G = x.real_form
     then answer =
     for FVI@d in FVIs
     do for v in FVI
        do let gamma = face_bary(Lvd, v[:d+1])
        	  then qs = monomials(finalize(parameter(x,lambda,gamma)))
-	  {then stats = for q in qs do status(q,HT) od}
-       	  in if any({for stat in stats do stat < 0}
-	            for q in qs do not big_unitary_hash.nu_height_lookup_bool(q,HT)
+	  then stats = for q in qs do status(q,-1) od
+       	  in if any(for stat in stats do stat < 0 od)
+	     then for stat@j in stats
+	     	  if stat < 0
+	     	  do big_unitary_hash.numatch(qs[j])
+	     	  fi
+		  od;
+	     	  []
+	     elif any(for q in qs do not big_unitary_hash.nu_height_lookup_bool(q,HT)
 	     	    od)
        	     then steve_hash_small.numatch(gamma);
-	     []
-	     elif all(for {stat in stats do stat > 0}
-	     	  	  q in qs do big_unitary_hash.ulookup(q).>=
-	     	      od) 
-	     	     {or (let m = u_to_ht_hash.lookup(q)
-		     	 in m.>= and u_to_ht_hts[m] >= HT) od)}
-       	     then steve_hash_small.umatch(gamma);
-	     [v]
+	     	  []
+	     elif any(for q in qs do any(for qd in edge_defs(q) do status(qd,-1) < 0 od) od)
+	     	  then if all(for q in qs do is_unitary(q) od)
+		       then prints("WARMUP TROUBLE AT ",parameter(x,lambda,gamma))
+		       fi;
+	     	       [] {want to put guilty q in big_unitary_hash.nuhash(G).match(q)}
+	     elif all(for stat in stats do stat > 0 od)
+	     then steve_hash_small.umatch(gamma);
+		  [v]
 	     else [v]
 	     fi
        od.##
@@ -1224,6 +1234,7 @@ set localFD_1SteveU\
 	fi}
     then LF00 = [FaceVertsIndex]: for j:#Lvd.list do [j] od
     then LF01 = warmup(x,lambda,HT,Lvd,[LF00])[0]
+    then () = prints("cold and warm verts = (",#LF00,",",#LF01,")")
     then Q = (ratvec,ratvec ->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBD = 0/1
     then temp_Dirac_best_flag = bool:

@@ -132,6 +132,7 @@ set red_count(Param p) = int:
     in ans
 
 set red_count(Param p, int HT) = int:
+    if HT < 0 then return red_count(p) fi;
     if red_count_old_flag then return red_count_old(p,HT) fi;
     let start = elapsed_ms(), G = p.real_form, x = p.x
     then gamma = p.infinitesimal_character
