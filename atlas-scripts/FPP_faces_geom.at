@@ -11,6 +11,7 @@
 <count.at {for char_count}
 <writeFiles {to write hash tables}
 <simple_factors.at {for simple_factors}
+<red_count.at {for red_count}
 
 {functions for calculating FPP face lists, both "globally" (from the
 root datum) and "local" (as relevant to parameters for a single LKT

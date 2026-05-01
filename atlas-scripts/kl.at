@@ -3,6 +3,8 @@
 <parameters.at { for |dual_inner_class| }
 <hash.at {for hashed low function}
 <polynomial.at {for eval}
+<dualB.at {for dualB, low_dual}
+<translate.at {for translate_param_by}
 
 set low_frac=1 {fix this: apparently not used any more}
 
@@ -34,6 +36,10 @@ choose whether "to height" or "to infinity" algorithm is faster.}
 
 { ------------------------------------------------------------------- }
 {seat_belt_on:=false}
+
+{whether to use to_ht instead of truncating full_deform}
+set to_ht_over_u_flag = true
+
 
 {set CF_flag = false}
 set charTime = int:0
@@ -194,9 +200,8 @@ set low_diff_char_time = int:0
 {if true, allow KL_sum_at_s_to_height}
 set low_diff_char(Param p, int HT) = bool: {false {ALWAYS use KL_sum_at_s}}
     if (HT < 0) then return  false fi;
-    let start = elapsed_ms(){, ({LAM}, , GAM) = low(p)}
-    then {ans = {(LAM < lam_frac*GAM) and} (((GAM - LAM)*diff_char_frac) > HT {HT - LAM)})}
-    	 ans = p.x.number > diff_KGB_char_frac*KGB_size(p.real_form)
+    let start = elapsed_ms()
+    then ans = p.x.number > diff_KGB_char_frac*KGB_size(p.real_form)
 	       and (HT < diff_char_frac*GAM(p)) {forces LAM < diff_char_frac*GAM}
 	       	   {(HT - height(p)) < diff_char_frac*GAM(p)}
     in ans next low_diff_char_time +:= (elapsed_ms() - start)
@@ -206,6 +211,40 @@ set low_KL_char(Param p, int HT) = bool:
     p.x.number > diff_KGB_char_frac*KGB_size(p.real_form) and
     KL_predictor_up_to_ht(p,HT) < KL_predictor(p)
 
+set quick_frac = rat: 1/5
+set TRUELIST = [(Param,int)]: []
+
+{meant to predict ratio (to_ht time)/u time)}
+set low_quick_frac(Param p,int HT) = rat:
+    let preg = translate_param_by(p,p.real_form.two_rho)
+    then (LAMreg,,GAMreg) = low(preg)
+    in (LAMreg+HT)/(GAMreg - LAMreg)
+
+{true means allow to_ht, so DECREASING quick_frac means less to_ht}
+set low_quick(Param p, int HT) = bool:
+    if predictor_flag then 0/0 fi;
+    let ans = low_quick_frac(p, HT) < quick_frac
+    in if ans then TRUELIST #:= (p,HT) fi;
+       ans
+
+{    let preg = translate_param_by(p,p.real_form.two_rho)
+    then (LAMreg,,GAMreg) = low(preg)
+    then ans = (LAMreg+HT) < quick_frac*(GAMreg - LAMreg)
+    in if ans then TRUELIST #:= (p,HT) fi;
+       ans}
+
+{How small the to_ht block should be vs orig block for to_ht to be faster}
+set quick_char_frac = rat: 1/9
+
+{KL for p works in block fraction [GAMreg LAMreg]. For dual (to_ht), range is [LAMreg+HT,0].
+So to_ht fast means GAMreg-LAMreg much bigger than LAMreg+HT.}
+set low_quick_char(Param p, int HT) = bool:
+    let (LAM,,GAM) = low(p)
+    in (LAM+HT) < quick_char_frac*(GAM - LAM)
+{    let preg = translate_param_by(p,p.real_form.two_rho) {dropped this 17:00 4.27.26}
+    then (LAMreg,,GAMreg) = low(preg)
+    in (LAMreg+HT) < quick_char_frac*(GAMreg - LAMreg)}
+
 {Switching to HT -LAM 1/26 didn't work well; adding the small LAM condition is meant to alleviate??}
 
 {bad experiences Jan 26 suggested this version}
@@ -213,6 +252,12 @@ set low_lam(Param p, int HT) = bool:
     if HT < 0 then return  false fi;
     {let (LAM, , GAM) = low(p)
     in}  (p.height < lam_frac*GAM(p))
+
+set prefer_quick_flag = true
+
+set prefer_quick_char_flag = false {terrible luck with true on x_open(E7_s)}
+
+set prefer_dual_flag = false {try true again with short_dual_diffs}
 
 set prefer_KL_flag = false
 
@@ -232,9 +277,12 @@ set low_char_flag = true
 {if true, allow hermitian_form_irreducible_to_ht; if false, truncate hermitian_form_irreducible}
 set low(Param p, int HT) = bool:
     if HT < 0 then return false
+    elif predictor_flag then return true {decided elsewhere to try to_ht}
     elif not low_flag
     then return true
-    elif prefer_diff_flag {default true 2/4/26}
+    elif prefer_quick_flag 
+    then low_quick(p,HT)
+    elif prefer_diff_flag 
     then {strict_}low_diff(p,HT)
     elif prefer_gamma_flag
     then {strict_}low_gamma(p,HT)
@@ -243,11 +291,18 @@ set low(Param p, int HT) = bool:
     else {strict_}low_nu(p,HT)
     fi
 
+set low_char_time = int: 0
+
 {whether to consider replacing KL_sum_to_ht with KL_sum}
 set low_char(Param p, int HT) = bool:
+    let start=elapsed_ms() in
     if HT < 0 then return false
     elif not low_char_flag
-    then return true
+    then return true {ALWAYS do to_height}
+    elif prefer_quick_char_flag {true 4/29/26}
+    then low_quick_char(p,HT)
+    elif prefer_dual_flag {default false 4/29/26}
+    then low_dual(p,HT)
     elif prefer_diff_flag
     then low_diff_char(p,HT)
     {elif prefer_strict_KL_flag
@@ -255,7 +310,7 @@ set low_char(Param p, int HT) = bool:
     elif prefer_KL_flag
     then low_KL_char(p,HT)
     else false{ALWAYS switch to KL_sum}
-    fi
+    fi next low_char_time +:= elapsed_ms() - start
 
 set to_ht (KTypePol P,int N) = KTypePol:
   if N<0 then return P fi;
@@ -383,6 +438,13 @@ set twisted_KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol:
     else let (below,) = height_split(twisted_KL_sum_at_s(p),HT)
     	 in below
     fi
+
+{next two never try not to_ht}
+set character_formula_to_height(Param p, int HT) = ParamPol:
+    s_to_1(KL_sum_at_s_to_height(p,HT))
+
+set character_formula_to_height (ParamPol P, int HT) = ParamPol:
+    map(((Param->ParamPol): (Param p): character_formula_to_height(p, HT)), P)
 
 set character_formula_to_ht(Param p, int HT) = ParamPol:
     s_to_1(KL_sum_at_s_to_ht(HT)(p))
@@ -521,19 +583,6 @@ set endo(Param p) = Param:
     {then endgamma = p.infinitesimal_character+rho_shift_r}
     then endox = KGB_elt(endoic, x.involution, x.torus_factor - corho_shift)
     in parameter(endox, p.lambda + lambda_shift, p.nu + nu_shift)
-
-{note torus_factor(x) = base_grading_vector + vec; vec is more or less torus_bits(x)}
-set dualB(Param p) = Param:
-    let rd = p.root_datum, dGi = dual_inner_class(p), gamma = p.infinitesimal_character, x = p.x
-    then endoic = endo_ic(p), theta = x.involution
-    then rho_shift =  rd.rho  - endoic.rho
-    then lambda_shift =  rho_i(x)  - rho_i(endoic,theta) + rho_C(rd,theta) - rho_C(endoic,theta)
-    then dgamma = base_grading_vector(p.real_form) + rho(dGi), theta = x.involution
-    then dtheta = -(x.involution).^
-    then dtf = gamma + rho_shift  - p.lambda - lambda_shift
-    then dlambda = dgamma - torus_factor(x)
-    then dx = KGB_elt(dGi,dtheta,dtf)
-    in parameter(dx, dlambda, dgamma)
 
 
 {this appears to work even if p is not final, although I'm not sure why}
