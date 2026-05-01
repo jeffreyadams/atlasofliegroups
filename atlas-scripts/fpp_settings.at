@@ -6,6 +6,7 @@ every_KGB_flag:= true
 fund_face_verbose:=true
 seat_belt_on:=false
 
+{
 set to_ht_factors =[1,2,3,4,5,6]
 set u_factors = [1,2,3,4,5,6]
 set prefer_u_factors = [2/3,1,4/3,5/3,2,7/3]
@@ -14,3 +15,4 @@ set prefer_u_factors = [2/3,1,4/3,5/3,2,7/3]
 set set_factors(int n)=
 let triple=box(6,3)[n]
 in (to_ht_factors[triple[0]],u_factors[triple[1]],prefer_u_factors[triple[2]]) 
+}
