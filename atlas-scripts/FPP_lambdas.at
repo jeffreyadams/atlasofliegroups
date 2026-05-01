@@ -563,3 +563,48 @@ set FPP_lambdas([KGBElt] xs) = [[ratvec]]:
     for x in xs
     do FPP_lambdas(x)
     od
+
+{wiggle commands deformfrom a face to its boundary. This tried to
+deform from a vertex to adjacent vertices.}
+
+{Given a parameter p defining a local vertex ratvec v, returns ratvec's
+w with [v,w] an incident local edge}
+set incident_edges(Param p) = [ratvec]:
+    let (x,lambda,nu) = (p.x,p.lambda,p.infinitesimal_character)
+    then G = p.real_form, theta = x.involution
+    then (Lvd,Perm2) = LPm_table.LPm_entry(G,theta,(lambda+theta*lambda).numer)
+    then m = Lvd.lookup(nu) {for now assume n fixed vertex}
+    then () = assert(@: m >=0 and m < Lvd.pair_start,
+    	    "sorry, nu is not a local vertex")
+    then mglob = Perm2.fixed[m]
+    then cands = FPP_edges_by_zero(G)[mglob]
+    {next is numbers of local edges starting at nu}
+    in for v in cands
+       if is_member_sorted(Perm2.fixed[m:])(v[1])
+       do Lvd.list[locate_sorted(Perm2.fixed,v[1])]
+       fi
+       od
+
+{now just the ends of edges along which deformation is possible to HT}
+set def_incident_edges(Param p, int HT) = [ratvec]:
+    let IE = incident_edges(p), v = infinitesimal_character(p)
+    then prc = red_count(p,HT)
+    in for w in IE
+       if prc = red_count(parameter(p.x,p.lambda,(v+w)/2), HT)
+       	  do w
+       fi
+       od
+
+{now just the ends of edges along which deformation is possible}
+set def_incident_edges(Param p) = [ratvec]:
+    def_incident_edges(p,-1)
+
+{Params arising by deformation along a deformable edge to HT}
+set edge_defs(Param p, int HT) = [Param]:
+    assert(@:is_final(p),"sorry, this works only for p final");
+    let defs = def_incident_edges(p, HT), G = p.real_form
+    in monomials(sum(G, for w in defs
+       	      		do composition_series_to_ht(wiggle(p,w),HT)
+       	      		od))
+
+set edge_defs(Param p) = [Param]: edge_defs(p, -1)
