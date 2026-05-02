@@ -4230,6 +4230,163 @@ std::ostream& to_string_aux(std::ostream& o, eval_level l)
   return o;
 }
 
+@ Type aware printing will call the recursive function |format|. It takes as
+argument a |type_expr| for the type to be printed, which should be a concrete
+type (although we allow it to contain polymorphic function types), a value |v|
+to be printed, the number of columns |width| available for formatting its output
+to (which the caller has adjusted by subtracting any indentation imposed by the
+context). The result is returned in the form of a list of lines, each consisting
+of an amount |indent| of internal indentation (to be added to the ambient
+indentation) and a string |str| with the non-indent text. There are two
+scenarios that |format| can encounter: either the entire output fits in |width|
+(or cannot be broken across lines, in which case we allow ourselves to exceed
+the |width|), or it must be broken across multiple lines. It is up to the caller
+to distinguish these cases, and in the former case see if it is possible to
+append the line of output to a previous partially filled line, instead of using
+it as a separate line.
+
+@< Local function definitions @>=
+struct ind_string
+{ unsigned indent; @+ std::string str;
+  ind_string (std::string&& str) : indent(0), str(std::move(str)) @+{}
+  ind_string (unsigned i, std::string&& str) : indent(i), str(std::move(str))
+  @+{}
+};
+sl_list<ind_string> format
+  (const type_expr& te, const value_base& v, unsigned width)
+{ std::ostringstream o; sl_list<ind_string> result;
+  switch (te.top_kind())
+  {
+  case undetermined_type:
+  case variable_type:
+  assert(false);
+  break;
+  default:
+    v.print(o); result.emplace_back(o.str()); // standard printed output
+  break; case primitive_type:
+    @< Format primitive value |v| into |result| @>
+  break; case row_type:
+      @< Build bracketed list of entries of |v|, appending to |result| @>
+#if 0
+  break; case function_type:
+  break; case tuple_type:
+  break; case union_type:
+  {}
+#endif
+  }
+  return result;
+}
+
+@ For a list of values, we distinguish several cases. If the list is empty, we
+print the type and an empty list expression. Otherwise we come to the meat of
+our work, where we sequentially produce individual list items in a bracketed
+notation, concatenating them on a single line as long as possible, but never
+sharing a line between two items at least one of which itself requires multiple
+lines.
+
+When outputting a with a partially filled current line |cur|, we recursively
+|format| each item as if it started on a fresh line, then if it fits on a single
+line we determine whether we can actually append the output to the current line;
+if it cannot, we contribute the current line as completed and append the item
+that was formatted to this, adding a |prefix| or indentation as appropriate.
+
+@< Build bracketed list of entries of |v|, appending to |result| @>=
+{ const row_value* rv = dynamic_cast<const row_value*>(&v);
+  assert(rv!=nullptr);
+  if (rv->length()==0)
+  @/{@; o << '[' << te.component_type() << "]:[]";
+    result.emplace_back(o.str());
+  }
+  else
+  { std::string cur; // current line
+    const unsigned tab =  te.component_type().top_kind()==primitive_type ? 1 : 2;
+    const auto ind_width = width-tab; // width on fresh lines after indentation
+    for (unsigned i=0; i<rv->length(); ++i)
+    { auto prefix = tab==1 ? i==0 ? "[" : "," : i==0 ? "[ " : ", ";
+      auto res = format(te.component_type(),*rv->val[i],ind_width);
+      if (res.singleton())
+      { if (width>=cur.length()+tab+res.front().str.length())
+          cur += prefix+res.front().str; // append a new item to |cur|
+        else
+        { if (cur.size()>0) // if there is any accumulated output
+            result.emplace_back(std::move(cur));
+          cur = prefix+res.front().str;
+        }
+      }
+      else // transform |res|, then append to |result|
+      {
+        if (cur.length()>0) // if there is any accumulated output
+        @/{@; result.emplace_back(std::move(cur));
+          cur.clear();
+        } // emit that first
+        for (auto& item: res)
+          if (&item==&res.front())
+            item.str = prefix+item.str;
+          else
+            item.indent+=tab;
+        result.append(std::move(res));
+      }
+    }
+    if (result.empty() and width>=cur.length()+tab)
+    {
+      cur.append(tab==1 ? "]" : " ]");
+      result.emplace_front(std::move(cur));
+    }
+    else
+    { if (cur.length()>0)
+        result.emplace_back(std::move(cur));
+      result.emplace_back(std::string("]"));
+    }
+  }
+}
+
+@ Here we know that the length of |o.str()| exceeds the available |width|, so
+for certain primitive types we will try to split the value over multiple lines.
+However this is not always reasonable (and at some point all available width
+may have been gobbled up by the indentation, in which case there will not really
+be any reasonable way to honour the width specification); when nothing else can
+be done, we put the entire output on a single line and set |width=0| to indicate
+that we have no space left on this line.
+
+@< Format primitive value |v| into |result| @>=
+{ v.print(o);
+  auto str = o.str();
+  auto len = str.length();
+  if (str.length()<=width)
+    result.emplace_back(std::move(str));
+  else
+    switch(te.prim())
+    { default: result.emplace_back(std::move(str));
+    break; case integral_type:
+    { auto pos = str.begin();
+      while(len>width)
+      { result.emplace_back(std::string(pos,pos+width)+'\\');
+        pos+=width; len-=width;
+      }
+      result.emplace_back(std::string(pos,str.end()));
+    }
+    break;
+    break; case string_type: // here we indent for the leading quote character
+    { auto pos = str.begin();
+      while(len>width)
+      { auto w = pos==str.begin() ? width : width-1;
+        result.emplace_back(width-w,std::string(pos,pos+w)+'\\');
+        pos+=w; len-=w;
+      }
+      result.emplace_back(pos==str.begin() ? 0 : 1,std::string(pos,str.end()));
+    break;
+    }
+  #if 0
+    case split_integer_type:
+    case vector_type:
+    case rational_vector_type:
+    case matrix_type:
+    case K_type_pol_type:
+    case virtual_module_type: {}
+  #endif
+    }
+}
+
 @ The function |print| outputs any value in the format used by the interpreter
 itself. This function has an argument of unknown type; we just pass the popped
 value to the |operator<<|. The function returns its argument unchanged as
@@ -4287,8 +4444,17 @@ thing as covariant type aware functions.
 void type_aware_print_wrapper(eval_level l, const type& tp)
 {
   *output_stream <<
-    "{[" << tp.floor() << ',' << tp.degree() << ']' << tp << ":}";
-  *output_stream << *execution_stack.back() << '\n';
+    "{[" << tp.degree() << ']' << tp << ":}\n";
+  unsigned width = 80;
+  auto res = format(tp.unwrap(),*execution_stack.back(),width);
+  if (res.singleton())
+    *output_stream << res.front().str << '\n';
+  else
+    for (const auto& item : res)
+    { for (unsigned i=0; i<item.indent; ++i)
+        *output_stream << ' ';
+      *output_stream << item.str << '\n';
+    }
   if (l!=eval_level::single_value) // in |single_value| case we are done
     push_expanded(l,pop_value()); // otherwise remove and possibly expand value
 }
