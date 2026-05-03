@@ -1847,7 +1847,7 @@ and not tester(q)
 			     for q1 in monomials(finalize(q))
 			     do Uhash.match(q1);
 				if deform_flag
-				then for q1d in facet_deformed_new(q1)
+				then for q1d in face_deformed_new(q1)
 				     do Uhash.match(q1d)
 				     od
 				fi {deform_flag}
@@ -2016,7 +2016,7 @@ in  for C@k in eq
 	    ;  for @q1 in finalize(q)
 	       do Uhash.match(q1);
 		  if deform_flag
-		  then for q1d in facet_deformed_new(q1) do Uhash.match(q1d) od
+		  then for q1d in face_deformed_new(q1) do Uhash.match(q1d) od
 		  fi {deform_flag}
 	       od {q1 in monomials}
 	    od {i in C}
@@ -2178,7 +2178,7 @@ in for C@k in eq
 			     for q1 in monomials(finalize(q))
 			     do Uhash.match(q1);
 				if deform_flag
-				then for q1d in facet_deformed_new(q1)
+				then for q1d in face_deformed_new(q1)
 				     do Uhash.match(q1d)
 				     od
 				fi {deform_flag}
@@ -2362,7 +2362,7 @@ set local_test_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 			     for q1 in monomials(finalize(q))
 			     do Uhash.match(q1);
 				if deform_flag
-				then for q1d in facet_deformed_new(q1)
+				then for q1d in face_deformed_new(q1)
 				     do Uhash.match(q1d)
 				     od
 				fi {deform_flag}
@@ -2444,7 +2444,7 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 					     do wiggle(CF, face_bary(Lvd,verts[:j]##verts[j+1:]))
 					     {(sigma - v)/d)}
 					     od)))) next wiggle_flag1_time +:= elapsed_ms() - start_wiggle
-							  {proper_facet_deformed(pC)}
+							  {proper_face_deformed(pC)}
 					 else []
 					 fi
 				    else monomials(finalize(pC))
@@ -2527,7 +2527,7 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 			 then () = for q1 in monomials(finalize(q))
 				   do Uhash.match({herm_center(}q1{)});
 				      if deform_flag
-				      then for q1d in facet_deformed_new(q1)
+				      then for q1d in face_deformed_new(q1)
 					   do Uhash.match({herm_center(}q1d{)})
 					   od
 				      fi
@@ -2632,7 +2632,7 @@ set local_test_wiggle_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 			then () = for q1 in monomials(finalize(q))
 				  do Uhash.match({herm_center(}q1{)});
 				     if deform_flag
-				     then for q1d in facet_deformed_new(q1)
+				     then for q1d in face_deformed_new(q1)
 					  do Uhash.match({herm_center(}q1d{)})
 					  od
 				     fi
@@ -2659,42 +2659,20 @@ set one_param_time = int: 0
 
 set wiggle_unitary_flag = false
 
-{E7_s: false 62000 times, true 3 times. So SHOULD do to_height}
-set one_param_test(Param p) = [Param]:
-    let start = elapsed_ms(), Q = monomials(finalize(p)), G = p.real_form
-    in if not all(for q in Q do @bool: FPP_def_test(q) od)
-       then one_false_counter.use();
-       	    one_param_time +:= elapsed_ms() - start;
-	    []
-       else let stati = for q in Q do status(q,-1) od
-    in if all( for N in stati do N =1 od)
-       then one_true_counter.use();
-       	    one_param_time +:= elapsed_ms() - start;
-	    [p]
-       elif any (for N in stati do N = -1 od)
-       then one_false_counter.use();
-       	    one_param_time +:= elapsed_ms() - start;
-       	    []
-       else let test = if wiggle_unitary_flag
-		then all(for q in Q do @bool: wiggle_is_unitary(q) od)
-		else all(for q in Q
-			 do @bool:
-			    let ans = is_unitary_test_big_SIMPLE_interrupt(q)
-			    {if test_interrupt_flag {up_mu_flag}
-				      then is_unitary_test_big_SIMPLE_interrupt(q)
-				      else is_unitary_hash_big_SIMPLE(q)
-				      fi}
-			    in if not ans
-			       then big_unitary_hash.numatch(q);
-			       	    if more_after_flag
-			    	    then more_after_flag:=false; more_bad_hash.match(q)
-			    	    fi;
-			    	    if min_after_flag
-			    	    then min_after_flag:= false; bad_hash.match(q)
-			    	    fi
+{to be called when all else fails}
+set one_param_test_dumb(Param p, [Param] Q, int start) = [Param]:
+    let test = all(for q in Q
+		   do @bool: let ans = is_unitary_test_big_SIMPLE_interrupt(q)
+			     in if not ans
+			        then big_unitary_hash.numatch(q);
+			       	     if more_after_flag
+			    	     then more_after_flag:=false; more_bad_hash.match(q)
+			    	     fi;
+			    	     if min_after_flag
+			    	     then min_after_flag:= false; bad_hash.match(q)
+			    	     fi
 			        fi; ans
-			 od)
-		 fi
+		    od)
     in if test
        then one_true_counter.use();
 	    one_param_time +:= elapsed_ms() - start;
@@ -2704,8 +2682,38 @@ set one_param_test(Param p) = [Param]:
  	    one_param_time +:= elapsed_ms() - start;
 	    []
        fi{test}
-       fi{all stati}
-       fi {not FPP_def_test(p)}
+
+{E7_s: false 62000 times, true 3 times. So SHOULD do to_height}
+set one_param_test(Param p) = [Param]:
+    let start = elapsed_ms(), Q = monomials(finalize(p)), G = p.real_form
+    in if not all(for q in Q do @bool: FPP_def_test(q) od)
+       then one_false_counter.use();
+       	    one_param_time +:= elapsed_ms() - start;
+	    []
+       else let stati = for q in Q do status(q,-1) od
+       	    in if all( for N in stati do N =1 od)
+       	       then one_true_counter.use();
+       	       	    one_param_time +:= elapsed_ms() - start;
+	       	    [p]
+       	       elif any (for N in stati do N = -1 od)
+       	       then one_false_counter.use();
+       	    	    one_param_time +:= elapsed_ms() - start;
+       	    	    []
+	       elif wiggle_unitary_flag
+	       then let statdi = for q in Q do wiggle_is_unitary_int(q) od
+      	       	    in if all(for N in statdi do N=1 od)
+       		       then one_true_counter.use();
+       	    	       	    one_param_time +:= elapsed_ms() - start;
+	    	       	    [p]
+       		       elif any (for N in stati do N = -1 od)
+		       then one_false_counter.use();
+       	    	       	    one_param_time +:= elapsed_ms() - start;
+       	    	    	    []
+		       else one_param_test_dumb(p,Q,start)
+		       fi
+	       else one_param_test_dumb(p,Q,start)
+	       fi
+	 fi
 
 {each vec of size 6 will record initial vertex/edge sizes; sizes after min_bottom;
 and sizes after more_bottom}
@@ -3080,7 +3088,7 @@ set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, {VertexData vd,} Loca
 		then () = for  p1 in monomials(finalize(p))
                       	  do Uhash.match(p1);
                              if deform_flag
-			     then for q in facet_deformed_new(p1)
+			     then for q in face_deformed_new(p1)
                              	  do Uhash.match(q)
 				  od
 			      fi
@@ -3249,7 +3257,7 @@ set local_test_GEO_hash_else_dumb(KGBElt x, ratvec lambda, {VertexData vd,} Loca
 		then () = for  p1 in monomials(finalize(p))
                       	  do Uhash.match(p1);
                              if deform_flag
-			     then for q in facet_deformed_new(p1)
+			     then for q in face_deformed_new(p1)
                              	  do Uhash.match(q)
 				  od
 			      fi
@@ -3379,7 +3387,7 @@ set local_test_GEO_hash_real_dumb_end(KGBElt x, ratvec lambda, LocalVertexData L
 	       then () = for  p1 in monomials(finalize(p))
                       	       do Uhash.match(p1);
                              	  if deform_flag
-			     	  then for q in facet_deformed_new(p1)
+			     	  then for q in face_deformed_new(p1)
                              	       do Uhash.match(q)
 				       od
 			     	  fi
@@ -3520,7 +3528,7 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, LocalVertexData Lvd, [
 					   	      for j:#verts
 						      do wiggle(CF, face_bary(Lvd, verts[:j]##verts[j+1:]))
 						      od))))
-							  {proper_facet_deformed(pC)}
+							  {proper_face_deformed(pC)}
 				      	        in if any(for q in pCdef
 						      	  do @bool: ( is_finished(q.x,q.lambda) and
 							    (Uhash.lookup(q) = -1))
@@ -3562,7 +3570,7 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, LocalVertexData Lvd, [
 		then () = for  p1 in monomials(finalize(p))
                       	  do Uhash.match(p1);
                              if deform_flag
-			     then for q in facet_deformed_new(p1)
+			     then for q in face_deformed_new(p1)
                              	  do Uhash.match(q)
 				  od
 			      fi
@@ -4497,7 +4505,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, {VertexData vd,}
 		     then () = for  p1 in monomials(finalize(p))
                       	       do Uhash.match({herm_center(}p1{)});
                              	  if deform_flag
-			     	  then for q in facet_deformed_new(p1)
+			     	  then for q in face_deformed_new(p1)
                              	       do Uhash.match({herm_center(}q{)})
 				       od
 			     	  fi
@@ -4715,7 +4723,7 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
 		     then () = for  p1 in monomials(finalize(p))
                       	       do Uhash.match(p1);
                              	  if deform_flag
-			     	  then for q in facet_deformed_new(p1)
+			     	  then for q in face_deformed_new(p1)
                              	       do Uhash.match(q)
 				       od
 			     	  fi

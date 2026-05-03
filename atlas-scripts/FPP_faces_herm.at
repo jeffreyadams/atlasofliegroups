@@ -1998,10 +1998,123 @@ set report_fair() = void:
 set clear_fair() = void:
     fair_counter:=0; fair_pos_counter:=0; fair_neg_counter:=0; fair_time:=0; iwu_count:=0; iwu_time:=0
 
+{test codim 1 boundary faces only}
+{+1 if p known unitary to HT, -1 if known nonunitary, 0 else}
+set wiggle_status(Param p, KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT) = int:
+    {if (stat_holder:=status(p,-1))!= 0 then return stat_holder > 0 fi; {none Spin(4,4)} {#14}}
+    p:= herm_center(p);
+    let theta = p.x.involution, G = p.real_form
+    then delta = G.distinguished_involution, gamma = p.infinitesimal_character
+    then lamthlam = ratvec_as_vec((1+theta)*lambda)
+    then Aff_theta(ratvec v) =  -theta*v + lamthlam
+    then FV = for v in face_verts(G,gamma) do (v+delta*v)/2 od
+    then local_vert_nums = [int]:
+    	 for v in FV
+    	 do Lvd.lookup((v+Aff_theta(v))/2)
+	 od.sort_u
+    then d = #local_vert_nums - 1
+    then () = assert(@:gamma = face_bary(Lvd,local_vert_nums),
+	       	    		 "bad Lvd or local_vert_nums")
+    then vert_subs = power_set(local_vert_nums)[1:2^(d+1)] {omit empty, include full set}
+    then deform_cands = [ratvec]:
+	 for sub in vert_subs
+	 do face_bary(Lvd,sub)
+	 od
+    then CF = character_formula_to_ht(p,HT)
+    then defs = [[Param]]:
+	 for gammabd in deform_cands
+	 do  monomials(composition_series(wiggle(CF, gammabd)))
+	 od
+    then helpers = [Param]:
+	 for list in defs
+	 do if #list = 1
+	    do list[0]
+	    fi
+	 od.##
+	     {these are Params whose unitarity is equivalent to that of p}
+    then allDefs = defs.##
+    then () = assert(@:#helpers > 0,"missing p from helpers?")
+    then result = 0
+    then () = if any(for q in helpers do big_unitary_hash.uhash(G).lookup(q).>= od)
+	      then result := 1
+	      elif any(for list in defs
+		       do any(for q in list do @bool: big_unitary_hash.nuhash(G).lookup(q).>= od)
+		       od)
+	      then result := -1
+	      {else result := mult_is_unitary(helpers)}
+	      fi
+     in if result > 0
+	then for q in allDefs
+	     do big_unitary_hash.uhash(G).match(q)
+	     od
+	 elif result < 0
+	 then big_unitary_hash.numatch(p)
+	 fi;
+	 result
+
+set stat_holder = int:0
+
+set wiggle_status(Param p, int HT) = int:
+    let x = p.x, lambda = p.lambda
+    then Lvd = Lvd(x,lambda)
+    in wiggle_status(p,x,lambda,Lvd,HT)
+
+{test all boundary faces}
+{return 1 if guaranteed unitary, -1 if guaranteed not unitary, 0 else}
+set wiggle_status_int(Param p, KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT) = int:
+    p:= herm_center(p);
+    {if (stat_holder:=status(p,-1))!= 0 then return stat_holder fi;}
+    let theta = p.x.involution, G = p.real_form
+    then delta = G.distinguished_involution, gamma = p.infinitesimal_character
+    then lamthlam = ratvec_as_vec((1+theta)*lambda)
+    then Aff_theta(ratvec v) =  -theta*v + lamthlam
+    then FV = for v in face_verts(G,gamma) do (v+delta*v)/2 od
+    then local_vert_nums = [int]:
+    	 for v in FV
+    	 do Lvd.lookup((v+Aff_theta(v))/2)
+	 od.sort_u
+    then d = #local_vert_nums - 1
+    then () = assert(@:gamma = face_bary(Lvd,local_vert_nums),
+	       	    		 "bad Lvd or local_vert_nums")
+    then vert_subs = power_set(local_vert_nums)[1:2^(d+1)] {omit empty, include full set}
+    then deform_cands = [ratvec]:
+	 for sub in vert_subs
+	 do face_bary(Lvd,sub)
+	 od##
+	 if d = 0
+	 then def_incident_edges(p)
+	 else []
+	 fi
+    then CF = character_formula_to_ht(p,HT)
+    then defs = [[Param]]:
+	 for gammabd in deform_cands
+	 do  monomials(composition_series_to_ht(wiggle(CF, gammabd),HT))
+	 od
+    then helpers = [Param]:
+	 for list in defs
+	 do if #list = 1
+	    do list[0]
+	    fi
+	 od.##
+	     {these are Params whose unitarity to HT is equivalent to that of p}
+    in assert(@:#helpers > 0,"missing p from helpers?");
+       if any(for q in helpers do big_unitary_hash.uhash(G).lookup(q).>= od)
+       then big_unitary_hash.umatch(p); 1
+       elif any(for list in defs
+		do any(for q in list do @bool: big_unitary_hash.nuhash(G).lookup(q).>= od)
+		       od)
+       then big_unitary_hash.numatch(p); -1
+       else 0
+       fi
+
+set wiggle_status_int(Param p, int HT) = int:
+    let x = p.x, lambda = p.lambda
+    then Lvd = Lvd(x,lambda)
+    in wiggle_status_int(p,x,lambda,Lvd, HT)
+
 {return 1 if is_unitary_to_ht(p,HT) known true, -1 if known false, 0 else}
 set status(Param p, int HT) = int:
     if not is_hermitian(p) then return -1 fi;
-    {if HT < 0 and not FPP_def_test(p) then return -1 fi;}
     let start_st = elapsed_ms(), ans = int:0
     then GAM = (p.infinitesimal_character* p.inner_class.two_rho_check)\1
     in
@@ -2021,8 +2134,6 @@ set status(Param p, int HT) = int:
     status_time +:= elapsed_ms() - start_st;
     status_count +:= 1;
     ans
-
-set stat_holder = int:0
 
 {assume p is hermitian, FPP}
 set hermitian_form_irreducible_big_SIMPLE(Param p) = KTypePol:
@@ -3498,8 +3609,7 @@ set mult_is_unitary([Param] list) = bool:
 		 if next_time > 100000
 		 then return any (for p in list
 		      	     	  do @bool: is_unitary_test_big_SIMPLE_interrupt(p)
-				  od)
-		 fi
+				  od)		 fi
 	      od
     in answer.>
 
@@ -3560,6 +3670,57 @@ set wiggle_is_unitary(Param p) = bool:
     then Lvd = Lvd(x,lambda)
     in wiggle_is_unitary(p,x,lambda,Lvd)
 
+{return 1 if guaranteed unitary, -1 if guaranteed not unitary, 0 else}
+set wiggle_is_unitary_int(Param p, KGBElt x, ratvec lambda, LocalVertexData Lvd) = int:
+    p:= herm_center(p);
+    if (stat_holder:=status(p,-1))!= 0 then return stat_holder fi;
+    let theta = p.x.involution, G = p.real_form
+    then delta = G.distinguished_involution, gamma = p.infinitesimal_character
+    then lamthlam = ratvec_as_vec((1+theta)*lambda)
+    then Aff_theta(ratvec v) =  -theta*v + lamthlam
+    then FV = for v in face_verts(G,gamma) do (v+delta*v)/2 od
+    then local_vert_nums = [int]:
+    	 for v in FV
+    	 do Lvd.lookup((v+Aff_theta(v))/2)
+	 od.sort_u
+    then d = #local_vert_nums - 1
+    then () = assert(@:gamma = face_bary(Lvd,local_vert_nums),
+	       	    		 "bad Lvd or local_vert_nums")
+    then vert_subs = power_set(local_vert_nums)[1:2^(d+1)] {omit empty, include full set}
+    then deform_cands = [ratvec]:
+	 for sub in vert_subs
+	 do face_bary(Lvd,sub)
+	 od##
+	 if d = 0
+	 then def_incident_edges(p)
+	 else []
+	 fi
+    then CF = character_formula(p)
+    then defs = [[Param]]:
+	 for gammabd in deform_cands
+	 do  monomials(composition_series(wiggle(CF, gammabd)))
+	 od
+    then helpers = [Param]:
+	 for list in defs
+	 do if #list = 1
+	    do list[0]
+	    fi
+	 od.##
+	     {these are Params whose unitarity is equivalent to that of p}
+    in assert(@:#helpers > 0,"missing p from helpers?");
+       if any(for q in helpers do big_unitary_hash.uhash(G).lookup(q).>= od)
+       then big_unitary_hash.umatch(p); 1
+       elif any(for list in defs
+		do any(for q in list do @bool: big_unitary_hash.nuhash(G).lookup(q).>= od)
+		       od)
+       then big_unitary_hash.numatch(p); -1
+       else 0
+       fi
+
+set wiggle_is_unitary_int(Param p) = int:
+    let x = p.x, lambda = p.lambda
+    then Lvd = Lvd(x,lambda)
+    in wiggle_is_unitary_int(p,x,lambda,Lvd)
 
 {ONLY for G simple}
 { compute Hermitian form to height N; if it's positive, then compute full form }
@@ -4610,12 +4771,522 @@ vertex "belongs" (either "is" or "is vertex of the edge")}
    two flipped by involution, OR
 3) tetrahedron in FPP, two pairs of verts exchanged by involution}
 
+set FD_wiggle_HT_flag =false {whether to use def_incident_edges to ht}
+set FDWHcount = vec:[0,0]
+set caughtHCount = int: 0
+
+{use def_incident_edges to eliminate some}
+set localFD_1Dirac2_by_zero_wiggleHT\
+  ( KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, PermOrderTwo Perm2) =
+    [[FaceVertsIndex]]:
+(   if fund_face_verbose
+    then prints(new_line,"start localFD_1Dirac2_by_zero_wiggleHT")
+    fi;
+    let G = x.real_form, start = elapsed_ms(), trans_hash = make_vec_hash()
+    then () = for (m,n) in Perm2.trans do trans_hash.match([m,n]) od
+    then Q = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
+    then DiracBD = 0/1, start = elapsed_ms()
+    then () = if Dirac_local_flag
+	      then let bd = DiracBD(x,lambda)
+		   then QG = {Dirac_easy_hash.invt_form(G)} invariant_form(G)
+		   then index = first(for v in Lvd.list
+				      do @bool: QG(v,v) > bd
+				      od)
+		   in if index.>=
+		      then Q:=QG; DiracBD:=bd
+		      fi
+	      fi
+    then length = #(Lvd.list)
+    then freq = max(length\10,1)
+    then LF0 = [FaceVertsIndex]:
+    	 for v@j in Lvd.list
+	 do if fund_face_verbose and red_count_flag and (j%freq).=
+	    then prints("at vertex ",j," of ",length,
+	    	       " at time ", print_time_string(elapsed_ms() - start))
+	    fi;
+	    let p = parameter(x,lambda,v)
+	    in if Q(v,v) > DiracBD
+	       then DTcount +:=1; []
+	       elif not (fewer_reducible_unitary_flag or all(for q in monomials(finalize(p))
+			    do @bool: is_pos_on_LKTs(q)
+			    od))
+	       then []
+	       elif FPP_def_flag and not FPP_def_test_wk_final(p)
+	       then []
+	       elif red_count_flag
+	       then [[j, red_count(p,HT)]]
+	       else [[j]]
+	       fi
+	 od.## {list of j for which vertex j is a candidate}
+    {then () = if time_verbose
+	      then prints("for LF0, time is ",print_time_string(elapsed_ms() - start))
+	      fi}
+    {then () = if #LF0 = 0
+	      then return [[],[]]
+	      fi}
+    then () = if #LF0 <= 1
+    	      then FD12bzTime +:= elapsed_ms() - start;
+	      	   return [LF0,[]]
+	      fi
+    then FixedList = [int]: for v in LF0 {these are indices in Lvd.list of fixed vertices in LF0}
+			    do let j = v[0]
+			       in if j < #Perm2.fixed
+				  then [j]
+				  else break
+				  fi
+			    od.##
+    then f = #FixedList, f0 = #Perm2.fixed
+    then TranList = [int]: for v in LF0[f:] do v[0] od {indices in Lvd.list of unfixed verts in LF0}
+    then Llookup = is_member_sorted(FixedList##TranList)
+    then Glookup = to_bitset(for j in FixedList do Perm2.fixed[j] od) {corr global verts for FixedList}
+    then Fverts = FPP_vertices(G)
+    then F = #Fverts
+    then Edges = [vec]:
+	 let startFF = elapsed_ms()
+	 then def_cands = [Param]:[], qs = [Param]:[], iQuest = int:0 {local vertex index to be questioned}
+	 then gammaQuest = ratvec:[], jQuest = int:0 {infl char at questioned vertex}
+	 then EdgesFixFix = [vec]: [], goneEdges = [int]:[], caught_one = false
+	 then () =  if f >= 2
+	       	    then if f < BoundB  {TEST B}
+			{(E*set_bit_positions(E)~[0]*set_bit_positions(f)~[0])\F}
+			 then let lookups = FPP_edges_by_zero_indices(G)
+			 {lookup functions for global edges, indexed by first endpoint}
+	       	    	 then i0 = 0, j0 = 1
+		    	 in while i0 < f-1 {for j@i0 in FixedList[:f-1]} {f * (E/F)/2 tests}
+		       	    do j0:= 1;
+		       	       while j0+i0 < f {for k@j0 in FixedList[i0+1:f]}
+		       	       do let j = FixedList[i0]
+			       	  then k = FixedList[i0+j0]
+			     	  in if lookups[Perm2.fixed[j]]([Perm2.fixed[j],Perm2.fixed[k]]).>=
+			     	     then let gammamid = face_bary(Lvd,[j,k])
+			     	  	  then mid = red_count(x,lambda,gammamid,HT),
+			     	      	       left = red_count(x,lambda,Lvd.list[j],HT),
+				      	       right = red_count(x,lambda,Lvd.list[k],HT)
+				  	  in if left = mid and right>mid {avoid case all same}
+				     	     then gammaQuest := Lvd.list[k]; iQuest :=i0;
+					     	  jQuest:=FixedList[iQuest];
+					     	  qs := monomials(finalize(parameter(x,lambda,gammamid)))
+				     	     elif right = mid and left>mid
+				     	     then gammaQuest := Lvd.list[j]; iQuest :=i0+j0;
+					     	  jQuest:=FixedList[iQuest];
+					  	  qs := monomials(finalize(parameter(x,lambda,gammamid)))
+				     	     else qs:=[]
+				     	     fi; {left = mid}
+					     caught_one:=false;
+					     for q in qs
+					     do def_cands := monomials(composition_series_to_ht(wiggle(
+					     		  q,gammaQuest,HT),HT)); {omit comp factors LQ?}
+				     	     if any(for qd in def_cands
+				     	     	    do @bool: status(qd,HT)<0
+					    	    od)
+				     	     then caughtHCount +:=1;
+					     	  caught_one:=true;
+					  	  if iQuest=i0
+						  then j0:=1 {need also to delete edges [m,j]}
+						  fi;
+						  big_unitary_hash.numatch_height(q,HT);
+						  for v@m in EdgesFixFix
+						  do if v[1] = jQuest then goneEdges#:=m fi
+						  od;
+						  jQuest:=FixedList[iQuest];
+					     	  {if i0 is disqualified, leave inner j0 loop;
+					     	  then i0 now refers to old i0+1}
+				     	  	  FixedList:= delete(FixedList,iQuest);
+				     	  	  LF0:=delete(LF0,iQuest);
+    				     	  	  f := #FixedList;
+					  	  {i0+j0 now refers to old i0+j0+1 location}
+    				     		  {TranList := [int]: for v in LF0[f:] do v[0] od}
+    				     	  	  Llookup := is_member_sorted(FixedList##TranList);
+    				     	  	  Glookup := to_bitset(for j in FixedList do Perm2.fixed[j] od);
+						  break
+					      fi {any}
+					      od; {q in qs}
+				     	      if not caught_one
+					      then EdgesFixFix := #@([vec],vec)(EdgesFixFix,[j, k]);
+					     	   j0+:=1
+					      fi
+			           else j0+:=1
+			     	   fi {lookups}
+			  od next i0+:=1; j0:=1 {list of edges starting with j}
+		       od.##
+	           else let FPPEBZ = FPP_edges_by_zero_unsorted(G)
+		    	in for j in FixedList[:f-1] {TEST C} 
+		       	   do for w@m in FPPEBZ[Perm2.fixed[j]]
+			      do if is_member_bitset(w[1],Glookup) {Glookup(w[0]) and Glookup(w[1])}
+			      	 then EdgesFixFix := #@([vec],vec)(EdgesFixFix,[j, Lvd.lookup(Fverts[w[1]])]) {SEEMS FASTER THAN A1}
+			     	 fi
+			      od
+		           od.##
+		    fi{ f<boundB}
+	           fi {f >= 2}
+           then () = goneEdges:=goneEdges.sort_u
+	   then () = for m in goneEdges ~do EdgesFixFix:=delete(EdgesFixFix,m) od
+	   then () = FD12bzFFTime +:=elapsed_ms() - startFF
+	   {then () = if time_verbose
+		     then prints("for FixFix, time is ",print_time_string(elapsed_ms() - startFF))
+		     fi}
+	   then startFT = elapsed_ms()
+	   then EdgesFixTrans = [vec]:
+		if #FixedList > 0 and #TranList > 0
+		then for j in FixedList
+		     do let cands = FPP_flippable_triangles_by_zero_unsorted(G)[Perm2.fixed[j]]
+			in if #cands > 0
+			   then for v in cands
+				do let k = f0 + trans_hash.lookup(v[1:])
+				   in if k >= f0 and Llookup(k) {and Llookup(j)}
+				      then [[j,k]]
+				      else []
+				      fi
+				od.## {[vec], all starting with j}
+			    else []
+			    fi {#cands > 0}
+		      od.## {[vec], all j}
+		  else []
+		  fi
+	   then () = FD12bzFTTime +:= elapsed_ms() - startFT
+	   {then () = if time_verbose
+		     then prints("for FixTranspose, time is ",print_time_string(elapsed_ms() - startFT))
+		     fi}
+	   then startTT = elapsed_ms()
+	   then EdgesTransTrans = [vec]: {this is the longest}
+	      if #TranList > 1
+	      then let FEL = FPP_flippable_edge_lookup(G)
+		   in for k@m in TranList[:#TranList - 1] {k is the number of a midpoint local vertex}
+			  {(i,j)@m in Perm2.trans}
+		      do let (i,j) = Perm2.trans[k-f0]
+			 then a = FEL([i,j]) {this is m + f0?}
+			 then cands = FPP_flippable_tetrahedra_by_zero_unsorted(G)[a]
+			 in if {#Perm2.trans > m+1 and} #cands > 0
+			    then for v in cands
+				 do let n = f0 + trans_hash.lookup(v[2:])
+				    in if n >= f0
+					  and Llookup(n) {and Llookup(m+f)}
+				       then {prints("used TT!");} [[k,n].sort]
+				       else []
+				       fi
+				 od.## {[vec], all starting with mloc}
+			     else []
+			     fi {#Perm2.trans > m+1}
+		       od.## {[vec], all mloc}
+		 else []
+		 fi
+	   then () = FD12bzTTTime +:= elapsed_ms() - startTT
+	   {then () = if time_verbose
+		     then prints("for TransposeTranspose, time is ",print_time_string(elapsed_ms() - startTT))
+		     fi}
+	    {then () = prints("EFF = ", EdgesFixFix, ", EFT = ",EdgesFixTrans,", ETT = ",EdgesTransTrans)}
+	   in EdgesFixFix ## EdgesFixTrans ## EdgesTransTrans
+     {then () = if time_verbose
+	       then prints("after Edges, time is ",print_time_string(elapsed_ms() - start))
+	       fi}
+     then length = #Edges
+     then freq = max(length\10,1)
+     then LF1 = [FaceVertsIndex]:
+    	 for v@j in Edges
+	 do if fund_face_verbose and red_count_flag and (j%freq).=
+	    then prints("at edge ",j," of ",length,
+	    	       " at time ", print_time_string(elapsed_ms() - start))
+	    fi;
+	    let nu = face_bary(Lvd,v)
+	    then p = parameter(x,lambda,nu)
+	    in {if Q(nu,nu) > DiracBD
+	       then DTcount +:=1; []} {can't happen}
+	       if not (fewer_reducible_unitary_flag or all(for q in monomials(p)
+			    do @bool: is_pos_on_LKTs(q)
+			    od))
+	       then []
+	       elif FPP_def_edge_flag and not FPP_def_test_wk_final(p)
+	       then []
+	       elif red_count_flag
+	       then [v#red_count(p,HT)]
+	       else [v]
+	       fi
+	 od.##
+    {then () = if time_verbose
+	      then prints("after LF1, time is ",print_time_string(elapsed_ms() - start))
+	      fi}
+    then answer = [LF0]##[LF1]
+    then () = FD12bzTime +:= elapsed_ms() - start
+    in if(face_verbose) then prints("After localFD_1Dirac2_by_zero, face counts are [",#LF0,
+				  ",",#LF1,"]") fi;
+       FDWHcount+:= [#LF0,#LF1];
+       if sort_LFD_flag
+       then sort(G, Lvd, answer)
+       else answer
+       fi
+)
+
+set FD_wiggle_flag = false {whether to use def_incident_edges}
+
+set FDcount = vec:[0,0]
+set FDWcount = vec:[0,0]
+set caughtCount = int: 0
+
+{use def_incident_edges to eliminate some}
+set localFD_1Dirac2_by_zero_wiggle\
+  ( KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, PermOrderTwo Perm2) =
+    [[FaceVertsIndex]]:
+(   if fund_face_verbose
+    then prints(new_line,"start localFD_1Dirac2_by_zero_wiggle")
+    fi;
+    let G = x.real_form, start = elapsed_ms(), trans_hash = make_vec_hash()
+    then () = for (m,n) in Perm2.trans do trans_hash.match([m,n]) od
+    then Q = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
+    then DiracBD = 0/1, start = elapsed_ms()
+    then () = if Dirac_local_flag
+	      then let bd = DiracBD(x,lambda)
+		   then QG = {Dirac_easy_hash.invt_form(G)} invariant_form(G)
+		   then index = first(for v in Lvd.list
+				      do @bool: QG(v,v) > bd
+				      od)
+		   in if index.>=
+		      then Q:=QG; DiracBD:=bd
+		      fi
+	      fi
+    then length = #(Lvd.list)
+    then freq = max(length\10,1)
+    then LF0 = [FaceVertsIndex]:
+    	 for v@j in Lvd.list
+	 do if fund_face_verbose and red_count_flag and (j%freq).=
+	    then prints("at vertex ",j," of ",length,
+	    	       " at time ", print_time_string(elapsed_ms() - start))
+	    fi;
+	    let p = parameter(x,lambda,v)
+	    in if Q(v,v) > DiracBD
+	       then DTcount +:=1; []
+	       elif not (fewer_reducible_unitary_flag or all(for q in monomials(finalize(p))
+			    do @bool: is_pos_on_LKTs(q)
+			    od))
+	       then []
+	       elif FPP_def_flag and not FPP_def_test_wk_final(p)
+	       then []
+	       elif red_count_flag
+	       then [[j, red_count(p,HT)]]
+	       else [[j]]
+	       fi
+	 od.## {list of j for which vertex j is a candidate}
+    {then () = if time_verbose
+	      then prints("for LF0, time is ",print_time_string(elapsed_ms() - start))
+	      fi}
+    {then () = if #LF0 = 0
+	      then return [[],[]]
+	      fi}
+    then () = if #LF0 <= 1
+    	      then FD12bzTime +:= elapsed_ms() - start;
+	      	   return [LF0,[]]
+	      fi
+    then FixedList = [int]: for v in LF0 {these are indices in Lvd.list of fixed vertices in LF0}
+			    do let j = v[0]
+			       in if j < #Perm2.fixed
+				  then [j]
+				  else break
+				  fi
+			    od.##
+    then f = #FixedList, f0 = #Perm2.fixed
+    then TranList = [int]: for v in LF0[f:] do v[0] od {indices in Lvd.list of unfixed verts in LF0}
+    then Llookup = is_member_sorted(FixedList##TranList)
+    then Glookup = to_bitset(for j in FixedList do Perm2.fixed[j] od) {corr global verts for FixedList}
+    then Fverts = FPP_vertices(G)
+    then F = #Fverts
+    then Edges = [vec]:
+	 let startFF = elapsed_ms()
+	 then def_cands = [Param]:[], qs = [Param]:[], iQuest = int:0 {local vertex index to be questioned}
+	 then gammaQuest = ratvec:[], jQuest = int:0 {infl char at questioned vertex}
+	 then EdgesFixFix = [vec]: [], goneEdges = [int]:[], caughtThis=false
+	 then () =  if f >= 2
+	       	    then if f < BoundB  {TEST B}
+			{(E*set_bit_positions(E)~[0]*set_bit_positions(f)~[0])\F}
+			 then let lookups = FPP_edges_by_zero_indices(G)
+			 {lookup functions for global edges, indexed by first endpoint}
+	       	    	 then i0 = 0, j0 = 1
+		    	 in while i0 < f-1 {for j@i0 in FixedList[:f-1]} {f * (E/F)/2 tests}
+		       	    do j0:= 1;
+		       	       while j0+i0 < f {for k@j0 in FixedList[i0+1:f]}
+		       	       do let j = FixedList[i0]
+			       	  then k = FixedList[i0+j0]
+			     	  in if lookups[Perm2.fixed[j]]([Perm2.fixed[j],Perm2.fixed[k]]).>=
+			     	     then let gammamid = face_bary(Lvd,[j,k])
+			     	  	  then mid = red_count(x,lambda,gammamid),
+			     	      	       left = red_count(x,lambda,Lvd.list[j]),
+				      	       right = red_count(x,lambda,Lvd.list[k])
+				  	  in if left = mid and right>mid {avoid case all same}
+				     	     then gammaQuest := Lvd.list[k]; iQuest :=i0;
+					     	  jQuest:=FixedList[iQuest];
+					     	  qs := monomials(finalize(parameter(x,lambda,gammamid)))
+				     	     elif right = mid and left>mid
+				     	     then gammaQuest := Lvd.list[j]; iQuest :=i0+j0;
+					     	  jQuest:=FixedList[iQuest];
+					  	  qs := monomials(finalize(parameter(x,lambda,gammamid)))
+				     	     else qs:=[]
+				     	     fi; {left = mid}
+					     caughtThis:=false;
+					     for q in qs
+					     do def_cands := monomials(composition_series(wiggle(q,gammaQuest)));
+				     	     	if any(for qd in def_cands
+				     	     	       do @bool: status(qd,-1)<0
+					    	       od)
+				     	     	then caughtCount +:=1;
+						     caughtThis:=true;
+						     big_unitary_hash.numatch(q);
+					  	     if iQuest=i0
+						     then j0:=1 {need also to delete edges [m,j]; done later}
+						     fi;  	     {should report q to nuhash}
+						     for v@m in EdgesFixFix
+						     do if v[1] = jQuest then goneEdges#:=m fi
+						     od;
+						     jQuest:=FixedList[iQuest];
+					     	     {if i0 is disqualified, leave inner j0 loop;
+					     	     then i0 now refers to old i0+1}
+				     	  	     FixedList:= delete(FixedList,iQuest);
+				     	  	     LF0:=delete(LF0,iQuest);
+    				     	  	     f := #FixedList;
+					  	     {i0+j0 now refers to old i0+j0+1 location}
+    				     		     {TranList := [int]: for v in LF0[f:] do v[0] od}
+    				     	  	     Llookup := is_member_sorted(FixedList##TranList);
+    				     	  	     Glookup := to_bitset(for j in FixedList do Perm2.fixed[j] od);
+						     break
+						 fi {any qd}
+					      od; {q in qs}
+					      if not caughtThis
+					      then EdgesFixFix := #@([vec],vec)(EdgesFixFix,[j, k]);
+					     	   j0+:=1
+				     	      fi {not caught}
+			           else j0+:=1
+			     	   fi {lookups}
+			  od next i0+:=1; j0:=1 {list of edges starting with j}
+		       od.##
+	           else let FPPEBZ = FPP_edges_by_zero_unsorted(G)
+		    	in for j in FixedList[:f-1] {TEST C} 
+		       	   do for w@m in FPPEBZ[Perm2.fixed[j]]
+			      do if is_member_bitset(w[1],Glookup) {Glookup(w[0]) and Glookup(w[1])}
+			      	 then EdgesFixFix := #@([vec],vec)(EdgesFixFix,[j, Lvd.lookup(Fverts[w[1]])]) {SEEMS FASTER THAN A1}
+			     	 fi
+			      od
+		           od.##
+		    fi{ f<boundB}
+	           fi {f >= 2}
+           then () = goneEdges:=goneEdges.sort_u
+	   then () = for m in goneEdges ~do EdgesFixFix:=delete(EdgesFixFix,m) od
+	   then () = FD12bzFFTime +:=elapsed_ms() - startFF
+	   {then () = if time_verbose
+		     then prints("for FixFix, time is ",print_time_string(elapsed_ms() - startFF))
+		     fi}
+	   then startFT = elapsed_ms()
+	   then EdgesFixTrans = [vec]:
+		if #FixedList > 0 and #TranList > 0
+		then for j in FixedList
+		     do let cands = FPP_flippable_triangles_by_zero_unsorted(G)[Perm2.fixed[j]]
+			in if #cands > 0
+			   then for v in cands
+				do let k = f0 + trans_hash.lookup(v[1:])
+				   in if k >= f0 and Llookup(k) {and Llookup(j)}
+				      then [[j,k]]
+				      else []
+				      fi
+				od.## {[vec], all starting with j}
+			    else []
+			    fi {#cands > 0}
+		      od.## {[vec], all j}
+		  else []
+		  fi
+	   then () = FD12bzFTTime +:= elapsed_ms() - startFT
+	   {then () = if time_verbose
+		     then prints("for FixTranspose, time is ",print_time_string(elapsed_ms() - startFT))
+		     fi}
+	   then startTT = elapsed_ms()
+	   then EdgesTransTrans = [vec]: {this is the longest}
+	      if #TranList > 1
+	      then let FEL = FPP_flippable_edge_lookup(G)
+		   in for k@m in TranList[:#TranList - 1] {k is the number of a midpoint local vertex}
+			  {(i,j)@m in Perm2.trans}
+		      do let (i,j) = Perm2.trans[k-f0]
+			 then a = FEL([i,j]) {this is m + f0?}
+			 then cands = FPP_flippable_tetrahedra_by_zero_unsorted(G)[a]
+			 in if {#Perm2.trans > m+1 and} #cands > 0
+			    then for v in cands
+				 do let n = f0 + trans_hash.lookup(v[2:])
+				    in if n >= f0
+					  and Llookup(n) {and Llookup(m+f)}
+				       then {prints("used TT!");} [[k,n].sort]
+				       else []
+				       fi
+				 od.## {[vec], all starting with mloc}
+			     else []
+			     fi {#Perm2.trans > m+1}
+		       od.## {[vec], all mloc}
+		 else []
+		 fi
+	   then () = FD12bzTTTime +:= elapsed_ms() - startTT
+	   {then () = if time_verbose
+		     then prints("for TransposeTranspose, time is ",print_time_string(elapsed_ms() - startTT))
+		     fi}
+	    {then () = prints("EFF = ", EdgesFixFix, ", EFT = ",EdgesFixTrans,", ETT = ",EdgesTransTrans)}
+	   in EdgesFixFix ## EdgesFixTrans ## EdgesTransTrans
+     {then () = if time_verbose
+	       then prints("after Edges, time is ",print_time_string(elapsed_ms() - start))
+	       fi}
+     then length = #Edges
+     then freq = max(length\10,1)
+     then LF1 = [FaceVertsIndex]:
+    	 for v@j in Edges
+	 do if fund_face_verbose and red_count_flag and (j%freq).=
+	    then prints("at edge ",j," of ",length,
+	    	       " at time ", print_time_string(elapsed_ms() - start))
+	    fi;
+	    let nu = face_bary(Lvd,v)
+	    then p = parameter(x,lambda,nu)
+	    in {if Q(nu,nu) > DiracBD
+	       then DTcount +:=1; []} {can't happen}
+	       if not (fewer_reducible_unitary_flag or all(for q in monomials(p)
+			    do @bool: is_pos_on_LKTs(q)
+			    od))
+	       then []
+	       elif FPP_def_edge_flag and not FPP_def_test_wk_final(p)
+	       then []
+	       elif red_count_flag
+	       then [v#red_count(p,HT)]
+	       else [v]
+	       fi
+	 od.##
+    {then () = if time_verbose
+	      then prints("after LF1, time is ",print_time_string(elapsed_ms() - start))
+	      fi}
+    then answer = [LF0]##[LF1]
+    then () = FD12bzTime +:= elapsed_ms() - start
+    in if(face_verbose) then prints("After localFD_1Dirac2_by_zero, face counts are [",#LF0,
+				  ",",#LF1,"]") fi;
+       FDWcount+:= [#LF0,#LF1];
+       if sort_LFD_flag
+       then sort(G, Lvd, answer)
+       else answer
+       fi
+)
+
+set localFD_1Dirac2_by_zero_wiggle\
+  ( KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2) =
+    [[FaceVertsIndex]]:
+    localFD_1Dirac2_by_zero_wiggle(x,lambda, next_heights(parameter(x,lambda,0*lambda),edge_offset+1)~[0], Lvd, Perm2)
+
+set localFD_1Dirac2_by_zero_wiggle(KGBElt x, ratvec lambda, int HT) = [[FaceVertsIndex]]:
+    let theta = x.involution, ic = x.inner_class
+    then lamthlam = ((1+theta)*lambda).numer
+    then (Lvd,Perm2) = LPm_table.LPm_entry(ic,theta,lamthlam)
+    in localFD_1Dirac2_by_zero_wiggle(x,lambda,HT, Lvd,Perm2)
+
+set localFD_1Dirac2_by_zero_wiggle(KGBElt x, ratvec lambda) = [[FaceVertsIndex]]:
+    let theta = x.involution, ic = x.inner_class
+    then lamthlam = ((1+theta)*lambda).numer
+    then (Lvd,Perm2) = LPm_table.LPm_entry(ic,theta,lamthlam)
+    in localFD_1Dirac2_by_zero_wiggle(x,lambda,Lvd,Perm2)
+
 {If red_count_flag, add an extra coordinate recording red_count(p, next_heights[edge_offset])}
 {if FPP_def_flag, impose FPP_def_test}
 set localFD_1Dirac2_by_zero\
   ( KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, PermOrderTwo Perm2) =
     [[FaceVertsIndex]]:
-(   if fund_face_verbose
+(   if FD_wiggle_HT_flag then return localFD_1Dirac2_by_zero_wiggleHT(x,lambda,HT, Lvd,Perm2) fi;
+    if FD_wiggle_flag then return localFD_1Dirac2_by_zero_wiggle(x,lambda,Lvd,Perm2) fi;
+    if fund_face_verbose
     then prints(new_line,"start localFD_1Dirac2_by_zero")
     fi;
     let G = x.real_form, start = elapsed_ms(), trans_hash = make_vec_hash()
@@ -4694,23 +5365,8 @@ set localFD_1Dirac2_by_zero\
 			     fi
 			  od.## {list of edges starting with j}
 		       od.##
-	       {
-	       elif f < BoundA1 {TEST A1}
-		      {2*(E*set_bit_positions(E)~[0]*set_bit_positions(f)~[0])\F}
-	       then for j in FixedList
-		    do for w in FPP_edges_by_zero_unsorted(G)[Perm2.fixed[j]]
-		       do if is_member_bitset(w[1],Glookup)
-			  then [[j,locate_sorted(Perm2.fixed, w[1])]]
-			  else []
-			  fi
-		       od.## {list of edges starting with j}
-		    od.##
-
-	       }
 	       else let FPPEBZ = FPP_edges_by_zero_unsorted(G)
-		    in for j in FixedList[:f-1] {TEST C} {seems always a little faster than A1?}
-		    {in E7 spherical, C is seven times faster than B}
-		    {SO OMIT A1}
+		    in for j in FixedList[:f-1] {TEST C} 
 		       do for w@m in FPPEBZ[Perm2.fixed[j]]
 			  do if is_member_bitset(w[1],Glookup) {Glookup(w[0]) and Glookup(w[1])}
 			     then [[j, Lvd.lookup(Fverts[w[1]])]] {SEEMS FASTER THAN A1}
@@ -4807,6 +5463,7 @@ set localFD_1Dirac2_by_zero\
     then () = FD12bzTime +:= elapsed_ms() - start
     in if(face_verbose) then prints("After localFD_1Dirac2_by_zero, face counts are [",#LF0,
 				  ",",#LF1,"]") fi;
+       FDcount+:= [#LF0,#LF1];
        if sort_LFD_flag
        then sort(G, Lvd, answer)
        else answer
@@ -4829,6 +5486,7 @@ set localFD_1Dirac2_by_zero(KGBElt x, ratvec lambda) = [[FaceVertsIndex]]:
     then lamthlam = ((1+theta)*lambda).numer
     then (Lvd,Perm2) = LPm_table.LPm_entry(ic,theta,lamthlam)
     in localFD_1Dirac2_by_zero(x,lambda,Lvd,Perm2)
+
 
 {add red_count while checking pos on LKTs, Dirac}
 set localFD_1Dirac2_add_red(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [[FaceVertsIndex]] LF) =

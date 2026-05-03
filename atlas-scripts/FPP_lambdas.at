@@ -573,17 +573,34 @@ set incident_edges(Param p) = [ratvec]:
     let (x,lambda,nu) = (p.x,p.lambda,p.infinitesimal_character)
     then G = p.real_form, theta = x.involution
     then (Lvd,Perm2) = LPm_table.LPm_entry(G,theta,(lambda+theta*lambda).numer)
-    then m = Lvd.lookup(nu) {for now assume n fixed vertex}
-    then () = assert(@: m >=0 and m < Lvd.pair_start,
-    	    "sorry, nu is not a local vertex")
-    then mglob = Perm2.fixed[m]
-    then cands = FPP_edges_by_zero(G)[mglob]
-    {next is numbers of local edges starting at nu}
-    in for v in cands
-       if is_member_sorted(Perm2.fixed[m:])(v[1])
-       do Lvd.list[locate_sorted(Perm2.fixed,v[1])]
+    then m = Lvd.lookup(nu)
+    in assert(@: m >=0, "sorry, nu is not a local vertex");
+       if m <Lvd.pair_start
+       then let mglob = Perm2.fixed[m]
+       	    then cands = FPP_edges_by_zero(G)[mglob]
+    	    in for v in cands
+       	       do if is_member_sorted(Perm2.fixed[m:])(v[1])
+       	       	  then [Lvd.list[locate_sorted(Perm2.fixed,v[1])]]
+		  else let mends = for (n0,) in Perm2.trans do n0 od
+		       in if is_member_sorted(mends)(v[1])
+		       	  then let j = locate_sorted(mends,v[1])
+			       in [Lvd.list[Lvd.pair_start+j]]
+			  else []
+			  fi
+		  fi
+	        od.##
+       else {m >= pair_start}
+       	    let (mglob0,) = Perm2.trans[m-Lvd.pair_start]
+	    then cands = FPP_edges_by_zero(G)[mglob0]
+	    then mends = for (n0,) in Perm2.trans[m-Lvd.pair_start:] do n0 od
+	    in for v in cands
+       	       do if is_member_sorted(mends)(v[1])
+		  then let j = locate_sorted(mends,v[1])
+		       in [Lvd.list[m+j]]
+		  else []
+		  fi
+	       od.##
        fi
-       od
 
 {now just the ends of edges along which deformation is possible to HT}
 set def_incident_edges(Param p, int HT) = [ratvec]:
@@ -604,7 +621,8 @@ set edge_defs(Param p, int HT) = [Param]:
     assert(@:is_final(p),"sorry, this works only for p final");
     let defs = def_incident_edges(p, HT), G = p.real_form
     in monomials(sum(G, for w in defs
-       	      		do composition_series_to_ht(wiggle(p,w),HT)
+       	      		do let pmid = parameter(p.x,p.lambda,(p.nu+w)/2)
+			   in composition_series_to_ht(wiggle(pmid,w,HT),HT)
        	      		od))
 
 set edge_defs(Param p) = [Param]: edge_defs(p, -1)
