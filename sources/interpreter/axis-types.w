@@ -2287,16 +2287,15 @@ make entirely unaided type deduction type deduction impossible: it notably does
 not blend well with``ad hoc'' function overloading (where a same symbol or
 identifier can have multiple meanings to choose from) which was in use long
 before we had second order types. We also allow declaring recursive types, which
-Hindley-Milner typing does not allow. (It circumvents the obvious need for
+Hindley-Milner typing does not allow. (Haskell circumvents the obvious need for
 recursive data types by a special treatment of disjoint union types: unlike
-tuple types they are not considered to be composite types built up from
-component types, but instead as opaque types that are created by a user
-declaration and accompanied by named injection maps that enable recursive
-construction of values; their names (called data type constructors) have a
-special status in that that system, that is neither that of an identifier nor
-that of a type name. Using such ``data type definitions'', they can effectively
-handle those recursive types for which each recursive relation involves a
-disjoint union.)
+tuple types they are not considered as composite types built up from component
+types, but instead as opaque types that are created by a user declaration and
+accompanied by named injection maps that enable recursive construction of
+values; their names (called data type constructors) have a special status in
+that that system, that is neither that of an identifier nor that of a type name.
+Using such ``data type definitions'', they can effectively handle those
+recursive types for which each recursive relation involves a disjoint union.)
 
 We already introduced (numbered) type variables into the definition of
 |type_expr|. These can arise in types of expressions either through explicit
@@ -2399,7 +2398,8 @@ polymorphic type variables starts. When an assignment is recorded, the type
 expression substituted may contain other type variables, either below or above
 the |threshold|; in the latter case these type variables may be subject to
 further substitution. The absence of cycles that would prevent termination of
-the substitution process is a class invariant.
+the substitution process is a vital property, which will be maintained as a
+class invariant.
 
 Of the numerous methods provided, some serve to provide the essential
 characteristics of the data structure and the basic manipulations allowed,
@@ -2494,8 +2494,8 @@ unsigned int type_assignment::append(const type_assignment& other)
    return diff;
 }
 
-@ After having introduced abstract type variables, one can turn a set of the
-newest type such variables (typically all of them) into polymorphic type
+@ After having introduced abstract type variables, one can turn a number of the
+newest abstract type variables (typically all of them) into polymorphic type
 variables by lowering the |threshold| of a type assignment. Since |equiv| is
 indexed by the difference between a type variable number and the threshold,
 existing type variables will correspond to higher slots in |equiv| after this
@@ -2519,7 +2519,8 @@ void type_assignment::lower_floor(unsigned int n)
     equiv.insert(equiv.begin(),nullptr);
       // recompute |begin()| each time, it might relocate
 #else
-  equiv.resize(equiv.size()+n); // add |n| null pointers at the end
+  equiv.resize(equiv.size()+n);
+  // add |n| null pointers at the end, possibly relocating
   std::rotate(equiv.begin(),equiv.end()-n,equiv.end());
     // move the null pointers to the front
 #endif
@@ -2734,37 +2735,44 @@ In case of failure, the caller should ignore (or wipe out) any substitutions
 that might be recorded in |assign|.
 
 The treatment of type variables and tabled types is detailed in other sections.
-Both of these can lead to a recursive call of |unify| with modified arguments.
-The type variable case is mainly intended to deal with polymorphic type
-variables, and if it finds only fixed type variables, it could have decided to
-fall through, since these could be dealt with these below in a way similar to
-primitive types. However it turns out that while dealing with the polymorphic
-type variable case, it is easy to also handle fixed ones, \emph{provided that}
-any tabled types have been expanded at that point. Therefore, by ordering the
-handling of tabled types before that of type variables, we can avoid such
-falling through, and need not deal with type variables in the |switch|.
+Both of these can lead to a recursive call of |unify| with modified arguments;
+delicate arguments were used to decide their relative order of consideration,
+and this order has been switched more than once during code development. The
+type variable case is mainly intended to deal with polymorphic type variables,
+but fixed type variables also select this code. If the code in fact finds only
+fixed type variables, it decides to fall through, and leaving their treatment to
+be done below in a way similar to primitive types. It would be possible (and was
+done at some point) to handle fixed type variables without falling
+through, \emph{provided that} any tabled types have been expanded at that point.
+However, handling tabled types before type variables means that tabled types get
+expanded even in the fairly common case of unification against a not yet
+assigned polymorphic type variable, which can be |set_equivalent| to the
+unexpanded tabled type just fine, so we now prefer to handled type variables
+before tabled types, and fall through in the fixed-variable-only case.
 
 If neither of these two preliminary cases applies, we perform a recursive
 traversal of the types |P| and |Q|, failing as soon as different tags are found,
 and succeeding if the traversal completes without that happening.
 
-
 @< Function definitions @>=
 bool type_assignment::unify(const type_expr& P, const type_expr& Q)
 { auto P_kind = P.raw_kind(), Q_kind = Q.raw_kind();
   assert(P_kind!=undetermined_type and Q_kind!=undetermined_type);
+  if (P_kind==variable_type or Q_kind==variable_type)
+    @< Decide |unify| when at least one type is a polymorphic type variable,
+       otherwise fall through @>
   if (P_kind==tabled or Q_kind==tabled)
     @< Decide |unify| in the presence of tabled types,
        avoiding any recursive calls in sufficiently many cases to avoid
        non-termination @>
-  if (P_kind==variable_type or Q_kind==variable_type)
-    @< Decide |unify| when at least one type is a type variable @>
 @)
   if(P_kind!=Q_kind)
     return false;
   switch(P_kind)
   {
   case primitive_type: return P.prim()==Q.prim();
+  case variable_type: return P.typevar_count()==Q.typevar_count();
+  // fixed variables
   case function_type: return
     unify(P.func()->   arg_type,Q.func()->   arg_type) and @|
     unify(P.func()->result_type,Q.func()->result_type);
@@ -2801,14 +2809,14 @@ and union).
 
 There remains the case of comparing instantiations of unrelated recursive tabled
 type constructors. The rule we implement is to say that for such constructors,
-instantiations of different ones are always considered different. This is prudent,
-but not without surprises if we allow type constructors to be recursive through
-the instantiation of an existing recursive type constructor. For instance if one
-first has a recursive ``linked list'' type constructor, one may then want to
-have another recursive type at some point of its definition use a linked list of
-(values of) the new type itself. Then that type subexpression will be a
-recursively defined tabled type, and it will expand to an instance of the
-recursive tabled "linked list'' constructor~; according to our rule the type
+instantiations of different ones are always considered different. This is
+prudent, but not without surprises if we allow type constructors to be recursive
+through the instantiation of an existing recursive type constructor. For
+instance if one first has a recursive ``linked list'' type constructor, one may
+then want to have another recursive type at some point of its definition use a
+linked list of (values of) the new type itself. Then that type subexpression
+will be a recursively defined tabled type, and it will expand to an instance of
+the recursive tabled "linked list'' constructor~; according to our rule the type
 expressions before and after expansion, being both tabled but different, will
 fail to be considered equal, or to unify with one another. We have tried to
 think of a relaxation of the expansion rules that would allow unification to
@@ -2866,16 +2874,17 @@ fail; this is precisely what we want for this case.
 Just like comparing identical tabled type led to a shortcut, we can also return
 |true| when comparing identical type variables, without even worrying whether
 they are polymorphic and if so whether they have already been assigned to.
-Having done so, we also know that if we end up finding that
-neither |P| nor |Q| was a polymorphic type variable (but at least one of them
-was a type variable in order to get here), then they cannot be equal: a fixed
-type variable does not match a type of another |kind|, and if both are such
-fixed variables they must be different ones. This does use that fact that
-|tabled| types have been dealt with, since an non-recursive type constructor
-instantiation could expand to a fixed type variable, whence the importance of
-ordering tabled and type variable cases in our parent section.
+Having done so, if we end up finding that neither |P| nor |Q| was a polymorphic
+type variable (but at least one of them was a type variable in order to get
+here), then it would be tempting to conclude that |unify| should now fail, since
+a fixed type variable does not match a type of another |kind|, and if both |P|
+and |Q| are fixed variables, they must be different ones. However, since
+we considered type variables before considering tabled types, it is possible
+that one is a fixed type variable and the other a tabled type expanding to the
+first, so it is premature to |return false@;|. So instead we just fall through
+in that case, as the section name says.
 
-@< Decide |unify| when at least one type is a type variable @>=
+@< Decide |unify| when at least one type is a polymorphic type variable... @>=
 { if (P_kind==variable_type)
   { auto p=P.typevar_count();
     if (Q_kind==variable_type and p==Q.typevar_count())
@@ -2892,8 +2901,7 @@ ordering tabled and type variable cases in our parent section.
       return eq_q!=nullptr ? unify(P,*eq_q) : set_equivalent(q,P);
     }
   }
-@)
-  return false; // since we have one or two unequal fixed type variables
+  // fall through if we have one or two unequal fixed type variables
 }
 
 
