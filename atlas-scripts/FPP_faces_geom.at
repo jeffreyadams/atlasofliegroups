@@ -1847,30 +1847,44 @@ set non_herm_center(Param p) = Param:
     	 do let vertsf = face_verts(rdf,gamma) in sum(rank(rd), vertsf)/#vertsf od) + zgamma
     in parameter(p.x, p.lambda, gamma_bary) next hermCenterNewTime +:= elapsed_ms() - start
 
-{meant to record time in character_formula(p) and character_formula_to_height(p)}
-{set charTime = int: 0}
+
+{argument and result meant to be sums of stds}
+set wiggle(ParamPol IP, ratvec gamma0, int HT) = ParamPol:
+    let G = IP.real_form, gamma=IP.infinitesimal_character
+    then error = {floor(2*dominant(G,gamma-gamma0)*two_rho_check(G))} int:0
+    then (IPlow,) = height_split(IP,HT+error)
+    in let (IPwLow,) = height_split(sum(G, for c@q in IPlow do c*parameter(q.x, q.lambda, gamma0) od),HT)
+       in IPwLow
+
+{argument and result meant to be sums of std}
+set wiggle(ParamPol P, ratvec gamma0) = ParamPol:
+    sum(P.real_form, for c@q in P do c*parameter(q.x, q.lambda, gamma0) od)
 
 {Take character_formula(p), and move each term to infl char gamma0. This works (give
-honest deformed rep) if gamma0 is in the closed local face of infl_char(p)}
-set wiggle(Param p, ratvec gamma0) = ParamPol:
-{let start = elapsed_ms()
-then () = char_counter.use()
-then} let P = character_formula(p)
-{then () = charTime +:= elapsed_ms() -start}
-in  sum(p.real_form, for c@q in P do c*parameter(q.x, q.lambda, gamma0) od)
+honest deformed rep) if gamma0 is in the closed local face of
+infl_char(p)}
+{DV 5/2/26: I'm dubious about HT. The wiggle can change HT = (gamma+theta*gamma)*rho_check. So change is
+at most (1+theta)(gamma-gamma0)*rho_check <= 2*dominant(G,gamma-gamm0)*rho_check}
 
-set wiggle(ParamPol P, ratvec gamma0) = ParamPol:
-sum(P.real_form, for c@q in P do c*parameter(q.x, q.lambda, gamma0) od)
+{argument is meant to be irreducible; apply only when HT >= 0.
+result is a char form, apply comp series to get irrs}
+set wiggle(Param p, ratvec gamma0, int HT) = ParamPol:
+    let G = p.real_form, gamma = p.infinitesimal_character
+    then error = {floor(2*dominant(G,gamma-gamma0)*two_rho_check(G))} int:0
+    then CF = character_formula_to_ht(p,HT+error)
+    in wiggle(CF,gamma0,HT)
+
+{argument meant to be irr; result is a char form, apply comp series to get irrs}
+set wiggle(Param p, ratvec gamma0) = ParamPol:
+    let CF = character_formula(p)
+    in  wiggle(CF,gamma0)
 
 {compute the deformations of irrep p to boundary faces of its face. This is
 a list of 2^{#local_vertices} - 1 ParamPol's, the character formulas
 on the boundary faces. If p is unitary, this is a sum with positive coeffs of
 characters of unitary reps} {OOPS! these may not be hermitian ?? what??}
 set local_defs(Param p) = [ParamPol]:
- {let start = elapsed_ms()
- then () = char_counter.use()xs
- then} let CF = character_formula(p)
- {then () = charTime +:= elapsed_ms() -start}
+ let CF = character_formula(p)
  then list = local_vertices(p)
  then () = if #list = 1 then return [] fi
  then d = #list {dim of local face plus 1; between 2 and dim A+1}
@@ -1881,11 +1895,11 @@ set local_defs(Param p) = [ParamPol]:
        od
     od.##
 
-{compute the deformations of irrep p to boundary facets (codim 1) of
+{compute the deformations of irrep p to boundary faces (codim 1) of
 its face. This is a list of #local_vertices ParamPol's, the character
-formulas on the facets. If p is unitary, each is a sum with positive
+formulas on the faces. If p is unitary, each is a sum with positive
 coeffs of characters of unitary reps}
-set local_facet_defs(Param p) = [ParamPol]:
+set local_face_defs(Param p) = [ParamPol]:
     let list = local_vertices(p)
     in if #list = 1 then [ParamPol]: []
        else {let start = elapsed_ms()
@@ -1897,28 +1911,13 @@ set local_facet_defs(Param p) = [ParamPol]:
        	       do wiggle(CF, (sum - v)/(d-1))
        	       od
        fi
-{
-{compute the deformations of parameter p to boundary faces of its
-face. This begins with a list of 2^{#local_vertices} - 1 Param's
-(which may not be final), and finalizes.}
-set local_param_defs(Param p) =[Param]:
-let list = local_vertices(p)
-then d = #list {dim of local face plus 1}
-in for j:d from 1
-   do for S in choices_from(list,j)
-      do let gamma0 = sum(#list[0],S)/j
-      in monomials(1*parameter(p.x,p.lambda,gamma0))
-      od.##
-   od.##
-}
-
 {this is all the irrs arising by deformation to boundary faces of one irr p}
 set deformed_pol(Param p) = ParamPol:
 sum(p.real_form, local_defs(p))
 
 {this is all the irrs arising by deformation to boundary facets of one irr p}
-set facet_deformed_pol(Param p) = ParamPol:
-sum(p.real_form, local_facet_defs(p))
+set face_deformed_pol(Param p) = ParamPol:
+sum(p.real_form, local_face_defs(p))
 
 set deformed(Param p) = [Param]:
     monomials(composition_series(deformed_pol(p)))
@@ -1932,20 +1931,20 @@ set proper_deformed(Param p) = [Param]:
 	  fi
        od.##
 
-set facet_deformed(Param p) = [Param]:
-    monomials(composition_series(facet_deformed_pol(p)))
+set face_deformed(Param p) = [Param]:
+    monomials(composition_series(face_deformed_pol(p)))
 
-set proper_facet_deformed(Param p) = [Param]:
+set proper_face_deformed(Param p) = [Param]:
     let x = p.x
-    in for q in facet_deformed(p)
+    in for q in face_deformed(p)
        do if q.x != x
        	  then [q]
 	  else []
 	  fi
        od.##
 
-set facet_deformed_new(Param p) = [Param]:
-    for q in facet_deformed(p)
+set face_deformed_new(Param p) = [Param]:
+    for q in face_deformed(p)
     do if q.x != p.x
        then [herm_center(q)]
        else []

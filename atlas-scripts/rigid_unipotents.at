@@ -1,7 +1,7 @@
 < nilpotent_orbits.at {for ComplexNilpotent}
 < K_highest_weights.at {for all_parameters_gamma@(RealForm,ratvec}
 < associated_variety_annihilator.at {for GK_dim}
-
+< hermitian.at {for is_unitary}
 {Let G be a complex reductive algebraic group and let tilde{O} be a
 (finite, connected, G-equivariant) cover of a nilpotent co-adjoint
 G-orbit. In "Unipotent Ideals and Harish-Chandra Bimodules" (LMBM),
@@ -912,7 +912,7 @@ for (O,gamma) in semirigid_data_E8_fund do (complex_nilpotent(rd,numer(N*H(O))),
 set rigid_data_simple(RootDatum rd) = [unipotent_datum]:
 let type=Lie_type(rd) then
 (letter,n)=simple_factors(type)[0] in
-case ascii(letter)-ascii("A") in
+case ASCII(letter)-ASCII("A") in
 rigid_data_A(rd),
 rigid_data_B(rd),
 rigid_data_C(rd),
@@ -927,7 +927,7 @@ esac
 set birigid_data_simple(RootDatum rd) = [unipotent_datum]:
 let type=Lie_type(rd) then
 (letter,n)=simple_factors(type)[0] in
-case ascii(letter)-ascii("A") in
+case ASCII(letter)-ASCII("A") in
 birigid_data_A(rd),
 birigid_data_B(rd),
 birigid_data_C(rd),
@@ -941,7 +941,7 @@ esac
 set semirigid_data_simple(RootDatum rd) = [unipotent_datum]:
 let type=Lie_type(rd) then
 (letter,n)=simple_factors(type)[0] in
-case ascii(letter)-ascii("A") in
+case ASCII(letter)-ASCII("A") in
 semirigid_data_A(rd),
 semirigid_data_B(rd),
 semirigid_data_C(rd),

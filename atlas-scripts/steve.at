@@ -1188,6 +1188,7 @@ set warmup(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [[FaceVertsInde
        do let gamma = face_bary(Lvd, v[:d+1])
        	  then qs = monomials(finalize(parameter(x,lambda,gamma)))
 	  then stats = for q in qs do status(q,-1) od
+	  then statsd = [int]: []
        	  in if any(for stat in stats do stat < 0 od)
 	     then for stat@j in stats
 	     	  if stat < 0
@@ -1199,20 +1200,22 @@ set warmup(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [[FaceVertsInde
 	     	    od)
        	     then steve_hash_small.numatch(gamma);
 	     	  []
-	     elif any(for q in qs do any(for qd in edge_defs(q) do status(qd,-1) < 0 od) od)
-	     	  then if all(for q in qs do is_unitary(q) od)
-		       then prints("WARMUP TROUBLE AT ",parameter(x,lambda,gamma))
-		       fi;
-	     	       [] {want to put guilty q in big_unitary_hash.nuhash(G).match(q)}
-	     elif all(for stat in stats do stat > 0 od)
-	     then steve_hash_small.umatch(gamma);
-		  [v]
-	     else [v]
-	     fi
+	     else statsd := for q in qs do for qd in edge_defs(q) do status(qd,-1) od od.##;
+	          if any(for statd in statsd do statd < 0 od)
+	     	  then [] {want to put guilty q in big_unitary_hash.nuhash(G).match(q)}
+	     	  elif all(for statd in statsd do statd > 0 od)
+	     	  then steve_hash_small.umatch(gamma);
+		       [v] {should also put all qd in big_unitary_hash}
+	     	  else [v]
+	     	  fi
+	      fi
        od.##
     od
     in warmup_time +:= elapsed_ms() - start;
        answer
+
+{whether to record success of warmup}
+set cold_and_warm_flag = false
 
 {takes x, lambda, HT, Lvd and computes local vertices, imposing
 hermitian, pos on LKTs, pos to HT, and Dirac.}
@@ -1234,7 +1237,9 @@ set localFD_1SteveU\
 	fi}
     then LF00 = [FaceVertsIndex]: for j:#Lvd.list do [j] od
     then LF01 = warmup(x,lambda,HT,Lvd,[LF00])[0]
-    then () = prints("cold and warm verts = (",#LF00,",",#LF01,")")
+    then () = if cold_and_warm_flag
+    	      then prints("cold and warm verts = (",#LF00,",",#LF01,")")
+	      fi
     then Q = (ratvec,ratvec ->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBD = 0/1
     then temp_Dirac_best_flag = bool:
@@ -1788,10 +1793,7 @@ set localFD_2SteveU\
 	       ~do if fund_face_verbose and red_count_flag and (j%freq).=
 	       	   then prints("at edge ",j," of ",length,
 	    	       " at time ", print_time_string(elapsed_ms() - start),
-		       "; vecHash size = ",{if steve_small_flag
-		       	  	       	   then} steve_hash_small.vecHash().size()
-					   {else steve_hash.vecHash(x,lambda,HT).size()
-					   fi})
+		       "; vecHash size = ", steve_hash_small.vecHash().size())
 	     	   fi;
 	     let nu = face_bary(Lvd,v)
 	     then p = parameter(x,lambda,nu)
@@ -1808,11 +1810,7 @@ set localFD_2SteveU\
 		     	      	       then} steve_hash_small.extra_coord(face_bary(Lvd,v))
 			 	       {else steve_hash.extra_coord(x,lambda,HT,face_bary(Lvd,v))
 			 	       fi}
-		     in {if steve_small_flag
-		     	then} steve_hash_small.postest_known_Kchar(face_bary(Lvd,v),extra)
-		     	{else steve_hash.partly_indexed_postest_known_Kchar(rfnum, xlnum, htnum,
-			      face_bary(Lvd,v),extra)
-		     	fi}
+		     in steve_hash_small.postest_known_Kchar(face_bary(Lvd,v),extra)
 	       	then [v## if extra_coord_flag then extra else null(0) fi] {pos test passes}
 		{then prints("v = ",v, "extras = ", steve_hash.extra_coord(x,lambda,HT,face_bary(Lvd,v)));}
 		else [] {pos test fails}
@@ -1820,49 +1818,25 @@ set localFD_2SteveU\
 	      od.## {v in Edges}
 	      else for v@j in Edges {now FORWARD through Edges}
 	       	   do if fund_face_verbose and red_count_flag and (j%freq).=
-	       	   then prints("at edge ",j," of ",length,
-	    	       " at time ", print_time_string(elapsed_ms() - start),
-		       "; vecHash size = ",{if steve_small_flag
-		       	  	       	   then} steve_hash_small.vecHash().size()
-					   {else steve_hash.vecHash(x,lambda,HT).size()
-					   fi})
-	     	   fi;
+	       	      then prints("at edge ",j," of ",length,
+	    	       	   	  " at time ", print_time_string(elapsed_ms() - start),
+		       		  "; vecHash size = ", steve_hash_small.vecHash().size())
+	     	       fi;
 	     let nu = face_bary(Lvd,v)
 	     then p = parameter(x,lambda,nu)
 	     in {if not (fewer_reducible_unitary_flag or all(for q in monomials(p)
 	       	      	    do @bool: is_pos_on_LKTs(q)
 			    od))}
 	        if Q(nu,nu) > DiracBD
-	       	then DTcount +:=1;
-		     {if steve_small_flag
-		     then} steve_hash_small.numatch(nu)
-		     {fi};
+	       	then DTcount +:=1; steve_hash_small.numatch(nu);
 		     []
-		 elif let () = extra := {if steve_small_flag
-				 then} steve_hash_small.extra_coord(face_bary(Lvd,v))
-				 {else steve_hash.extra_coord(x,lambda,HT,face_bary(Lvd,v))
-				 fi}
-		      {then real_ans = is_unitary_to_ht(Finalize(p),HT)}
-	       	      in {if steve_small_flag
-		      	 then} {let steve_ans =} steve_hash_small.postest_known_Kchar(face_bary(Lvd,v),extra)
-			      {in assert(@:steve_ans = real_ans,"steve postest problem");
-			      	 real_ans}
-		     	 {else steve_hash.partly_indexed_postest_known_Kchar(rfnum, xlnum, htnum,
-			      face_bary(Lvd,v),extra)
-		     	 fi}
+		 elif let () = extra := steve_hash_small.extra_coord(face_bary(Lvd,v))
+	       	      in steve_hash_small.postest_known_Kchar(face_bary(Lvd,v),extra)
 		 then [v##if extra_coord_flag then extra else null(0) fi] {pos test passes}
-	       	    {then prints("v = ",v, "extras = ", steve_hash.extra_coord(x,lambda,HT,face_bary(Lvd,v)));}
 		 else [] {pos test fails}
 		 fi {not fewer}
 	      od.## {v in Edges}
 	      fi {steve_tilde_flag}
-	{then () = if steve_tilde_flag
-	     	  then LF1 := for v in LF1 ~do v od
-		  fi}
-    {then () = if time_verbose
-    	      then prints("after LF1, time is ",print_time_string(elapsed_ms() - start))
-	      fi}
-    {then () = FD12bzTime +:= elapsed_ms() - start}
     then tail = if (#LF1).=
     	      	then 0
 		else {prints("LF1 = ",LF1);}
@@ -1973,11 +1947,6 @@ set localFD_2SteveUgraph\
 		    	  od.##
 		       od.##
 	       fi {f < 2}
-	   {then () = FD12bzFFTime +:=elapsed_ms() - startFF}
-	   {then () = if time_verbose
-	   	     then prints("for FixFix, time is ",print_time_string(elapsed_ms() - startFF))
-		     fi}
-	   {then startFT = elapsed_ms()}
       	   then EdgesFixTrans = [vec]:
 	   	if #FixedList > 0 and #TranList > 0
 		then for j in FixedList
@@ -1995,11 +1964,6 @@ set localFD_2SteveUgraph\
 		      od.## {[vec], all j}
 		  else []
 		  fi
-	   {then () = FD12bzFTTime +:= elapsed_ms() - startFT}
-	   {then () = if time_verbose
-	   	     then prints("for FixTranspose, time is ",print_time_string(elapsed_ms() - startFT))
-		     fi}
-	   {then startTT = elapsed_ms()}
 	   then EdgesTransTrans = [vec]: {this is the longest}
 	      if #TranList > 1
 	      then let FEL = FPP_flippable_edge_lookup(G)
@@ -2023,23 +1987,7 @@ set localFD_2SteveUgraph\
 		       od.## {[vec], all mloc}
 		 else []
 		 fi
-	   {then () = FD12bzTTTime +:= elapsed_ms() - startTT}
-	   {then () = if time_verbose
-	   	     then prints("for TransposeTranspose, time is ",print_time_string(elapsed_ms() - startTT))
-		     fi}
-     	   {then () = prints("EFF = ", EdgesFixFix, ", EFT = ",EdgesFixTrans,", ETT = ",EdgesTransTrans)}
-	   in {prints("FF, FT, TT = ",[#EdgesFixFix,#EdgesFixTrans,#EdgesTransTrans]);}
-	   EdgesFixFix ## EdgesFixTrans ## EdgesTransTrans
-     {then () = if time_verbose
-     	       then prints("after Edges, time is ",print_time_string(elapsed_ms() - start))
-	       fi}
-   {then () = Edges := if steve_tilde_flag
-   	      	 then for v in Edges
-		      ~do v
-		      od
-		 else Edges
-		 fi}
-   {then () = prints("#Edges in localFD_2SteveUgraph = ",#Edges)}
+	   in EdgesFixFix ## EdgesFixTrans ## EdgesTransTrans
    then LF1cand = [LocalFaceVertsKHash]:
         for v@j in Edges
 	do let gamma = face_bary(Lvd,v)
@@ -2569,52 +2517,6 @@ set local_test_GEO_hash_steve_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd
 	    else localFD_Steve2_graph(x,lambda,Lvd,Perm2)
 	    fi
     in local_test_GEO_hash_one_level_end(x,lambda,Lvd,LFKH,Kpol_hash,HT, Uhash, is_unitary@Param)
-{at FPP_local line 4488; }
-
- {   then hts = next_heights(p0,edge_offset+1)
-    then FIRST_HT = hts[first_offset], ONE_HT = hts[edge_offset], r = rank(theta-1)
-    then LF_first = localFD_1SteveU_graph(x, lambda, FIRST_HT, Lvd)
-    then LF_one = if FIRST_HT = ONE_HT
-    	 	  then LF_first
-		  else local_test_graph_steve(x,lambda,Lvd, LF_first, ONE_HT, extra_coord_flag)
-		  fi
-    {then () = prints(new_line, "LF_one = ",LF_one)}
-    then LF01 = localFD_2SteveUgraph(x,lambda, ONE_HT, Lvd, Perm2, LF_one)
-    then () = if not all_steve_flag
-    	      then return local_test_GEO_hash_steve_end(x, lambda, Lvd, LF01, ONE_HT, Uhash)
-	      fi
-    {then () = prints("LF01 = ",LF01,new_line)}
-    then LFcands = localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LF01, 2, r + 1, ONE_HT, Kpol_hash)
-    then LFUcands = local_test_graph_steve(x, lambda, Lvd, LFcands.##, ONE_HT) {unitary to HT}
-    {then () = prints("LFUcands = ",LFUcands)
-    {then () = prints("at ",lambda,", #LFUcands = ",#LFUcands)}
-    then () = prints(LFUcands)}
-    then LFU = local_test_graph_steve(x,lambda,Lvd, LFUcands,-1,true)
-    then unitary_by_dim = vec: null(rank(x.involution - 1)+1)
-    then UParams = for v@j in LFU 
-       	 	   do let d = #v - 3
-       	  	      then verts = vec: v[:d+1] { extract the "vertices" part of the |vec| }
-  	  	      then gamma = face_bary(Lvd,verts)
-       	  	      then pC = parameter(x, lambda, gamma)
-       	  	      then ps = [Param]: monomials(pC)
-       	  	      in for p in ps
-       	     	      	 do big_unitary_hash.uhash(G).match(p)
-	     		 od;
-	     		 unitary_by_dim[d]+:=1;
-	     		 [pC]
-    	     	   od.##
-    in if fund_face_verbose
-       then prints("     Total of ", #LFU, " out of ", #LFUcands, " faces are unitary.")
-       fi;
-       if fund_face_verbose or test_slightly_verbose
-       then prints("unitary faces by dim = ",unitary_by_dim, test_string);
-	    prints("number of tests = ",unitary_test_counter.use_count() - start_count, ", in ",
-	    print_time_string(elapsed_ms() - start))
-       fi;
-       {report_steve_graph();}
-       UParams}
-    {local_test_closer_steve(x, lambda, Lvd, LFUcands)}
-    {closer_steve fails because steve_hash statuses haven't been updated properly}
 
 set steve_graph_flag = false
 

@@ -140,3 +140,21 @@ set red_count(Param p, int HT) = int:
     	 H <= HT od)
     then () = red_count_time +:= elapsed_ms() - start
     in ans
+
+set red_count(KGBElt x, ratvec lambda, ratvec nu) = int:
+    if red_count_old_flag then return red_count_old(parameter(x,lambda,nu)) fi;
+    let start = elapsed_ms(), G = x.real_form, theta = x.involution
+    then gamma = ((1+theta)*lambda + (1-theta)*nu)/2
+    then ans = count(for f in red_counters(x,lambda) do f(gamma).>= od)
+    then () = red_count_time +:= elapsed_ms() - start
+    in ans
+
+set red_count(KGBElt x, ratvec lambda, ratvec nu, int HT) = int:
+    if HT < 0 then return red_count(x,lambda,nu) fi;
+    if red_count_old_flag then return red_count_old(parameter(x,lambda,nu),HT) fi;
+    let start = elapsed_ms(), G = x.real_form, theta = x.involution
+    then gamma = ((1+theta)*lambda + (1-theta)*nu)/2
+    then ans = count(for f in red_counters(x,lambda) do let H = f(gamma) in H.>=  and
+    	 H <= HT od)
+    then () = red_count_time +:= elapsed_ms() - start
+    in ans
