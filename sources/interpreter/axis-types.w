@@ -1413,7 +1413,7 @@ const std::vector<id_type>& type_expr::fields(type_nr_type type_number)
 }
 void type_expr::set_fields(id_type type_number, std::vector<id_type>&& fields)
 {@; assert(type_number<table_size());
-   type_map[type_number].fields=fields;
+   type_map[type_number].fields=std::move(fields);
 }
 
 @ The |type_map| does not store directly usable types in all cases, since

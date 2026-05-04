@@ -4254,7 +4254,8 @@ struct ind_string
 };
 sl_list<ind_string> format
   (const type_expr& te, const value_base& v, unsigned width)
-{ std::ostringstream o; sl_list<ind_string> result;
+{ sl_list<ind_string> result;
+  std::ostringstream o;
   switch (te.top_kind())
   {
   case undetermined_type:
@@ -4266,10 +4267,13 @@ sl_list<ind_string> format
   break; case primitive_type:
     @< Format primitive value |v| into |result| @>
   break; case row_type:
-      @< Build bracketed list of entries of |v|, appending to |result| @>
+    @< Build bracketed list of entries of |v|, appending to |result| @>
+  break; case tuple_type:
+    @< Build parenthesised sequence of entries of |v|,
+       preceded by field names if associated to |te|,
+       appending to |result| @>
 #if 0
   break; case function_type:
-  break; case tuple_type:
   break; case union_type:
   {}
 #endif
@@ -4309,7 +4313,7 @@ that was formatted to this, adding a |prefix| or indentation as appropriate.
           cur += prefix+res.front().str; // append a new item to |cur|
         else
         { if (cur.size()>0) // if there is any accumulated output
-            result.emplace_back(std::move(cur));
+            result.emplace_back(std::move(cur)); // make it to a line now
           cur = prefix+res.front().str;
         }
       }
@@ -4328,7 +4332,7 @@ that was formatted to this, adding a |prefix| or indentation as appropriate.
       }
     }
     if (result.empty() and width>=cur.length()+tab)
-    {
+    @/{@;
       cur.append(tab==1 ? "]" : " ]");
       result.emplace_front(std::move(cur));
     }
@@ -4336,6 +4340,77 @@ that was formatted to this, adding a |prefix| or indentation as appropriate.
     { if (cur.length()>0)
         result.emplace_back(std::move(cur));
       result.emplace_back(std::string("]"));
+    }
+  }
+}
+
+@ For a tuple of values, we distinguish several cases. If the list is empty, we
+print the type and an empty list expression. Otherwise we come to the meat of
+our work, where we sequentially produce individual list items in a bracketed
+notation, concatenating them on a single line as long as possible, but never
+sharing a line between two items at least one of which itself requires multiple
+lines.
+
+When outputting a with a partially filled current line |cur|, we recursively
+|format| each item as if it started on a fresh line, then if it fits on a single
+line we determine whether we can actually append the output to the current line;
+if it cannot, we contribute the current line as completed and append the item
+that was formatted to this, adding a |prefix| or indentation as appropriate.
+
+@< Build parenthesised sequence of entries of |v|, preceded by field names...@>=
+{ const row_value* rv = dynamic_cast<const tuple_value*>(&v);
+  assert(rv!=nullptr);
+  const auto& tup =
+    te.raw_kind()==tabled ? te.tabled_eq().tuple() : te.tuple();
+  auto* names = te.raw_kind()==tabled ? &te.fields(te.tabled_nr()) : nullptr;
+  if (tup==nullptr)
+    result.emplace_back("()");
+  else
+  { std::string cur; // current line
+    wtl_const_iterator it (tup);
+    for (unsigned i=0; i<rv->length(); ++i,++it)
+    {
+      const bool is_prim = it->top_kind()==primitive_type;
+      auto prefix = std::string(is_prim ? i==0 ? "(" : "," : i==0 ? "( " : ", ");
+      if (names!=nullptr and (*names)[i]!=type_binding::no_id)
+      { prefix += main_hash_table->name_of((*names)[i]);
+        prefix += " ";
+      }
+      const unsigned tab = prefix.length();
+      const auto ind_width = width-tab;
+      auto res = format(*it,*rv->val[i],ind_width);
+      if (res.singleton())
+      { if (width>=cur.length()+tab+res.front().str.length())
+          cur += prefix+res.front().str; // append a new item to |cur|
+        else
+        { if (cur.size()>0) // if there is any accumulated output
+            result.emplace_back(std::move(cur)); // make it to a line now
+          cur = prefix+res.front().str;
+        }
+      }
+      else // transform |res|, then append to |result|
+      {
+        if (cur.length()>0) // if there is any accumulated output
+        @/{@; result.emplace_back(std::move(cur));
+          cur.clear();
+        } // emit that first
+        for (auto& item: res)
+          if (&item==&res.front())
+            item.str = prefix+item.str;
+          else
+            item.indent+=tab;
+        result.append(std::move(res));
+      }
+    }
+    if (result.empty() and width>=cur.length()+1)
+    @/{@;
+      cur.append(")");
+      result.emplace_front(std::move(cur));
+    }
+    else
+    { if (cur.length()>0)
+        result.emplace_back(std::move(cur));
+      result.emplace_back(std::string(")"));
     }
   }
 }
@@ -4349,43 +4424,140 @@ be done, we put the entire output on a single line and set |width=0| to indicate
 that we have no space left on this line.
 
 @< Format primitive value |v| into |result| @>=
-{ v.print(o);
-  auto str = o.str();
-  auto len = str.length();
-  if (str.length()<=width)
-    result.emplace_back(std::move(str));
-  else
-    switch(te.prim())
-    { default: result.emplace_back(std::move(str));
-    break; case integral_type:
-    { auto pos = str.begin();
-      while(len>width)
-      { result.emplace_back(std::string(pos,pos+width)+'\\');
-        pos+=width; len-=width;
-      }
-      result.emplace_back(std::string(pos,str.end()));
+{ switch(te.prim())
+  { default: v.print(o); result.emplace_back(std::move(o.str()));
+  break; case integral_type:
+  { v.print(o);
+    auto str = o.str();
+    unsigned len = str.length();
+    auto pos = str.begin();
+    while(len>width)
+    { result.emplace_back(std::string(pos,pos+width)+'\\');
+      pos+=width; len-=width;
     }
-    break;
-    break; case string_type: // here we indent for the leading quote character
-    { auto pos = str.begin();
-      while(len>width)
-      { auto w = pos==str.begin() ? width : width-1;
-        result.emplace_back(width-w,std::string(pos,pos+w)+'\\');
-        pos+=w; len-=w;
-      }
-      result.emplace_back(pos==str.begin() ? 0 : 1,std::string(pos,str.end()));
-    break;
+    result.emplace_back(std::string(pos,str.end()));
+  }
+  break;
+  break; case string_type: // here we indent for the leading quote character
+  { v.print(o);
+    auto str = o.str();
+    unsigned len = str.length();
+    auto pos = str.begin();
+    while(len>width)
+    { auto w = pos==str.begin() ? width : width-1;
+      result.emplace_back(width-w,std::string(pos,pos+w)+'\\');
+      pos+=w; len-=w;
     }
-  #if 0
-    case split_integer_type:
-    case vector_type:
-    case rational_vector_type:
-    case matrix_type:
-    case K_type_pol_type:
-    case virtual_module_type: {}
-  #endif
-    }
+    result.emplace_back(pos==str.begin() ? 0 : 1,std::string(pos,str.end()));
+  }
+  break; case vector_type:
+    @< Format vector value |v| into |result| @>
+  break; case matrix_type:
+    @< Format matrix value |v| into |result| @>
+#if 0
+  case split_integer_type:
+  case rational_vector_type:
+  case K_type_pol_type:
+  case virtual_module_type: {}
+#endif
+  }
 }
+
+@ Formatting a vector is only slightly different from formatting the
+corresponding list of integers: we first compute the minimal width necessary for
+all entries, then format all entries right in the given space. This is almost
+how |vector_value::print| works, but we do not make the width any longer than
+the widest entry. Apart from this, we do the usual due diligence to try to break
+lines so as to not exceed |width|, although we will ignore |width| if it is too
+small to fit even a single vector entry.
+
+@< Format vector value |v| into |result| @>=
+{ auto* vp = dynamic_cast<const vector_value*>(&v);
+  assert(vp!=nullptr);
+  const auto& val = vp->val;
+@)
+  const auto l=val.size();
+  std::size_t w=0; std::vector<std::string> tmp(l);
+  unsigned i=0;
+  for (auto& entry : tmp)
+  { entry=std::to_string(val[i++]);
+    if (entry.length()>w)
+      w=entry.length();
+  }
+  if (l==0)
+    result.emplace_back("[ ]");
+  else
+  { const bool flat = 1+l*(w+1)<=width;
+    const unsigned per_line = flat ? l : width<=w ? 1 : width/(w+1);
+@)
+    unsigned pos = per_line;
+    auto* p = &result.emplace_back("");
+    p->str.reserve(flat ? 1+l*(w+1) :per_line*(w+1));
+    for (std::size_t i=0; i<l; ++i)
+    { p->str.append(i==0?"[":",");
+      p->str.append(w-tmp[i].length(),' ');
+      p->str.append(tmp[i]);
+      if (not flat and pos-- == 0)
+    @/{@; pos = per_line;
+        p = &result.emplace_back("");
+        p->str.reserve(per_line*(w+1));
+      }
+    }
+    if (flat or p->str.empty())
+      p->str.append("]");
+  @+else
+      result.emplace_back("]");
+  }
+}
+
+@ For a matrix we try a format a bit more compact that the default format, by
+omitting the commas that follow most entries in the latter. We do make all
+columns equally wide in order to simplify the computation of the line breaks
+that might be necessary for very wide matrices, which would otherwise need to be
+recorded as an increasing list of column numbers where breaks need to be
+inserted, rather than just as a number |per_line| of columns between line breaks.
+
+@< Format matrix value |v| into |result| @>=
+{ auto* mp = dynamic_cast<const matrix_value*>(&v);
+  assert(mp!=nullptr);
+  const auto& val = mp->val;
+@)
+ auto k=val.n_rows(), l=val.n_columns();
+  if (k==0 or l==0)
+    result.emplace_back("null("+std::to_string(k)+","+std::to_string(l)+")");
+  else
+  { std::size_t w=0;
+    for (std::size_t i=0; i<k; ++i)
+      for (std::size_t j=0; j<l; ++j)
+      { auto len = std::to_string(val(i,j)).length();
+        if (len>w) w=len;
+      }
+    const bool flat = l*(w+1)<=width-3;
+    const unsigned per_line = flat ? l : width<=w ? 1 : (width-3)/(w+1);
+    const unsigned char_w = 3+(flat ? l : width<=w ? 1 : per_line)*(w+1);
+@)
+    for (std::size_t i=0; i<k; ++i)
+    {
+      unsigned pos = per_line;
+      auto* p = &result.emplace_back("");
+      p->str.reserve(char_w);
+      p->str.append("|");
+      for (std::size_t j=0; j<l; ++j)
+      { std::string tmp = std::to_string(val(i,j));
+        p->str.append(w+1-tmp.length(),' ');
+        p->str.append(tmp);
+        if (not flat and pos-- == 0)
+        { pos = per_line;
+          p = &result.emplace_back("");
+          p->str.reserve(char_w);
+          p->str.append(" ");
+        }
+      }
+      p->str.append(" |");
+    }
+  }
+}
+
 
 @ The function |print| outputs any value in the format used by the interpreter
 itself. This function has an argument of unknown type; we just pass the popped
