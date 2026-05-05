@@ -60,6 +60,10 @@ set HF_false_low_count = int:0
 
 set status_time = int: 0
 set status_count = int: 0
+
+set statusW_time = int: 0
+set statusW_count = int: 0
+
 {next three global variables concern function is_unitary_test_big_SIMPLE_interrupt in FPP_faces_herm.at}
 set up_mu_time = int:0
 set mu_time_mult = rat: 1/1 {1/1}
@@ -1608,14 +1612,16 @@ set J_SHIFT = int: 5	  {must be >=1; maybe length(p) + 1??}
 set INVJ_EXP = int: 1     {power of (j + J_SHIFT)^{-1}) in monomial}
 set PRED_END = rat: 1/4  {value at N-1 of linear monomial. Should be in (0,1)} {1/10??}
 set LIN_EXP = int: 1      {power of 1 + (PRED_END-1)*j/(N-1) in monomial}
+set LIN_EXP_HT = int: 2
 
 {assume all terms in qlist same inf char}
 set GAM_HTs_easy(int N) = [rat]:
     {let blq = bit_length(N) in}
     for j:N do (1 + (PRED_END-1)*j/N)^LIN_EXP {* (blq - bit_length(j) +1)^BL_EXP}/(j+J_SHIFT)^INVJ_EXP od
 
+
 set GAM_HTs_easy(int N, int HT) = [rat]:
-    for j:N do (1 + (PRED_END-1)*(j/N)) od
+    for j:N do (1 + (PRED_END-1)*(j/N))^LIN_EXP_HT od
 
 
 set GAM_HTs([Param] qlist) = [rat]:
@@ -1646,13 +1652,13 @@ set GAM_HTs([Param] qlist, int HT) = [rat]:
 set pred_easy(int N,[int] some_times, [int] data_inds) = [int]:
     let unnorm_preds = [rat]: GAM_HTs_easy(N)
     	{first coord is from GAM_HT, second from some_times}
-    then sums1 = sum(some_times), sums0 = 1+ sum(for j in data_inds do unnorm_preds[j] od)
+    then sums1 = sum(some_times), sums0 = {1+}sum(for j in data_inds do unnorm_preds[j] od)
     in for j:N do ceil((unnorm_preds[j]*sums1)/sums0) od
 
 set pred_easy(int N,[int] some_times, [int] data_inds, int HT) = [int]:
     let unnorm_preds = [rat]: GAM_HTs_easy(N,HT)
     	{first coord is from GAM_HT, second from some_times}
-    then sums1 = sum(some_times), sums0 = 1+ sum(for j in data_inds do unnorm_preds[j] od)
+    then sums1 = sum(some_times), sums0 = {1+}sum(for j in data_inds do unnorm_preds[j] od)
     in for j:N do ceil((unnorm_preds[j]*sums1)/sums0) od
 
 
@@ -1660,7 +1666,7 @@ set pred([Param] qlist,[int] some_times, [int] data_inds) = [int]:
     if GAM_HT_EXP + PB_EXP + RP_EXP = 0
     then return(pred_easy(#qlist, some_times, data_inds)) fi;
     let GAM_HTs = GAM_HTs(qlist)
-    then sums1 = sum(data_inds), sums0 = 1 + sum(for j in data_inds do GAM_HTs[j] od)
+    then sums1 = sum(data_inds), sums0 = {1 + }sum(for j in data_inds do GAM_HTs[j] od)
     in for n in GAM_HTs do ceil((n*sums1)/sums0) od
 
 set pred([Param] qlist,[int] some_times, [int] data_inds, int HT) = [int]:
@@ -1668,7 +1674,7 @@ set pred([Param] qlist,[int] some_times, [int] data_inds, int HT) = [int]:
     then return pred_easy(#qlist, some_times, data_inds,HT)
     fi;
     let unnorm_preds = [rat]: GAM_HTs(qlist,HT)
-    then sums1 = sum(some_times), sums0 = 1 + sum(for j in data_inds do unnorm_preds[j] od)
+    then sums1 = sum(some_times), sums0 = {1 + }sum(for j in data_inds do unnorm_preds[j] od)
     in for n in unnorm_preds do ceil((n*sums1)/sums0) od
 
 set u_predictor_old(Param p) = int:
@@ -1708,7 +1714,7 @@ set u_predictor(Param p, int time) = int:
     then unknown_indices = [int]: for T@j in times if T < -1 do j fi od
     {then () = time:= max(time, (#unknown_indices*interrupt_base_time)\upred_time_factor)
     then expiration = elapsed_ms() + time}
-    then do_one_flag = if all(for T in times ~do @bool: T=-2 od) then true else false fi
+    then do_one_flag = if all(for T in times ~do @bool: T<=-2 od) then true else false fi
     then () = num_trials:= max(2*bit_length(#unknown_indices),min_trials) {\2, *2 added 15:45 4/18/26:
     84.0 for Spin(5,6). So try 2* 16:00: 90.3}
     then found_time = int:0
@@ -1723,7 +1729,7 @@ set u_predictor(Param p, int time) = int:
     	      do let ind = #unknown_indices - 1
 	      	 then j = unknown_indices[ind] {these get harder as k increases}
 		 then q = list[j]
-		 then time_test = 2*interrupt_base_time
+		 then time_test = 5*interrupt_base_time
 		 in if time_test > expiration - elapsed_ms() and not do_one_flag
 		    then break
 		    fi;
@@ -1863,9 +1869,10 @@ set u_predictor_to_ht(Param p, int HT, int time) = int:
     then unknown_indices = [int]: for T@j in times if T <= -2 do j fi od
     then do_one_flag = #unknown_indices > 0, found_time = int:0
     then () = num_trials:= max(bit_length(#unknown_indices),min_ht_trials)
-    then () = while num_trials > 0 and  #unknown_indices > 0 and elapsed_ms() < expiration and
-    	      	    found_time < interrupt_base_time/10
+    then () = while num_trials > 0 and  #unknown_indices > 0 and ((min(times) = -2 and max(times) = -2) or
+    	      (elapsed_ms() < expiration and found_time < interrupt_base_time/10))
     	      	    {sum(for T in times do if T>0 then T else 0 fi od) > interrupt_base_time/4}
+		    {the "min times = -2" condition ensures data_times isn't empty}
     	      do let ind = #unknown_indices - 1
 	      	 then j = unknown_indices[ind] {these get easier as j increases}
 		 then q = list[j]
