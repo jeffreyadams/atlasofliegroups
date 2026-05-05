@@ -299,7 +299,7 @@ set pos_tester_Kchar_min(KGBElt x, ratvec lambda,int HT,ratvec gamma) =
 			  else []
 			  fi)
        elif any(for q in qs
-       	    	do @bool: not big_unitary_hash.nu_height_lookup_bool(q,HT)
+       	    	do @bool: big_unitary_hash.nu_height_lookup_int(q,HT) < 0
 		{stat in stats do stat < 0}
        	    	od)
        then return (false, if extra_coord_flag
@@ -645,7 +645,7 @@ set make_steve_hash_small() = steve_hash_small_table:
 				   then true
 				   elif any(for q in qs
 				   	    do @bool:
-					    not big_unitary_hash.nu_height_lookup_bool(q,htSHS)
+					       big_unitary_hash.nu_height_lookup_int(q,htSHS) < 0
 					    od)
 				   {for stat in stats do stat < 0 od)}
 				   then false {some q fails unitary to ht}
@@ -1187,28 +1187,18 @@ set warmup(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [[FaceVertsInde
     do for v in FVI
        do let gamma = face_bary(Lvd, v[:d+1])
        	  then qs = monomials(finalize(parameter(x,lambda,gamma)))
-	  then stats = for q in qs do status(q,-1) od
-	  then statsd = [int]: []
-       	  in if any(for stat in stats do stat < 0 od)
-	     then for stat@j in stats
-	     	  if stat < 0
-	     	  do big_unitary_hash.numatch(qs[j])
-	     	  fi
-		  od;
-	     	  []
-	     elif any(for q in qs do not big_unitary_hash.nu_height_lookup_bool(q,HT)
-	     	    od)
+	  then stats = for q in qs do status(q,-1) od,
+	       statsH = for q in qs do status(q,HT) od
+	  in if any(for b in stats do b < 0 od)
+	     then []
+	     elif any(for b in statsH do b < 0 od)
        	     then steve_hash_small.numatch(gamma);
 	     	  []
-	     else statsd := for q in qs do for qd in edge_defs(q) do status(qd,-1) od od.##;
-	          if any(for statd in statsd do statd < 0 od)
-	     	  then [] {want to put guilty q in big_unitary_hash.nuhash(G).match(q)}
-	     	  elif all(for statd in statsd do statd > 0 od)
+	     elif all(for b in statsH do b > 0 od)
 	     	  then steve_hash_small.umatch(gamma);
-		       [v] {should also put all qd in big_unitary_hash}
-	     	  else [v]
-	     	  fi
-	      fi
+		       [v]
+	     else [v]
+	     fi
        od.##
     od
     in warmup_time +:= elapsed_ms() - start;

@@ -2700,7 +2700,7 @@ set one_param_test(Param p) = [Param]:
        	    	    one_param_time +:= elapsed_ms() - start;
        	    	    []
 	       elif wiggle_unitary_flag
-	       then let statdi = for q in Q do wiggle_is_unitary_int(q) od
+	       then let statdi = for q in Q do wiggle_is_unitary_all(q) od
       	       	    in if all(for N in statdi do N=1 od)
        		       then one_true_counter.use();
        	    	       	    one_param_time +:= elapsed_ms() - start;
@@ -2983,7 +2983,7 @@ set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, {VertexData vd,} Loca
     then FPP_max_ht = (G.rho * G.two_rho_check)\1
     then tester = (Param->bool): (Param p) bool:
 	 if wiggle_unitary_flag
-	 then wiggle_is_unitary(p)
+	 then wiggle_is_unitary_cod_one(p)
 	 elif test_interrupt_flag
 	 then is_unitary_test_big_SIMPLE_interrupt(p)
 	 else let test_hts = [int]: next_heights(pmax, r\2)
@@ -3137,7 +3137,7 @@ set local_test_GEO_hash_else_dumb(KGBElt x, ratvec lambda, {VertexData vd,} Loca
     {then test_hts = hts[:min(#hts,1{r})]  {??? who knows about r!}}
     then tester = (Param->bool): (Param p) bool:
     	 if wiggle_unitary_flag
-	 then wiggle_is_unitary(p)
+	 then wiggle_is_unitary_cod_one(p)
 	 elif test_interrupt_flag
 	 then is_unitary_test_big_SIMPLE_interrupt(p)
 	 else let test_hts = [int]: next_heights(pmin, r\2)
@@ -3289,7 +3289,7 @@ set local_test_GEO_hash_real_dumb_end(KGBElt x, ratvec lambda, LocalVertexData L
     then FPP_max_ht = (G.rho * G.two_rho_check)\1
     then tester = (Param->bool): (Param p) bool:
     	 if wiggle_unitary_flag
-	 then wiggle_is_unitary(p)
+	 then wiggle_is_unitary_cod_one(p)
 	 elif test_interrupt_flag
 	 then is_unitary_test_big_SIMPLE_interrupt(p)
 	 else let test_hts = [int]: next_heights(pmax, r\2)
@@ -4669,7 +4669,7 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
 					  in if all(for p in ps
 					     	    do tester1(p) {no effect in Spin(4,4)}
 						    {((stat_holder:=status(p, one_ht)) > 0) {G}
-						    {(big_unitary_hash.nu_height_lookup_bool(p,one_ht))
+						    {(big_unitary_hash.nu_height_lookup_int(p,one_ht) < 0)
 						       or Uhash.lookup(p).>=}
 						       or (stat_holder = 0 and tester1(p))}
 						    od)
@@ -4810,7 +4810,7 @@ set local_test_GEO_hash_steve_steve_end(KGBElt x, ratvec lambda, LocalVertexData
 					  in if all(for p in ps
 					     	    do tester1(p) {no effect in Spin(4,4)}
 						    {(stat_holder:=status(p,one_ht)) > 0}
-						    {not (big_unitary_hash.nu_height_lookup_bool(p,one_ht))
+						    {big_unitary_hash.nu_height_lookup_int(p,one_ht) < 0
 						       or Uhash.lookup(p).>=}
 						       {or (stat_holder = 0 and tester1(p))}
 						    od)
@@ -4911,7 +4911,7 @@ set local_test_GEO_hash_steve_end(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 					  in if all(for p in ps
 					     	    do Uhash.lookup(p).>= {H}
 						    {((stat_holder:=status(p,H1)) > 0)}
-					{(not (big_unitary_hash.nu_height_lookup_bool(p,H1)))}
+					{((big_unitary_hash.nu_height_lookup_int(p,H1))< 1)}
 						       {or (stat_holder = 0 and tester1(p))}
 						    od) {removing status: no effect in Spin(4,4)}
 					     then [LFDKH[D+1][m]]
@@ -5041,7 +5041,7 @@ set local_test_GEO_hash_steve_end_faces(KGBElt x, ratvec lambda, LocalVertexData
 					  in if all(for p in ps
 					     	    do @bool: (Uhash.lookup(p).>=) {I}
 						    {(stat_holder:=status(p,one_ht)) > 0}
-				or (not big_unitary_hash.nu_height_lookup_bool(p,one_ht))
+				or big_unitary_hash.nu_height_lookup_int(p,one_ht) > 0
 						       or ({stat_holder = 0 and} tester1(p))
 						    od)
 					     then [LFDKH[D+1][m]]

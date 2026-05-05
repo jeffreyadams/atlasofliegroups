@@ -188,9 +188,8 @@ set_type
   , (Param -> int) ulookup {(location of p in its uhash)}
   , (Param -> int) nulookup {(location of p in its nuhash)}
   , (Param -> int) nu_height_lookup {smallest height at which p is known to be nonunitary}
-  , ((Param,int) -> bool) nu_height_lookup_bool {true or false if that is the KNOWN result
-    		    	  			of is_unitary_to_ht(p,HT); otherwise true}
-		 				{whether p is known to be nonunitary to int}
+  , ((Param,int) -> int) nu_height_lookup_int {if the known result of is_unitary_to_ht(p,HT)
+    		    	 		       	is true, then 1; if it is false, then -1; else 0}
   , (Param -> bool) check {check whether p is unitary, and add to appropriate hash table}
   , ((Param,int) -> bool) check_to_ht {check whether p is unitary to height}
   , ((Param,int) -> int) check_interrupt {check whether p is unitary, and add to appropriate hash table}
@@ -1125,18 +1124,23 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 else nu_heights[i][j]
 	 fi
       {next is what is_unitary_to_ht(p,H) returns, or true if we don't know}
-    , ((Param,int) -> bool): {nu_height_lookup_bool} (Param p, int H) bool:
+    , ((Param,int) -> int): {nu_height_lookup_int} (Param p, int H) int:
       let i = add_real_form(p.real_form)
-      then j = nuhashes[i].lookup(p)
-      in if j.< then true {henceforth p is in nuhash}
-      	 elif  H < 0 then false {henceforth H >= 0}
-	 elif H <= height(p) then true
-	 else let H0 = nu_heights[i][j]
-	      in if H0 < 0
-	      	 then true
-		 else H < H0
+      then ju = uhashes[i].lookup(p)
+      in if ju>=0 then 1
+      	 else let jn = nuhashes[i].lookup(p)
+      	      in if jn.< then 0 {henceforth p is in nuhash}
+      	      	 elif  H < 0 then -1 {henceforth H >= 0}
+	 	 elif H <= height(p) then -1
+	 	 else let H0 = nu_heights[i][jn]
+	      	      in if H0 < 0
+	      	      	 then 0
+		      	 elif H > H0 {p known nonu to smaller height H0}
+		      	 then -1
+		      	 else 0
+			 fi
 		 fi
-	 fi
+	   fi
     , (Param -> bool): {check} (Param p) bool:
       let (i,,sigD) = add_param_inf(p)
       in is_pure(K_type_pol_hashes[i].list()[sigD])
@@ -1998,130 +2002,19 @@ set report_fair() = void:
 set clear_fair() = void:
     fair_counter:=0; fair_pos_counter:=0; fair_neg_counter:=0; fair_time:=0; iwu_count:=0; iwu_time:=0
 
-{test codim 1 boundary faces only}
-{+1 if p known unitary to HT, -1 if known nonunitary, 0 else}
-set wiggle_status(Param p, KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT) = int:
-    {if (stat_holder:=status(p,-1))!= 0 then return stat_holder > 0 fi; {none Spin(4,4)} {#14}}
-    p:= herm_center(p);
-    let theta = p.x.involution, G = p.real_form
-    then delta = G.distinguished_involution, gamma = p.infinitesimal_character
-    then lamthlam = ratvec_as_vec((1+theta)*lambda)
-    then Aff_theta(ratvec v) =  -theta*v + lamthlam
-    then FV = for v in face_verts(G,gamma) do (v+delta*v)/2 od
-    then local_vert_nums = [int]:
-    	 for v in FV
-    	 do Lvd.lookup((v+Aff_theta(v))/2)
-	 od.sort_u
-    then d = #local_vert_nums - 1
-    then () = assert(@:gamma = face_bary(Lvd,local_vert_nums),
-	       	    		 "bad Lvd or local_vert_nums")
-    then vert_subs = power_set(local_vert_nums)[1:2^(d+1)] {omit empty, include full set}
-    then deform_cands = [ratvec]:
-	 for sub in vert_subs
-	 do face_bary(Lvd,sub)
-	 od
-    then CF = character_formula_to_ht(p,HT)
-    then defs = [[Param]]:
-	 for gammabd in deform_cands
-	 do  monomials(composition_series(wiggle(CF, gammabd)))
-	 od
-    then helpers = [Param]:
-	 for list in defs
-	 do if #list = 1
-	    do list[0]
-	    fi
-	 od.##
-	     {these are Params whose unitarity is equivalent to that of p}
-    then allDefs = defs.##
-    then () = assert(@:#helpers > 0,"missing p from helpers?")
-    then result = 0
-    then () = if any(for q in helpers do big_unitary_hash.uhash(G).lookup(q).>= od)
-	      then result := 1
-	      elif any(for list in defs
-		       do any(for q in list do @bool: big_unitary_hash.nuhash(G).lookup(q).>= od)
-		       od)
-	      then result := -1
-	      {else result := mult_is_unitary(helpers)}
-	      fi
-     in if result > 0
-	then for q in allDefs
-	     do big_unitary_hash.uhash(G).match(q)
-	     od
-	 elif result < 0
-	 then big_unitary_hash.numatch(p)
-	 fi;
-	 result
-
 set stat_holder = int:0
 
-set wiggle_status(Param p, int HT) = int:
-    let x = p.x, lambda = p.lambda
-    then Lvd = Lvd(x,lambda)
-    in wiggle_status(p,x,lambda,Lvd,HT)
-
-{test all boundary faces}
-{return 1 if guaranteed unitary, -1 if guaranteed not unitary, 0 else}
-set wiggle_status_int(Param p, KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT) = int:
-    p:= herm_center(p);
-    {if (stat_holder:=status(p,-1))!= 0 then return stat_holder fi;}
-    let theta = p.x.involution, G = p.real_form
-    then delta = G.distinguished_involution, gamma = p.infinitesimal_character
-    then lamthlam = ratvec_as_vec((1+theta)*lambda)
-    then Aff_theta(ratvec v) =  -theta*v + lamthlam
-    then FV = for v in face_verts(G,gamma) do (v+delta*v)/2 od
-    then local_vert_nums = [int]:
-    	 for v in FV
-    	 do Lvd.lookup((v+Aff_theta(v))/2)
-	 od.sort_u
-    then d = #local_vert_nums - 1
-    then () = assert(@:gamma = face_bary(Lvd,local_vert_nums),
-	       	    		 "bad Lvd or local_vert_nums")
-    then vert_subs = power_set(local_vert_nums)[1:2^(d+1)] {omit empty, include full set}
-    then deform_cands = [ratvec]:
-	 for sub in vert_subs
-	 do face_bary(Lvd,sub)
-	 od##
-	 if d = 0
-	 then def_incident_edges(p)
-	 else []
-	 fi
-    then CF = character_formula_to_ht(p,HT)
-    then defs = [[Param]]:
-	 for gammabd in deform_cands
-	 do  monomials(composition_series_to_ht(wiggle(CF, gammabd),HT))
-	 od
-    then helpers = [Param]:
-	 for list in defs
-	 do if #list = 1
-	    do list[0]
-	    fi
-	 od.##
-	     {these are Params whose unitarity to HT is equivalent to that of p}
-    in assert(@:#helpers > 0,"missing p from helpers?");
-       if any(for q in helpers do big_unitary_hash.uhash(G).lookup(q).>= od)
-       then big_unitary_hash.umatch(p); 1
-       elif any(for list in defs
-		do any(for q in list do @bool: big_unitary_hash.nuhash(G).lookup(q).>= od)
-		       od)
-       then big_unitary_hash.numatch(p); -1
-       else 0
-       fi
-
-set wiggle_status_int(Param p, int HT) = int:
-    let x = p.x, lambda = p.lambda
-    then Lvd = Lvd(x,lambda)
-    in wiggle_status_int(p,x,lambda,Lvd, HT)
-
-{return 1 if is_unitary_to_ht(p,HT) known true, -1 if known false, 0 else}
-set status(Param p, int HT) = int:
+{1 means unitary to HT, -1 means nonunitary to HT, 0 means don't know}
+set simple_status(Param p, int HT) = int:
     if not is_hermitian(p) then return -1 fi;
+    p:= herm_center(p);
     let start_st = elapsed_ms(), ans = int:0
     then GAM = (p.infinitesimal_character* p.inner_class.two_rho_check)\1
     in
     if HT >= GAM then HT:=-1 fi;
     ans := if big_unitary_hash.ulookup(p) >= 0
     then {assert(@:is_unitary_to_ht(p,HT));} 1
-    elif not big_unitary_hash.nu_height_lookup_bool(p,HT)
+    elif big_unitary_hash.nu_height_lookup_int(p,HT) < 0
     then {assert(@:not is_unitary_to_ht(p,HT));} -1
     elif is_known_u_to_ht(p,HT)
     then {assert(@:is_unitary_to_ht(p,HT));} 1
@@ -2134,6 +2027,129 @@ set status(Param p, int HT) = int:
     status_time +:= elapsed_ms() - start_st;
     status_count +:= 1;
     ans
+
+{test codim 1 boundary faces only}
+{+1 if p known unitary to HT, -1 if known nonunitary, 0 else}
+set wiggle_status_cod_one(Param p, KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT) = int:
+    {if (stat_holder:=status(p,-1))!= 0 then return stat_holder > 0 fi; {none Spin(4,4)} {#14}}
+    p:= herm_center(p);
+    if (stat_holder:=simple_status(p,HT)) != 0 then stat_holder
+    else let theta = p.x.involution, G = p.real_form, start_stW = elapsed_ms()
+    	 then delta = G.distinguished_involution, gamma = p.infinitesimal_character
+    	 then lamthlam = ratvec_as_vec((1+theta)*lambda)
+    	 then Aff_theta(ratvec v) =  -theta*v + lamthlam
+    	 then FV = for v in face_verts(G,gamma) do (v+delta*v)/2 od
+    	 then local_vert_nums = [int]:
+    	      for v in FV
+    	      do Lvd.lookup((v+Aff_theta(v))/2)
+	      od.sort_u
+    	 then d = #local_vert_nums - 1 {local face dimension}
+    	 then () = assert(@:gamma = face_bary(Lvd,local_vert_nums),
+	       	    		 "bad Lvd or local_vert_nums")
+    	 then vert_subs = [[int]]:
+	      if d > 0
+    	      then for j:d+1 do delete(local_vert_nums,j) od
+	      else []
+	      fi
+    then deform_cands = [ratvec]:
+	 for sub in vert_subs
+	 do face_bary(Lvd,sub)
+	 od
+    then defs = [[Param]]:
+    	 if d=0
+	 then edge_defs(p,HT)
+	 else let CF = character_formula_to_ht(p,HT)
+	      in for gammabd in deform_cands
+	      	 do  monomials(composition_series_to_ht(wiggle(CF, gammabd),HT))
+	 	 od
+	 fi{d=0}
+    then helpers = [Param]: {these are Params whose unitarity is equivalent to that of p}
+	 for list in defs
+	 if #list = 1
+	 do list[0]
+	 fi
+	 od
+    in if any(for q in helpers do simple_status(q,HT)>0 od)
+       then add_to_u_to_ht(p,HT);
+       	    for q in helpers do add_to_u_to_ht(q,HT) od;
+	    1
+       elif any(for q in defs.##
+		do @bool: simple_status(q,HT) < 0
+		od)
+       then big_unitary_hash.numatch_height(p,HT);
+       	    for q in helpers do big_unitary_hash.numatch_height(q,HT) od;
+	    -1
+       else 0
+       fi next statusW_time +:= elapsed_ms() - start_stW; statusW_count +:= 1
+    fi
+
+set wiggle_status_cod_one(Param p, int HT) = int:
+    let x = p.x, lambda = p.lambda
+    then Lvd = Lvd(x,lambda)
+    in wiggle_status_cod_one(p,x,lambda,Lvd,HT)
+
+{test all boundary faces}
+{return 1 if guaranteed unitary, -1 if guaranteed not unitary, 0 else}
+set wiggle_status_all(Param p, KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT) = int:
+    p:= herm_center(p);
+    if (stat_holder:=simple_status(p,HT)) != 0 then stat_holder
+    else let theta = p.x.involution, G = p.real_form, start_stW = elapsed_ms()
+    	 then delta = G.distinguished_involution, gamma = p.infinitesimal_character
+    	 then lamthlam = ratvec_as_vec((1+theta)*lambda)
+    	 then Aff_theta(ratvec v) =  -theta*v + lamthlam
+    	 then FV = for v in face_verts(G,gamma) do (v+delta*v)/2 od
+    	 then local_vert_nums = [int]:
+    	      for v in FV
+    	      do Lvd.lookup((v+Aff_theta(v))/2)
+	      od.sort_u
+   	 then d = #local_vert_nums - 1
+    	 then () = assert(@:gamma = face_bary(Lvd,local_vert_nums),
+	       	    		 "bad Lvd or local_vert_nums")
+    	 then vert_subs = power_set(local_vert_nums)[1:2^(d+1)-1] {omit empty and full set <--> p}
+    	 then deform_cands = [ratvec]:
+	      for sub in vert_subs
+	      do face_bary(Lvd,sub)
+	      od
+    	 then defs = [[Param]]:
+    	      if d=0
+	      then edge_defs(p,HT)
+	      else let CF = character_formula_to_ht(p,HT)
+	      	   in for gammabd in deform_cands
+	     	      do  monomials(composition_series_to_ht(wiggle(CF, gammabd),HT))
+	 	      od
+	      fi{d=0}
+    	 then helpers = [Param]: {these are Params whose unitarity to HT is equivalent to that of p}
+	      	      	for list in defs
+	     		if #list = 1
+	     		do list[0]
+	     		fi
+	 		od
+    	 in if any(for q in helpers do @bool: simple_status(q,HT) > 0 od)
+       	    then add_to_u_to_ht(p,HT);
+       	    1
+       	    elif any(for q in defs.##
+       	    	     do simple_status(q,HT) < 0
+		     od)
+       	    then big_unitary_hash.numatch_height(p,HT); -1
+	    else 0
+       	    fi next statusW_time +:= elapsed_ms() - start_stW; statusW_count +:= 1
+    fi {simple_status != 0}
+
+set wiggle_status_all(Param p, int HT) = int:
+    let x = p.x, lambda = p.lambda
+    then Lvd = Lvd(x,lambda)
+    in wiggle_status_all(p,x,lambda,Lvd, HT)
+
+set wiggle_status_cod_one_flag = false {whether to wiggle to codim 1 bdry faces for known u-testing}
+set wiggle_status_all_flag = false {whether to wiggle to all bdry faces for known u-testing}
+
+{return 1 if is_unitary_to_ht(p,HT) known true, -1 if known false, 0 else}
+set status(Param p, int HT) = int:
+    if not is_hermitian(p) then return -1 fi;
+    p:= herm_center(p);
+    if wiggle_status_cod_one_flag then return wiggle_status_cod_one(p,HT) fi;
+    if wiggle_status_all_flag then return wiggle_status_all(p,HT) fi;
+    simple_status(p,HT)
 
 {assume p is hermitian, FPP}
 set hermitian_form_irreducible_big_SIMPLE(Param p) = KTypePol:
@@ -2441,7 +2457,7 @@ set is_unitary_to_ht_big_SIMPLE_old(Param p, int HT) = bool:
      {fi}
 
 set is_unitary_to_ht_big_SIMPLE_interrupt(Param p, int HT, int time) = int: {1 means true, -1 false, 0 interrupted}
-  if (stat_holder:=status(p,HT)).!= then return stat_holder fi; {A} {save 400/7200 in Spin(4,4))}
+  if (stat_holder:=simple_status(p,HT)).!= then return stat_holder fi; {A} {save 400/7200 in Spin(4,4))}
   if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return -1 fi;
   if HT.< then return is_unitary_hash_big_SIMPLE(p,time) fi;
   if HT < height(p) then return 1 fi;
@@ -2472,7 +2488,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt(Param p, int HT, int time) = int: {1 m
 {if low(p,HT) suggests it's worthwhile (false; big HT) try is_unitary with time limit time}
 set is_unitary_to_ht_big_SIMPLE(Param p, int HT, int time) = bool:
     {stat_holder :=status(p,HT);}
-    if (stat_holder:= status(p,HT)).!= then return stat_holder > 0 fi;
+    if (stat_holder:= simple_status(p,HT)).!= then return stat_holder > 0 fi;
     {save nothing in Spin(4,4)}
     if HT.< then return is_unitary_hash_big_SIMPLE(p) fi;
     is_unitary_to_ht_big_SIMPLE_old(p, HT)
@@ -2502,7 +2518,7 @@ set av_u_time() = rat:
 
 set is_unitary_to_ht_big_SIMPLE(Param p, int HT) = bool:
     {{stat_holder :=status(p,HT);} {save nothing in Spin(4,4)}
-    if (stat_holder:=status(p,HT)).!= then return stat_holder > 0 fi;}
+    if (stat_holder:=simple_status(p,HT)).!= then return stat_holder > 0 fi;}
     if old_to_ht_flag then return is_unitary_to_ht_big_SIMPLE_old(p, HT) fi;
     if HT < height(p) then return true fi;
     let N_hts = min(#tested_pos_to_ht_times, HT - height(p))
@@ -2618,9 +2634,9 @@ set prefer_u_factor = rat: 3/2 {4 was bad 20890}
 set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
   {if not predictor_flag then return is_unitary_hash_big_SIMPLE(p) fi;}
   {stat_holder :=status(p,-1);} {save nothing in Spin(4,4)}
-  {if (stat_holder:=status(p,-1)).!= then return stat_holder > 0 fi; }{#9}
   if old_test_interrupt_flag then return is_unitary_test_big_SIMPLE_interrupt_old(p,step) fi;
   if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
+  if (stat_holder:=status(p,-1)).!= then return stat_holder > 0 fi; {#9}
   if step.<= then step:=1 fi;
   if test_interrupt_verbose
   then prints(new_line,"Starting is_unitary_test_big_SIMPLE_interrupt_Ufirst, p = ",p)
@@ -2724,11 +2740,10 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
 {"step" is how many steps up in to_ht list to start}
 set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
   {if not predictor_flag then return is_unitary_hash_big_SIMPLE(p) fi;}
-  {stat_holder :=status(p,-1);} {save 80/7200 in Spin(4,4)}
-  {if (stat_holder:=status(p,-1)).!= then return stat_holder > 0 fi;}{B}
   if old_test_interrupt_flag then return is_unitary_test_big_SIMPLE_interrupt_old(p,step) fi;
   if Ufirst_flag then return is_unitary_test_big_SIMPLE_interrupt_Ufirst(p,step) fi;
   if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
+  if (stat_holder:=simple_status(p,-1)).!= then return stat_holder > 0 fi;{B} {save 80/7200 in Spin(4,4)}
   if step.<= then step:=1 fi;
   if test_interrupt_verbose
   then prints(new_line,"Starting is_unitary_test_big_SIMPLE_interrupt, p = ",p)
@@ -2894,6 +2909,10 @@ set is_unitary_test_big_SIMPLE_interrupted_Ufirst(Param p, int time) = int:
   then () = ht := next_height(p,ht);
        	    if ht < 0 then return 1 fi
   then (u_time, to_ht_time) = adjust_to_ht_over_u(p,ht), test_time = int:0
+  then () = if min(u_time,to_ht_time) > G.rank*interrupt_base_time and
+       	       (stat_holder:=wiggle_status_cod_one(p,-1)).!=
+	    then return stat_holder
+	    fi
   then () = if test_interrupt_verbose
        	    then prints("starting to_ht_time = ", print_time_string(to_ht_time),
 	    	        ", u_time = ", print_time_string(u_time))
@@ -2977,6 +2996,10 @@ set is_unitary_test_big_SIMPLE_interrupted(Param p, int time) = int:
   then () = ht := next_height(p,ht);
        	    if ht < 0 then return 1 fi {no heights to test, so unitary}
   then (u_time, to_ht_time) = adjust_to_ht_over_u(p,ht), test_time = int:0
+  then () = if min(u_time,to_ht_time) > G.rank*interrupt_base_time and
+       	       (stat_holder:=wiggle_status_cod_one(p,-1)).!=
+	    then return stat_holder
+	    fi
   then () = if test_interrupt_verbose
        	    then prints("starting to_ht_time = ", print_time_string(to_ht_time),
 	    	        ", u_time = ", print_time_string(u_time))
@@ -3037,8 +3060,9 @@ set to_hts_count = null(10)
 set is_unitary_to_hts_big_SIMPLE_interrupt_old(Param p,[int] Ns, int time) = bool:
     if print_int_flag then prints("N = ",Ns, " p = ",p) fi;
     if #Ns = 0 or Ns~[0] < height(p) then return true fi;
-    {if not big_unitary_hash.nu_height_lookup_bool(p, Ns~[0]) then return false fi;}
-    if (stat_holder:=status(p, Ns~[0]))!= 0 then return stat_holder > 0 fi; {none Spin(4,4)} {#15}
+    {if big_unitary_hash.nu_height_lookup_int(p, Ns~[0]) != 0 then return
+    	big_unitary_hash.nu_height_lookup_int(p, Ns~[0]) > 0 fi;}
+    if (stat_holder:=simple_status(p, Ns~[0]))!= 0 then return stat_holder > 0 fi; {none Spin(4,4)} {#15}
     let k = u_to_ht_hash.lookup(p) in if k.>= and u_to_ht_hts[k] >= Ns~[0] then return true fi;
     let j0 = first(for N in Ns do N>= height(p) od)
     then () = Ns:=Ns[j0:]
@@ -3191,6 +3215,10 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
 	    fi
   then () = p := herm_center(p)
   then (u_time,to_ht_time) = adjust_to_ht_over_u(p,HT)
+  then () = if min(u_time,to_ht_time) > G.rank * interrupt_base_time and
+       	       (stat_holder:=wiggle_status_cod_one(p,HT))!= 0
+	    then return stat_holder > 0
+	    fi
   then result = 0, {to_ht_time = int: u_predictor(p,HT), u_time = int: u_predictor(p,-1),}
        test_time = int:0
   then () = if test_interrupt_verbose
@@ -3259,7 +3287,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
 set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
     {if not predictor_flag then return is_unitary_to_ht_big_SIMPLE(p, HT) fi;}
   if (HT>=0) and (HT < height(p)) then return true fi;
-  if (stat_holder:=status(p,HT)).!= then return stat_holder > 0 fi;{C}
+  if (stat_holder:=simple_status(p,HT)).!= then return stat_holder > 0 fi;{C}
   {removing saves 100/7200 in Spin(4,4); but keeping helps in higher rank.}
   if old_testing_flag then return is_unitary_to_ht_big_SIMPLE(p,HT) fi;
   if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
@@ -3274,6 +3302,10 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
   then () = p := herm_center(p)
   then result = 0, test_time = int:0
   then (u_time,to_ht_time) = adjust_to_ht_over_u(p,HT)
+  then () = if min(u_time,to_ht_time) > G.rank * interrupt_base_time and
+       	       (stat_holder:=wiggle_status_cod_one(p,HT))!= 0
+	    then return stat_holder > 0
+	    fi
   then () = if test_interrupt_verbose
        	    then prints("starting to_ht_time = ", print_time_string(to_ht_time),
 	    	        ", u_time = ", print_time_string(u_time))
@@ -3358,7 +3390,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_pick(Param p, int HT) = bool:
 
 set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
     {if not predictor_flag then return is_unitary_to_hts_big_SIMPLE(p,HTs) fi;}
-  if (stat_holder:=status(p,HTs~[0])).!= then return stat_holder > 0 fi; {D}
+  if (stat_holder:=simple_status(p,HTs~[0])).!= then return stat_holder > 0 fi; {D}
   HTs:= for HT in HTs if HT>=height(p) do HT fi od;
   {remove  status saves 200/7200 Spin(4,4), but requires repeating tests in Spin(5,5).
   Better kept: avoids 17 negative is_unitary retests in Spin(6,6), savve 2 mb/300, 1.8 sec/360}
@@ -3378,6 +3410,10 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
   then () = p := herm_center(p)
   then result = 0, HTfirst = HTs[0], HTlast = HTs~[0]
   then (u_time,to_ht_time) = adjust_to_ht_over_u(p,HTfirst), test_time = int:0
+  then () = if min(u_time,to_ht_time) > G.rank * interrupt_base_time and
+       	       (stat_holder:=wiggle_status_cod_one(p,HTlast))!= 0
+	    then return stat_holder > 0
+	    fi
   then to_ht_count = int:0, u_count = int:0
   then level = 0, HT = HTfirst
   then () = if test_interrupt_verbose
@@ -3456,7 +3492,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
 
 set is_unitary_to_hts_big_SIMPLE_interrupt_Ufirst(Param p, [int] HTs) = bool:
   {if not predictor_flag then return is_unitary_to_hts_big_SIMPLE(p,HTs) fi;}
-  if (stat_holder:=status(p,HTs~[0])).!= then return stat_holder > 0 fi; {D}
+  if (stat_holder:=simple_status(p,HTs~[0])).!= then return stat_holder > 0 fi; {D}
   HTs:= for HT in HTs do if HT>=height(p) do HT fi od.##;
   {remove  status saves 200/7200 Spin(4,4), but requires repeating tests in Spin(5,5).
   Better kept: avoids 17 negative is_unitary retests in Spin(6,6), savve 2 mb/300, 1.8 sec/360}
@@ -3476,6 +3512,10 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_Ufirst(Param p, [int] HTs) = bool:
   then () = p := herm_center(p)
   then result = 0, HTfirst = HTs[0], HTlast = HTs~[0]
   then (u_time,to_ht_time) = adjust_to_ht_over_u(p,HTfirst), test_time = int:0
+  then () = if min(u_time,to_ht_time) > G.rank * interrupt_base_time and
+       	       (stat_holder:=wiggle_status_cod_one(p,HTlast))!= 0
+	    then return stat_holder > 0
+	    fi
   then to_ht_count = int:0, u_count = int:0
   then level = 0, HT = HTfirst
   then () = if test_interrupt_verbose
@@ -3570,15 +3610,11 @@ set ind_test(Param p) = int:
        	      do if real_induce_irreducible(pL,G) = 1*p
        	  	 then if all(for dpL in derived_factor_params0(pL) do @bool:
 		 is_unitary_test_big_SIMPLE_interrupt(dpL) od)
-		 {is_unitary_hash_big_SIMPLE_weak(dpL) od)}
-		 {is_unitary(dpL) od)}
 		      then return 1
 		      else return -1
 		      fi
 	  	 else if all(for dpL in derived_factor_params0(pL) do @bool:
 		 is_unitary_test_big_SIMPLE_interrupt(dpL) od)
-		 {is_unitary_hash_big_SIMPLE_weak(dpL) od)}
-		 {is_unitary(dpL) od)}
 		      then return 1
 		      else 0
 		      fi
@@ -3597,8 +3633,11 @@ set mult_is_unitary([Param] list) = bool:
     if #list = 1 then return is_unitary_test_big_SIMPLE_interrupt(list[0]) fi;
     let next_time = interrupt_base_time
     then answer = int:0
+    then Q = invariant_form(list[0].root_datum)
+    then f(Param p) = rat: Q(p.nu,p.nu)
+    then sorted_list = [Param]: sort_by(f)(list)[:max(#list\4,2)] {only use the easiest quarter}
     then () = while answer = 0
-    	      do for p in list
+    	      do for p in sorted_list
 	      	 do let this = is_unitary_test_big_SIMPLE_interrupted(p, next_time)
 		    in if this.!=
 		       then answer := this;
@@ -3609,13 +3648,14 @@ set mult_is_unitary([Param] list) = bool:
 		 if next_time > 100000
 		 then return any (for p in list
 		      	     	  do @bool: is_unitary_test_big_SIMPLE_interrupt(p)
-				  od)		 fi
+				  od)
+		 fi
 	      od
     in answer.>
 
-set wiggle_is_unitary(Param p, KGBElt x, ratvec lambda, LocalVertexData Lvd) = bool:
-    if (stat_holder:=status(p,-1))!= 0 then return stat_holder > 0 fi; {none Spin(4,4)} {#14}
+set wiggle_is_unitary_cod_one(Param p, KGBElt x, ratvec lambda, LocalVertexData Lvd) = bool:
     p:= herm_center(p);
+    if (stat_holder:=simple_status(p,-1))!= 0 then return stat_holder > 0 fi; {none Spin(4,4)} {#14}
     let theta = p.x.involution, G = p.real_form
     then delta = G.distinguished_involution, gamma = p.infinitesimal_character
     then lamthlam = ratvec_as_vec((1+theta)*lambda)
@@ -3628,50 +3668,57 @@ set wiggle_is_unitary(Param p, KGBElt x, ratvec lambda, LocalVertexData Lvd) = b
     then d = #local_vert_nums - 1
     then () = assert(@:gamma = face_bary(Lvd,local_vert_nums),
 	       	    		 "bad Lvd or local_vert_nums")
-    then vert_subs = power_set(local_vert_nums)[1:2^(d+1)] {omit empty, include full set}
+    then vert_subs = [[int]]:
+    	 if d > 0
+    	 then for j:d+1 do delete(local_vert_nums,j) od
+	 else []
+	 fi
     then deform_cands = [ratvec]:
 	 for sub in vert_subs
 	 do face_bary(Lvd,sub)
 	 od
-    then CF = character_formula(p)
     then defs = [[Param]]:
-	 for gammabd in deform_cands
-	 do  monomials(composition_series(wiggle(CF, gammabd)))
-	 od
+    	 if d=0
+	 then edge_defs(p,-1)
+	 else let CF = character_formula(p)
+	      in for gammabd in deform_cands
+	      	 do  monomials(composition_series(wiggle(CF, gammabd)))
+		 od
+	 fi{d=0}
     then helpers = [Param]:
 	 for list in defs
-	 do if #list = 1
-	    do list[0]
-	    fi
-	 od.##
+	     if #list = 1
+	     do list[0]
+	     fi
+	     od#p
 	     {these are Params whose unitarity is equivalent to that of p}
-    then () = assert(@:#helpers > 0,"missing p from helpers?")
-    then result = false
-    then () = if any(for q in helpers do big_unitary_hash.uhash(G).lookup(q).>= od)
-	      then result :=true
-	      elif any(for list in defs
-		       do any(for q in list do @bool: big_unitary_hash.nuhash(G).lookup(q).>= od)
-		       od)
-	      then result := false
-	      else result := mult_is_unitary(helpers)
-	      fi
+ 
+    then result = if any(for q in helpers do simple_status(q,-1)>0 od)
+       	 	  then for q in helpers do big_unitary_hash.umatch(q) od;
+	    	       true
+       		  elif any(for q in defs.##
+		       	   do @bool: simple_status(q,-1) < 0
+			   od)
+       		  then for q in helpers do big_unitary_hash.numatch(q) od;
+	    	       false
+       		  else mult_is_unitary(helpers)
+       		  fi
      in if result
-	then for list in defs
-	     do for q in list
-	     	do big_unitary_hash.uhash(G).match(q)
-	     	od
-	     od
-	 else big_unitary_hash.numatch(p)
-	 fi;
-	 result
+	then for q in defs.##
+	     do big_unitary_hash.umatch(q)
+	     od; true
+	else for q in helpers
+	     do big_unitary_hash.numatch(q)
+	     od; false
+	 fi
 
-set wiggle_is_unitary(Param p) = bool:
+set wiggle_is_unitary_cod_one(Param p) = bool:
     let x = p.x, lambda = p.lambda
     then Lvd = Lvd(x,lambda)
-    in wiggle_is_unitary(p,x,lambda,Lvd)
+    in wiggle_is_unitary_cod_one(p,x,lambda,Lvd)
 
 {return 1 if guaranteed unitary, -1 if guaranteed not unitary, 0 else}
-set wiggle_is_unitary_int(Param p, KGBElt x, ratvec lambda, LocalVertexData Lvd) = int:
+set wiggle_is_unitary_all(Param p, KGBElt x, ratvec lambda, LocalVertexData Lvd) = int:
     p:= herm_center(p);
     if (stat_holder:=status(p,-1))!= 0 then return stat_holder fi;
     let theta = p.x.involution, G = p.real_form
@@ -3717,10 +3764,10 @@ set wiggle_is_unitary_int(Param p, KGBElt x, ratvec lambda, LocalVertexData Lvd)
        else 0
        fi
 
-set wiggle_is_unitary_int(Param p) = int:
+set wiggle_is_unitary_all(Param p) = int:
     let x = p.x, lambda = p.lambda
     then Lvd = Lvd(x,lambda)
-    in wiggle_is_unitary_int(p,x,lambda,Lvd)
+    in wiggle_is_unitary_all(p,x,lambda,Lvd)
 
 {ONLY for G simple}
 { compute Hermitian form to height N; if it's positive, then compute full form }
@@ -4103,7 +4150,7 @@ set known_non_unitaries_wiggle_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		 fi {now pdef consists of final Params that must be unitary to HT if p is}
 	     in if any(for q in pdef
 		       do @bool: (status(q,HT) < 0) {no appearance in Spin(4,4)}
-		       {not big_unitary_hash.nu_height_lookup_bool(q,HT)}
+		       {big_unitary_hash.nu_height_lookup_int(q,HT) < 0}
 			  {or (height(q) > H0 and  status(q,HT) = 0
 			      and (not is_unitary_to_hts_big_SIMPLE(q,HTs)))}
 		       od) {CONCERN if HTs[0] < H0?}
@@ -4142,7 +4189,7 @@ set wiggle_test(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]]
 		     do let pdefi = monomials(composition_series_to_ht(
 					 wiggle(CF, face_bary(Lvd,sv)) , HT - 1))
 			in if any (for q in pdefi
-				  do @bool: big_unitary_hash.nu_height_lookup_bool(q,HT)
+				  do @bool: big_unitary_hash.nu_height_lookup_int(q,HT) < 0
 				      or (height(q) > H0 and not is_unitary_to_hts_big_SIMPLE(q,HTs))
 				  od) {CONCERN if HTs[0] < H0?}
 			   then answer[d]#:= j;
@@ -4177,7 +4224,7 @@ set known_non_unitaries_wiggle(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	     then let pdef = monomials(p)
 		  in if any(for q in pdef
 			    do @bool: status(q,HT) < 0 {no saving in Spin(4,4)}
-			    {big_unitary_hash.nu_height_lookup_bool(q,HT)}
+			    {big_unitary_hash.nu_height_lookup_int(q,HT) < 0}
 			    od)
 		     then answer[d]#:= j
 		     fi
@@ -4194,9 +4241,9 @@ set known_non_unitaries_wiggle(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		     do let pdefi = monomials(composition_series_to_ht(
 					 wiggle(CF, face_bary(Lvd,sv)) , HT {- 1}))
 			in if any (for q in pdefi
-				  do @bool: not big_unitary_hash.nu_height_lookup_bool(q,HT)
+				  do @bool: big_unitary_hash.nu_height_lookup_int(q,HT) < 0
 				  {status(q,HT)<0} {no saving in Spin(4,4)}
-				  {big_unitary_hash.nu_height_lookup_bool(q,HT)}
+				  {big_unitary_hash.nu_height_lookup_int(q,HT) < 0}
 			{or (height(q) > H0 and not is_unitary_to_hts_big_SIMPLE(q,HTs))}
 				  od) {CONCERN if HTs[0] < H0?}
 			   then answer[d]#:= j;
@@ -4324,7 +4371,7 @@ set known_non_unitaries(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	  do let qs = monomials(finalize(p))
 	     in if any(for q in qs
 		       do @bool: {status(p,HT) < 0} {save 2200 tests in Spin(4,4)}
-		       	  not big_unitary_hash.nu_height_lookup_bool(q,HT)
+		       	  	 big_unitary_hash.nu_height_lookup_int(q,HT) < 0
 		       od)
 		then [j]
 		else []
@@ -4622,6 +4669,17 @@ set localFD_Lvd2 \
 
 set FD12Time = int: 0
 
+set FD_wiggle_flag = false {whether to use def_incident_edges}
+set FD_wiggle_HT_flag =false {whether to use def_incident_edges to ht}
+set FDWHcount = vec:[0,0]
+set caughtHCount = int: 0
+
+set FDcount = vec:[0,0]
+set FDWcount = vec:[0,0]
+set caughtCount = int: 0
+set WcaughtCount = int:0
+set WHcaughtCount = int:0
+
 {takes local data and low global faces and computes vertices and edges, imposing
 hermitian, pos on LKTs, and Dirac. Subspace is fixed points of affine involution of
 h*. Perm records involution action on FPP verts. mapAct records local vertex to which an FPP
@@ -4661,6 +4719,14 @@ set localFD_1Dirac2\
 	       then []
 	       elif FPP_def_flag and not FPP_def_test_wk_final(p)
 	       then []
+	       elif FD_wiggle_flag and any(for q in monomials(finalize(p))
+	       	    		       	 do @bool: wiggle_status_all(q,-1) < 0
+					 od)
+	       then WcaughtCount+:=1; []
+	       elif FD_wiggle_HT_flag and any(for q in monomials(finalize(p))
+	       	    		       	   do @bool: wiggle_status_all(q,HT) < 0
+					   od)
+	       then WHcaughtCount+:=1; []
 	       elif red_count_flag
 	       then [[j, red_count(p,HT)]]
 	       else [[j]]
@@ -4771,11 +4837,9 @@ vertex "belongs" (either "is" or "is vertex of the edge")}
    two flipped by involution, OR
 3) tetrahedron in FPP, two pairs of verts exchanged by involution}
 
-set FD_wiggle_HT_flag =false {whether to use def_incident_edges to ht}
-set FDWHcount = vec:[0,0]
-set caughtHCount = int: 0
-
 {use def_incident_edges to eliminate some}
+
+{
 set localFD_1Dirac2_by_zero_wiggleHT\
   ( KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, PermOrderTwo Perm2) =
     [[FaceVertsIndex]]:
@@ -4813,6 +4877,10 @@ set localFD_1Dirac2_by_zero_wiggleHT\
 	       then []
 	       elif FPP_def_flag and not FPP_def_test_wk_final(p)
 	       then []
+	       elif any(for q in monomials(finalize(p))
+	       	    	do @bool: wiggle_status_all(q,HT) < 0
+			od)
+	       then WcaughtCount +:=1; []
 	       elif red_count_flag
 	       then [[j, red_count(p,HT)]]
 	       else [[j]]
@@ -5015,13 +5083,9 @@ set localFD_1Dirac2_by_zero_wiggleHT\
        else answer
        fi
 )
+}
 
-set FD_wiggle_flag = false {whether to use def_incident_edges}
-
-set FDcount = vec:[0,0]
-set FDWcount = vec:[0,0]
-set caughtCount = int: 0
-
+{
 {use def_incident_edges to eliminate some}
 set localFD_1Dirac2_by_zero_wiggle\
   ( KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, PermOrderTwo Perm2) =
@@ -5278,14 +5342,15 @@ set localFD_1Dirac2_by_zero_wiggle(KGBElt x, ratvec lambda) = [[FaceVertsIndex]]
     then lamthlam = ((1+theta)*lambda).numer
     then (Lvd,Perm2) = LPm_table.LPm_entry(ic,theta,lamthlam)
     in localFD_1Dirac2_by_zero_wiggle(x,lambda,Lvd,Perm2)
+}
 
 {If red_count_flag, add an extra coordinate recording red_count(p, next_heights[edge_offset])}
 {if FPP_def_flag, impose FPP_def_test}
 set localFD_1Dirac2_by_zero\
   ( KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, PermOrderTwo Perm2) =
     [[FaceVertsIndex]]:
-(   if FD_wiggle_HT_flag then return localFD_1Dirac2_by_zero_wiggleHT(x,lambda,HT, Lvd,Perm2) fi;
-    if FD_wiggle_flag then return localFD_1Dirac2_by_zero_wiggle(x,lambda,Lvd,Perm2) fi;
+(   {if FD_wiggle_HT_flag then return localFD_1Dirac2_by_zero_wiggleHT(x,lambda,HT, Lvd,Perm2) fi;
+    if FD_wiggle_flag then return localFD_1Dirac2_by_zero_wiggle(x,lambda,Lvd,Perm2) fi;}
     if fund_face_verbose
     then prints(new_line,"start localFD_1Dirac2_by_zero")
     fi;
@@ -5320,6 +5385,14 @@ set localFD_1Dirac2_by_zero\
 	       then []
 	       elif FPP_def_flag and not FPP_def_test_wk_final(p)
 	       then []
+	       elif FD_wiggle_flag and any(for q in monomials(finalize(p))
+	       	    		       	   do @bool: wiggle_status_all(q,-1) < 0
+					   od)
+	       then WcaughtCount+:=1; []
+	       elif FD_wiggle_HT_flag and any(for q in monomials(finalize(p))
+	       	    		       	   do @bool: wiggle_status_all(q,HT) < 0
+					   od)
+	       then WHcaughtCount+:=1; []
 	       elif red_count_flag
 	       then [[j, red_count(p,HT)]]
 	       else [[j]]
@@ -5789,6 +5862,14 @@ set localFD_1Steve\
 	     then []
 	     elif FPP_def_flag and not FPP_def_test_wk_final(p)
 	     then []
+	     elif FD_wiggle_flag and any(for q in monomials(finalize(p))
+	       	    		       	 do @bool: wiggle_status_all(q,-1) < 0
+					 od)
+	     then WcaughtCount+:=1; []
+	     {elif FD_wiggle_HT_flag and any(for q in monomials(finalize(p))
+	       	    		       	   do @bool: wiggle_status_all(q,HT) < 0
+					   od)
+	     then WHcaughtCount+:=1; []}
 	     else [[j]]
 	     fi
 	od.## {list of j for which vertex j is a candidate}

@@ -617,12 +617,12 @@ set def_incident_edges(Param p) = [ratvec]:
     def_incident_edges(p,-1)
 
 {Params arising by deformation along a deformable edge to HT}
-set edge_defs(Param p, int HT) = [Param]:
+set edge_defs(Param p, int HT) = [[Param]]:
     assert(@:is_final(p),"sorry, this works only for p final");
     let defs = def_incident_edges(p, HT), G = p.real_form
-    in monomials(sum(G, for w in defs
-       	      		do let pmid = parameter(p.x,p.lambda,(p.nu+w)/2)
-			   in composition_series_to_ht(wiggle(pmid,w,HT),HT)
-       	      		od))
+    in for w in defs
+       do let pmid = parameter(p.x,p.lambda,(p.nu+w)/2)
+       	  in monomials(composition_series_to_ht(wiggle(pmid,w,HT),HT))
+       od
 
-set edge_defs(Param p) = [Param]: edge_defs(p, -1)
+set edge_defs(Param p) = [[Param]]: edge_defs(p, -1)
