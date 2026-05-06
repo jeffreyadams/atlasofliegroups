@@ -137,9 +137,10 @@ set Magma_positions_E7 (WeylClassTable Wct) = [int]: { |Wct| classes to Magma }
       ranking(rlex_leq@(vec,vec))([vec]:e7_profile)
    then profiles_sorted = for r in Magma_ranked do e7_profile[r] od
    , lookup = binary_lookup(rlex_leq@(vec,vec))
+   , torus_rank = Wct.root_datum.rank - Wct.root_datum.semisimple_rank
    in for w@i in Wct.class_representatives
       do let prof = vec:
-         [order(w),Wct.class_size(i),Wct.sign[i], Wct.reflection[i]]
+         [order(w),Wct.class_size(i),Wct.sign[i], Wct.reflection[i]-torus_rank]
       in Magma_ranked[lookup(prof,profiles_sorted).requisition]
       od
 
