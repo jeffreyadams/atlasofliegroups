@@ -1606,13 +1606,13 @@ set stats = (Param -> (int,int,int,int)):
 set GAM_HT_EXP = int: 0{1}{power of GAM(q) - height(q) in monomial}
 set PB_EXP = int: 0   	  {power of #partial_block(q) in monomial}
 set RP_EXP = int: 0	  {power of #reducibility_points(q) in monomial}
-set HTht_EXP = int: 0{1}  {power of (HT - height(q) + 1) in monomial}
+set HTht_EXP = int: 1{0}  {power of (HT - height(q) + 1) in monomial}
 set BL_EXP = int: 0	  {power of (bit_length(#monomials) - bit_length(j)+1)  in monomial}
 set J_SHIFT = int: 5	  {must be >=1; maybe length(p) + 1??}
 set INVJ_EXP = int: 1     {power of (j + J_SHIFT)^{-1}) in monomial}
 set PRED_END = rat: 1/4  {value at N-1 of linear monomial. Should be in (0,1)} {1/10??}
 set LIN_EXP = int: 1      {power of 1 + (PRED_END-1)*j/(N-1) in monomial}
-set LIN_EXP_HT = int: 2
+set LIN_EXP_HT = int: 0   {was 2}
 
 {assume all terms in qlist same inf char}
 set GAM_HTs_easy(int N) = [rat]:
@@ -1630,7 +1630,7 @@ set GAM_HTs([Param] qlist) = [rat]:
     in for q@j in qlist do let (g,h,p,r) = stats(q) in (g-h)^GAM_HT_EXP * p^PB_EXP *r^RP_EXP*GHE[j]  od
 
 {in to_ht case, default to C*(linear decrease from 1 to PRED_END)}
-set lin_flag = true
+set lin_flag = false {true}
 
 set GAM_HTs([Param] qlist, int HT) = [rat]:
     if lin_flag then return GAM_HTs_easy(#qlist,HT) fi;
@@ -1753,7 +1753,7 @@ set u_predictor(Param p, int time) = int:
 			  	 fi
 		       	      od.##
     then N = #list, data_n = #data_inds, un = #unknown_indices
-    then pred_list = pred(list, data_times, data_inds)
+    then pred_list = pred(list, data_times, data_inds, GAM(p)) {try adding GAM(p) arg 5/5/26}
     then pred = if from_scratch_flag
        	      	then sum(pred_list){+interrupt_base_time}
 		elif no_margin_flag
@@ -1867,10 +1867,10 @@ set u_predictor_to_ht(Param p, int HT, int time) = int:
     then times =  [int]: for q in list do defHashHtTime.time_lookup_to_ht(q,HT) od
     { -2 means unknown. <= -3 means trying to -T-3 failed}
     then unknown_indices = [int]: for T@j in times if T <= -2 do j fi od
-    then do_one_flag = #unknown_indices > 0, found_time = int:0
+    then do_one_flag = all(for T in times do T +  2 = 0 od) {#unknown_indices > 0, found_time = int:0}
     then () = num_trials:= max(bit_length(#unknown_indices),min_ht_trials)
-    then () = while num_trials > 0 and  #unknown_indices > 0 and ((min(times) = -2 and max(times) = -2) or
-    	      (elapsed_ms() < expiration and found_time < interrupt_base_time/10))
+    then () = while num_trials > 0 and  #unknown_indices > 0 and (do_one_flag or
+    	      (elapsed_ms() < expiration)) {and found_time < interrupt_base_time/10))}
     	      	    {sum(for T in times do if T>0 then T else 0 fi od) > interrupt_base_time/4}
 		    {the "min times = -2" condition ensures data_times isn't empty}
     	      do let ind = #unknown_indices - 1
@@ -1880,8 +1880,8 @@ set u_predictor_to_ht(Param p, int HT, int time) = int:
 		 in if time_test < expiration - elapsed_ms() or do_one_flag
 		    then let RT = defHashHtTime.time_record_to_ht_bounded(q,HT, time_test)
 		    	 in if RT >= 0
-		       	    then unknown_indices:=delete(unknown_indices,ind);
-				 found_time+:= RT
+		       	    then unknown_indices:=delete(unknown_indices,ind){;
+				 found_time+:= RT}
 		       	    else didnt_finish_ht_count +:= 1
 		       	    fi;
 			    do_one_flag:=false;

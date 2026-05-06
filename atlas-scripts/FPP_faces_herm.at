@@ -16,6 +16,7 @@
 <weak_unip.at {for check_wk_unip}
 <smallQ.at {for theta_stable_data_small}
 <sort.at {for sort_by_height}
+<weak_unip.at {for check_wk_unip}
 {BREAK HERE?}
 
 set old_test_interrupt_flag = false
@@ -5385,18 +5386,16 @@ set localFD_1Dirac2_by_zero\
 	       then []
 	       elif FPP_def_flag and not FPP_def_test_wk_final(p)
 	       then []
-	       elif FD_wiggle_flag and any(for q in monomials(finalize(p))
-	       	    		       	   do @bool: wiggle_status_all(q,-1) < 0
-					   od)
-	       then WcaughtCount+:=1; []
-	       elif FD_wiggle_HT_flag and any(for q in monomials(finalize(p))
-	       	    		       	   do @bool: wiggle_status_all(q,HT) < 0
-					   od)
-	       then WHcaughtCount+:=1; []
+	       elif FD_wiggle_flag and any(for q in monomials(finalize(p)) do wiggle_status_all(q,-1)<0 od)
+	       then WcaughtCount+:=1;
+		    []
+	       elif FD_wiggle_HT_flag and any(for q in monomials(finalize(p)) do wiggle_status_all(q,HT) < 0 od)
+	       then WHcaughtCount+:=1;
+	       	    []
 	       elif red_count_flag
 	       then [[j, red_count(p,HT)]]
 	       else [[j]]
-	       fi
+	       fi {Q > DiracBD}
 	 od.## {list of j for which vertex j is a candidate}
     {then () = if time_verbose
 	      then prints("for LF0, time is ",print_time_string(elapsed_ms() - start))
