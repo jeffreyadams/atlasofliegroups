@@ -857,7 +857,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		    ; if let kopp = NumClasses - k - 1 in (kopp%pref_bottom).= and kopp < pref_bottom*k
 		      then let K = (NumClasses - k - 1)\pref_bottom {K runs from 0}
 			   {then () = assert(#q_nums(newStatuses[:K]) = 0)}
-			   then () = if fund_face_verbose and (K%printInterval).=
+			   then () = if fund_face_verbose and (K%printInterval).= 
 				     then let unk = #q_nums(newStatuses[K:k])
 					  in prints("test undet equiv class #",K, " and #",k,
 					     "; so far ",unitary_test_counter.use_count(),
