@@ -219,6 +219,7 @@ set TRUELIST = [(Param,int)]: []
 
 {meant to predict ratio (to_ht time)/u time)}
 set low_quick_frac(Param p,int HT) = rat:
+    if p.nu.= then return 1/1 fi;
     let preg = translate_param_by(p,p.real_form.two_rho)
     then (LAMreg,,GAMreg) = low(preg)
     in (LAMreg+HT)/(GAMreg - LAMreg)

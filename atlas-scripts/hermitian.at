@@ -343,7 +343,10 @@ set make_deformation_hash_time () = deformation_hash_time:
        in if i=I {haven't considered p} or time_list[i] <= -3
        	  then let rp = reducibility_points(p)
 	       in if #rp = 0
-	       	  then FD := K_type_pol(p);
+	       	  then FD := if is_equal_rank(p.real_form)
+		       	     then full_deform_library(p)
+			     else twisted_full_deform_library(p) {These are NOT K_type_pol(p)!}
+			     fi;
 		       start:= -2
 		  else if rp~[0] < 1 then p:= herm_center(Finalize(p*rp~[0])) fi;
 		       mFD := if is_equal_rank(p.real_form)
@@ -388,7 +391,10 @@ set make_deformation_hash_time () = deformation_hash_time:
        in  if i=I or time_list[i] <= -3
        	   then let rp = reducibility_points(p)
 	        in if #rp = 0
-	       	   then mFD := K_type_pol(p).done;
+	       	   then mFD := if is_equal_rank(p.real_form)
+		       	       then full_deform_library(p).done
+			       else twisted_full_deform_library(p).done {These are NOT K_type_pol(p)!}
+			       fi;
 		        start:= -2
 		   else if rp~[0] < 1 then p:= herm_center(Finalize(p*rp~[0])) fi;
 	   	       mFD := if is_equal_rank(p.real_form)
@@ -528,7 +534,10 @@ set make_deformation_hash_height_time () = deformation_hash_height_time:
        	  {haven't finished p to HT}
        	  then let rp = reducibility_points(p)
 	       in if #rp = 0
-	       	  then FDH := to_ht(HT)(K_type_pol(p));
+	       	  then FDH := if is_equal_rank(p.real_form)
+		       	      then full_deform_library(p)
+			      else twisted_full_deform_library(p){These are NOT K_type_pol(p)!}
+			      fi;
 		       start:= -2
 		  else if rp~[0] < 1 then p:= herm_center(Finalize(p*rp~[0])) fi;
 	  	       FDH := (mFDH := if is_equal_rank(p.real_form)
@@ -576,7 +585,10 @@ set make_deformation_hash_height_time () = deformation_hash_height_time:
        	   {haven't finished p to HT}
        	   then let rp = reducibility_points(p)
 	       	in if #rp = 0
-	       	   then mFDH := to_ht(HT)(K_type_pol(p)).done;
+	       	   then mFDH := if is_equal_rank(p.real_form)
+		       	       	then full_deform_library(p).done
+			       	else twisted_full_deform_library(p).done {These are NOT K_type_pol(p)!}
+			       	fi;
 		       	start:= -2
 		   else (if rp~[0] < 1 then p:= herm_center(Finalize(p*rp~[0])) fi;
 	   	   	mFDH := if is_equal_rank(p.real_form) {this is maybe_KTP}
