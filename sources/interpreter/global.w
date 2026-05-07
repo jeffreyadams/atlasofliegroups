@@ -4278,9 +4278,12 @@ sl_list<ind_string> format
     @< Build parenthesised sequence of entries of |v|,
        preceded by field names if associated to |te|,
        appending to |result| @>
+  break; case union_type:
+     @< Append to |result| the contents of |v| in parentheses,
+       to which is applied either the name of an union injector,
+       or a type indication of such an injector function @>
 #if 0
   break; case function_type:
-  break; case union_type:
   {}
 #endif
   }
@@ -4419,6 +4422,74 @@ that was formatted to this, adding a |prefix| or indentation as appropriate.
       result.emplace_back(std::string(")"));
     }
   }
+}
+
+@ For printing a value of union type, we need to dynamically determine its
+variant, and then after analysing the type |te| either indicate the name of the
+corresponding injector, or if there is none give an indication of the injection
+function anyway, which we do by printing out the union type and highlighting
+the applicable variant.
+
+@< Append to |result| the contents of |v| in parentheses, to which is app... @>=
+
+{ const union_value* uv = dynamic_cast<const union_value*>(&v);
+  assert(uv!=nullptr);
+  const auto* names =
+    te.raw_kind()==tabled ? &type_expr::fields(te.tabled_nr()) : nullptr;
+  id_type tag_id = names==nullptr ? type_binding::no_id : (*names)[uv->variant()];
+  const type_expr exp_te = te.expanded();
+  const auto& uni = exp_te.tuple();
+  std::string tag_str;
+  if (tag_id==type_binding::no_id)
+    @< Set |tag_str| to name of union type with components |uni|,
+       with the component at index |uv->variant()| highlighted @>
+  else if (tag_id==uv->stored_name())
+    tag_str = main_hash_table->name_of(tag_id);
+  else
+    tag_str = main_hash_table->name_of(tag_id) + std::string("(born ")
+    + main_hash_table->name_of(uv->stored_name()) + ")";
+  const type_expr& inner_type =
+    *std::next(wtl_const_iterator(uni),uv->variant());
+@)
+  auto inner = format(inner_type,*uv->contents(),width-1);
+  if (inner.singleton() and
+      inner.front().str.length()+3+tag_str.length()<=width)
+    result.emplace_back("("+inner.front().str+")."+tag_str);
+  else // modify |inner| by adding parentheses and |tag_str|
+  {
+    for (auto& item: inner)
+      if (&item==&inner.front())
+        item.str = "("+item.str;
+      else
+        item.indent++;
+    result = std::move(inner);
+    result.emplace_back(")."+tag_str);
+  }
+}
+
+@ If the type of the union value |uv| has no name for the variant number
+|uv->variant()|, we ignore the |uv->stored_name()| recording the name used at
+its creation, but instead print the union type with variant |uv->variant()|
+highlighted. We do this by surrounding it with spaces and printing an asterisk
+in front of it. It is maybe a strange design decision to print
+|uv->stored_name()| only when the type |te| records a \emph{different} variant
+identifier, but we assume that if the user has transformed the union type to one
+that erases the injector name that was necessarily used to build the value, then
+this must be a deliberate act to hide that name, even though the runtime value
+still stores this information.
+
+@< Set |tag_str| to name of union type with components |uni|, with the component
+   at index |uv->variant()| highlighted @>=
+{ wtl_const_iterator p(uni);
+  for (unsigned i=0; not p.at_end(); ++p,++i)
+  { o << (i==0 ? "(" : "|");
+    if (i==uv->variant())
+      o << " *" << *p << " ";
+    else o << *p;
+  }
+  o << ")";
+  tag_str = o.str();
+  o.str("");
 }
 
 @ Here we know that the length of |o.str()| exceeds the available |width|, so

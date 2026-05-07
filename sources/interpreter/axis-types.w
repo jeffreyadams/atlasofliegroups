@@ -4302,6 +4302,7 @@ public:
      comp(std::move(v)),tag(tag),injector_name(name) @+{}
   unsigned int variant() const @+{@; return tag; }
   const shared_value& contents() const @+{@; return comp; }
+  id_type stored_name() const { return injector_name; }
   void print(std::ostream& out) const;
   static const char* name() @+{@; return "union value"; }
   union_value (const union_value& v) = delete;
