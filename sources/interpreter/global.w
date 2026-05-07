@@ -4450,20 +4450,30 @@ the applicable variant.
     + main_hash_table->name_of(uv->stored_name()) + ")";
   const type_expr& inner_type =
     *std::next(wtl_const_iterator(uni),uv->variant());
+  const bool need_parens =
+    @< Whether |inner_type| requires parentheses before dot notation @>@;@;;
 @)
-  auto inner = format(inner_type,*uv->contents(),width-1);
+  auto inner = format(inner_type,*uv->contents(),need_parens?width-1:width);
   if (inner.singleton() and
-      inner.front().str.length()+3+tag_str.length()<=width)
-    result.emplace_back("("+inner.front().str+")."+tag_str);
+      inner.front().str.length()+(need_parens?3:1)+tag_str.length()<=width)
+    result.emplace_back
+      ((need_parens?"("+inner.front().str+").":inner.front().str+".")+tag_str);
   else // modify |inner| by adding parentheses and |tag_str|
-  {
-    for (auto& item: inner)
-      if (&item==&inner.front())
-        item.str = "("+item.str;
-      else
-        item.indent++;
-    result = std::move(inner);
-    result.emplace_back(")."+tag_str);
+  { if (need_parens)
+    // then format multi-line output using extra parens and indent
+    { for (auto& item: inner)
+        if (&item==&inner.front())
+          item.str = "("+item.str;
+        else
+          item.indent++;
+      result = std::move(inner);
+      result.emplace_back(")."+tag_str);
+    }
+    else // find last line and extend its string using |tag_str|
+    { result = std::move(inner);
+      auto it = std::next(result.begin(),result.size()-1);
+      it->str += "."+tag_str;
+    }
   }
 }
 
@@ -4492,6 +4502,23 @@ still stores this information.
   o.str("");
 }
 
+@ For many types, the output is always enclosed in matching symbols, like
+parentheses of a tuple or the brackets of a row value. The following condition
+expresses when this is \emph{not} the case (so that adding applying a pair of
+parentheses is necessary), but since it is more natural to express when matching
+symbols will ready be present, we give that one with logical negation applied to
+the whole. The below condition is incomplete, and probably should be replaced by
+a function call, as that could for instance distinguish between different
+primitive types, which in an expression is quite hard (it requires fuller
+expansion of a possibly tabled |inner_type| than |top_kind| can provide).
+
+@< Whether |inner_type| requires parentheses before dot notation @>=
+not (inner_type.top_kind()==row_type or
+     inner_type.top_kind()==tuple_type or
+     inner_type.top_kind()==union_type or
+     inner_type.top_kind()==primitive_type
+    )
+
 @ Here we know that the length of |o.str()| exceeds the available |width|, so
 for certain primitive types we will try to split the value over multiple lines.
 However this is not always reasonable (and at some point all available width
@@ -4509,7 +4536,7 @@ that we have no space left on this line.
     unsigned len = str.length();
     auto pos = str.begin();
     while(len>width)
-    { result.emplace_back(std::string(pos,pos+width)+'\\');
+  @/{@; result.emplace_back(std::string(pos,pos+width)+'\\');
       pos+=width; len-=width;
     }
     result.emplace_back(std::string(pos,str.end()));
