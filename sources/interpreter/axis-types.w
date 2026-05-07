@@ -1381,6 +1381,7 @@ static type_nr_type table_size();
 static void reset_table_size(type_nr_type old_size);
 static const std::vector<id_type>& fields(type_nr_type type_number);
 static void set_fields (id_type type_number, std::vector<id_type>&& fields);
+static void copy_fields(id_type from, id_type to);
 static type_expr tabled_call(type_nr_type type_nr);
   // formally applied tabled constructor
 static sl_list<const type_binding*> matching_bindings (const type& tp);
@@ -1415,6 +1416,11 @@ void type_expr::set_fields(id_type type_number, std::vector<id_type>&& fields)
 {@; assert(type_number<table_size());
    type_map[type_number].fields=fields;
 }
+void type_expr::copy_fields(id_type from, id_type to)
+{@; assert(from<table_size() and to<table_size());
+   type_map[to].fields=type_map[from].fields;
+}
+
 
 @ The |type_map| does not store directly usable types in all cases, since
 (potentially) recursive type constructors do not provide argument lists when
@@ -1501,7 +1507,12 @@ type_expr type_expr::expanded () const
 has a definite meaning (as opposed to the situation for recursive definitions),
 there is no other requirement for it than that it should not directly be (at its
 top level) a reference to an instance of another tabled type (constructor). To
-make sure this is the case, we start by calling |expand| for |tp|.
+make sure this is the case, we start by calling |expand| for |tp|. In case a
+tabled type is actually expanded here, our caller will copy any fields from that
+tabled type to the |type_map| entry created here, using the method
+|type_expr::copy_fields|. (Both for |add_simple_typedefs| and |add_typedefs|
+below, it is left as responsibility of the caller to set |fields| for the types
+defined.)
 
 For non recursive entries of |type_map|, equality of types is not restricted to
 being the same entry with equal argument types: when comparing distinct entries,
