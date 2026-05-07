@@ -1508,7 +1508,9 @@ void type_define_identifier
     global_id_table->add_type_def
       (id,type::constructor(type_expr::local_ref(k),deg),loc);
 @)
-    if (not fields.empty())
+    if (tp.kind()==tabled)
+      type_expr::copy_fields(tp.tabled_nr(),k);
+    else if (not fields.empty())
     {
       type_expr tabled_tp = type_expr::tabled_call(k);
       // tabled type with |deg| arguments
@@ -1645,8 +1647,8 @@ void process_type_definitions
        identifier |id| defined by the equation; |throw| a |program_error|
        if any identifiers in the equation are problematic @>
   @/@< Replace, for any type with |kind==tabled| occurring in |defs|,
-       the stored identifier code |id| by |position[id]| if that is set,
-       or else by the|tabled_nr()| obtained from its type in |global_id_table| @>
+       the stored identifier code |id| by |position[id]| if that is set, or else
+       by the |tabled_nr()| obtained from its type in |global_id_table| @>
 @)
 @/  std::vector<std::pair<id_type,const_type_p> > b; b.reserve(n_defs);
     for (auto it=defs.wcbegin(); not defs.at_end(it); ++it)
@@ -1899,28 +1901,32 @@ an iterator~|it| into the list and a position~|i|.
   auto store_it = store.wbegin(); // rewind the list of field lists
   for (auto it=(i=0,defs.wcbegin()); not defs.at_end(it); ++it,++i)
   { auto type_nr = old_table_size+i;
-    const auto& fields = it->fields;
-    const type_expr tp = type_expr::tabled_call(type_nr).expanded();
     if (it->id!=type_binding::no_id)
     {
       if (global_id_table->is_defined_type(it->id))
         clean_out_type_identifier(it->id);
-      global_id_table->add_type_def
+      global_id_table->add_type_def @|
         (it->id,type::constructor(type_expr::local_ref(type_nr),deg),loc);
     }
     @< Emit... @>
+    const type_expr tp = type_expr::tabled_call(type_nr).expanded();
     if (it->id==type_binding::no_id)
       *output_stream << "Anonymous type "
                      << tp << std::endl;
     else
       *output_stream << "Type name '" << main_hash_table->name_of(it->id) @|
         << "' defined as " << tp << std::endl;
-    if (not fields.empty())
-    { auto& group = *store_it;
-      @< Add to |global_overload_table| functions for |fields| with types taken
-         from |group|, and associate those fields to type |type_nr|;
+    if (it->tp->raw_kind()==tabled)
+      type_expr::copy_fields(it->tp->tabled_nr(),type_nr);
+    else
+    { const auto& fields = it->fields;
+      if (not fields.empty())
+      { auto& group = *store_it++;
+         // |store_it| only advances when fields were present
+      @/@< Add to |global_overload_table| functions for |fields| with types
+         taken from |group|, and associate those fields to type |type_nr|;
          also print project/injector names @>
-    @/ ++store_it; // |store_it| only advances when fields were present
+      }
     }
   }
 }
@@ -1980,7 +1986,7 @@ passing the |constexpr no_id@;| by reference (it builds a temporary
 instead); this avoids needing to allocate an actual static variable.
 
 @< Add to |global_overload_table| functions for |fields| with types
-   taken from |group|,... @>=
+   taken from |group|... @>=
 
 { assert(tp.raw_kind()==tuple_type or tp.raw_kind()==union_type);
   bool is_tup = tp.raw_kind()==tuple_type;
