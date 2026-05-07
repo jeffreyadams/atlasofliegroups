@@ -4364,27 +4364,27 @@ if it cannot, we contribute the current line as completed and append the item
 that was formatted to this, adding a |prefix| or indentation as appropriate.
 
 @< Build parenthesised sequence of entries of |v|, preceded by field names...@>=
-{ const row_value* rv = dynamic_cast<const tuple_value*>(&v);
-  assert(rv!=nullptr);
-  const auto& tup =
-    te.raw_kind()==tabled ? te.tabled_eq().tuple() : te.tuple();
+{ const tuple_value* tv = dynamic_cast<const tuple_value*>(&v);
+  assert(tv!=nullptr);
   auto* names = te.raw_kind()==tabled ? &te.fields(te.tabled_nr()) : nullptr;
+  const type_expr exp_te = te.expanded();
+  const auto& tup = exp_te.tuple();
   if (tup==nullptr)
     result.emplace_back("()");
   else
   { std::string cur; // current line
     wtl_const_iterator it (tup);
-    for (unsigned i=0; i<rv->length(); ++i,++it)
+    for (unsigned i=0; i<tv->length(); ++i,++it)
     {
       const bool is_prim = it->top_kind()==primitive_type;
       auto prefix = std::string(is_prim ? i==0 ? "(" : "," : i==0 ? "( " : ", ");
       if (names!=nullptr and (*names)[i]!=type_binding::no_id)
-      { prefix += main_hash_table->name_of((*names)[i]);
-        prefix += " ";
-      }
+      @/{@; prefix += main_hash_table->name_of((*names)[i]);
+          prefix += " ";
+        }
       const unsigned tab = prefix.length();
       const auto ind_width = width-tab;
-      auto res = format(*it,*rv->val[i],ind_width);
+      auto res = format(*it,*tv->val[i],ind_width);
       if (res.singleton())
       { if (width>=cur.length()+tab+res.front().str.length())
           cur += prefix+res.front().str; // append a new item to |cur|
