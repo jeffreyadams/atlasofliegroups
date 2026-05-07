@@ -2910,7 +2910,7 @@ set is_unitary_test_big_SIMPLE_interrupted_Ufirst(Param p, int time) = int:
   then () = ht := next_height(p,ht);
        	    if ht < 0 then return 1 fi
   then (u_time, to_ht_time) = adjust_to_ht_over_u(p,ht), test_time = int:0
-  then () = if min(u_time,to_ht_time) > G.rank*interrupt_base_time and
+  then () = if predictor_flag and min(u_time,to_ht_time) > G.rank*interrupt_base_time and
        	       (stat_holder:=wiggle_status_cod_one(p,-1)).!=
 	    then return stat_holder
 	    fi
@@ -2997,7 +2997,7 @@ set is_unitary_test_big_SIMPLE_interrupted(Param p, int time) = int:
   then () = ht := next_height(p,ht);
        	    if ht < 0 then return 1 fi {no heights to test, so unitary}
   then (u_time, to_ht_time) = adjust_to_ht_over_u(p,ht), test_time = int:0
-  then () = if min(u_time,to_ht_time) > G.rank*interrupt_base_time and
+  then () = if predictor_flag and min(u_time,to_ht_time) > G.rank*interrupt_base_time and
        	       (stat_holder:=wiggle_status_cod_one(p,-1)).!=
 	    then return stat_holder
 	    fi
@@ -3216,7 +3216,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
 	    fi
   then () = p := herm_center(p)
   then (u_time,to_ht_time) = adjust_to_ht_over_u(p,HT)
-  then () = if min(u_time,to_ht_time) > G.rank * interrupt_base_time and
+  then () = if predictor_flag and min(u_time,to_ht_time) > G.rank * interrupt_base_time and
        	       (stat_holder:=wiggle_status_cod_one(p,HT))!= 0
 	    then return stat_holder > 0
 	    fi
@@ -3303,7 +3303,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
   then () = p := herm_center(p)
   then result = 0, test_time = int:0
   then (u_time,to_ht_time) = adjust_to_ht_over_u(p,HT)
-  then () = if min(u_time,to_ht_time) > G.rank * interrupt_base_time and
+  then () = if predictor_flag and min(u_time,to_ht_time) > G.rank * interrupt_base_time and
        	       (stat_holder:=wiggle_status_cod_one(p,HT))!= 0
 	    then return stat_holder > 0
 	    fi
@@ -3411,7 +3411,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
   then () = p := herm_center(p)
   then result = 0, HTfirst = HTs[0], HTlast = HTs~[0]
   then (u_time,to_ht_time) = adjust_to_ht_over_u(p,HTfirst), test_time = int:0
-  then () = if min(u_time,to_ht_time) > G.rank * interrupt_base_time and
+  then () = if predictor_flag and min(u_time,to_ht_time) > G.rank * interrupt_base_time and
        	       (stat_holder:=wiggle_status_cod_one(p,HTlast))!= 0
 	    then return stat_holder > 0
 	    fi
@@ -3513,7 +3513,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_Ufirst(Param p, [int] HTs) = bool:
   then () = p := herm_center(p)
   then result = 0, HTfirst = HTs[0], HTlast = HTs~[0]
   then (u_time,to_ht_time) = adjust_to_ht_over_u(p,HTfirst), test_time = int:0
-  then () = if min(u_time,to_ht_time) > G.rank * interrupt_base_time and
+  then () = if predictor_flag and min(u_time,to_ht_time) > G.rank * interrupt_base_time and
        	       (stat_holder:=wiggle_status_cod_one(p,HTlast))!= 0
 	    then return stat_holder > 0
 	    fi
