@@ -2010,17 +2010,17 @@ set simple_status(Param p, int HT) = int:
     if not is_hermitian(p) then return -1 fi;
     p:= herm_center(p);
     let start_st = elapsed_ms(), ans = int:0
-    then GAM = (p.infinitesimal_character* p.inner_class.two_rho_check)\1
+    then GAM = GAM(p)
     in
     if HT >= GAM then HT:=-1 fi;
     ans := if big_unitary_hash.ulookup(p) >= 0
-    then {assert(@:is_unitary_to_ht(p,HT));} 1
+    then status_ucount+:=1; 1
     elif big_unitary_hash.nu_height_lookup_int(p,HT) < 0
-    then {assert(@:not is_unitary_to_ht(p,HT));} -1
+    then status_nucount+:=1; -1
     elif is_known_u_to_ht(p,HT)
-    then {assert(@:is_unitary_to_ht(p,HT));} 1
+    then status_ucount+:=1; 1
     elif is_finished(p.x, p.lambda) and HT < 0
-    then -1 {otherwise we'd have found it in ulookup}
+    then status_nucount+:=1; -1 {otherwise we'd have found it in ulookup}
     elif fair_use_flag
     then is_unitary_hash_big_SIMPLE_fair(p)
     else 0
@@ -2071,14 +2071,16 @@ set wiggle_status_cod_one(Param p, KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	 fi
 	 od
     in if any(for q in helpers do simple_status(q,HT)>0 od)
-       then add_to_u_to_ht(p,HT);
-       	    for q in helpers do add_to_u_to_ht(q,HT) od;
-	    1
+       then add_to_u_to_ht(p,HT)
+       	    ; for q in helpers do add_to_u_to_ht(q,HT) od
+	    ; statusW_ucount+:=1
+	    ; 1
        elif any(for q in defs.##
 		do @bool: simple_status(q,HT) < 0
 		od)
-       then big_unitary_hash.numatch_height(p,HT);
-       	    for q in helpers do big_unitary_hash.numatch_height(q,HT) od;
+       then big_unitary_hash.numatch_height(p,HT)
+       	    ; for q in helpers do big_unitary_hash.numatch_height(q,HT) od
+	    ; statusW_nucount+:=1
 	    -1
        else 0
        fi next statusW_time +:= elapsed_ms() - start_stW; statusW_count +:= 1
@@ -2126,12 +2128,15 @@ set wiggle_status_all(Param p, KGBElt x, ratvec lambda, LocalVertexData Lvd, int
 	     		fi
 	 		od
     	 in if any(for q in helpers do @bool: simple_status(q,HT) > 0 od)
-       	    then add_to_u_to_ht(p,HT);
-       	    1
+       	    then add_to_u_to_ht(p,HT)
+	    	 ; statusW_ucount +:=1
+	    	 ; 1
        	    elif any(for q in defs.##
        	    	     do simple_status(q,HT) < 0
 		     od)
-       	    then big_unitary_hash.numatch_height(p,HT); -1
+       	    then big_unitary_hash.numatch_height(p,HT)
+	    	 ; statusW_nucount +:=1
+	    	 ; -1
 	    else 0
        	    fi next statusW_time +:= elapsed_ms() - start_stW; statusW_count +:= 1
     fi {simple_status != 0}
@@ -3993,6 +3998,7 @@ set is_FPP_unitary(Param p, (Param -> bool) fancy_tester ) = (bool,bool):
 		   do @bool: fancy_tester(derpL)
 		   od))
 
+{true forces using simplest lookup for known unitaries?}
 set KUKU_flag = true
 
 {if false, suppress printing of report after an FPP_unitary_hash* job}
@@ -4403,6 +4409,31 @@ set known_non_unitaries(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		fi
 	  od.##
        od
+
+{list of faces in LFDKH identifies as unitary or nonunitary by status(*,HT)}
+set known_status(KGBElt x, ratvec lambda, LocalVertexData Lvd,
+    [[FaceVertsKHash]] LFDKH, int HT) = ([vec],[vec]):
+    let ps = for d:#LFDKH
+	     do for v in LFDKH[d]
+		do parameter(x,lambda,face_bary(Lvd, v[:d+1]))
+		od
+	     od
+    then Ulist = [vec]:for d:#LFDKH do [] od
+    then NUlist = Ulist
+    in for d:#LFDKH
+       do for p@j in ps[d]
+	  do let qs = monomials(finalize(p))
+	     then stats = for q in qs do status(q,HT) od
+	     then (U,NU) = (all(for stat in stats do stat > 0 od), any(for stat in stats do stat < 0 od))
+	     in if U
+	     	then Ulist[d]#:=j
+		fi;
+		if NU
+		then NUlist[d]#:=j
+		fi
+	   od
+       od;
+       (Ulist,NUlist)
 
 set localize(Param_hash Uhash, KGBElt x, ratvec lambda) = Param_hash:
     let NumKnown = Uhash.size(), UhashLoc = make_Param_hash()

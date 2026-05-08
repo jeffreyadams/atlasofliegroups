@@ -448,13 +448,13 @@ set unipotents_to_hashes(RealForm G, [Param_hash] Uhashes) = void:
 and local_test_hash}
 {separate flag KUKU_flag in FPP_faces_herm.at controls whether to use known_unitaries
 or KU}
-set KU_flag = true
+set KU_flag = false {true}
 
 {whether to fill in statuses for known unitaries in local_testK_hash*
 and local_test_hash}
 {true costs about 2% in time for E6_q, but seems to make E7_s faster
 by maybe 5%??}
-set KNU_flag = true
+set KNU_flag = false {true}
 
 {count how often nonunitary induction identifies nonunitary rep}
 set NU_ind_counter = 0
@@ -748,27 +748,42 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
      Use function known_unitaries from FPP_faces
      Look up class in classListByFace, and mark "T"}
     then start = elapsed_ms(), start_count = unitary_test_counter.use_count()
-    then () = if KU_flag {and #FVKH = 2}
-	      then let () = KUKU_flag:=false
-		   then knownUnitaries = known_unitaries(Uhash, x, lambda, Lvd, FVKH, fancy_tester)
-		   then () = for list@d in knownUnitaries
-			     do for j in list
-				do let k = classListByFace[d][j]
-				    then ()=newStatuses:= downdateUclassesB(newStatuses, gr, k, "T")
-				    in newStatuses[k] := "T"
+    then () = if KU_flag and KNU_flag
+    	      then let () = KUKU_flag:=false
+	      	   then (knownUnitaries, knownNonUnitaries) = known_status(x,lambda,Lvd, FVKH,HT)
+	      	   in for list@d in knownUnitaries
+		      do for j in list
+			 do let k = classListByFace[d][j]
+			    in newStatuses:= downdateUclassesB(newStatuses, gr, k, "T");
+			       newStatuses[k] := "T"
 				od
-			     od
-		   in KUKU_flag:=true
-	       fi
-     then () = if KNU_flag
+			     od;
+			     for list@d in knownNonUnitaries
+		       	     do for j in list
+		       	     	do let k = classListByFace[d][j]
+			     	in newStatuses:= updateNUclassesB(newStatuses, gr, k, "F");
+			     	   newStatuses[k] := "F"
+		     	        od {j in list}
+		             od {list@d} next KUKU_flag:=true
+    		elif KU_flag {and #FVKH = 2}
+	      	then let () = KUKU_flag:=false
+		     then knownUnitaries = known_unitaries(Uhash, x, lambda, Lvd, FVKH, fancy_tester)
+		     in for list@d in knownUnitaries
+			do for j in list
+			   do let k = classListByFace[d][j]
+			      in newStatuses:= downdateUclassesB(newStatuses, gr, k, "T");
+				 newStatuses[k] := "T"
+			   od {j in list}
+			od {list@d} next KUKU_flag:=true
+	       elif KNU_flag
 	       then let knownNonUnitaries = known_non_unitaries(x, lambda, Lvd, FVKH, HT)
-	       in for list@d in knownNonUnitaries
-		  do for j in list
-		     do let k = classListByFace[d][j]
-			in newStatuses:= updateNUclassesB(newStatuses, gr, k, "F");
-			   newStatuses[k] := "F"
-		     od {j in list}
-		  od {list@d}
+	       	    in for list@d in knownNonUnitaries
+		       do for j in list
+		       	  do let k = classListByFace[d][j]
+			     in newStatuses:= updateNUclassesB(newStatuses, gr, k, "F");
+			     	newStatuses[k] := "F"
+		     	  od {j in list}
+		       od {list@d}
 		fi
     {then () = if test_verbose then prints("eq = ",eq); prints("gr = ",gr) fi}
     {then () = if test_verbose then prints("ICPU_flag = ",ICPU_flag,", ICPNU_flag = ",ICPNU_flag) fi}
@@ -779,8 +794,9 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	      known_true_count," are known unitary, ", known_false_count, " known nonunitary.")
 	      fi
       then () =  for k:NumClasses
-		~do {assert(#q_nums(newStatuses[k+1:]) = 0);}
-		    {if fund_face_verbose {and NumClasses > 100} and {removing ~ costs 5% in Spin(4,4)}
+		~do {
+		    assert(#q_nums(newStatuses[k+1:]) = 0);
+		    if fund_face_verbose {and NumClasses > 100} and {removing ~ costs 5% in Spin(4,4)}
 		   ((NumClasses-k-1)%printInterval = 0)
 		   then let unk = #q_nums(newStatuses[:k])
 			in prints("test undet equiv class #"
@@ -788,7 +804,9 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		   ," 'is_unitary' tests; ",unk," classes still ? at ", print_time_string(elapsed_ms() - start))
 		   ; printInterval := 2*printInterval
 		   fi
-		   ;}if{NEWUk} newStatuses[k] = "?"
+		   ;
+		   }
+		     if{NEWUk} newStatuses[k] = "?"
 		     then let C=eq[k]
 			  then N = if wiggle_flag1 and C~[0] >= #FVKH[0]
 				   then C~[0]
