@@ -1262,10 +1262,8 @@ set localFD_1SteveU\
 		else false
 		fi
 	 fi
-	 {don't need this next test; we are just throwing out nonunitary singletons}
     then temp_Dirac_flag =
-    	 if Dirac_flag and not(temp_Dirac_best_flag) {and
-    	 		       max(for mu in LKTs(parameter(x,lambda,0*lambda)) do tensor_p_hts(mu) od) <=HT}
+    	 if Dirac_flag and not(temp_Dirac_best_flag)
 	 then let bd = DiracBD(x,lambda)
 	      then QG = invariant_form(G)
 	      then index = first(for v in LF01
