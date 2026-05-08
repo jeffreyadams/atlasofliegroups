@@ -4360,12 +4360,6 @@ notation, concatenating them on a single line as long as possible, but never
 sharing a line between two items at least one of which itself requires multiple
 lines.
 
-When outputting a with a partially filled current line |cur|, we recursively
-|format| each item as if it started on a fresh line, then if it fits on a single
-line we determine whether we can actually append the output to the current line;
-if it cannot, we contribute the current line as completed and append the item
-that was formatted to this, adding a |prefix| or indentation as appropriate.
-
 @< Build parenthesised sequence of entries of |v|, preceded by field names...@>=
 { const tuple_value* tv = dynamic_cast<const tuple_value*>(&v);
   assert(tv!=nullptr);
@@ -4383,33 +4377,11 @@ that was formatted to this, adding a |prefix| or indentation as appropriate.
       auto prefix = std::string(is_prim ? i==0 ? "(" : "," : i==0 ? "( " : ", ");
       if (names!=nullptr and (*names)[i]!=type_binding::no_id)
       @/{@; prefix += main_hash_table->name_of((*names)[i]);
-          prefix += " ";
+          prefix += ": ";
         }
       const unsigned tab = prefix.length();
-      const auto ind_width = width-tab;
-      auto res = format(*it,*tv->val[i],ind_width);
-      if (res.singleton())
-      { if (width>=cur.length()+tab+res.front().str.length())
-          cur += prefix+res.front().str; // append a new item to |cur|
-        else
-        { if (cur.size()>0) // if there is any accumulated output
-            result.emplace_back(std::move(cur)); // make it to a line now
-          cur = prefix+res.front().str;
-        }
-      }
-      else // transform |res|, then append to |result|
-      {
-        if (cur.length()>0) // if there is any accumulated output
-        @/{@; result.emplace_back(std::move(cur));
-          cur.clear();
-        } // emit that first
-        for (auto& item: res)
-          if (&item==&res.front())
-            item.str = prefix+item.str;
-          else
-            item.indent+=tab;
-        result.append(std::move(res));
-      }
+      @< Format |prefix| followed by |*tv->val[i]|, which has type |*it|,
+         to |width| columns, using |cur| as text buffer for the next line @>
     }
     if (result.empty() and width>=cur.length()+1)
     @/{@;
@@ -4420,6 +4392,79 @@ that was formatted to this, adding a |prefix| or indentation as appropriate.
     { if (cur.length()>0)
         result.emplace_back(std::move(cur));
       result.emplace_back(std::string(")"));
+    }
+  }
+}
+
+@ When outputting a with a partially filled current line |cur|, we recursively
+|format| each item as if it started on a fresh line, then if it fits on a single
+line we determine whether we can actually append the output to the current line;
+if it cannot, we contribute the current line as completed and append the item
+that was formatted to this, adding a |prefix| or indentation as appropriate.
+
+@< Format |prefix| followed by |*tv->val[i]|... @> =
+
+if (tab+25>width)
+  @< Append to |result| a compactly formatted form of |prefix| followed
+     by the value |*tv->val[i]|, to |width| columns and using |cur|
+     as line buffer @>
+else
+{ const auto ind_width = width-tab;
+  auto res = format(*it,*tv->val[i],ind_width);
+  if (res.singleton())
+  { if (cur.length()+tab+res.front().str.length()<=width)
+      cur += prefix+res.front().str; // append a new item to |cur|
+    else
+    { if (cur.size()>0) // if there is any accumulated output
+        result.emplace_back(std::move(cur)); // make it to a line now
+      cur = prefix+res.front().str;
+    }
+  }
+  else // transform |res|, then append to |result|
+  {
+    if (cur.length()>0) // if there is any accumulated output
+    @/{@; result.emplace_back(std::move(cur));
+      cur.clear();
+    } // emit that first
+    for (auto& item: res)
+      if (&item==&res.front())
+        item.str = prefix+item.str;
+      else
+        item.indent+=tab;
+    result.append(std::move(res));
+  }
+}
+
+@ Formatting nested tuples with field names can quickly reduce the number of
+columns effectively available, so before it is completely reduced to nothing we
+revert to more basic formatting. This is done by formatting to maximal width,
+and then breaking the (hopefully single) line that results into pieces of size
+|width|.
+
+@< Append to |result| a compactly formatted form of |prefix| followed...@>=
+{
+  auto res = format(*it,*tv->val[i],-1);
+  if (res.singleton() and cur.length()+tab+res.front().str.length()<=width)
+    cur += prefix+res.front().str;
+  else
+  { if (cur.length()>0) // if there is any accumulated output
+    @/{@; result.emplace_back(std::move(cur));
+      cur.clear();
+    } // emit that first
+    if (tab+res.front().str.length()<=width)
+      cur = prefix+res.front().str;
+    else
+    { result.push_back(std::move(prefix));
+      for (const auto& item : res) // hopefully just once
+      { unsigned len = item.str.length();
+        auto pos = item.str.begin();
+        unsigned w = width-2;
+        while(len>w)
+      @/{@; result.emplace_back(2,std::string(pos,pos+w));
+          pos+=w; len-=w;
+        }
+        result.emplace_back(2,std::string(pos,item.str.end()));
+      }
     }
   }
 }
