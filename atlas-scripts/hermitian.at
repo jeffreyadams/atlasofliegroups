@@ -61,8 +61,14 @@ set HF_false_low_count = int:0
 set status_time = int: 0
 set status_count = int: 0
 
+set status_ucount = int: 0
+set status_nucount = int: 0
+
 set statusW_time = int: 0
 set statusW_count = int: 0
+
+set statusW_ucount = int: 0
+set statusW_nucount = int: 0
 
 {next three global variables concern function is_unitary_test_big_SIMPLE_interrupt in FPP_faces_herm.at}
 set up_mu_time = int:0
@@ -136,6 +142,12 @@ to G. Need this to use looked-up deformations.}
 set regroup(RealForm G, KTypePol P) = KTypePol:
     sum(G, for c@q in P do let (,m) = %q.x
     	   in c*K_type(KGB(G,m), q.lambda_minus_rho) od)
+
+set regroup(RealForm G, maybe_KTP P) = maybe_KTP:
+    case P
+    |timed_out(): timed_out()
+    |done(Q): regroup(Q.real_form,Q).done
+    esac
 
 set regroup(RealForm G, Param p) = Param:
     parameter(G, p.x.number, p.lambda, p.nu)
@@ -704,28 +716,28 @@ set make_deformation_hash_height_time () = deformation_hash_height_time:
 set defHashHtTime = make_deformation_hash_height_time()
 
 set full_deform(Param p) = KTypePol:
-    defHashTime.full_deform(p)
+    regroup(p.real_form,defHashTime.full_deform(p))
 
 set full_deform(Param p, int time) = maybe_KTP:
-    defHashTime.maybe_full_deform(p,time)
+    regroup(p.real_form,defHashTime.maybe_full_deform(p,time))
 
 set twisted_full_deform(Param p) = KTypePol:
-    defHashTime.full_deform(p)
+    regroup(p.real_form,defHashTime.full_deform(p))
 
 set twisted_full_deform(Param p, int time) = maybe_KTP:
-    defHashTime.maybe_full_deform(p,time)
+    regroup(p.real_form,defHashTime.maybe_full_deform(p,time))
 
 set full_deform_to_ht(Param p, int HT) = KTypePol:
-    defHashHtTime.full_deform_to_ht(p,HT)
+    regroup(p.real_form,defHashHtTime.full_deform_to_ht(p,HT))
 
 set full_deform_to_ht(Param p, int HT, int time) = maybe_KTP:
-    defHashHtTime.maybe_full_deform_to_ht(p, HT, time)
+    regroup(p.real_form,defHashHtTime.maybe_full_deform_to_ht(p, HT, time))
 
 set twisted_full_deform_to_ht(Param p, int HT) = KTypePol:
-    defHashHtTime.full_deform_to_ht(p,HT)
+    regroup(p.real_form,defHashHtTime.full_deform_to_ht(p,HT))
 
 set twisted_full_deform_to_ht(Param p, int HT, int time) = maybe_KTP:
-    defHashHtTime.maybe_full_deform_to_ht(p,HT,time)
+    regroup(p.real_form,defHashHtTime.maybe_full_deform_to_ht(p,HT,time))
 
 {should require number of -alphav*theta >= number of alphav}
 set red_coroots(KGBElt x) = [vec]:
@@ -1711,6 +1723,8 @@ set min_trials = int: 1
 {whether to put a little wiggle in prediction}
 set no_margin_flag = false
 
+set uGAM_flag = true
+
 {predicted time in milliseconds to complete is_unitary(p)}
 set u_predictor(Param p, int time) = int:
     if u_predictor_old_flag then return u_predictor_old(p,time) fi;
@@ -1765,7 +1779,10 @@ set u_predictor(Param p, int time) = int:
 			  	 fi
 		       	      od.##
     then N = #list, data_n = #data_inds, un = #unknown_indices
-    then pred_list = pred(list, data_times, data_inds, GAM(p)) {try adding GAM(p) arg 5/5/26}
+    then pred_list = if uGAM_flag
+    	 	     then pred(list, data_times, data_inds, GAM(p)) {try adding GAM(p) arg 5/5/26}
+		     else pred(list, data_times, data_inds)
+		     fi
     then pred = if from_scratch_flag
        	      	then sum(pred_list){+interrupt_base_time}
 		elif no_margin_flag
