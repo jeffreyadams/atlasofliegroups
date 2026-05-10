@@ -406,13 +406,13 @@ prints("Ov = ", Ov.diagram, " Mv = ", Mv)
 set check_Abar(RootDatum G, SommersDatum (Lv,OMv)) = [vec]:
 let ORv=ORv(G,(Lv,OMv)) in print_Abar(ORv)
 
-
-
+{next command requires preloading hermitian.at, which seems not a good idea}
+{
 set test_unitary(RealForm G, ratvec x, int n) = void:
 let list=all_parameters_gamma(G,x) then
 unipotent=##(for p in list do if 2*GK_dim(p)=n then [p] else [] fi od) in
 for p in unipotent do prints(p, " ", is_unitary(p))od
-
+}
 
 
 {

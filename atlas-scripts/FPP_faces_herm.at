@@ -1736,13 +1736,27 @@ is_unitary_next_big_SIMPLE
 set next_height(Param p) = int:
     min(for mu in LKTs(p) do height(next_to_lowest(mu)) od)
 
+set heights(KTypePol P) = [int]:
+    for @mu in P do height(mu) od.sort_u
+
 set next_taus(KType mu, int D) = [KType]:
     if D.<= then return [] fi;
+   
     let tau = mu
     in for j:D do tau := next_to_lowest(tau) od
 
 set next_heights(KType mu, int D) = [int]:
-    for tau in next_taus(mu,D) do height(tau) od
+    {if height(mu) = 0
+    then} let M = 5
+    	 then P = branch_std(mu,M)
+	 then answer = heights(P)
+    	 in while #answer < D+1
+	    do M+:=5
+	       ; P:= branch_std(mu,M)
+	       ; answer:=heights(P)
+	    od;
+	    answer[1:D+1]
+    {for tau in next_taus(mu,D) do height(tau) od}
 
 set next_taus(Param p, int D) = [KType]:
     for mu in LKTs(p) do next_taus(mu, D) od.##.temp_sort_u[:D]
@@ -2627,11 +2641,11 @@ set is_unitary_test_big_SIMPLE_interrupt_old(Param p, int step) = bool:
 
 {increase the interruptible times by this}
 set to_ht_factor = rat: 4 {was 5; 1 bad at 20890 4/7/26} {4 4/18/26}
-set u_factor = rat: 3/2 {2; changed to 1 4/7/26}
+set u_factor = rat: 8/1 {2; changed to 1 4/7/26 Changed to 8/1 for E7_s spherical 5/9/26}
 
 {if (predicted u_time)/(predicted to_ht_time) is exceeds prefer_u_factor, then skip u
 in favor of to_ht. Increasing u_factor allows more u tests.}
-set prefer_u_factor = rat: 3/2 {4 was bad 20890}
+set prefer_u_factor = rat: 24 {4 was bad 20890} {24 or more seems good for E7_s spherical. Else??}
 {3/2 changed 4/7/26} {6/1 3/5/26 commit} {2/1} {4/1 after a little E8_q testing}
 {if this is too small, end up with repeated pos is_unitary_to_ht}
 
@@ -2894,6 +2908,9 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, [int] hts) = bool:
 	    fi
    in is_unitary_test_big_SIMPLE_interrupt(p, N)
 
+{How bad things have to be before using wiggle_status inside is_unitary}
+set stat_factor = int: 1
+
 {try for time milliseconds; return 1 if true, -1 if false, 0 if run out of time}
 set is_unitary_test_big_SIMPLE_interrupted_Ufirst(Param p, int time) = int:
   {if not predictor_flag then return is_unitary_hash_big_SIMPLE(p,time) fi;}
@@ -2915,7 +2932,7 @@ set is_unitary_test_big_SIMPLE_interrupted_Ufirst(Param p, int time) = int:
   then () = ht := next_height(p,ht);
        	    if ht < 0 then return 1 fi
   then (u_time, to_ht_time) = adjust_to_ht_over_u(p,ht), test_time = int:0
-  then () = if predictor_flag and min(u_time,to_ht_time) > G.rank*interrupt_base_time and
+  then () = if predictor_flag and min(u_time,to_ht_time) > stat_factor*G.rank*interrupt_base_time and
        	       (stat_holder:=wiggle_status_cod_one(p,-1)).!=
 	    then return stat_holder
 	    fi
@@ -3002,7 +3019,7 @@ set is_unitary_test_big_SIMPLE_interrupted(Param p, int time) = int:
   then () = ht := next_height(p,ht);
        	    if ht < 0 then return 1 fi {no heights to test, so unitary}
   then (u_time, to_ht_time) = adjust_to_ht_over_u(p,ht), test_time = int:0
-  then () = if predictor_flag and min(u_time,to_ht_time) > G.rank*interrupt_base_time and
+  then () = if predictor_flag and min(u_time,to_ht_time) > stat_factor*G.rank*interrupt_base_time and
        	       (stat_holder:=wiggle_status_cod_one(p,-1)).!=
 	    then return stat_holder
 	    fi
@@ -3221,7 +3238,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
 	    fi
   then () = p := herm_center(p)
   then (u_time,to_ht_time) = adjust_to_ht_over_u(p,HT)
-  then () = if predictor_flag and min(u_time,to_ht_time) > G.rank * interrupt_base_time and
+  then () = if predictor_flag and min(u_time,to_ht_time) > stat_factor*G.rank * interrupt_base_time and
        	       (stat_holder:=wiggle_status_cod_one(p,HT))!= 0
 	    then return stat_holder > 0
 	    fi
@@ -3308,7 +3325,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
   then () = p := herm_center(p)
   then result = 0, test_time = int:0
   then (u_time,to_ht_time) = adjust_to_ht_over_u(p,HT)
-  then () = if predictor_flag and min(u_time,to_ht_time) > G.rank * interrupt_base_time and
+  then () = if predictor_flag and min(u_time,to_ht_time) > stat_factor*G.rank * interrupt_base_time and
        	       (stat_holder:=wiggle_status_cod_one(p,HT))!= 0
 	    then return stat_holder > 0
 	    fi
@@ -3416,7 +3433,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
   then () = p := herm_center(p)
   then result = 0, HTfirst = HTs[0], HTlast = HTs~[0]
   then (u_time,to_ht_time) = adjust_to_ht_over_u(p,HTfirst), test_time = int:0
-  then () = if predictor_flag and min(u_time,to_ht_time) > G.rank * interrupt_base_time and
+  then () = if predictor_flag and min(u_time,to_ht_time) > stat_factor*G.rank * interrupt_base_time and
        	       (stat_holder:=wiggle_status_cod_one(p,HTlast))!= 0
 	    then return stat_holder > 0
 	    fi
@@ -3518,7 +3535,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_Ufirst(Param p, [int] HTs) = bool:
   then () = p := herm_center(p)
   then result = 0, HTfirst = HTs[0], HTlast = HTs~[0]
   then (u_time,to_ht_time) = adjust_to_ht_over_u(p,HTfirst), test_time = int:0
-  then () = if predictor_flag and min(u_time,to_ht_time) > G.rank * interrupt_base_time and
+  then () = if predictor_flag and min(u_time,to_ht_time) > stat_factor*G.rank * interrupt_base_time and
        	       (stat_holder:=wiggle_status_cod_one(p,HTlast))!= 0
 	    then return stat_holder > 0
 	    fi
@@ -4044,7 +4061,7 @@ set KU(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]] FVKH, Pa
 {takes the known unitaries from unitary_hash having the given x and lambda,
  and returns their locations in LFDKH}
 set known_unitaries(Param_hash Uhash, KGBElt x, ratvec lambda, LocalVertexData Lvd,
-    [[FaceVertsKHash]] LFDKH, (Param->bool) fancy_tester) = [vec]:
+    [[FaceVertsKHash]] LFDKH, (Param->bool) fancy_tester, int HT) = [vec]:
     if KUKU_flag then return KU(x,lambda, Lvd, LFDKH, Uhash, fancy_tester) fi;
     let ps = for d:#LFDKH
 	     do for v in LFDKH[d]
@@ -4057,7 +4074,8 @@ set known_unitaries(Param_hash Uhash, KGBElt x, ratvec lambda, LocalVertexData L
 	  do if p.nu.=
 	     then [j]
 	     else let qs = monomials(finalize(p)) {save 2900/7200 in Spin(4,4)}
-		  in if all(for q in qs do @bool: {status(q,-1) > 0} Uhash.lookup(q).>= od)
+	     	  in if all(for q in qs do status(q,-1)>0 od)
+		  {status(q,-1) > 0} {Uhash.lookup(q).>= od)}
 		     then [j]
 		     else []
 		     fi
@@ -4066,9 +4084,16 @@ set known_unitaries(Param_hash Uhash, KGBElt x, ratvec lambda, LocalVertexData L
        od
 
 set known_unitaries(Param_hash Uhash, KGBElt x, ratvec lambda, LocalVertexData Lvd,
-    [[FaceVertsKHash]] LFDKH) = [vec]:
-   known_unitaries(Uhash, x, lambda, Lvd, LFDKH, is_unitary_hash_big_SIMPLE@Param)
+    [[FaceVertsKHash]] LFDKH, (Param->bool) fancy_tester) = [vec]:
+known_unitaries(Uhash, x, lambda, Lvd, LFDKH, fancy_tester, -1)
 
+set known_unitaries(Param_hash Uhash, KGBElt x, ratvec lambda, LocalVertexData Lvd,
+    [[FaceVertsKHash]] LFDKH, int HT) = [vec]:
+   known_unitaries(Uhash, x, lambda, Lvd, LFDKH, is_unitary_hash_big_SIMPLE@Param, HT)
+
+set known_unitaries(Param_hash Uhash, KGBElt x, ratvec lambda, LocalVertexData Lvd,
+    [[FaceVertsKHash]] LFDKH) = [vec]:
+   known_unitaries(Uhash, x, lambda, Lvd, LFDKH, is_unitary_hash_big_SIMPLE@Param, -1)
 
 {Here UhashLocal is assumed to consist of Param's at (x,lambda)}
 {this misses (in local_testK_level) unitary Param's that finalize to different x;

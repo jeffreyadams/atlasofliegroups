@@ -265,7 +265,8 @@ set pos_tester_known_Kchar_min(KGBElt x, ratvec lambda,int HT,ratvec gamma, vec 
     let p = parameter(x,lambda,gamma), G = x.real_form
     then qs = monomials(1*p)
     in {prints("got to pos_tester_known_Kchar_min");}
-       if not all(for q in qs do @bool: min_bottom_elim_factors(q,p,HT) od)
+       if components_rank(G) = 0 and height(p) > 0 and 
+       	  not all(for q in qs do @bool: min_bottom_elim_factors(q,p,HT) od)
        then {prints("got to pos_tester_known_Kchar_min at ",p," and bottom worked!");}
        	    return if extra_coord_flag
        	    	   then (false,KCv)
@@ -307,7 +308,8 @@ set pos_tester_Kchar_min(KGBElt x, ratvec lambda,int HT,ratvec gamma) =
 			   else []
 			   fi)
        fi;
-       if not all(for q in qs do @bool: min_bottom_elim_factors(q,p,HT) od)
+       if components_rank(G) = 0 and height(p) > 0 and
+       	  not all(for q in qs do @bool: min_bottom_elim_factors(q,p,HT) od)
        then {prints("...and bottom worked!");}
        	    return if extra_coord_flag
        	    	   then (false,[Kpol_hash.match(K_type_pol(character_formula_to_ht(1*p,HT))),#qs])
