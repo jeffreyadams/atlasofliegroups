@@ -574,7 +574,7 @@ set incident_edges(Param p) = [ratvec]:
     then G = p.real_form, theta = x.involution
     then (Lvd,Perm2) = LPm_table.LPm_entry(G,theta,(lambda+theta*lambda).numer)
     then m = Lvd.lookup(nu)
-    in assert(@: m >=0, "sorry, nu is not a local vertex");
+    in assert(@:m >=0, "sorry, nu is not a local vertex");
        if m <Lvd.pair_start
        then let mglob = Perm2.fixed[m]
        	    then cands = FPP_edges_by_zero(G)[mglob]
