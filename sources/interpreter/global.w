@@ -4279,13 +4279,14 @@ sl_list<ind_string> format
        preceded by field names if associated to |te|,
        appending to |result| @>
   break; case union_type:
-     @< Append to |result| the contents of |v| in parentheses,
+     @< Append to |result| the value |v| of union type |te|,
+       (parenthesised if needed),
        to which is applied either the name of an union injector,
        or a type indication of such an injector function @>
-#if 0
   break; case function_type:
-  {}
-#endif
+     @< Append to |result| a description of the value |v| of function type |te|,
+        specifying its argument and result types, and wrapping the text of its
+        body to lines of length at most |width| @>
   }
   return result;
 }
@@ -4475,7 +4476,7 @@ corresponding injector, or if there is none give an indication of the injection
 function anyway, which we do by printing out the union type and highlighting
 the applicable variant.
 
-@< Append to |result| the contents of |v| in parentheses, to which is app... @>=
+@< Append to |result| the value |v| of union type... @>=
 
 { const union_value* uv = dynamic_cast<const union_value*>(&v);
   assert(uv!=nullptr);
@@ -4563,6 +4564,40 @@ not (inner_type.top_kind()==row_type or
      inner_type.top_kind()==union_type or
      inner_type.top_kind()==primitive_type
     )
+
+@ Printing functions is more complicated than printing data values because there
+are several different types of function values, so an initial inspection (by
+means of a dynamic cast) is necessary to find out what kind of output can be
+given.
+
+@< Append to |result| a description of the value |v| of function type... @>=
+{ const auto* fv = dynamic_cast<const function_base*>(&v);
+  assert(fv!=nullptr);
+  if (@[const auto* bv = dynamic_cast<const builtin_value<false>*>(fv)@])
+    result.emplace_back(std::string(bv->print_name)); // this includes the type
+  if (@[const auto* vbv = dynamic_cast<const builtin_value<true>*>(fv)@])
+    result.emplace_back(std::string(vbv->print_name)); // this includes the type
+  else if (@[const auto* cv =
+           dynamic_cast<const closure_value<parameterless>*>(fv)@])
+    @< Output closure |*cv| to |result|, using its type |te| @>
+  else if (@[const auto* tai = dynamic_cast<const type_aware_instance*>(fv)@])
+   @< Output type aware instance |*tai| to |result|, checking its type |te| @>
+  else if (@[const auto* pv = dynamic_cast<const projector_value*>(fv)@])
+  {}
+  else if (@[const auto* iv = dynamic_cast<const injector_value*>(fv)@])
+  {}
+  else
+  {@; o << "{Unknown function value of type " << te << '}';
+    result.emplace_back(o.str());
+  }
+}
+
+@
+@< Output closure |*cv| to |result|, using its type |te| @>=
+{}
+@
+@< Output type aware instance |*tai| to |result|, checking its type |te| @>=
+{}
 
 @ Here we know that the length of |o.str()| exceeds the available |width|, so
 for certain primitive types we will try to split the value over multiple lines.
