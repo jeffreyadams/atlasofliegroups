@@ -3320,7 +3320,7 @@ size_t count_identifiers(const id_pat& pat)
 void list_identifiers(const id_pat& pat, std::vector<id_type>& d)
 { if ((pat.kind & 0x1)!=0)
     d.push_back(pat.name);
-  if ((pat.kind & 0x2)!=0) // then a list of subpatterns is present
+  if ((pat.kind & 0x2)!=0) // then a list of sub-patterns is present
     for (auto it=pat.sublist.begin(); not pat.sublist.at_end(it); ++it)
       list_identifiers(*it,d);
 }

@@ -4182,58 +4182,91 @@ install_folding_function(ASCII_char_wrapper,"ASCII","(int->string)");
 install_function(readline_completions_wrapper,@|"readline_completions",
    "(string->[string])");
 
-@*1 Generic operators and functions, and analogous ordinary ones.
+@*1 Type aware textual representations of values.
 %
-Here we shall define various forms of size and concatenation functions, denoted
-by the operators `\#' and `\#\#', the main forms of which are generic (they have
-polymorphic types), but which also have special bindings for strings, rational
-vectors, vectors, matrices and virtual modules, with a similar effect.
 
-@ We start with printing and size functions. These functions are also used for
-implementing certain loops over the corresponding types of values, so they are
-defined as exported functions (not local to our \.{global.w} module).
 
-@< Declarations of exported functions @>=
-void print_wrapper(eval_level l);
-void prints_wrapper(eval_level l);
-void to_string_wrapper(eval_level l);
-void error_wrapper(eval_level l);
-void type_aware_print_wrapper(eval_level l,const type& tp);
-void sizeof_wrapper(eval_level l);
-void sizeof_vector_wrapper(eval_level l);
-void sizeof_ratvec_wrapper(eval_level l);
-void sizeof_string_wrapper(eval_level l);
-void matrix_ncols_wrapper(eval_level l);
-void K_type_pol_size_wrapper(eval_level l);
-void virtual_module_size_wrapper(eval_level l);
-
-@ Here is an auxiliary used for several generic functions; it basically reduces
-any argument value to a string by printing it, but suppressing some elements
-like quotes and parentheses at the outer level (which normal value output would
-produce) in order to give the user full control of the string produced.
+@ We prepare for the formatting of values to an imposed |width|. We first
+introduce a type |ind_string| that represents a line with and indicated amount
+of indentation, a list of which will be the result type of our main recursive
+formatting function. In formatting, we sometimes have an unstructured string
+that needs to be chopped into lines, possibly with a hanging indentation after
+the first line, so we first define a short auxiliary function |chop| that
+achieves this, with the same return type.
 
 @< Local function definitions @>=
-std::ostream& to_string_aux(std::ostream& o, eval_level l)
-{ shared_value v=pop_value();
+
+struct ind_string
+{ unsigned indent; @+ std::string str;
+  ind_string (std::string&& str) : indent(0), str(std::move(str)) @+{}
+  ind_string (unsigned i, std::string&& str) : indent(i), str(std::move(str))
+  @+{}
+};
 @)
-  const string_value* s=dynamic_cast<const string_value*>(v.get());
-  if (s!=nullptr)
-    o << s->val; // single string without quotes
-  else
-  { const tuple_value* t=dynamic_cast<const tuple_value*>(v.get());
-    if (t!=nullptr)
-    { for (auto it=t->val.begin(); it!=t->val.end(); ++it)
-      { s=dynamic_cast<const string_value*>(it->get());
-        if (s!=nullptr)
-	  o << s->val; // string components without quotes
-        else
-           o << *it->get(); // treat non-string tuple components as |print|
-      }
-    }
-    else
-      o << *v; // output like |print| unless string or tuple
+sl_list<ind_string> chop
+  (const std::string& str, unsigned width, unsigned hang=0)
+{
+  sl_list<ind_string> res;
+  unsigned len = str.length();
+  auto pos = str.begin();
+  unsigned w = width;
+  while(len>w)
+  { res.emplace_back(width-w,std::string(pos,pos+w));
+    pos+=w; len-=w;
+  @/w = width-hang;
   }
-  return o;
+  res.emplace_back(width-w,std::string(pos,str.end()));
+  return res;
+}
+@)
+sl_list<ind_string>& join
+  (sl_list<ind_string>& result,sl_list<ind_string>&& extra, unsigned width)
+{
+  if (result.singleton() and extra.singleton() and
+      result.front().str.length()+extra.front().str.length()<=width)
+    result.front().str += std::move(extra.front().str);
+  else
+    result.append(std::move(extra));
+  return result;
+}
+
+@ Here is a function to print a union or tuple type with one variant/component
+type highlighted, and one that tells whether the output of values of a certain
+type will already be parenthesised, so that the caller can avoid adding
+redundant parentheses.
+
+@< Local function definitions @>=
+
+std::string highlight (const_raw_type_list tuple, bool is_union, unsigned pos)
+{ std::ostringstream o;
+  wtl_const_iterator p(tuple);
+  for (unsigned i=0; not p.at_end(); ++p,++i)
+  { o << (i==0 ? "(" : is_union ? "|" : ",");
+    if (i==pos)
+      o << " *" << *p << " ";
+    else o << *p;
+  }
+  o << ")";
+  return o.str();
+}
+@)
+bool has_parens (const type_expr& te)
+{ switch(te.top_kind())
+  { default: return false;
+  case row_type:
+  case tuple_type:
+  case union_type:
+    return true;
+  case primitive_type:
+    { const primitive_tag kind = te.expanded().prim();
+      return kind==integral_type
+          or kind==string_type
+          or kind==boolean_type
+          or kind==vector_type
+          or kind==matrix_type
+          or kind==Weyl_element_type;
+    }
+  }
 }
 
 @ Type aware printing will call the recursive function |format|. It takes as
@@ -4241,23 +4274,18 @@ argument a |type_expr| for the type to be printed, which should be a concrete
 type (although we allow it to contain polymorphic function types), a value |v|
 to be printed, the number of columns |width| available for formatting its output
 to (which the caller has adjusted by subtracting any indentation imposed by the
-context). The result is returned in the form of a list of lines, each consisting
-of an amount |indent| of internal indentation (to be added to the ambient
-indentation) and a string |str| with the non-indent text. There are two
-scenarios that |format| can encounter: either the entire output fits in |width|
-(or cannot be broken across lines, in which case we allow ourselves to exceed
-the |width|), or it must be broken across multiple lines. It is up to the caller
-to distinguish these cases, and in the former case see if it is possible to
-append the line of output to a previous partially filled line, instead of using
-it as a separate line.
+context); the result will be a list of |ind_string|.
+
+There are two scenarios that |format| can encounter: either the entire output
+fits in |width| (or cannot be broken across lines, in which case we allow
+ourselves to exceed the |width|), or it must be broken across multiple lines. It
+is up to the caller to distinguish these cases, and in the former case see if it
+is possible to append the line of output to a previous partially filled line,
+instead of using it as a separate line.
 
 @< Local function definitions @>=
-struct ind_string
-{ unsigned indent; @+ std::string str;
-  ind_string (std::string&& str) : indent(0), str(std::move(str)) @+{}
-  ind_string (unsigned i, std::string&& str) : indent(i), str(std::move(str))
-  @+{}
-};
+void print(std::ostream& o, const type_expr& te, const id_pat& pat); // declare
+@)
 sl_list<ind_string> format
   (const type_expr& te, const value_base& v, unsigned width)
 { sl_list<ind_string> result;
@@ -4452,21 +4480,9 @@ and then breaking the (hopefully single) line that results into pieces of size
     @/{@; result.emplace_back(std::move(cur));
       cur.clear();
     } // emit that first
-    if (tab+res.front().str.length()<=width)
-      cur = prefix+res.front().str;
-    else
-    { result.push_back(std::move(prefix));
-      for (const auto& item : res) // hopefully just once
-      { unsigned len = item.str.length();
-        auto pos = item.str.begin();
-        unsigned w = width-2;
-        while(len>w)
-      @/{@; result.emplace_back(2,std::string(pos,pos+w));
-          pos+=w; len-=w;
-        }
-        result.emplace_back(2,std::string(pos,item.str.end()));
-      }
-    }
+    res.front().str = prefix+res.front().str;
+    for (const auto& item : res) // hopefully just once
+      result.append(chop(item.str,width,2));
   }
 }
 
@@ -4474,7 +4490,15 @@ and then breaking the (hopefully single) line that results into pieces of size
 variant, and then after analysing the type |te| either indicate the name of the
 corresponding injector, or if there is none give an indication of the injection
 function anyway, which we do by printing out the union type and highlighting
-the applicable variant.
+the applicable variant, by calling |highlight|.
+
+It is maybe a strange design decision to print |uv->stored_name()|, as a
+parenthesised addition, only when the type |te| records a \emph{different}
+variant identifier, and not when it does not record any variant identifiers. But
+we assume that if the user has transformed the union type to one that erases the
+injector name that was necessarily used to build the value, then this must be a
+deliberate act to hide that name, even though the runtime value still stores
+this information.
 
 @< Append to |result| the value |v| of union type... @>=
 
@@ -4487,8 +4511,7 @@ the applicable variant.
   const auto& uni = exp_te.tuple();
   std::string tag_str;
   if (tag_id==type_binding::no_id)
-    @< Set |tag_str| to name of union type with components |uni|,
-       with the component at index |uv->variant()| highlighted @>
+    tag_str = highlight(uni,true,uv->variant());
   else if (tag_id==uv->stored_name())
     tag_str = main_hash_table->name_of(tag_id);
   else
@@ -4496,8 +4519,7 @@ the applicable variant.
     + main_hash_table->name_of(uv->stored_name()) + ")";
   const type_expr& inner_type =
     *std::next(wtl_const_iterator(uni),uv->variant());
-  const bool need_parens =
-    @< Whether |inner_type| requires parentheses before dot notation @>@;@;;
+  const bool need_parens = not(has_parens(inner_type));
 @)
   auto inner = format(inner_type,*uv->contents(),need_parens?width-1:width);
   if (inner.singleton() and
@@ -4523,47 +4545,6 @@ the applicable variant.
   }
 }
 
-@ If the type of the union value |uv| has no name for the variant number
-|uv->variant()|, we ignore the |uv->stored_name()| recording the name used at
-its creation, but instead print the union type with variant |uv->variant()|
-highlighted. We do this by surrounding it with spaces and printing an asterisk
-in front of it. It is maybe a strange design decision to print
-|uv->stored_name()| only when the type |te| records a \emph{different} variant
-identifier, but we assume that if the user has transformed the union type to one
-that erases the injector name that was necessarily used to build the value, then
-this must be a deliberate act to hide that name, even though the runtime value
-still stores this information.
-
-@< Set |tag_str| to name of union type with components |uni|, with the component
-   at index |uv->variant()| highlighted @>=
-{ wtl_const_iterator p(uni);
-  for (unsigned i=0; not p.at_end(); ++p,++i)
-  { o << (i==0 ? "(" : "|");
-    if (i==uv->variant())
-      o << " *" << *p << " ";
-    else o << *p;
-  }
-  o << ")";
-  tag_str = o.str();
-  o.str("");
-}
-
-@ For many types, the output is always enclosed in matching symbols, like
-parentheses of a tuple or the brackets of a row value. The following condition
-expresses when this is \emph{not} the case (so that adding applying a pair of
-parentheses is necessary), but since it is more natural to express when matching
-symbols will ready be present, we give that one with logical negation applied to
-the whole. The below condition is incomplete, and probably should be replaced by
-a function call, as that could for instance distinguish between different
-primitive types, which in an expression is quite hard (it requires fuller
-expansion of a possibly tabled |inner_type| than |top_kind| can provide).
-
-@< Whether |inner_type| requires parentheses before dot notation @>=
-not (inner_type.top_kind()==row_type or
-     inner_type.top_kind()==tuple_type or
-     inner_type.top_kind()==union_type or
-     inner_type.top_kind()==primitive_type
-    )
 
 @ Printing functions is more complicated than printing data values because there
 are several different types of function values, so an initial inspection (by
@@ -4577,24 +4558,67 @@ given.
     result.emplace_back(std::string(bv->print_name)); // this includes the type
   if (@[const auto* vbv = dynamic_cast<const builtin_value<true>*>(fv)@])
     result.emplace_back(std::string(vbv->print_name)); // this includes the type
-  else if (@[const auto* cv =
-           dynamic_cast<const closure_value<parameterless>*>(fv)@])
+  else if (@[const auto* cv = dynamic_cast<const closure_value*>(fv)@])
     @< Output closure |*cv| to |result|, using its type |te| @>
   else if (@[const auto* tai = dynamic_cast<const type_aware_instance*>(fv)@])
    @< Output type aware instance |*tai| to |result|, checking its type |te| @>
   else if (@[const auto* pv = dynamic_cast<const projector_value*>(fv)@])
-  {}
+    result.emplace_back("Projector"+
+      highlight(te.expanded().func()->arg_type.expanded().tuple()
+               ,false,pv->position));
   else if (@[const auto* iv = dynamic_cast<const injector_value*>(fv)@])
-  {}
+    result.emplace_back("Injector"+
+      highlight(te.expanded().func()->result_type.expanded().tuple()
+               ,true,iv->position));
   else
   {@; o << "{Unknown function value of type " << te << '}';
     result.emplace_back(o.str());
   }
 }
 
-@
+@ For printing parameter lists, we shall need a recursive function. This
+function omits the outer parentheses, for recursive use for each item in a
+parameter sublist.
+
+@< Local function definitions @>=
+
+void print(std::ostream& o, const type_expr& te, const id_pat& pat)
+{ if ((pat.kind & 0x1)!=0) // an identifier prevents breaking open |te|
+    o << te << ' ' << pat;
+  else if ((pat.kind & 0x2)==0) // no identifier or sublist
+    o << te << ' ' << '.';
+  else // no identifier but a sublist is present; break open
+  { type_expr exp_te = te.expanded();
+    wtl_const_iterator te_it(exp_te.tuple());
+    for (auto it=pat.sublist.begin(); not pat.sublist.at_end(it); ++te_it,++it)
+      print(o << (it==pat.sublist.begin()?'(':','),*te_it,*it);
+    o << ')';
+  }
+}
+
+@ Although there are three different classes that represent closures, all their
+data members are in |closure_value|, and can therefore be accessed through the
+pointer |cv| obtained from a dynamic cast. However, recursive functions use the
+|closure_value::param| both to store the recursive identifier and that actual
+parameter list (as two members of a $2$-tuple), so we do need to single out this
+case using another dynamic cast, and in doing so we also indicate the recursive
+character of the function in the output text.
+
 @< Output closure |*cv| to |result|, using its type |te| @>=
-{}
+{ type_expr exp_te = te.expanded();
+  const auto* param = &cv->p->param;
+  if (dynamic_cast<const recursive_closure*>(cv)!=nullptr)
+  { auto it = param->sublist.begin();
+    o << "rec_fun " << main_hash_table->name_of(it->name) << ' ';
+    param = &*++it;
+  }
+  o <<'('; print(o,exp_te.func()->arg_type,*param);
+  o<<") " << exp_te.func()->result_type << ':';
+  result.emplace_back(o.str());
+  o.str(""); o << "   " << *cv->p->body;
+  return join(result,chop(o.str(),width,3),width);
+}
+
 @
 @< Output type aware instance |*tai| to |result|, checking its type |te| @>=
 {}
@@ -4611,28 +4635,17 @@ that we have no space left on this line.
 { switch(te.prim())
   { default: v.print(o); result.emplace_back(std::move(o.str()));
   break; case integral_type:
-  { v.print(o);
-    auto str = o.str();
-    unsigned len = str.length();
-    auto pos = str.begin();
-    while(len>width)
-  @/{@; result.emplace_back(std::string(pos,pos+width)+'\\');
-      pos+=width; len-=width;
-    }
-    result.emplace_back(std::string(pos,str.end()));
+  { auto* p = dynamic_cast<const int_value*>(&v);
+    assert(p!=nullptr);
+    o << p->val;
+    result = chop(o.str(),width,0);
   }
   break;
   break; case string_type: // here we indent for the leading quote character
-  { v.print(o);
-    auto str = o.str();
-    unsigned len = str.length();
-    auto pos = str.begin();
-    while(len>width)
-    { auto w = pos==str.begin() ? width : width-1;
-      result.emplace_back(width-w,std::string(pos,pos+w)+'\\');
-      pos+=w; len-=w;
-    }
-    result.emplace_back(pos==str.begin() ? 0 : 1,std::string(pos,str.end()));
+  { auto* p = dynamic_cast<const string_value*>(&v);
+    assert(p!=nullptr);
+    o << p->val;
+    result = chop(o.str(),width,1);
   }
   break; case vector_type:
     @< Format vector value |v| into |result| @>
@@ -4742,6 +4755,60 @@ inserted, rather than just as a number |per_line| of columns between line breaks
   }
 }
 
+
+@*1 Generic operators and functions, and analogous ordinary ones.
+%
+Here we shall define various forms of size and concatenation functions, denoted
+by the operators `\#' and `\#\#', the main forms of which are generic (they have
+polymorphic types), but which also have special bindings for strings, rational
+vectors, vectors, matrices and virtual modules, with a similar effect.
+
+@ We start with printing and size functions. These functions are also used for
+implementing certain loops over the corresponding types of values, so they are
+defined as exported functions (not local to our \.{global.w} module).
+
+@< Declarations of exported functions @>=
+void print_wrapper(eval_level l);
+void prints_wrapper(eval_level l);
+void to_string_wrapper(eval_level l);
+void error_wrapper(eval_level l);
+void type_aware_print_wrapper(eval_level l,const type& tp);
+void sizeof_wrapper(eval_level l);
+void sizeof_vector_wrapper(eval_level l);
+void sizeof_ratvec_wrapper(eval_level l);
+void sizeof_string_wrapper(eval_level l);
+void matrix_ncols_wrapper(eval_level l);
+void K_type_pol_size_wrapper(eval_level l);
+void virtual_module_size_wrapper(eval_level l);
+
+@ Here is an auxiliary used for several generic functions; it basically reduces
+any argument value to a string by printing it, but suppressing some elements
+like quotes and parentheses at the outer level (which normal value output would
+produce) in order to give the user full control of the string produced.
+
+@< Local function definitions @>=
+std::ostream& to_string_aux(std::ostream& o, eval_level l)
+{ shared_value v=pop_value();
+@)
+  const string_value* s=dynamic_cast<const string_value*>(v.get());
+  if (s!=nullptr)
+    o << s->val; // single string without quotes
+  else
+  { const tuple_value* t=dynamic_cast<const tuple_value*>(v.get());
+    if (t!=nullptr)
+    { for (auto it=t->val.begin(); it!=t->val.end(); ++it)
+      { s=dynamic_cast<const string_value*>(it->get());
+        if (s!=nullptr)
+	  o << s->val; // string components without quotes
+        else
+           o << *it->get(); // treat non-string tuple components as |print|
+      }
+    }
+    else
+      o << *v; // output like |print| unless string or tuple
+  }
+  return o;
+}
 
 @ The function |print| outputs any value in the format used by the interpreter
 itself. This function has an argument of unknown type; we just pass the popped
