@@ -4554,6 +4554,10 @@ given.
 @< Append to |result| a description of the value |v| of function type... @>=
 { const auto* fv = dynamic_cast<const function_base*>(&v);
   assert(fv!=nullptr);
+  auto exp_te = te.expanded();
+@/const type_expr& at = exp_te.func()->arg_type;
+  const type_expr& rt = exp_te.func()->result_type;
+@)
   if (@[const auto* bv = dynamic_cast<const builtin_value<false>*>(fv)@])
     result.emplace_back(std::string(bv->print_name)); // this includes the type
   if (@[const auto* vbv = dynamic_cast<const builtin_value<true>*>(fv)@])
@@ -4564,12 +4568,10 @@ given.
    @< Output type aware instance |*tai| to |result|, checking its type |te| @>
   else if (@[const auto* pv = dynamic_cast<const projector_value*>(fv)@])
     result.emplace_back("Projector"+
-      highlight(te.expanded().func()->arg_type.expanded().tuple()
-               ,false,pv->position));
+      highlight(at.expanded().tuple(),false,pv->position));
   else if (@[const auto* iv = dynamic_cast<const injector_value*>(fv)@])
     result.emplace_back("Injector"+
-      highlight(te.expanded().func()->result_type.expanded().tuple()
-               ,true,iv->position));
+      highlight(rt.expanded().tuple(),true,iv->position));
   else
   {@; o << "{Unknown function value of type " << te << '}';
     result.emplace_back(o.str());
@@ -4615,13 +4617,18 @@ character of the function in the output text.
   o <<'('; print(o,exp_te.func()->arg_type,*param);
   o<<") " << exp_te.func()->result_type << ':';
   result.emplace_back(o.str());
-  o.str(""); o << "   " << *cv->p->body;
+  o.str(""); o << ' ' << *cv->p->body;
   return join(result,chop(o.str(),width,3),width);
 }
 
-@
+@ In type aware printing, we can even handle type aware built-in functions as
+argument.
+
 @< Output type aware instance |*tai| to |result|, checking its type |te| @>=
-{}
+{ o << "Instance of type aware built-in '" << tai->print_name
+    << "' at argument type " << at << " returning " << rt;
+  result.emplace_back(o.str());
+}
 
 @ Here we know that the length of |o.str()| exceeds the available |width|, so
 for certain primitive types we will try to split the value over multiple lines.
