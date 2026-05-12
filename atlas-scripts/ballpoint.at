@@ -1,0 +1,59 @@
+<basic.at
+
+{ given an n by n symmetric nonnegative, pos diag entries ratmat M (is
+pos def enough?, and a squared radius R, find all nonneg integer vec's
+v of size n with v*(M*v) <= R.
+
+If v = [vf,vl], with vf an (n-1)-vec and vl a nonneg int, then
+
+M = Mf    Me
+    Me.^  Ml
+
+with Mf like M of size n-1, Ml a pos intm and Me an n-1 vec. So
+
+M*v = [Mf*vf + Me*vl, (Me.^)*vf + Ml*vl]
+
+v*(M*v) = vf*(Mf*vf) + vf*Me*vl+ vl*(Me.^ *vf) + Ml*vl^2
+
+	= norm(vf) + 2(vf*(vl*Me)) + Ml*vl^2
+
+SO should add to the data a nonneg n-ratvec w and a rat c, and require
+
+v*(M*v) + v*w <= R
+
+Now if w = [wf,wl], we get
+
+v*(M*v) + v*w  = [vf*(Mf*vf)+vf*wf] + vf*(2vl*Me) + vl*wl + Ml*vl^2
+
+SO vl runs from 0 until (vl*wl +  Ml*vl^2 > R. For each vl, find vf
+using Mf and wf + 2vl*Me.
+}
+
+set rec_fun ballpoints(rat R, mat M, ratvec w) = [[int]]:
+    if =#w then return [[]] fi;
+    let n = #w
+    then () = assert(@:shape(M) = (n,n),"need M square of size #w")
+    then Mf = swiss_matrix_knife(0,M,0,n-1,0,n-1), wf = w[:n-1]
+    then Me = M[n-1][:n-1]
+    then Ml = M[n-1,n-1]
+    then last_lim = first(for j:ceil(R) + 2 do Ml*j^2 + j*w[n-1] > R od) {guaranteed >= 1}
+    in for last:last_lim
+       	   for rest in ballpoints(R - Ml*last^2 - last*w[n-1], Mf, wf+2*last*Me)
+	   do rest#last
+	   od
+       od
+
+{linear term zero}
+set  ballpoints(rat R, mat M) = [[int]]:
+    let (n,) = shape(M)
+    in ballpoints(R,M,null(n))
+
+{interior points only}
+set  open_ballpoints(rat R, mat M, ratvec w) = [[int]]:
+     let d = denom(w)
+     in ballpoints(R-1/d, M, w)
+
+{interior points only, no linear term}
+set open_ballpoints(rat R, mat M) = [[int]]:
+    let (n,) = shape(M)
+    in open_ballpoints(R,M,null(n))
