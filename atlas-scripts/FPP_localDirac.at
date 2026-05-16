@@ -448,7 +448,8 @@ set unipotents_to_hashes(RealForm G, [Param_hash] Uhashes) = void:
 and local_test_hash}
 {separate flag KUKU_flag in FPP_faces_herm.at controls whether to use known_unitaries
 or KU}
-set KU_flag = false {true}
+set KU_flag = false {need to restore it sometimes?}
+    {true helps in E7_s spherical, by eliminating some difficult tests is_unitary(p,33)}
 
 {whether to fill in statuses for known unitaries in local_testK_hash*
 and local_test_hash}
@@ -527,7 +528,7 @@ set local_testK_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     then start = elapsed_ms(), start_count = unitary_test_counter.use_count()
     then () = if KU_flag {and #FVKH = 2}
 	      then let () = KUKU_flag:=false
-		   then knownUnitaries = known_unitaries(Uhash, x, lambda, Lvd, FVKH, fancy_tester)
+		   then knownUnitaries = known_unitaries(Uhash, x, lambda, Lvd, FVKH, fancy_tester, HT)
 		   then () = for list@d in knownUnitaries
 			     do for j in list
 				do let k = classListByFace[d][j]
@@ -612,7 +613,7 @@ set local_testK_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 				    fi {ICPU_flag}
 		     {then () = prints("before NEWU, newStatuses = ",newStatuses)}
 		     in if{NEWU} newStatuses[k] = "?"
-			      then if ps[0].nu.= or all(for p in ps do Uhash.lookup(p).>= or
+			      then if ps[0].nu.= or all(for p in ps do simple_status(p,HT).>  or
 					    tester(p) od)
 				   then newStatuses[k]:= "T"
 				   else newStatuses:= updateNUclassesB(newStatuses, gr, k)
@@ -681,7 +682,7 @@ set local_testK_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 					       fi {ICPU_flag}
 		     {then () = prints("before NEWU, newStatuses = ",newStatuses)}
 		     in if{NEWU} newStatuses[K] = "?"
-			then if ps[0].nu.= or all(for p in ps do Uhash.lookup(p).>= or
+			then if ps[0].nu.= or all(for p in ps do simple_status(p,HT).> or
 					    tester(p) od)
 			     then downdateUclassesB(newStatuses, gr, K, "T");
 				  newStatuses[K]:= "T"
@@ -741,7 +742,8 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		Uhash, fancy_tester)
     fi;
     let newStatuses = for j:#eq do "?" od,  NumClasses = #eq, red_shift = if red_count_flag then 1 else 0 fi
-	, printInterval = int: 1, H0 = height(parameter(x,lambda,0*lambda)), OTF_hold = old_testing_flag
+	,printkInterval = int: 1, printKInterval = int:1, H0 = height(parameter(x,lambda,0*lambda)),
+	OTF_hold = old_testing_flag
     {then () = {old_testing_flag:=true}}
     {use Uhash to mark some classes as known? (those that hit a unitary Param)}
     {Find all Param's in Uhash with (x,lambda). For each, compute corresponding Face.
@@ -767,7 +769,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		             od {list@d} next KUKU_flag:=true
     		elif KU_flag {and #FVKH = 2}
 	      	then let () = KUKU_flag:=false
-		     then knownUnitaries = known_unitaries(Uhash, x, lambda, Lvd, FVKH, fancy_tester)
+		     then knownUnitaries = known_unitaries(Uhash, x, lambda, Lvd, FVKH, fancy_tester,HT)
 		     in for list@d in knownUnitaries
 			do for j in list
 			   do let k = classListByFace[d][j]
@@ -794,19 +796,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	      known_true_count," are known unitary, ", known_false_count, " known nonunitary.")
 	      fi
       then () =  for k:NumClasses
-		~do {
-		    assert(#q_nums(newStatuses[k+1:]) = 0);
-		    if fund_face_verbose {and NumClasses > 100} and {removing ~ costs 5% in Spin(4,4)}
-		   ((NumClasses-k-1)%printInterval = 0)
-		   then let unk = #q_nums(newStatuses[:k])
-			in prints("test undet equiv class #"
-		   ,k, "; so far ",unitary_test_counter.use_count()
-		   ," 'is_unitary' tests; ",unk," classes still ? at ", print_time_string(elapsed_ms() - start))
-		   ; printInterval := 2*printInterval
-		   fi
-		   ;
-		   }
-		     if{NEWUk} newStatuses[k] = "?"
+		~do  if{NEWUk} newStatuses[k] = "?"
 		     then let C=eq[k]
 			  then N = if wiggle_flag1 and C~[0] >= #FVKH[0]
 				   then C~[0]
@@ -842,10 +832,6 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 						 newStatuses[k] := "F"
 					    fi {any q} next wiggle_flag1_time +:= elapsed_ms() - start_wiggle
 				    fi {wiggle_flag1}
-		     {then () = prints(new_line,"k = ",k,", ICPNU_flag = ",ICPNU_flag,", ICPU_flag = ",ICPU_flag)
-		     then () = prints("before ICPNU, newStatuses = ",newStatuses)}
-		     {some test for known non-unitary??}
-		     {then () = prints("before ICPU, newStatuses = ",newStatuses)}
 			  then () = if ICPU_flag and newStatuses[k] = "?" {test for unitary}
 				    then if all(for p in ps
 						do ind_test(p)=1
@@ -861,28 +847,50 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 				    fi {ICPU_flag}
 				    {then () = prints("before NEWU, newStatuses = ",newStatuses)}
 			  then () = if{still NEWUk} newStatuses[k] = "?"
-				    then if ps[0].nu.= or all(for p in ps do Uhash.lookup(p).>= or
-					    tester(p) od)
-					 then newStatuses[k]:= "T"
-					 else newStatuses:= updateNUclassesB(newStatuses, gr, k)
-				{; prints("tested F at class ",k)}
-				{; prints("number false = ",count(for S in newStatuses do S[0] = "F" od))}
-					; newStatuses[k] := "F"
-					fi {ps[0].nu...}
-				     fi{still NEWUk}
-			   in ()
-		      fi{NEWUk}
-		    ; if let kopp = NumClasses - k - 1 in (kopp%pref_bottom).= and kopp < pref_bottom*k
-		      then let K = (NumClasses - k - 1)\pref_bottom {K runs from 0}
-			   {then () = assert(#q_nums(newStatuses[:K]) = 0)}
-			   then () = if fund_face_verbose and (K%printInterval).= 
-				     then let unk = #q_nums(newStatuses[K:k])
-					  in prints("test undet equiv class #",K, " and #",k,
+			       	    then let stats = for p in ps do status(p,HT) od
+			     	    	 in if any(for stat in stats do stat < 0 od)
+			     	       	    then newStatuses:= updateNUclassesB(newStatuses, gr, k);
+				       	    newStatuses[k] := "F"
+				       	    elif all(for stat in stats do stat > 0 od)
+				       	    then newStatuses[k] := "T"
+				       	    elif any(for p in ps do @bool: not tester(p) od)
+				       	    then newStatuses:= updateNUclassesB(newStatuses, gr, k);
+				       	    	 newStatuses[k] := "F"
+				       	    else newStatuses[k] := "T"
+				       	    fi {any stat}
+				    fi{still NEWUk}
+			    {then () = if fund_face_verbose and (k%printkInterval).=  {was K%print_interval}
+				     then let K = (NumClasses - k - 1)\pref_bottom
+				     	  then unk = #q_nums(newStatuses[K:k]) {K, " and #",k,}
+					  in prints("test undet equiv class #",k,
 					     "; so far ",unitary_test_counter.use_count(),
 					     " 'is_unitary' tests; ",unk," classes still ? at ",
 					     print_time_string(elapsed_ms() - start))
-					     ; printInterval := 2*printInterval
-				     fi {fund_face_verbose}
+					     ; printkInterval := 2*printkInterval
+				     fi {fund_face_verbose}}
+
+			    in ()
+		      fi{NEWUk}
+		    ; if fund_face_verbose and (k%printkInterval).=  {was K%print_interval}
+		      then let K = (NumClasses - k - 1)\pref_bottom
+			   then unk = #q_nums(newStatuses[K:k]) {K, " and #",k,}
+			   in prints("test undet equiv class #",k,
+				     "; so far ",unitary_test_counter.use_count(),
+				     " 'is_unitary' tests; ",unk," classes still ? at ",
+				     print_time_string(elapsed_ms() - start))
+			      ; printkInterval := 2*printkInterval
+		      fi {fund_face_verbose}
+		    ; if let kopp = NumClasses - k - 1 in (kopp%pref_bottom).= and kopp < pref_bottom*k
+		      then let K = (NumClasses - k - 1)\pref_bottom {K runs from 0}
+			   {then () = assert(#q_nums(newStatuses[:K]) = 0)}
+			   {then () = if fund_face_verbose and (K%printKInterval).=
+				     then let unk = #q_nums(newStatuses[K:k]) { " and #",k,}
+					  in prints("test undet equiv class #",K,
+					     "; so far ",unitary_test_counter.use_count(),
+					     " 'is_unitary' tests; ",unk," classes still ? at ",
+					     print_time_string(elapsed_ms() - start))
+					     ; printKInterval := 2*printKInterval
+				     fi {fund_face_verbose}}
 			   in if newStatuses[K][0] = "?" {NEWUK}
 				     then let C=eq[K]
 					  then N = if wiggle_flag1 and C~[0] >= #FVKH[0]
@@ -917,8 +925,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 			  {then () = prints(new_line,"K = ",K,", ICPNU_flag = ",ICPNU_flag,",
 				ICPU_flag = ",ICPU_flag)
 			   then () = prints("before ICPNU, newStatuses = ",newStatuses)}
-
-
+			   {note ICPU_flag defaults false}
 				     then () = if newStatuses[K] = "?" and ICPU_flag {test for unitary}
 				     then if all(for p in ps
 						 do ind_test(p) = 1
@@ -934,17 +941,27 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 					       fi {ICPU_flag}
 		     {then () = prints("before NEWU, newStatuses = ",newStatuses)}
 		     in if{still NEWUK} newStatuses[K] = "?"
-			then if ps[0].nu.= or all(for p in ps do Uhash.lookup(p).>= or
-					    tester(p) od)
-			     then downdateUclassesB(newStatuses, gr, K, "T");
-				  newStatuses[K]:= "T"
-			     else {newStatuses:= updateNUclassesB(newStatuses, gr, k, "F")
-				{; prints("tested F at class ",k)}
-				{; prints("number false = ",count(for S in newStatuses do S[0] = "F" od))}
-				;} newStatuses[K] := "F"
-			     fi {all for p in ps}
+		     	then let stats = for p in ps do status(p,HT) od
+			     in if any(for stat in stats do stat < 0 od)
+			     	then newStatuses[K] := "F"
+				elif all(for stat in stats do stat > 0 od)
+				then downdateUclassesB(newStatuses, gr, K, "T");
+				     newStatuses[K]:= "T"
+				elif any(for p in ps do @bool: not tester(p) od)
+				then newStatuses[K] := "F"
+				else downdateUclassesB(newStatuses, gr, K, "T");
+				     newStatuses[K]:= "T"
+				fi
 			fi{still NEWUK}
 		 fi {NEWUK}
+	       ; if fund_face_verbose and (K%printKInterval).=
+		 then let unk = #q_nums(newStatuses[K:k]) { " and #",k,}
+		      in prints("test undet equiv class #",K,
+				"; so far ",unitary_test_counter.use_count(),
+				" 'is_unitary' tests; ",unk," classes still ? at ",
+				print_time_string(elapsed_ms() - start))
+			 ; printKInterval := 2*printKInterval
+		 fi {fund_face_verbose}
 	      fi {(kopp<k}
 	      od
      {then () = prints("after first loop, newStatuses = ",newStatuses)}
@@ -1000,14 +1017,16 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
      in local_testK_hash(x, lambda, Lvd, FVKH, eq, gr, classListByFace, tester, ht, Uhash)
 {which is_unitary_to_ht above???}
 
-{test candidate classes with (new) tester. Assume know_lower_flag is true,
+{test candidate classes with (new) tester. Assume know_lower_flag is true, (DOESN'T EXIST)
  and use that to get rid of some candidates. Delete
  from LFVKH faces established to be nonunitary in this way. Output is new
  shorter list of candidate faces. Lvd is LOCAL VertexData}
 {REQUIRE that tester is decisive: true means unitary}
+{This is nearly unused}
 set local_testK_hash_know_lower(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     [[FaceVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFace, (Param->bool) tester,
     Param_hash Uhash, (Param->bool) fancy_tester) = [[FaceVertsKHash]]:
+    prints("GOT TO KNOW_LOWER");
     let newStatuses = for j:#eq do "?" od,  NumClasses = #eq, red_shift = if red_count_flag then 1 else 0 fi
 	, printInterval = int: 1, G = x.real_form, OTF_hold = old_testing_flag
     {then () = {old_testing_flag:=true}}
@@ -1016,26 +1035,41 @@ set local_testK_hash_know_lower(KGBElt x, ratvec lambda, LocalVertexData Lvd,
      Use function known_unitaries from FPP_faces
      Look up class in classListByFace, and mark "T"}
     then start = elapsed_ms(), start_count = unitary_test_counter.use_count()
-    then () = if KU_flag {and #FVKH = 2}
+    then () = if KU_flag and KNU_flag
+    	      then let () = KUKU_flag:=false
+	      	   then (knownUnitaries, knownNonUnitaries) = known_status(x,lambda,Lvd, FVKH,-1)
+	      	   in for list@d in knownUnitaries
+		      do for j in list
+			 do let k = classListByFace[d][j]
+			    in newStatuses:= downdateUclassesB(newStatuses, gr, k, "T");
+			       newStatuses[k] := "T"
+				od
+			     od;
+			     for list@d in knownNonUnitaries
+		       	     do for j in list
+		       	     	do let k = classListByFace[d][j]
+			     	in newStatuses:= updateNUclassesB(newStatuses, gr, k, "F");
+			     	   newStatuses[k] := "F"
+		     	        od {j in list}
+		             od {list@d} next KUKU_flag:=true
+	      elif KU_flag {and #FVKH = 2}
 	      then let () = KUKU_flag:=false {prevent using Lucas's slow test at this early stage}
 		   then knownUnitaries = known_unitaries(Uhash, x, lambda, Lvd, FVKH, fancy_tester)
-		   then () = for list@d in knownUnitaries
-			     do for j in list
-				do newStatuses[classListByFace[d][j]] := "T"
-				od
-			     od
-		   in KUKU_flag:=true
-	       fi
-     then () = if KNU_flag
-	       then let knownNonUnitaries = known_non_unitaries(x, lambda, Lvd, FVKH)
-	       in for list@d in knownNonUnitaries
-		  do for j in list
-		     do let k = classListByFace[d][j]
-			in newStatuses:= updateNUclassesB(newStatuses, gr, k, "F");
-			   newStatuses[k] := "F"
-		     od {j in list}
-		  od {list@d}
-		fi
+		   in for list@d in knownUnitaries
+		      do for j in list
+		      	 do newStatuses[classListByFace[d][j]] := "T"
+			 od
+		      od next KUKU_flag:=true
+     	      elif KNU_flag
+	      then let knownNonUnitaries = known_non_unitaries(x, lambda, Lvd, FVKH)
+	       	   in for list@d in knownNonUnitaries
+		      do for j in list
+		      	 do let k = classListByFace[d][j]
+			    in newStatuses:= updateNUclassesB(newStatuses, gr, k, "F");
+			       newStatuses[k] := "F"
+		    	 od {j in list}
+		      od {list@d}
+	      fi
     then known_true_count = count(for ans in newStatuses do ans[0] = "T" od)
     then known_false_count = count(for ans in newStatuses do ans[0] = "F" od)
     then () = if test_verbose {and NumClasses > 100}
@@ -1102,6 +1136,19 @@ set local_testK_hash_know_lower(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 				    fi
 				fi
 		  in if newStatuses[k] = "?"
+		     then let stats = for p in ps do status(p,-1) od
+			  in if any(for stat in stats do stat < 0 od)
+			     then newStatuses:= updateNUclassesB(newStatuses, gr, k);
+				  newStatuses[k] := "F"
+			     elif all(for stat in stats do stat > 0 od)
+			     then newStatuses[k] := "T"
+			     elif any(for p in ps do @bool: not tester(p) od)
+			     then newStatuses:= updateNUclassesB(newStatuses, gr, k);
+				  newStatuses[k] := "F"
+			     else newStatuses[k] := "T"
+			     fi {any stat}
+		      fi{still NEWUk}
+{
 			and not is_final(pC) and all(for q in ps
 						 do @bool: is_finished(q.x,q.lambda)
 						    and Uhash.lookup(q).>=
@@ -1126,6 +1173,7 @@ set local_testK_hash_know_lower(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 			     fi{all}
 		     fi{NEWU}
 		 fi {newStatuses[k] = "?"} {now go from zero up}
+}
 		 ; if let kopp = NumClasses - k - 1 in (kopp%8).= and kopp < 8*k
 		      then let () = kup := (NumClasses - k - 1)\8 {kup runs from 0 more slowly}
 			   {then () = assert(#q_nums(newStatuses[:kup]) = 0)}
@@ -1181,10 +1229,10 @@ set local_testK_hash_know_lower(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 				{; prints("number false = ",count(for S in newStatuses do S[0] = "F" od))}
 				;} newStatuses[kup] := "F"
 			     fi
-			fi{NEWU}
+			 fi{NEWU}
 		 fi {newStatuses[kup] = "?"}
 			   in ()
-		      fi {(kopp%8).=)}
+		 fi {(kopp%8).=} fi
 	      od
      then () = if test_verbose
 	       then prints("     Total of ", count(for ans in newStatuses do ans[0] = "T" od),
@@ -1249,9 +1297,25 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
 		   prints("eq = ",eq)
 	      fi{;
 	      old_testing_flag:=true}
-    then () = if KU_flag {and #FVKH = 2}
+    then () = if KU_flag and KNU_flag
+    	      then let (knownUnitaries,knownNonUnitaries) = known_status(x,lambda,Lvd, FVKH,HT)
+	      in for list@d in knownUnitaries
+		 do for j in list
+		    do let k = classListByFace[d][j]
+		       in newStatuses:= downdateUclassesB(newStatuses, gr, k, "T");
+			  newStatuses[k] := "T"
+		    od {j in list}
+		 od ;{list in kU}
+		 for list@d in knownNonUnitaries
+		 do for j in list
+		    do let k = classListByFace[d][j]
+		       in newStatuses:= updateNUclassesB(newStatuses, gr, k, "F");
+			  newStatuses[k] := "F"
+		    od {j in list}
+		 od {list@d}
+    	      elif KU_flag {and #FVKH = 2}
 	      then let () = KUKU_flag:=false
-		   then knownUnitaries = known_unitaries(Uhash, x, lambda, Lvd, FVKH, fancy_tester)
+		   then knownUnitaries = known_unitaries(Uhash, x, lambda, Lvd, FVKH, fancy_tester,HT)
 		   then () = for list@d in knownUnitaries
 			     do for j in list
 				do newStatuses[classListByFace[d][j]] := "T"
@@ -1267,8 +1331,7 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
 
 			     fi
 		   in KUKU_flag:=true
-	       fi {KU_flag}
-     then () = if KNU_flag
+     	       elif KNU_flag
 	       then let knownNonUnitaries = known_non_unitaries(x, lambda, Lvd, FVKH, HT)
 	       then () = for list@d in knownNonUnitaries
 			 do for j in list
@@ -1285,7 +1348,7 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
 			    for str@i in newStatuses do if str[0] = "F" then [i] else [] fi od.##)
 		       fi
 		  fi
-		fi {KNU_flag}
+		fi {KU_flag and KNU_flag}
 {next if possible label classes known to be nonunitary because they finalize or deform to nonunitary}
     then () = for k:NumClasses
 	     ~do if newStatuses[k] = "?"
@@ -1323,14 +1386,32 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
 			 then if all(for q in pCdef do @bool: is_finished(q.x, q.lambda) and
 							     (Uhash.lookup(q) >= 0) od)
 			      then newStatuses[k] := "T"
-			      elif any(for q in pCdef do @bool: is_finished(q.x,q.lambda) and
-					 (Uhash.lookup(q) = -1) od)
+			      elif any(for q in pCdef do @bool: simple_status(q,HT).< od)
+
+			      {is_finished(q.x,q.lambda) and (Uhash.lookup(q) = -1) od)}
+			       {this line is wrong: need to check q nonunitary to ht HT. Causes
+			      trouble in G=Sp(4,2), x = KGB(G,184), lambda = [4,3,2,1,1,-1]/1. In this case
+			      HT =70. The  edge [1,3], with midpoint
+			non-normal parameter(x=184,lambda=[4,3,2,1,1,-1]/1,nu=[5,3,0,-3,0,-5]/4)
+			   =final parameter(x=152,lambda=[4,4,2,0,1,-1]/1,nu=[3,5,0,-3,0,-5]/4)
+			    is known nonunitary, but only at height 73. So this line incorrectly labels this C,
+			    which consists of 14 of the fifteen clases here, as nonunitary to ht 70.}
+			    
 			      then {prints("nonfinal, k = ",k, ", gr = ",gr);}
 				   newStatuses:= updateNUclassesB(newStatuses, gr, k,"F"); "F"
 			      fi {all for q}
 			  elif newStatuses[k] = "?"
-			  then if any(for q in pCdef do @bool:  is_finished(q.x,q.lambda)
-					       and (Uhash.lookup(q) = -1) od)
+			  then if any(for q in pCdef do @bool: simple_status(q,HT) = -1 od)
+
+			  {is_finished(q.x,q.lambda) and (Uhash.lookup(q) = -1) od)}
+			  {this line is wrong: need to check q nonunitary to ht HT. Causes
+			      trouble in G=Sp(4,2), x = KGB(G,184), lambda = [4,3,2,1,1,-1]/1. In this case
+			      HT =70. The  edge [1,3], with midpoint
+			non-normal parameter(x=184,lambda=[4,3,2,1,1,-1]/1,nu=[5,3,0,-3,0,-5]/4)
+			   =final parameter(x=152,lambda=[4,4,2,0,1,-1]/1,nu=[3,5,0,-3,0,-5]/4)
+			    is known nonunitary, but only at height 73. So this line incorrectly labels this C,
+			    which consists of 14 of the fifteen clases here, as nonunitary to ht 70.}
+
 			       then {prints("final, k = ",k, ", gr = ",gr);}
 				    newStatuses := updateNUclassesB(newStatuses, gr, k,"F");
 				    newStatuses[k] := "F"

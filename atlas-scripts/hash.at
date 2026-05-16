@@ -229,6 +229,23 @@ set hash_code (RealForm G, int mod) = int:
     let (bgvn, bgvd) = %base_grading_vector(G)
     in ( hash_code(G.inner_class, mod) + hash_code(vec:bgvn # bgvd,mod) ) % mod
 
+{
+set hash_code (CharacterTable ct, int mod) = int:
+    (   hash_code(mat: ct.table, mod)
+    + 5*hash_code(vec: ct.class_table.class_sizes, mod)
+    ) % mod
+
+set = (WeylClassTable T0, WeylClassTable T1) = bool:
+      #T0.class_representatives = #T1.class_representatives and
+      all(for w@j in T0.class_representatives
+      	  do w = T1.class_representatives[j]
+	  od)
+
+set = (CharacterTable ct0, CharacterTable ct1) = bool:
+    ct0.class_table = ct1.class_table and
+    ct0.table = ct1.table
+}
+
 set make_RootDatum_hash () = Hash<RootDatum>:
    make_hash(hash_code@(RootDatum,int),=@(RootDatum,RootDatum))
 set make_InnerClass_hash () = Hash<InnerClass>:
@@ -236,6 +253,8 @@ set make_InnerClass_hash () = Hash<InnerClass>:
 set make_RealForm_hash () = Hash<RealForm>:
    make_hash(hash_code@(RealForm,int),=@(RealForm,RealForm))
 
+{set make_CharacterTable_hash () = Hash<CharacterTable>:
+   make_hash(hash_code@(CharacterTable,int),=@(CharacterTable,CharacterTable))}
 
 set_type KGBratvec = (KGBElt x, ratvec lambda)
 
