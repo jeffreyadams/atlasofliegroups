@@ -23,8 +23,9 @@ Changing the condition "strictly shorter" to "weakly shorter" makes the
 def of weakly unipotent more restrictive: FEWER reps satisfy it. But
 maybe it's interesting, so we compute it as "strictly weakly unipotent."
 
-There is also a definition by Lucas Mason-Brown (and Dougal Davis???)
-in which F is allowed to be any ADJOINT rep of G, and the requirement
+There is also a definition by Lucas Mason-Brown and Dougal Davis
+(Def 4.11 https://arxiv.org/pdf/2503.14794) in which F is allowed to
+be any ADJOINT rep of G, and the requirement
 is that gamma1 cannot belong to [(convex hull of W*gamma0) minus
 (W*gammm0)]. We call this DMB-weakly unipotent. There is no
 implication either way with weakly unipotent, because we allow fewer
@@ -204,8 +205,7 @@ set weak_candidates_dominant_old(RootDatum G, ratvec lambda, ratvec gamma) = [ra
 	    od.##
 
 {given a dominant ratweight lambda and an arbitrary ratweight gamma, lists all dominant weights mu so
-1) Q(mu,lambda) <= Q(lambda,lambda) (This is the below-tangent hyperplane condition that ALLOWS all
-   		   		     shorter mu.)
+1) Q(mu,mu) <= Q(lambda,lambda)
 2) gamma-mu is in the weight lattice
 3) mu is not lambda}
 
