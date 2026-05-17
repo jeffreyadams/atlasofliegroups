@@ -155,6 +155,12 @@ namespace arithmetic {
 
 namespace K_repr {
 
+std::ostream& print_K_type_raw
+  (std::ostream& out, const K_type& val, const Rep_context& rc)
+{
+  return out << "K_type(" << val.x() << "," << val.lambda_rho() << ')';
+}
+
 std::ostream& print_K_type
   (std::ostream& out, const K_type& val, const Rep_context& rc)
 {
@@ -199,6 +205,13 @@ std::ostream& print_K_type_pol
 } // |namespace K_repr|
 
 namespace repr {
+
+std::ostream& print_stdrep_raw
+  (std::ostream& out,const StandardRepr& val, const Rep_context& rc)
+{ return out << "param("<< val.x()
+	     << "," << rc.lambda_rho(val)
+	     << "," << rc.nu(val) << ')';
+}
 
 std::ostream& print_stdrep
   (std::ostream& out,const StandardRepr& val, const Rep_context& rc)

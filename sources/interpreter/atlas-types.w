@@ -3224,8 +3224,8 @@ impossible.
 @< Type definitions @>=
 typedef std::shared_ptr<const inner_class_value> shared_inner_class;
 class real_form_value;
-typedef std::shared_ptr<const real_form_value> shared_real_form;
-typedef std::weak_ptr<const real_form_value> real_form_weak_ptr;
+using shared_real_form   = std::shared_ptr<const real_form_value>;
+using real_form_weak_ptr = std::weak_ptr<const real_form_value>;
 @)
 class inner_class_value : public value_base
 { struct token@+{}; // serves to control access to the constructor
@@ -5657,13 +5657,13 @@ typedef std::shared_ptr<const K_type_pol_value> shared_K_type_pol;
 typedef std::shared_ptr<K_type_pol_value> own_K_type_pol;
 
 @ Printing a virtual module value calls the free function
-|K_repr::print_K_type_pol| to do the actual work. It traverses the |std::map|
-that is hidden in the |Free_Abelian| class template, and prints individual terms
-by printing the |Split_integer| coefficient, followed by the $K$-type through a
-call of |print_stdrep|. When either all coefficients are integers or all
-coefficients are (integer) multiples of~$s$, it suppresses the component that is
-always~$0$; this is particularly useful if polynomials are used to encode
-$\Zee$-linear combinations of $K$-types.
+|K_repr::print_K_type_pol|, define in \.{basic\_io.cpp}, to do the actual work.
+It traverses the terms encoded in the |Free_Abelian_light<K_type,Split_integer>|
+value, and prints individual terms by printing the |Split_integer| coefficient,
+followed by the $K$-type through a call of |print_stdrep|. When either all
+coefficients are integers or all coefficients are (integer) multiples of~$s$, it
+suppresses the component that is always~$0$; this is particularly useful if
+polynomials are used to encode $\Zee$-linear combinations of $K$-types.
 
 @< Function def...@>=
 void K_type_pol_value::print(std::ostream& out) const

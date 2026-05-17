@@ -4184,7 +4184,37 @@ install_function(readline_completions_wrapper,@|"readline_completions",
 
 @*1 Type aware textual representations of values.
 %
+In order for values manipulated by the evaluator to ultimately be visualised,
+there is a virtual method |value_base::print| that forces all types of values to
+provide some textual representation, even if it does not always reveal all
+information contained in the value. This functionality is accessed through some
+built-in functions like |print| and |to_string|, but also when the value of an
+expression given on the command line ends up being printed to the terminal.
 
+While extremely convenient, this functionality has its limitations. For one,
+there is no external control of the textual representation, since the value
+produces it all by itself; no adaptation for reason of layout or verbosity is
+possible. An even more fundamental point is that it is the internal
+representation of the value itself that is producing the output, making it
+impossible to share an internal representation between values of different types
+that should have different textual representations (and this is what forces a
+single representation in some cases, like empty lists different types, where
+this sharing of representation does happen). The last point will become vitally
+important when we want to allow the user to introduce opaque types, new data
+types that behave as primitive types (or type constructors) while being
+implemented by some existing type using user defined functionality: hiding the
+internal representation will not be possible when the generic printing
+functionality is used.
+
+For this reason we introduce an alternative approach to textual representation,
+that required adapting the type checking system to allow for a new kind of
+built-in function that gets passed not only the value it operates upon but also
+the type of that value, so-called type aware functions. Printing can now be done
+using an external type aware function that recursively traverses the type is was
+given and decomposes the value to be printed accordingly, ensuring that at any
+point the function is aware of the type of the value it is processing. We take
+the opportunity of this redefinition to also add some layout control, notably
+the available line width.
 
 @ We prepare for the formatting of values to an imposed |width|. We first
 introduce a type |ind_string| that represents a line with and indicated amount
@@ -4217,17 +4247,6 @@ sl_list<ind_string> chop
   }
   res.emplace_back(width-w,std::string(pos,str.end()));
   return res;
-}
-@)
-sl_list<ind_string>& join
-  (sl_list<ind_string>& result,sl_list<ind_string>&& extra, unsigned width)
-{
-  if (result.singleton() and extra.singleton() and
-      result.front().str.length()+extra.front().str.length()<=width)
-    result.front().str += std::move(extra.front().str);
-  else
-    result.append(std::move(extra));
-  return result;
 }
 
 @ Here is a function to print a union or tuple type with one variant/component
@@ -4269,25 +4288,29 @@ bool has_parens (const type_expr& te)
   }
 }
 
-@ Type aware printing will call the recursive function |format|. It takes as
-argument a |type_expr| for the type to be printed, which should be a concrete
-type (although we allow it to contain polymorphic function types), a value |v|
-to be printed, the number of columns |width| available for formatting its output
-to (which the caller has adjusted by subtracting any indentation imposed by the
-context); the result will be a list of |ind_string|.
+@ Type aware printing will call the recursive function |format|. It takes as (by
+value) argument a |type_expr| for the type to be printed, which should be a
+concrete type (although we allow it to contain polymorphic function types), a
+value |v| to be printed, the number of columns |width| available for formatting
+its output to (which the caller has adjusted by subtracting any indentation
+imposed by the context); the result will be a list of lines represented as
+|ind_string| values.
 
-There are two scenarios that |format| can encounter: either the entire output
+Generally speaking |format| functions in one of two regimes: if the entire output
 fits in |width| (or cannot be broken across lines, in which case we allow
-ourselves to exceed the |width|), or it must be broken across multiple lines. It
-is up to the caller to distinguish these cases, and in the former case see if it
-is possible to append the line of output to a previous partially filled line,
-instead of using it as a separate line.
+ourselves to exceed the |width|) it does that, returning a single line, and
+otherwise it break thou output into multiple lines using structural indentation.
+The caller (which is often |format| itself, recursively) does not know beforehand
+which case will prevail, and will often need to distinguish the cases where a
+single and where multiple lines are returned, and possibly combine output from a
+single line with previous output.
 
 @< Local function definitions @>=
-void print(std::ostream& o, const type_expr& te, const id_pat& pat); // declare
+
+void print(std::ostream& o, type_expr&& te, const id_pat& pat);
+// declare recursive helper
 @)
-sl_list<ind_string> format
-  (const type_expr& te, const value_base& v, unsigned width)
+sl_list<ind_string> format (type_expr te, const value_base& v, unsigned width)
 { sl_list<ind_string> result;
   std::ostringstream o;
   switch (te.top_kind())
@@ -4320,11 +4343,11 @@ sl_list<ind_string> format
 }
 
 @ For a list of values, we distinguish several cases. If the list is empty, we
-print the type and an empty list expression. Otherwise we come to the meat of
-our work, where we sequentially produce individual list items in a bracketed
-notation, concatenating them on a single line as long as possible, but never
-sharing a line between two items at least one of which itself requires multiple
-lines.
+print empty brackets followed by an indication of the entry type. Otherwise we
+come to the meat of our work, where we sequentially produce individual list
+items in a bracketed notation, concatenating them on a single line as long as
+possible, but never sharing a line between two items at least one of which
+itself requires multiple lines.
 
 When outputting a with a partially filled current line |cur|, we recursively
 |format| each item as if it started on a fresh line, then if it fits on a single
@@ -4335,17 +4358,17 @@ that was formatted to this, adding a |prefix| or indentation as appropriate.
 @< Build bracketed list of entries of |v|, appending to |result| @>=
 { const row_value* rv = dynamic_cast<const row_value*>(&v);
   assert(rv!=nullptr);
+  const type_expr& comp = te.expand().component_type();
   if (rv->length()==0)
-  @/{@; o << '[' << te.component_type() << "]:[]";
+  {@; o << "[]<" << comp << '>';
     result.emplace_back(o.str());
   }
   else
   { std::string cur; // current line
-    const unsigned tab =  te.component_type().top_kind()==primitive_type ? 1 : 2;
-    const auto ind_width = width-tab; // width on fresh lines after indentation
+    const unsigned tab =  comp.top_kind()==primitive_type ? 1 : 2;
     for (unsigned i=0; i<rv->length(); ++i)
     { auto prefix = tab==1 ? i==0 ? "[" : "," : i==0 ? "[ " : ", ";
-      auto res = format(te.component_type(),*rv->val[i],ind_width);
+      auto res = format(comp.copy(),*rv->val[i],width-tab);
       if (res.singleton())
       { if (width>=cur.length()+tab+res.front().str.length())
           cur += prefix+res.front().str; // append a new item to |cur|
@@ -4355,19 +4378,10 @@ that was formatted to this, adding a |prefix| or indentation as appropriate.
           cur = prefix+res.front().str;
         }
       }
-      else // transform |res|, then append to |result|
-      {
-        if (cur.length()>0) // if there is any accumulated output
-        @/{@; result.emplace_back(std::move(cur));
-          cur.clear();
-        } // emit that first
-        for (auto& item: res)
-          if (&item==&res.front())
-            item.str = prefix+item.str;
-          else
-            item.indent+=tab;
-        result.append(std::move(res));
-      }
+      else
+        @< Add |cur| to |result|, then append |res| transformed by
+           inserting |prefix| before the first line and adding |tab|
+           to all other indents @>
     }
     if (result.empty() and width>=cur.length()+tab)
     @/{@;
@@ -4382,6 +4396,25 @@ that was formatted to this, adding a |prefix| or indentation as appropriate.
   }
 }
 
+@ When an item produces multi-line output, we terminate accumulation of text in
+|cur| and switch to appending those lines with extra indentation.
+
+@< Add |cur| to |result|, then append |res| transformed by
+   inserting |prefix| before the first line and adding |tab|
+   to all other indents @>=
+{
+  if (cur.length()>0) // if there is any accumulated output
+  @/{@; result.emplace_back(std::move(cur));
+    cur.clear();
+  } // emit that first
+  for (auto& item: res)
+    if (&item==&res.front())
+      item.str = prefix+item.str;
+    else
+      item.indent+=tab;
+  result.append(std::move(res));
+}
+
 @ For a tuple of values, we distinguish several cases. If the list is empty, we
 print the type and an empty list expression. Otherwise we come to the meat of
 our work, where we sequentially produce individual list items in a bracketed
@@ -4393,13 +4426,12 @@ lines.
 { const tuple_value* tv = dynamic_cast<const tuple_value*>(&v);
   assert(tv!=nullptr);
   auto* names = te.raw_kind()==tabled ? &te.fields(te.tabled_nr()) : nullptr;
-  const type_expr exp_te = te.expanded();
-  const auto& tup = exp_te.tuple();
+  auto* tup = te.expand().tuple();
   if (tup==nullptr)
     result.emplace_back("()");
   else
   { std::string cur; // current line
-    wtl_const_iterator it (tup);
+    wtl_iterator it (tup);
     for (unsigned i=0; i<tv->length(); ++i,++it)
     {
       const bool is_prim = it->top_kind()==primitive_type;
@@ -4439,7 +4471,7 @@ if (tab+25>width)
      as line buffer @>
 else
 { const auto ind_width = width-tab;
-  auto res = format(*it,*tv->val[i],ind_width);
+  auto res = format(std::move(*it),*tv->val[i],ind_width);
   if (res.singleton())
   { if (cur.length()+tab+res.front().str.length()<=width)
       cur += prefix+res.front().str; // append a new item to |cur|
@@ -4449,19 +4481,7 @@ else
       cur = prefix+res.front().str;
     }
   }
-  else // transform |res|, then append to |result|
-  {
-    if (cur.length()>0) // if there is any accumulated output
-    @/{@; result.emplace_back(std::move(cur));
-      cur.clear();
-    } // emit that first
-    for (auto& item: res)
-      if (&item==&res.front())
-        item.str = prefix+item.str;
-      else
-        item.indent+=tab;
-    result.append(std::move(res));
-  }
+  else @< Add |cur| to |result|, then append |res| transformed... @>
 }
 
 @ Formatting nested tuples with field names can quickly reduce the number of
@@ -4472,7 +4492,7 @@ and then breaking the (hopefully single) line that results into pieces of size
 
 @< Append to |result| a compactly formatted form of |prefix| followed...@>=
 {
-  auto res = format(*it,*tv->val[i],-1);
+  auto res = format(std::move(*it),*tv->val[i],-1);
   if (res.singleton() and cur.length()+tab+res.front().str.length()<=width)
     cur += prefix+res.front().str;
   else
@@ -4507,8 +4527,8 @@ this information.
   const auto* names =
     te.raw_kind()==tabled ? &type_expr::fields(te.tabled_nr()) : nullptr;
   id_type tag_id = names==nullptr ? type_binding::no_id : (*names)[uv->variant()];
-  const type_expr exp_te = te.expanded();
-  const auto& uni = exp_te.tuple();
+@)
+  auto* uni = te.expand().tuple();
   std::string tag_str;
   if (tag_id==type_binding::no_id)
     tag_str = highlight(uni,true,uv->variant());
@@ -4517,14 +4537,15 @@ this information.
   else
     tag_str = main_hash_table->name_of(tag_id) + std::string("(born ")
     + main_hash_table->name_of(uv->stored_name()) + ")";
-  const type_expr& inner_type =
-    *std::next(wtl_const_iterator(uni),uv->variant());
+  type_expr& inner_type =
+    *std::next(wtl_iterator(uni),uv->variant());
   const bool need_parens = not(has_parens(inner_type));
 @)
-  auto inner = format(inner_type,*uv->contents(),need_parens?width-1:width);
+  auto inner =
+    format(std::move(inner_type),*uv->contents(),need_parens?width-1:width);
   if (inner.singleton() and
       inner.front().str.length()+(need_parens?3:1)+tag_str.length()<=width)
-    result.emplace_back
+    result.emplace_back @|
       ((need_parens?"("+inner.front().str+").":inner.front().str+".")+tag_str);
   else // modify |inner| by adding parentheses and |tag_str|
   { if (need_parens)
@@ -4554,18 +4575,20 @@ given.
 @< Append to |result| a description of the value |v| of function type... @>=
 { const auto* fv = dynamic_cast<const function_base*>(&v);
   assert(fv!=nullptr);
-  auto exp_te = te.expanded();
-@/const type_expr& at = exp_te.func()->arg_type;
-  const type_expr& rt = exp_te.func()->result_type;
+@/const type_expr& at = te.expand().func()->arg_type;
+  const type_expr& rt = te.func()->result_type;
 @)
   if (@[const auto* bv = dynamic_cast<const builtin_value<false>*>(fv)@])
     result.emplace_back(std::string(bv->print_name)); // this includes the type
-  if (@[const auto* vbv = dynamic_cast<const builtin_value<true>*>(fv)@])
+  else if (@[const auto* vbv = dynamic_cast<const builtin_value<true>*>(fv)@])
     result.emplace_back(std::string(vbv->print_name)); // this includes the type
   else if (@[const auto* cv = dynamic_cast<const closure_value*>(fv)@])
     @< Output closure |*cv| to |result|, using its type |te| @>
   else if (@[const auto* tai = dynamic_cast<const type_aware_instance*>(fv)@])
-   @< Output type aware instance |*tai| to |result|, checking its type |te| @>
+  { o << "Instance of type aware built-in '" << tai->print_name
+      << @| "' at argument type " << at << " returning " << rt;
+    result.emplace_back(o.str());
+  }
   else if (@[const auto* pv = dynamic_cast<const projector_value*>(fv)@])
     result.emplace_back("Projector"+
       highlight(at.expanded().tuple(),false,pv->position));
@@ -4578,22 +4601,28 @@ given.
   }
 }
 
-@ For printing parameter lists, we shall need a recursive function. This
-function omits the outer parentheses, for recursive use for each item in a
-parameter sublist.
+@ For printing parameter lists, we shall need a recursive function that inserts
+parameter names from the argument pattern |pat| into the argument type
+expression~|te|, while descending into a (necessarily tuple) type in case a
+sublist is present in |pat| instead of a parameter name. In case both a name and
+a sublist are present, we do not descend but print the relevant part of the type
+followed by the relevant part of the pattern (which will print the sublist
+followed by the name, separated by a colon). This function omits the outer
+parentheses of the parameter list, which allows it to use itself recursively for
+each item in a parameter sublist.
 
 @< Local function definitions @>=
 
-void print(std::ostream& o, const type_expr& te, const id_pat& pat)
+void print(std::ostream& o, type_expr&& te, const id_pat& pat)
 { if ((pat.kind & 0x1)!=0) // an identifier prevents breaking open |te|
     o << te << ' ' << pat;
   else if ((pat.kind & 0x2)==0) // no identifier or sublist
     o << te << ' ' << '.';
   else // no identifier but a sublist is present; break open
-  { type_expr exp_te = te.expanded();
-    wtl_const_iterator te_it(exp_te.tuple());
+  { assert(te.top_kind()==tuple_type);
+    wtl_iterator te_it(te.expand().tuple());
     for (auto it=pat.sublist.begin(); not pat.sublist.at_end(it); ++te_it,++it)
-      print(o << (it==pat.sublist.begin()?'(':','),*te_it,*it);
+      print(o << (it==pat.sublist.begin()?'(':','),std::move(*te_it),*it);
     o << ')';
   }
 }
@@ -4607,39 +4636,35 @@ case using another dynamic cast, and in doing so we also indicate the recursive
 character of the function in the output text.
 
 @< Output closure |*cv| to |result|, using its type |te| @>=
-{ type_expr exp_te = te.expanded();
-  const auto* param = &cv->p->param;
+{ const auto* param = &cv->p->param;
   if (dynamic_cast<const recursive_closure*>(cv)!=nullptr)
   { auto it = param->sublist.begin();
     o << "rec_fun " << main_hash_table->name_of(it->name) << ' ';
     param = &*++it;
   }
-  o <<'('; print(o,exp_te.func()->arg_type,*param);
-  o<<") " << exp_te.func()->result_type << ':';
+  o <<'('; print(o,std::move(te.func()->arg_type),*param);
+  o<<") " << te.func()->result_type << ':';
   result.emplace_back(o.str());
-  o.str(""); o << ' ' << *cv->p->body;
-  return join(result,chop(o.str(),width,3),width);
+@/o.str(""); o << *cv->p->body;
+  auto extra = chop(o.str(),width-3);
+  if (extra.singleton() and @|
+      result.front().str.length()+1+extra.front().str.length() <= width)
+    result.front().str += " "+extra.front().str;
+  else
+    for(auto it = result.append(std::move(extra)); not result.at_end(it); ++it)
+      it->indent += 3;
 }
 
-@ In type aware printing, we can even handle type aware built-in functions as
-argument.
+@ While we may expect for certain primitive types that each value will fit on a
+line, this is not the case for composite primitive types like \.{vec}, \.{mat}
+and \.{ParamPol}. Therefore the code for printing values of primitive types is
+almost as varied as that of other kinds of types, although less recursive.
 
-@< Output type aware instance |*tai| to |result|, checking its type |te| @>=
-{ o << "Instance of type aware built-in '" << tai->print_name
-    << "' at argument type " << at << " returning " << rt;
-  result.emplace_back(o.str());
-}
-
-@ Here we know that the length of |o.str()| exceeds the available |width|, so
-for certain primitive types we will try to split the value over multiple lines.
-However this is not always reasonable (and at some point all available width
-may have been gobbled up by the indentation, in which case there will not really
-be any reasonable way to honour the width specification); when nothing else can
-be done, we put the entire output on a single line and set |width=0| to indicate
-that we have no space left on this line.
+@h "atlas-types.h" // for |split_int_value|
+@h "basic_io.h" // for |print_Split|
 
 @< Format primitive value |v| into |result| @>=
-{ switch(te.prim())
+{ switch(te.expand().prim())
   { default: v.print(o); result.emplace_back(std::move(o.str()));
   break; case integral_type:
   { auto* p = dynamic_cast<const int_value*>(&v);
@@ -4647,40 +4672,60 @@ that we have no space left on this line.
     o << p->val;
     result = chop(o.str(),width,0);
   }
-  break;
   break; case string_type: // here we indent for the leading quote character
   { auto* p = dynamic_cast<const string_value*>(&v);
     assert(p!=nullptr);
     o << p->val;
     result = chop(o.str(),width,1);
   }
+  break; case split_integer_type:
+  { auto* p = dynamic_cast<const split_int_value*>(&v);
+    assert(p!=nullptr);
+    print_split(o,p->val);
+    std::string out = o.str();
+    result.emplace_back(out.substr(1,out.length()-2)); // remove parentheses
+  }
   break; case vector_type:
     @< Format vector value |v| into |result| @>
+  break; case rational_vector_type:
+    @< Format rational vector value |v| into |result| @>
   break; case matrix_type:
     @< Format matrix value |v| into |result| @>
+  break; case K_type_pol_type:
+    @< Format $K$-type polynomial value |v| into |result| @>
 #if 0
-  case split_integer_type:
-  case rational_vector_type:
-  case K_type_pol_type:
-  case virtual_module_type: {}
+  break; case virtual_module_type: {}
 #endif
   }
 }
 
+@ For formatting values of type \.{vec}. We set up a section doing the main work
+that can be textually shared with formatting values of type \.{ratvec}; due to a
+difference between the two uses in the integer types involved, we cannot share
+compiled code. In the \.{ratvec} case we need access to the last line add the
+common denominator, which is why we set of to have a pointer |last| that is
+declared outside the common code.
+
+@< Format vector value |v| into |result| @>=
+{ auto* vp = dynamic_cast<const vector_value*>(&v);
+  assert(vp!=nullptr);
+  const auto& val = vp->val;
+  ind_string* last;
+  @< Add one or more lines to |result| with a bracketed list containing... @>
+}
+
 @ Formatting a vector is only slightly different from formatting the
-corresponding list of integers: we first compute the minimal width necessary for
+corresponding list of integers. We first compute the minimal width necessary for
 all entries, then format all entries right in the given space. This is almost
 how |vector_value::print| works, but we do not make the width any longer than
 the widest entry. Apart from this, we do the usual due diligence to try to break
 lines so as to not exceed |width|, although we will ignore |width| if it is too
 small to fit even a single vector entry.
 
-@< Format vector value |v| into |result| @>=
-{ auto* vp = dynamic_cast<const vector_value*>(&v);
-  assert(vp!=nullptr);
-  const auto& val = vp->val;
-@)
-  const auto l=val.size();
+@< Add one or more lines to |result| with a bracketed list containing
+   the entries of |val| in equal size spaces, and point |last| to
+   the final line @>=
+{ const auto l=val.size();
   std::size_t w=0; std::vector<std::string> tmp(l);
   unsigned i=0;
   for (auto& entry : tmp)
@@ -4691,27 +4736,48 @@ small to fit even a single vector entry.
   if (l==0)
     result.emplace_back("[ ]");
   else
-  { const bool flat = 1+l*(w+1)<=width;
+  { const bool flat = 1+l*(w+1)<=width; // whether all will fit on a line
     const unsigned per_line = flat ? l : width<=w ? 1 : width/(w+1);
 @)
     unsigned pos = per_line;
-    auto* p = &result.emplace_back("");
-    p->str.reserve(flat ? 1+l*(w+1) :per_line*(w+1));
+    last = &result.emplace_back("");
+    last->str.reserve(flat ? 1+l*(w+1) :per_line*(w+1));
     for (std::size_t i=0; i<l; ++i)
-    { p->str.append(i==0?"[":",");
-      p->str.append(w-tmp[i].length(),' ');
-      p->str.append(tmp[i]);
-      if (not flat and pos-- == 0)
-    @/{@; pos = per_line;
-        p = &result.emplace_back("");
-        p->str.reserve(per_line*(w+1));
+    { last->str.append(i==0?"[":",");
+      last->str.append(w-tmp[i].length(),' ');
+      last->str.append(tmp[i]);
+      if (not flat and --pos == 0) // wrap to a new line every |per_line| entries
+      {@; pos = per_line;
+        last = &result.emplace_back("");
+        last->str.reserve(per_line*(w+1));
       }
     }
-    if (flat or p->str.empty())
-      p->str.append("]");
+    if (flat or last->str.empty())
+      last->str.append("]");
   @+else
-      result.emplace_back("]");
+      last = &result.emplace_back("]");
   }
+}
+
+@ Now it is easy to use the same section used for vectors to implement printing
+of rational vectors. The use of the method |rat_Vector::true_denominator|
+(instantiated from the |RationalVector| template) allows us to get the actual
+unsigned denominator (whereas the |RationalVector::denominator| cast that value
+to a signed integer of hopefully the same precision). While using an unsigned
+quantity with arithmetic operations that might mix it with signed number is
+dangerous, as those other operands might get silently converted to unsigned even
+if they happen to be negative, it is actually safer here, for printing, to use
+the unsigned value without any changes applied to it.
+
+@< Format rational vector value |v| into |result| @>=
+{ auto* rvp = dynamic_cast<const rational_vector_value*>(&v);
+  assert(rvp!=nullptr);
+  const auto& val = rvp->val.numerator();
+  ind_string* last;
+@/@< Add one or more lines to |result| with a bracketed list containing
+     the entries of |val| in equal size spaces, and point |last| to
+     the final line @>
+@/last->str.append("/" + std::to_string(rvp->val.true_denominator()));
 }
 
 @ For a matrix we try a format a bit more compact that the default format, by
@@ -4736,7 +4802,7 @@ inserted, rather than just as a number |per_line| of columns between line breaks
       { auto len = std::to_string(val(i,j)).length();
         if (len>w) w=len;
       }
-    const bool flat = l*(w+1)<=width-3;
+    const bool flat = 3+l*(w+1)<=width;
     const unsigned per_line = flat ? l : width<=w ? 1 : (width-3)/(w+1);
     const unsigned char_w = 3+(flat ? l : width<=w ? 1 : per_line)*(w+1);
 @)
@@ -4750,7 +4816,7 @@ inserted, rather than just as a number |per_line| of columns between line breaks
       { std::string tmp = std::to_string(val(i,j));
         p->str.append(w+1-tmp.length(),' ');
         p->str.append(tmp);
-        if (not flat and pos-- == 0)
+        if (not flat and --pos == 0)
         { pos = per_line;
           p = &result.emplace_back("");
           p->str.reserve(char_w);
@@ -4762,6 +4828,89 @@ inserted, rather than just as a number |per_line| of columns between line breaks
   }
 }
 
+@ Formatting $K$-types is largely inspired by formatting of vectors, but we do
+more effort to keep coefficients and $K$-types aligned, as we try to reduce the
+size of coefficients when the are all of a certain kind (all $1$, or otherwise
+all integer, or all integer multiples of~$2$).
+
+@< Format $K$-type polynomial value |v| into |result| @>=
+{ auto* Ktpp = dynamic_cast<const K_type_pol_value*>(&v);
+  assert(Ktpp!=nullptr);
+  const auto& val = Ktpp->val;
+  auto l = val.count_terms();
+  const auto& rc = Ktpp->rf->rc();
+@)
+  if (l==0)
+    result.emplace_back("{}<Ktype>");
+  else
+  { unsigned mode = 0;
+    // whether anything( bit 0: not 1; bit 1: not $n*1$; bit 3: not $n*s$)
+    std::vector<std::string> tmp(l);
+    std::size_t wK=0,w1=0,ws=0;
+    unsigned i=0;
+    for (const auto& term : val)
+    {
+      o.str("");
+      print_K_type_raw(o,term.first,rc);
+      tmp[i]=o.str();
+      if (tmp[i].length()>wK)
+        wK = tmp[i].length();
+      ++i;
+
+      if (term.second.s()!=0)
+        mode |= term.second.e()==0 ? 0x3 : 0x7;
+      else
+        mode |= term.second.e()==1 ? 0x4 : 0x5;
+      unsigned w=std::to_string(term.second.e()).length();
+      if (w>w1)
+        w1=w;
+      if ((w=std::to_string(term.second.s()).length())>ws);
+        ws=w;
+    }
+@)
+    auto w = wK +
+      ( mode==7 ? 4+w1+ws
+      : mode==3 ? 3+ws
+      : mode==4 ? 0
+      : 2+w1);
+
+    const bool flat = 1+l*(w+1)<=width;
+    const unsigned per_line = flat ? l : width<=w ? 1 : width/(w+1);
+    const unsigned char_w = 1+(flat ? l : width<=w ? 1 : per_line)*(w+1);
+@)
+    unsigned pos = per_line;
+    auto* last = &result.emplace_back("");
+    last->str.reserve(char_w);
+    i=0;
+    for (const auto& term : val)
+    { o.str("");
+      o << (i==0?'{':',');
+      if (mode!=4)
+      { o << '(' << std::right;
+        if (mode!=3) // then print multiple of $1$
+          o << std::setw(w1) << term.second.e();
+        if (mode==7)
+          o << '+';
+        if (mode!=5)
+          o << std::setw(ws) << term.second.s() << 's';
+        o << ')';
+      }
+      o << std::left << std::setw(wK) << tmp[i++];
+      last->str.append(o.str());
+      if (not flat and --pos == 0)
+        // wrap to a new line every |per_line| entries
+      {@; pos = per_line;
+        last = &result.emplace_back("");
+        last->str.reserve(char_w);
+      }
+    }
+
+    if (flat or last->str.empty())
+      last->str.append("}");
+  @+else
+      last = &result.emplace_back("}");
+  }
+}
 
 @*1 Generic operators and functions, and analogous ordinary ones.
 %
@@ -4876,7 +5025,7 @@ void type_aware_print_wrapper(eval_level l, const type& tp)
   *output_stream <<
     "{[" << tp.degree() << ']' << tp << ":}\n";
   unsigned width = 80;
-  auto res = format(tp.unwrap(),*execution_stack.back(),width);
+  auto res = format(tp.bake(),*execution_stack.back(),width);
   if (res.singleton())
     *output_stream << res.front().str << '\n';
   else
