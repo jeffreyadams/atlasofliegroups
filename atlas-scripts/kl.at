@@ -37,6 +37,9 @@ choose whether "to height" or "to infinity" algorithm is faster.}
 { ------------------------------------------------------------------- }
 {seat_belt_on:=false}
 
+{whether to turn on u_predictor and u_predictor_to_ht in hermitian.at}
+set predictor_flag = false {evening 12/21/25; was false until 12/19, when something went wrong}
+
 {whether to use to_ht instead of truncating full_deform}
 set to_ht_over_u_flag = true
 
