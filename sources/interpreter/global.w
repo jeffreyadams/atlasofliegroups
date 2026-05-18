@@ -3360,7 +3360,7 @@ expression_ptr rhs_is_1
   (expression_ptr& args,const shared_builtin& f,const source_location& loc)
 { auto t = dynamic_cast<const tuple_expression*>(args.get());
   if (t!=nullptr and t->component.size()==2)
-  { auto a = dynamic_cast<const denotation*>(t->component[1].get());
+  { const auto* a = dynamic_cast<const denotation*>(t->component[1].get());
     if (a!=nullptr)
     { auto v = force<int_value>(a->denoted_value.get());
       if (v->val==1)
@@ -3373,9 +3373,9 @@ expression_ptr rhs_is_1
 }
 expression_ptr lhs_is_minus_1
   (expression_ptr& args,const shared_builtin& f,const source_location& loc)
-{ auto t = dynamic_cast<const tuple_expression*>(args.get());
+{ const auto* t = dynamic_cast<const tuple_expression*>(args.get());
   if (t!=nullptr and t->component.size()==2)
-  { auto a = dynamic_cast<const denotation*>(t->component[0].get());
+  { const auto* a = dynamic_cast<const denotation*>(t->component[0].get());
     if (a!=nullptr)
     { auto v = force<int_value>(a->denoted_value.get());
       if (v->val==-1)
@@ -3650,9 +3650,9 @@ used earlier.
 @< Local function definitions @>=
 expression_ptr lhs_is_1
   (expression_ptr& args,const shared_builtin& f,const source_location& loc)
-{ auto t = dynamic_cast<const tuple_expression*>(args.get());
+{ const auto* t = dynamic_cast<const tuple_expression*>(args.get());
   if (t!=nullptr and t->component.size()==2)
-  { auto a = dynamic_cast<const denotation*>(t->component[0].get());
+  { const auto* a = dynamic_cast<const denotation*>(t->component[0].get());
     if (a!=nullptr)
     { auto v = force<int_value>(a->denoted_value.get());
       if (v->val==1)
@@ -3878,9 +3878,9 @@ right hand side $0$.
 @< Local function definitions @>=
 expression_ptr rhs_is_0
   (expression_ptr& args,const shared_builtin& f,const source_location& loc)
-{ auto t = dynamic_cast<const tuple_expression*>(args.get());
+{ const auto* t = dynamic_cast<const tuple_expression*>(args.get());
   if (t!=nullptr and t->component.size()==2)
-  { auto a = dynamic_cast<const denotation*>(t->component[1].get());
+  { const auto* a = dynamic_cast<const denotation*>(t->component[1].get());
     if (a!=nullptr)
     { auto v = force<int_value>(a->denoted_value.get());
       if (v->val.is_zero())
@@ -3929,9 +3929,9 @@ implement constant folding.
 @< Local function definitions @>=
 expression_ptr rhs_is_rat0
   (expression_ptr& args,const shared_builtin& f,const source_location& loc)
-{ auto t = dynamic_cast<const tuple_expression*>(args.get());
+{ const auto* t = dynamic_cast<const tuple_expression*>(args.get());
   if (t!=nullptr and t->component.size()==2)
-  { auto a = dynamic_cast<const denotation*>(t->component[1].get());
+  { const auto* a = dynamic_cast<const denotation*>(t->component[1].get());
     if (a!=nullptr)
     { auto v = force<rat_value>(a->denoted_value.get());
       if (v->val.is_zero())
@@ -4101,12 +4101,13 @@ void readline_completions_wrapper(eval_level l)
 
 @ We shall make some optimisations for testing explicitly against an empty
 string.
+
 @< Local function definitions @>=
 expression_ptr rhs_is_empty
   (expression_ptr& args,const shared_builtin& f,const source_location& loc)
-{ auto t = dynamic_cast<const tuple_expression*>(args.get());
+{ const auto* t = dynamic_cast<const tuple_expression*>(args.get());
   if (t!=nullptr and t->component.size()==2)
-  { auto a = dynamic_cast<const denotation*>(t->component[1].get());
+  { const auto* a = dynamic_cast<const denotation*>(t->component[1].get());
     if (a!=nullptr)
     { auto v = force<string_value>(a->denoted_value.get());
       if (v->val.empty())
@@ -4176,11 +4177,11 @@ produce) in order to give the user full control of the string produced.
 std::ostream& to_string_aux(std::ostream& o, eval_level l)
 { shared_value v=pop_value();
 @)
-  const string_value* s=dynamic_cast<const string_value*>(v.get());
+  const auto* s=dynamic_cast<const string_value*>(v.get());
   if (s!=nullptr)
     o << s->val; // single string without quotes
   else
-  { const tuple_value* t=dynamic_cast<const tuple_value*>(v.get());
+  { const auto* t=dynamic_cast<const tuple_value*>(v.get());
     if (t!=nullptr)
     { for (auto it=t->val.begin(); it!=t->val.end(); ++it)
       { s=dynamic_cast<const string_value*>(it->get());
