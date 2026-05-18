@@ -4666,37 +4666,63 @@ almost as varied as that of other kinds of types, although less recursive.
 @< Format primitive value |v| into |result| @>=
 { switch(te.expand().prim())
   { default: v.print(o); result.emplace_back(std::move(o.str()));
-  break; case integral_type:
+@+break; case integral_type:
   { auto* p = dynamic_cast<const int_value*>(&v);
     assert(p!=nullptr);
     o << p->val;
     result = chop(o.str(),width,0);
   }
-  break; case string_type: // here we indent for the leading quote character
+@+break; case string_type: // here we indent for the leading quote character
   { auto* p = dynamic_cast<const string_value*>(&v);
     assert(p!=nullptr);
     o << p->val;
     result = chop(o.str(),width,1);
   }
-  break; case split_integer_type:
+@+break; case split_integer_type:
   { auto* p = dynamic_cast<const split_int_value*>(&v);
     assert(p!=nullptr);
     print_split(o,p->val);
     std::string out = o.str();
     result.emplace_back(out.substr(1,out.length()-2)); // remove parentheses
   }
-  break; case vector_type:
+@+break; case inner_class_type:
+    @< Format inner class value |v| into |result| @>
+@)
+@+break; case vector_type:
     @< Format vector value |v| into |result| @>
-  break; case rational_vector_type:
+@+break; case rational_vector_type:
     @< Format rational vector value |v| into |result| @>
-  break; case matrix_type:
+@+break; case matrix_type:
     @< Format matrix value |v| into |result| @>
-  break; case K_type_pol_type:
+@+break; case K_type_type:
+    @< Format $K$-type value |v| into |result| @>
+@+break; case K_type_pol_type:
     @< Format $K$-type polynomial value |v| into |result| @>
-#if 0
-  break; case virtual_module_type: {}
-#endif
+@+break; case module_parameter_type:
+    @< Format parameter value |v| into |result| @>
+@+break; case virtual_module_type:
+    @< Format virtual module value |v| into |result| @>
   }
+}
+
+@ For inner classes, the usual output always occupies two lines. in type aware
+printing, we try to see if we can fit everything within the specified |width|,
+and if so we do that. For inner classes, we also take the occasion to reduce the
+output (mentioning the number of real forms and dual real forms is not of
+capital importance every time an inner class is printed).
+
+@< Format inner class value |v| into |result| @>=
+{ auto* icp = dynamic_cast<const inner_class_value*>(&v);
+  assert(icp!=nullptr);
+  o << "Complex reductive group of type " << icp->rd_type << ",";
+  result.emplace_back(o.str());
+  o.str("");
+  o << "with involution defining inner class of type '" << icp->ic_type;
+  auto str2 = o.str();
+  if (result.front().str.length()+1+str2.length()<=width)
+    result.front().str.append(1,' ').append(str2);
+  else
+    result.emplace_back(std::move(str2));
 }
 
 @ For formatting values of type \.{vec}. We set up a section doing the main work
@@ -4709,7 +4735,7 @@ declared outside the common code.
 @< Format vector value |v| into |result| @>=
 { auto* vp = dynamic_cast<const vector_value*>(&v);
   assert(vp!=nullptr);
-  const auto& val = vp->val;
+  const int_Vector& val = vp->val;
   ind_string* last;
   @< Add one or more lines to |result| with a bracketed list containing... @>
 }
@@ -4738,10 +4764,11 @@ small to fit even a single vector entry.
   else
   { const bool flat = 1+l*(w+1)<=width; // whether all will fit on a line
     const unsigned per_line = flat ? l : width<=w ? 1 : width/(w+1);
+    const unsigned char_w = flat ? 1+l*(w+1) : per_line*(w+1);
 @)
     unsigned pos = per_line;
     last = &result.emplace_back("");
-    last->str.reserve(flat ? 1+l*(w+1) :per_line*(w+1));
+    last->str.reserve(char_w);
     for (std::size_t i=0; i<l; ++i)
     { last->str.append(i==0?"[":",");
       last->str.append(w-tmp[i].length(),' ');
@@ -4749,7 +4776,7 @@ small to fit even a single vector entry.
       if (not flat and --pos == 0) // wrap to a new line every |per_line| entries
       {@; pos = per_line;
         last = &result.emplace_back("");
-        last->str.reserve(per_line*(w+1));
+        last->str.reserve(char_w);
       }
     }
     if (flat or last->str.empty())
@@ -4772,7 +4799,7 @@ the unsigned value without any changes applied to it.
 @< Format rational vector value |v| into |result| @>=
 { auto* rvp = dynamic_cast<const rational_vector_value*>(&v);
   assert(rvp!=nullptr);
-  const auto& val = rvp->val.numerator();
+  const matrix::Vector<arithmetic::Numer_t>& val = rvp->val.numerator();
   ind_string* last;
 @/@< Add one or more lines to |result| with a bracketed list containing
      the entries of |val| in equal size spaces, and point |last| to
@@ -4790,7 +4817,7 @@ inserted, rather than just as a number |per_line| of columns between line breaks
 @< Format matrix value |v| into |result| @>=
 { auto* mp = dynamic_cast<const matrix_value*>(&v);
   assert(mp!=nullptr);
-  const auto& val = mp->val;
+  const int_Matrix& val = mp->val;
 @)
  auto k=val.n_rows(), l=val.n_columns();
   if (k==0 or l==0)
@@ -4804,7 +4831,7 @@ inserted, rather than just as a number |per_line| of columns between line breaks
       }
     const bool flat = 3+l*(w+1)<=width;
     const unsigned per_line = flat ? l : width<=w ? 1 : (width-3)/(w+1);
-    const unsigned char_w = 3+(flat ? l : width<=w ? 1 : per_line)*(w+1);
+    const unsigned char_w = 3+(flat ? l : per_line)*(w+1);
 @)
     for (std::size_t i=0; i<k; ++i)
     {
@@ -4828,15 +4855,36 @@ inserted, rather than just as a number |per_line| of columns between line breaks
   }
 }
 
-@ Formatting $K$-types is largely inspired by formatting of vectors, but we do
-more effort to keep coefficients and $K$-types aligned, as we try to reduce the
-size of coefficients when the are all of a certain kind (all $1$, or otherwise
-all integer, or all integer multiples of~$2$).
+@ A special function |print_K_type_raw| is defined in \.{basic\_io.cpp} that
+formats $K$-types.
+@< Format $K$-type value |v| into |result| @>=
+{
+  auto* Ktp = dynamic_cast<const K_type_value*>(&v);
+  assert(Ktp!=nullptr);
+  print_K_type_raw(o,Ktp->val,Ktp->rf->rc());
+  result.emplace_back(o.str());
+}
+
+@ Similarly, there is a function |print_stdrep_raw| in \.{basic\_io.cpp} for
+module parameters.
+
+@< Format parameter value |v| into |result| @>=
+{
+  auto* pp = dynamic_cast<const module_parameter_value*>(&v);
+  assert(pp!=nullptr);
+  print_stdrep_raw(o,pp->val,pp->rf->rc());
+  result.emplace_back(o.str());
+}
+
+@ Formatting $K$-type polynomials is largely inspired by formatting of vectors,
+but we do more effort to keep coefficients and $K$-types aligned, as we try to
+reduce the size of coefficients when the are all of a certain kind (all $1$, or
+otherwise all integer, or all integer multiples of~$2$).
 
 @< Format $K$-type polynomial value |v| into |result| @>=
 { auto* Ktpp = dynamic_cast<const K_type_pol_value*>(&v);
   assert(Ktpp!=nullptr);
-  const auto& val = Ktpp->val;
+  const K_type_poly& val = Ktpp->val;
   auto l = val.count_terms();
   const auto& rc = Ktpp->rf->rc();
 @)
@@ -4845,70 +4893,127 @@ all integer, or all integer multiples of~$2$).
   else
   { unsigned mode = 0;
     // whether anything( bit 0: not 1; bit 1: not $n*1$; bit 3: not $n*s$)
-    std::vector<std::string> tmp(l);
-    std::size_t wK=0,w1=0,ws=0;
+    std::vector<std::string> tmp; tmp.reserve(l);
+    std::size_t w_item=0,w1=0,ws=0;
     unsigned i=0;
     for (const auto& term : val)
     {
       o.str("");
       print_K_type_raw(o,term.first,rc);
-      tmp[i]=o.str();
-      if (tmp[i].length()>wK)
-        wK = tmp[i].length();
-      ++i;
-
-      if (term.second.s()!=0)
-        mode |= term.second.e()==0 ? 0x3 : 0x7;
-      else
-        mode |= term.second.e()==1 ? 0x4 : 0x5;
-      unsigned w=std::to_string(term.second.e()).length();
-      if (w>w1)
-        w1=w;
-      if ((w=std::to_string(term.second.s()).length())>ws);
-        ws=w;
+      @< Push the contents of |o| to |tmp| and track maximal widths in
+         |w_item|, |w1|, and |ws|, while setting |mode| to record some
+         regularity properties about the coefficients @>
     }
 @)
-    auto w = wK +
+    @< Append to |result| the strings from |tmp|, left justified, preceded by
+       the rendering of split integer coefficients from |val|
+       formatted according to |mode|, and enclosed in braces @>
+
+  }
+}
+
+@ There is at least one term; we record |mode=4| if all coefficients are~$1$,
+otherwise |mode=5| if all coefficients are integer, |mode=3| if all coefficients
+are integer multiples of |s|, and |mode=7| in the remaining (mixed) cases.
+This module was isolated to be used also for \.{ParamPol} formatting.
+
+@< Push the contents of |o| to |tmp| and track maximal widths... @>=
+{ tmp.push_back(o.str());
+  if (tmp.back().length()>w_item)
+    w_item = tmp.back().length();
+
+  if (term.second.s()!=0)
+    mode |= term.second.e()==0 ? 0x3 : 0x7;
+  else
+    mode |= term.second.e()==1 ? 0x4 : 0x5;
+  unsigned w=std::to_string(term.second.e()).length();
+  if (w>w1)
+    w1=w;
+  if ((w=std::to_string(term.second.s()).length())>ws);
+    ws=w;
+}
+
+@ This module can be used identically for $K$-type polynomials and for module
+parameters, once their texts have been recorded in the |tmp| array. By computing
+the width necessary we determine whether everything fits on a line (recorded in
+|flat|) and otherwise how many items (|per_line|) will fit on a line. We ensure
+that |per_line| is not zero (forcing one over-size item on each line if needed),
+and take into account that a closing brace is needed on the same line only in
+the |flat| regime. For the possible values of |mode| we output: ($4$) no
+coefficients, ($5$) integer coefficients in parentheses, ($3$) multiple of $s$
+coefficients in parentheses, or ($7$) fully expanded split integer coefficients
+in parentheses.
+
+@< Append to |result| the strings from |tmp|, left justified...@>=
+{ auto w = w_item +
       ( mode==7 ? 4+w1+ws
       : mode==3 ? 3+ws
       : mode==4 ? 0
       : 2+w1);
-
-    const bool flat = 1+l*(w+1)<=width;
-    const unsigned per_line = flat ? l : width<=w ? 1 : width/(w+1);
-    const unsigned char_w = 1+(flat ? l : width<=w ? 1 : per_line)*(w+1);
+  const bool flat = 1+l*(w+1)<=width;
+  const unsigned per_line = flat ? l : width<=w ? 1 : width/(w+1);
+  const unsigned char_w = flat ? 1+l*(w+1) : per_line*(w+1);
 @)
-    unsigned pos = per_line;
-    auto* last = &result.emplace_back("");
-    last->str.reserve(char_w);
-    i=0;
-    for (const auto& term : val)
-    { o.str("");
-      o << (i==0?'{':',');
-      if (mode!=4)
-      { o << '(' << std::right;
-        if (mode!=3) // then print multiple of $1$
-          o << std::setw(w1) << term.second.e();
-        if (mode==7)
-          o << '+';
-        if (mode!=5)
-          o << std::setw(ws) << term.second.s() << 's';
-        o << ')';
-      }
-      o << std::left << std::setw(wK) << tmp[i++];
-      last->str.append(o.str());
-      if (not flat and --pos == 0)
-        // wrap to a new line every |per_line| entries
-      {@; pos = per_line;
-        last = &result.emplace_back("");
-        last->str.reserve(char_w);
-      }
+  unsigned pos = per_line;
+  auto* last = &result.emplace_back("");
+  last->str.reserve(char_w);
+  i=0;
+  for (const auto& term : val)
+  { o.str("");
+    o << (i==0?'{':',');
+    if (mode!=4)
+    { o << '(' << std::right;
+      if (mode!=3) // then print multiple of $1$
+        o << std::setw(w1) << term.second.e();
+      if (mode==7)
+        o << '+';
+      if (mode!=5)
+        o << std::setw(ws) << term.second.s() << 's';
+      o << ')';
     }
-
-    if (flat or last->str.empty())
+    o << std::left << std::setw(w_item) << tmp[i++];
+    last->str.append(o.str());
+    if (not flat and --pos == 0)
+      // wrap to a new line every |per_line| entries
+    {@; pos = per_line;
+      last = &result.emplace_back("");
+      last->str.reserve(char_w);
+    }
+  }
+  if (flat or last->str.empty())
       last->str.append("}");
-  @+else
+@+else
       last = &result.emplace_back("}");
+}
+
+@ Formatting polynomials in module parameter now is a small variation of that
+for $K$-types.
+
+@< Format virtual module value |v| into |result| @>=
+{ auto* vmp = dynamic_cast<const virtual_module_value*>(&v);
+  assert(vmp!=nullptr);
+  const SR_poly& val = vmp->val;
+  auto l = val.size(); // since |SR_poly| is a |Free_Abelian|, this is exact
+  const auto& rc = vmp->rf->rc();
+@)
+  if (l==0)
+    result.emplace_back("{}<Param>");
+  else
+  { unsigned mode = 0;
+    // whether anything( bit 0: not 1; bit 1: not $n*1$; bit 3: not $n*s$)
+    std::vector<std::string> tmp; tmp.reserve(l);
+    std::size_t w_item=0,w1=0,ws=0;
+    unsigned i=0;
+    for (const auto& term : val)
+    {
+      o.str("");
+      print_stdrep_raw(o,term.first,rc);
+      @< Push the contents of |o| to |tmp| and track maximal widths in
+         |w_item|, |w1|, and |ws|, while setting |mode| to record some
+         regularity properties about the coefficients @>
+    }
+@)
+    @< Append to |result| the strings from |tmp|, left justified... @>
   }
 }
 
