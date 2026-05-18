@@ -802,10 +802,13 @@ set min_small_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
     then DLs = minSmallBottomData.L_min_heights(x,lambda)
     then derxLjs = for derpL0j in derpL0js do derpL0j.x od
     then derLjs = for derpL0j in derpL0js do derpL0j.real_form od
-    then multG = if branch_hash_flag
+    then multG = branch_std(P,DG)
+    {
+    	       	 if branch_hash_flag
     	       	 then big_unitary_hash.branch(P,DG)
 		 else branch_std(P,DG)
 		 fi
+    }
     then LKDatas = for LKData in minSmallBottomData.entry(x,lambda)
     	 {[tau,[[dertauLj]]}
 		   do let (mui, ) = LKData[0]
@@ -830,10 +833,13 @@ set min_small_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
 			      	      then s*sigLj
 				      else sigLj {this bit makes posLj pos on LKTs}
 				      fi
-			 in if branch_hash_flag
+			 in branch_std(posLj,DLs[j])
+			 {
+			    if branch_hash_flag
 		       	    then big_unitary_hash.branch(posLj,DLs[j])
 			    else branch_std(posLj,DLs[j])
 			    fi
+			 }
 		      od
     then answers = [(->bool)]: {one function for each LKT mu of (x,lambda)}
     	 for LKData in LKDatas {mu@i in LKTs(p)}
@@ -878,10 +884,13 @@ set min_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
     then derpL0js = derived_factor_params0(pL0) {all height 0}
     then derxLjs = for derpL0j in derpL0js do derpL0j.x od
     then derLjs = for derpL0j in derpL0js do derpL0j.real_form od
-    then  multG = if branch_hash_flag
+    then  multG = branch_std(P,DG)
+    	  	  {
+		  if branch_hash_flag
     	  	  then big_unitary_hash.branch(P,DG)
 		  else branch_std(P,DG)
 		  fi
+		  }
     then Lbranches = for derpL0j@j in derpL0js
 	    	     do let sigLj =
 		            if big_unitary_hash.uhash(derLjs[j]).lookup(derpL0j).>=
@@ -895,10 +904,13 @@ set min_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
 			      	      then s*sigLj
 				      else sigLj {this bit makes posLj pos on LKTs}
 				      fi
-			 in if branch_hash_flag
+			 in branch_std(posLj,DLs[j])
+			    {
+			    if branch_hash_flag
 		       	    then big_unitary_hash.branch(posLj,DLs[j])
 			    else branch_std(posLj,DLs[j])
 			    fi
+			    }
 			 od
     then answers = [(->bool)]: {one function for each LKT mu of p}
     	 for mu in LKTs(p)
@@ -947,10 +959,13 @@ set min_bottom_sig(Param p0) = KTypePol:
 			      	      then s*sigLj
 				      else sigLj {this bit makes posLj pos on LKTs}
 				      fi
-			 in if branch_hash_flag
+			 in branch_std(posLj,DLs[j])
+			    {
+			    if branch_hash_flag
 		       	    then big_unitary_hash.branch(posLj,DLs[j])
 			    else branch_std(posLj,DLs[j])
 			    fi
+			    }
 			 od
     in sum(G, for mu in mus
     	 do let LKData = minBottomData.entry(mu) {[tau,[dertauLj]]}
@@ -991,10 +1006,13 @@ set min_bottom_sig(Param p0, int HT) = KTypePol:
 			      	      then s*sigLj
 				      else sigLj {this bit makes posLj pos on LKTs}
 				      fi
-			 in if branch_hash_flag
+			 in branch_std(posLj,DLs[j])
+			    {
+			    if branch_hash_flag
 		       	    then big_unitary_hash.branch(posLj,DLs[j])
 			    else branch_std(posLj,DLs[j])
 			    fi
+			    }
 			 od
     in sum(G, for mu in mus
     	 do let data = minBottomData.entry_to_bd(mu,HT) {[tau,[dertauLj]]}
@@ -1053,10 +1071,13 @@ set min_bottom_elim_factors(Param p0, Param p, KTypePol P, int HT) = bool:
     then derpL0js = derived_factor_params0(pL0) {all height 0}
     then derxLjs = for derpL0j in derpL0js do derpL0j.x od
     then derLjs = for derpL0j in derpL0js do derpL0j.real_form od
-    then  multG = if branch_hash_flag
+    then  multG = branch_std(P,DG)
+    	  	  {
+		  if branch_hash_flag
     	  	  then big_unitary_hash.branch(P,DG)
 		  else branch_std(P,DG)
 		  fi
+		  }
     then Lbranches = for derpL0j@j in derpL0js
 	    	     do let sigLj =
 		            if big_unitary_hash.uhash(derLjs[j]).lookup(derpL0j).>=
@@ -1070,10 +1091,13 @@ set min_bottom_elim_factors(Param p0, Param p, KTypePol P, int HT) = bool:
 			      	      then s*sigLj
 				      else sigLj {this bit makes posLj pos on LKTs}
 				      fi
-			 in if branch_hash_flag
+			 in branch_std(posLj,DLs[j])
+			    {
+			    if branch_hash_flag
 		       	    then big_unitary_hash.branch(posLj,DLs[j])
 			    else branch_std(posLj,DLs[j])
 			    fi
+			    }
 			 od
     then answers = [(->bool)]: {one function for each LKT mu of p}
     	 for mu in LKTs(p)
@@ -1200,10 +1224,13 @@ set bottom_elim_factors(Param p0, Param p, QKL_bottom_data (Q, LKdata), KTypePol
        	    	      do height(list[j])
 		      od)
 	       od
-    then Pmult = if branch_hash_flag
+    then Pmult = branch_std(P, D)
+    	       	 {
+		 if branch_hash_flag
     	       	 then big_unitary_hash.branch(P,D)
 		 else branch_std(P, D)
 		 fi
+		 }
     then branchLjs = for derpLj@j in derpLjs
 	       	     do let sigLj = KTypePol: {signature for derpLm0j}
 	       	   	    if RF_code
@@ -1214,10 +1241,13 @@ set bottom_elim_factors(Param p0, Param p, QKL_bottom_data (Q, LKdata), KTypePol
 			      	      then s*sigLj
 				      else sigLj {this bit makes posLj pos on LKTs}
 				      fi
-			 in if branch_hash_flag
+			 in branch_std(posLj,DLs[j])
+			    {
+			    if branch_hash_flag
 		       	    then big_unitary_hash.branch(posLj,DLs[j])
 			    else branch_std(posLj,DLs[j])
 			    fi
+			    }
 		     od
        then result = all( [(->bool)]: {list of functions, one for each bottom layer K-type tau}
 			for(tau,list) in LKdata

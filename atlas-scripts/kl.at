@@ -75,6 +75,12 @@ set character_formula (Param p) = ParamPol:
 
 set character_formula (ParamPol P) = ParamPol: map(character_formula@Param,P)
 
+{height of a Param of infl char gamma and KGBElt x}
+set height(KGBElt x, ratvec gamma) = int:
+    let gamthgam = (1+x.involution)*gamma, rd = x.root_datum
+    then q = dominant(rd,gamthgam)*rd.rho_check
+    in q.numer\q.denom
+
 { Block of p, including zero parameters. Relevant because that's where
 KL calculations need to happen }
 set full_block(Param p) = [Param]:
@@ -84,41 +90,75 @@ set full_block(Param p) = [Param]:
        do parameter(q.x,q.lambda-tworho, q.nu-tworho)
        od
 
+set easy_full_size_flag = true
+
 {in is_unitary_to_ht(HT), KL calculations live in this subset of
 full_block}
 set full_block_to_ht(Param p, int HT) = [Param]:
     for q in full_block(p)
-    do if height(q) <= HT
+    ~do if height(q) <= HT
        then q
        else break
        fi
     od
 
+{arena for KL_sum_at_s_to_height(p,HT)}
+{set full_block_to_ht_size(Param p, int HT) = int:
+    let tworho = two_rho(p.real_form)
+    in if easy_block_size_flag
+       then let gamma = p.infinitesimal_character + tworho
+    	    then H0 = height(p.x,gamma)+(HT-height(p)
+    	    then x_up_num = first(for x in KGB(p.real_form)[:p.x.number]) {elts closer to 0 than x}
+    	     	      	      	  ~do height(x,gamma)>H0
+
+    let tworho = two_rho(p.real_form)
+    then q0 = parameter(p.x,p.lambda +tworho, p.nu+tworho)}
+
+set full_block_down_size(Param p) = int:
+    if easy_full_size_flag
+    then p.x.number
+    else let tworho = two_rho(p.real_form)
+    	 then q0 = parameter(p.x,p.lambda +tworho, p.nu+tworho)
+    	 in #partial_block(q0)
+    fi
+
 {need to compute on loading; if it's repeated,
 the second invocation will be too fast}
+{Divide by 4 as unexplained heuristic to improve guess}
 set KL_rate = rat:
     let start = elapsed_ms()
-    then  (,m,,) = KL_block(E6_s.trivial) {size of E6_s block above trivial}
-    in (elapsed_ms() - start)/m^2
+    then m = #KL_sum_at_s(E6_s.trivial)
+    {then  (,m,,) = KL_block(E6_s.trivial)} {size of E6_s block above trivial}
+    in (elapsed_ms() - start)*2^(13-2)/(m^2*3^6)
 
 set KL_rate(RealForm G) = rat:
     let start = elapsed_ms()
-    then  (,m,,) = KL_block(G.trivial) {size of G block above trivial}
-    in (elapsed_ms() - start)/m^2
+    then m = #KL_sum_at_s(G.trivial)
+    {then  (,m,,) = KL_block(G.trivial)} {size of G block above trivial}
+    in (elapsed_ms() - start)*2^(2*G.semisimple_rank+1)/(m^2*3^(G.semisimple_rank))
 
 {predicted time in milliseconds to compute KL in block of p}
-set KL_predictor_full(Param p) = int: floor((#full_block(p))^2 * KL_rate) {next prints("we're in KL_pred_full at ",p)}
-{maybe better? use number of extremal pairs in full block??
-ROUGHLY: (x,y) so tau(x) not contained?? SO: how many pairs of [bool] order
-rank have this. This is some function of rank?}
+set KL_predictor_full(Param p) = int:
+    let rk = semisimple_rank(integrality_datum(p))
+    in floor((#full_block(p))^2*3^rk* KL_rate/2^(2*rk+1))
+    {next prints("we're in KL_pred_full at ",p)}
+{number of extremal pairs in full block is ROUGHLY: (x,y) so tau(y)\cap tau(x) is empty.
+Number of pairs of [bool] with ANSWER IS 3^rank.}
 
 {this one is relevant to KL_sum_at_s_to_height, I think?}
 {predicted time in milliseconds to compute KL to height HT in block of p}
-set KL_predictor_up_to_ht(Param p, int HT) = int: floor((#full_block_to_ht(p,HT))^2 * KL_rate)
+{typically applied near principal series, where all tau invts large; so (3/4)^rk factor is not justified}
+{Extra factof of 4 is unexplained heuristic; undo rate heuristic}
+set KL_predictor_to_ht(Param p, int HT) = int:
+    let rk = semisimple_rank(integrality_datum(p))
+    in floor((#full_block_to_ht(p,HT))^2 * {3^rk*}KL_rate/2{/2^({2*rk+}1)})
 {next prints("we're in KL_pred_up at ",p)}
 
 {relevant to KL_sum_at_s for p}
-set KL_predictor(Param p) = int: floor((#partial_block(p))^2*KL_rate) {next prints("we're in KL_pred at ",p)}
+set KL_predictor(Param p) = int:
+    let rk = semisimple_rank(integrality_datum(p))
+    in floor((full_block_down_size(p))^2*3^rk*KL_rate/2^(2*rk + 1))
+{next prints("we're in KL_pred at ",p)}
 
 set low_count= int:0
 set low_time = int:0
@@ -209,7 +249,7 @@ set low_diff_char(Param p, int HT) = bool: {false {ALWAYS use KL_sum_at_s}}
 set low_KL_char(Param p, int HT) = bool:
     {prints("we're in low_KL_char at ",p);}
     p.x.number > diff_KGB_char_frac*KGB_size(p.real_form) and
-    KL_predictor_up_to_ht(p,HT) < KL_predictor(p)
+    KL_predictor_to_ht(p,HT) < KL_predictor(p)
 
 set quick_frac = rat: 1/5
 set TRUELIST = [(Param,int)]: []

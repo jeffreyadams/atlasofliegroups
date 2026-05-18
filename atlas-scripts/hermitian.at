@@ -406,7 +406,7 @@ set make_deformation_hash_time () = deformation_hash_time:
 	       	   then mFD := if is_equal_rank(p.real_form)
 		       	       then full_deform_library(p).done
 			       else twisted_full_deform_library(p).done {These are NOT K_type_pol(p)!}
-			       fi;
+			       fi;K_type_pol(p).done;
 		        start:= -2
 		   else if rp~[0] < 1 then p:= herm_center(Finalize(p*rp~[0])) fi;
 	   	       mFD := if is_equal_rank(p.real_form)
@@ -483,10 +483,10 @@ set_type
 [ deformation_hash_height_time =
 ( ( -> int) size {number of parameters stored}
   , ( -> ) clear
-  , ((Param,int) -> int) time_record_to_ht {find time taken for full deform to ht of p. stored means 0.
-    		    	 		   <= -2 not a possible response.}
+  , ((Param,int) -> int) time_record_to_ht {find time taken for full deform to ht of p. -1 means we'll
+    		    	 		   never know. <= -2 not a possible response.}
   , ((Param,int,int) -> int) time_record_to_ht_bounded {find time taken for full deform to ht of p,
-    		   	     			       to max of bound. If stored then 0. -2 not
+    		   	     			       to max of bound. -1 means we'll never know. -2 not
 						       a possible response.  <= -3
     		    	 		   means we tried for (minus) this time+3 but did not complete.}
   , ((Param,int) -> int) time_lookup_to_ht {time taken for full deform to ht of p if known with time,
@@ -1630,11 +1630,11 @@ set stats = (Param -> (int,int,int,int)):
 set GAM_HT_EXP = int: 0{1}{power of GAM(q) - height(q) in monomial}
 set PB_EXP = int: 0   	  {power of #partial_block(q) in monomial}
 set RP_EXP = int: 0	  {power of #reducibility_points(q) in monomial}
-set HTht_EXP = int: 1{0}  {power of (HT - height(q) + 1) in monomial}
+set HTht_EXP = int: 0{1}  {power of (HT - height(q) + 1) in monomial}
 set BL_EXP = int: 0	  {power of (bit_length(#monomials) - bit_length(j)+1)  in monomial}
 set J_SHIFT = int: 5	  {must be >=1; maybe length(p) + 1??}
 set INVJ_EXP = int: 1     {power of (j + J_SHIFT)^{-1}) in monomial}
-set PRED_END = rat: 1/4  {value at N-1 of linear monomial. Should be in (0,1)} {1/10??}
+set PRED_END = rat: 1/4	  {value at N-1 of linear monomial. Should be in (0,1)} {1/10??}
 set LIN_EXP = int: 1      {power of 1 + (PRED_END-1)*j/(N-1) in monomial}
 set LIN_EXP_HT = int: 0   {was 2}
 
@@ -1643,10 +1643,8 @@ set GAM_HTs_easy(int N) = [rat]:
     {let blq = bit_length(N) in}
     for j:N do (1 + (PRED_END-1)*j/N)^LIN_EXP {* (blq - bit_length(j) +1)^BL_EXP}/(j+J_SHIFT)^INVJ_EXP od
 
-
 set GAM_HTs_easy(int N, int HT) = [rat]:
     for j:N do (1 + (PRED_END-1)*(j/N))^LIN_EXP_HT od
-
 
 set GAM_HTs([Param] qlist) = [rat]:
     if GAM_HT_EXP + PB_EXP + RP_EXP = 0 then return GAM_HTs_easy(#qlist) fi;
@@ -1676,7 +1674,7 @@ set GAM_HTs([Param] qlist, int HT) = [rat]:
 set pred_easy(int N,[int] some_times, [int] data_inds) = [int]:
     let unnorm_preds = [rat]: GAM_HTs_easy(N)
     	{first coord is from GAM_HT, second from some_times}
-    then sums1 = sum(some_times), sums0 = {1+}sum(for j in data_inds do unnorm_preds[j] od)
+    then sums1 = sum(some_times), sums0 = 1+ sum(for j in data_inds do unnorm_preds[j] od)
     in for j:N do ceil((unnorm_preds[j]*sums1)/sums0) od
 
 set pred_easy(int N,[int] some_times, [int] data_inds, int HT) = [int]:
@@ -1684,7 +1682,6 @@ set pred_easy(int N,[int] some_times, [int] data_inds, int HT) = [int]:
     	{first coord is from GAM_HT, second from some_times}
     then sums1 = sum(some_times), sums0 = {1+}sum(for j in data_inds do unnorm_preds[j] od)
     in for j:N do ceil((unnorm_preds[j]*sums1)/sums0) od
-
 
 set pred([Param] qlist,[int] some_times, [int] data_inds) = [int]:
     if GAM_HT_EXP + PB_EXP + RP_EXP = 0
@@ -1695,10 +1692,10 @@ set pred([Param] qlist,[int] some_times, [int] data_inds) = [int]:
 
 set pred([Param] qlist,[int] some_times, [int] data_inds, int HT) = [int]:
     if GAM_HT_EXP + PB_EXP + RP_EXP + HTht_EXP = 0
-    then return pred_easy(#qlist, some_times, data_inds,HT)
+    then return pred_easy(#qlist, some_times, data_inds, HT)
     fi;
     let unnorm_preds = [rat]: GAM_HTs(qlist,HT)
-    then sums1 = sum(some_times), sums0 = {1 + }sum(for j in data_inds do unnorm_preds[j] od)
+    then sums1 = sum(data_inds), sums0 = 1 + sum(for j in data_inds do unnorm_preds[j] od)
     in for n in unnorm_preds do ceil((n*sums1)/sums0) od
 
 set u_predictor_old(Param p) = int:
@@ -1711,14 +1708,13 @@ set from_scratch_flag = false
 {what mult of interrupt_base_time to use for u_predictor}
 set uIBT_factor = rat: 2/1
 
-{what mult of interrupt_base_time to use for u_predictor}
+{what mult of interrupt_base_time to use for u_predictor_to_ht}
 set uIBT_HT_factor = rat: 1/2
 
 {how many full_deforms to look at to estimate time}
 set num_trials = int: 2
 set min_trials = int: 1
 {set upred_time_factor = int: 10}
-
 
 {whether to put a little wiggle in prediction}
 set no_margin_flag = false
@@ -1744,7 +1740,7 @@ set u_predictor(Param p, int time) = int:
     then () = num_trials:= max(2*bit_length(#unknown_indices),min_trials) {\2, *2 added 15:45 4/18/26:
     84.0 for Spin(5,6). So try 2* 16:00: 90.3}
     then found_time = int:0
-    then () = while num_trials > 0 and #unknown_indices > 0 and found_time < interrupt_base_time\2
+    then () = while num_trials > 0 and #unknown_indices > 0 and found_time < interrupt_base_time\2 
     	      	    {sum(for T in times
 		    	do if T>0 then T else 0 fi
 			od) > {uIBT_factor*}interrupt_base_time/2}
@@ -1808,7 +1804,7 @@ set u_predictor(Param p, int time) = int:
        	pred
 
 set u_predictor(Param p) = int:
-    u_predictor(p,ceil(uIBT_factor*interrupt_base_time)) 
+    u_predictor(p,ceil(uIBT_factor*interrupt_base_time)) {change 5 to 10 4/7/26; 20 4/9; 2 4/18}
 
 
 set didnt_finish_ht_count = int: 0
@@ -1894,14 +1890,13 @@ set u_predictor_to_ht(Param p, int HT, int time) = int:
 		for q in monomials(KL_sum_at_s_to_ht(HT)(p))
 		    if is_fixed(delta,q) do q fi od, rk = delta.n_rows
     then times =  [int]: for q in list do defHashHtTime.time_lookup_to_ht(q,HT) od
-    { -2 means unknown. <= -3 means trying to -T-3 failed}
+    {-2 means unknown. <= -3 means trying to -T-3 failed}
     then unknown_indices = [int]: for T@j in times if T <= -2 do j fi od
-    then do_one_flag = all(for T in times do T +  2 = 0 od) {#unknown_indices > 0, found_time = int:0}
+    then do_one_flag = all(for T in times do T +  2 = 0 od) {#unknown_indices > 0}
     then () = num_trials:= max(bit_length(#unknown_indices),min_ht_trials)
     then () = while num_trials > 0 and  #unknown_indices > 0 and (do_one_flag or
-    	      (elapsed_ms() < expiration)) {and found_time < interrupt_base_time/10))}
-    	      	    {sum(for T in times do if T>0 then T else 0 fi od) > interrupt_base_time/4}
-		    {the "min times = -2" condition ensures data_times isn't empty}
+    	      (elapsed_ms() < expiration)){ and
+    	      	    sum(for T in times do if T>0 then T else 0 fi od) > interrupt_base_time/4}
     	      do let ind = #unknown_indices - 1
 	      	 then j = unknown_indices[ind] {these get easier as j increases}
 		 then q = list[j]
@@ -1923,7 +1918,7 @@ set u_predictor_to_ht(Param p, int HT, int time) = int:
      then data_times = for T@j in times
     	 	       do if T <= -3 then data_inds#:=j; [-2*(T+3)]
 			  elif T>=0 then data_inds#:=j; [T]
-			  {elif T=-1 then data_inds#:=j; [0]} {should be impossible}
+			  {elif T=-1 then data_inds#:=j; [0]}{should be impossible}
 			  else []
 			  fi
 		       od.##
@@ -1938,7 +1933,7 @@ set u_predictor_to_ht(Param p, int HT, int time) = int:
      then pred_data_times = for j in data_inds do pred_list[j] od
      in if predictor_verbose
 	then prints(new_line,"Start predicting to height ", HT, " param ",p);
-	     prints("(#terms,#unknown,#data_times) = (N,un,data_n) = (",N,",",un,",",data_n,")");
+	     prints("(#terms,#unknown,#data_times) = (N,un,ne) = (",N,",",un,",",data_n,")");
 	     prints("data_times = ",data_times);
 	     prints("data_inds = ",data_inds);
 	     if from_scratch_flag then prints("pred_data_times = ", pred_data_times) fi;
