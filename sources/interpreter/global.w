@@ -3399,7 +3399,7 @@ expression_ptr rhs_is_1
   (expression_ptr& args,const shared_builtin& f,const source_location& loc)
 { auto t = dynamic_cast<const tuple_expression*>(args.get());
   if (t!=nullptr and t->component.size()==2)
-  { auto a = dynamic_cast<const denotation*>(t->component[1].get());
+  { const auto* a = dynamic_cast<const denotation*>(t->component[1].get());
     if (a!=nullptr)
     { auto v = force<int_value>(a->denoted_value.get());
       if (v->val==1)
@@ -3412,9 +3412,9 @@ expression_ptr rhs_is_1
 }
 expression_ptr lhs_is_minus_1
   (expression_ptr& args,const shared_builtin& f,const source_location& loc)
-{ auto t = dynamic_cast<const tuple_expression*>(args.get());
+{ const auto* t = dynamic_cast<const tuple_expression*>(args.get());
   if (t!=nullptr and t->component.size()==2)
-  { auto a = dynamic_cast<const denotation*>(t->component[0].get());
+  { const auto* a = dynamic_cast<const denotation*>(t->component[0].get());
     if (a!=nullptr)
     { auto v = force<int_value>(a->denoted_value.get());
       if (v->val==-1)
@@ -3689,9 +3689,9 @@ used earlier.
 @< Local function definitions @>=
 expression_ptr lhs_is_1
   (expression_ptr& args,const shared_builtin& f,const source_location& loc)
-{ auto t = dynamic_cast<const tuple_expression*>(args.get());
+{ const auto* t = dynamic_cast<const tuple_expression*>(args.get());
   if (t!=nullptr and t->component.size()==2)
-  { auto a = dynamic_cast<const denotation*>(t->component[0].get());
+  { const auto* a = dynamic_cast<const denotation*>(t->component[0].get());
     if (a!=nullptr)
     { auto v = force<int_value>(a->denoted_value.get());
       if (v->val==1)
@@ -3917,9 +3917,9 @@ right hand side $0$.
 @< Local function definitions @>=
 expression_ptr rhs_is_0
   (expression_ptr& args,const shared_builtin& f,const source_location& loc)
-{ auto t = dynamic_cast<const tuple_expression*>(args.get());
+{ const auto* t = dynamic_cast<const tuple_expression*>(args.get());
   if (t!=nullptr and t->component.size()==2)
-  { auto a = dynamic_cast<const denotation*>(t->component[1].get());
+  { const auto* a = dynamic_cast<const denotation*>(t->component[1].get());
     if (a!=nullptr)
     { auto v = force<int_value>(a->denoted_value.get());
       if (v->val.is_zero())
@@ -3968,9 +3968,9 @@ implement constant folding.
 @< Local function definitions @>=
 expression_ptr rhs_is_rat0
   (expression_ptr& args,const shared_builtin& f,const source_location& loc)
-{ auto t = dynamic_cast<const tuple_expression*>(args.get());
+{ const auto* t = dynamic_cast<const tuple_expression*>(args.get());
   if (t!=nullptr and t->component.size()==2)
-  { auto a = dynamic_cast<const denotation*>(t->component[1].get());
+  { const auto* a = dynamic_cast<const denotation*>(t->component[1].get());
     if (a!=nullptr)
     { auto v = force<rat_value>(a->denoted_value.get());
       if (v->val.is_zero())
@@ -4140,12 +4140,13 @@ void readline_completions_wrapper(eval_level l)
 
 @ We shall make some optimisations for testing explicitly against an empty
 string.
+
 @< Local function definitions @>=
 expression_ptr rhs_is_empty
   (expression_ptr& args,const shared_builtin& f,const source_location& loc)
-{ auto t = dynamic_cast<const tuple_expression*>(args.get());
+{ const auto* t = dynamic_cast<const tuple_expression*>(args.get());
   if (t!=nullptr and t->component.size()==2)
-  { auto a = dynamic_cast<const denotation*>(t->component[1].get());
+  { const auto* a = dynamic_cast<const denotation*>(t->component[1].get());
     if (a!=nullptr)
     { auto v = force<string_value>(a->denoted_value.get());
       if (v->val.empty())
@@ -4356,8 +4357,7 @@ if it cannot, we contribute the current line as completed and append the item
 that was formatted to this, adding a |prefix| or indentation as appropriate.
 
 @< Build bracketed list of entries of |v|, appending to |result| @>=
-{ const row_value* rv = dynamic_cast<const row_value*>(&v);
-  assert(rv!=nullptr);
+{ const auto* rv = static_cast<const row_value*>(&v);
   const type_expr& comp = te.expand().component_type();
   if (rv->length()==0)
   {@; o << "[]<" << comp << '>';
@@ -4423,8 +4423,7 @@ sharing a line between two items at least one of which itself requires multiple
 lines.
 
 @< Build parenthesised sequence of entries of |v|, preceded by field names...@>=
-{ const tuple_value* tv = dynamic_cast<const tuple_value*>(&v);
-  assert(tv!=nullptr);
+{ const auto* tv = static_cast<const tuple_value*>(&v);
   auto* names = te.raw_kind()==tabled ? &te.fields(te.tabled_nr()) : nullptr;
   auto* tup = te.expand().tuple();
   if (tup==nullptr)
@@ -4522,8 +4521,7 @@ this information.
 
 @< Append to |result| the value |v| of union type... @>=
 
-{ const union_value* uv = dynamic_cast<const union_value*>(&v);
-  assert(uv!=nullptr);
+{ const auto* uv = static_cast<const union_value*>(&v);
   const auto* names =
     te.raw_kind()==tabled ? &type_expr::fields(te.tabled_nr()) : nullptr;
   id_type tag_id = names==nullptr ? type_binding::no_id : (*names)[uv->variant()];
@@ -4573,8 +4571,7 @@ means of a dynamic cast) is necessary to find out what kind of output can be
 given.
 
 @< Append to |result| a description of the value |v| of function type... @>=
-{ const auto* fv = dynamic_cast<const function_base*>(&v);
-  assert(fv!=nullptr);
+{ const auto* fv = static_cast<const function_base*>(&v);
 @/const type_expr& at = te.expand().func()->arg_type;
   const type_expr& rt = te.func()->result_type;
 @)
@@ -4667,20 +4664,17 @@ almost as varied as that of other kinds of types, although less recursive.
 { switch(te.expand().prim())
   { default: v.print(o); result.emplace_back(std::move(o.str()));
 @+break; case integral_type:
-  { auto* p = dynamic_cast<const int_value*>(&v);
-    assert(p!=nullptr);
+  { const auto* p = static_cast<const int_value*>(&v);
     o << p->val;
     result = chop(o.str(),width,0);
   }
 @+break; case string_type: // here we indent for the leading quote character
-  { auto* p = dynamic_cast<const string_value*>(&v);
-    assert(p!=nullptr);
+  { const auto* p = static_cast<const string_value*>(&v);
     o << p->val;
     result = chop(o.str(),width,1);
   }
 @+break; case split_integer_type:
-  { auto* p = dynamic_cast<const split_int_value*>(&v);
-    assert(p!=nullptr);
+  { const auto* p = static_cast<const split_int_value*>(&v);
     print_split(o,p->val);
     std::string out = o.str();
     result.emplace_back(out.substr(1,out.length()-2)); // remove parentheses
@@ -4712,8 +4706,7 @@ output (mentioning the number of real forms and dual real forms is not of
 capital importance every time an inner class is printed).
 
 @< Format inner class value |v| into |result| @>=
-{ auto* icp = dynamic_cast<const inner_class_value*>(&v);
-  assert(icp!=nullptr);
+{ const auto* icp = static_cast<const inner_class_value*>(&v);
   o << "Complex reductive group of type " << icp->rd_type << ",";
   result.emplace_back(o.str());
   o.str("");
@@ -4733,8 +4726,7 @@ common denominator, which is why we set of to have a pointer |last| that is
 declared outside the common code.
 
 @< Format vector value |v| into |result| @>=
-{ auto* vp = dynamic_cast<const vector_value*>(&v);
-  assert(vp!=nullptr);
+{ const auto* vp = static_cast<const vector_value*>(&v);
   const int_Vector& val = vp->val;
   ind_string* last;
   @< Add one or more lines to |result| with a bracketed list containing... @>
@@ -4797,8 +4789,7 @@ if they happen to be negative, it is actually safer here, for printing, to use
 the unsigned value without any changes applied to it.
 
 @< Format rational vector value |v| into |result| @>=
-{ auto* rvp = dynamic_cast<const rational_vector_value*>(&v);
-  assert(rvp!=nullptr);
+{ const auto* rvp = static_cast<const rational_vector_value*>(&v);
   const matrix::Vector<arithmetic::Numer_t>& val = rvp->val.numerator();
   ind_string* last;
 @/@< Add one or more lines to |result| with a bracketed list containing
@@ -4815,8 +4806,7 @@ recorded as an increasing list of column numbers where breaks need to be
 inserted, rather than just as a number |per_line| of columns between line breaks.
 
 @< Format matrix value |v| into |result| @>=
-{ auto* mp = dynamic_cast<const matrix_value*>(&v);
-  assert(mp!=nullptr);
+{ const auto* mp = static_cast<const matrix_value*>(&v);
   const int_Matrix& val = mp->val;
 @)
  auto k=val.n_rows(), l=val.n_columns();
@@ -4859,8 +4849,7 @@ inserted, rather than just as a number |per_line| of columns between line breaks
 formats $K$-types.
 @< Format $K$-type value |v| into |result| @>=
 {
-  auto* Ktp = dynamic_cast<const K_type_value*>(&v);
-  assert(Ktp!=nullptr);
+  const auto* Ktp = static_cast<const K_type_value*>(&v);
   print_K_type_raw(o,Ktp->val,Ktp->rf->rc());
   result.emplace_back(o.str());
 }
@@ -4870,8 +4859,7 @@ module parameters.
 
 @< Format parameter value |v| into |result| @>=
 {
-  auto* pp = dynamic_cast<const module_parameter_value*>(&v);
-  assert(pp!=nullptr);
+  const auto* pp = static_cast<const module_parameter_value*>(&v);
   print_stdrep_raw(o,pp->val,pp->rf->rc());
   result.emplace_back(o.str());
 }
@@ -4882,8 +4870,7 @@ reduce the size of coefficients when the are all of a certain kind (all $1$, or
 otherwise all integer, or all integer multiples of~$2$).
 
 @< Format $K$-type polynomial value |v| into |result| @>=
-{ auto* Ktpp = dynamic_cast<const K_type_pol_value*>(&v);
-  assert(Ktpp!=nullptr);
+{ const auto* Ktpp = static_cast<const K_type_pol_value*>(&v);
   const K_type_poly& val = Ktpp->val;
   auto l = val.count_terms();
   const auto& rc = Ktpp->rf->rc();
@@ -4990,8 +4977,7 @@ in parentheses.
 for $K$-types.
 
 @< Format virtual module value |v| into |result| @>=
-{ auto* vmp = dynamic_cast<const virtual_module_value*>(&v);
-  assert(vmp!=nullptr);
+{ const auto* vmp = static_cast<const virtual_module_value*>(&v);
   const SR_poly& val = vmp->val;
   auto l = val.size(); // since |SR_poly| is a |Free_Abelian|, this is exact
   const auto& rc = vmp->rf->rc();
@@ -5051,11 +5037,11 @@ produce) in order to give the user full control of the string produced.
 std::ostream& to_string_aux(std::ostream& o, eval_level l)
 { shared_value v=pop_value();
 @)
-  const string_value* s=dynamic_cast<const string_value*>(v.get());
+  const auto* s=dynamic_cast<const string_value*>(v.get());
   if (s!=nullptr)
     o << s->val; // single string without quotes
   else
-  { const tuple_value* t=dynamic_cast<const tuple_value*>(v.get());
+  { const auto* t=dynamic_cast<const tuple_value*>(v.get());
     if (t!=nullptr)
     { for (auto it=t->val.begin(); it!=t->val.end(); ++it)
       { s=dynamic_cast<const string_value*>(it->get());
