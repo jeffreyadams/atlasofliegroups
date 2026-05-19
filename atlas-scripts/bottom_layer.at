@@ -880,7 +880,10 @@ set min_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
     then () = assert(@:is_hermitian(pL0),"nonherm pL0 in min_bottom_elim_factors")
     then derpL0js = derived_factor_params0(pL0) {all height 0}
     then dermuLjs = derived_factor_K_types0(muL)
-    then DLs = minBottomData.L_min_heights(mu)
+    then DLs = for j:#derpL0js
+    	       do max(for mui in mus do minBottomData.L_min_heights(mui)[j] od)
+	       od
+    {then () = prints(DLs)}
     then derpL0js = derived_factor_params0(pL0) {all height 0}
     then derxLjs = for derpL0j in derpL0js do derpL0j.x od
     then derLjs = for derpL0j in derpL0js do derpL0j.real_form od
@@ -904,14 +907,10 @@ set min_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
 			      	      then s*sigLj
 				      else sigLj {this bit makes posLj pos on LKTs}
 				      fi
-			 in branch_std(posLj,DLs[j])
-			    {
-			    if branch_hash_flag
-		       	    then big_unitary_hash.branch(posLj,DLs[j])
-			    else branch_std(posLj,DLs[j])
-			    fi
-			    }
+			 in branch_std(posLj,DLs[j]) {this lists signature of form on derpL0j on the
+			    			     bottom layer (Lj\cap K)-types}
 			 od
+    {then () = prints(Lbranches)}
     then answers = [(->bool)]: {one function for each LKT mu of p}
     	 for mu in LKTs(p)
     	 do let LKData = minBottomData.entry(mu) {[tau,[dertauLj]]}
@@ -921,6 +920,7 @@ set min_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
 			  then () = for tauLj@j in list
 			       	    do coeff*:= Lbranches[j][tauLj]
 			  	    od
+			   {then () = prints("at tau = ",tau,", coeff = ",coeff,", mult = ",multG[tau])}
 		    	   in @bool: int_part(coeff) >= int_part(regroup(tau.real_form, multG)[tau])
 	       	        od)
         od
@@ -942,7 +942,9 @@ set min_bottom_sig(Param p0) = KTypePol:
     then () = assert(@:is_hermitian(pL0),"nonherm pL0 in min_bottom_sig")
     then derpL0js = derived_factor_params0(pL0) {all height 0}
     then dermuLjs = derived_factor_K_types0(muL)
-    then DLs = minBottomData.L_min_heights(mu)
+    then DLs = for j:#derpL0js
+    	       do max(for mui in mus do minBottomData.L_min_heights(mui)[j] od)
+	       od
     then derpL0js = derived_factor_params0(pL0) {all height 0}
     then derxLjs = for derpL0j in derpL0js do derpL0j.x od
     then derLjs = for derpL0j in derpL0js do derpL0j.real_form od
@@ -989,7 +991,9 @@ set min_bottom_sig(Param p0, int HT) = KTypePol:
     then () = assert(@:is_hermitian(pL0),"nonherm pL0 in min_bottom_sig")
     then derpL0js = derived_factor_params0(pL0) {all height 0}
     then dermuLjs = derived_factor_K_types0(muL)
-    then DLs = minBottomData.L_min_heights_to_bd(mu,HT)
+    then DLs = for j:#derpL0js
+    	       do max(for mui in mus do minBottomData.L_min_heights(mui)[j] od)
+	       od
     then derpL0js = derived_factor_params0(pL0) {all height 0}
     then derxLjs = for derpL0j in derpL0js do derpL0j.x od
     then derLjs = for derpL0j in derpL0js do derpL0j.real_form od
@@ -1067,7 +1071,9 @@ set min_bottom_elim_factors(Param p0, Param p, KTypePol P, int HT) = bool:
     then () = assert(@:is_hermitian(pL0),"nonherm pL0 in min_bottom_elim_factors")
     then derpL0js = derived_factor_params0(pL0) {all height 0}
     then dermuLjs = derived_factor_K_types0(muL)
-    then DLs = minBottomData.L_min_heights(mu)
+    then DLs = for j:#derpL0js
+    	       do max(for mui in mus do minBottomData.L_min_heights(mui)[j] od)
+	       od
     then derpL0js = derived_factor_params0(pL0) {all height 0}
     then derxLjs = for derpL0j in derpL0js do derpL0j.x od
     then derLjs = for derpL0j in derpL0js do derpL0j.real_form od
