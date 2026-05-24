@@ -67,6 +67,10 @@ when several different x give spherical reps}
 are treated in FPP_unitary}
 set lambda_skip = int:10
 
+{if true, and every_KGB_flag, and x.number >= KGB_size - rank(G)-1,
+and #FPP_lambdas(x) >= 2^(rank - 1), then make every_lambda_flag true}
+set lotta_lambda_flag = true
+
 {if true, then report summary each lambda in FPP_unitary}
 set every_lambda_flag = false
 
@@ -766,6 +770,12 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
     then skipx = false
     then () = for x@j in xs
     	      do {xs}
+	 if every_KGB_flag and (not every_lambda_flag) and
+	    lotta_lambda_flag and
+	    x.number >= G.KGB_size - rank(G)-1 and
+	    #FPP_lambdas(x) >= 2^(rank(G) - 1)
+	 then every_lambda_flag:=true
+	 fi;
 	 predictor_flag:= x.number > adjust_frac*KGB_size(G);
 	 test_next(x);
 	 test_edge(x);
@@ -939,7 +949,8 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 				 	   		     	  test_verbose := old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
 				 	   		     fi
  			 	 		   then () = templambdatimes [index] := elapsed_ms() - startlambda
-			 	 		   in if every_lambda_flag and FPP_report_flag
+			 	 		   in finish(xW,lambdaW);
+						      if every_lambda_flag and FPP_report_flag
 				    		      then prints("  ",print_time_string(templambdatimes[index]),
 			   	    	 	      	   " = time for (x,lambda) = (", xW.number, ",",index," = ",
 							   lambdaW, ")", test_string);
@@ -1342,6 +1353,12 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 	 {predictor_flag:= x.number > adjust_frac*KGB_size(G);}
 	 {predictor_flag:=false;} {not sure about this 2/19/26}
 	 			  {undo 4/29/26}
+	 if every_KGB_flag and (not every_lambda_flag) and
+	    lotta_lambda_flag and
+	    x.number >= G.KGB_size - rank(G)-1 and
+	    #FPP_lambdas(x) >= 2^(rank(G) - 1)
+	 then every_lambda_flag:=true
+	 fi;
 	 test_next(x);
 	 if twist(x) != x
 	 then big_unitary_hash.finishx(x)
@@ -2194,6 +2211,12 @@ this for a long time, leading to wrong answers for PSU(2,2).}
 	      fi
     then () = for x@j in xs
     	      do {xs} let x_sc = xs_sc[j] then CUH = Uhash.size() in
+	 if every_KGB_flag and (not every_lambda_flag) and
+	    lotta_lambda_flag and
+	    x.number >= G.KGB_size - rank(G)-1 and
+	    #FPP_lambdas(x) >= 2^(rank(G) - 1)
+	 then every_lambda_flag:=true
+	 fi;
 	 predictor_flag:= x_sc.number > adjust_frac*KGB_size(Gsc);
 	 test_next(x_sc);
 	 test_edge(x_sc);
@@ -2356,6 +2379,15 @@ this for a long time, leading to wrong answers for PSU(2,2).}
 				      else local_test_GEO_hash2(x_sc, lambda_sc, Lvd,
 				      	   LF, pol_hash, Uhash, fancy_tester)
 				      fi
+			       then () = finish(x_sc,lambda_sc)
+			       then () = if disconn_flag
+	   	     	       	       	 then for psc in Uhash.list()[CUH:]
+		     	       	    	      do for p in sc_descends(psc, G, M)
+			     	       	      	 do UhashG.match(p)
+			     	       	      	 od
+			  	    	      od;
+					      finish(x,lambda)
+		     			  fi
 			       then () = tempanswerCards[index] := #answer
  			 	 then () = templambdatimes [index] := elapsed_ms() - startlambda
 			 	 in if every_lambda_flag and FPP_report_flag
@@ -2390,13 +2422,7 @@ this for a long time, leading to wrong answers for PSU(2,2).}
 			     fi {test_no_unitary}
                  od {lambdas} {good_entries} {would be easy enough to get [Param] for each (x,lambda),
 		    	      		     but for now just put unitary reps in Uhash}
-    	   then () = if disconn_flag
-	   	     then for psc in Uhash.list()[CUH:]
-		     	  do for p in sc_descends(psc, G, M)
-			     do UhashG.match(p)
-			     od
-			  od
-		     fi
+
             then () = current := elapsed_ms(); currentUhash := Uhash.size();  times[j] := current -former_time;
 	    	     red_count_times[j] := red_count_time - former_red_count_time; currentUtime := unitaryTime;
 	   	     lambdatimes[j] := templambdatimes; currentUcounter := unitary_test_counter.use_count();

@@ -1632,21 +1632,32 @@ set PB_EXP = int: 0   	  {power of #partial_block(q) in monomial}
 set RP_EXP = int: 0	  {power of #reducibility_points(q) in monomial}
 set HTht_EXP = int: 0{1}  {power of (HT - height(q) + 1) in monomial}
 set BL_EXP = int: 0	  {power of (bit_length(#monomials) - bit_length(j)+1)  in monomial}
-set J_SHIFT = int: 5	  {must be >=1; maybe length(p) + 1??}
-set INVJ_EXP = int: 1     {power of (j + J_SHIFT)^{-1}) in monomial}
+set J_SHIFT = int: 5	  {must be >=1; maybe (length(trivial) - length(p) + 1??}
+set INVJ_EXP = int: 2     {power of (j + J_SHIFT)^{-1}) in monomial}
 set PRED_END = rat: 1/4	  {value at N-1 of linear monomial. Should be in (0,1)} {1/10??}
 set LIN_EXP = int: 1      {power of 1 + (PRED_END-1)*j/(N-1) in monomial}
-set LIN_EXP_HT = int: 0   {was 2}
+set LIN_EXP_HT = int: 2   {was 2}
+
+{try a factor length(q)+1 for q in qlist. This function decreases, usually toward 1.}
+set LGTH_EXP = int:2
+set LGTH_flag = false
 
 {assume all terms in qlist same inf char}
 set GAM_HTs_easy(int N) = [rat]:
     {let blq = bit_length(N) in}
-    for j:N do (1 + (PRED_END-1)*j/N)^LIN_EXP {* (blq - bit_length(j) +1)^BL_EXP}/(j+J_SHIFT)^INVJ_EXP od
+    let pred_end = 1/N in
+    for j:N do (1 + (pred_end-1)*j/N)^LIN_EXP {* (blq - bit_length(j) +1)^BL_EXP}/(j+J_SHIFT)^INVJ_EXP od
 
 set GAM_HTs_easy(int N, int HT) = [rat]:
-    for j:N do (1 + (PRED_END-1)*(j/N))^LIN_EXP_HT od
+    let pred_end = 1/N in
+    for j:N do (1 + (pred_end-1)*(j/N))^LIN_EXP_HT od
+
+set GAM_HTs_LGTH([Param] qlist) = [rat]:
+    let GHE = GAM_HTs_easy(#qlist)
+    in for q@j in qlist do (length(q)+1)^LGTH_EXP *GHE[j] od
 
 set GAM_HTs([Param] qlist) = [rat]:
+    if LGTH_flag then return GAM_HTs_LGTH(qlist) fi;
     if GAM_HT_EXP + PB_EXP + RP_EXP = 0 then return GAM_HTs_easy(#qlist) fi;
     let GHE = GAM_HTs_easy(#qlist)
     in for q@j in qlist do let (g,h,p,r) = stats(q) in (g-h)^GAM_HT_EXP * p^PB_EXP *r^RP_EXP*GHE[j]  od
@@ -1674,20 +1685,23 @@ set GAM_HTs([Param] qlist, int HT) = [rat]:
 set pred_easy(int N,[int] some_times, [int] data_inds) = [int]:
     let unnorm_preds = [rat]: GAM_HTs_easy(N)
     	{first coord is from GAM_HT, second from some_times}
-    then sums1 = sum(some_times), sums0 = 1+ sum(for j in data_inds do unnorm_preds[j] od)
+    then sums1 = sum(some_times), S0 =  sum(for j in data_inds do unnorm_preds[j] od)
+    then sums0 = (S0.numer + 1)/S0.denom
     in for j:N do ceil((unnorm_preds[j]*sums1)/sums0) od
 
 set pred_easy(int N,[int] some_times, [int] data_inds, int HT) = [int]:
     let unnorm_preds = [rat]: GAM_HTs_easy(N,HT)
     	{first coord is from GAM_HT, second from some_times}
-    then sums1 = sum(some_times), sums0 = {1+}sum(for j in data_inds do unnorm_preds[j] od)
+    then sums1 = sum(some_times), S0 = sum(for j in data_inds do unnorm_preds[j] od)
+    then  sums0 = (S0.numer + 1)/S0.denom
     in for j:N do ceil((unnorm_preds[j]*sums1)/sums0) od
 
 set pred([Param] qlist,[int] some_times, [int] data_inds) = [int]:
     if GAM_HT_EXP + PB_EXP + RP_EXP = 0
     then return(pred_easy(#qlist, some_times, data_inds)) fi;
     let GAM_HTs = GAM_HTs(qlist)
-    then sums1 = sum(data_inds), sums0 = {1 + }sum(for j in data_inds do GAM_HTs[j] od)
+    then sums1 = sum(data_inds), S0 = sum(for j in data_inds do GAM_HTs[j] od)
+    then  sums0 = (S0.numer + 1)/S0.denom
     in for n in GAM_HTs do ceil((n*sums1)/sums0) od
 
 set pred([Param] qlist,[int] some_times, [int] data_inds, int HT) = [int]:
@@ -1695,7 +1709,8 @@ set pred([Param] qlist,[int] some_times, [int] data_inds, int HT) = [int]:
     then return pred_easy(#qlist, some_times, data_inds, HT)
     fi;
     let unnorm_preds = [rat]: GAM_HTs(qlist,HT)
-    then sums1 = sum(data_inds), sums0 = 1 + sum(for j in data_inds do unnorm_preds[j] od)
+    then sums1 = sum(data_inds), S0 = sum(for j in data_inds do unnorm_preds[j] od)
+    then  sums0 = (S0.numer + 1)/S0.denom
     in for n in unnorm_preds do ceil((n*sums1)/sums0) od
 
 set u_predictor_old(Param p) = int:
@@ -1711,6 +1726,12 @@ set uIBT_factor = rat: 2/1
 {what mult of interrupt_base_time to use for u_predictor_to_ht}
 set uIBT_HT_factor = rat: 1/2
 
+{what mult of IBT for use in data lookups for u_predictor; was 5 before 5/23/26}
+set u_test_factor = rat: 1/2
+
+{what mult of IBT for use in data lookups for u_to_ht_predictor; was 1/10 before 5/23/26}
+set uht_test_factor = rat: 1/20
+
 {how many full_deforms to look at to estimate time}
 set num_trials = int: 2
 set min_trials = int: 1
@@ -1719,7 +1740,7 @@ set min_trials = int: 1
 {whether to put a little wiggle in prediction}
 set no_margin_flag = false
 
-set uGAM_flag = true
+set uGAM_flag = false {was true; changed 5/21/26}
 
 {predicted time in milliseconds to complete is_unitary(p)}
 set u_predictor(Param p, int time) = int:
@@ -1733,26 +1754,20 @@ set u_predictor(Param p, int time) = int:
     if is_fixed(delta,q) do q fi od, rk = #delta
     then times = [int]: for q in list do defHashTime.time_lookup(q) od
     {have we computed full_deform? time needed if yes, -if no}
-    then unknown_indices = [int]: for T@j in times if T < -1 do j fi od
+    then unknown_indices = [int]: for T@j in times if T <= -2 do j fi od
     {then () = time:= max(time, (#unknown_indices*interrupt_base_time)\upred_time_factor)
     then expiration = elapsed_ms() + time}
-    then do_one_flag = if all(for T in times ~do @bool: T<=-2 od) then true else false fi
+    then do_one_flag = (#unknown_indices >= 0)
+    	 {if all(for T in times ~do @bool: T<=-2 od) then true else false fi}
     then () = num_trials:= max(2*bit_length(#unknown_indices),min_trials) {\2, *2 added 15:45 4/18/26:
     84.0 for Spin(5,6). So try 2* 16:00: 90.3}
     then found_time = int:0
-    then () = while num_trials > 0 and #unknown_indices > 0 and found_time < interrupt_base_time\2 
-    	      	    {sum(for T in times
-		    	do if T>0 then T else 0 fi
-			od) > {uIBT_factor*}interrupt_base_time/2}
-			{using factor = 4 reduced didnt_finish_u_count from 700 to 0 on one lambda
-			in x_open(E7_s), but added 8 interrupt is_u, 8 secs. CUT}
-		    {and
-    	      	    (interrupt_base_time\2 < expiration - elapsed_ms() or do_one_flag)}
+    then () = while num_trials > 0 and #unknown_indices > 0 and found_time < interrupt_base_time\2
     	      do let ind = #unknown_indices - 1
 	      	 then j = unknown_indices[ind] {these get harder as k increases}
 		 then q = list[j]
-		 then time_test = 5*interrupt_base_time
-		 in if time_test > expiration - elapsed_ms() and not do_one_flag
+		 then time_test =  ceil(u_test_factor*interrupt_base_time)
+		 in if elapsed_ms() > expiration and not do_one_flag
 		    then break
 		    fi;
 		    let RT = defHashTime.time_record_bounded(q,time_test)
@@ -1775,10 +1790,12 @@ set u_predictor(Param p, int time) = int:
 			  	 fi
 		       	      od.##
     then N = #list, data_n = #data_inds, un = #unknown_indices
-    then pred_list = if uGAM_flag
+    then () = J_SHIFT:=length(p.real_form.trivial) - length(p)+1
+    then pred_list = {if uGAM_flag
     	 	     then pred(list, data_times, data_inds, GAM(p)) {try adding GAM(p) arg 5/5/26}
-		     else pred(list, data_times, data_inds)
-		     fi
+		     {no longer understand why this could help}
+		     else} pred(list, data_times, data_inds)
+		     {fi}
     then pred = if from_scratch_flag
        	      	then sum(pred_list){+interrupt_base_time}
 		elif no_margin_flag
@@ -1790,9 +1807,13 @@ set u_predictor(Param p, int time) = int:
     	 pred_data_times = for j in data_inds do pred_list[j] od
     in if predictor_verbose
        then prints(new_line,"Start predicting to height -1 param ",p);
-	    prints("(#terms,#unknown,#data_pts) = (N,un,data_n) = (",N,",",un,",",data_n,")");
-	    prints("data_times = ",data_times,", data_inds = ",data_inds);
-	    if from_scratch_flag then prints("pred_data_times = ", pred_data_times) fi;
+	    prints("(#terms,#unknown,#data_times) = (N,un,data_n) = (",N,",",un,",",data_n,")");
+	    prints("data_inds = ",data_inds);
+	    prints("  actual data times = ",data_times);
+	    if from_scratch_flag
+	    then prints("predicted data times = ", pred_data_times);
+	    prints("full predicted times = ", pred_list)
+	    fi;
             prints(if from_scratch_flag then "from scratch " else "" fi,
 	       		"prediction = ", print_time_string(pred), " in time ",
 		       print_time_string(elapsed_ms() - start_pred))
@@ -1892,16 +1913,15 @@ set u_predictor_to_ht(Param p, int HT, int time) = int:
     then times =  [int]: for q in list do defHashHtTime.time_lookup_to_ht(q,HT) od
     {-2 means unknown. <= -3 means trying to -T-3 failed}
     then unknown_indices = [int]: for T@j in times if T <= -2 do j fi od
-    then do_one_flag = all(for T in times do T +  2 = 0 od) {#unknown_indices > 0}
+    then do_one_flag = {all(for T in times do T +  2 = 0 od)} (#unknown_indices > 0)
     then () = num_trials:= max(bit_length(#unknown_indices),min_ht_trials)
     then () = while num_trials > 0 and  #unknown_indices > 0 and (do_one_flag or
-    	      (elapsed_ms() < expiration)){ and
-    	      	    sum(for T in times do if T>0 then T else 0 fi od) > interrupt_base_time/4}
+    	      (elapsed_ms() < expiration))
     	      do let ind = #unknown_indices - 1
 	      	 then j = unknown_indices[ind] {these get easier as j increases}
 		 then q = list[j]
-		 then time_test =interrupt_base_time\10 - 2*(times[j])
-		 in if time_test < expiration - elapsed_ms() or do_one_flag
+		 then time_test =  ceil(uht_test_factor*interrupt_base_time) - 2*(times[j])
+		 in if elapsed_ms() < expiration or do_one_flag
 		    then let RT = defHashHtTime.time_record_to_ht_bounded(q,HT, time_test)
 		    	 in if RT >= 0
 		       	    then unknown_indices:=delete(unknown_indices,ind){;
@@ -1926,7 +1946,8 @@ set u_predictor_to_ht(Param p, int HT, int time) = int:
      then pred_list = pred(list, data_times,data_inds,HT)
      then pred = if from_scratch_flag
        	    	    then sum(pred_list) {+ interrupt_base_time}
-		    elif no_margin_flag then sum(for j in unknown_indices do pred_list[j] od)
+		    elif no_margin_flag
+		    then sum(for j in unknown_indices do pred_list[j] od)
 		    else sum(for j in unknown_indices do pred_list[j] od) +
 		    	 	 ((N-un+10)*interrupt_base_time)\10
 		    fi
@@ -1936,7 +1957,11 @@ set u_predictor_to_ht(Param p, int HT, int time) = int:
 	     prints("(#terms,#unknown,#data_times) = (N,un,ne) = (",N,",",un,",",data_n,")");
 	     prints("data_times = ",data_times);
 	     prints("data_inds = ",data_inds);
-	     if from_scratch_flag then prints("pred_data_times = ", pred_data_times) fi;
+	     prints("  actual data times = ",data_times);
+	     if from_scratch_flag
+	     then prints("predicted data times = ", pred_data_times);
+	     	  prints("full predicted times = ", pred_list)
+	     fi;
              prints(if from_scratch_flag then "from scratch " else "" fi,
 	       		"prediction = ", print_time_string(pred), " in time ",
 		       print_time_string(elapsed_ms() - start_pred))
@@ -2217,15 +2242,26 @@ set back_map ((Param->maybe_KTP)f, ParamPol P) = maybe_KTP:
 { guaranteed to deform at least one term}
 {finishes without interruption if all terms already deformed}
 set c_form_irreducible (Param p,int time) = maybe_KTP:
-   let ori_nr_p = orientation_nr(p), expiration = elapsed_ms() + time, dummy = K_type_pol(p).done
+   let ori_nr_p = orientation_nr(p), expiration = elapsed_ms() + time, dummy = [K_type_pol(p).done]
    then oriented_KL_sum = ParamPol: null_module(p) +
       for c@q in KL_sum_at_s(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
    then list = monomials(oriented_KL_sum)
    then unknown_indices = for q@j in list if defHashTime.time_lookup(q) < 0 do j fi od
    in {if #list = 0 then return null_K_module(p.real_form).done fi;}
+      {
       if #unknown_indices > 0
       then dummy := full_deform(list[unknown_indices~[0]], time);
-      	   if #unknown_indices > 2 then dummy := full_deform(list[unknown_indices[#unknown_indices\2]], time) fi
+      	   if #unknown_indices > 2
+	   then dummy := full_deform(list[unknown_indices[#unknown_indices\2]], time)
+	   fi
+      fi;
+      }
+      if #unknown_indices >= 16
+      then dummy := for j:4 do full_deform(list[unknown_indices~[j]], time) od
+      elif #unknown_indices >= 4
+      then dummy := for j:2 do full_deform(list[unknown_indices~[j]], time) od
+      elif #unknown_indices >= 1
+      then dummy := [full_deform(list[unknown_indices~[0]], time)]
       fi;
       if back_form_flag then back_map( (Param q) maybe_KTP:
       	 if expiration - elapsed_ms() < 0
@@ -2242,44 +2278,6 @@ set c_form_irreducible (Param p,int time) = maybe_KTP:
       	 , oriented_KL_sum
       	 )
        fi
-
-{
-   then unknown_ks =
-   then indices = for p in list do deformedHash.lookup(p) od
-		  then () = unknown_ks := for j@k in indices
-    	 	       	       	 	     do if j < 0
-			       	       	     	   or (deformedHash.height_index(j) >= 0)
-			    	    		   do k {loop that runs 0 or 1 times}
-				    		fi
-			      	 	     od.##
-   then () = if deformed_hash_flag {this will compute one full_deform, unless that takes more than 20*time}
-   	     then let () = list := monomials(oriented_KL_sum)
-	     	  then () = indices := for p in list do deformedHash.lookup(p) od
-		  then () = unknown_ks := for j@k in indices
-    	 	       	       	 	     do if j < 0
-			       	       	     	   or (deformedHash.height_index(j) >= 0)
-			    	    		   do k {loop that runs 0 or 1 times}
-				    		fi
-			      	 	     od.##
-		  in if #unknown_ks = 0
-		     then return map( (Param q) KTypePol:
-	      	   	      	      deformedHash.entry(q,-1), oriented_KL_sum).done
-		     else deformedHash.maybe_entry(list[unknown_ks[(#unknown_ks-1)\2]],-1, 5*time)
-
-		     fi {#unknown_ks = 0}
-	     fi {deformed_hash_flag}
-   in map( (Param q) maybe_KTP:
-      if expiration - elapsed_ms() < 0 and not keep_next
-      then timed_out()
-      else if deformed_hash_flag
-      	   then let j = deformedHash.lookup(q)
-	   	in deformedHash.maybe_entry(q,-1, expiration - elapsed_ms())
-	   else full_deform(q, expiration - elapsed_ms())
-	   fi
-      fi
-      , oriented_KL_sum
-      )
-}
 
 {guaranteed to deform at least one term}
 set c_form_irreducible_cut (Param p,int HT, int time) = maybe_KTP:
@@ -2315,8 +2313,10 @@ set twisted_c_form_irreducible_unnormalized (Param p,int time) = maybe_KTP:
   then list = monomials(fixed)
   then unknown_indices = for q@j in list if defHashTime.time_lookup(q) < 0 do j fi od
   in if #unknown_indices > 0
-     then dummy:= twisted_full_deform(list[unknown_indices~[0]],time);
-	  if #unknown_indices > 2 then dummy:= twisted_full_deform(list[unknown_indices[#unknown_indices\2]], time) fi
+     then dummy:= twisted_full_deform(list[unknown_indices~[0]],time)
+     {
+     if #unknown_indices > 2 then dummy:= twisted_full_deform(list[unknown_indices[#unknown_indices\2]], time) fi
+     }
      fi;
      case if back_form_flag then back_map( (Param q) maybe_KTP:
      	     if expiration - elapsed_ms() < 0

@@ -181,18 +181,18 @@ set taus(KGBElt x, ratvec lambda, int HT) = [KType]:
 set OTF_hold = bool: false
 
 set pos_tester(KGBElt x, ratvec lambda,int HT,ratvec gamma) = bool:
-    OTF_hold:=old_testing_flag;
-    if HT >=0 then old_testing_flag:=true fi;
+    {OTF_hold:=old_testing_flag;}
+    {if HT >=0 then old_testing_flag:=true fi;}
     let p = parameter(x,lambda,gamma), G = x.real_form
     then qs = monomials(1*p)
     in all(for q in qs
        	   do @bool: is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
-	   od) next old_testing_flag:=OTF_hold
+	   od) {next old_testing_flag:=OTF_hold}
 
 {should be called only if height(x,lambda,0) > 0 and HT >= minBottomData.G_min_height(x,lambda)}
 set pos_tester_min(KGBElt x, ratvec lambda,int HT,ratvec gamma) = bool:
-     OTF_hold:=old_testing_flag;
-    if HT >=0 then old_testing_flag:=true fi;
+     {OTF_hold:=old_testing_flag;}
+    {if HT >=0 then old_testing_flag:=true fi;}
     let p = parameter(x,lambda,gamma), G = x.real_form
     then qs = monomials(1*p)
     in {prints("got to pos_tester_min at ",p);}
@@ -202,7 +202,7 @@ set pos_tester_min(KGBElt x, ratvec lambda,int HT,ratvec gamma) = bool:
        fi;
        all (for q in qs
        	    do @bool: is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
-	    od) next old_testing_flag:=OTF_hold
+	    od) {next old_testing_flag:=OTF_hold}
 
 {compute vectors of size 2 giving [index of K-char, #Langlands quotients]}
 set extra_coord_flag = true
@@ -226,7 +226,7 @@ set use_deform_nonu_steve() = void:
 {USE Kpol_hash defined in FPP_faces_geom.at; assume index od }
 set pos_tester_known_Kchar(KGBElt x, ratvec lambda,int HT,ratvec gamma, vec KCv) =
     (bool, vec):
-     OTF_hold:=old_testing_flag;
+     {OTF_hold:=old_testing_flag;}
     {if HT >=0 then old_testing_flag:=true fi;}
     let p = parameter(x,lambda,gamma), G = x.real_form
     then qs = monomials(1*p)
@@ -237,11 +237,11 @@ set pos_tester_known_Kchar(KGBElt x, ratvec lambda,int HT,ratvec gamma, vec KCv)
        else (all (for q in qs
        	    	  do @bool: is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
 	      	  od),[])
-       fi next old_testing_flag:=OTF_hold
+       fi {next old_testing_flag:=OTF_hold}
 
 {USE Kpol_hash defined in FPP_faces_geom.at}
 set pos_tester_Kchar(KGBElt x, ratvec lambda,int HT,ratvec gamma) = (bool, vec):
-    OTF_hold:=old_testing_flag;
+    {OTF_hold:=old_testing_flag;}
     {if HT >=0 then old_testing_flag:=true fi;}
     let p = parameter(x,lambda,gamma), G = x.real_form
     then qs = monomials(1*p)
@@ -253,15 +253,15 @@ set pos_tester_Kchar(KGBElt x, ratvec lambda,int HT,ratvec gamma) = (bool, vec):
        else (all (for q in qs
        	    	  do @bool: is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
 	       	  od),[])
-       fi next old_testing_flag:=OTF_hold
+       fi {next old_testing_flag:=OTF_hold}
 
 {should only be invoked if height(x,lambda)>0 and HT >= minBottomData.G_min_height(x,lambda)}
 {SHOULD USE KNOWN Kchar KCv[0] if possible}
 {USE Kpol_hash defined in FPP_faces_geom.at; assume index od }
 set pos_tester_known_Kchar_min(KGBElt x, ratvec lambda,int HT,ratvec gamma, vec KCv) =
     (bool, vec):
-    OTF_hold:=old_testing_flag;
-    if HT >=0 then old_testing_flag:=true fi;
+    {OTF_hold:=old_testing_flag;}
+    {if HT >=0 then old_testing_flag:=true fi;}
     let p = parameter(x,lambda,gamma), G = x.real_form
     then qs = monomials(1*p)
     in {prints("got to pos_tester_known_Kchar_min");}
@@ -280,13 +280,13 @@ set pos_tester_known_Kchar_min(KGBElt x, ratvec lambda,int HT,ratvec gamma, vec 
        else (all (for q in qs
        	    	  do @bool: is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
 	       	  od),[])
-       fi next old_testing_flag:=OTF_hold
+       fi {next old_testing_flag:=OTF_hold}
 
 {USE Kpol_hash defined in FPP_faces_geom.at}
 set pos_tester_Kchar_min(KGBElt x, ratvec lambda,int HT,ratvec gamma) =
     (bool, vec):
-    OTF_hold:=old_testing_flag;
-    if HT >=0 then old_testing_flag:=true fi;
+    {OTF_hold:=old_testing_flag;}
+    {if HT >=0 then old_testing_flag:=true fi;}
     let p = parameter(x,lambda,gamma), G = x.real_form
     then qs = monomials(1*p)
     {then stats = for q in qs do status(q,HT) od} {nothing for Spin(4,4)}
@@ -324,7 +324,7 @@ set pos_tester_Kchar_min(KGBElt x, ratvec lambda,int HT,ratvec gamma) =
        else (all (for q in qs
        	    	  do @bool: is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
 	       	  od),[])
-       fi next old_testing_flag:=OTF_hold
+       fi {next old_testing_flag:=OTF_hold}
 
 set Kchar_vec_time = int: 0
 
@@ -1041,6 +1041,9 @@ set report_steve_clear() = void:
 set warmup_time = int: 0
 set warmup_flag = true
 
+{whether to try wiggling vertices across deformable edges}
+set steve_cod_one_flag = false {for some reason true seemed to gain nothing in E7_s?}
+
 {4.30.26: OK simply to ELIMINATE nonunitary entries of any sort, even if they might be unitary to HT;
 just don't enter in steve_hash_small}
 {put known statuses into steve_hash_small}
@@ -1061,8 +1064,11 @@ set warmup(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [[FaceVertsInde
        	     then steve_hash_small.numatch(gamma);
 	     	  []
 	     elif all(for b in statsH do b > 0 od)
-	     	  then steve_hash_small.umatch(gamma);
-		       [v]
+	     then steve_hash_small.umatch(gamma);
+		  [v]
+	     elif steve_cod_one_flag and any(for q in qs do wiggle_status_cod_one(q,HT) < 0 od)
+	     then steve_hash_small.numatch(gamma);
+	     	  []
 	     else [v]
 	     fi
        od.##
@@ -1072,6 +1078,8 @@ set warmup(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [[FaceVertsInde
 
 {whether to record success of warmup}
 set cold_and_warm_flag = false
+
+set FD_1_sort_flag = false
 
 {takes x, lambda, HT, Lvd and computes local vertices, imposing
 hermitian, pos on LKTs, pos to HT, and Dirac.}
@@ -1092,6 +1100,9 @@ set localFD_1SteveU\
 	{else steve_hash.indices(x, lambda, HT)
 	fi}
     then LF00 = [FaceVertsIndex]: for j:#Lvd.list do [j] od
+    then () = if FD_1_sort_flag
+    	      then LF00 := sort(G,Lvd,[LF00])[0]
+	      fi
     then LF01 = warmup(x,lambda,HT,Lvd,[LF00])[0]
     then () = if cold_and_warm_flag
     	      then prints("cold and warm verts = (",#LF00,",",#LF01,")")
@@ -1241,12 +1252,8 @@ set localFD_1SteveU\
 	     	     fi
 	       od.## {list of candidate vertices}
 	    fi
-{next step is needed because of comment before localFD_2SteveU}
-    then () = answer:= if steve_tilde_flag
-    	      	       then for v in answer ~do v od
-		       else answer
-		       fi
-    in if fund_face_verbose
+    in answer:= sort_lex(answer); {needed because of comment before localFD_2SteveU}
+       if fund_face_verbose
        then prints("Found ",#answer," vertices to ht ",HT," in time ",
        	    print_time_string(elapsed_ms() - start));
        	    prints("vecHash size = ", {if steve_small_flag

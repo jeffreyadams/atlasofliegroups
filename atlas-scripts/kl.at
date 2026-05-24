@@ -226,12 +226,17 @@ set low_gamma(Param p, int HT) = bool:
     {let (,,GAM) = low(p)
     in} (GAM(p)*gamma_frac) > HT
 
+{use to_ht if (low_rank_mult)*rank*HT < GAM}
+{increasing this means fewer to_ht tests} 
+set low_rank_mult = rat: 2/1
+
 {Note HT must be in [LAM,GAM) True says it's near the bottom of that range: small HT.}
 set low_diff(Param p, int HT) = bool:
     if (HT < 0) then return  false fi;
     let LAM = p.height, GAM = GAM(p) {(LAM, , GAM) = low(p)}
     in LAM < (1-diff_frac)*GAM and
-       HT - LAM < diff_frac*GAM
+       low_rank_mult*p.real_form.rank*(HT - LAM) < GAM
+    {more or less trying diff_frac = 1/G.rank}
     {(LAM < lam_frac*GAM) and} {(HT < diff_frac*GAM)}
     {(LAM < lam_frac*GAM) and ((GAM - LAM)*diff_frac) > HT {(HT-LAM)}}
 

@@ -300,7 +300,7 @@ set pmin(KGBElt x, ratvec lambda) = Param:
     let Lvd = Lvd(x,lambda)
     in pmin(x, lambda, Lvd)
 
-
+set LGK_time = int:0
 {computes directed graph of local faces. Output GraphData is
 [[int]],[[int]] giving equivalence classes and the graph. Next output
 [vec]s are IUCL and classListByFace}
@@ -317,7 +317,8 @@ set localGraphK([[FaceVertsKHash]] LFvertsK) = (GraphData, [vec],[vec]):
     { then () = if time_verbose
 	      then prints("     ", print_time_string(time),
 		   " for localGraphK calculation ") fi }
-    in ((eq,gr), IUCL, classListByFace)
+    in LGK_time+:= time;
+       ((eq,gr), IUCL, classListByFace)
 
 {here just require K-characters to match to level}
 set localGraphK([[FaceVertsKHash]] FDKH, KTypePol_hash pol_hash, int level) =
@@ -331,11 +332,12 @@ set localGraphK([[FaceVertsKHash]] FDKH, KTypePol_hash pol_hash, int level) =
     {then() = prints("number of graph equivalence classes to height = ",#eq)}
     then classListByFace = [vec]: class_lists(FDKH,(eq,gr))
 	 , IUCL = full_down_classes(eq,gr)
-    { then time = elapsed_ms() - start
-    then () = if time_verbose
+    then time = elapsed_ms() - start
+    {then () = if time_verbose
 	      then prints("     ", print_time_string(time),
 		   " for localGraphK calculation") fi}
-	 in ((eq,gr), IUCL, classListByFace)
+	 in LGK_time+:= time;
+	    ((eq,gr), IUCL, classListByFace)
 
 {classes have common value of red_count, so same K-character}
 set localGraphRed([[FaceVertsIndex]] LF) = ([[int]], [vec]):
@@ -448,14 +450,14 @@ set unipotents_to_hashes(RealForm G, [Param_hash] Uhashes) = void:
 and local_test_hash}
 {separate flag KUKU_flag in FPP_faces_herm.at controls whether to use known_unitaries
 or KU}
-set KU_flag = false {need to restore it sometimes?}
+set KU_flag = true {Not sure why false??} {need to restore it sometimes?}
     {true helps in E7_s spherical, by eliminating some difficult tests is_unitary(p,33)}
 
 {whether to fill in statuses for known unitaries in local_testK_hash*
 and local_test_hash}
 {true costs about 2% in time for E6_q, but seems to make E7_s faster
 by maybe 5%??}
-set KNU_flag = false {true}
+set KNU_flag = {false} true
 
 {count how often nonunitary induction identifies nonunitary rep}
 set NU_ind_counter = 0
@@ -476,7 +478,7 @@ set tilde_flag = false
 through KGB backwards}
 {true costs time before #lambda 1024 in KGB(E8_s,220459: almost a
 factor of two? Maybe 25% for KGB(E7_s,20000)?}
-set steve_tilde_flag = {false} true {back to true 2/23/26}
+set steve_tilde_flag = true {back to true 2/23/26}
 
 {set this to true to use wiggle tests in local_testK_hash_bottom_layer,
 which handles the most cases}
@@ -742,8 +744,8 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		Uhash, fancy_tester)
     fi;
     let newStatuses = for j:#eq do "?" od,  NumClasses = #eq, red_shift = if red_count_flag then 1 else 0 fi
-	,printkInterval = int: 1, printKInterval = int:1, H0 = height(parameter(x,lambda,0*lambda)),
-	OTF_hold = old_testing_flag
+	,printkInterval = int: 1, printKInterval = int:1, H0 = height(parameter(x,lambda,0*lambda)){,
+	OTF_hold = old_testing_flag}
     {then () = {old_testing_flag:=true}}
     {use Uhash to mark some classes as known? (those that hit a unitary Param)}
     {Find all Param's in Uhash with (x,lambda). For each, compute corresponding Face.
@@ -991,7 +993,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
      in  if sort_LFD_flag
 	 then sort(x.real_form, Lvd, FVKHnew)
 	 else FVKHnew
-	 fi next old_testing_flag:=OTF_hold
+	 fi {next old_testing_flag:=OTF_hold}
 
 set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd, {def 2}
     [[FaceVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFace, (Param->bool) tester,
@@ -1002,12 +1004,12 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd, {def 2}
 set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd, {def 3}
     [[FaceVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFace, int ht,
     Param_hash Uhash, (Param->bool) fancy_tester) = [[FaceVertsKHash]]:
-    let OTF_hold = old_testing_flag
-    in {old_testing_flag:=true;}
+    {let OTF_hold = old_testing_flag
+    in} {old_testing_flag:=true;}
        let tester = ((Param->bool): (Param p) bool:
     	   is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(p, ht))
      	   in local_testK_hash(x, lambda, Lvd, FVKH, eq, gr, classListByFace, tester,
-     	      			  ht, Uhash, fancy_tester) next old_testing_flag:=OTF_hold
+     	      			  ht, Uhash, fancy_tester) {next old_testing_flag:=OTF_hold}
 {which is_unitary_to_ht above???}
 
 set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
@@ -1028,7 +1030,7 @@ set local_testK_hash_know_lower(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     Param_hash Uhash, (Param->bool) fancy_tester) = [[FaceVertsKHash]]:
     prints("GOT TO KNOW_LOWER");
     let newStatuses = for j:#eq do "?" od,  NumClasses = #eq, red_shift = if red_count_flag then 1 else 0 fi
-	, printInterval = int: 1, G = x.real_form, OTF_hold = old_testing_flag
+	, printInterval = int: 1, G = x.real_form{, OTF_hold = old_testing_flag}
     {then () = {old_testing_flag:=true}}
     {use Uhash to mark some classes as known? (those that hit a unitary Param)}
     {Find all Param's in Uhash with (x,lambda). For each, compute corresponding Face.
@@ -1260,7 +1262,7 @@ set local_testK_hash_know_lower(KGBElt x, ratvec lambda, LocalVertexData Lvd,
      in  if sort_LFD_flag
 	 then sort(x.real_form, Lvd, FVKHnew)
 	 else FVKHnew
-	 fi next old_testing_flag:=OTF_hold
+	 fi {next old_testing_flag:=OTF_hold}
 
 {REQUIRE that tester is decisive: true means unitary}
 set local_testK_hash_know_lower(KGBElt x, ratvec lambda, LocalVertexData Lvd,
@@ -1290,7 +1292,7 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
     {Find all Param's in Uhash with (x,lambda). For each, compute corresponding Face.
      Use function known_unitaries from FPP_faces_herm
      Look up class in classListByFace, and mark "T"}
-    then start = elapsed_ms(), start_count = unitary_test_counter.use_count(), OTF_hold = old_testing_flag
+    then start = elapsed_ms(), start_count = unitary_test_counter.use_count(){, OTF_hold = old_testing_flag}
     then () = if tell_all
 	      then prints("hts = ",hts, ", HT = ",HT, ", ONE = ",ONE,", NumClasses = ",NumClasses);
 		   prints("FVKH = ",FVKH);
@@ -1396,7 +1398,6 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
 			   =final parameter(x=152,lambda=[4,4,2,0,1,-1]/1,nu=[3,5,0,-3,0,-5]/4)
 			    is known nonunitary, but only at height 73. So this line incorrectly labels this C,
 			    which consists of 14 of the fifteen clases here, as nonunitary to ht 70.}
-			    
 			      then {prints("nonfinal, k = ",k, ", gr = ",gr);}
 				   newStatuses:= updateNUclassesB(newStatuses, gr, k,"F"); "F"
 			      fi {all for q}
@@ -1479,7 +1480,7 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
      in  if sort_LFD_flag
 	 then sort(x.real_form, Lvd, FVKHnew)
 	 else FVKHnew
-	 fi next old_testing_flag:=OTF_hold
+	 fi {next old_testing_flag:=OTF_hold}
 
 set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     [[FaceVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFace, int HT,
@@ -1510,13 +1511,13 @@ set local_testK_hash_bottom_layer_more(KGBElt x, ratvec lambda, LocalVertexData 
 			    [[FaceVertsKHash]]:
     let newStatuses = for j:#eq do "?" od,  NumClasses = #eq, red_shift = if red_count_flag then 1 else 0 fi
     then printInterval = int: {1}max(NumClasses\10, 1)
-    then start = elapsed_ms(), start_count = unitary_test_counter.use_count(), OTF_hold = old_testing_flag
+    then start = elapsed_ms(), start_count = unitary_test_counter.use_count(){, OTF_hold = old_testing_flag}
     then () = if fund_face_verbose
 	      then prints(); prints("start local_testK_hash_bottom_layer_more ", NumClasses,
 		   " equiv classes of faces to dim ",#FVKH-1)
 	      ; prints()
 	      fi
-	      ; old_testing_flag :=true
+	      {; old_testing_flag :=true}
 	      ; for k:NumClasses
 		~do if fund_face_verbose {and NumClasses > 100} and
 		   ((NumClasses-k-1)%printInterval = 0)
@@ -1569,7 +1570,7 @@ set local_testK_hash_bottom_layer_more(KGBElt x, ratvec lambda, LocalVertexData 
      in  if sort_LFD_flag
 	 then sort(x.real_form, Lvd, FVKHnew)
 	 else FVKHnew
-	 fi next old_testing_flag:=OTF_hold
+	 fi {next old_testing_flag:=OTF_hold}
 
 {Assume datass is built of bottom layer K-types up to Ds[0], enumerated in KHash.
 Find first j from 1 where [Ds[j-1],Ds[j]) gives more bottom layer K-types; add those to KHash;
@@ -4476,7 +4477,8 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, {VertexData vd,}
 		      			gr, CLBF, tester0, zero_ht, Uhash, fancy_tester)
 	     	     {now we've tested verts and edges to hts[ZERO]}
     		     then () = if test_verbose then prints("unitary to ht ",zero_ht,
-		   	       	  " face counts to dim 1: ",for list in ans do #list od)
+		   	       	  " face counts to dim 1: ",for list in ans do #list od);
+				  report_tested()
 			       fi
 		     in extend_K_characters(x, lambda, Lvd, ans, one_ht, pol_hash)
 		 else if red_count_flag and #LF[1] > 0
@@ -4505,8 +4507,9 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, {VertexData vd,}
 	      {now we've tested verts and edges to one_ht}
     then () = if test_verbose then prints("unitary to ht ",one_ht,
 		   	   " face counts to dim 1: ",for list in LFDKH do
-			     #list od)
-		    	   fi
+			     #list od);
+		 report_tested()
+	       fi
     {then () = for v@j in LFDKH[0] do prints(j,"  ",v) od}
 { Have faces to dim 1 unitary to one_ht. Seek to extend list to all higher dims }
      then () = if quick_flag
