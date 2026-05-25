@@ -325,7 +325,7 @@ identifier will be scanned as type identifier there. For this reason, calling
 this |swallow| method should be avoided when processing such definitions.
 
 Since we are assuming that type definitions stored in |Id_table| directly refer
-to a |type_map| entry, the effect of |swallow| is to make a copy of the type in
+to a |open_type_table| entry, the effect of |swallow| is to make a copy of the type in
 which only the |tabled_nr()| values have been changed. Rather than making a
 copy, this could have been achieved in-place using calls of the
 |type_expr::replace_tabled_nr| method, provided our method took~|tp| as a
@@ -355,12 +355,12 @@ type_expr Id_table::swallow(const type_expr& tp) const
       assert(p!=nullptr); // the scanner ensures this
       const type& defined_type = *p;
       assert(defined_type.kind()==tabled);
-      unsigned int len=length(tp.tabled_args()), degree = defined_type.degree();
+      unsigned int len=length(tp.ctor_args()), degree = defined_type.degree();
       if (len!=degree)
         @< Throw a |program_error| signalling an incorrectly applied type symbol
            or type constructor @>
       dressed_type_list arg_list;
-      for (wtl_const_iterator it(tp.tabled_args()); not it.at_end(); ++it)
+      for (wtl_const_iterator it(tp.ctor_args()); not it.at_end(); ++it)
         arg_list.push_back(swallow(*it));
       return type_expr::user_type(defined_type.tabled_nr(),arg_list.undress());
     }
@@ -1363,7 +1363,7 @@ void global_declare_identifier(id_type id, type_p t, const source_location& loc)
 redefined. It removes any bindings in |global_overload_table| of field names
 that were introduced together with the type name, if they are still present
 (they could have been overridden or forgotten in the mean time). Then it
-removes the entry |id| from |type_expr::type_map|.
+removes the entry |id| from |type_expr::open_type_table|.
 
 @< Global function definitions @>=
 void clean_out_type_identifier(id_type id)
@@ -1746,7 +1746,7 @@ can tell whether the latter is the case and check that the type constructor is
 used properly.
 
 Having the parser store an identifier code in a place that normally holds a
-tabled number (an index into |type_expr::type_map|) used to be a trick used only
+tabled number (an index into |type_expr::open_type_table|) used to be a trick used only
 for the purpose of representing types in the right hand side of grouped type
 definitions. It is however now the case throughout, and all type expressions
 built in the parser must be either transformed by calling
@@ -1784,7 +1784,7 @@ well).
           work.push(&*it);
       break;
       case tabled:
-        for (wtl_iterator it(t.tabled_args()); not it.at_end(); ++it)
+        for (wtl_iterator it(t.ctor_args()); not it.at_end(); ++it)
           work.push(&*it);
         @< Replace |t.tabled_nr()| by the number that either |position| or the
            |global_id_table| associates to it; if there is none
@@ -1815,7 +1815,7 @@ Here we explicitly use that the |global_it_table| entry for a user defined type
 modify the type structure prepared by the parser in-place by inserting the
 number of the tabled type into the type node. In the case of types to be defined
 in the current group, we actually insert a reference to a tabled entry that has
-yet to be created (so currently out of bounds for |type_expr::type_map|),
+yet to be created (so currently out of bounds for |type_expr::open_type_table|),
 knowing that |type_expr::add_typedefs| is designed to handle such references.
 For calls of existing type constructors, the in-place operation allows us to not
 worry about the fact that any type arguments will be visited by the current
@@ -1832,7 +1832,7 @@ identifiers at all, and to throw a |program_error| in such cases.
   if (position.count(id)>0)
     // then type is defined in our group: replace by future tabled reference
   {
-    if (t.tabled_args()!=nullptr)
+    if (t.ctor_args()!=nullptr)
     { std::ostringstream o;
       o << "Type '" << main_hash_table->name_of(id) @|
         << "' being defined cannot be given type arguments";
@@ -1846,7 +1846,7 @@ identifiers at all, and to throw a |program_error| in such cases.
   {
     const type& defined_type = *global_id_table->type_of(id);
     assert(defined_type.kind()==tabled); // defined types are stored this way
-    unsigned int len=length(t.tabled_args()), degree = defined_type.degree();
+    unsigned int len=length(t.ctor_args()), degree = defined_type.degree();
     if (len!=degree)
        @< Throw a |program_error| signalling an incorrectly applied type symbol
           or type constructor @>

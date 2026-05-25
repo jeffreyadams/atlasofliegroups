@@ -1857,7 +1857,7 @@ easy to get used to).
 case lambda_expr:
 { const auto& fun=*e.lambda_variant;
   const type_expr par_tp = global_id_table->swallow(fun.parameter_type);
-  if (par_tp==void_type)
+  if (par_tp.is_void())
     out << '@@';
   else
     out << '(' << par_tp << ' ' << fun.pattern << ')';
@@ -1869,7 +1869,7 @@ case rec_lambda_expr:
   const type_expr par_tp = global_id_table->swallow(fun.parameter_type);
   const type_expr res_tp = global_id_table->swallow(fun.result_type);
   out << "rec_fun " << main_hash_table->name_of(fun.self_id);
-  if (par_tp==void_type)
+  if (par_tp.is_void())
     out << '@@';
   else
     out << '(' << par_tp << ' ' << fun.pattern << ')';
