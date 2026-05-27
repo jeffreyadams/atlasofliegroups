@@ -4670,7 +4670,7 @@ almost as varied as that of other kinds of types, although less recursive.
   }
 @+break; case string_type: // here we indent for the leading quote character
   { const auto* p = static_cast<const string_value*>(&v);
-    o << p->val;
+    p->print(o);
     result = chop(o.str(),width,1);
   }
 @+break; case split_integer_type:
