@@ -1486,6 +1486,13 @@ set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(v
 
 set report_tested_cum() = report_tested_cum("","")
 
+{how many pos, interrupted, neg, pos_to_ht, interrupted_to_ht, neg_to_ht tests}
+set u_counts() = vec:
+    [tested_pos_hash.size(), tested_inter_hash.size(), tested_neg_hash.size(),
+    sum(for hash in tested_pos_to_ht_hashes do hash.size() od),
+    sum(for hash in tested_inter_to_ht_hashes do hash.size() od),
+    sum(for hash in tested_neg_to_ht_hashes do hash.size() od)]
+
 {execute this behind ">>badps.at" or something similar}
 set list_to_ht_bad(int minTime) = void:
     let badps = [Param]: [], badTs = [int]:[], badHs = [int]:[]
@@ -1721,16 +1728,16 @@ set u_predictor_old_flag = false
 set from_scratch_flag = false
 
 {what mult of interrupt_base_time to use for u_predictor}
-set uIBT_factor = rat: 2/1
+set uIBT_factor = rat: 1/2
 
 {what mult of interrupt_base_time to use for u_predictor_to_ht}
-set uIBT_HT_factor = rat: 1/2
+set uIBT_HT_factor = rat: 1/8
 
 {what mult of IBT for use in data lookups for u_predictor; was 5 before 5/23/26}
-set u_test_factor = rat: 1/2
+set u_test_factor = rat: 1/4
 
 {what mult of IBT for use in data lookups for u_to_ht_predictor; was 1/10 before 5/23/26}
-set uht_test_factor = rat: 1/20
+set uht_test_factor = rat: 1/16
 
 {how many full_deforms to look at to estimate time}
 set num_trials = int: 2
@@ -1766,7 +1773,10 @@ set u_predictor(Param p, int time) = int:
     	      do let ind = #unknown_indices - 1
 	      	 then j = unknown_indices[ind] {these get harder as k increases}
 		 then q = list[j]
-		 then time_test =  ceil(u_test_factor*interrupt_base_time)
+		 then time_test =  if do_one_flag
+		      		   then ceil(u_test_factor*interrupt_base_time)
+				   else interrupt_base_time - 2*times[j]
+				   fi
 		 in if elapsed_ms() > expiration and not do_one_flag
 		    then break
 		    fi;
@@ -1907,25 +1917,30 @@ set u_predictor_to_ht(Param p, int HT, int time) = int:
     let delta = p.real_form.distinguished_involution, expiration = elapsed_ms() + time, start_pred = elapsed_ms()
        	    {if we can finish computing zeroth full_deform, rest are
 	     better estimated from 1}
-    then list = {is_unitary runs over terms in KL_sum_to_ht(p,HT)}
+    then list = {is_unitary runs over terms in KL_sum_at_s_to_ht(p,HT)}
 		for q in monomials(KL_sum_at_s_to_ht(HT)(p))
 		    if is_fixed(delta,q) do q fi od, rk = delta.n_rows
     then times =  [int]: for q in list do defHashHtTime.time_lookup_to_ht(q,HT) od
     {-2 means unknown. <= -3 means trying to -T-3 failed}
     then unknown_indices = [int]: for T@j in times if T <= -2 do j fi od
+    then INFO = sum(for T in times if T> 0 do T fi od) {how much good info we have}
     then do_one_flag = {all(for T in times do T +  2 = 0 od)} (#unknown_indices > 0)
     then () = num_trials:= max(bit_length(#unknown_indices),min_ht_trials)
     then () = while num_trials > 0 and  #unknown_indices > 0 and (do_one_flag or
-    	      (elapsed_ms() < expiration))
+    	      (elapsed_ms() < expiration)) and (INFO < time/4)
     	      do let ind = #unknown_indices - 1
 	      	 then j = unknown_indices[ind] {these get easier as j increases}
 		 then q = list[j]
-		 then time_test =  ceil(uht_test_factor*interrupt_base_time) - 2*(times[j])
+		 then time_test =  if do_one_flag
+		      		   then ceil(uht_test_factor*interrupt_base_time) - 2*(times[j])
+				   else expiration - elapsed_ms()
+				   {interrupt_base_time - 2*times[j]}
+				   fi
 		 in if elapsed_ms() < expiration or do_one_flag
 		    then let RT = defHashHtTime.time_record_to_ht_bounded(q,HT, time_test)
 		    	 in if RT >= 0
-		       	    then unknown_indices:=delete(unknown_indices,ind){;
-				 found_time+:= RT}
+		       	    then unknown_indices:=delete(unknown_indices,ind);
+			    	 INFO +:= RT
 		       	    else didnt_finish_ht_count +:= 1
 		       	    fi;
 			    do_one_flag:=false;

@@ -1157,6 +1157,7 @@ set localFD_1SteveU\
     then length = #LF01  {(Lvd.list)}
     then freq = max(length\20,1)
     then count = int:0
+    then u_counts0 = vec: u_counts()
     then answer = [vec]:
     	 if steve_tilde_flag
 	 then for v@k in LF01
@@ -1169,7 +1170,8 @@ set localFD_1SteveU\
 					   fi});
 			{if steve_small_flag
 			then} prints("So far ",count," verts unitary to ",HT{,"; vecLHash size = ",
-			     steve_hash_small.vecHashL().size()})
+			     steve_hash_small.vecHashL().size()}, "; running tests = ",[int]:
+			     u_counts() - u_counts0 )
 			{fi}
 	     fi;
 	     	  let gamma = Lvd.list[v[0]]

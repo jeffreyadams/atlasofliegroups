@@ -450,14 +450,14 @@ set unipotents_to_hashes(RealForm G, [Param_hash] Uhashes) = void:
 and local_test_hash}
 {separate flag KUKU_flag in FPP_faces_herm.at controls whether to use known_unitaries
 or KU}
-set KU_flag = true {Not sure why false??} {need to restore it sometimes?}
+set KU_flag = false {Not sure why false??} {need to restore it sometimes?}
     {true helps in E7_s spherical, by eliminating some difficult tests is_unitary(p,33)}
 
 {whether to fill in statuses for known unitaries in local_testK_hash*
 and local_test_hash}
 {true costs about 2% in time for E6_q, but seems to make E7_s faster
 by maybe 5%??}
-set KNU_flag = {false} true
+set KNU_flag = false {true}
 
 {count how often nonunitary induction identifies nonunitary rep}
 set NU_ind_counter = 0
@@ -727,6 +727,8 @@ set local_testK_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	 else FVKHnew
 	 fi
 
+{record time for local_testK_hash}
+set LtKH_time = int: 0
 set old_local_testK_flag = false {old has pref_bottom = 8}
 set pref_bottom = int: 64
 
@@ -808,7 +810,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 							  {also E6_s 63.5->64.6}
 			  then verts = vec: FVKH[d][j][:d+1]
 			  {then () = if wiggle_flag and nu_wiggle(x,lambda,verts,Lvd,HT)
-				    then result = any(for q in qs do not is_unitary_to_ht_big_SIMPLE(q,}
+				then result = any(for q in qs do not is_unitary_to_ht_big_SIMPLE(q,}
 			  then gamma = face_bary(Lvd,verts)
 			  then pC = parameter(x, lambda, gamma)
 			  then ps = monomials(pC)
@@ -987,13 +989,14 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		    od
      {then () = if #FVKH = 3 then prints(FVKHnew[2]) fi}
      then time = elapsed_ms() - start
-     then () = if time_verbose then prints("     ", print_time_string(time),
+     in if time_verbose then prints("     ", print_time_string(time),
 			       " for local_testK_hash; number of tests = ",
-			       unitary_test_counter.use_count() - start_count) fi
-     in  if sort_LFD_flag
-	 then sort(x.real_form, Lvd, FVKHnew)
-	 else FVKHnew
-	 fi {next old_testing_flag:=OTF_hold}
+			       unitary_test_counter.use_count() - start_count) fi;
+        LtKH_time+:=time;
+        if sort_LFD_flag
+	then sort(x.real_form, Lvd, FVKHnew)
+	else FVKHnew
+	fi {next old_testing_flag:=OTF_hold}
 
 set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd, {def 2}
     [[FaceVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFace, (Param->bool) tester,
@@ -1274,6 +1277,9 @@ set local_testK_hash_know_lower(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 
 set tell_all = false
 
+{record time for local_testK_hash_min_bottom_layer}
+set LtKH_bot_time = int:0
+
 {Delete from LFVKH faces established to be nonunitary using
 min_bottom layer, and deformation. Output is new shorter list
 of candidate faces. Lvd is LOCAL VertexData.  HT is
@@ -1474,10 +1480,11 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
 		 fi
 	       od
      then time = elapsed_ms() - start
-     then () = if time_verbose then prints("     ", print_time_string(time),
+     in if time_verbose then prints("     ", print_time_string(time),
 			       " for local_testK_hash_min_bottom_layer; number of tests = ",
-			       unitary_test_counter.use_count() - start_count) fi
-     in  if sort_LFD_flag
+			       unitary_test_counter.use_count() - start_count) fi;
+	 LtKH_bot_time +:= time;
+         if sort_LFD_flag
 	 then sort(x.real_form, Lvd, FVKHnew)
 	 else FVKHnew
 	 fi {next old_testing_flag:=OTF_hold}
@@ -1495,6 +1502,9 @@ set more_shift(int n) = void:
     else more_flag:=false;
     	 more_shift_level:=0
     fi
+
+{record time for local_testK_hash_bottom_layer_more}
+set LtKH_more_time = int: 0
 
 {Delete from LFVKH faces established to be nonunitary using
 known_lower, bottom layer, and deformation. Output is new shorter list
@@ -1564,10 +1574,11 @@ set local_testK_hash_bottom_layer_more(KGBElt x, ratvec lambda, LocalVertexData 
 				     fi
 				  od
      then time = elapsed_ms() - start
-     then () = if time_verbose then prints("     ", print_time_string(time),
+     in if time_verbose then prints("     ", print_time_string(time),
 			       " for local_testK_hash_bottom_layer_more; number of tests = ",
-			       unitary_test_counter.use_count() - start_count) fi
-     in  if sort_LFD_flag
+			       unitary_test_counter.use_count() - start_count) fi;
+	 LtKH_more_time+:=time;
+	 if sort_LFD_flag
 	 then sort(x.real_form, Lvd, FVKHnew)
 	 else FVKHnew
 	 fi {next old_testing_flag:=OTF_hold}
