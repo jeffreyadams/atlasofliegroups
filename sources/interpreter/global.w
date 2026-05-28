@@ -4344,6 +4344,8 @@ sl_list<ind_string> format (type_expr te, const value_base& v, unsigned width)
      @< Append to |result| a description of the value |v| of function type |te|,
         specifying its argument and result types, and wrapping the text of its
         body to lines of length at most |width| @>
+  break; case closed_type: // then call user-installed function
+    v.print(o); result.emplace_back(o.str()); // for now provide low-level format
   }
   return result;
 }
