@@ -2788,14 +2788,14 @@ void variadic_builtin_call::evaluate(level l) const
 }
 
 @ For |type_aware_builtin_call::evaluate| the only difference is that a
-|type_aware_wrapper| takes a |const type&| reference as second argument, for
-which we provide the |arg_type| that was stored when the |type_aware_instance|
-pointed to by its member~|f| was created.
+|type_aware_wrapper| takes a |type| as second argument (by constant reference);
+as that argument we pass the |arg_type| that was stored when the
+|type_aware_instance| pointed to by its member~|f| was created.
 
 @< Function definitions @>=
 void type_aware_builtin_call::evaluate(level l) const
 { std::string arg_string;
-  argument->eval(); ; // always evaluate to single value
+  argument->eval(); // always evaluate to single value
   if (verbosity>0) // then record argument(s) as string
   {@; std::ostringstream o;
     o << *execution_stack.back();

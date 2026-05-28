@@ -49,8 +49,10 @@ a large section with basic functions related to these types.
 
 #include "Atlas.h" // must be very first \.{atlas} include
 
+
 @< Includes needed in the header file @>@;
-namespace atlas { namespace interpreter {
+@q One day we will find out why |atlas| below needs to be neutered @>
+namespace @;atlas { namespace interpreter {
 @< Type definitions @>@;
 @< Declarations of global variables @>@;
 @< Declarations of exported functions @>@;
@@ -64,7 +66,7 @@ sections are present.
 @h "global.h"
 @h <cstdlib>
 @c
-namespace atlas { namespace interpreter {
+namespace @;atlas { namespace interpreter {
 @< Global variable definitions @>@;
 namespace {@;
 @< Local function definitions @>@;
@@ -1944,7 +1946,7 @@ function type through |definition_group::add|.
 
 @< Append to |store| bindings for the identifiers in |fields|... @>=
 { assert(tp.raw_kind()==tuple_type or tp.raw_kind()==union_type);
-  auto& record = store.emplace_back(definition_group(length(fields)));
+  auto& @;record = store.emplace_back(definition_group(length(fields)));
 @/
   auto tp_it =wtl_const_iterator(tp.tuple());
   if (tp.raw_kind()==tuple_type)
@@ -1955,7 +1957,7 @@ function type through |definition_group::add|.
       // field selector present (|*id_it| is an |id_pat|)
       {
         type_expr fte = type_expr::function(tabled_tp.copy(),tp_it->copy());
-        record.add(id_it->name,type::wrap(std::move(fte),0),id_it->kind);
+      @;record.add(id_it->name,type::wrap(std::move(fte),0),id_it->kind);
           // projector type
       }
   }
@@ -1965,7 +1967,7 @@ function type through |definition_group::add|.
       if ((id_it->kind&0x1)!=0) // injector name present
       {
         type_expr fte = type_expr::function(tp_it->copy(),tabled_tp.copy());
-        record.add(id_it->name,type::wrap(std::move(fte),0),id_it->kind);
+      @;record.add(id_it->name,type::wrap(std::move(fte),0),id_it->kind);
           // injector type
       }
   }
@@ -2789,6 +2791,9 @@ they are very similar to the conversion of a matrix into a list of vectors, we
 also define wrappers for built-in functions |rows| and |columns| here; the
 second in fact does the same as the implicit conversion and is indeed called by
 it.
+
+@s eval_level matrix_value
+@q Unclear how CWEAVEX overlooked declaration of |eval_level| in axis-types.h @>
 
 @< Local function def... @>=
 
@@ -6642,11 +6647,11 @@ fails to exist (though it may fail to be unique).
 void section_wrapper(eval_level l)
 {
   shared_matrix m=get<matrix_value>();
-  BinaryMap B = BinaryMap(m->val).section();
+  BinaryMap M = BinaryMap(m->val).section();
   own_matrix res = std::make_shared<matrix_value>(
-    int_Matrix(B.n_rows(),B.n_columns()));
-  for (unsigned int j=B.n_columns(); j-->0;)
-    res->val.set_column(j,int_Vector(B.column(j)));
+    int_Matrix(M.n_rows(),M.n_columns()));
+  for (unsigned int j=M.n_columns(); j-->0;)
+    res->val.set_column(j,int_Vector(M.column(j)));
   if (l!=eval_level::no_value)
     push_value(std::move(res));
 }
