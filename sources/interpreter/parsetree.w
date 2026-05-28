@@ -38,6 +38,9 @@ moreover this has to be done outside any namespaces.
 @( parse_types.h @>=
 #ifndef PARSE_TYPES_H
 #define PARSE_TYPES_H
+
+#include "Atlas.h" // must be very first \.{atlas} include
+
 @< Includes needed in \.{parse\_types.h} @>@;
 struct YYLTYPE; // pre-declare
 
@@ -3281,8 +3284,8 @@ we need a list of pairs of a type identifier and its defining type expression.
 
 @< Structure and typedef definitions for types built upon |expr| @>=
 struct typedef_struct {@; id_type id; type_p tp; patlist fields; };
-using typedef_list = containers::simple_list<typedef_struct>;
-using raw_typedef_list = @[atlas::containers::sl_node<typedef_struct>*@];
+using typedef_list = simple_list<typedef_struct>;
+using raw_typedef_list = @[containers::sl_node<typedef_struct>*@];
 
 @ Here are the functions defined for those types.
 
