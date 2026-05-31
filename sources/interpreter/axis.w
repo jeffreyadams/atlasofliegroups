@@ -3102,7 +3102,7 @@ void thread_bindings
   {
     type tp = type::wrap(te,lvl);
     unsigned char flags = pat.kind;
-    if (tp.is_polymorphic())
+    if (is_const or tp.is_polymorphic())
       flags |= 0x4; // polymorphic type implies constant
     dst.add(pat.name,std::move(tp),flags);
   }
