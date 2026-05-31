@@ -1015,7 +1015,8 @@ public:
   }
 
   std::vector<T> to_vector() &&
-  { std::vector<T>result; result.reserve(head.get());
+  { std::vector<T>result;
+    result.reserve(length(head.get()));
     for (auto it=wbegin(); not at_end(it); ++it) // non-counting fill
       result.push_back(std::move(*it));
     return result;
