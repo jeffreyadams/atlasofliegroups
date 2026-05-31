@@ -1442,7 +1442,9 @@ static type_nr_type add_simple_typedef
   (id_type id, type_expr tp, unsigned int arity);
 static void add_typedefs
  (const std::vector<std::pair<id_type,const_type_p> >& defs,
-  unsigned int n_args);
+  unsigned short n_args);
+static void add_closed_types
+ (const std::vector<id_type>& names, unsigned short arity);
 
 @ Here are the easy ones among those methods: |table_size| just returns the
 current |size| of |open_type_table| while |reset_table_size| shrinks the table
@@ -1764,7 +1766,7 @@ hand side or are involved in a type recursion, to become entries of
 @< Function definitions @>=
 void type_expr::add_typedefs
   (const std::vector<std::pair<id_type,const_type_p> >& defs,
-   unsigned int n_args)
+   unsigned short n_args)
 {
   const type_nr_type n_defs=defs.size(), old_table_size=table_size();
   std::vector<type_data> type_array;
@@ -2118,7 +2120,10 @@ struct type_expr::closed_record @+
     unsigned short arity;
   };
 
-@
+@ The static member |type_expr::closed_info| is a simple vector holding the
+record of all currently defined closed types, in the order in which they were
+defined.
+
 @< Global variable definitions @>=
 std::vector<type_expr::closed_record> type_expr::closed_info;
 
@@ -2132,6 +2137,27 @@ currently been defined.
 
 @< Function definitions @>=
 type_nr_type type_expr::closed_count() @+{@; return closed_info.size(); }
+
+@ The method |type_expr::add_closed_types| will be called in the course of
+processing a closed type definition command, and will make the modifications of
+the static member |type_expr::closed_info| that will allow the type system to
+henceforth handle the newly introduced closed types. It does not do all the
+necessary administration for handling the command, as this also involves
+introducing the interface functions define by the command into the identifier
+and overload tables, as well as informing the lexical analyser of the new status
+of the identifiers now standing for the closed types.
+
+Therefore is provided with limited information from the closed type definition,
+namely just a list of names to be added to |closed_info| and a common arity.
+
+@< Function definitions @>=
+void type_expr::add_closed_types
+  (const std::vector<id_type>& names, unsigned short arity)
+{ closed_info.reserve(closed_count()+names.size());
+  for (const auto name : names)
+    closed_info.push_back(closed_record{name,arity});
+}
+
 
 @*2 Printing types.
 %
@@ -2532,19 +2558,21 @@ type_expr shift
   // compiler wants this even if all |switch| cases would |return|
 }
 
-@ Unification produces a set of assignments to type variables, using a structure
-a bit more complicated than the simple list of |type_expr| values that was used
-in |simple_subst|. The class |type_assignment| holds the relevant information,
-and provides some related functionality like substitution using those
-assignments. It holds a vector of |type_ptr| values (that may be null pointers,
-meaning that no assignment is made to this type variable), and also records a
-|threshold| value, indicating where the numbering of the corresponding
-polymorphic type variables starts. When an assignment is recorded, the type
-expression substituted may contain other type variables, either below or above
-the |threshold|; in the latter case these type variables may be subject to
-further substitution. The absence of cycles that would prevent termination of
-the substitution process is a vital property, which will be maintained as a
-class invariant.
+@*2 The class {\bf type\_assignment}.
+%
+Unification produces a set of assignments to type variables, using a structure a
+bit more complicated than the simple list of |type_expr| values that was used in
+|simple_subst|. The class |type_assignment| holds the relevant information, and
+provides some related functionality like substitution using those assignments.
+It holds a vector of |type_ptr| values (that may be null pointers, meaning that
+no assignment is made to this type variable), and also records a |threshold|
+value, indicating where the numbering of the corresponding polymorphic type
+variables starts. When an assignment is recorded, the type expression
+substituted may contain other type variables, either below or above the
+|threshold|; in the latter case these type variables may be subject to further
+substitution. The absence of cycles that would prevent termination of the
+substitution process is a vital property, which will be maintained as a class
+invariant.
 
 Of the numerous methods provided, some serve to provide the essential
 characteristics of the data structure and the basic manipulations allowed,
@@ -3066,7 +3094,7 @@ in that case, as the section name says.
 }
 
 
-@*2 Wrapped up polymorphic types.
+@*2 Wrapped up polymorphic types: the class {\bf type}.
 %
 For a long time, the recursive class |type_expr| was used both to represent a
 pattern that the context expects for the type of an expression (for
