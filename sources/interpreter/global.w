@@ -857,6 +857,11 @@ void type_define_identifier
    const source_location& loc);
 void process_type_definitions
   (raw_typedef_list l, unsigned int deg, const source_location& loc);
+void process_closed_type_definition
+  (raw_patlist idl, unsigned int arity, @|
+   type_p iftp, raw_patlist iface, @|
+   raw_type_list reptps, raw_let_list imp, @|
+   const source_location& loc);
 void set_back_trace(const simple_list<std::string>& back_trace);
 void show_ids(std::ostream& out);
 void type_of_expr(expr_p e);
@@ -967,7 +972,7 @@ public:
   definition_group(unsigned int n_ids);
 @) // manipulators
   void add(id_type id,type&& t, unsigned char flags);
-  void thread_bindings (const id_pat& pat,const type_expr& tp);
+  void thread_bindings (const id_pat& pat,const type_expr& tp,bool is_const);
   association::iterator begin() @+{@; return bindings.begin(); }
   association::iterator end() @+{@; return bindings.end(); }
 @) // accessors
@@ -980,22 +985,26 @@ simplified because they do not need to maintain |lexical_context| in any way (in
 particular there is no need for a user-defined destructor). We also include
 |thread_bindings| now as a method rather than a free function as it was in the
 \.{axis.w} module; compared to that function we can dispense of the destination
-argument in (recursive) calls, and it also lacks the constness-overriding
-argument for which there is no use in global definitions. The |lvl| parameter is
+argument in (recursive) calls. The |lvl| parameter is
 also omitted, as the global definition groups do not occur within the scope of
-any locally introduced type variables, so the level is always~|0|.
+any locally introduced type variables, so the level is always~|0|. We maintain
+the |is_const| argument, but default it to |false|; it will be set to |true|
+when used for setting interface values for close types, as it is undesirable
+to allow destroying the interface by assignment to identifiers holding interface
+values.
 
 @< Global function definitions @>=
 definition_group::definition_group(unsigned int n_ids)
 : bindings(), constness(n_ids)
 {@; bindings.reserve(n_ids); }
 @)
-void definition_group::thread_bindings(const id_pat& pat,const type_expr& te)
+void definition_group::thread_bindings
+  (const id_pat& pat,const type_expr& te,bool is_const)
 { if ((pat.kind & 0x1)!=0)
   {
     type tp = type::wrap(te,0); // no fixed type variables at outer level
     unsigned char flags = pat.kind;
-    if (tp.is_polymorphic())
+    if (is_const or tp.is_polymorphic())
       flags |= 0x4; // polymorphic type implies constant
     add(pat.name,std::move(tp),flags);
   }
@@ -1006,7 +1015,7 @@ void definition_group::thread_bindings(const id_pat& pat,const type_expr& te)
     wtl_const_iterator t_it(tex.tuple());
     for (auto p_it=pat.sublist.begin(); not pat.sublist.at_end(p_it);
          ++p_it,++t_it)
-      thread_bindings(*p_it,*t_it);
+      thread_bindings(*p_it,*t_it,is_const);
   }
 }
 
@@ -1128,7 +1137,7 @@ void do_global_set(id_pat&& pat, const expr& rhs, int overload,
       if (not tp.bake().can_specialise(pattern_type(pat)))
         @< Report that type |tp| of |rhs| does not have required structure,
            and |throw| @>
-      b.thread_bindings(pat,tp.unwrap());
+      b.thread_bindings(pat,tp.unwrap(),false);
       // match identifiers and their future types
     }
 @)
@@ -1457,17 +1466,31 @@ void global_forget_overload(id_type id, type_p t)
 
 @*2 Defining type identifiers.
 %
-There are two types of type definitions: simple ones that simply equate a new
-type name to an existing type expression, and grouped type definitions that may
-introduce recursive and mutually recursive types. Syntactically, the distinction
-is marked by square brackets around the list of definition clauses in the latter
-case, and the placement of formal type parameters of the definition in case of a
-type constructor definition. In simple type constructor definitions the
-parameter list is postfixed to the constructor name in pointy brackets to
-resemble an instantiation of the constructor, whereas in a grouped type
-constructor definition the formal type parameter list, which is common to every
-member of the group, is inserted before the opening square bracket.
+There are three kinds of type definitions: first simple ones that simply equate
+a new type name to an existing type expression, second grouped type definitions
+that may introduce recursive and mutually recursive types, and third closed type
+definitions, which hide the representation and implementation of new types so
+that these henceforth behave like built-in types. All three forms allow taking
+one or more type parameters, so that they define type constructors rather than
+types.
 
+There are important syntactic differences between these three kinds of
+type definition, which is related to the different kinds of information they
+require to be specified, and that are somewhat uglified by the lexical necessity
+to have the range of temporary type identifiers (used to represent parameter
+types) to be delimited at a lexical level. For this reason, the second kind
+(grouped definitions) can introduce any type parameters by simply listing them
+before the group opens, but the first kind, which introduces parameter types in
+pointy brackets after the type name resembling the syntax of type constructor
+instantiation, needs an explicit symbol `\.!' to terminate their range. At the
+time of writing this no syntax for the third kind has yet been decided, but
+since closed type definitions will certainly have grouping symbols they might
+follow the idea of the second kind. In the end it might be best to at least
+allow a more uniform approach by letting these definitions be allowed inside a
+grouping introduced by the \&{any\_type} keyword.
+
+@*3 Defining new type names as abbreviations for existing types.
+%
 We start with the simple type definitions, which are handled by the function
 |type_define_identifier|. Its argument |id| is a new type identifier that is
 defined to stand for the type expression~|t|, or for a type constructor with
@@ -1621,7 +1644,9 @@ projector or injector functions from |jectors| to the global overload table.
   *output_stream << '.' << std::endl;
 }
 
-@ We now come to grouped type definitions, invoked using a \&{set\_type} command
+@*3 Defining groups of possibly mutually recursive types.
+%
+We now come to grouped type definitions, invoked using a \&{set\_type} command
 with brackets around the list of definition clauses (which might be just a
 single definition). Such a command is handled by calling
 |process_type_definitions| with the list of type definition clauses as argument.
@@ -2019,6 +2044,278 @@ instead); this avoids needing to allocate an actual static variable.
 
 }
 
+@*3 Defining new types that hide their representation and implementation.
+%
+When a user introduces a new closed type, they must provide several things: a
+name for the type, an interface for it (which consists of a number of
+identifiers that will represent the interface values, usually functions, and
+their types in terms of the new type name), and then a representation type that
+will give the under-the-hood structure of values of the new type, and finally an
+implementation of the interface (values whose types are those of the interface
+identifiers with the representation type substituted for the new type name. All
+this can still be complicated a bit by allowing more than one closed type to be
+defined simultaneously (since in some cases it would be awkward to for the user
+to split an interface that involves several new types into separate interfaces
+for each one), and by the fact that our definition might be parametric over one
+or more abstracted types, so that we are defining closed type constructors
+rather than types. We do insist, as is quite natural, that multiple closed types
+constructors introduced in the same definition have the same arity.
+
+@ The function |process_closed_type_definition| that will be called from the
+parser to process the definition of one or more closed types or type
+constructors has quite a few arguments to accommodate the possibilities. These
+are: the list |idl| of type identifiers for the types or constructors being
+defined, their common |arity|, the combined type |iftp| of the interface
+identifiers, a list |iface| of interface identifiers, a list |reptps| of
+representation types for the new closed types, and finally a list |imp| of pairs
+of an identifier and an expression that provide the implementations of the
+interface identifiers. The identifiers of the latter could be considered
+redundant here since they repeat those of |iface|, but having the user repeat
+the name of the value being implemented is helpful, allows us to check the
+correspondence with the specification part, and even allows the user to reorder
+the implementations and still get proper processing. That processing will in
+fact be introducing the implementation values sequentially, so that use can be
+made of previously defined implementation values, and at the end forming a tuple
+of them in specification order. Since the parser nowhere else passes a list of
+things that have to be identifiers (standing here for new type names), we use
+the more general possibility of a pattern list tot represent |idl|; the parser
+ensures that each pattern is just a single |name|. The same representation is
+used for |iface|, where again each |pattern| must have a |name| (we could allow
+sublists as well, which our processing handles without extra effort since we
+combine the list into a single |id_pat interface@;| anyway, but its utility
+seems limited).
+
+@< Global function definitions @>=
+void process_closed_type_definition
+  (raw_patlist idl, unsigned int arity, @|
+   type_p iftp, raw_patlist iface, @|
+   raw_type_list reptps, raw_let_list imp, @|
+   const source_location& loc)
+{ patlist id_list(idl);
+  type_ptr interface_tp_p(iftp);
+  patlist interface_list(iface);
+  type_list repr_types(reptps);
+  let_list impl(imp);
+  // ensure clean-up
+@)
+  try {
+    std::ostringstream o;
+    std::vector<id_type> ids;
+    ids.reserve(length(id_list));
+  @/@< Define a vector |ids| of new type identifiers, the interface
+    |id_pat interface@;| and a |definition_group g@;| to hold the interface
+    specification @>
+  @)
+    expr implementation;
+    @< Check that all components named in |interface| are defined in |impl|,
+       and set |implementation| to be a chain of \&{let} expressions ending
+       with a tuple of those components in the order of |interface| @>
+    type_expr implementation_tp;
+    @< Set |implementation_tp| to the result of substituting the |repr_types|
+       for as many type variables in |*interface_tp_p| @>
+    expression_ptr converted_impl;
+    @< Type check and convert expression |implementation| in the strong type
+      context of |implementation_tp|, and store the converted expression as
+      |converted_impl| @>
+  @)
+    @< Evaluate |converted_impl|, pushing the result on the evaluation stack @>
+    @< Pop the value from the evaluation stack, and distribute its components
+       according to the identifiers of |interface| to variable and
+       overload tables @>
+    @< Update |type_expr::closed_type_table| with the new types @>
+  }
+  @< Catch block for errors thrown while processing a closed type definition @>
+}
+
+@ This module cannot have braces because it introduces some variables that need
+to survive.
+
+@< Define a vector |ids| of new type identifiers, the interface
+|id_pat interface@;| and a |definition_group g@;| to hold the interface
+specification @>=
+for (auto it=id_list.begin(); not id_list.at_end(it); ++it)
+  ids.push_back(it->name);
+if (ids.size()!=length(reptps))
+  @< Report a wrong number of type representations in |repts| for |ids| @>
+@) // prepare the effect of the definition for future type analysis
+id_pat interface(std::move(interface_list));
+auto n_id = count_identifiers(interface);
+definition_group g(n_id);
+#ifndef NDEBUG // syntax rules should ensure that the following always succeeds
+if (not interface_tp_p->can_specialise(pattern_type(interface)))
+  @< Report that the interface pattern is incompatible with its specified
+     type @>
+#endif
+g.thread_bindings(interface,*interface_tp_p,true);
+
+@ The liberty we provide of giving implementation values in any order means that
+we must do a bit of checking and expression rewriting. The latter involves doing
+some work that is usually done inside the compilation unit \.{parsetree}, so we
+use some details about structures introduced there, such as |let_expr_node|.
+
+@< Check that all components named in |interface| are defined in |impl|,
+   and set |implementation| to be a chain of \&{let} expressions ending
+   with a tuple of those components in the order of |interface| @>=
+{ BitMap idents(main_hash_table->nr_entries());
+  expr* link = &implementation;
+  for (auto it = impl.begin(); not impl.at_end(it); ++it)
+  { assert((it->pattern.kind&0x1)!=0); // syntax should ensure this
+    if (idents.isMember(it->pattern.name))
+      @< Complain that |it->pattern.name| is implemented more than once @>
+    idents.insert(it->pattern.name);
+    auto decl = std::make_unique<let_expr_node>
+      (std::move(it->pattern),std::move(it->val),expr());
+    auto next = &decl->body;
+    *link = expr(decl.release(),loc);
+    link = next;
+  }
+@)
+  expr_list tup_expr;
+  auto expr_it = tup_expr.begin();
+  for (auto it = interface.sublist.begin(); not it.at_end(); ++it)
+  { assert((it->kind&0x1)!=0); // syntax should ensure this
+    if (not idents.isMember(it->name))
+      @< Complain that |it->name| is not implemented @>
+    expr_it = tup_expr.insert(expr_it,expr(it->name,loc,expr::identifier_tag()));
+  }
+  *link = expr(std::move(tup_expr),expr::tuple_display_tag(),loc);
+}
+
+@ The following two messages signal obvious problems that can arise with a
+closed type definition.
+
+@< Complain that |it->pattern.name| is implemented more than once @>=
+{ o << loc << "\nInterface value "
+    << main_hash_table->name_of(it->pattern.name) @|
+    << " is multiply defined.";
+  throw program_error(o.str());
+}
+
+@~
+@< Complain that |it->name| is not implemented @>=
+{ o << loc << "\nInterface value "
+    << main_hash_table->name_of(it->name) @|
+    << " is never defined.";
+  throw program_error(o.str());
+}
+
+@ Here we can use |simple_subst|, after turning |repr_types| into a vector.
+
+@< Set |implementation_tp| to the result of substituting the |repr_types|
+   for as many type variables in |*interface_tp_p| @>=
+{ BitMap nothing(type_expr::table_size());
+  // what needs special attention |simple_subst|
+  std::vector<type_expr> assign = std::move(repr_types).to_vector();
+  implementation_tp = simple_subst(*interface_tp_p,assign,nothing);
+}
+
+@ Type checking is done by calling |analyse_types|, which does not impose a type
+on the expression it is analysing. But we do want to impose a type here;
+therefore we wrap |implementation| in a cast to |implementation_tp| before
+calling |analyse_types|. This is like what is done in the parse function
+|make_cast|, but we cannot call it here since it wants to convert |loc| from
+|YYLTYPE| to |source_location|, but we already have the latter here. Therefore
+we essentially write out here what |make_cast| does; we can however avoid
+calling |new expr@;|, instead creating the |expr| involved as a local variable
+|cast_impl|. Since we will not be needing |implementation_tp| nor the
+un-cast |implementation| any more, we can move from both into the cast
+expression.
+
+@< Type check and convert expression |implementation| in the strong type context
+   of |implementation_tp|, and store the converted expression
+   as |converted_impl| @>=
+{ expr cast_impl
+     (new cast_node @|
+       { std::move(implementation_tp), std::move(implementation)}
+     ,loc);
+  analyse_types(cast_impl,converted_impl,0);
+}
+
+@ Calling the evaluator is easy; the method |expression::eval| calls
+|expression::evaluate| with as second argument |eval_level::single_value|.
+
+@< Evaluate |converted_impl|, pushing the result on the evaluation stack @>=
+  converted_impl->eval();
+
+@ This part is very similar to what happens in phase~2 of |do_global_set|, and
+we can in fact share some modules with that code.
+
+@< Pop the value from the evaluation stack, and distribute its components
+   according to the identifiers of |interface| to variable and
+   overload tables @>=
+{ std::vector<shared_value> v;
+  v.reserve(n_id);
+  thread_components(interface,pop_value(),std::back_inserter(v));
+   // associate values with identifiers
+  auto v_it = v.begin();
+  for (auto it = g.begin(); it!=g.end(); ++it,++v_it)
+  { assert(v_it!=v.end());
+    @< Emit indentation corresponding to the input level to
+       |*output_stream| @>
+    if (it->second.top_kind()!=function_type)
+    { *output_stream << "Constant " << main_hash_table->name_of(it->first)
+                     << ": " << it->second;
+      if (global_id_table->present(it->first))
+      { bool is_const;
+        *output_stream << " (overriding previous instance, which had type "
+                 @| << *global_id_table->type_of(it->first,is_const);
+        if (is_const)
+          *output_stream << " (constant)";
+        *output_stream << ')';
+      }
+      *output_stream << '\n';
+      global_id_table->add
+        (it->first,std::move(*v_it),std::move(it->second),g.is_const(it),loc);
+    }
+    else
+    @< Add instance of identifier |it->first| with function value |*v_it|
+       to |global_overload_table| @>
+  }
+}
+
+@ Finally, we must adopt the static member |type_expr::closed_info|, which can
+be done by calling |type_expr::add_closed_types|.
+
+@< Update |type_expr::closed_type_table| with the new types @>=
+type_expr::add_closed_types(ids,arity);
+
+@ And here are two more sections that explain things that can go wrong.
+
+@< Report a wrong number of type representations in |repts| for |ids| @>=
+{ o << loc
+    << "\nWrong number " << length(reptps)
+    << " of implementation types for type"
+  @|<< (arity>0 ? " constructor" : "")
+  @|<< (ids.size()>1 ? "s" : "");
+  o << main_hash_table->name_of(ids[0]);
+  for (unsigned i=1; i<ids.size(); ++i)
+    o << ',' << main_hash_table->name_of(ids[i]);
+  throw program_error(o.str());
+}
+
+@~This is a fairly unlikely scenario, so we don't bother to try to zoom in on
+the problematic part of the pattern.
+
+@< Report that the interface pattern is incompatible with its specified
+   type @>=
+{ o << loc
+    << "\nIn closed type definition, interface pattern " << interface @|
+    << "\ndoes not match interface type " << *interface_tp_p;
+  throw program_error(o.str());
+}
+
+@ Errors are mostly |program_error|, |runtime_error| and |logic_error|. They
+should describe themselves, so we report them here in a uniform manner.
+
+@< Catch block for errors thrown while processing a closed type definition @>=
+catch (const error_base& err)
+{
+  std::cerr << "Error in closed 'set_type' command " << loc << ":\n" @|
+            << err.what() << "\nCommand aborted.\n";
+@/set_back_trace(err.back_trace);
+@/clean=false;
+  reset_evaluator(); main_input_buffer->close_includes();
+}
 
 @*1 Printing information from internal tables.
 %

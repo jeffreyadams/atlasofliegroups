@@ -1403,19 +1403,20 @@ raw_patlist make_pattern_node(raw_patlist prev,const raw_id_pat& pattern)
 
 @ On one rare occasion we need to undo the effect of creating a pattern node for
 a singleton list of pattern, returning the single contained pattern. The reason
-that the function, and its companion |unmake_type_singleton| are needed is that
-when we allowed individual parameters of functions to be specified, in case they
-have tuple type, by a parenthesised list that looks like a parameter list, and
-so on recursively for components of that list, it was not possible to forbid
-lists of length~$1$: such lists \emph{are} allowed as parameter lists, and if we
-try to make the parser accept such lists in one case but not in another, we
-force it to make a decision that it cannot make with finite look-ahead. (This is
-related to our choice to start an anonymous function just with a left
-parenthesis, which cannot be distinguished from other uses of left parentheses.)
-Our solution to this conundrum is to allow singleton lists, but to undo the
-parentheses when building the parse tree, after detecting a list of length~$1$.
-Although for years we instead just allowed the singleton to exist, this is wrong
-since its type would be a $1$-tuple type, which the language does not allow.
+that the function, and its companion |unmake_type_singleton| defined
+in \.{axis-types.w}, are needed is that when we allowed individual parameters of
+functions to be specified, in case they have tuple type, by a parenthesised list
+that looks like a parameter list, and so on recursively for components of that
+list, it was not possible to forbid lists of length~$1$: such lists \emph{are}
+allowed as parameter lists, and if we try to make the parser accept such lists
+in one case but not in another, we force it to make a decision that it cannot
+make with finite look-ahead. (This is related to our choice to start an
+anonymous function just with a left parenthesis, which cannot be distinguished
+from other uses of left parentheses.) Our solution to this conundrum is to allow
+singleton lists, but to undo the parentheses when building the parse tree, after
+detecting a list of length~$1$. Although for years we instead just allowed the
+singleton to exist, this is wrong since its type would be a $1$-tuple type,
+which the language does not allow.
 
 @< Definitions of functions for the parser @>=
 raw_id_pat unmake_pattern_singleton(raw_patlist raw)
@@ -1512,7 +1513,7 @@ for a complete \&{let}-expression, containing (the components of) only one
 binding, and containing in addition a body.
 
 The moving constructor does what the braced initialiser-list syntax would do
-by default; it is present only for backward compatibility \.{gcc}~4.6.
+by default; it is present only for backward compatibility with \.{gcc}~4.6.
 
 @< Structure and typedef definitions for types built upon |expr| @>=
 struct let_pair { id_pat pattern; expr val; };
@@ -3272,15 +3273,15 @@ break;
 
 @* Non-expression syntax.
 %
-It is a sign of the functional inspiration of the \.{axis} programming
-language that nearly all syntax is involved with building expressions. The
-small parts of non-expression syntax that exist deal mostly with commands,
-which are directly invoked from the parser actions and do not involve any
-parse tree being built at all. There is however a bit of tree building that
-does not involve expressions, namely the definition of (possibly recursive)
-types. For ordinary type expressions we could do with the types |type_p| and
-|raw_type_list| defined in the \.{axis-types} module, but in type definitions
-we need a list of pairs of a type identifier and its defining type expression.
+It is a sign of the functional inspiration of the \.{axis} programming language
+that nearly all syntax is involved with building expressions. The small parts of
+non-expression syntax that exist deal mostly with commands, which are directly
+invoked from the parser actions and mostly do not involve any parse tree being
+built at all. There is however a bit of tree building that does not involve
+expressions, namely the definition of (possibly recursive) types. For ordinary
+type expressions we could do with the types |type_p| and |raw_type_list| defined
+in the \.{axis-types} module, but in type definitions we need a list of pairs of
+a type identifier and its defining type expression.
 
 @< Structure and typedef definitions for types built upon |expr| @>=
 struct typedef_struct {@; id_type id; type_p tp; patlist fields; };
