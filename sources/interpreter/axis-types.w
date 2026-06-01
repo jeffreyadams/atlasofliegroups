@@ -1208,15 +1208,16 @@ bool type_expr::is_unstable() const
 @ We shall employ various forms of substitution for type variables, that are
 variations of the method |type_expr::copy|, but which do something special when
 encountering certain type variables. Most will be treated later, when we deal
-with second order types, but |simple_subst| is used to implement instantiation of
-tabled type constructors, so we define it right away. It takes a |type_expr|
+with second order types, but |simple_subst| is used to implement instantiation
+of tabled type constructors, so we define it right away. It takes a |type_expr|
 (the right hand side of a type constructor definition) and a vector of argument
 type expressions, and a bitmap that allows us to treat a number of tabled
 entries to be ``in our group'' for optimised parameter passing. It produces a
-copy of the type expression in which the argument types are substituted for type
-variables numbered from~$0$ upwards. There is no restriction on the argument
-types, which are not inspected at all after they have been substituted, and the
-only a restriction on~|tp| is that one must not have |is_unstable(tp)|.
+copy of the type expression in which the argument types are substituted for
+successive type variables numbered from~$0$ upwards. There is no restriction on
+the argument types, which are not inspected at all after they have been
+substituted, and the only a restriction on~|tp| is that one must not have
+|is_unstable(tp)|.
 
 @< Declarations of exported functions @>=
 type_expr simple_subst
