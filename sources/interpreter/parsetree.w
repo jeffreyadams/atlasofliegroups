@@ -131,7 +131,7 @@ typedef std::unique_ptr<expr> expr_ptr;
 @ We separate this out for ease of moving.
 
 @< Declaration of |struct expr@;| and its extended family @>=
-@< Type declarations needed in definition of |struct expr@;| @>@;
+@< Type declarations needed in the definition of |struct expr@;| @>@;
 struct expr {
   expr_kind kind;
   union {@; @< Variants of the anonymous |union| in |expr| @>@; };
@@ -639,7 +639,7 @@ for them. This final implementation illustrates then also the usefulness of
 having a container type with lightweight conversions to and from a raw pointer
 type.
 
-@< Type declarations needed in definition of |struct expr@;| @>=
+@< Type declarations needed in the definition of |struct expr@;| @>=
 using expr_list = simple_list<expr>;
 using expr_list_node = containers::sl_node<expr>;
 typedef expr_list_node* raw_expr_list; // raw pointer type, for use by parser
@@ -860,7 +860,7 @@ automatic destruction, so |expr::clear| would still have to explicitly call the
 destructor for the variant; with a raw pointer it will just directly called
 |delete| for the pointer.
 
-@< Type declarations needed in definition of |struct expr@;| @>=
+@< Type declarations needed in the definition of |struct expr@;| @>=
 typedef struct application_node* app;
 
 @~Since \.{axis} has tuples, we convene that every function call takes just
@@ -1348,7 +1348,7 @@ constructors are from a |raw_id_pat| reference and from individual components.
 @h "axis-types.h"
    // so complete type definitions will be known in \.{parsetree.cpp}
 
-@< Type declarations needed in definition of |struct expr@;| @>=
+@< Type declarations needed in the definition of |struct expr@;| @>=
 using patlist = containers::simple_list<struct id_pat>;
 using raw_patlist = @[containers::sl_node<struct id_pat>*@];
 @)
@@ -1501,7 +1501,7 @@ in the language; in a let expression types of variables are deduced from the
 values provided, whereas function parameters need to have explicitly specified
 types.
 
-@< Type declarations needed in definition of |struct expr@;| @>=
+@< Type declarations needed in the definition of |struct expr@;| @>=
 typedef struct let_expr_node* let;
 
 @~After parsing, \&{let}-expression will have a single let-binding followed by a
@@ -1698,7 +1698,7 @@ void destroy_type_list(raw_type_list t)@+ {@; (type_list(t)); }
   // recursive destruction
 
 @ For user-defined functions we shall use a structure |lambda_node|.
-@< Type declarations needed in definition of |struct expr@;| @>=
+@< Type declarations needed in the definition of |struct expr@;| @>=
 typedef struct lambda_node* lambda_p;
 typedef struct rec_lambda_node* rec_lambda_p;
 
@@ -1887,7 +1887,7 @@ break;
 @*2 Conditional expressions.
 Of course we need if-then-else expressions.
 
-@< Type declarations needed in definition of |struct expr@;| @>=
+@< Type declarations needed in the definition of |struct expr@;| @>=
 typedef struct conditional_node* cond;
 
 @~The parser handles \&{elif} constructions, so we only need to handle the basic
@@ -2124,7 +2124,7 @@ discrimination_expr, @[@]
 
 @ The pointer type to this structure is called |disc|.
 
-@< Type declarations needed in definition of |struct expr@;| @>=
+@< Type declarations needed in the definition of |struct expr@;| @>=
 typedef struct discrimination_node* disc;
 
 @ Concretely, branches have an identifier |label| that indicates the variant it
@@ -2299,7 +2299,7 @@ Loops are a cornerstone of any form of non-recursive programming. The three
 flavours are |while| loops, and |for| loops iterating either over a row value,
 or over an integer range (counted |for|-loops).
 
-@< Type declarations needed in definition of |struct expr@;| @>=
+@< Type declarations needed in the definition of |struct expr@;| @>=
 typedef struct while_node* w_loop;
 typedef struct for_node* f_loop;
 typedef struct cfor_node* c_loop;
@@ -2484,7 +2484,7 @@ indices, as in selecting a matrix entry, these can be realised as a
 subscription by a tuple expression, so we define only one type of subscription
 expression.
 
-@< Type declarations needed in definition of |struct expr@;| @>=
+@< Type declarations needed in the definition of |struct expr@;| @>=
 typedef struct subscription_node* sub;
 typedef struct slice_node* slc;
 
@@ -2612,7 +2612,7 @@ break;
 These are a way to force an expression to get a specified type (provided that
 type analysis succeeds with that target type).
 
-@< Type declarations needed in definition of |struct expr@;| @>=
+@< Type declarations needed in the definition of |struct expr@;| @>=
 typedef struct cast_node* cast;
 
 @~The corresponding node type stores both type and expression.
@@ -2681,7 +2681,7 @@ break;
 @ A different kind of cast serves to obtain the current value of an overloaded
 operator symbol.
 
-@< Type declarations needed in definition of |struct expr@;| @>=
+@< Type declarations needed in the definition of |struct expr@;| @>=
 typedef struct op_cast_node* op_cast;
 
 @~We store an (operator) identifier and a type, as before represented by a
@@ -2753,7 +2753,7 @@ There is a simple kind of expression whose purpose is to signal that in its
 unique subexpression, a number of new type variables is introduced. This has no
 semantic significance, but the type checking process takes this into account.
 
-@< Type declarations needed in definition of |struct expr@;| @>=
+@< Type declarations needed in the definition of |struct expr@;| @>=
 using abstractor = @[struct abstr_node*@];
 
 @~The corresponding node type stores a number of variables and an expression.
@@ -2837,7 +2837,7 @@ break;
 %
 Simple assignment statements are quite simple as expressions.
 
-@< Type declarations needed in definition of |struct expr@;| @>=
+@< Type declarations needed in the definition of |struct expr@;| @>=
 typedef struct assignment_node* assignment;
 
 @~In a simple assignment the left hand side is just an identifier. However, we
@@ -2933,7 +2933,7 @@ The |typedef| names introduced here are shortened here to avoid a name conflict
 with types defined in \.{axis.w}, those for structures that will represent the
 same type of expression after the type checking operation.
 
-@< Type declarations needed in definition of |struct expr@;| @>=
+@< Type declarations needed in the definition of |struct expr@;| @>=
 typedef struct comp_assignment_node* comp_assignment;
 typedef struct field_assignment_node* fld_assignment;
 typedef struct comp_transform_node* comp_transform; // row or tuple component
@@ -3178,7 +3178,7 @@ break;
 Having assignments statements, it is logical to be able to build a sequence of
 expressions (statements) as well, retaining the value only of the final one.
 
-@< Type declarations needed in definition of |struct expr@;| @>=
+@< Type declarations needed in the definition of |struct expr@;| @>=
 typedef struct sequence_node* sequence;
 
 @~Since control structures and \&{let}-expressions tend to break up long chains,

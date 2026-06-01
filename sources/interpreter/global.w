@@ -2063,27 +2063,43 @@ constructors introduced in the same definition have the same arity.
 
 @ The function |process_closed_type_definition| that will be called from the
 parser to process the definition of one or more closed types or type
-constructors has quite a few arguments to accommodate the possibilities. These
-are: the list |idl| of type identifiers for the types or constructors being
-defined, their common |arity|, the combined type |iftp| of the interface
+constructors has quite a few arguments to accommodate its many possibilities.
+These are: the list |idl| of type identifiers for the types or constructors
+being defined, their common |arity|, the combined type |iftp| of the interface
 identifiers, a list |iface| of interface identifiers, a list |reptps| of
 representation types for the new closed types, and finally a list |imp| of pairs
-of an identifier and an expression that provide the implementations of the
-interface identifiers. The identifiers of the latter could be considered
-redundant here since they repeat those of |iface|, but having the user repeat
-the name of the value being implemented is helpful, allows us to check the
-correspondence with the specification part, and even allows the user to reorder
-the implementations and still get proper processing. That processing will in
-fact be introducing the implementation values sequentially, so that use can be
-made of previously defined implementation values, and at the end forming a tuple
-of them in specification order. Since the parser nowhere else passes a list of
-things that have to be identifiers (standing here for new type names), we use
-the more general possibility of a pattern list tot represent |idl|; the parser
-ensures that each pattern is just a single |name|. The same representation is
-used for |iface|, where again each |pattern| must have a |name| (we could allow
-sublists as well, which our processing handles without extra effort since we
-combine the list into a single |id_pat interface@;| anyway, but its utility
-seems limited).
+of an identifier and an expression, which expressions provide the
+implementations of the interface identifiers. The types name(s) being defined
+can be used in the interface type~|iftp| (the whole point of interface
+identifiers being to have values whose types are in terms of the new closed
+type(s)). Although it seems attractive to represent them by type variables (for
+which either the closed types being defined or the representation types later
+can be substituted), they need to be able to take type arguments when |arity>0|,
+something that type variables cannot. They are therefore represented in the way
+these types will be after processing of the definition, namely as closed types
+or type constructors, numbering them from the current |closed_count()| upwards,
+with any type arguments explicitly provided. In |reptps|, the new type names
+should not occur, but the first |arity| type variables represent the formal type
+parameters of the definition, so that in fact each type in |reptps| specifies a
+type constructor of that |arity|. The same type variables can also be used in
+|iftp| to represent the parameter types of the closed type constructor.
+
+The identifiers in |imp| could be considered redundant, since they repeat those
+given in~|iface|. However, having the user repeat the name of each
+implementation value helps avoiding errors; it also allows us to check the
+correspondence of the implementation with the specification part, and even
+allows the user to reorder the implementations and still get proper processing.
+That processing will in fact be introducing the implementation values
+sequentially, so that use can be made of previously defined implementation
+values, and at the end forming a tuple of them in specification order. Since the
+parser nowhere else passes a list of things that have to be identifiers
+(standing here for new type names), we use the more general possibility of a
+pattern list tot represent |idl|; the parser ensures that each pattern is just a
+single |name|. The same representation is used for |iface|, where again each
+|pattern| must have a |name|, which must match a definition in |imp| (we could
+allow it to have a sublist as well, which our processing handles without extra
+effort since we combine the list into a single |id_pat interface@;| anyway;
+however the utility of doing this seems limited).
 
 @< Global function definitions @>=
 void process_closed_type_definition
@@ -2111,8 +2127,9 @@ void process_closed_type_definition
        and set |implementation| to be a chain of \&{let} expressions ending
        with a tuple of those components in the order of |interface| @>
     type_expr implementation_tp;
-    @< Set |implementation_tp| to the result of substituting the |repr_types|
-       for as many type variables in |*interface_tp_p| @>
+    @< Set |implementation_tp| to the result of substituting,
+       into |*interface_tp_p|, each of the |repr_types| for the corresponding
+       |closed_type| being defined @>
     expression_ptr converted_impl;
     @< Type check and convert expression |implementation| in the strong type
       context of |implementation_tp|, and store the converted expression as
@@ -2122,13 +2139,17 @@ void process_closed_type_definition
     @< Pop the value from the evaluation stack, and distribute its components
        according to the identifiers of |interface| to variable and
        overload tables @>
-    @< Update |type_expr::closed_type_table| with the new types @>
+    @< Update |type_expr::closed_type_table| with the new... @>
   }
   @< Catch block for errors thrown while processing a closed type definition @>
 }
 
 @ This module cannot have braces because it introduces some variables that need
-to survive.
+to survive. The hard work of giving all interface identifiers their specified
+type (which represents a type constructor if |arity>0|) is done in the final
+statement, which is easy thanks to the fact that any instance of a type
+(constructor) being defined is already represented in |iftp| by the
+|closed_type| expression that will later denote it.
 
 @< Define a vector |ids| of new type identifiers, the interface
 |id_pat interface@;| and a |definition_group g@;| to hold the interface
@@ -2191,7 +2212,7 @@ closed type definition.
   throw program_error(o.str());
 }
 
-@~
+@~We must neither give to many nor too few implementation definitions.
 @< Complain that |it->name| is not implemented @>=
 { o << loc << "\nInterface value "
     << main_hash_table->name_of(it->name) @|
@@ -2199,15 +2220,67 @@ closed type definition.
   throw program_error(o.str());
 }
 
-@ Here we can use |simple_subst|, after turning |repr_types| into a vector.
+@ Deriving the type required for the implementation from the interface
+specification and the concrete |repr_types| is a bit more difficult than we
+initially thought. When |arity==0| this amounts to a straightforward
+substitution of the |repr_types|, in the style of |simple_subst|, although given
+our representation one has to substitute for atomic |closed_type| expressions
+rather than for type variables. However when |arity>0|, each of these
+|closed_type| expressions has an argument list, and each of the |repr_types|
+represents a type constructor of that |arity| that must be substituted for the
+corresponding |closed_type| node. The arguments of the |closed_type| expression
+must be substituted for the type variables in |repr_types|, and although the
+remaining parts of the |repr_types| remain unchanged, the types of the argument
+lists must themselves undergo the our root substitution. This justifies writing
+(yet another) recursive |type_expr| transformer, modelled after |simple_subst|,
+but handling the instantiations of the |repr_types| as well.
 
-@< Set |implementation_tp| to the result of substituting the |repr_types|
-   for as many type variables in |*interface_tp_p| @>=
-{ BitMap nothing(type_expr::table_size());
-  // what needs special attention |simple_subst|
-  std::vector<type_expr> assign = std::move(repr_types).to_vector();
-  implementation_tp = simple_subst(*interface_tp_p,assign,nothing);
+@< Local function definitions @>=
+type_expr closed_subst
+  (const type_expr& tp, const std::vector<type_expr>& ctors)
+{ switch (tp.raw_kind())
+  { case primitive_type: return type_expr::primitive(tp.prim());
+    case variable_type: return type_expr::variable(tp.typevar_count());
+    case function_type: return
+      type_expr::function(closed_subst(tp.func()->arg_type,ctors),
+                          closed_subst(tp.func()->result_type,ctors));
+    case row_type: return
+      type_expr::row(closed_subst(tp.component_type(),ctors));
+    case tuple_type:
+    case union_type:
+    { dressed_type_list aux;
+      for (wtl_const_iterator it(tp.tuple()); not it.at_end(); ++it)
+        aux.push_back(closed_subst(*it,ctors));
+      return type_expr::tuple_or_union(tp.raw_kind(),aux.undress());
+    }
+    case closed_type:
+    case tabled:
+    { auto nr = tp.tabled_nr(); dressed_type_list aux;
+      for (wtl_const_iterator it(tp.ctor_args()); not it.at_end(); ++it)
+        aux.push_back(closed_subst(*it,ctors));
+      if (tp.raw_kind()==closed_type and
+      nr>=type_expr::closed_count())
+      { BitMap nothing(type_expr::table_size());
+        // what needs attention from |simple_subst|
+        const type_expr& ctor = // the chosen one of the |ctors|
+          ctors[nr-type_expr::closed_count()];
+        return simple_subst(ctor,std::move(aux).to_vector(),nothing);
+      }
+      return type_expr::user_type(nr,aux.undress(),tp.raw_kind()==closed_type);
+    }
+    default: assert(false); return type_expr();
+    // there should be no undetermined type components
+  }
 }
+
+@ Having defined |closed_subst|, this module becomes a simple call to that
+function.
+
+@< Set |implementation_tp| to the result of substituting,
+   into |*interface_tp_p|, each of the |repr_types| for the corresponding
+   |closed_type| being defined @>=
+  implementation_tp =
+    closed_subst(*interface_tp_p,std::move(repr_types).to_vector());
 
 @ Type checking is done by calling |analyse_types|, which does not impose a type
 on the expression it is analysing. But we do want to impose a type here;
@@ -2246,7 +2319,7 @@ we can in fact share some modules with that code.
 { std::vector<shared_value> v;
   v.reserve(n_id);
   thread_components(interface,pop_value(),std::back_inserter(v));
-   // associate values with identifiers
+   // bind values to identifiers
   auto v_it = v.begin();
   for (auto it = g.begin(); it!=g.end(); ++it,++v_it)
   { assert(v_it!=v.end());
@@ -2276,17 +2349,17 @@ we can in fact share some modules with that code.
 @ Finally, we must adopt the static member |type_expr::closed_info|, which can
 be done by calling |type_expr::add_closed_types|.
 
-@< Update |type_expr::closed_type_table| with the new types @>=
+@< Update |type_expr::closed_type_table| with the new |arity|
+   type constructors with names from |ids| @>=
 type_expr::add_closed_types(ids,arity);
 
 @ And here are two more sections that explain things that can go wrong.
 
 @< Report a wrong number of type representations in |repts| for |ids| @>=
-{ o << loc
-    << "\nWrong number " << length(reptps)
-    << " of implementation types for type"
+{ o << "Wrong number " << length(reptps)
+  @|<< " of implementation types for type"
   @|<< (arity>0 ? " constructor" : "")
-  @|<< (ids.size()>1 ? "s" : "");
+    << (ids.size()>1 ? "s" : "");
   o << main_hash_table->name_of(ids[0]);
   for (unsigned i=1; i<ids.size(); ++i)
     o << ',' << main_hash_table->name_of(ids[i]);
