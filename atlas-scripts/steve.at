@@ -1057,7 +1057,8 @@ set warmup(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [[FaceVertsInde
        do let gamma = face_bary(Lvd, v[:d+1])
        	  then qs = monomials(finalize(parameter(x,lambda,gamma)))
 	  then stats = for q in qs do status(q,-1) od,
-	       statsH = for q in qs do status(q,HT) od
+	       statsH = for q in qs do status(q,HT) od,
+	       DMB_stats = for q in qs do is_FPP_unitary(q) od
 	  in if any(for b in stats do b < 0 od)
 	     then []
 	     elif any(for b in statsH do b < 0 od)
@@ -1069,6 +1070,11 @@ set warmup(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [[FaceVertsInde
 	     elif steve_cod_one_flag and any(for q in qs do wiggle_status_cod_one(q,HT) < 0 od)
 	     then steve_hash_small.numatch(gamma);
 	     	  []
+	     elif all(for m in DMB_stats do m > 0 od)
+	     then steve_hash_small.umatch(gamma);
+		  [v]
+	     elif any(for m in DMB_stats do m < 0 od)
+	     then []
 	     else [v]
 	     fi
        od.##
@@ -1079,7 +1085,7 @@ set warmup(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [[FaceVertsInde
 {whether to record success of warmup}
 set cold_and_warm_flag = false
 
-set FD_1_sort_flag = false
+set FD_1_sort_flag = true {change from false 6/1/26}
 
 {takes x, lambda, HT, Lvd and computes local vertices, imposing
 hermitian, pos on LKTs, pos to HT, and Dirac.}
@@ -1101,7 +1107,7 @@ set localFD_1SteveU\
 	fi}
     then LF00 = [FaceVertsIndex]: for j:#Lvd.list do [j] od
     then () = if FD_1_sort_flag
-    	      then LF00 := sort(G,Lvd,[LF00])[0]
+    	      then LF00 := sort(G,Lvd,[LF00])[0] {puts in INCREASING order by Q(gamma,gamma)}
 	      fi
     then LF01 = warmup(x,lambda,HT,Lvd,[LF00])[0]
     then () = if cold_and_warm_flag
@@ -1254,7 +1260,7 @@ set localFD_1SteveU\
 	     	     fi
 	       od.## {list of candidate vertices}
 	    fi
-    in answer:= sort_lex(answer); {needed because of comment before localFD_2SteveU}
+    in {answer:= sort_lex(answer);} {needed because of comment before localFD_2SteveU}
        if fund_face_verbose
        then prints("Found ",#answer," vertices to ht ",HT," in time ",
        	    print_time_string(elapsed_ms() - start));
@@ -1288,7 +1294,13 @@ set localFD_1SteveUmin\
 	{else steve_hash.indices(x, lambda, HT)
 	fi}
     then LF00 = [FaceVertsIndex]: for j:#Lvd.list do [j] od
+    then () = if FD_1_sort_flag
+    	      then LF00 := sort(G,Lvd,[LF00])[0] {puts in INCREASING order by Q(gamma,gamma)}
+	      fi
     then LF01 = warmup(x,lambda,HT,Lvd,[LF00])[0]
+    then () = if cold_and_warm_flag
+    	      then prints("cold and warm verts = (",#LF00,",",#LF01,")")
+	      fi
     then Q = ((ratvec,ratvec)->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBD = 0/1
     then () = if Dirac_flag {and max(for mu in LKTs(parameter(x,lambda,0*lambda)) do tensor_p_hts(mu) od) <=HT}
@@ -1378,10 +1390,10 @@ set localFD_1SteveUmin\
 	       od.## {list of candidate vertices}
 	    fi
 {next step is needed because of comment before localFD_2SteveU}
-    then () = answer:= if steve_tilde_flag
+    {then () = answer:= if steve_tilde_flag
     	      	       then for v in answer ~do v od
 		       else answer
-		       fi
+		       fi}
     in if fund_face_verbose
        then prints("Found ",#answer," vertices to min-unitary to ht ",HT," in time ",
        	    print_time_string(elapsed_ms() - start));
@@ -1413,7 +1425,13 @@ set localFD_1SteveU_graph\
 	{else steve_hash.indices(x, lambda, HT)
 	fi}
     then LF00 = [FaceVertsIndex]: for j:#Lvd.list do [j] od
+    then () = if FD_1_sort_flag
+    	      then LF00 := sort(G,Lvd,[LF00])[0] {puts in INCREASING order by Q(gamma,gamma)}
+	      fi
     then LF01 = warmup(x,lambda,HT,Lvd,[LF00])[0]
+    then () = if cold_and_warm_flag
+    	      then prints("cold and warm verts = (",#LF00,",",#LF01,")")
+	      fi
     then Q = ((ratvec,ratvec)->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBD = 0/1
     then temp_Dirac_best_flag = bool:
@@ -1500,8 +1518,8 @@ set localFD_1SteveU_graph\
 
 
 {LF0 is meant to be unitary-to-ht HT vertices, maybe with Kchar and #LQs extra coords. Output is LF1,
-same list for edges. LF0 MUST be ordered by first coordinate in order for the edge construction to work.
-(Of course that could be fixed, but I haven't bothered.)}
+same list for edges.
+LF0 MUST be ordered by first coordinate in order for the edge construction to work. NO LONGER 6/1/26}
 set localFD_2SteveU\
 ( KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, PermOrderTwo Perm2, [FaceVertsIndex] LF0) =
     [FaceVertsIndex]:
@@ -1512,6 +1530,7 @@ set localFD_2SteveU\
     then prints(new_line,"start localFD_2SteveU to height ",HT){;
     	 prints("LF0 = ",LF0)}
     fi;
+    LF0 := sort_lex(LF0); {allows disordered LFO}
     steve_hash_small.reset_with_ht(x,lambda,HT);
     {prints("in localFD_2SteveU, LF0 = ",LF0);}  {COMMENT OUT!}
     let G = x.real_form, start = elapsed_ms(), trans_hash = make_vec_hash()
@@ -1725,7 +1744,6 @@ set localFD_2SteveU\
 
 {LF0 is meant to be unitary-to-ht HT vertices, with Kchar and #LQs extra coords. Output is [LF0,LF1],
 same list for vertices and edges}
-{LF0 may be out of order, and this breaks edge hunt}
 set localFD_2SteveUgraph\
 ( KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, PermOrderTwo Perm2, [FaceVertsIndex] LF0) =
  [[FaceVertsKHash]]:
@@ -1737,6 +1755,7 @@ set localFD_2SteveUgraph\
     fi;
     steve_hash_small.reset_with_ht(x,lambda,HT);
     {prints("in localFD_2SteveUgraph, LF0 = ",LF0);}
+    LF0:=sort_lex(LF0);
     let G = x.real_form, start = elapsed_ms(), trans_hash = make_vec_hash()
     then () = for (m,n) in Perm2.trans do trans_hash.match([m,n]) od
     then () = if #LF0 = 0

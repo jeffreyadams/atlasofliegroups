@@ -2617,12 +2617,12 @@ set u_factor = rat: 4 {2; changed to 1 4/7/26}
 
 {if (predicted u_time)/(predicted to_ht_time) exceeds try_u_factor, then skip u
 in favor of to_ht. Increasing u_factor allows more u tests.}
-set try_u_factor = rat: 3 {3/4} {2/1} {4 was bad 20890} {24 or more seems good for E7_s spherical. Else??}
+set try_u_factor = rat: 3/2 {3/4} {2/1} {4 was bad 20890} {24 or more seems good for E7_s spherical. Else??}
 
 {if (predicted ht_time)/(predicted u_time) exceeds try_ht_factor, then skip ht
 in favor of u. Increasing try_ht_factor allows more to_ht tests.}
 {try_ht_factor*to_ht_factor should be at least 1 to avoid loops?}
-set try_ht_factor = rat: 3/4 {3/2} {chosen to make x_open for E7_s OK}
+set try_ht_factor = rat: 3/4 {3/4} {3/2} {chosen to make x_open for E7_s OK} {lowered to 1/2 5/30/26}
 
 {"step" is how many steps up in to_ht list to start}
 set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
@@ -3318,7 +3318,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_pick(Param p, int HT) = bool:
        	    	 then is_pure(big_unitary_hash.sig_entry(p,HT))
 		 else is_pure(to_ht(big_unitary_hash.sig_entry(p,-1),HT))
 		 fi
-       elif low_diff_def_ht(p,HT)
+       elif low_diff_def_ht(p,HT) {henceforth predictor is available}
 	    then is_pure(big_unitary_hash.sig_entry(p,HT))
        elif not low_diff_def_u(p,HT)
 	    then is_pure(to_ht(big_unitary_hash.sig_entry(p,-1),HT))
@@ -3547,7 +3547,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt(Param p, [int] HTs) = bool:
        	    then is_pure(big_unitary_hash.sig_entry(p,HT))
 	    else is_pure(to_ht(big_unitary_hash.sig_entry(p,-1),HT))
 	    fi
-       elif low_diff_def_ht(p,HT)
+       elif low_diff_def_ht(p,HT) {now predictor is available}
 	    then is_pure(big_unitary_hash.sig_entry(p,HT))
        elif not low_diff_def_u(p,HT)
 	    then is_pure(to_ht(big_unitary_hash.sig_entry(p,-1),HT))
@@ -3912,18 +3912,16 @@ set theta_induce_signature_to_ht(Param pL, int DL, RealForm G) = KTypePol:
 
 {whether to use the new Davis/Mason-Brown criterion saying FPP reps on an outside
 face of FPP might have to be coh ind}
-set is_FPP_unitary_flag = false
+set is_FPP_unitary_flag = true
 
 {IF using test, whether to stop after easy part}
-set Lucas_fast_flag = true
+set Lucas_fast_flag = false
 
-{Use Davis/Mason-Brown criterion. First bool says whether the test applies; second gives
-result of test. Second is meaningful only if first is true; I guess make result (false,false)
-otherwise?}
-set is_FPP_unitary(Param p) = (bool,bool):
-    if not is_FPP_unitary_flag then return (false,false) fi;
-    if (not is_hermitian(p)) then return (true,false) fi;
-    if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return (true,false) fi;
+{Use Davis/Mason-Brown criterion. 1 means unitary, -1 means nonunitary, 0 means don't know.}
+set is_FPP_unitary(Param p) = int:
+    if not is_FPP_unitary_flag then return 0 fi;
+    if (not is_hermitian(p)) then return -1 fi;
+    if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return -1 fi;
     let G = (p:= herm_center(p)).real_form
     then gamma = p.infinitesimal_character
     then alphavs = for alphav@j in G.simple_coroots
@@ -3940,15 +3938,15 @@ set is_FPP_unitary(Param p) = (bool,bool):
 		     fi
 		  od.##
      then () = if #alphavs = G.semisimple_rank
-	       then return (false,false) {say we don't know}
+	       then return 0 {say we don't know}
 	       fi
      then Q = KGPElt:(alphavs, p.x) {p now must be good range coh ind from Q}
      then rhou = Q.rho_u
      then () = if((p.x.involution-1)*rhou).!=
-	       then return (true,false)
+	       then big_unitary_hash.numatch(p); return -1
 	       fi
      then () = if Lucas_fast_flag
-	       then return (false,false)
+	       then return 0
 	       {in this case question reduces to L, but we choose not to do
 	       calculation on L}
 	       fi
@@ -3957,20 +3955,18 @@ set is_FPP_unitary(Param p) = (bool,bool):
      then pL = parameter(xL,p.lambda - rhou, p.nu)
      then () = assert(@:p = first_param(theta_induce_standard(pL,G)),"screwed up pL!")
      then derpLs = derived_factor_params0(pL)
-     in (true, all(for derpL in derpLs
-		   do @bool:
-		      {let () = FPP_unitary_hash_bottom_layer([(pL.x,pL.lambda)])
-		      in} is_unitary_hash_big_SIMPLE(derpL)
-		   od))
+     in if all(for derpL in derpLs
+	       do @bool: is_unitary_hash_big_SIMPLE(derpL)
+	       od)
+	then big_unitary_hash.umatch(p); 1
+	else big_unitary_hash.numatch(p); -1
+	fi
 
-{First bool says whether the test applies; second gives result of
-test. Second is meaningful only if first is true; make result
-(false,false) otherwise}
-{Can allow fancy_tester to use FPP_unitary_hash}
-set is_FPP_unitary(Param p, (Param -> bool) fancy_tester ) = (bool,bool):
-    if not is_FPP_unitary_flag then return (false,false) fi;
-    if (not is_hermitian(p)) then return (true,false) fi;
-    if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return (true,false) fi;
+{Use Davis/Mason-Brown criterion. 1 means unitary, -1 means nonunitary, 0 means don't know.}
+set is_FPP_unitary(Param p, (Param -> bool) fancy_tester ) = int:
+    if not is_FPP_unitary_flag then return 0 fi;
+    if (not is_hermitian(p)) then return -1 fi;
+    if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return -1 fi;
     let G = (p:= herm_center(p)).real_form
     then gamma = p.infinitesimal_character
     then rdi = integrality_datum(G,gamma)
@@ -3986,26 +3982,28 @@ set is_FPP_unitary(Param p, (Param -> bool) fancy_tester ) = (bool,bool):
 		     fi
 		  od.##
      then () = if #alphavs = G.semisimple_rank
-	       then return (false,false) {say we don't know}
+	       then return 0 {say we don't know}
 	       fi
      then Q = KGPElt:(alphavs, p.x) {p now must be good range coh ind from Q}
      {then ()= prints("have Q = ",Q," in is_FPP_unitary")}
      then rhou = Q.rho_u
      then () = if((p.x.involution-1)*rhou).!=
-	       then return (true,false)
+	       then return -1
 	       fi
      then () = if Lucas_fast_flag
-	       then return (false,false) {say we don't know}
+	       then return 0
 	       fi
      then L = Q.Levi
-     {then () = prints("in isfppu(fancy) at line 1834, p = ",p)}
      then xL = inverse_embed_KGB(p.x,L)
      then pL = parameter(xL,p.lambda - rhou, p.nu)
      then () = assert(@:p = first_param(theta_induce_standard(pL,G)),"screwed up pL!")
      then derpLs = derived_factor_params0(pL)
-     in (true, all(for derpL in derpLs
-		   do @bool: fancy_tester(derpL)
-		   od))
+     in if all(for derpL in derpLs
+	       do @bool: fancy_tester(derpL)
+	       od)
+	then big_unitary_hash.umatch(p); 1
+	else big_unitary_hash.numatch(p); -1
+	fi
 
 {true forces using simplest lookup for known unitaries?}
 set KUKU_flag = true
@@ -4030,15 +4028,9 @@ set KU(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]] FVKH, Pa
 	       in if all(for p in ps do (Uhash.lookup(p)).>= od)
 		  then [j]
 		  elif all(for p in ps
-			   do let (x,y) = is_FPP_unitary(p, fancy_tester)
-			      then () = if x {whether the FPP test is applicable}
-					then if y {result of FPP test}
-					     then big_unitary_hash.uhash(G).match(p)
-					     else big_unitary_hash.numatch(p)
-					     fi
-					fi
-			      in x and y
-			  od)
+			   do let m = is_FPP_unitary(p, fancy_tester)
+			      in m > 1
+			   od)
 		  then [j]
 		  else []
 		  fi
@@ -4677,11 +4669,20 @@ set localFD_1Dirac2\
     then LF0 = [FaceVertsIndex]:
 	 for v@j in Lvd.list
 	 do let p = parameter(x,lambda,v)
+	    then qs = monomials(p)
+	    then DMB_stats = for q in qs do is_FPP_unitary(q) od
 	    in if Q(v,v) > DiracBD
 	       then DTcount +:=1; []
-	       elif not (fewer_reducible_unitary_flag or all(for q in monomials(p)
+	       elif not (fewer_reducible_unitary_flag or all(for q in qs
 			    do @bool: is_pos_on_LKTs(q)
 			    od))
+	       then []
+	       elif all(for m in DMB_stats do m > 0 od)
+	       then if red_count_flag
+		    then [[j, red_count(p,HT)]]
+		    else [[j]]
+		    fi
+	       elif any(for m in DMB_stats do m < 0 od)
 	       then []
 	       elif FPP_def_flag and not FPP_def_test_wk_final(p)
 	       then []
@@ -4689,10 +4690,12 @@ set localFD_1Dirac2\
 	       	    		       	 do @bool: wiggle_status_all(q,-1) < 0
 					 od)
 	       then WcaughtCount+:=1; []
-	       elif FD_wiggle_HT_flag and any(for q in monomials(finalize(p))
+	       elif FD_wiggle_HT_flag and any(for q in monomials(p)
 	       	    		       	   do @bool: wiggle_status_all(q,HT) < 0
 					   od)
 	       then WHcaughtCount+:=1; []
+
+
 	       elif red_count_flag
 	       then [[j, red_count(p,HT)]]
 	       else [[j]]
@@ -4834,11 +4837,20 @@ set localFD_1Dirac2_by_zero\
 	    	       " at time ", print_time_string(elapsed_ms() - start))
 	    fi;
 	    let p = parameter(x,lambda,v)
+	    then qs = monomials(p)
+	    then DMB_stats = for q in qs do is_FPP_unitary(q) od
 	    in if Q(v,v) > DiracBD
 	       then DTcount +:=1; []
 	       elif not (fewer_reducible_unitary_flag or all(for q in monomials(finalize(p))
 			    do @bool: is_pos_on_LKTs(q)
 			    od))
+	       then []
+	       elif all(for m in DMB_stats do m > 0 od)
+	       then if red_count_flag
+		    then [[j, red_count(p,HT)]]
+		    else [[j]]
+		    fi
+	       elif any(for m in DMB_stats do m < 0 od)
 	       then []
 	       elif FPP_def_flag and not FPP_def_test_wk_final(p)
 	       then []

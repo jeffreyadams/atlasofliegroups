@@ -174,6 +174,63 @@ set low(Param p) = (int,int,int):
 
 set GAM(Param p) = int: (p.infinitesimal_character*p.inner_class.two_rho_check)\1
 
+{gamma meant to be dominant. count reducibility hyperplanes (gamma0,alphav) >0 int,
+(gamma0,theta*alphav) <0 int) crossed in deforming gamma to local zero
+(gamma+theta*gamma)/2. Estimates cost of is_unitary(x,gamma)}
+set red_walls(KGBElt x, ratvec gamma) = int:
+    let theta = x.involution, rd = x.root_datum, answer = int:0
+    in for av in rd.poscoroots
+       do let pos = floor(av*gamma), neg = ceil(av*theta*gamma)
+       	  in if pos >=1 and neg <= -1
+       	     then answer+:= if (av+av*theta).=
+	     	  	    then min(pos,-neg)\2
+			    else min(pos,-neg)
+			    fi
+	     fi
+       od;
+       answer
+
+set next_x(KGBElt x, ratvec gamma, int HT) = KGBElt:
+let nx = x.number, G= x.real_form
+then ans = first(for j:nx do @bool: (height(KGB(G,nx-j),gamma) > HT) od)
+in if ans < 0
+   then KGB(G,0)
+   else KGB(G,nx-ans)
+   fi
+
+{opposite to red_walls: in dual KGB algorithm, start more or less on x_open and work up (to next_x).
+This counts walls crossed in the process, so estimates cost of is_unitary_to_ht(x,gamma,HT)}
+set red_walls_to_ht(KGBElt x, ratvec gamma, int HT) = int:
+    let xH = next_x(x,gamma,HT)
+    in red_walls(x_open(x.real_form),gamma) - red_walls(xH,gamma)
+
+{could refine these to count only parity walls (smaller better answer}
+set red_walls(Param p) = red_walls(p.x,p.infinitesimal_character)
+set red_walls_to_ht(Param p, int HT) = red_walls_to_ht(p.x,p.infinitesimal_character,HT)
+
+{gamma meant to be dominant. count reducibility hyperplanes (gamma0,alphav) >0 int,
+(gamma0,theta*alphav) <0 int) crossed in deforming gamma to local zero
+(gamma+theta*gamma)/2. Estimates cost of KL_sum_at_s(x,gamma)}
+set red_walls_int(KGBElt x, ratvec gamma) = int:
+    let theta = x.involution, rd = x.root_datum, answer = int:0
+    then gamma_reg = gamma+rd.rho
+    in for av in rd.poscoroots
+       do if is_integer(av*gamma) and av*theta*gamma_reg < 0
+       	     {could also check parity}
+       	  then answer+:= 1
+	  fi
+       od;
+       answer
+
+set red_walls_to_ht_int(KGBElt x, ratvec gamma, int HT) = int:
+    let xH = next_x(x,gamma,HT)
+    in red_walls_int(x_open(x.real_form),gamma) - red_walls_int(xH,gamma)
+
+
+{could refine these to count only parity walls (smaller better answer}
+set red_walls_int(Param p) = red_walls_int(p.x,p.infinitesimal_character)
+set red_walls_to_ht_int(Param p, int HT) = red_walls_to_ht_int(p.x,p.infinitesimal_character,HT)
+
 {If NU (nu part) > LAM (lambda part) *nu_frac, then figure to_ht could work better}
 set nu_frac = 1/1
 
@@ -186,10 +243,10 @@ set gamma_frac = 1/4
 
 {part of condition that u_to_ht might be faster is GAM > diff_mult*LAM}
 
-{if target height < (GAM - LAM)*diff_frac, then figure
-is_unitary_to_ht could be faster. So largest reasonable target height
-is (GAM-LAM)*diff_frac. INCREASE to use to_ht more often}
-set diff_mult = rat: 3/2 {1/4 better than 1/8 for E7_s spherical}
+{if diff_mult*rank*(HT - LAM) >= GAM then don't try is_unitary_to_ht.
+So largest reasonable target height is (1/(diff_mult*rank))*GAM + LAM.
+DECREASE to use to_ht more often, range is (0,infty)}
+set diff_mult = rat: 1/1
 
 {if target height < GAM*diff_char_frac, then figure
 {formerly (GAM - LAM)*diff_frac}
@@ -206,8 +263,9 @@ set diff_char_frac = rat: 1/9 {1/10}{1/6, 1/4 much worse for E7 4/2/26}
 		{4/2/26: 1/4 best for Spin(6,6), with diff_KGB_char_frac 1/2?}
 set diff_KGB_char_frac = rat: 1/2 {9/10} {switch 4/2/26 based on Spin(6,6), E7_s near 17000}
 
-{if LAM < lam_frac*GAM (big nu), don't try to_ht }
-set lam_frac = rat: 1/6 {2/3}
+{if lam_mult*LAM >= GAM (big lambda), don't try to_ht
+In range [1/1,infty). DECREASE to use to_ht more often.}
+set lam_mult = rat: 2/1
 
 {whether to use to_height in computing to height N}
 {true means large nu/small ht, so is_unitary_to_ht could be better}
@@ -228,44 +286,98 @@ set low_gamma(Param p, int HT) = bool:
     {let (,,GAM) = low(p)
     in} (GAM(p)*gamma_frac) > HT
 
-{use to_ht if (low_rank_mult)*rank*HT < GAM}
-{increasing this means fewer to_ht tests} 
+
+{NOT USED now 6/1/26} 
 set low_rank_mult = rat: 2/1
 
 {true means to_ht should REALLY be better; LESS true than low_diff}
-set low_diff_def_ht(Param p, int HT) = bool:
+set low_diff_def_ht_old(Param p, int HT) = bool:
     if (HT < 0) then return  false fi;
-    let LAM = p.height, GAM = GAM(p) 
-    in 2*diff_mult*LAM < GAM and
-       (5/4)*(p.real_form.rank)*(HT {- LAM}) < GAM {rm LAM 5/27/26}
+    let LAM = p.height, GAM = GAM(p), rk = p.real_form.rank
+    in lam_mult*LAM < GAM and
+       (5/4)*diff_mult*(HT - LAM)*rk < GAM
+       {(5/4)*(p.real_form.rank)*(HT - LAM) < GAM} {rm LAM 5/27/26}
 
 {false means is_u should REALLY be better; more true than low diff}
-set low_diff_def_u(Param p, int HT) = bool:
+set low_diff_def_u_old(Param p, int HT) = bool:
     if (HT < 0) then return  false fi;
-    let LAM = p.height, GAM = GAM(p) 
-    in diff_mult*LAM < GAM and
-       (4/5)*(p.real_form.rank)*(HT {- LAM}) < GAM {rm LAM 5/27/26}
+    let LAM = p.height, GAM = GAM(p), rk = p.real_form.rank
+    in lam_mult*LAM < GAM and
+       (4/5)*diff_mult*rk*(HT - LAM) < GAM {6/1 revert to mid-april}
+       {(4/5)*(p.real_form.rank)*(HT - LAM) < GAM} {rm LAM 5/27/26}
 
 {Note HT must be in [LAM,GAM) True says it's near the bottom of that range: small HT, to_ht better}
-set low_diff(Param p, int HT) = bool:
+{to get more to_ht, DECREASE lam_mult and diff_mult}
+set low_diff_old(Param p, int HT) = bool:
     if (HT < 0) then return  false fi;
-    let LAM = p.height, GAM = GAM(p) {(LAM, , GAM) = low(p)} 
-    in diff_mult*LAM < GAM and
-       (p.real_form.rank)*(HT {- LAM}) < GAM {rm LAM 5/27/26}
+    let LAM = p.height, GAM = GAM(p), rk = p.real_form.rank
+    in lam_mult*LAM < GAM and
+       diff_mult*rk*(HT - LAM) < GAM
+       {(p.real_form.rank)*(HT - LAM) < GAM} {rm LAM 5/27/26; bad idea??}
     {more or less trying diff_frac = 1/G.rank}
     {(LAM < lam_frac*GAM) and} {(HT < diff_frac*GAM)}
     {(LAM < lam_frac*GAM) and ((GAM - LAM)*diff_frac) > HT {(HT-LAM)}}
 
+set low_diff_old_flag = true
+set low_diff_mult = rat:6/1
+
+{true means to_ht should REALLY be better; LESS true than low_diff}
+set low_diff_def_ht(Param p, int HT) = bool:
+    if low_diff_old_flag then return low_diff_def_ht_old(p,HT) fi;
+    if (HT < 0) then return  false fi;
+    2*low_diff_mult*red_walls_to_ht(p,HT) < red_walls(p)
+
+{false means is_u should REALLY be better; more true than low diff}
+set low_diff_def_u(Param p, int HT) = bool:
+    if low_diff_old_flag then return low_diff_def_u_old(p,HT) fi;
+    if (HT < 0) then return  false fi;
+    (1/2)*low_diff_mult*red_walls_to_ht(p,HT) < red_walls(p)
+
+{Note HT must be in [LAM,GAM) True says it's near the bottom of that range: small HT, to_ht better}
+set low_diff(Param p, int HT) = bool:
+    if low_diff_old_flag then return low_diff_old(p,HT) fi;
+    if (HT < 0) then return  false fi;
+    low_diff_mult*red_walls_to_ht(p,HT) < red_walls(p)
+
+set low_diff_char_mult = low_diff_mult
+set low_diff_char_old_flag = true
 set low_diff_char_time = int:0
 
+{true if we're SURE KL_sum_at_s_to_ht is faster}
+set low_diff_char_def_ht(Param p, int HT) = bool:
+    if (HT < 0) then return  false fi;
+    let start = elapsed_ms()
+    then ans = p.x.number > diff_KGB_char_frac*KGB_size(p.real_form)
+	       and (HT < (1/2)*diff_char_frac*GAM(p)) {forces LAM < diff_char_frac*GAM}
+    in ans {next low_diff_char_time +:= (elapsed_ms() - start)}
+
+{false if we're SURE KL_sum_at_s is faster}
+set low_diff_char_def_inf(Param p, int HT) = bool:
+    if (HT < 0) then return  false fi;
+    let start = elapsed_ms()
+    then ans = p.x.number > diff_KGB_char_frac*KGB_size(p.real_form)
+	       and (HT < 2*diff_char_frac*GAM(p)) {forces LAM < diff_char_frac*GAM}
+    in ans {next low_diff_char_time +:= (elapsed_ms() - start)}
+
+
 {if true, allow KL_sum_at_s_to_height}
-set low_diff_char(Param p, int HT) = bool: {false {ALWAYS use KL_sum_at_s}}
+set low_diff_char_old(Param p, int HT) = bool: {false {ALWAYS use KL_sum_at_s}}
     if (HT < 0) then return  false fi;
     let start = elapsed_ms()
     then ans = p.x.number > diff_KGB_char_frac*KGB_size(p.real_form)
 	       and (HT < diff_char_frac*GAM(p)) {forces LAM < diff_char_frac*GAM}
 	       	   {(HT - height(p)) < diff_char_frac*GAM(p)}
     in ans next low_diff_char_time +:= (elapsed_ms() - start)
+
+{if true, allow KL_sum_at_s_to_height}
+set low_diff_char(Param p, int HT) = bool: {false {ALWAYS use KL_sum_at_s}}
+    if low_diff_char_old_flag then return low_diff_char_old(p,HT) fi;
+    if (HT < 0) then return  false fi;
+    if low_diff_char_def_ht(p,HT) then return true fi;
+    if not low_diff_char_def_inf(p,HT) then return false fi;
+    let start = elapsed_ms()
+    in low_diff_char_mult*red_walls_to_ht_int(p,HT) < red_walls_int(p)\
+       next low_diff_char_time +:= (elapsed_ms() - start)
 
 set low_KL_char(Param p, int HT) = bool:
     {prints("we're in low_KL_char at ",p);}
@@ -313,7 +425,7 @@ set low_quick_char(Param p, int HT) = bool:
 set low_lam(Param p, int HT) = bool:
     if HT < 0 then return  false fi;
     {let (LAM, , GAM) = low(p)
-    in}  (p.height < lam_frac*GAM(p))
+    in}  (lam_mult*p.height < GAM(p))
 
 set prefer_quick_flag = true
 
