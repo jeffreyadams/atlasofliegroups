@@ -1050,34 +1050,35 @@ just don't enter in steve_hash_small}
 set warmup(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [[FaceVertsIndex]] FVIs) = [[FaceVertsIndex]]:
     if warmup_flag = false then return FVIs fi;
     {skipping saves 122/446 in Spin(4,4); 122/221 in steve}
-    let start= elapsed_ms(), G = x.real_form
+    let start= elapsed_ms(), G = x.real_form, stats = [int]: [], statsH = [int]: [],
+    	DMB_stats = [int]: [], DMB_statsH = [int]: []
     then answer =
     for FVI@d in FVIs
     do for v in FVI
        do let gamma = face_bary(Lvd, v[:d+1])
        	  then qs = monomials(finalize(parameter(x,lambda,gamma)))
-	  then stats = for q in qs do status(q,-1) od,
-	       statsH = for q in qs do status(q,HT) od,
-	       DMB_stats = for q in qs do is_FPP_unitary(q) od,
-	       DMB_statsH = for q in qs do is_FPP_unitary_to_ht(q,HT) od
-	  in if any(for b in statsH do b < 0 od)
+	  in statsH := for q in qs do status(q,HT) od;
+	     if any(for b in statsH do b < 0 od)
        	     then steve_hash_small.numatch(gamma);
 	     	  []
 	     elif all(for b in statsH do b > 0 od)
 	     then steve_hash_small.umatch(gamma);
 		  [v]
-	     elif any(for m in DMB_statsH do m < 0 od)
+	     elif (DMB_statsH := for q in qs do is_FPP_unitary(q) od;
+	     	   any(for m in DMB_statsH do m < 0 od))
        	     then steve_hash_small.numatch(gamma);
 	     	  []
 	     elif all(for m in DMB_statsH do m > 0 od)
 	     then steve_hash_small.umatch(gamma);
 		  [v]
-	     elif any(for m in DMB_stats do m < 0 od)
+	     elif (DMB_stats := for q in qs do is_FPP_unitary(q) od;
+	     	   any(for m in DMB_stats do m < 0 od))
 	     then []
 	     elif all(for m in DMB_stats do m > 0 od)
 	     then steve_hash_small.umatch(gamma);
 		  [v]
-	     elif any(for b in stats do b < 0 od)
+	     elif (stats := for q in qs do status(q,-1) od;
+	     	   any(for b in stats do b < 0 od))
 	     then []
 	     elif all(for b in stats do b > 0 od)
 	     then steve_hash_small.umatch(gamma);
@@ -1923,6 +1924,8 @@ set test_Steve(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [[FaceVerts
 						      fi}
 		{may need to adjust extra coords to reflect K-char to larger height}
     then local_extra_coord_flag = extra_coord_flag {and #LFKH[0][0] = 1}
+    then () = LFKH:= warmup(x,lambda,HT,Lvd,LFKH)
+{
     then ucand_list = big_unitary_hash.uhash(G).list(), nucand_list = big_unitary_hash.nuhash(G).list()
     	 {DUPLICATE ELSEWHERE?}
     then () = for p in ucand_list
@@ -1935,6 +1938,7 @@ set test_Steve(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [[FaceVerts
 		 then steve_hash_small.numatch(p.infinitesimal_character)
 		 fi
 	      od
+}
     then Q = (ratvec,ratvec ->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBD = 0/1
     then temp_Dirac_best_flag = bool:
@@ -2005,27 +2009,19 @@ set test_Steve(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [[FaceVerts
 		      [] {DiracBest says nonunitary}
 		 elif temp_Dirac_flag and Q(gamma,gamma) > DiracBD
 		 then DTcount +:= 1;
-		      {if steve_small_flag
-		      then} steve_hash_small.numatch(gamma)
-		      {fi};
+		      steve_hash_small.numatch(gamma);
 		      [] {Dirac says nonunitary}
 		 elif if #extra = 0 and extra_coord_flag
 		      then extra:=Kchar_vec(x,lambda,HT,gamma)
 		      fi;
-		      {if steve_small_flag
-		      then} steve_hash_small.postest_known_Kchar(gamma,extra)
-		      {else steve_hash.partly_indexed_postest_known_Kchar(rfnum, xlnum, htnum, gamma,extra)
-		      fi}
+		      steve_hash_small.postest_known_Kchar(gamma,extra)
        	      	 then [v##extra]
 	      	 else [] {pos test fails}
 		 fi
        	     od.##
 	then () = if fund_face_verbose
 	     	  then prints("old size = ",#LF,", new size = ",#answerd, ", vecHash size = ",
-		       {if steve_small_flag
-		       then} steve_hash_small.vecHash().size()
-		       {else steve_hash.vecHash(x, lambda, HT).size()
-		       fi})
+		       steve_hash_small.vecHash().size())
 		  fi
 	in {if fund_face_verbose then prints("result for test to ht ",HT," is ", answerd) fi;}
 	   answerd
@@ -2034,9 +2030,6 @@ set test_Steve(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [[FaceVerts
 set show_steve_flag = false
 
 set first_offset = int:0
-
-{now that steve_min_flag works with smaller H, don't need?}
-{set H1_min_factor = rat:2/1}
 
 {get verts, edges to hts[edge_offset] to feed one_level_end, with Kchar and #LQs}
 set localFD_Steve2(KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2) =
@@ -2051,10 +2044,7 @@ set localFD_Steve2(KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Pe
     then () = if fund_face_verbose
     	      then prints("orig vert count = ", #(Lvd.list))
 	      fi
-    then LF0 = {if steve_min_flag and to_ht(steve_hash_small.sigL0(),H0).!=
-    	       then localFD_1SteveUmin(x,lambda, H0, Lvd)
-	       else} localFD_1SteveU(x,lambda,H0,Lvd)
-	       {fi}
+    then LF0 = localFD_1SteveU(x,lambda,H0,Lvd)
     then () = if (#LF0).=
     	      then return ([[],[]],H0)
 	      fi
@@ -2062,13 +2052,7 @@ set localFD_Steve2(KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Pe
     	      then prints("LF0 min-unitary to height ",H0," = ",#LF0)
 	      fi
     then () = extra_coord_flag :=true
-    {then min_ht_max = max(for mu in LKTs(p0) do minBottomData.G_min_height(mu) od)}
-    then H1 = {if steve_min_flag and height(p0) > 0
-    	      	 and x.number > (#KGB(x.real_form))/3 and min_ht_max > height(p0)
-		 {and (min_ht_max-height(p0)) <= H1_min_factor*(hts[edge_offset]-height(p0))}
-    	      then min_ht_max
-    	      else} hts[edge_offset]
-	      {fi}
+    then H1 = hts[edge_offset]
     then () = if H1 > H0 {first_offset}
     	      then LF0:= test_Steve(x,lambda,H1,Lvd,[LF0])[0]
 	      fi
@@ -2076,9 +2060,6 @@ set localFD_Steve2(KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Pe
     	      then prints("LF0 to height ",H1," = ",#LF0)
 	      fi
     then LF = [LF0,  localFD_2SteveU(x,lambda,H1,Lvd,Perm2,LF0)]
-    {then () = if fund_face_verbose
-    	      then prints("LF1 with extra to height ",hts[edge_offset]," = ",LF[1])
-	      fi}
     then () = if fund_face_verbose
     	      then prints("edge/vert counts to height ",H1, " = ",
 	      	   for list in LF do #list od,"; time  = ",print_time_string(elapsed_ms() - start))
@@ -2116,8 +2097,6 @@ set localFD_Steve2_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrder
 	      	   for list in LF do #list od,"; time  = ",print_time_string(elapsed_ms() - start))
 	      fi
     in extra_coord_flag:=extra_coord_hold; (LF,hts[edge_offset])
-
-{get verts, edges to hts[edge_offset] to feed one_level_end, with Kchar and #LQs}
 
 {get verts, edges to hts[edge_offset] to feed one_level_end, with Kchar and #LQs}
 set localFD_Steve12_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2) =

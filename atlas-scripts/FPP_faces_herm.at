@@ -2612,17 +2612,17 @@ set is_unitary_test_big_SIMPLE_interrupt_old(Param p, int step) = bool:
     is_unitary_test_big_SIMPLE_interrupt_old(p, step, interrupt_base_time)
 
 {increase the interruptible times by this}
-set to_ht_factor = rat: 4{was 5; 1 bad at 20890 4/7/26} {4 4/18/26}
-set u_factor = rat: 4 {2; changed to 1 4/7/26}
+set to_ht_factor = rat: 12{was 5; 1 bad at 20890 4/7/26} {4 4/18/26}
+set u_factor = rat: 8 {2; changed to 1 4/7/26}
 
 {if (predicted u_time)/(predicted to_ht_time) exceeds try_u_factor, then skip u
 in favor of to_ht. Increasing u_factor allows more u tests.}
-set try_u_factor = rat: 3/2 {3/4} {2/1} {4 was bad 20890} {24 or more seems good for E7_s spherical. Else??}
+set try_u_factor = rat: 3/2 {3/2} {3/4} {2/1} {4 was bad 20890} {24 or more seems good for E7_s spherical. Else??}
 
 {if (predicted ht_time)/(predicted u_time) exceeds try_ht_factor, then skip ht
 in favor of u. Increasing try_ht_factor allows more to_ht tests.}
 {try_ht_factor*to_ht_factor should be at least 1 to avoid loops?}
-set try_ht_factor = rat: 3/4 {3/4} {3/2} {chosen to make x_open for E7_s OK} {lowered to 1/2 5/30/26}
+set try_ht_factor = rat: 3/4 {3/4} {3/4} {3/2} {chosen to make x_open for E7_s OK} {lowered to 1/2 5/30/26}
 
 {"step" is how many steps up in to_ht list to start}
 set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
@@ -3951,7 +3951,8 @@ set is_FPP_unitary(Param p) = int:
      then Q = KGPElt:(alphavs, p.x) {p now must be good range coh ind from Q}
      then rhou = Q.rho_u
      then () = if((p.x.involution-1)*rhou).!=
-	       then big_unitary_hash.numatch(p); return -1
+	       then big_unitary_hash.numatch(p);
+	       	    return -1
 	       fi
      then () = if Lucas_fast_flag
 	       then return 0
@@ -3996,7 +3997,8 @@ set is_FPP_unitary(Param p, (Param -> bool) fancy_tester ) = int:
      {then ()= prints("have Q = ",Q," in is_FPP_unitary")}
      then rhou = Q.rho_u
      then () = if((p.x.involution-1)*rhou).!=
-	       then return -1
+	       then big_unitary_hash.numatch(p);
+	       	    return -1
 	       fi
      then () = if Lucas_fast_flag
 	       then return 0
@@ -4046,7 +4048,7 @@ set is_FPP_unitary_to_ht(Param p, int HT) = int:
      then Q = KGPElt:(alphavs, p.x) {p now must be good range coh ind from Q}
      then rhou = Q.rho_u
      then () = if((p.x.involution-1)*rhou).!=
-	       then big_unitary_hash.numatch(p); return -1
+	       then big_unitary_hash.numatch(p); return 0 {because we don't know nonunitary to HT}
 	       fi
      then () = if Lucas_fast_flag
 	       then return 0
@@ -4889,7 +4891,8 @@ set localFD_1Dirac2_by_zero\
 (   if fund_face_verbose
     then prints(new_line,"start localFD_1Dirac2_by_zero")
     fi;
-    let G = x.real_form, start = elapsed_ms(), trans_hash = make_vec_hash()
+    let G = x.real_form, start = elapsed_ms(), trans_hash = make_vec_hash(), stats = [int]:[],
+    	statsH = [int]:[], DMB_stats = [int]:[], DMB_statsH = [int]:[]
     then () = for (m,n) in Perm2.trans do trans_hash.match([m,n]) od
     then Q = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBD = 0/1, start = elapsed_ms()
@@ -4913,21 +4916,40 @@ set localFD_1Dirac2_by_zero\
 	    fi;
 	    let p = parameter(x,lambda,v)
 	    then qs = monomials(p)
-	    then stats = for q in qs do status(q,-1) od,
-	       	 statsH = for q in qs do status(q,HT) od,
-		 DMB_stats = for q in qs do is_FPP_unitary(q) od,
-	    	 DMB_statsH = for q in qs do is_FPP_unitary_to_ht(q,HT) od
 	    in if Q(v,v) > DiracBD
 	       then DTcount +:=1; []
 	       elif not (fewer_reducible_unitary_flag or all(for q in monomials(finalize(p))
 			    do @bool: is_pos_on_LKTs(q)
 			    od))
 	       then []
-	       elif any(for b in statsH do b < 0 od) or any(for b in stats do b < 0 od) or
-	       	    any(for m in DMB_statsH do m < 0 od) or any(for m in DMB_stats do m < 0 od)
+	       elif (stats := for q in qs do status(q,-1) od;
+	       	    any(for b in stats do b < 0 od))
 	       then []
-	       elif all(for b in statsH do b > 0 od) or all(for b in stats do b > 0 od) or
-	       	    all(for m in DMB_statsH do m > 0 od) or all(for m in DMB_stats do m > 0 od)
+	       elif all(for b in stats do b > 0 od)
+	       then if red_count_flag
+		    then [[j, red_count(p,HT)]]
+		    else [[j]]
+		    fi
+	       elif (statsH := for q in qs do status(q,HT) od;
+	       	     any(for b in statsH do b < 0 od))
+	       then []
+	       elif all(for b in statsH do b > 0 od)
+	       then if red_count_flag
+		    then [[j, red_count(p,HT)]]
+		    else [[j]]
+		    fi
+	       elif (DMB_stats := for q in qs do is_FPP_unitary(q) od;
+	       	     any(for b in DMB_stats do b < 0 od))
+	       then []
+	       elif all(for b in DMB_stats do b > 0 od)
+	       then if red_count_flag
+		    then [[j, red_count(p,HT)]]
+		    else [[j]]
+		    fi
+	       elif (DMB_statsH := for q in qs do is_FPP_unitary_to_ht(q,HT) od;
+	       	     any(for b in DMB_statsH do b < 0 od))
+	       then []
+	       elif all(for b in DMB_statsH do b > 0 od)
 	       then if red_count_flag
 		    then [[j, red_count(p,HT)]]
 		    else [[j]]
