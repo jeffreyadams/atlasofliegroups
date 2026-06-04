@@ -1058,7 +1058,7 @@ set warmup(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [[FaceVertsInde
        	  then qs = monomials(finalize(parameter(x,lambda,gamma)))
 	  then stats = for q in qs do status(q,-1) od,
 	       statsH = for q in qs do status(q,HT) od,
-	       DMB_stats = for q in qs do is_FPP_unitary(q) od
+	       DMB_stats = for q in qs do is_FPP_unitary_to_ht(q,HT) od
 	  in if any(for b in stats do b < 0 od)
 	     then []
 	     elif any(for b in statsH do b < 0 od)
@@ -1074,7 +1074,7 @@ set warmup(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [[FaceVertsInde
 	     then steve_hash_small.umatch(gamma);
 		  [v]
 	     elif any(for m in DMB_stats do m < 0 od)
-	     then []
+	     then steve_hash_small.numatch(gamma); []
 	     else [v]
 	     fi
        od.##

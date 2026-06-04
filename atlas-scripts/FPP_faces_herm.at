@@ -2188,7 +2188,7 @@ set hermitian_form_irreducible_big_SIMPLE(Param p) = KTypePol:
 {this version is only for G simple, p FPP hermitian and centered}
 {First weakly good, then Lucas}
 set is_unitary_hash_big_SIMPLE_weak_Lucas(Param p) = bool:
-    {if (stat_holder := status(p,-1)).!= then return stat_holder > 0 fi;} {#1}
+    {if (stat_holder := simple_status(p,-1)).!= then return stat_holder > 0 fi;} {#1}
     let (,pL) = wkgood_Q(p), G = p.real_form {first try weakly good induction}
     then L = pL.real_form
     then goodL = good_L(p)
@@ -3910,6 +3910,14 @@ set theta_induce_signature(Param pL, RealForm G) = KTypePol:
 set theta_induce_signature_to_ht(Param pL, int DL, RealForm G) = KTypePol:
     theta_induce_K(hermitian_form_irreducible_to_ht_big(pL,DL),G)
 
+{assume cohom ind from pL to G is good range; then height on G = height on L + height_jump}
+{should be rho(u)*two_rho_check + lambda_L * two_rho_u_check}
+set height_jump(Param pL, Parabolic Q) = int:
+    let lambdaL = pL.lambda, tworhou = two_rho_u(Q), tworhouv =
+    	two_rho_check(Q.root_datum) - two_rho_check(pL.root_datum)
+    in ((tworhou + lambdaL)*tworhouv)\2
+
+
 {whether to use the new Davis/Mason-Brown criterion saying FPP reps on an outside
 face of FPP might have to be coh ind}
 set is_FPP_unitary_flag = true
@@ -4003,6 +4011,59 @@ set is_FPP_unitary(Param p, (Param -> bool) fancy_tester ) = int:
 	       od)
 	then big_unitary_hash.umatch(p); 1
 	else big_unitary_hash.numatch(p); -1
+	fi
+
+{assume cohom ind from pL to G is good range; then height on G = height on L + height_jump}
+{should be rho(u)*two_rho_check + lambda_L * two_rho_u_check}
+set height_jump(Param pL, Parabolic Q) = int:
+    let lambdaL = pL.lambda, tworhou = two_rho_u(Q), tworhouv =
+    	two_rho_check(Q.root_datum) - two_rho_check(pL.root_datum)
+    in ((tworhou + lambdaL)*tworhouv)\2
+
+{Use Davis/Mason-Brown criterion. 1 means unitary, -1 means nonunitary, 0 means don't know.}
+set is_FPP_unitary_to_ht(Param p, int HT) = int:
+    if not is_FPP_unitary_flag then return 0 fi;
+    if (not is_hermitian(p)) then return -1 fi;
+    if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return -1 fi;
+    let G = (p:= herm_center(p)).real_form
+    then gamma = p.infinitesimal_character
+    then alphavs = for alphav@j in G.simple_coroots
+		  do if gamma*alphav < 1
+		     then [j]
+		     elif gamma*alphav > 1
+		     then []
+		     else let rdi = integrality_datum(G,gamma)
+			  then ji = coroot_index(rdi,alphav)
+			  in if not is_member_sorted(tau(p))(ji)
+			     then []
+			     else [j]
+			     fi
+		     fi
+		  od.##
+     then () = if #alphavs = G.semisimple_rank
+	       then return 0 {say we don't know}
+	       fi
+     then Q = KGPElt:(alphavs, p.x) {p now must be good range coh ind from Q}
+     then rhou = Q.rho_u
+     then () = if((p.x.involution-1)*rhou).!=
+	       then big_unitary_hash.numatch(p); return -1
+	       fi
+     then () = if Lucas_fast_flag
+	       then return 0
+	       {in this case question reduces to L, but we choose not to do
+	       calculation on L}
+	       fi
+     then L = Q.Levi
+     then xL = inverse_embed_KGB(p.x,L)
+     then pL = parameter(xL,p.lambda - rhou, p.nu)
+     then () = assert(@:p = first_param(theta_induce_standard(pL,G)),"screwed up pL!")
+     then derpLs = derived_factor_params0(pL), jump = height_jump(pL,Q), G_jump = HT - height(p)
+     {first nonunitarity height for pL is height(pL) + min_{derpL}(1st nu ht for derpL-ht(derpL)).}
+     in if all(for derpL in derpLs
+	       do @bool: is_unitary_to_ht_big_SIMPLE(derpL, height(derpL)+G_jump - jump)
+	       od)
+	then add_to_u_to_ht(p,HT); 1
+	else big_unitary_hash.numatch_height(p,HT); -1
 	fi
 
 {true forces using simplest lookup for known unitaries?}
@@ -4155,7 +4216,7 @@ set known_non_unitaries_wiggle(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	  do if (not is_final(p)) or d=0
 	     then let pdef = monomials(p)
 		  in if any(for q in pdef
-			    do @bool: status(q,HT) < 0 {no saving in Spin(4,4)}
+			    do @bool: simple_status(q,HT) < 0 {no saving in Spin(4,4)}
 			    {big_unitary_hash.nu_height_lookup_bool(q,HT)}
 			    od)
 		     then answer[d]#:= j
@@ -4249,7 +4310,7 @@ set known_non_unitaries_wiggle(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	  do if (not is_final(p)) or d=0
 	     then let pdef = monomials(p)
 		  in if any(for q in pdef
-			    do @bool: status(q,-1) < 0 {no savings Spin(4,4)}
+			    do @bool: simple_status(q,-1) < 0 {no savings Spin(4,4)}
 			       {(big_unitary_hash.nulookup(q)).>=}
 			    od)
 		     then answer[d]#:= j
@@ -4266,7 +4327,7 @@ set known_non_unitaries_wiggle(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		  in for sv in short_verts {run over the d+1 (d-1)-diml faces}
 		     do let pdefi = monomials(composition_series(wiggle(CF, face_bary(Lvd,sv))))
 			in if any (for q in pdefi
-				  do @bool: status(q,-1) < 0 {no savings in Spin(4,4)}
+				  do @bool: simple_status(q,-1) < 0 {no savings in Spin(4,4)}
 				     {(big_unitary_hash.nulookup(q)).>=}
 				      {or (height(q) > _H0 and not
 				      is_unitary_test_big_SIMPLE_interrupt(q))}
@@ -4348,7 +4409,7 @@ set known_status(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     in for d:#LFDKH
        do for p@j in ps[d]
 	  do let qs = monomials(finalize(p))
-	     then stats = for q in qs do status(q,HT) od
+	     then stats = for q in qs do simple_status(q,HT) od
 	     then (U,NU) = (all(for stat in stats do stat > 0 od), any(for stat in stats do stat < 0 od))
 	     in if U
 	     	then Ulist[d]#:=j
@@ -4637,6 +4698,7 @@ set FDWcount = vec:[0,0]
 set caughtCount = int: 0
 set WcaughtCount = int:0
 set WHcaughtCount = int:0
+set FPP_edge_count = int:0
 
 {takes local data and low global faces and computes vertices and edges, imposing
 hermitian, pos on LKTs, and Dirac. Subspace is fixed points of affine involution of
@@ -4670,7 +4732,7 @@ set localFD_1Dirac2\
 	 for v@j in Lvd.list
 	 do let p = parameter(x,lambda,v)
 	    then qs = monomials(p)
-	    then DMB_stats = for q in qs do is_FPP_unitary(q) od
+	    then DMB_stats = for q in qs do is_FPP_unitary_to_ht(q,HT) od
 	    in if Q(v,v) > DiracBD
 	       then DTcount +:=1; []
 	       elif not (fewer_reducible_unitary_flag or all(for q in qs
@@ -4753,6 +4815,9 @@ set localFD_1Dirac2\
 	 for v in Edges
 	 do let nu = face_bary(Lvd, v)
 	    then p = parameter(x,lambda,nu)
+	    {then qs = monomials(p)
+	    then DMB_stats = for q in qs do is_FPP_unitary_to_ht(q,HT) od}
+	    {this catches nothing new in Spin(5,5)}
 	 {face_bary_ic(x.inner_class, face_bary(Lvd.list, v))}
 	    in  if not (fewer_reducible_unitary_flag or all(for q in monomials(p)
 			    do @bool: is_pos_on_LKTs(q)
@@ -4760,6 +4825,13 @@ set localFD_1Dirac2\
 		then [] {from now on p is pos_on_LKTs}
 		elif Q(nu,nu) > DiracBD
 		then DTcount +:=1; {prints("GOT HERE!");} []
+	        {elif all(for m in DMB_stats do m > 0 od)
+	        then if red_count_flag
+		     then [v#red_count(p,HT)]
+		     else [v]
+		     fi
+	       	elif any(for m in DMB_stats do m < 0 od)
+	       	then FPP_edge_count +:= 1; []}
 		elif FPP_def_edge_flag and not FPP_def_test_wk_final(p)
 	        then []
 		elif red_count_flag
@@ -4838,7 +4910,7 @@ set localFD_1Dirac2_by_zero\
 	    fi;
 	    let p = parameter(x,lambda,v)
 	    then qs = monomials(p)
-	    then DMB_stats = for q in qs do is_FPP_unitary(q) od
+	    then DMB_stats = for q in qs do is_FPP_unitary_to_ht(q,HT) od
 	    in if Q(v,v) > DiracBD
 	       then DTcount +:=1; []
 	       elif not (fewer_reducible_unitary_flag or all(for q in monomials(finalize(p))
