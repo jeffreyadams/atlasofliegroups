@@ -4732,20 +4732,25 @@ set localFD_1Dirac2\
 	 for v@j in Lvd.list
 	 do let p = parameter(x,lambda,v)
 	    then qs = monomials(p)
-	    then DMB_stats = for q in qs do is_FPP_unitary_to_ht(q,HT) od
+	     then stats = for q in qs do status(q,-1) od,
+	       	  statsH = for q in qs do status(q,HT) od,
+		  DMB_stats = for q in qs do is_FPP_unitary(q) od,
+	    	  DMB_statsH = for q in qs do is_FPP_unitary_to_ht(q,HT) od
 	    in if Q(v,v) > DiracBD
 	       then DTcount +:=1; []
 	       elif not (fewer_reducible_unitary_flag or all(for q in qs
 			    do @bool: is_pos_on_LKTs(q)
 			    od))
 	       then []
-	       elif all(for m in DMB_stats do m > 0 od)
+	       elif any(for b in statsH do b < 0 od) or any(for b in stats do b < 0 od) or
+	       	    any(for m in DMB_statsH do m < 0 od) or any(for m in DMB_stats do m < 0 od)
+	       then []
+	       elif all(for b in statsH do b > 0 od) or all(for b in stats do b > 0 od) or
+	       	    all(for m in DMB_statsH do m > 0 od) or all(for m in DMB_stats do m > 0 od)
 	       then if red_count_flag
 		    then [[j, red_count(p,HT)]]
 		    else [[j]]
 		    fi
-	       elif any(for m in DMB_stats do m < 0 od)
-	       then []
 	       elif FPP_def_flag and not FPP_def_test_wk_final(p)
 	       then []
 	       elif FD_wiggle_flag and any(for q in monomials(finalize(p))
@@ -4756,8 +4761,6 @@ set localFD_1Dirac2\
 	       	    		       	   do @bool: wiggle_status_all(q,HT) < 0
 					   od)
 	       then WHcaughtCount+:=1; []
-
-
 	       elif red_count_flag
 	       then [[j, red_count(p,HT)]]
 	       else [[j]]
@@ -4910,20 +4913,25 @@ set localFD_1Dirac2_by_zero\
 	    fi;
 	    let p = parameter(x,lambda,v)
 	    then qs = monomials(p)
-	    then DMB_stats = for q in qs do is_FPP_unitary_to_ht(q,HT) od
+	    then stats = for q in qs do status(q,-1) od,
+	       	 statsH = for q in qs do status(q,HT) od,
+		 DMB_stats = for q in qs do is_FPP_unitary(q) od,
+	    	 DMB_statsH = for q in qs do is_FPP_unitary_to_ht(q,HT) od
 	    in if Q(v,v) > DiracBD
 	       then DTcount +:=1; []
 	       elif not (fewer_reducible_unitary_flag or all(for q in monomials(finalize(p))
 			    do @bool: is_pos_on_LKTs(q)
 			    od))
 	       then []
-	       elif all(for m in DMB_stats do m > 0 od)
+	       elif any(for b in statsH do b < 0 od) or any(for b in stats do b < 0 od) or
+	       	    any(for m in DMB_statsH do m < 0 od) or any(for m in DMB_stats do m < 0 od)
+	       then []
+	       elif all(for b in statsH do b > 0 od) or all(for b in stats do b > 0 od) or
+	       	    all(for m in DMB_statsH do m > 0 od) or all(for m in DMB_stats do m > 0 od)
 	       then if red_count_flag
 		    then [[j, red_count(p,HT)]]
 		    else [[j]]
 		    fi
-	       elif any(for m in DMB_stats do m < 0 od)
-	       then []
 	       elif FPP_def_flag and not FPP_def_test_wk_final(p)
 	       then []
 	       elif FD_wiggle_flag and any(for q in monomials(finalize(p)) do wiggle_status_all(q,-1)<0 od)

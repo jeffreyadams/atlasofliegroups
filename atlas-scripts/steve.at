@@ -1058,23 +1058,33 @@ set warmup(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [[FaceVertsInde
        	  then qs = monomials(finalize(parameter(x,lambda,gamma)))
 	  then stats = for q in qs do status(q,-1) od,
 	       statsH = for q in qs do status(q,HT) od,
-	       DMB_stats = for q in qs do is_FPP_unitary_to_ht(q,HT) od
-	  in if any(for b in stats do b < 0 od)
-	     then []
-	     elif any(for b in statsH do b < 0 od)
+	       DMB_stats = for q in qs do is_FPP_unitary(q) od,
+	       DMB_statsH = for q in qs do is_FPP_unitary_to_ht(q,HT) od
+	  in if any(for b in statsH do b < 0 od)
        	     then steve_hash_small.numatch(gamma);
 	     	  []
 	     elif all(for b in statsH do b > 0 od)
 	     then steve_hash_small.umatch(gamma);
 		  [v]
-	     elif steve_cod_one_flag and any(for q in qs do wiggle_status_cod_one(q,HT) < 0 od)
-	     then steve_hash_small.numatch(gamma);
+	     elif any(for m in DMB_statsH do m < 0 od)
+       	     then steve_hash_small.numatch(gamma);
 	     	  []
-	     elif all(for m in DMB_stats do m > 0 od)
+	     elif all(for m in DMB_statsH do m > 0 od)
 	     then steve_hash_small.umatch(gamma);
 		  [v]
 	     elif any(for m in DMB_stats do m < 0 od)
-	     then steve_hash_small.numatch(gamma); []
+	     then []
+	     elif all(for m in DMB_stats do m > 0 od)
+	     then steve_hash_small.umatch(gamma);
+		  [v]
+	     elif any(for b in stats do b < 0 od)
+	     then []
+	     elif all(for b in stats do b > 0 od)
+	     then steve_hash_small.umatch(gamma);
+		  [v]
+	     elif steve_cod_one_flag and any(for q in qs do wiggle_status_cod_one(q,HT) < 0 od)
+	     then steve_hash_small.numatch(gamma);
+	     	  []
 	     else [v]
 	     fi
        od.##
@@ -1167,7 +1177,7 @@ set localFD_1SteveU\
     then answer = [vec]:
     	 if steve_tilde_flag
 	 then for v@k in LF01
-       	 ~do if fund_face_verbose and (k<=20 or (k%freq).=)
+       	 ~do if fund_face_verbose and (k<=10 or (k%freq).=)
 	      	  then prints("at vertex ",k," of ",length,
 	    	       " at time ", print_time_string(elapsed_ms() - start),
 		       "; vecHash size = ",{if steve_small_flag
@@ -1177,7 +1187,7 @@ set localFD_1SteveU\
 			{if steve_small_flag
 			then} prints("So far ",count," verts unitary to ",HT{,"; vecLHash size = ",
 			     steve_hash_small.vecHashL().size()}, "; running tests = ",[int]:
-			     u_counts() - u_counts0 )
+			     u_counts() - u_counts0,", GAM = ",GAM(parameter(x,lambda,Lvd.list[v[0]])))
 			{fi}
 	     fi;
 	     	  let gamma = Lvd.list[v[0]]
@@ -1569,17 +1579,13 @@ set localFD_2SteveU\
     then f = #FixedList, f0 = #Perm2.fixed
     then TranList = [int]: for v in LF0[f:] do v[0] od {all entries are f0+ index in Perm2.trans}
     then Llookup = is_member_sorted(FixedList##TranList)
-    then Glookup = {is_member_sorted(for j in FixedList do Perm2.fixed[j] od)}
-    	 	   to_bitset(for j in FixedList do Perm2.fixed[j] od)
-    then {E = sum(for list in FPP_edges_by_zero_unsorted(G) do #list od),}
-         Fverts = FPP_vertices(G)
+    then Glookup = to_bitset(for j in FixedList do Perm2.fixed[j] od)
+    then Fverts = FPP_vertices(G)
     then F = #Fverts
     then Edges = [vec]:
-    	 {let startFF = elapsed_ms()}
     	 let EdgesFixFix = [vec]:
 	       if f < 2 then []
 	       elif f < BoundB  {TEST B}
-	       	      	{(E*set_bit_positions(E)~[0]*set_bit_positions(f)~[0])\F}
 	       then let lookups = FPP_edges_by_zero_indices(G)
 	       	    in for j@i in FixedList[:f-1] {f * (E/F)/2 tests}
 	      	       do for k in FixedList[i+1:f]
@@ -1594,18 +1600,13 @@ set localFD_2SteveU\
 		    {in E7 spherical, C is seven times faster than B}
 		    {SO OMIT A1}
 	       	       do for w@m in FPPEBZ[Perm2.fixed[j]]
-    	       	       	  do if is_member_bitset(w[1],Glookup) {Glookup(w[0]) and Glookup(w[1])}
-		       	     then [[j, Lvd.lookup(Fverts[w[1]])]] {SEEMS FASTER THAN A1}
+    	       	       	  do if is_member_bitset(w[1],Glookup)
+		       	     then [[j, Lvd.lookup(Fverts[w[1]])]]
 		       	     else []
 		       	     fi
 		    	  od.##
 		       od.##
 	       fi {f < 2}
-	   {then () = FD12bzFFTime +:=elapsed_ms() - startFF}
-	   {then () = if time_verbose
-	   	     then prints("for FixFix, time is ",print_time_string(elapsed_ms() - startFF))
-		     fi}
-	   {then startFT = elapsed_ms()}
       	   then EdgesFixTrans = [vec]:
 	   	if #FixedList > 0 and #TranList > 0
 		then for j in FixedList
@@ -1623,11 +1624,6 @@ set localFD_2SteveU\
 		      od.## {[vec], all j}
 		  else []
 		  fi
-	   {then () = FD12bzFTTime +:= elapsed_ms() - startFT}
-	   {then () = if time_verbose
-	   	     then prints("for FixTranspose, time is ",print_time_string(elapsed_ms() - startFT))
-		     fi}
-	   {then startTT = elapsed_ms()}
 	   then EdgesTransTrans = [vec]: {this is the longest}
 	      if #TranList > 1
 	      then let FEL = FPP_flippable_edge_lookup(G)
@@ -1637,7 +1633,7 @@ set localFD_2SteveU\
 	      	      do let (i,j) = Perm2.trans[k-f0]
 		      	 then a = FEL([i,j]) {this is Perm2.trans[m + f0]}
 	      	      	 then cands = FPP_flippable_tetrahedra_by_zero_unsorted(G)[a]
-		      	 in if {#Perm2.trans > m+1 and} #cands > 0
+		      	 in if #cands > 0
 		      	    then for v in cands
 			      	 do let n = f0 + trans_hash.lookup(v[2:])
 				    in if n >= f0 {midpoint of v[2:] is a local vertex}
@@ -1647,27 +1643,14 @@ set localFD_2SteveU\
 				       fi
 			       	 od.## {[vec], all starting with mloc}
 			     else []
-			     fi {#Perm2.trans > m+1}
+			     fi {#cands > 0}
 		       od.## {[vec], all mloc}
 		 else []
-		 fi
-	   {then () = FD12bzTTTime +:= elapsed_ms() - startTT}
-	   {then () = if time_verbose
-	   	     then prints("for TransposeTranspose, time is ",print_time_string(elapsed_ms() - startTT))
-		     fi}
-     	   {then () = prints("EFF = ", EdgesFixFix, ", EFT = ",EdgesFixTrans,", ETT = ",EdgesTransTrans)}
-	   in  {prints("FF, FT, TT = ",[#EdgesFixFix,#EdgesFixTrans,#EdgesTransTrans]);}
-	       EdgesFixFix ## EdgesFixTrans ## EdgesTransTrans
-     {then () = if time_verbose
-     	       then prints("after Edges, time is ",print_time_string(elapsed_ms() - start))
-	       fi}
-     {then () = prints("#Edges in localFD_2SteveU = ",#Edges)} {COMMENT THIS OUT!}
+		 fi {#TranList > 1}
+	   in EdgesFixFix ## EdgesFixTrans ## EdgesTransTrans
      then length = #Edges, extra = vec:[]
      then freq = max(length\10,1)
-     then (rfnum, xlnum, htnum) = {if steve_small_flag
-     	  	  	 	  then} (0,0,0)
-				  {else steve_hash.indices(x, lambda, HT)
-				  fi}
+     then (rfnum, xlnum, htnum) = (0,0,0)
      then ()= if fund_face_verbose then prints("found ",#Edges," edges.") fi
      then LF1 = [FaceVertsIndex]:
           if steve_tilde_flag {BACKWARD through Edges}
@@ -1679,44 +1662,32 @@ set localFD_2SteveU\
 	     	   fi;
 	     let nu = face_bary(Lvd,v)
 	     then p = parameter(x,lambda,nu)
-	     in {if not (fewer_reducible_unitary_flag or all(for q in monomials(p)
-	       	      	    do @bool: is_pos_on_LKTs(q)
-			    od))
-	       	then []}
-		if Q(nu,nu) > DiracBD
+	     in if Q(nu,nu) > DiracBD
 		then DTcount +:=1;
-		{if steve_small_flag
-		then} steve_hash_small.numatch(nu)
-		{fi}; []
-	       	elif let () = extra := {if steve_small_flag
-		     	      	       then} steve_hash_small.extra_coord(face_bary(Lvd,v))
-			 	       {else steve_hash.extra_coord(x,lambda,HT,face_bary(Lvd,v))
-			 	       fi}
+		     steve_hash_small.numatch(nu);
+		     []
+	       	elif let () = extra := steve_hash_small.extra_coord(face_bary(Lvd,v))
 		     in steve_hash_small.postest_known_Kchar(face_bary(Lvd,v),extra)
 	       	then [v## if extra_coord_flag then extra else null(0) fi] {pos test passes}
-		{then prints("v = ",v, "extras = ", steve_hash.extra_coord(x,lambda,HT,face_bary(Lvd,v)));}
 		else [] {pos test fails}
-		  fi {not fewer}
+		fi {Q(nu,nu) > DiracBD}
 	      od.## {v in Edges}
-	      else for v@j in Edges {now FORWARD through Edges}
-	       	   do if fund_face_verbose and red_count_flag and (j%freq).=
-	       	      then prints("at edge ",j," of ",length,
+	   else for v@j in Edges {now FORWARD through Edges}
+	       	do if fund_face_verbose and red_count_flag and (j%freq).=
+	       	   then prints("at edge ",j," of ",length,
 	    	       	   	  " at time ", print_time_string(elapsed_ms() - start),
 		       		  "; vecHash size = ", steve_hash_small.vecHash().size())
-	     	       fi;
-	     let nu = face_bary(Lvd,v)
-	     then p = parameter(x,lambda,nu)
-	     in {if not (fewer_reducible_unitary_flag or all(for q in monomials(p)
-	       	      	    do @bool: is_pos_on_LKTs(q)
-			    od))}
-	        if Q(nu,nu) > DiracBD
-	       	then DTcount +:=1; steve_hash_small.numatch(nu);
-		     []
-		 elif let () = extra := steve_hash_small.extra_coord(face_bary(Lvd,v))
+	     	   fi;
+	       let nu = face_bary(Lvd,v)
+	       then p = parameter(x,lambda,nu)
+	       in if Q(nu,nu) > DiracBD
+	       	  then DTcount +:=1; steve_hash_small.numatch(nu);
+		       []
+		  elif let () = extra := steve_hash_small.extra_coord(face_bary(Lvd,v))
 	       	      in steve_hash_small.postest_known_Kchar(face_bary(Lvd,v),extra)
 		 then [v##if extra_coord_flag then extra else null(0) fi] {pos test passes}
 		 else [] {pos test fails}
-		 fi {not fewer}
+		 fi {Q(nu,nu) > DiracBD}
 	      od.## {v in Edges}
 	      fi {steve_tilde_flag}
     then tail = if (#LF1).=
@@ -1728,16 +1699,10 @@ set localFD_2SteveU\
        	      then LF1 := sort(G, Lvd, [LF1], tail)[0]
        	      else LF1
        	      fi
-    {then () = if steve_tilde_flag
-	      then LF1 := for v in LF1 ~do v od
-	      fi}
     in if fund_face_verbose
        then prints("After localFD_2SteveU, face counts are [",#LF0,
     		      	   	  ",",#LF1,"]");
-       	    prints("vecHash size = ",{if steve_small_flag
-	    		    	     then} steve_hash_small.vecHash(HT).size()
-				     {else steve_hash.vecHash(x,lambda,HT).size()
-				     fi})
+       	    prints("vecHash size = ", steve_hash_small.vecHash(HT).size())
        fi;
        LF1
 )
