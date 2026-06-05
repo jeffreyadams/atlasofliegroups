@@ -1456,10 +1456,14 @@ set number_xl_pairs(RealForm G)=int:big_unitary_hash.xl_sizes_cumulative(G)~[0]
 {print xl_pair in format: x_number:lambda}
 set print_xl_pair(RealForm G,int j)=void:
   let (x,lambda)=xl_pair(G,j) in prints(x.number,":", lambda)
+
 {uses the results stored in big_unitary_hash.}
 set branch_irr_hash(Param p, int D) = KTypePol:
     let CF = character_formula_to_ht(p,D)
     in big_unitary_hash.branch(K_type_pol(CF),D)
+
+set branch_std_hash(KTypePol P, int D) = KTypePol:
+    big_unitary_hash.branch(P,D)
 
 {. The next family of functions all need simple derived group. Always
 |vd.list| should be ALL vertices in the FPP; Lvd.list will be all infl
@@ -1656,6 +1660,47 @@ set next_height(KType mu)  = int:
 
 set next_height_time = int:0
 
+{if we know p unitary to HT, AND have K-char to GAM(p), next height where something could change}
+set next_height = ((Param,int,KTypePol) -> int):
+    let q = Param: SL(2,R).trivial, start_time = int:0
+    then HT_bound = GAM(q) {unitary_to_ht(HT_bound) means is_unitary}
+    then qKCF = K_type_pol(KL_sum_at_s_to_ht(HT_bound)(q))
+    then hts = [int]:[]
+ in ((Param,int,KTypePol) -> int): (Param p, int HT, KTypePol KCF):
+    start_time:=elapsed_ms();
+    if not p=q
+    then HT_bound := GAM(p); qKCF := to_ht(KCF,HT_bound);
+	 hts := for tau in monomials(branch_std_hash(qKCF,HT_bound)) do height(tau) od
+    fi;
+    let j = first(for x in hts do x > HT od)
+    in if j<0
+       then -1
+       else hts[j] {next hts:=hts[j+1:] this messes up repeated calls}
+       fi next next_height_time+:=elapsed_ms()-start_time
+
+set next_height(Param p, int HT) = int:
+    let ans = HT+1, start_time = elapsed_ms()
+    then list = next_to_lowest_new(p, ans)
+    in while height(list~[0]) < HT
+       do ans +:= 1;
+	  list := next_to_lowest_new(p,ans)
+       od;
+       next_height_time+:=elapsed_ms()-start_time;
+       ans
+
+set next_height_bad(Param p, int HT) = int:
+      if HT < height(p) then return height(p) fi;
+      let tau = LKTs(p)[0], start_time = elapsed_ms()
+      then () = while height(tau) <= HT do tau := tensor_p_big(tau) od
+      then bound = height(tau)
+      then PK = K_type_pol(character_formula_to_ht(1*p, bound))
+      then PKH = big_unitary_hash.branch(PK, HT)
+      then PKplus = PK - sum(p.real_form, for c@m in PKH do c*big_unitary_hash.K_type_formula_to_ht(m, bound)
+  od)
+      in if PKplus.=
+	 then -1
+	 else height(first_K_type(PKplus))
+	 fi next next_height_time+:=elapsed_ms()-start_time
 
 
 {. height of a smallest non-lowest K_type of standard p .}
