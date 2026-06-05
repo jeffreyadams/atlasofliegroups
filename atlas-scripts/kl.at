@@ -241,7 +241,7 @@ more often}
 let to character_formula MUCH faster than character_formulas_to_ht: 178 secs vs 978 secs}
 set gamma_frac = 1/4
 
-{part of condition that u_to_ht might be faster is GAM > diff_mult*LAM}
+{part of condition that u_to_ht might be faster is GAM > lam_mult*LAM}
 
 {if diff_mult*rank*(HT - LAM) >= GAM then don't try is_unitary_to_ht.
 So largest reasonable target height is (1/(diff_mult*rank))*GAM + LAM.

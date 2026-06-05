@@ -1561,28 +1561,33 @@ set list_all_finished(RealForm G) = [(KGBElt,ratvec)]:
        od.##
 {how much to scale semisimple rank to get ht trial jump}
 
+set next_height_time = int:0
+
 set next_to_lowest(KType mu) = KType:
-    let HT = height(mu)+1
+    let start = elapsed_ms(), HT = height(mu)+1
     then NTL = null_K_module(mu)
     then () = while NTL.=
 	      do NTL := big_unitary_hash.K_type_formula_to_ht(mu,HT) - mu;
 		 HT+:=1
 	      od
-    in first_K_type(NTL)
+    in first_K_type(NTL) next next_height_time +:=elapsed_ms() - start
 
 set next_to_lowests(KType mu) = [KType]:
-    let HT = height(mu)+1
+    let start = elapsed_ms(), HT = height(mu)+1
     then NTL = null_K_module(mu)
     then () = while NTL.=
 	      do NTL := big_unitary_hash.K_type_formula_to_ht(mu,HT) - mu;
 		 HT+:=1
 	      od
     then (bottom,) = height_split(NTL,HT)
-    in monomials(bottom)
+    in monomials(bottom) next next_height_time +:=elapsed_ms() - start
+
+set next_to_lowests_fast(KType mu, int D) = [KType]:
+    let mui = mu in for i:D do mui:=next_to_lowest(mui) od
 
 {list of (some) KTypes above mu to ht HT}
 set next_to_lowest_new = ((KType,int) -> [KType]):
-    let KHash = make_KType_hash()
+    let start = elapsed_ms(), KHash = make_KType_hash()
     then next_types = [vec]: [] {for each KType in Khash, a list of certain WEAKLY higher ones}
     then next_hts = [int]: [] {for each KType in Khash, lowest ht in next_to_lowest (if computed) or ht}
     then add_KType(KType mu) = int: {put tau in Khash, record location}
@@ -1626,7 +1631,7 @@ set next_to_lowest_new = ((KType,int) -> [KType]):
 	      if #to_do > 0 then H0 := min(for j in to_do do height(KHash.index(j)) od) fi
         od; {while #to_do}
 	answer := answer.sort_u;
-	for k in answer do KHash.index(k) od.sort_by_height
+	for k in answer do KHash.index(k) od.sort_by_height next next_height_time +:=elapsed_ms() - start
 
 set next_to_lowest_new(Param p,int HT) = [KType]:
     let LKTs = LKTs(p)
@@ -1637,7 +1642,7 @@ set next_to_lowest_new(Param p,int HT) = [KType]:
 {. gives (one of) the K-types of lowest height above mu in the
 standard of LKT mu .} {NEED USEFUL BOUND in K_type_formula.}
 set next_to_lowest_old(KType mu, int step) = KType:
-    let form = null_K_module(mu.real_form)
+    let start = elapsed_ms(), form = null_K_module(mu.real_form)
     then m = height(mu)
     then () = for j:60 from 1
 	      do let () = form :=
@@ -1647,9 +1652,7 @@ set next_to_lowest_old(KType mu, int step) = KType:
 		     fi
 		 in if form.!= then break fi
 	      od
-    in last_K_type(form)
-
-
+    in last_K_type(form) next next_height_time +:=elapsed_ms() - start
 
 {SHOULD MAKE A FORMULA USING irr p restricted to K}
 
@@ -1657,28 +1660,14 @@ set next_to_lowest_old(KType mu, int step) = KType:
 set next_height(KType mu)  = int:
     height(next_to_lowest(mu))
 
-{. next height AFTER HT at which irreducible p has a K-type}
-{set next_height(Param p, int HT) = int:
-    if HT < height(p) then return height(p) fi;
-    let PK = K_type_pol(character_formula(p))
-    then PKH = big_unitary_hash.branch(PK,HT)
-    then PKplus = PK - sum(p.real_form,for c@m in PKH do c*big_unitary_hash.K_type_formula(m) od)
-    in if PKplus.=
-       then -1
-       else height(first_K_type(PKplus))
-       fi}
-
-
-set next_height_time = int:0
-
 {if we know p unitary to HT, AND have K-char to GAM(p), next height where something could change}
 set next_height = ((Param,int,KTypePol) -> int):
-    let q = Param: SL(2,R).trivial, start_time = int:0
+    let start = int:0, q = Param: SL(2,R).trivial
     then HT_bound = GAM(q) {unitary_to_ht(HT_bound) means is_unitary}
     then qKCF = K_type_pol(KL_sum_at_s_to_ht(HT_bound)(q))
     then hts = [int]:[]
  in ((Param,int,KTypePol) -> int): (Param p, int HT, KTypePol KCF):
-    start_time:=elapsed_ms();
+    start:=elapsed_ms();
     if not p=q
     then HT_bound := GAM(p); qKCF := to_ht(KCF,HT_bound);
     	 hts := for tau in monomials(branch_std_hash(qKCF,HT_bound)) do height(tau) od
@@ -1687,51 +1676,17 @@ set next_height = ((Param,int,KTypePol) -> int):
     in if j<0
        then -1
        else hts[j] {next hts:=hts[j+1:] this messes up repeated calls}
-       fi next next_height_time+:=elapsed_ms()-start_time
-
-{if we know p unitary to HT, next height where something could change}
-{
-set next_height = ((Param,int) -> int):
-    let q = Param: SL(2,R).trivial, start_time = int:0
-    then HT_bound = GAM(q) {unitary_to_ht(HT_bound) means is_unitary}
-    then qKCF = K_type_pol(KL_sum_at_s_to_ht(HT_bound)(q))
-    then hts = [int]:[]
- in ((Param,int) -> int): (Param p, int HT):
-    start_time:=elapsed_ms();
-    if not p=q
-    then HT_bound := GAM(p); qKCF := K_type_pol(KL_sum_at_s_to_ht(HT_bound)(q:=p));
-    	 hts := for tau in monomials(branch_std_hash(qKCF,HT_bound)) do height(tau) od
-    fi;
-    let j = first(for x in hts do x > HT od)
-    in if j<0
-       then -1
-       else hts[j] {next hts:=hts[j+1:] this messes up repeated calls}
-       fi next next_height_time+:=elapsed_ms()-start_time
-}
+       fi next next_height_time+:=elapsed_ms()-start
 
 set next_height(Param p, int HT) = int:
-    let ans = HT+1, start_time = elapsed_ms()
+    let ans = HT+1, start = elapsed_ms()
     then list = next_to_lowest_new(p, ans)
     in while height(list~[0]) < HT
        do ans +:= 1;
        	  list := next_to_lowest_new(p,ans)
        od;
-       next_height_time+:=elapsed_ms()-start_time;
+       next_height_time+:=elapsed_ms()-start;
        ans
-
-set next_height_bad(Param p, int HT) = int:
-      if HT < height(p) then return height(p) fi;
-      let tau = LKTs(p)[0], start_time = elapsed_ms()
-      then () = while height(tau) <= HT do tau := tensor_p_big(tau) od
-      then bound = height(tau)
-      then PK = K_type_pol(character_formula_to_ht(1*p, bound))
-      then PKH = big_unitary_hash.branch(PK, HT)
-      then PKplus = PK - sum(p.real_form, for c@m in PKH do c*big_unitary_hash.K_type_formula_to_ht(m, bound) 
-  od)
-      in if PKplus.=
-         then -1
-         else height(first_K_type(PKplus))
-         fi next next_height_time+:=elapsed_ms()-start_time
 
 {
 called by is_unitary_test_big_SIMPLE_interrupt_Ufirst, is_unitary_test_big_SIMPLE_interrupt
@@ -1748,11 +1703,17 @@ set heights(KTypePol P) = [int]:
 
 set next_taus(KType mu, int D) = [KType]:
     if D.<= then return [] fi;
-    let tau = mu
-    in for j:D do tau := next_to_lowest(tau) od
+    let start = elapsed_ms(), tau = mu
+    in for j:D do tau := next_to_lowest(tau) od next next_height_time+:=elapsed_ms()-start
+
+set next_heights_old(KType mu, int D) = [int]:
+    for tau in next_taus(mu,D) do height(tau) od
+
+set NH_old_flag = true
 
 set next_heights(KType mu, int D) = [int]:
-    let M = 5
+    if NH_old_flag then return next_heights_old(mu,D) fi;
+    let start = elapsed_ms(), M = 5
     then P = branch_std_hash(mu,M)
     then answer = heights(P)
     in while #answer < D+1
@@ -1760,8 +1721,10 @@ set next_heights(KType mu, int D) = [int]:
 	  ; P:= branch_std_hash(mu,M)
 	  ; answer:=heights(P)
        od;
-       answer[1:D+1]
-    {for tau in next_taus(mu,D) do height(tau) od}
+       answer[1:D+1] next next_height_time+:=elapsed_ms()-start
+
+set next_heights_old(KType mu, int D) = [int]:
+    for tau in next_taus(mu,D) do height(tau) od
 
 set next_taus(Param p, int D) = [KType]:
     for mu in LKTs(p) do next_taus(mu, D) od.##.temp_sort_u[:D]
@@ -2022,6 +1985,40 @@ set report_fair() = void:
 set clear_fair() = void:
     fair_counter:=0; fair_pos_counter:=0; fair_neg_counter:=0; fair_time:=0; iwu_count:=0; iwu_time:=0
 
+{number of nonunitary detected}
+set ifu_fast_count = int:0
+
+{Use Davis/Mason-Brown criterion. -1 means nonunitary, 0 means don't know.}
+set is_FPP_unitary_fast(Param p) = int:
+    if (not is_hermitian(p)) then return -1 fi;
+    if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return -1 fi;
+    let G = (p:= herm_center(p)).real_form
+    then gamma = p.infinitesimal_character
+    then alphavs = for alphav@j in G.simple_coroots
+		  do if gamma*alphav < 1
+		     then [j]
+		     elif gamma*alphav > 1
+		     then []
+		     else let rdi = integrality_datum(G,gamma)
+			  then ji = coroot_index(rdi,alphav)
+			  in if not is_member_sorted(tau(p))(ji)
+			     then []
+			     else [j]
+			     fi
+		     fi
+		  od.##
+     then () = if #alphavs = G.semisimple_rank
+	       then return 0 {say we don't know}
+	       fi
+     then Q = KGPElt:(alphavs, p.x) {p now must be good range coh ind from Q}
+     then rhou = Q.rho_u
+     in if((p.x.involution-1)*rhou).!=
+	then big_unitary_hash.numatch(p);
+	     ifu_fast_count +:= 1;
+	     -1
+        else 0
+	fi
+
 set stat_holder = int:0
 
 {1 means unitary to HT, -1 means nonunitary to HT, 0 means don't know}
@@ -2042,7 +2039,7 @@ set simple_status(Param p, int HT) = int:
     then status_nucount+:=1; -1 {otherwise we'd have found it in ulookup}
     elif fair_use_flag
     then is_unitary_hash_big_SIMPLE_fair(p)
-    else 0
+    else is_FPP_unitary_fast(p)
     fi;
     status_time +:= elapsed_ms() - start_st;
     status_count +:= 1;
@@ -3876,7 +3873,7 @@ set is_unitary_next_big_SIMPLE(Param p) = bool:
     then FPP_flag = is_FPP(G,p.infinitesimal_character)
     then () = if not FPP_flag
 	      then if NU > LAM*nu_frac
-		   then let HT=next_height(p,height(p))
+		   then let HT=next_height(p,height(p))  {HERE WAS NEXT_HEIGHTB}
 			in if HT < 0
 			   then return true
 			   elif is_unitary_to_ht_big(p,HT)
@@ -3888,7 +3885,7 @@ set is_unitary_next_big_SIMPLE(Param p) = bool:
 	       fi {not FPP_flag}
     {then () = p := herm_center(p)}
     in if NU > LAM*nu_frac
-       then let n=next_heightB(p)
+       then let n=next_height(p)
 	    in  if (n+1).=
 		then true
 		elif is_unitary_to_ht_big_SIMPLE(p,n)
