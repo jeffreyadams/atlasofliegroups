@@ -93,22 +93,13 @@ set c_form_irreducible_to_ht_MvL (Param p,int HT, int time ) = maybe_KTP:
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
 {.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
 set c_form_irreducible_to_ht (Param p,int HT) = KTypePol:
-  if HT < 0 then return c_form_irreducible(p) fi;
-  if  {p.x.number < (9/10)*p.real_form.KGB_size} not predictor_flag and
-      ((not low_test_c_flag) or (not low(p,HT)))
-  then HF_false_low_count+:=1; return c_form_irreducible_cut(p,HT)
-  fi; {from now on low_test_c_flag is true, and low(p,HT) is true}
-  map(c_form_std_to_ht_MvL(HT), oriented_KL_sum_to_ht(HT)(p) )
+  map(c_form_std_to_ht(HT), oriented_KL_sum_to_ht(HT)(p) )
  
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
 {.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
 set c_form_irreducible_to_ht (Param p,int HT, int time) = maybe_KTP:
   if HT < 0 then return c_form_irreducible(p, time) fi;
-  if  {p.x.number < (9/10)*p.real_form.KGB_size} not predictor_flag and
-  ((not low_test_c_flag) or (not low(p,HT)))
-  then HF_false_low_count+:=1; return c_form_irreducible_cut(p,HT,time)
-  fi; {from now on low_test_c_flag is true, and low(p,HT) is true}
-  map(c_form_std_to_ht_MvL(HT,time), oriented_KL_sum_to_ht(HT)(p) )
+  map(c_form_std_to_ht(HT,time), oriented_KL_sum_to_ht(HT)(p) )
 
 { utility: compute fixed and unfixed contributions to c-form on irreducible(p)
   no deformation is done, but orientation numbers are included;
