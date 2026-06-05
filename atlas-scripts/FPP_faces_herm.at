@@ -1591,32 +1591,7 @@ set next_height(KType mu)  = int:
 
 set next_height_time = int:0
 
-{if we know p unitary to HT, next height where something could change}
-{
-set next_height = ((Param,int) -> int):
-    let q = Param: SL(2,R).trivial, start_time = int:0
-    then HT_bound = GAM(q) {unitary_to_ht(HT_bound) means is_unitary}
-    then qKCF = K_type_pol(KL_sum_at_s_to_ht(HT_bound)(q))
-    then hts = [int]:[]
- in ((Param,int) -> int): (Param p, int HT):
-    start_time:=elapsed_ms();
-    if not p=q
-    then HT_bound := GAM(p); qKCF := K_type_pol(KL_sum_at_s_to_ht(HT_bound)(q:=p));
-    	 hts := for tau in monomials(branch_std_hash(qKCF,HT_bound)) do height(tau) od
-    fi;
-    let j = first(for x in hts do x > HT od)
-    in if j<0
-       then -1
-       else hts[j] {next hts:=hts[j+1:] this messes up repeated calls}
-       fi next next_height_time+:=elapsed_ms()-start_time
-}
 
-
-{
-called by is_unitary_test_big_SIMPLE_interrupt_Ufirst, is_unitary_test_big_SIMPLE_interrupt
-is_unitary_test_big_SIMPLE_interrupted_Ufirst, is_unitary_test_big_SIMPLE_interrupted,
-is_unitary_next_big_SIMPLE
-}
 
 {. height of a smallest non-lowest K_type of standard p .}
 set next_height(Param p) = int:
