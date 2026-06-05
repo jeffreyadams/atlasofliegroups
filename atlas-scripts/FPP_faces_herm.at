@@ -15,6 +15,7 @@
 <FPP_lambdas.at
 <weak_unip.at {for check_wk_unip}
 <smallQ.at {for theta_stable_data_small}
+<sort.at {for sort_by_height}
 {BREAK HERE?}
 
 set old_test_interrupt_flag = false
@@ -1545,6 +1546,77 @@ set list_all_finished(RealForm G) = [(KGBElt,ratvec)]:
        od.##
 {how much to scale semisimple rank to get ht trial jump}
 
+set next_to_lowest(KType mu) = KType:
+    let HT = height(mu)+1
+    then NTL = null_K_module(mu)
+    then () = while NTL.=
+	      do NTL := big_unitary_hash.K_type_formula_to_ht(mu,HT) - mu;
+		 HT+:=1
+	      od
+    in first_K_type(NTL)
+
+set next_to_lowests(KType mu) = [KType]:
+    let HT = height(mu)+1
+    then NTL = null_K_module(mu)
+    then () = while NTL.=
+	      do NTL := big_unitary_hash.K_type_formula_to_ht(mu,HT) - mu;
+		 HT+:=1
+	      od
+    then (bottom,) = height_split(NTL,HT)
+    in monomials(bottom)
+
+{list of (some) KTypes above mu to ht HT}
+set next_to_lowest_new = ((KType,int) -> [KType]):
+    let KHash = make_KType_hash()
+    then next_types = [vec]: [] {for each KType in Khash, a list of certain WEAKLY higher ones}
+    then next_hts = [int]: [] {for each KType in Khash, lowest ht in next_to_lowest (if computed) or ht}
+    then add_KType(KType mu) = int: {put tau in Khash, record location}
+	 let I = KHash.size()
+	 then i = KHash.match(mu)
+	 in if i=I
+	    then next_types #:= (vec: []);
+		 next_hts #:= height(mu)
+	    fi;
+	    i
+    then add_NTL(KType mu) = (int,vec):
+	 let i = add_KType(mu)
+	 then NTL = next_types[i]
+	 in if (#NTL).= {same as next_hts[i] = height(mu)}
+	    then let NTLtaus = next_to_lowests(mu)
+		 in next_types[i] := (vec: for tau in NTLtaus
+					   do add_KType(tau)
+					   od);
+		    next_hts[i] := min(for tau in NTLtaus do height(tau) od)
+	     fi;
+	     (i,next_types[i])
+    in ((KType,int) -> [KType]): (KType mu, int HT):
+    if HT <= height(mu) then return [] fi;
+    let i = add_KType(mu), H0 = height(mu) {always biggest height on to_do}
+    then to_do = [int]: [i] {these will be K-types we need to move up from}
+    then answer = [int]: []
+    in while #to_do > 0 and H0 < HT
+       do { prints("answer = ",answer,", to_do = ",to_do,", H0 = ",H0);}
+	  let TD = #to_do
+	  in for j@ind in to_do
+	     do let (,NTL) = add_NTL(KHash.index(j))
+		in {prints("NTL = ",NTL,", next_hts[j] = ",next_hts[j]); }
+		   if next_hts[j] <= HT
+		   then for k in NTL if height(KHash.index(k)) <= HT
+			do answer#:=k;
+			to_do#:=k
+		     fi od
+		   fi
+	      od;
+	      to_do:= to_do[TD:].sort_u;
+	      if #to_do > 0 then H0 := min(for j in to_do do height(KHash.index(j)) od) fi
+	od; {while #to_do}
+	answer := answer.sort_u;
+	for k in answer do KHash.index(k) od.sort_by_height
+
+set next_to_lowest_new(Param p,int HT) = [KType]:
+    let LKTs = LKTs(p)
+    in for mu in LKTs do next_to_lowest_new(mu,HT) od.##.sort_by_height
+
 {these functions were in unity.at; give useful heights to which to try unitarity}
 
 {. gives (one of) the K-types of lowest height above mu in the
@@ -1562,14 +1634,7 @@ set next_to_lowest_old(KType mu, int step) = KType:
 	      od
     in last_K_type(form)
 
-set next_to_lowest(KType mu) = KType:
-    let HT = height(mu)+1
-    then NTL = null_K_module(mu)
-    then () = while NTL.=
-	      do NTL := big_unitary_hash.K_type_formula_to_ht(mu,HT) - mu;
-		 HT+:=1
-	      od
-    in first_K_type(NTL)
+
 
 {SHOULD MAKE A FORMULA USING irr p restricted to K}
 
