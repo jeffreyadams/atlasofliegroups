@@ -13,6 +13,9 @@ set c_form_std_to_ht_MvL(int HT) = (Param->KTypePol):(Param p): full_deform_to_h
 
 set c_form_std_to_ht_MvL(int HT, int time) = (Param->maybe_KTP):(Param p): full_deform_to_ht(p,HT,time)
 
+set c_form_std_to_ht(int HT) = (Param->KTypePol):(Param p): full_deform_to_ht{height_MvL_base}(p, HT)
+
+set c_form_std_to_ht(int HT, int time) = (Param->maybe_KTP):(Param p): full_deform_to_ht{height_MvL_base}(p,HT,time)
 
 set twisted_c_form_std_to_ht_MvL(int N) = (Param->KTypePol):(Param p):
    twisted_full_deform_to_ht(p,N)
@@ -22,6 +25,9 @@ set twisted_c_form_std_to_ht_MvL(int N, int time) = (Param->maybe_KTP):(Param p)
 
 set twisted_c_form_std_to_ht(int N) = (Param p)KTypePol:
    twisted_full_deform_to_ht(p,N)
+
+set twisted_c_form_std_to_ht_MvL(int N, int time) = (Param->maybe_KTP):(Param p):
+   twisted_full_deform_to_ht(p,N,time)
 
 {    c_form_to_ht on irreducible representations   }
 set oriented_KL_sum_to_ht  (int HT) = (Param p)ParamPol:
