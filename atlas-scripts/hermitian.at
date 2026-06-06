@@ -299,7 +299,10 @@ set_type
   , (Param -> int) time_record {time taken for full deform of p. answer < -1 means we've tried for
     -answer-2 and not succeded. answer -1 means we haven't tried.}
   , ((Param,int) -> int) time_record_bounded {time taken for full deform of p, to max of bound}
-  , (Param -> int) time_lookup {time taken for full deform of p if known, else -1}
+  , (Param -> int) time_lookup {time taken for full deform of p if known,
+				else -1 if known but no time will ever be available,
+				else -2 if completely unknown
+				else -T-3 if failed with time T}
   , (Param -> int) param_lookup {index of p in list}
   , (Param -> KTypePol) full_deform
   , ((Param,int) -> maybe_KTP) maybe_full_deform
@@ -315,84 +318,90 @@ set make_deformation_hash_time () = deformation_hash_time:
 ( let param_hash = make_Param_hash()
   then time_list = vec:[]
   then dummy = maybe_KTP: (1*LKT(U(0,0).trivial)).done
+  then FD = 1*LKT(GL(1,R).trivial)
+  then mFD = FD.done
   then clearDHT() = void:
        param_hash.clear();
        time_list :=[]
   then add_param(Param p) = (KTypePol,int):
        let I = param_hash.size()
-       then i = param_hash.match(p)
-       in (if i=I {haven't considered p}
-       	  then let start = elapsed_ms()
-	       then FD = if is_equal_rank(p.real_form)
-		      	 then full_deform_library(p)
-			 else twisted_full_deform_library(p)
-			 fi
-	       in time_list #:= elapsed_ms() - start;
-	          FD
-	  elif time_list[i] < -1 {we prevously tried full_deform, timed out}
-	  then let start = elapsed_ms()
-	       in if is_equal_rank(p.real_form)
-	       	  then full_deform_library(p) next time_list[i]:=elapsed_ms()-start - time_list[i] - 2
-	       	  else twisted_full_deform_library(p) next time_list[i]:=
-		       (elapsed_ms()- start) - (time_list[i] - 2)
-	       	  fi {adding is sensible, since that's getting closer to an answer}
-	  elif time_list[i].>=
-	       then if is_equal_rank(p.real_form)
-	       then full_deform_library(p)
-	       else twisted_full_deform_library(p)
+       then i = param_hash.match(p), start = elapsed_ms()
+       in if i=I {haven't considered p} or time_list[i] <= -3
+	  then mFD := if is_equal_rank(p.real_form)
+		      then stored_full_deform(p)
+		      else stored_twisted_full_deform(p)
+		      fi;
+	       FD:= case mFD
+		    | done(FD): {FD_new_count+:=1;}
+				start:=-1;
+				FD
+		    | timed_out: start:=elapsed_ms();
+				 if is_equal_rank(p.real_form)
+				 then full_deform_library(p)
+				 else twisted_full_deform_library(p)
+				 fi
+		     esac;
+	      if i = I
+	      then time_list #:= if start = -1
+				 then -1
+				 else elapsed_ms() - start
+				 fi
+	      else {time_list[i] <= -3}
+		   time_list[i]:= if start = -1
+				  then -1
+				  else (elapsed_ms()- start) - (time_list[i] + 3)
+				  fi
+	      fi {end of i=I or time_list[i] <= 3}
+	  else {i < I and time_list[i].>= -1; FD already computed}
+	       FD := if is_equal_rank(p.real_form)
+		     then full_deform_library(p)
+		     else twisted_full_deform_library(p) {these ought to be instant}
 	       fi
-	  else let start = elapsed_ms() {probably this case time_list[i] = -1 doesn't happen?}
-	       then FD = if is_equal_rank(p.real_form)
-		      	 then full_deform_library(p)
-			 else twisted_full_deform_library(p)
-			 fi
-	       in time_list[i]:= elapsed_ms() - start;
-		  FD
-	  fi, i)
+	  fi;
+	  (FD,i)
   then maybe_add_param(Param p, int time) = (maybe_KTP,int): {full_deform, loc of p in param_hash}
        let I = param_hash.size()
-       then i = param_hash.match(p)
-       in (if i=I
-       	   then let start = elapsed_ms()
-	        then mFD = if is_equal_rank(p.real_form)
-		     	   then full_deform_library(p,time)
-			   else twisted_full_deform_library(p,time)
-			   fi
-	       	in case mFD
-		   | timed_out: time_list #:= start - elapsed_ms() - 2;
-				mFD
-		   | done(FD): time_list #:= elapsed_ms() - start;
-			       FD.done
-		   esac
-	  elif time_list[i] < -1 {we prevously tried full_deform, timed out}
-	  then let start = elapsed_ms()
-	       then mFD = if is_equal_rank(p.real_form)
-	       	       	 then full_deform_library(p,time)
-	       	     	 else twisted_full_deform_library(p,time)
-	       	     	 fi
-	       in case mFD
-		   | timed_out: time_list[i] +:= start - elapsed_ms();
-				mFD
-		   | done(FD): time_list[i] := elapsed_ms() - start - time_list[i] - 2;
-			       FD.done {adding is sensible, since that's getting closer to an answer}
-		   esac
-	  elif time_list[i] >= 0
-	       then if is_equal_rank(p.real_form)
-	       	    then full_deform_library(p).done
-	       	    else twisted_full_deform_library(p).done
-	       	    fi
-	  else let start = elapsed_ms() {probably this case time_list[i] = -1 doesn't happen?}
-	       then mFD = if is_equal_rank(p.real_form)
-		      	  then full_deform_library(p,time)
-			  else twisted_full_deform_library(p,time)
-			  fi
-	       in case mFD
-		   | timed_out: time_list[i] +:= start - elapsed_ms() - 1;
-				mFD
-		   | done(FD): time_list[i] := elapsed_ms() - start - time_list[i] - 1;
-			        FD.done {adding is sensible, since that's getting closer to an answer}
-		  esac
-	   fi,i)
+       then i = param_hash.match(p), start = elapsed_ms()
+       in  if i=I or time_list[i] <= -3
+	   then mFD := if is_equal_rank(p.real_form)
+		       then stored_full_deform(p)
+		       else stored_twisted_full_deform(p)
+		       fi;
+		mFD := case mFD
+		       |done(FD): {FD_new_count+:=1;}
+				  start :=-1;
+				  mFD
+		       |timed_out: start := elapsed_ms();
+				   if is_equal_rank(p.real_form)
+				   then full_deform_library(p,time)
+				   else twisted_full_deform_library(p,time)
+				   fi
+		       esac;
+		if i = I
+		then time_list #:= if start = -1
+				   then -1
+				   else case mFD
+					|done(FD): elapsed_ms() - start
+					|timed_out: (start - elapsed_ms()) - 3
+					esac
+				   fi
+		else {time_list[i] <= -3; we prevously tried full_deform, timed out}
+		     time_list[i] := if start = -1
+				     then -1
+				     else case mFD
+					  |done(FD): elapsed_ms() - start - (time_list[i] + 3)
+					  |timed_out(): time_list[i] - (elapsed_ms() - start)
+					  esac
+				      fi
+		fi
+	  else {i < I and time_list[i] >= -1}
+	       mFD := if is_equal_rank(p.real_form)
+		      then full_deform_library(p).done
+		      else twisted_full_deform_library(p).done
+		      fi
+
+	  fi;
+	  (mFD,i)
    in
   ( ( -> int): {size} @int: param_hash.size()
   , ( -> ): {clear} clearDHT
@@ -403,20 +412,20 @@ set make_deformation_hash_time () = deformation_hash_time:
     in time_list[j]
   , (Param -> int): {time_lookup}  (Param p):
     let j = param_hash.lookup(p)
-    in if j<0 then -1 else time_list[j] fi
+    in if j<0 then -2 else time_list[j] fi
   , (Param -> int): {param_lookup} (Param p): param_hash.lookup(p)
   , (Param -> KTypePol): {full_deform} (Param p):
     let (FD,) = add_param(p) in FD
   , ((Param,int) -> maybe_KTP): {maybe_full_deform} (Param p, int time):
     let (mFD,) = maybe_add_param(p,time) in mFD
   , (Param -> bool): {is_full_deformed} (Param p):
-    let j = param_hash.lookup(p) in j>=0 and time_list[j] >= 0
+    let j = param_hash.lookup(p) in j>=0 and time_list[j] >= -1
   , (int -> Param): {param_index} (int j): param_hash.index(j)
   , (int -> int): {time_index} (int j): time_list[j]
   , ( -> Param_hash): {ParamHash} @Param_hash: param_hash
   , ( -> vec): {timeList} @vec: time_list
   )
-  )
+)
 
 set defHashTime = make_deformation_hash_time()
 
