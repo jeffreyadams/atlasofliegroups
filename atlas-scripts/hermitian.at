@@ -1312,6 +1312,20 @@ set u_predictor_old(Param p, int time) = int:
 	     near x_open is known, then the predecessors are often nearly known}
        	     ans next predictor_time+:= elapsed_ms() - start_pred; predictor_count+:=1
 
+{record (GAM, height, #partial_block, #reducibility_points)}
+set stats = (Param -> (int,int,int,int)):
+    let phash = Param_hash: make_Param_hash()
+    then stats = [(int,int,int,int)]: [] {one for each Param: (GAM,height, #partial_block, #reducibility_points)}
+    then add_param(Param q) = int:
+	 let I = phash.size()
+	 then i = phash.match(q)
+	 in if i = I
+	    then stats #:=(GAM(q),height(q), #partial_block(q), #reducibility_points(q))
+	    fi;
+	    i
+     in
+     (Param -> (int,int,int,int)): (Param q): stats[add_param(q)]
+
 set GAM_HT_EXP = int: 1
 set PB_EXP = int: 0
 
