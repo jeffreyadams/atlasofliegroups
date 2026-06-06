@@ -221,14 +221,7 @@ if height < 0 then return full_deform_library(p) fi;
 if full_deform_old_flag then return full_deform_to_height_MvL_old(p,height) fi;
 if deform_script_flag then return recursive_deform_scr(p,height) fi;
 FDH_count+:=1;
-( {let mFD = full_deform(p,2) {if full_deform was already computed, it'll come up fast}
-  in case mFD
-     | done(FD): return to_ht(FD,height)
-     |timed_out:}
-     {if not low(p,height)
-     then FD_false_low_count+:=1; return to_ht(full_deform_library(p),height)
-     fi;} {try NOT making a choice one term at a time}
-     let !empty_K=null_K_module(p.real_form), !empty=null_module(p), start = elapsed_ms()
+(    let !empty_K=null_K_module(p.real_form), !empty=null_module(p), start = elapsed_ms()
      then output = empty_K, def = empty
      then P = empty +
      { snap p down to a reducibility point, or tempered parameter }
