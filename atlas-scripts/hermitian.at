@@ -1227,49 +1227,43 @@ set list_bad(int minTime) = void:
 
 set wsf_time = int:0
 
-set worst_so_far(Param p, int H) = int:
+{SHOULD ONLY USE FOR TO HT >= ht(p)}
+set worst_so_far_ht(Param p, int H) = int:
     let start_wsf = elapsed_ms()
-    in if H.>= then {this is what we do for a new test of p to height: look at all tests of p
-       	    	  to lower heights (pos, interrupted}
-       	 let TH = #tested_pos_to_ht_times
-     	 then top_j = min(TH, H-height(p)+1)
-     	 in let I_s = for j:top_j {can't be negative tests below H, or we wouldn't be asking}
-      	    	      do vec: [tested_pos_to_ht_hashes[j].lookup(p),
+    then TH = #tested_pos_to_ht_times
+    then top_j = min(TH, H-height(p)+1)
+    in let I_s = for j:top_j {can't be negative tests below H, or we wouldn't be asking}
+		      do vec: [tested_pos_to_ht_hashes[j].lookup(p),
 			       tested_inter_to_ht_hashes[j].lookup(p)]
-	    	      od {where p shows up in each of these test lists}
-  	    then j_last = last(for j:top_j do I_s[j] != [-1,-1] od) {greatest height where it appears}
-  	    then index = int: -1
-  	    in wsf_time +:= elapsed_ms() - start_wsf;
-	       if j_last >= 0 {well, if it DOES appear}
-     	       then if (index:= I_s[j_last][0])>=0
-     	       	    then 2*tested_pos_to_ht_times[j_last][index]
-	  	    else 5*tested_inter_to_ht_times[j_last][I_s[j_last][1]]
-	  	    fi
-     		else {if p hasn't been tested at all, take worst of all q's tested to H}
-		     max( (tested_inter_to_ht_times[:top_j] ##  tested_neg_to_ht_times[:top_j]
-	    	     	  ## tested_pos_to_ht_times[:top_j] ##[[0]]).##)
-     	        fi {j_last >=0}
-    else {this is what we do for a new unitary test of p: look at all interrupted tests of p}
-    	 {should I look also at tests of p to height??}
-	 let index = tested_inter_hash.lookup(p) {where p shows up in interrupted list}
-	     then I_s = for hash@j in tested_pos_to_ht_hashes
-	     	      	    do vec: [hash.lookup(p),
-			       tested_inter_to_ht_hashes[j].lookup(p)]
-			    od
-	     then j_last = last(for I in I_s do I != [-1,-1] od), index_to_ht = int:-1
-	     then to_ht_worst = if j_last < 0
-	     	  	      	then 0
-				elif (index_to_ht := I_s[j_last][0]) >= 0
-				then 2*tested_pos_to_ht_times[j_last][index_to_ht]
-				else 5*tested_inter_to_ht_times[j_last][I_s[j_last][1]]
-				fi
-    	 in wsf_time +:= elapsed_ms() - start_wsf;
-	    if index >= 0 {IF it shows up}
-	    then max(5*tested_inter_times[index], to_ht_worst)
-    	    else {if p hasn't been tested at all, take worst of all q's tested}
-	    max(tested_neg_times##tested_pos_times##tested_inter_times##[0])
-    	    fi {index >=0}
-    fi {H.>=}
+		      od {where p shows up in each of these test lists}
+       then j_last = last(for j:top_j do I_s[j] != [-1,-1] od) {greatest height where it appears}
+       then index = int: -1
+       in wsf_time +:= elapsed_ms() - start_wsf;
+	  if j_last >= 0 {well, if it DOES appear}
+	  then if (index:= I_s[j_last][0])>=0
+	       then 2*tested_pos_to_ht_times[j_last][index]
+	       else 5*tested_inter_to_ht_times[j_last][I_s[j_last][1]]
+	       fi
+	   else {if p hasn't been tested at all, take worst of all q's tested to H}
+		max( (tested_inter_to_ht_times[:top_j] ##  tested_neg_to_ht_times[:top_j]
+			  ## tested_pos_to_ht_times[:top_j] ##[[0]]).##)
+	   fi {j_last >=0}
+
+set worst_so_far_u(Param p) = int:
+    let start_wsf = elapsed_ms(), wsfh = worst_so_far_ht(p, GAM(p))
+    then index = tested_inter_hash.lookup(p) {where p shows up in interrupted list}
+    in wsf_time +:= elapsed_ms() - start_wsf;
+       if index >= 0 {IF it shows up}
+       then max(5*tested_inter_times[index], wsfh)
+       else {if p hasn't been tested at all, take worst of all q's tested}
+	    max(tested_neg_times##tested_pos_times##tested_inter_times##[wsfh])
+       fi {index >=0}
+
+set worst_so_far(Param p, int H) = int:
+    if H >= height(p)
+    then worst_so_far_ht(p,H)
+    else worst_so_far_u(p)
+    fi
 
 set didnt_finish_u_count = int: 0
 
