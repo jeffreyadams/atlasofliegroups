@@ -1328,17 +1328,36 @@ set stats = (Param -> (int,int,int,int)):
 
 set GAM_HT_EXP = int: 1
 set PB_EXP = int: 0
+set RP_EXP = int: 0
+set HTht_EXP = int: 1
 
 {assume all terms in qlist same inf char}
 set GAM_HTs_noPKL([Param] qlist) = [int]:
     let GAM = GAM(qlist[0])
-    in for q in qlist do (GAM - height(q))^GAM_HT_EXP od
+    in for q in qlist do (#reducibility_points(q)^RP_EXP)*((GAM - height(q))^GAM_HT_EXP) od
 
-set GAM_HTs([Param] qlist) = [int]:
+set GAM_HTs_noPKL([Param] qlist, int HT) = [int]:
+    let GAM = GAM(qlist[0])
+    in for q in qlist do (#reducibility_points(q)^RP_EXP)*((GAM - height(q))^GAM_HT_EXP)*
+			 ((HT - height(q) + 1)^HTht_EXP) od
+
+set GAM_HTs_old([Param] qlist) = [int]:
     if PB_EXP = 0 then return GAM_HTs_noPKL(qlist) fi;
     let GAM = GAM(qlist[0])
-    in for q in qlist do (#partial_block(q)^PB_EXP) * ((GAM - height(q))^GAM_HT_EXP) od
+    in for q in qlist do (#reducibility_points(q)^RP_EXP)*(#partial_block(q)^PB_EXP) *
+			 ((GAM - height(q))^GAM_HT_EXP) od
 
+set GAM_HTs([Param] qlist) = [int]:
+    for q in qlist do let (g,h,p,r) = stats(q) in (g-h)^GAM_HT_EXP * p^PB_EXP *r^RP_EXP od
+
+set GAM_HTs_old([Param] qlist, int HT) = [int]:
+    if PB_EXP = 0 then return GAM_HTs_noPKL(qlist) fi;
+    let GAM = GAM(qlist[0])
+    in for q in qlist do (#reducibility_points(q)^RP_EXP)*(#partial_block(q)^PB_EXP) *
+			 ((GAM - height(q))^GAM_HT_EXP)*((HT - height(q) + 1)^HTht_EXP) od
+
+set GAM_HTs([Param] qlist, int HT) = [int]:
+    for q in qlist do let (g,h,p,r) = stats(q) in (g-h)^GAM_HT_EXP * p^PB_EXP * r^RP_EXP * (HT-h+1)^HTht_EXP od
 
 {predict times for full_deform on qlist based on some data}
 {some_times is a list of times of size #qlist, -1 if know nothing}
