@@ -1359,17 +1359,30 @@ set GAM_HTs_old([Param] qlist, int HT) = [int]:
 set GAM_HTs([Param] qlist, int HT) = [int]:
     for q in qlist do let (g,h,p,r) = stats(q) in (g-h)^GAM_HT_EXP * p^PB_EXP * r^RP_EXP * (HT-h+1)^HTht_EXP od
 
+{Number of K-types in branch_std(q) to ht H}
+{would need to load K_types.at}
+{set NUMK(Param q, int HT) = int:
+    sum(for c@tau in branch_std(1*q,HT) do c.int_part od)}
+
 {predict times for full_deform on qlist based on some data}
-{some_times is a list of times of size #qlist, -1 if know nothing}
+{some_times is a list of times of size #qlist, -1 if CAN NEVER KNOW anything, -2 if unknown so far}
 {result is full list of predicted times}
 set pred([Param] qlist,[int] some_times) = [int]:
-    let sums = [int]: [1,0] {first coord is from GAM_HT, second from some_times}
+    let sums0 = int: 1, sums1 = int: 0 {first coord is from GAM_HT, second from some_times}
     then GAM_HTs = GAM_HTs(qlist), factor = 1/1
     in for T@j in some_times
-       do if T.>= then sums+:=[GAM_HTs[j],T] fi
+       do if T.>= then sums0+:= GAM_HTs[j]; sums1 +:= T fi
        od;
-       factor := sums[1]/sums[0];
-       for n in GAM_HTs do floor(n*factor) od
+       {factor := sums1/sums0;}
+       for n in GAM_HTs do floor((n*sums1)\sums0) od
+
+set pred([Param] qlist,[int] some_times, int HT) = [int]:
+    let sums0 = int: 1, sums1 = int: 0 {first coord is from GAM_HT, second from some_times}
+    then GAM_HTs = GAM_HTs(qlist,HT)
+    in for T@j in some_times
+       do if T.>= then sums0+:= GAM_HTs[j]; sums1 +:= T fi
+       od;
+       for n in GAM_HTs do floor((n*sums1)\sums0) od
 
 set u_predictor_old(Param p) = int:
     u_predictor_old(p,20*interrupt_base_time) {change 5 to 10 4/7/26; 20 4/9}
