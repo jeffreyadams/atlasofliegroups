@@ -427,7 +427,7 @@ set low_lam(Param p, int HT) = bool:
     {let (LAM, , GAM) = low(p)
     in}  (lam_mult*p.height < GAM(p))
 
-set prefer_quick_flag = true
+set prefer_quick_flag = false {true; changed 6/5/26 evening}
 
 set prefer_quick_char_flag = false {terrible luck with true on x_open(E7_s)}
 
@@ -451,7 +451,7 @@ set low_char_flag = true
 {if true, allow hermitian_form_irreducible_to_ht; if false, truncate hermitian_form_irreducible}
 set low(Param p, int HT) = bool:
     if HT < 0 then return false
-    elif predictor_flag then return true {decided elsewhere to try to_ht}
+    {elif predictor_flag then return true {decided elsewhere to try to_ht}}
     elif not low_flag
     then return true
     elif prefer_quick_flag 

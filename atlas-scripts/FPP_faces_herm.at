@@ -3307,7 +3307,8 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
 {whether to choose between is_unitary and is_unitary_to_ht just on low(p,HT)}
 set low_u_flag = true
 
-set is_unitary_to_ht_big_SIMPLE_interrupt_pick(Param p, int HT) = bool:
+{remove unneeded _pick from name 6/6/26}
+set is_unitary_to_ht_big_SIMPLE_interrupt(Param p, int HT) = bool:
        if (stat_holder:= simple_status(p,HT)).!=
        then stat_holder > 0
        elif not predictor_flag
@@ -3536,18 +3537,22 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_Ufirst(Param p, [int] HTs) = bool:
       fi
 
 set is_unitary_to_hts_big_SIMPLE_interrupt(Param p, [int] HTs) = bool:
-    let HT = HTs~[0]
-    in if (stat_holder:= simple_status(p,HTs~[0])).!=
+    let HTfirst = HTs[0], HTlast = HTs~[0]
+    in if (stat_holder:= simple_status(p,HTlast)).!=
        then stat_holder > 0
        elif not predictor_flag
-       then if low(p,HT)
-       	    then is_pure(big_unitary_hash.sig_entry(p,HT))
-	    else is_pure(to_ht(big_unitary_hash.sig_entry(p,-1),HT))
+       then if low(p,HTs[0])
+       	    then all(for HT in HTs
+	    	     do @bool: is_pure(big_unitary_hash.sig_entry(p,HT))
+		     od) {run through!}
+	    else is_pure(to_ht(big_unitary_hash.sig_entry(p,-1),HTlast))
 	    fi
-       elif low_diff_def_ht(p,HT) {now predictor is available}
-	    then is_pure(big_unitary_hash.sig_entry(p,HT))
-       elif not low_diff_def_u(p,HT)
-	    then is_pure(to_ht(big_unitary_hash.sig_entry(p,-1),HT))
+       elif low_diff_def_ht(p,HTfirst) {now predictor is available}
+	    then all(for HT in HTs
+	    	     do @bool: is_pure(big_unitary_hash.sig_entry(p,HT))
+		     od) {run through!}
+       elif not low_diff_def_u(p,HTfirst)
+	    then is_pure(to_ht(big_unitary_hash.sig_entry(p,-1),HTlast))
        elif Ufirst_flag
        then is_unitary_to_hts_big_SIMPLE_interrupt_Ufirst(p, HTs)
        else is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(p, HTs)

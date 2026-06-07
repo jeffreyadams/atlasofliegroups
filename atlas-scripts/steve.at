@@ -186,7 +186,7 @@ set pos_tester(KGBElt x, ratvec lambda,int HT,ratvec gamma) = bool:
     let p = parameter(x,lambda,gamma), G = x.real_form
     then qs = monomials(1*p)
     in all(for q in qs
-       	   do @bool: is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
+       	   do @bool: is_unitary_to_ht_big_SIMPLE_interrupt{_pick}(q,HT)
 	   od) {next old_testing_flag:=OTF_hold}
 
 {should be called only if height(x,lambda,0) > 0 and HT >= minBottomData.G_min_height(x,lambda)}
@@ -201,7 +201,7 @@ set pos_tester_min(KGBElt x, ratvec lambda,int HT,ratvec gamma) = bool:
        	    return false
        fi;
        all (for q in qs
-       	    do @bool: is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
+       	    do @bool: is_unitary_to_ht_big_SIMPLE_interrupt{_pick}(q,HT)
 	    od) {next old_testing_flag:=OTF_hold}
 
 {compute vectors of size 2 giving [index of K-char, #Langlands quotients]}
@@ -232,10 +232,10 @@ set pos_tester_known_Kchar(KGBElt x, ratvec lambda,int HT,ratvec gamma, vec KCv)
     then qs = monomials(1*p)
     in if extra_coord_flag
        then (all (for q in qs
-       	    	  do @bool: is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
+       	    	  do @bool: is_unitary_to_ht_big_SIMPLE_interrupt{_pick}(q,HT)
 	       	  od),KCv)
        else (all (for q in qs
-       	    	  do @bool: is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
+       	    	  do @bool: is_unitary_to_ht_big_SIMPLE_interrupt{_pick}(q,HT)
 	      	  od),[])
        fi {next old_testing_flag:=OTF_hold}
 
@@ -247,11 +247,11 @@ set pos_tester_Kchar(KGBElt x, ratvec lambda,int HT,ratvec gamma) = (bool, vec):
     then qs = monomials(1*p)
     in if extra_coord_flag
        then (all (for q in qs
-       	    	  do @bool: is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
+       	    	  do @bool: is_unitary_to_ht_big_SIMPLE_interrupt{_pick}(q,HT)
 	       	  od),
        	    [Kpol_hash.match(K_type_pol(character_formula_to_ht(1*p,HT))),#qs])
        else (all (for q in qs
-       	    	  do @bool: is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
+       	    	  do @bool: is_unitary_to_ht_big_SIMPLE_interrupt{_pick}(q,HT)
 	       	  od),[])
        fi {next old_testing_flag:=OTF_hold}
 
@@ -275,10 +275,10 @@ set pos_tester_known_Kchar_min(KGBElt x, ratvec lambda,int HT,ratvec gamma, vec 
        fi;
        if extra_coord_flag
        then (all (for q in qs
-       	    	  do @bool: is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
+       	    	  do @bool: is_unitary_to_ht_big_SIMPLE_interrupt{_pick}(q,HT)
 	       	  od),KCv)
        else (all (for q in qs
-       	    	  do @bool: is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
+       	    	  do @bool: is_unitary_to_ht_big_SIMPLE_interrupt{_pick}(q,HT)
 	       	  od),[])
        fi {next old_testing_flag:=OTF_hold}
 
@@ -318,11 +318,11 @@ set pos_tester_Kchar_min(KGBElt x, ratvec lambda,int HT,ratvec gamma) =
        fi;
        if extra_coord_flag
        then (all (for q in qs
-       	    	  do @bool: is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
+       	    	  do @bool: is_unitary_to_ht_big_SIMPLE_interrupt{_pick}(q,HT)
 	       	  od),
        	    [Kpol_hash.match(K_type_pol(character_formula_to_ht(1*p,HT))),#qs])
        else (all (for q in qs
-       	    	  do @bool: is_unitary_to_ht_big_SIMPLE_interrupt_pick(q,HT)
+       	    	  do @bool: is_unitary_to_ht_big_SIMPLE_interrupt{_pick}(q,HT)
 	       	  od),[])
        fi {next old_testing_flag:=OTF_hold}
 
@@ -919,7 +919,7 @@ begin
     then () = for j in good_js do short_lochash.match(lochash.index(j)) od
     then tester(Param p) =
     	 if HT >= 0
-	 then is_unitary_to_ht_big_SIMPLE_interrupt_pick(p,HT)
+	 then is_unitary_to_ht_big_SIMPLE_interrupt{_pick}(p,HT)
 	 else is_unitary_test_big_SIMPLE_interrupt(p)
 	 fi
     then up_gens = up_graph_gens(short_lochash, short_KCvlist, short_loclist)

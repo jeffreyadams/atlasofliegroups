@@ -89,7 +89,7 @@ set steve_tester_flag = true
 at FPP reducibility points, steve has been slower than
 one_level. Sigh.}
 {But after 2/18 major revisions, maybe faster again?}
-set prefer_steve_long_flag = true {false}
+set prefer_steve_long_flag = false {June 5 one_level is much faster on x_open(E7_s)}
 
 set revert_steve_flag(KGBElt x) = bool:
     let G = x.real_form
