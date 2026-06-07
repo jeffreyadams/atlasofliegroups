@@ -261,6 +261,12 @@ set diff_char_frac = rat: 1/9 {1/10}{1/6, 1/4 much worse for E7 4/2/26}
 		{2/14/26: 1/4 better than 1/3 for E7_s[20000:20025]}
 		{2/15/26: 1/8 much better than 1/4 20800-20810}
 		{4/2/26: 1/4 best for Spin(6,6), with diff_KGB_char_frac 1/2?}
+
+{if diff_char_mult*rank*(HT - LAM) >= GAM then don't try char_to_ht.
+So largest reasonable target height is (1/(diff_char_mult*rank))*GAM + LAM.
+DECREASE to use char_to_ht more often, range is (0,infty)}
+set diff_char_mult = rat: 2/1
+
 set diff_KGB_char_frac = rat: 1/2 {9/10} {switch 4/2/26 based on Spin(6,6), E7_s near 17000}
 
 {if lam_mult*LAM >= GAM (big lambda), don't try to_ht
@@ -363,10 +369,9 @@ set low_diff_char_def_inf(Param p, int HT) = bool:
 {if true, allow KL_sum_at_s_to_height}
 set low_diff_char_old(Param p, int HT) = bool: {false {ALWAYS use KL_sum_at_s}}
     if (HT < 0) then return  false fi;
-    let start = elapsed_ms()
+    let start = elapsed_ms(), rk = p.real_form.rank
     then ans = p.x.number > diff_KGB_char_frac*KGB_size(p.real_form)
-	       and (HT < diff_char_frac*GAM(p)) {forces LAM < diff_char_frac*GAM}
-	       	   {(HT - height(p)) < diff_char_frac*GAM(p)}
+	       and diff_char_mult*rk*(HT-height(p)) < GAM(p)
     in ans next low_diff_char_time +:= (elapsed_ms() - start)
 
 {if true, allow KL_sum_at_s_to_height}

@@ -253,11 +253,8 @@ set test_edge(KGBElt x) = void:
     then edge_offset := 2
     fi;
     if x.number > KGB_frac*KGB_size(x.real_form)
-    then edge_offset := (x.real_form.rank+1)\2
-    fi{;
-    if x.involution+1 = 0
-    then edge_offset :=(x.real_form.rank+1)\2
-    fi}
+    then edge_offset := (x.real_form.rank+1)\3 {change from 2 to 3 6/7/26}
+    fi
 
 {whether to adjust next_heightC_flag}
 set test_next_flag = false
