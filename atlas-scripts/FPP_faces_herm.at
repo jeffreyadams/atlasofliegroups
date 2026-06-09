@@ -2426,6 +2426,9 @@ set u_wk_flag = false
 set u_wk_Lucas_flag = true
 set u_Lucas_wk_flag = false
 
+{don't do _reduce testing until x.number/KGB_size is at least this}
+set reduce_frac = 3/4
+
 {this version is only for G simple}
 set is_unitary_hash_big_SIMPLE_reduce(Param p) = int:
 {
@@ -2435,7 +2438,10 @@ set is_unitary_hash_big_SIMPLE_reduce(Param p) = int:
     then FPP_flag = is_FPP(G,p.infinitesimal_character)
     in if not FPP_flag
        then 0 {prints("FPP DANGER at ",p)}
-       else p := herm_center(p);
+       else if p.x.number < reduce_frac*p.real_form.KGB_size
+       	    then return is_FPP_unitary_fast(p)
+	    fi;
+	    p := herm_center(p);
        	    let ell = if u_Lucas_flag then is_unitary_hash_big_SIMPLE_Lucas(p)
     	    	      elif u_wk_flag then is_unitary_hash_big_SIMPLE_weak(p)
     		      elif u_Lucas_wk_flag then is_unitary_hash_big_SIMPLE_Lucas_weak(p)
@@ -4266,8 +4272,8 @@ set known_non_unitaries_wiggle(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	  do if (not is_final(p)) or d=0
 	     then let pdef = monomials(p)
 		  in if any(for q in pdef
-			    do @bool: simple_status(q,-1) < 0 {no savings Spin(4,4)}
-			       {(big_unitary_hash.nulookup(q)).>=}
+			    do @bool: simple_status(q,-1,is_unitary_hash_big_SIMPLE_reduce) < 0
+			       {no savings Spin(4,4)}
 			    od)
 		     then answer[d]#:= j
 		     fi
@@ -4283,7 +4289,8 @@ set known_non_unitaries_wiggle(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		  in for sv in short_verts {run over the d+1 (d-1)-diml faces}
 		     do let pdefi = monomials(composition_series(wiggle(CF, face_bary(Lvd,sv))))
 			in if any (for q in pdefi
-				  do @bool: simple_status(q,-1) < 0 {no savings in Spin(4,4)}
+				  do @bool: simple_status(q,-1,is_unitary_hash_big_reduce) < 0
+				  {no savings in Spin(4,4)}
 				     {(big_unitary_hash.nulookup(q)).>=}
 				      {or (height(q) > _H0 and not
 				      is_unitary_test_big_SIMPLE_interrupt(q))}
