@@ -1,5 +1,6 @@
 <partitions.at
 <basic.at
+<time.at {for print_time_string}
 <sort.at { for |sort_u@(int,int->bool)| and |merge@(int,int->bool)| }
 <Weylgroup.at
 <translate.at

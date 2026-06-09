@@ -1903,89 +1903,6 @@ set is_known_u_to_ht(Param p, int HT) = bool:
        elif u_to_ht_hts[j] < 0 then false
        else (HT >= 0) and (u_to_ht_hts[j] >= HT)
        fi
-{
-set fair_pos_counter = int:0
-set fair_neg_counter = int:0
-set fair_counter = int:0
-set fair_time = int:0
-
-set fairly_small_flag = false
-
-{SHOULD REPLACE BY is_unitary_hash_big_SIMPLE_weak(Param p)}
-{this version is only for G simple and hermitian FPP params}
-{does weakly fair induction; 1 means it's weakly fair induced and unitary; -1 means nonunitary; and
-0 means not weakly fair induced}
-set is_unitary_hash_big_SIMPLE_fair(Param p) = int:
-    fair_counter+:=1;
-    let start = elapsed_ms(), (Q,pL) = if fairly_small_flag
-    	      		      	       then theta_stable_data_small(p)
-				       else theta_stable_quasi_data(p)
-				       fi
-    then derpLs = for qLj in derived_factor_params0(pL)
-		  do monomials(finalize(qLj))
-		  od.##, (S,) = Q
-    then () = if #derpLs = 0
-    	      then big_unitary_hash.umatch(p);
-	      	   fair_pos_counter +:= 1;
-		   fair_time+:= elapsed_ms() - start;
-		   return 1 fi;
-    	      if rho_u(Q).=
-	      then fair_counter-:=1;
-	      fair_time+:= elapsed_ms() - start;
-	      return 0 fi {Q=G, so no reduction}
-    then fair_statuses = [bool]: [], GKDs = vec: [], taus = [vec]: []
-    in for derpL in derpLs
-       do let (status,GKD,tau) = wu_hash.check_wk_unip(derpL.root_datum,
-			    	derpL.infinitesimal_character)
-	   in fair_statuses#:= status;
-	      GKDs#:=GKD;
-	      taus#:=tau
-	od;
-        if (all(fair_statuses)) and
-	    all(for derpL@j in derpLs do @bool: (tau(derpL) = taus[j]) od) and
-	    all(for derpL@j in derpLs do @bool: GK_dim(derpL) = GKDs[j] od)
-     	then {we've got weakly unipotent}
-	     if all(for derpL in derpLs do is_FPP(derpL.root_datum, derpL.infinitesimal_character) and
-	     		      	 	   big_unitary_hash.check(derpL) od)
-	     then big_unitary_hash.umatch(p);
-	      	  fair_pos_counter +:= 1;
-		  fair_time+:= elapsed_ms() - start;
-		  1
-	     else let muL = LKTs(pL)[0]
-	     	  then sigL = glue_sigs(for derpL in derpLs
-		       	      		do big_unitary_hash.sig_entry(derpL,-1)
-					od, muL)
-		  then sig = theta_induce_K(sigL,p.real_form)
-		  in if is_pure(sig)
-		     then big_unitary_hash.umatch(p);
-	      	     	  fair_pos_counter +:= 1;
-		  	  fair_time+:= elapsed_ms() - start;
-		  	  1
-		     elif int_part(sig) + s_part(sig) = K_type_pol(character_formula(p))
-		     then big_unitary_hash.numatch(p);
-	      	     	  fair_neg_counter +:= 1;
-		  	  fair_time+:= elapsed_ms() - start;
-		  	  -1
-		     else 0
-		     fi
-	      fi
-	  else fair_time+:= elapsed_ms() - start;
-	       0 {not weakly unipotent, so can't control induction}
-	fi
-
-{whether to use preceding test in status}
-set fair_use_flag = false
-
-set report_fair() = void:
-    if fair_use_flag
-    then prints(fair_counter," uses of big_SIMPLE_fair, finding ",fair_pos_counter," unitary and ",
-    	 	fair_neg_counter, " non-unitary reps, in time ", print_time_string(fair_time));
-	 prints(iwu_count," uses of is_weakly_unipotent, in time ",print_time_string(iwu_time))
-    fi
-
-set clear_fair() = void:
-    fair_counter:=0; fair_pos_counter:=0; fair_neg_counter:=0; fair_time:=0; iwu_count:=0; iwu_time:=0
-}
 
 {number of nonunitary detected}
 set ifu_fast_count = int:0
@@ -2048,7 +1965,8 @@ set simple_status(Param p, int HT) = int:
     ans
 
 {1 means unitary to HT, -1 means nonunitary to HT, 0 means don't know}
-{function tester is an additional test of this sort, like is_unitary_hash_big_SIMPLE_reduce}
+{function tester is an additional test of this sort, like is_unitary_hash_big_SIMPLE_reduce or
+is_unitary_hash_big_SIMPLE_Lucas}
 set simple_status(Param p, int HT, (Param -> int) tester) = int:
     if not is_hermitian(p) then return -1 fi;
     p:= herm_center(p);
@@ -2071,6 +1989,30 @@ set simple_status(Param p, int HT, (Param -> int) tester) = int:
     if ans > 0 then status_ucount+:=1 fi;
     if ans < 0 then status_nucount+:=1 fi;
     ans
+
+set simple_status(Param p, int HT, ((Param,int) -> int) tester) = int:
+    if not is_hermitian(p) then return -1 fi;
+    p:= herm_center(p);
+    let start_st = elapsed_ms(), ans = int:0
+    then GAM = GAM(p)
+    in
+    if HT >= GAM then HT:=-1 fi;
+    ans := if big_unitary_hash.ulookup(p) >= 0
+    	   then status_ucount+:=1; 1
+    	   elif big_unitary_hash.nu_height_lookup_int(p,HT) < 0
+    	   then -1
+    	   elif is_known_u_to_ht(p,HT)
+    	   then status_ucount+:=1; 1
+    	   elif is_finished(p.x, p.lambda) and HT < 0
+    	   then -1 {otherwise we'd have found it in ulookup}
+     	   else tester(p,HT)
+    	   fi;
+    status_time +:= elapsed_ms() - start_st;
+    status_count +:= 1;
+    if ans > 0 then status_ucount+:=1 fi;
+    if ans < 0 then status_nucount+:=1 fi;
+    ans
+
 
 
 {test codim 1 boundary faces only}
@@ -2276,7 +2218,8 @@ set is_unitary_to_ht_big_SIMPLE(Param p, int HT) = bool:
 
 {1 means true, -1 false, 0 means interrupted}
 set is_unitary_to_ht_big_SIMPLE_interrupt(Param p, int HT, int time) = int: 
-  if (stat_holder:=simple_status(p,HT)).!= then return stat_holder fi; {A} {save 400/7200 in Spin(4,4))}
+  if (stat_holder:=simple_status(p,HT)).!=
+  then return stat_holder fi; {A} {save 400/7200 in Spin(4,4))}
   if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return -1 fi;
   if HT.< then return is_unitary_hash_big_SIMPLE(p,time) fi;
   if HT < height(p) then return 1 fi;
@@ -2313,6 +2256,12 @@ set is_unitary_to_ht_big_SIMPLE_interrupt(Param p, int HT, int time) = int:
     	    is_unitary_to_ht_big_SIMPLE_old(p, HT)
 }
 
+{assume cohom ind from pL to G is good range; then height on G = height on L + height_jump}
+{should be rho(u)*two_rho_check + lambda_L * two_rho_u_check}
+set height_jump(Param pL, Parabolic Q) = int:
+    let lambdaL = pL.lambda, tworhou = two_rho_u(Q), tworhouv =
+    	two_rho_check(Q.root_datum) - two_rho_check(pL.root_datum)
+    in ((tworhou + lambdaL)*tworhouv)\2
 
 {*************}
 {Following functions try various reduction techniques}
@@ -2326,7 +2275,9 @@ set fair_time = int:0
 {does weakly good induction; +1 if test applies and true;
 -1 if test applies and false; 0 else}
 set is_unitary_hash_big_SIMPLE_weak(Param p) = int:
-    if (stat_holder:= status(p,-1)).!= then return stat_holder fi; {#4}
+    {
+     if (stat_holder:= status(p,-1)).!= then return stat_holder fi; {#4}
+    }
     let (,pL) = wkgood_Q(p), G = p.real_form, start = elapsed_ms()
     in if pL.real_form = G
        then return 0
@@ -2365,7 +2316,9 @@ set Lucas_time = int:0
 {this version is only for G simple}
 {1 means unitary, -1 means nonunitary, 0 means no test}
 set is_unitary_hash_big_SIMPLE_Lucas(Param p) = int:
-    if (stat_holder:= status(p,-1)).!= then return stat_holder fi; {#3}
+    {
+	if (stat_holder:= status(p,-1)).!= then return stat_holder fi;
+    } {#3}
     let gamma = p.infinitesimal_character, rd = p.root_datum, G=p.real_form, start = elapsed_ms()
     then rdi = integrality_datum(rd,gamma)
     then alphavs = for alphav@j in rd.simple_coroots
@@ -2402,6 +2355,49 @@ set is_unitary_hash_big_SIMPLE_Lucas(Param p) = int:
 	       fi {Q theta-stable}
 	fi {L=G}
 
+set reduce_ht_frac = rat: 3/4
+
+{don't do _reduce testing until x.number/KGB_size is at least this}
+set reduce_frac = 3/4
+
+{Use Davis/Mason-Brown criterion. 1 means unitary, -1 means nonunitary, 0 means don't know.}
+set is_unitary_to_ht_hash_big_SIMPLE_Lucas(Param p, int HT) = int:
+    if p.x.number < reduce_frac*p.real_form.KGB_size then return 0 fi;
+    let gamma = p.infinitesimal_character, rd = p.root_datum, G=p.real_form, start = elapsed_ms()
+    then rdi = integrality_datum(rd,gamma)
+    then alphavs = for alphav@j in G.simple_coroots
+		   do if gamma*alphav < 1
+		      then [j]
+		      else let ji = coroot_index(rdi,alphav)
+			  in if not is_member_sorted(tau(p))(ji)
+			     then []
+			     else [j]
+			     fi
+		     fi
+		  od.##
+     in if #alphavs = G.semisimple_rank
+	then 0 {say we don't know}
+	else Lucas_counter+:=1;
+     	     let Q = KGPElt:(alphavs, p.x) {p now must be good range coh ind from Q}
+     	     then rhou = Q.rho_u
+     	     in if((p.x.involution-1)*rhou).!=
+	       then big_unitary_hash.numatch(p); return 0 {because we don't know nonunitary to HT}
+	       else let L = Q.Levi
+     	       	    then xL = inverse_embed_KGB(p.x,L)
+     		    then pL = parameter(xL,p.lambda - rhou, p.nu)
+     		    {then () = assert(@:p = first_param(theta_induce_standard(pL,G)),"screwed up pL!")}
+     		    then derpLs = derived_factor_params0(pL), jump = height_jump(pL,Q),
+		    	 G_jump = HT - height(p)
+     {first nonunitarity height for pL is height(pL) + min_{derpL}(1st nu ht for derpL-ht(derpL)).}
+     	    	    in if all(for derpL in derpLs
+	       	       	      do @bool: is_unitary_to_ht_big_SIMPLE(derpL, height(derpL)+G_jump - jump)
+	       		      od)
+		       then add_to_u_to_ht(p,HT); 1
+		       else big_unitary_hash.numatch_height(p,HT); -1
+		       fi
+	        fi {Q theta-stable}
+	fi {L=G}
+
 {this version is only for G simple, FPP hermitian and herm center p}
 {tries first Lucas, then weakly good; 1 if unitary, -1 if nonunitary, 0 if no test}
 set is_unitary_hash_big_SIMPLE_Lucas_weak(Param p) = int:
@@ -2425,9 +2421,6 @@ set u_Lucas_flag = false
 set u_wk_flag = false
 set u_wk_Lucas_flag = true
 set u_Lucas_wk_flag = false
-
-{don't do _reduce testing until x.number/KGB_size is at least this}
-set reduce_frac = 3/4
 
 {this version is only for G simple}
 set is_unitary_hash_big_SIMPLE_reduce(Param p) = int:
@@ -2789,7 +2782,8 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, [int] hts) = bool:
   if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
   if #hts = 0 then return is_unitary_test_big_SIMPLE_interrupt(p, 1) fi;
   if hts~[0] <= height(p) then return is_unitary_test_big_SIMPLE_interrupt(p) fi;
-  if (stat_holder:=simple_status(p,hts~[0])).!= then return stat_holder > 0 fi;
+  if (stat_holder:=simple_status(p,hts~[0], is_unitary_to_ht_hash_big_SIMPLE_Lucas)).!=
+  then return stat_holder > 0 fi;
   if test_interrupt_verbose
   then prints(new_line,"Starting is_unitary_test_big_SIMPLE_interrupt, p = ",p,", hts = ",hts)
   fi;
@@ -3010,7 +3004,8 @@ set to_hts_count = null(10)
 set is_unitary_to_hts_big_SIMPLE_interrupt_old(Param p,[int] Ns, int time) = bool:
     if print_int_flag then prints("N = ",Ns, " p = ",p) fi;
     if #Ns = 0 or Ns~[0] < height(p) then return true fi;
-    if (stat_holder:=simple_status(p, Ns~[0]))!= 0 then return stat_holder > 0 fi;
+    if (stat_holder:=simple_status(p, Ns~[0], is_unitary_to_ht_hash_big_SIMPLE_Lucas))!= 0
+    then return stat_holder > 0 fi;
     let j0 = first(for N in Ns do N>= height(p) od)
     then () = Ns:=Ns[j0:]
     then () = for N@i in Ns
@@ -3049,7 +3044,8 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_old(Param p,[int] Ns, int time) = boo
 {version not using u_predictor}
 set is_unitary_to_ht_big_SIMPLE_interrupt_old(Param p, int N, int time) = bool:
     if print_int_flag then prints("N = ",N, " p = ",p) fi;
-    if (stat_holder:=simple_status(p, N))!= 0 then return stat_holder > 0 fi;
+    if (stat_holder:=simple_status(p, N, is_unitary_to_ht_hash_big_SIMPLE_Lucas))!= 0
+    then return stat_holder > 0 fi;
     if N < 0 then return is_unitary(p) fi;
     if N < height(p) then return true fi;
      is_unitary_to_hts_big_SIMPLE_interrupt_old(p, [N], time)
@@ -3059,7 +3055,8 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_old(Param p, int N, int time) = bool:
 set is_unitary_to_hts_big_SIMPLE(Param p,[int] Ns) = bool:
   if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
   if #Ns = 0 or Ns~[0] < height(p) then return true fi;
-  if (stat_holder:=simple_status(p, Ns~[0])).!= then return stat_holder > 0 fi; {E}
+  if (stat_holder:=simple_status(p, Ns~[0], is_unitary_to_ht_hash_big_SIMPLE_Lucas)).!=
+  then return stat_holder > 0 fi; {E}
   {commenting out costs one or two tests,  saves a few seconds/360 in Spin(6,6)}
   let j0 = first(for N in Ns do N>= height(p) od)
   then () = Ns:=Ns[j0:]
@@ -3085,7 +3082,8 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
    then return is_unitary_to_ht_big_SIMPLE_interrupt_old(p,HT,interrupt_base_time)
    fi;
    if (HT>=0) and (HT < height(p)) then return true fi;
-  if (stat_holder:=simple_status(p,HT)).!= then return stat_holder > 0 fi; {#13} {nothing in Spin(4,4)}
+  if (stat_holder:=simple_status(p,HT, is_unitary_to_ht_hash_big_SIMPLE_Lucas)).!=
+  then return stat_holder > 0 fi; {#13} {nothing in Spin(4,4)}
   if (not is_hermitian(p)) then return false fi;
   if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
   if test_interrupt_verbose
@@ -3170,7 +3168,8 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
   then return is_unitary_to_ht_big_SIMPLE_interrupt_old(p, HT,interrupt_base_time)
   fi;
   if (HT>=0) and (HT < height(p)) then return true fi;
-  if (stat_holder:=simple_status(p,HT)).!= then return stat_holder > 0 fi;{C}
+  if (stat_holder:=simple_status(p,HT, is_unitary_to_ht_hash_big_SIMPLE_Lucas)).!=
+  then return stat_holder > 0 fi;{C}
   {removing saves 100/7200 in Spin(4,4); but keeping helps in higher rank.}
   {if old_testing_flag then return is_unitary_to_ht_big_SIMPLE(p,HT) fi;}
   if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
@@ -3265,7 +3264,7 @@ set low_u_flag = true
 
 {remove unneeded _pick from name 6/6/26}
 set is_unitary_to_ht_big_SIMPLE_interrupt(Param p, int HT) = bool:
-       if (stat_holder:= simple_status(p,HT)).!=
+       if (stat_holder:= simple_status(p,HT, is_unitary_to_ht_hash_big_SIMPLE_Lucas)).!=
        then stat_holder > 0
        elif not predictor_flag
        	    then if low(p,HT)
@@ -3494,7 +3493,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_Ufirst(Param p, [int] HTs) = bool:
 
 set is_unitary_to_hts_big_SIMPLE_interrupt(Param p, [int] HTs) = bool:
     let HTfirst = HTs[0], HTlast = HTs~[0]
-    in if (stat_holder:= simple_status(p,HTlast)).!=
+    in if (stat_holder:= simple_status(p,HTlast, is_unitary_to_ht_hash_big_SIMPLE_Lucas)).!=
        then stat_holder > 0
        elif not predictor_flag
        then if low(p,HTs[0])
@@ -3870,14 +3869,6 @@ set theta_induce_signature(Param pL, RealForm G) = KTypePol:
 set theta_induce_signature_to_ht(Param pL, int DL, RealForm G) = KTypePol:
     theta_induce_K(hermitian_form_irreducible_to_ht_big(pL,DL),G)
 
-{assume cohom ind from pL to G is good range; then height on G = height on L + height_jump}
-{should be rho(u)*two_rho_check + lambda_L * two_rho_u_check}
-set height_jump(Param pL, Parabolic Q) = int:
-    let lambdaL = pL.lambda, tworhou = two_rho_u(Q), tworhouv =
-    	two_rho_check(Q.root_datum) - two_rho_check(pL.root_datum)
-    in ((tworhou + lambdaL)*tworhouv)\2
-
-
 {whether to use the new Davis/Mason-Brown criterion saying FPP reps on an outside
 face of FPP might have to be coh ind}
 set is_FPP_unitary_flag = true
@@ -3974,13 +3965,6 @@ set is_FPP_unitary(Param p, (Param -> bool) fancy_tester ) = int:
 	then big_unitary_hash.umatch(p); 1
 	else big_unitary_hash.numatch(p); -1
 	fi
-
-{assume cohom ind from pL to G is good range; then height on G = height on L + height_jump}
-{should be rho(u)*two_rho_check + lambda_L * two_rho_u_check}
-set height_jump(Param pL, Parabolic Q) = int:
-    let lambdaL = pL.lambda, tworhou = two_rho_u(Q), tworhouv =
-    	two_rho_check(Q.root_datum) - two_rho_check(pL.root_datum)
-    in ((tworhou + lambdaL)*tworhouv)\2
 
 {Use Davis/Mason-Brown criterion. 1 means unitary, -1 means nonunitary, 0 means don't know.}
 set is_FPP_unitary_to_ht(Param p, int HT) = int:
@@ -4082,7 +4066,7 @@ set known_unitaries(Param_hash Uhash, KGBElt x, ratvec lambda, LocalVertexData L
 	  do if p.nu.=
 	     then [j]
 	     else let qs = monomials(finalize(p)) {save 2900/7200 in Spin(4,4)}
-	     	  in if all(for q in qs do simple_status(q,HT)>0 od)
+	     	  in if all(for q in qs do simple_status(q,HT, is_unitary_to_ht_hash_big_SIMPLE_Lucas)>0 od)
 		     then [j]
 		     else []
 		     fi
@@ -4153,7 +4137,8 @@ set known_non_unitaries_wiggle_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		     {to have an interesting test to HT, terms should have strictly smaller HT}
 		 fi {now pdef consists of final Params that must be unitary to HT if p is}
 	     in if any(for q in pdef
-		       do @bool: (simple_status(q,HT) < 0) {no appearance in Spin(4,4)}
+		       do @bool: (simple_status(q,HT, is_unitary_to_ht_hash_big_SIMPLE_Lucas) < 0)
+		       {no appearance in Spin(4,4)}
 		       od) {CONCERN if HTs[0] < H0?}
 		then [j]
 		else []
@@ -4178,7 +4163,8 @@ set known_non_unitaries_wiggle(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	  do if (not is_final(p)) or d=0
 	     then let pdef = monomials(p)
 		  in if any(for q in pdef
-			    do @bool: simple_status(q,HT) < 0 {no saving in Spin(4,4)}
+			    do @bool: simple_status(q,HT,is_unitary_to_ht_hash_big_SIMPLE_Lucas) < 0
+			    {no saving in Spin(4,4)}
 			    {big_unitary_hash.nu_height_lookup_bool(q,HT)}
 			    od)
 		     then answer[d]#:= j
@@ -4372,7 +4358,7 @@ set known_status(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     in for d:#LFDKH
        do for p@j in ps[d]
 	  do let qs = monomials(finalize(p))
-	     then stats = for q in qs do simple_status(q,HT) od
+	     then stats = for q in qs do simple_status(q,HT, is_unitary_to_ht_hash_big_SIMPLE_Lucas) od
 	     then (U,NU) = (all(for stat in stats do stat > 0 od), any(for stat in stats do stat < 0 od))
 	     in if U
 	     	then Ulist[d]#:=j

@@ -616,7 +616,8 @@ set local_testK_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 				    fi {ICPU_flag}
 		     {then () = prints("before NEWU, newStatuses = ",newStatuses)}
 		     in if{NEWU} newStatuses[k] = "?"
-			      then if ps[0].nu.= or all(for p in ps do simple_status(p,HT).>  or
+			      then if ps[0].nu.= or all(for p in ps
+			      	      do simple_status(p,HT,is_unitary_to_ht_hash_big_SIMPLE_Lucas).>  or
 					    tester(p) od)
 				   then newStatuses[k]:= "T"
 				   else newStatuses:= updateNUclassesB(newStatuses, gr, k)
@@ -685,7 +686,8 @@ set local_testK_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 					       fi {ICPU_flag}
 		     {then () = prints("before NEWU, newStatuses = ",newStatuses)}
 		     in if{NEWU} newStatuses[K] = "?"
-			then if ps[0].nu.= or all(for p in ps do simple_status(p,HT).> or
+			then if ps[0].nu.= or all(for p in ps
+			do simple_status(p,HT, is_unitary_to_ht_hash_big_SIMPLE_Lucas).> or
 					    tester(p) od)
 			     then downdateUclassesB(newStatuses, gr, K, "T");
 				  newStatuses[K]:= "T"
@@ -1376,7 +1378,8 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
 			 then if all(for q in pCdef do @bool: is_finished(q.x, q.lambda) and
 							     (Uhash.lookup(q) >= 0) od)
 			      then newStatuses[k] := "T"
-			      elif any(for q in pCdef do @bool: simple_status(q,HT).< od)
+			      elif any(for q in pCdef
+			      do @bool: simple_status(q,HT, is_unitary_to_ht_hash_big_SIMPLE_Lucas).< od)
 
 			      {is_finished(q.x,q.lambda) and (Uhash.lookup(q) = -1) od)}
 			       {this line is wrong: need to check q nonunitary to ht HT. Causes
@@ -1390,7 +1393,8 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
 				   newStatuses:= updateNUclassesB(newStatuses, gr, k,"F"); "F"
 			      fi {all for q}
 			  elif newStatuses[k] = "?"
-			  then if any(for q in pCdef do @bool: simple_status(q,HT) = -1 od)
+			  then if any(for q in pCdef
+			  do @bool: simple_status(q,HT, is_unitary_to_ht_hash_big_SIMPLE_Lucas) = -1 od)
 
 			  {is_finished(q.x,q.lambda) and (Uhash.lookup(q) = -1) od)}
 			  {this line is wrong: need to check q nonunitary to ht HT. Causes
