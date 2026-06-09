@@ -83,6 +83,10 @@ therefore has to be loaded before it (we would like to have put an \&{\#include}
 of the file \.{parse\_types.h} into \.{parser.tab.h} so that it need no be
 mentioned here, but we do not know if or how this could be arranged).
 
+One notable thing the scanner does is keep a stack of groups of identifiers that
+have been temporarily declared to be used as type names. These are held in
+|nest| and each group is called a clutch.
+
 @h <string>
 @h "buffer.h"
 @h "parse_types.h"
@@ -117,9 +121,9 @@ public:
   bool is_initial () const @+{@; return state==initial; }
   void push_nest() @+ {@; nest.push_front(eggs{}); } // prepare a new clutch
   void pop_nest(); // pop and decommission a clutch of type variables
-  void put_type_variable(id_type v);
-  unsigned int typevar_level() const;
-  void start_defining_types() { state = type_defining; }
+  void put_type_variable(id_type v); // add an egg to the current clutch
+  unsigned int typevar_level() const; // report combined size of all clutches
+  void start_defining_types() @+{@; state = type_defining; }
 private:
   void skip_space() const;
   bool becomes_follows();
@@ -183,7 +187,9 @@ while recording which names was entered in the semantic value of the token.
   type_limit=id_table.nr_entries();
 }
 
-@ The member function |reset| can be called to reset the lexical analyser,
+@*1 Auxiliary actions: reset, skip spaces and comments, scan strings.
+%
+The member function |reset| can be called to reset the lexical analyser,
 discarding any remaining input on the current line and clearing the |nest|
 level. This is typically done after any error that makes it impossible to
 execute a command, to ensure the next attempt will be with a clean slate.
@@ -330,7 +336,7 @@ std::string Lexical_analyser::scan_quoted_string() const
   return result;
 }
 
-@*1 The main scanning routine.
+@*1 The main scanning routine: getting a token.
 %
 Now we come to the function |get_token| that will actually be called by the
 parser, and return to it a token type. The token is an integral value that is
@@ -520,12 +526,34 @@ in some cases seeing the keyword provokes some activity on the |nest|.
   }
 }
 
-@ Type variables are immediately renamed to a small number to be used as the
-|typevar_variant| field of a |type_expr|, which is its sequence number in the
-list of currently active type variables. These variables are recorded in |nest|,
-with newer clutches being pushed at the front of the list. This means that, if
-we want to avoid reversing the list, we must record the position of the
-identifier within its clutch and add to that sizes of all later clutches.
+@ Number denotations get as parsing value the string of characters
+(representing digits) that forms the denotation; no conversion is done here.
+This is in order to allow writing arbitrarily large integers without the
+parser needing to know about the |arithmetic::big_int| class that will be used
+to represent them. As explained below for strings denotations, we store a raw
+pointer to a |std::string|, again to minimise complications for the parser.
+
+@< Scan a number, setting |valp->str| to the digit string @>=
+{ const char* p=input.point()-1; // start of token
+  do
+    c=input.shift();
+  while(std::isdigit(c));
+  input.unshift();
+  valp->str = new std::string(p,input.point());
+}
+
+@*1 Tricks to aid the parser: type variables and short range look-ahead.
+%
+As we have seen above, identifiers whose |id_code| is flagged in the bitmap
+|type_vars| will scan a type variables. When this happens, the scanner stores as
+|id_code| not the identifier number, but a small number to be used as the
+|typevar_variant| field of a |type_expr|. This effectively renames the type
+variable according to the order in which type variables were announced to the
+scanner: the small number is the sequence number in the list of currently active
+type variables. These variables are recorded in |nest|, with newer clutches
+being pushed at the front of the list. This means that, if the scanner wants to
+avoid reversing the list, its must compute the number of an identifier as its
+position within its clutch plus the sizes of all later clutches.
 
 @< Set |valp->id_code| to the sequence number of |id_code| in the |nest| @>=
 {
@@ -545,10 +573,64 @@ identifier within its clutch and add to that sizes of all later clutches.
   assert(seen); // we should not come here unless |id_code| is a type variable
 }
 
+@ When the parser wants to announce that a list of identifiers is introduced as
+temporary type variables, it repeatedly calls the scanner method
+|put_type_variable| for each of them. When correctly used, the reduction that
+performs these actions takes place when a following opening symbol has already
+been scanned as look-ahead token, so that the corresponding call of |push_nest|
+has already been performed; the lexer is therefore ready to receive those type
+variables, even though the identifiers are textually outside the closed
+expression that is their scope. However it may happen that the parser performs a
+reduction to |typevar_list|, which involves calling |put_type_variable|, when it
+has seen a look-ahead symbol rules out any interpretation of the identifiers
+other than as members of a |typevar_list|, even though the look-ahead symbol is
+not an opening symbol and therefore not a valid for |typevar_list| either. (The
+parser produced by the \.{bison} parser generator may perform certain reductions
+even in circumstances where a token that has already been seen will inevitably
+cause a syntax error after the reduction; the parser is not guaranteed to flag
+syntax errors at the first possible moment.) When called in such erroneous
+situations, |put_type_variable| may either find an already formed clutch present
+that is not expecting any more type variables, or (more likely) a completely
+empty nest (not even en empty clutch is present). We don't mind that in the
+former case the clutch is unduly extended, since the coming syntax error will
+wipe it out anyway, but in the latter case we do not want to crash the program
+by accessing a non-existing |nest.front()|, so we test for |nest.empty()|, in
+which case we do nothing.
+
+@< Definitions of class members @>=
+void Lexical_analyser::put_type_variable(id_type v)
+{ type_vars.insert(v-type_limit);
+  if (not nest.empty())
+    // will be the case for valid input: |push_nest| was already called
+    nest.front().push_back(v);
+}
+
+@ The type variables will revert to their previous status at the matching call
+of |pop_nest|. We might have tested in |put_type_variable| whether all
+identifiers in the clutch are actually distinct, but there is no obvious action
+to take if this should fail to be the case. Moreover, all that would result from
+letting such an error pass is that any repeated occurrence of a same type
+variable in the list cannot later be referred to (uses of the identifier return
+the number corresponding to the first occurrence in the list), and so the type
+variable number for the repeated occurrence will necessarily remain unused. This
+is no catastrophe, so for once we'll let slip by this kind of error without
+reporting anything.
+
+@< Definitions of class members @>=
+void Lexical_analyser::pop_nest()
+{ if (not nest.empty()) // avoid crashing before parser detects an error
+  {
+    for (id_type v : nest.front())
+      type_vars.remove(v-type_limit);
+    nest.pop_front();
+  }
+}
+
 @ Sometimes we need to know the current total number of type variables, and the
 simplest way to find it is to interrogate the lexical analyser. The function
-|typevar_level| provides the information by a simplified version if the above
-code, counting all eggs in the nest.
+|typevar_level| provides the information by a simplified version of the above
+code for finding the identifier position in the |nest|: here we just count the
+total number of eggs in the |nest|.
 
 @< Definitions of class members @>=
 unsigned int Lexical_analyser::typevar_level () const
@@ -557,64 +639,6 @@ unsigned int Lexical_analyser::typevar_level () const
   for (const auto& clutch : nest)
     count += clutch.size();
   return count;
-}
-
-@ Number denotations get as parsing value the string of characters
-(representing digits) that forms the denotation; no conversion is done here.
-This is in order to allow writing arbitrarily large integers without the
-parser needing to know about the |arithmetic::big_int| class that will be used
-to represent them. As explained below for strings denotations, we store a raw
-pointer to a |std::string|, again to minimise complications for the parser.
-
-@< Scan a number, setting |valp->str| to the digit string @>=
-{ const char* p=input.point()-1; // start of token
-  do
-    c=input.shift();
-  while(std::isdigit(c));
-  input.unshift();
-  valp->str = new std::string(p,input.point());
-}
-
-@ The method |put_type_variable| is repeatedly called from the parser when a
-list of fresh type variables is announced. When correctly used, the reduction
-that performs this action has scanned a following opening symbol as look-ahead
-token, so that the lexer has already performed the corresponding call of
-|push_nest|, and is therefore it is ready to receive those type variables, even
-though the identifiers are textually outside the closed expression that is their
-scope. However it may happen that the reduction to |typevar_list| that calls
-this function is actually due to a look-ahead that excludes a reduction to
-anything else than a |typevar_list|, even though it is not an opening symbol and
-therefore not a valid look-ahead for |typevar_list| either (since the \.{bison}
-parser generator allows its parser to do reductions even when a token has
-already been seen that will inevitably cause a syntax error after the
-reduction). When called in such erroneous situations, |put_type_variable| may
-either find an already formed clutch present that is not expecting any more type
-variables, or (more likely) a completely empty nest (not even en empty clutch is
-present). We don't mind that in the former case the clutch is unduly extended,
-since the coming syntax error will wipe it out anyway, but in the latter case we
-do not want to crash the program by accessing a non-existing |nest.front()|, so
-we test for |nest.empty()|, in which case we do nothing.
-
-These type variables will revert to their previous status at the matching call
-of |pop_nest|. We could test in |put_type_variable| that all identifiers in the
-clutch be distinct, but there is no obvious action to take if it should fail;
-all that would result from such an error is that any repeated occurrence of a
-same type variable in the list cannot be referred to, and so will remain unused.
-This is no catastrophe, so for once we'll let slip this kind of error.
-
-@< Definitions of class members @>=
-void Lexical_analyser::put_type_variable(id_type v)
-{ type_vars.insert(v-type_limit);
-  if (not nest.empty()) // should be the case: |push_nest| was already called
-    nest.front().push_back(v);
-}
-void Lexical_analyser::pop_nest()
-{ if (not nest.empty()) // avoid crashing before parser detects an error
-  {
-    for (id_type v : nest.front())
-      type_vars.remove(v-type_limit);
-    nest.pop_front();
-  }
 }
 
 @ For reasons of limited look-ahead in the parser, certain operator symbols
@@ -651,7 +675,9 @@ we get here, when a possibly following operator is scanned.
 void Lexical_analyser::operator_termination (char c)
 {@; prevent_termination = (previous_termination == '.' ? '\0' : c); }
 
-@ After splitting off the alphanumeric characters, the scanner plunges into a
+@*1 Scanning non alphanumeric tokens.
+%
+After splitting off the alphanumeric characters, the scanner plunges into a
 large switch on the value of the look-ahead character~|c|. We increase and
 decrease nesting on obvious grouping characters, and for certain characters we
 store them into |prevent_termination| to prevent a newline to be interpreted
@@ -823,7 +849,9 @@ else
   }
 }
 
-@ Here are some cases split off to avoid the module with the |switch| on |c|
+@*1 Scanning arithmetic operators.
+%
+Splitting off these cases avoids the module with the |switch| on~|c|
 getting too long.
 
 @< Cases of arithmetic operators... @>=
@@ -880,7 +908,9 @@ break; case '#': operator_termination(c);
        token_type = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
 break;
 
-@ We hand to the parser a pointer to a dynamic variable move-constructed from
+@*1 Scanning strings and file names.
+%
+We hand to the parser a pointer to a dynamic variable move-constructed from
 the |std::string| value returned by |scan_quoted_string()|. For technical
 reasons having a |std::string| itself as token value is not practical (it
 would define a union member with non-trivial destructor, and though \Cpp\ will
