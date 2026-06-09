@@ -716,22 +716,43 @@ set make_deformation_hash_height_time () = deformation_hash_height_time:
 set defHashHtTime = make_deformation_hash_height_time()
 
 set full_deform(Param p) = KTypePol:
-    regroup(p.real_form,defHashTime.full_deform(p))
+    if is_simple(p.root_datum) or #simple_factorsRF(p.real_form) = 1
+    then regroup(p.real_form,defHashTime.full_deform(p))
+    else let mu0 = LKTs(p)[0]
+    	 in glue_sigs(for dpL in derived_factor_params0(p)
+	    	      do regroup(dpL.real_form,defHashTime.full_deform(dpL))
+		      od, mu0)
+    fi
 
 set full_deform(Param p, int time) = maybe_KTP:
-    regroup(p.real_form,defHashTime.maybe_full_deform(p,time))
+    if is_simple(p.root_datum) or #simple_factorsRF(p.real_form) = 1
+    then regroup(p.real_form,defHashTime.maybe_full_deform(p,time))
+    else full_deform_library(p,time)
+    fi
 
 set twisted_full_deform(Param p) = KTypePol:
-    regroup(p.real_form,defHashTime.full_deform(p))
+    {if is_simple(p.root_datum) or #simple_factorsRF(p.real_form) = 1
+    then} regroup(p.real_form,defHashTime.full_deform(p))
+    {else twisted_full_deform_library(p)
+    fi}
 
 set twisted_full_deform(Param p, int time) = maybe_KTP:
-    regroup(p.real_form,defHashTime.maybe_full_deform(p,time))
+    {if is_simple(p.root_datum) or #simple_factorsRF(p.real_form) = 1
+    then} regroup(p.real_form,defHashTime.maybe_full_deform(p,time))
+    {else twisted_full_deform_library(p,time)
+    fi}
 
 set full_deform_to_ht(Param p, int HT) = KTypePol:
-    regroup(p.real_form,defHashHtTime.full_deform_to_ht(p,HT))
+    if is_simple(p.root_datum) or #simple_factorsRF(p.real_form) = 1
+    then regroup(p.real_form,defHashHtTime.full_deform_to_ht(p,HT))
+    else full_deform_to_height_MvL_base(p,HT)
+    fi
 
 set full_deform_to_ht(Param p, int HT, int time) = maybe_KTP:
-    regroup(p.real_form,defHashHtTime.maybe_full_deform_to_ht(p, HT, time))
+    if is_simple(p.root_datum) or #simple_factorsRF(p.real_form) = 1
+    then regroup(p.real_form,defHashHtTime.maybe_full_deform_to_ht(p, HT, time))
+    else full_deform_to_height_MvL_base(p,HT,time)
+    fi
 
 set twisted_full_deform_to_ht(Param p, int HT) = KTypePol:
     regroup(p.real_form,defHashHtTime.full_deform_to_ht(p,HT))
