@@ -81,7 +81,7 @@ set c_form_irreducible_to_ht_MvL (Param p,int HT, int time ) = maybe_KTP:
 	     else map( (Param q) KTypePol:
 	      	 full_deform_to_ht(q,HT), P).done
 	     fi
-	else if back_form_ht_flag
+	else if back_form_ht_flag {default false}
 	     then prints("in cfithMvL, unknown_ks = ",unknown_ks);
 		  full_deform_to_ht(list[unknown_ks~[0]],HT, time);
     	     	  back_map( (Param q) maybe_KTP: if expiration - elapsed_ms() < 0

@@ -2355,10 +2355,12 @@ set is_unitary_hash_big_SIMPLE_Lucas(Param p) = int:
 	       fi {Q theta-stable}
 	fi {L=G}
 
-set reduce_ht_frac = rat: 3/4
+set reduce_ht_frac = rat: 3/2 {NEVER do reduce_testing. This seems better in E7_s. Change if
+ unitary duals of all derived simple of theta-stable L are precomputed?}
 
 {don't do _reduce testing until x.number/KGB_size is at least this}
-set reduce_frac = 3/4
+set reduce_frac = 3/2 {NEVER do reduce_testing. This seems better in E7_s. Change if
+ unitary duals of all derived simple of theta-stable L are precomputed?}
 
 {Use Davis/Mason-Brown criterion. 1 means unitary, -1 means nonunitary, 0 means don't know.}
 set is_unitary_to_ht_hash_big_SIMPLE_Lucas(Param p, int HT) = int:
@@ -4025,25 +4027,28 @@ set FPP_report_flag = true
 set KU(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]] FVKH, Param_hash Uhash,
  (Param->bool) fancy_tester) = [vec]:
     {prints("in KU",fancy_tester);}
-    let FPP_report_flag_hold = FPP_report_flag
+    {let FPP_report_flag_hold = FPP_report_flag
     then () = FPP_report_flag :=false
-    then answer =
+    then} let answer =
 	 for FVKHd@d in FVKH
 	 do for vlong@j in FVKHd
 	    do let verts = vlong[:d+1], G = x.real_form
 	       then ps = monomials(finalize(parameter(x,lambda, face_bary(Lvd,verts))))
-	       in if all(for p in ps do (Uhash.lookup(p)).>= od)
+	       in if all(for p in ps
+	       	     	 do Uhash.lookup(p) >= 0
+			 {simple_status(p,-1) > 0}
+	       	     	 od)
 		  then [j]
-		  elif all(for p in ps
+		  {elif all(for p in ps
 			   do let m = is_FPP_unitary(p, fancy_tester)
 			      in m > 1
 			   od)
-		  then [j]
+		  then [j]}
 		  else []
 		  fi
 	    od.##
 	 od
-    then () = FPP_report_flag:=FPP_report_flag_hold
+    {then () = FPP_report_flag:=FPP_report_flag_hold}
     in answer
 
 set KU(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]] FVKH, Param_hash Uhash) =
@@ -4066,7 +4071,8 @@ set known_unitaries(Param_hash Uhash, KGBElt x, ratvec lambda, LocalVertexData L
 	  do if p.nu.=
 	     then [j]
 	     else let qs = monomials(finalize(p)) {save 2900/7200 in Spin(4,4)}
-	     	  in if all(for q in qs do simple_status(q,HT, is_unitary_to_ht_hash_big_SIMPLE_Lucas)>0 od)
+	     	  in if all(for q in qs
+		     	    do simple_status(q,HT{, is_unitary_to_ht_hash_big_SIMPLE_Lucas})>0 od)
 		     then [j]
 		     else []
 		     fi

@@ -1016,7 +1016,8 @@ set was_tested_to_ht(Param p,int N, int T, bool ans) = void:
     let h = N - height(p)
     then add = h+1 - #tested_pos_to_ht_hashes
     in if add>0
-        then tested_pos_to_ht_hashes ##:= for j:add do make_Param_hash() od;
+        then {if N = 17 and T > 8000 then 0/0 fi;}
+	     tested_pos_to_ht_hashes ##:= for j:add do make_Param_hash() od;
 	     tested_neg_to_ht_hashes ##:= for j:add do make_Param_hash() od;
 	     tested_inter_to_ht_hashes ##:= for j:add do make_Param_hash() od;
 	     tested_pos_to_ht_times ##:= for j:add do [int]: [] od;
@@ -1166,7 +1167,6 @@ set OT_counts = [int]: [] {number of occurrences for each OT_hash.list() entry}
 
 {ans 1 means pos, -1 neg, 0 interrupted}
 set was_tested(Param p, int T, int HT, int ans) = void:
-
     if drain_plug_flag and T > drain_plug_time
     then prints(p," took ",print_time_string(T)," to test is_unitary = ", ans)
     fi;

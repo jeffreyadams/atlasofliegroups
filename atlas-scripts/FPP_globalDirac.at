@@ -2753,6 +2753,7 @@ set non_unitary_nus(RealForm G, KGBElt x, ratvec lambda) = [ratvec]:
 	  fi
 	od.##
 
+
 {assume precompute has been done, so that all FPP unitary are known
 for all derived simple factors of theta-stable Levis of G. For maximal LRi run
 over unitary (xin,lambdainm) and put into unitary_hash all (x,lambda_nu) that are
@@ -3375,6 +3376,18 @@ set precomputeTheta(RealForm G) = void:
 	      od
     then () = FPP_report_flag:=temp_report_flag
     in theta_induced(G)
+
+{precompute FPP unitary dual of each simple derived factor of each theta-stable Levi, store in big_unitary_hash}
+set preLeviTheta(RealForm G) = void:
+    let rflist = SDLF(G)
+    then temp_report_flag = FPP_report_flag
+    in FPP_report_flag :=false;
+       for rf@k in rflist
+       do prints("starting # ",k," = ",rf," in preLevTheta");
+	  FPP_unitary_hash_bottom_layer(rf)
+       od;
+       FPP_report_flag:=temp_report_flag
+
 
 set precomputeR(RealForm G) = void:
     let rflist = SDLRF(G)
