@@ -1003,29 +1003,27 @@ was often to use \std{vector} instead, in the case of stacks and queues to
 definitions of linked structures. (While there were certainly places where using
 \std{list} would have been an option, it was in fact never done. As for \frwl.,
 although it had become officially part of the language by the time we introduced
-\slls., we would at that point still deemed using it a portability risk,
+\slls., we would at that point still deemed using it a portability liability,
 so it was never really considered.)
 
-\subsection{The library}
+\subsection{Use of singly linked lists in the algebra library}
 
 We only introduced \slls. (or sometimes \smpl.) in places where this was more
 convenient to the programmer or led to a simplified and no less efficient
-implementation. The latter case includes all uses of stacks and queues, where we
-used the class templates mentioned above that derive from \std{stack}
-respectively \std{queue} instance with linked lists as underlying container
-type. This was a drop-in replacement, with a small added convenience that we
-added for placing one or more values into the data structure at construction.
-The change leads to a substantially more modest memory footprint, especially in
-cases like ours where the size of the stack or queue typically remains small (a
-\std{deque} needs around $600$ bytes of storage even when it is empty, as
-opposed to about $20$ bytes for an empty \slls. instance) and simpler
-implementation of operations. In the Atlas library, these data types are used in
-about a dozen places, generally to hold yet-to-process elements in some orbit
-generation process or similar kind of closure operation. Either a stack or a
-queue would do for this purpose, with a stack giving more of a depth-first
-approach versus a queue leading to more breadth-first processing; we generally
-prefer the latter, as we expect it to give a smoother evolution of the storage
-needed.
+implementation. This includes all uses of stacks and queues, for which we used
+the class templates we based on singly linked list described above. This was a
+drop-in replacement, with a small added convenience that we added for placing
+one or more values into the data structure at construction. The change leads to
+a substantially more modest memory footprint, especially in cases like ours
+where the size of the stack or queue typically remains small (a \std{deque}
+needs around $600$ bytes of storage even when it is empty, as opposed to about
+$20$ bytes for an empty \slls. instance) and simpler implementation of
+operations. In the Atlas library, these data types are used in about a dozen
+places, generally to hold yet-to-process elements in some orbit generation
+process or similar kind of closure operation. Either a stack or a queue would do
+for this purpose, with a stack giving more of a depth-first approach versus a
+queue leading to more breadth-first processing; we generally prefer the latter,
+as we expect it to give a smoother evolution of the storage needed.
 
 Apart from these cases, there are a number of places in the Atlas library where
 we decided to use lists instead of vectors when a sequence of values needs to
