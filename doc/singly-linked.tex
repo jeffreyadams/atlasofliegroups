@@ -726,7 +726,7 @@ methods \textit{to\_\!vector} that perform the conversion, one of which actually
 moves rather than copies the elements into the vector.
 
 
-\subsection{Simpler lists and weaker iterators}
+\subsection{Flexibility: simpler lists and weaker iterators}
 
 Finally we provide some methods related to variations on lists and iterators,
 which we will now discuss. The first variation is a class template \smpl. that
@@ -868,32 +868,33 @@ regime). Therefore \std{stack}$\ang{T,\textit{Container}}$ maps its
 $\textit{Container}$, while \std{queue}$\ang{T,\textit{Container}}$ maps its
 \textit{push}, \textit{front}, and \textit{pop} methods respectively to the
 methods \textit{push\_back}, \textit{front}, and \textit{pop\_front} of
-$\textit{Container}$. The \textit{Container} class must provide the
-mentioned methods. If \std{stack}$\ang T$ or \std{queue}$\ang
-T$ are used without specifying a container type as second template argument, the
-container type \std{deque}$\ang T$ will be used as default.
+$\textit{Container}$. The \textit{Container} class must provide the mentioned
+methods under these names. When used without specifying a container type as
+template argument, these adaptors will be based on the \std{deque}$\ang{T}$
+container by default.
 
-Considering whether it is possible to instead use these container adaptors with
-the container class templates \slls. or \smpl., we see that it should be
-possible to use $\std{queue}\langle T,\slls.\ang T\rangle$, since \slls. defines
-methods \textit{push\_back} (and \textit{emplace\_back}), \textit{front},
-\textit{pop\_front}, and \textit{empty} (but \smpl. lacks \textit{push\_back},
-so it cannot be used here). For \std{stack} on the other hand, there is a
-difficulty in that it wants to use \textit{back} and \textit{pop\_back} methods
-of the container (a choice probably motivated by the idea of using \std{vector}
-as container), which neither of our singly linked list containers define. But
+Given these requirements, it is possible to use \slls. as underlying container
+type for a queue, forming the type $\std{queue}\ang{T,\slls.\ang{T}}$, since
+\slls. defines methods \textit{push\_back} (and \textit{emplace\_back}),
+\textit{front}, \textit{pop\_front}, and \textit{empty}; on the other hand, the
+class \smpl. lacks a method \textit{push\_back}, so it cannot be used to
+implement a queue. For \std{stack} on the other hand, there is a difficulty in
+that it wants to use \textit{back} and \textit{pop\_back} methods of the
+container (a choice probably motivated by the idea of using \std{vector} as
+container), which neither of our singly linked list containers define. But
 singly linked lists (even of the \smpl. kind) are very well capable of
 implementing stacks: they just need to add and remove nodes at the front of the
 list rather than at the back. Our remedy for stacks is then to define a class
 template \mspl., which is an adaptation of \smpl. designed to be used
-(exclusively) as template argument to \std{stack}. It is derived from \smpl.,
-and apart from its constructors, it only defines methods \textit{push\_back},
-\textit{emplace\_back}, \textit{back}, and \textit{pop\_back} which respectively
-forward to the methods \textit{push\_front}, \textit{emplace\_front},
-\textit{front}, and \textit{pop\_front} of its base class. (Being limited to
-defining only the methods that \std{stack} uses and inheriting the rest, the
-result is a rather strange container type, where for instance \textit{front} is
-synonym for \textit{back}. The inheritance from \slls. is only relevant for
+(exclusively) as template argument to \std{stack}. It is publicly derived from
+\smpl., and apart from its constructors, it only defines methods
+\textit{push\_back}, \textit{emplace\_back}, \textit{back}, and
+\textit{pop\_back} which respectively forward to the methods
+\textit{push\_front}, \textit{emplace\_front}, \textit{front}, and
+\textit{pop\_front} of its base class. (As it defines only the methods that
+\std{stack} uses, but inheriting everything else from~\smpl., the type \smpl. is
+a rather curious container type, for which for instance \textit{front} is
+synonym for \textit{back}. It being derived from \slls. is only relevant for
 classes derived from $\std{stack}\langle T,\mspl.\ang T\rangle$: they can
 directly access the container object, which is a \textbf{protected} member of
 \std{stack}.) For completeness we also define a type \msll. similarly derived
@@ -903,16 +904,17 @@ There is a slight difficulty with using an instance of \slls. as container type
 for \std{queue}, since this adaptor not only defines the main methods of a queue
 abstract data type listed above, but also \textit{back}, which it forwards to
 the method of the same name of the container; but \slls. has no such method, nor
-can it be efficiently implemented without recording additional information. We
-consider it however to be an error on the part of the \Cpp\ specification to
-require a \textit{back} method here, since access the most recently added item
-is not part of the queue abstract data type. Indeed in none of the many places
-where we use queues in our software do we have any use for such a method. We
-have chosen to use $\std{queue}\langle T,\slls.\ang T\rangle$ in these places;
-since methods of a class template that are never called are not compiled either,
-this causes no problems. Similarly $\std{stack}\langle T,\mspl.\ang T\rangle$
-cannot handle calls to \textit{size}, but code using a stack should not have any
-need for such calls, and in the absence of such calls will compile.
+can it be efficiently implemented without recording additional data. However, we
+consider this to be an error on the part of the \Cpp\ specification, which
+should not have defined a \textit{back} method for \std{queue}, since access to
+the most recently pushed item is not part of the queue abstract data type. Indeed
+in none of the many places where we use queues in our software do we have any
+use for such a method. We have chosen to use $\std{queue}\langle T,\slls.\ang
+T\rangle$ in these places; since methods of a class template that are never
+called are not compiled either, this causes no problems. Similarly
+$\std{stack}\langle T,\mspl.\ang T\rangle$ cannot handle calls to \textit{size},
+but code using a stack should not have any need for such calls, and in the
+absence of such calls the program will compile correctly.
 
 If it were necessary to have a container type that can be used with \std{queue}
 according to the full specification of the \Cpp\ standard, one could easily add
@@ -920,60 +922,89 @@ a data member to \mspl. that allows tracking the most recently added item in all
 its methods; using that implement \std{queue}::\textit{back} efficiently when
 using this container. But it seems contrary to \Cpp\ design principles to burden
 users with extra space and time cost in order to support functionality that few
-will ever need. On the other hand there is some functionality that one can add
-at no cost to that of \std{queue} and \std{stack} when using a simply linked
-list as underlying container: a constructor that takes a \std{initializer\_list}
-(often a singleton), and an alternative to the \textit{pop} method that splices
-the element popped directly into a \slls. or a \smpl. (avoiding the cost of
-constructing a new node). Therefore, rather than overriding the default
-container every time a queue or stack variable is introduced, we provide (in our
-namespace) templates for classes \queue. and \stack. that are \emph{derived} from
+will ever need. On the other hand there is some functionality compatible with
+the abstract data type that one can add at no cost to that of \std{queue} and
+\std{stack} when using a simply linked list as underlying container: a
+constructor that takes a \std{initializer\_list} (often a singleton), and an
+alternative to the \textit{pop} method that splices the element popped directly
+into a \slls. or a \smpl. (avoiding the cost of constructing a new node, and the
+need to call \textit{front} or \textit{top} before doing~\textit{pop}).
+Therefore, rather than overriding the default underlying container every time a
+queue or stack variable is introduced, we provide (in our namespace) templates
+for classes \queue. and \stack. that are \emph{derived} from
 \std{queue}$\ang{T,\slls.\ang{T}}$ respectively from
 \std{stack}$\ang{T,\mspl.\ang{T}}$, and which provide these extra methods that
-we found useful.
+we found useful. The also override as \textbf{delete} the methods \textit{back}
+and \textit{size}, respectively, which they inherit but would forward to
+nonexistent methods of the container type used, so that any attempt to use them
+will elicit a clear error message.
 
 \section{Practice}
 
-The functionality we implemented for singly linked lists, as described above,
-was developed in a fairly incremental manner, in the context of the project
-Atlas of Lie groups and Representations; the commit where the class
-templates for singly linked lists were first introduced was made on June~20,
-2014. In the course of time the definitions were refined and extended with
-methods, with the goal of covering the functionality of \frwl..
-
-(although at some point, notably while
-writing the current paper, an considerable effort was made to make it conform as
-much as possible to the standard library conventions for container types, and
-retain proximity to the \frwl. specification).
+The functionality for singly linked lists described above, was developed and
+implemented over the course of time, in the context of the project Atlas of Lie
+groups and Representations (which we shall henceforth abbreviate to Atlas); the
+commit where the class templates for singly linked lists were first introduced
+is dated June~20, 2014. Specification and implementation were gradually refined
+and enriched over time. At some point a clear and prolonged effort was made
+though to completely cover the functionality of \frwl., retaining proximity to
+its specification, and to conform as much as possible to the standard library
+conventions for container types. In this section we shall discuss how the
+container type serves the needs we have encountered in withing our project, and
+how its utility compares to alternative ways available to meet those needs.
 
 \subsection{The Atlas project}
-Lets us say a few words about the Atlas project. In the context of this project,
-a special purpose computer algebra package is being developed, originally
-conceived and written by Fokko du Cloux. Its implementation has two major
-components of rather different nature: a library of specialised algorithms on
-one hand, and a user programming interface on the other. The library centres
-around a number of discrete, graph-like structures (root systems, double cosets
-$K\backslash G/B$, blocks of representations) that are generated dynamically,
-and whose vertices with associated data are stored in a vector structure, the
-mathematical values represented by such a vertex being henceforth most often
-represented by just an index into that vector. The programming interface has a
-structure common to many formal language processing tools such as compilers and
-interpreters: input gathering functions, a lexical analyser, a (generated)
-parser, a type checking system that also transforms expressions and functions
-into executable tree structures, an evaluator for such structures, and some
-minor output handling facilities.
+
+Let us start describing the goals of the Atlas project. It is a project in pure
+mathematics, which aims at developing understanding of the representation theory
+of real Lie groups, with the aid of software that implements the various
+relevant algorithms, mostly of combinatorial nature, in a sufficiently efficient
+manner to be applied to very substantial problems. Different types of Lie
+groups, different representations, and different questions asked about those
+representations provide a wide variety of computational challenges. The ultimate
+goal that was envisioned when the project was founded in 2002 is finding a
+complete description of the unitary dual of the split group of type~$E_8$. While
+this goal has not been achieve currently, substantial progress has been made
+over the years, including complete results for necessary ingredients for the
+$E_8$ computation (notably the determination in 2007 of the full table of
+Kazhdan-Lusztig-Vogan polynomials), and the full unitary dual
+description for somewhat smaller groups; as computer power and storage
+capabilities have substantially increased over the years, it would appear that
+the mentioned ultimate goal should be within reach in the foreseeable future.
+
+To perform the computation, the project develops a special purpose computer
+algebra package, originally conceived and implemented by Fokko du Cloux, and
+further developed after his premature death under the technical direction of the
+current author. The software executable has two major components of rather
+different nature: on one hand an extensive library of specialised algorithms
+implemented in \Cpp, and on the other hand a user programming interface that
+allows algorithm development by mathematically oriented users. A quite extensive
+collection of programs written in this user programming language has been
+developed in addition to the \Cpp\ executable.
+
+The \Cpp\ library centres around a number of discrete, graph-like structures
+(root systems, double cosets $K\backslash G/B$, blocks of representations) that
+are generated dynamically, and whose vertices with associated data are stored in
+tables (implemented mostly using \std{vector} instances), the mathematical
+values represented by such a vertex being henceforth most often represented by
+just an index into that vector. The user programming interface is a compiler and
+interpreter for a language somewhat resembling Python (but with static typing
+and not ostensibly object oriented). It has a layered structure common to many
+language processing tools: input and output facilities, a lexical analyser, a
+(generated) parser, a type checker that also transforms expressions and
+functions into executable tree structures, and an evaluator for such structures.
 
 The implementation of both parts was firmly in place long before we introduced
 our linked list container class template, and so the pieces of code where such
 lists are now used were either added recently, or (more often) have been adapted
 to use a list where previously some other solution was used. That other solution
-was often to use \std{vector} instead, or in the case of stacks and queues to
-(implicitly) use \std{deque}, or in some cases to use explicit definitions of
-linked structures, ones containing a pointer to the same structure. (There could
-also have been places where previously \std{list} was used, but in fact there
-were not. As for \frwl., although it had become officially part of the language
-when we introduced \slls., we would at that point in time have considered it,
-from a portability point of view, too new to use anyway.)
+was often to use \std{vector} instead, in the case of stacks and queues to
+(implicitly) use \std{deque}, and in some cases to use specialised recursive
+definitions of linked structures. (While there were certainly places where using
+\std{list} would have been an option, it was in fact never done. As for \frwl.,
+although it had become officially part of the language by the time we introduced
+\slls., we would at that point still deemed using it a portability risk,
+so it was never really considered.)
 
 \subsection{The library}
 
