@@ -2155,6 +2155,8 @@ public:
 
   // unlike |std::stack|, we also provide initialisation by initializer list
   stack(std::initializer_list<T> l) : Base(msl(l)) {}
+
+  size_t size() const = delete;
 }; // |class stack|
 
 template<typename T,typename Alloc> class queue
@@ -2173,6 +2175,9 @@ public:
 
   // unlike |std::queue|, we also provide initialisation by initializer list
   queue(std::initializer_list<T> l) : Base(sl_l(l)) {}
+
+  T& back() = delete;
+  const T& back() const = delete;
 
   T& pop_splice_to(sl_l& dest,typename sl_l::iterator it)
   { dest.splice(it,this->c,this->c.begin()); return *it; }
