@@ -1956,7 +1956,8 @@ set simple_status(Param p, int HT) = int:
     	   then status_ucount+:=1; 1
     	   elif is_finished(p.x, p.lambda) and HT < 0
     	   then -1 {otherwise we'd have found it in ulookup}
-     	   else is_FPP_unitary_fast(p)
+	   elif HT < 0 then is_FPP_unitary_fast(p)
+     	   else 0 {is_FPP_unitary_fast(p) {WRONG!}}
     	   fi;
     status_time +:= elapsed_ms() - start_st;
     status_count +:= 1;
@@ -4648,7 +4649,6 @@ set FD_wiggle_HT_flag =false {whether to use def_incident_edges to ht}
 set FDWHcount = vec:[0,0]
 set caughtHCount = int: 0
 
-set FDcount = vec:[0,0]
 set FDWcount = vec:[0,0]
 set caughtCount = int: 0
 set WcaughtCount = int:0
@@ -4697,15 +4697,17 @@ set localFD_1Dirac2\
 			    do @bool: is_pos_on_LKTs(q)
 			    od))
 	       then []
-	       elif any(for b in statsH do b < 0 od) or any(for b in stats do b < 0 od) or
-	       	    any(for m in DMB_statsH do m < 0 od) or any(for m in DMB_stats do m < 0 od)
-	       then []
-	       elif all(for b in statsH do b > 0 od) or all(for b in stats do b > 0 od) or
-	       	    all(for m in DMB_statsH do m > 0 od) or all(for m in DMB_stats do m > 0 od)
-	       then if red_count_flag
-		    then [[j, red_count(p,HT)]]
-		    else [[j]]
-		    fi
+	       {
+		elif any(for b in statsH do b < 0 od) or any(for b in stats do b < 0 od) or
+	       	     any(for m in DMB_statsH do m < 0 od) or any(for m in DMB_stats do m < 0 od)
+	       	then []
+	       	elif all(for b in statsH do b > 0 od) or all(for b in stats do b > 0 od) or
+	       	     all(for m in DMB_statsH do m > 0 od) or all(for m in DMB_stats do m > 0 od)
+	        then if red_count_flag
+		    	 then [[j, red_count(p,HT)]]
+		    	 else [[j]]
+		    	 fi
+	       }
 	       elif FPP_def_flag and not FPP_def_test_wk_final(p)
 	       then []
 	       elif FD_wiggle_flag and any(for q in monomials(finalize(p))
@@ -4819,6 +4821,9 @@ set FD12bzFFTime = int:0
 set FD12bzFTTime = int:0
 set FD12bzTTTime = int:0
 
+{whether to eliminate known nonunitary vertices from localFD_1Dirac2}
+set bz_nu_flag = true
+
 {edge-finding tests are performed by (Test B) for vertex set smaller than BoundB,}
 {NOT ANY MORE: A1 is always slower than C, by quite a bit?}
      {(Test A1) for vertex sets smaller than BoundA1,}
@@ -4859,6 +4864,7 @@ set localFD_1Dirac2_by_zero\
 		      then Q:=QG; DiracBD:=bd
 		      fi
 	      fi
+    then () = bz_nu_flag := (height(parameter(x,lambda,0*lambda)) > 0)
     then length = #(Lvd.list)
     then freq = max(length\10,1)
     then LF0 = [FaceVertsIndex]:
@@ -4875,38 +4881,42 @@ set localFD_1Dirac2_by_zero\
 			    do @bool: is_pos_on_LKTs(q)
 			    od))
 	       then []
-	       elif (stats := for q in qs do status(q,-1) od;
-	       	    any(for b in stats do b < 0 od))
+	       {
+	        elif (stats := for q in qs do status(q,-1) od;
+	       	     any(for b in stats do b < 0 od))
+	        then []
+	        elif all(for b in stats do b > 0 od)
+	        then if red_count_flag
+		     then [[j, red_count(p,HT)]]
+		     else [[j]]
+		     fi
+	        elif (statsH := for q in qs do status(q,HT) od;
+	       	      any(for b in statsH do b < 0 od))
+	        then []
+	        elif all(for b in statsH do b > 0 od)
+	        then if red_count_flag
+		     then [[j, red_count(p,HT)]]
+		     else [[j]]
+		     fi
+	        elif (DMB_stats := for q in qs do is_FPP_unitary(q) od;
+	       	      any(for b in DMB_stats do b < 0 od))
+	        then []
+	        elif all(for b in DMB_stats do b > 0 od)
+	        then if red_count_flag
+		     then [[j, red_count(p,HT)]]
+		     else [[j]]
+		     fi
+	        elif (DMB_statsH := for q in qs do is_FPP_unitary_to_ht(q,HT) od;
+	       	      any(for b in DMB_statsH do b < 0 od))
+	        then []
+	        elif all(for b in DMB_statsH do b > 0 od)
+	        then if red_count_flag
+		     then [[j, red_count(p,HT)]]
+		     else [[j]]
+		     fi
+	       }
+	       elif bz_nu_flag and any(for q in qs do @bool: status(q,-1) < 0 od)
 	       then []
-	       elif all(for b in stats do b > 0 od)
-	       then if red_count_flag
-		    then [[j, red_count(p,HT)]]
-		    else [[j]]
-		    fi
-	       elif (statsH := for q in qs do status(q,HT) od;
-	       	     any(for b in statsH do b < 0 od))
-	       then []
-	       elif all(for b in statsH do b > 0 od)
-	       then if red_count_flag
-		    then [[j, red_count(p,HT)]]
-		    else [[j]]
-		    fi
-	       elif (DMB_stats := for q in qs do is_FPP_unitary(q) od;
-	       	     any(for b in DMB_stats do b < 0 od))
-	       then []
-	       elif all(for b in DMB_stats do b > 0 od)
-	       then if red_count_flag
-		    then [[j, red_count(p,HT)]]
-		    else [[j]]
-		    fi
-	       elif (DMB_statsH := for q in qs do is_FPP_unitary_to_ht(q,HT) od;
-	       	     any(for b in DMB_statsH do b < 0 od))
-	       then []
-	       elif all(for b in DMB_statsH do b > 0 od)
-	       then if red_count_flag
-		    then [[j, red_count(p,HT)]]
-		    else [[j]]
-		    fi
 	       elif FPP_def_flag and not FPP_def_test_wk_final(p)
 	       then []
 	       elif FD_wiggle_flag and any(for q in monomials(finalize(p)) do wiggle_status_all(q,-1)<0 od)
