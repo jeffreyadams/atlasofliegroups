@@ -2908,15 +2908,15 @@ set theta_induced(RealForm G) = void:
 
 {simple derived factors of all theta-stable Levis of G}
 set SDLF(RealForm G) = [RealForm]:
-    let answer = make_RealForm_hash()
+    let answers = for j: G.semisimple_rank do make_RealForm_hash() od
     then () = for L in Ls(G) {these are PROPER Levis of theta-stable parabolics}
-    	      ~do for Lj in derived_simple_factorsRF(L) {~ to put the small L first}
-	      	  do answer.match(Lj)
-	    	  od
-	      	od
-    in for k:answer.size()
-       do answer.index(k)
-       od
+    	      do for Lj in derived_simple_factorsRF(L) {~ to put the small L first}
+	      	 do answers[rank(Lj)].match(Lj)
+	    	 od
+	      od
+    in for hash in answers
+       do hash.list()
+       od.##
 
 {these are the restricted fundamental weights for G: the ones defining maximal real parabolics
  at x_open(G)}
