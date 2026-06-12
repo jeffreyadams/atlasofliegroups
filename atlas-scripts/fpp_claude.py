@@ -112,6 +112,7 @@ class Config:
     cmd_timeout: float = 300.0          # short commands (is_finished, write)
     compute_timeout: float = 30 * 86400  # effectively "no timeout"; governor kills hangs
     keep_init: bool = False             # if True, don't reset init from reference
+    settings_file: str = ""             # loaded last (overrides defaults); "" = none
 
     # filled in during setup
     run_dir: str = ""
@@ -196,16 +197,20 @@ IDLE, COMPUTING, RESTARTING, STOPPED = "idle", "computing", "restarting", "stopp
 
 
 class AtlasWorker:
-    def __init__(self, job, cfg, log):
+    def __init__(self, job, cfg):
         self.job = job
         self.cfg = cfg
-        self.log = log                      # callable(str)
         self.proc = None
         self.reader = None
         self.seq = 0
         self.symlink = os.path.join(cfg.symlinks_dir, "atlas_%d" % job)
         self.data_file = os.path.join(cfg.run_dir, "%d.at" % job)
-        self.diag_file = os.path.join(cfg.logs_dir, "%d.diag" % job)
+        # One per-job log holds both our structured lines and the atlas process's
+        # (verbose) computation output, which atlas appends directly via redirect.
+        # Both writers use O_APPEND and never write at the same instant (the
+        # worker is single-threaded), so they interleave cleanly in order.
+        self.log_path = os.path.join(cfg.logs_dir, "%d.log" % job)
+        self.logfh = open(self.log_path, "a", buffering=1)
         self.stderr_file = os.path.join(cfg.logs_dir, "%d.stderr" % job)
         # cross-thread signals from the governor
         self.recycle_event = threading.Event()    # graceful recycle requested
@@ -220,9 +225,15 @@ class AtlasWorker:
             except FileExistsError:
                 pass
 
+    def log(self, msg):
+        self.logfh.write("[%s] job %d: %s\n" % (now(), self.job, msg))
+        self.logfh.flush()
+
     # -- process lifecycle ------------------------------------------------- #
     def launch(self):
         args = [self.symlink, "all.at", self.cfg.init_file] + self.cfg.aux_files
+        if self.cfg.settings_file:
+            args.append(self.cfg.settings_file)
         stderr = open(self.stderr_file, "ab")
         self.proc = subprocess.Popen(
             args, executable=self.symlink, cwd=SCRIPTS_DIR,
@@ -319,11 +330,13 @@ class AtlasWorker:
         return False
 
     def compute(self, k):
-        # Redirect the (very verbose) diagnostic output of the computation to a
-        # per-job file (overwritten each pair, so it stays small and shows the
-        # last/in-progress pair if we ever need to inspect a stall).
-        cmd = '>"%s" FPP_unitary_hash_bottom_layer(xl_pair(%s,%d))' % (
-            self.diag_file, GROUP_SYMBOL, k)
+        # The debugging flags (FPP_report_flag, every_lambda_deets_flag, ...)
+        # make the computation very verbose.  Append that output straight to the
+        # job log via atlas' file redirect (real newlines, and it keeps the
+        # control pipe light).  A header line (flushed first) keeps it readable.
+        self.log("---- pair %d: FPP_unitary_hash_bottom_layer output ----" % k)
+        cmd = '>>"%s" FPP_unitary_hash_bottom_layer(xl_pair(%s,%d))' % (
+            self.log_path, GROUP_SYMBOL, k)
         self._command(cmd, self.cfg.compute_timeout)
 
     def write_pair(self, k, elapsed_s):
@@ -431,13 +444,6 @@ class FPPRun:
         self.main_log_fh.write(line)
         self.main_log_fh.flush()
 
-    def worker_logger(self, job):
-        fh = open(os.path.join(self.cfg.logs_dir, "%d.log" % job), "a", buffering=1)
-
-        def _log(msg):
-            fh.write("[%s] job %d: %s\n" % (now(), job, msg))
-        return _log
-
     # -- setup ------------------------------------------------------------- #
     def setup(self):
         cfg = self.cfg
@@ -475,9 +481,54 @@ class FPPRun:
             self.log("reset init %s <- %s" % (
                 os.path.basename(cfg.init_file), os.path.basename(cfg.reference_init)))
 
+        if cfg.settings_file:
+            self.log("settings (loaded last): %s" % cfg.settings_file)
         self._write_definition()
+        self._record_flags()
         self.merger = Merger(cfg, self.log)
         self._build_queue()
+
+    def _load_args(self):
+        """Files each worker loads after all.at, in order: init, aux, settings."""
+        args = [self.cfg.init_file] + self.cfg.aux_files
+        if self.cfg.settings_file:
+            args.append(self.cfg.settings_file)
+        return args
+
+    def _record_flags(self):
+        """Record the value of every existing *flag* variable (with the settings
+        applied) to logs/flags.txt.  The candidate names are scraped from the
+        atlas source, then each is queried -- nonexistent ones simply error out
+        in atlas and are skipped, so the recorded list is always accurate."""
+        cfg = self.cfg
+        grep = subprocess.run(
+            ["grep", "-rhoE", r"[A-Za-z_][A-Za-z0-9_]*flag[A-Za-z0-9_]* *:?=",
+             "--include=*.at", "."],
+            cwd=SCRIPTS_DIR, capture_output=True, text=True)
+        names = set(re.findall(
+            r"[A-Za-z_][A-Za-z0-9_]*flag[A-Za-z0-9_]*", grep.stdout))
+        # also record whatever the settings file assigns, even without "flag" in
+        # the name (e.g. fund_face_verbose, seat_belt_on)
+        if cfg.settings_file and os.path.exists(cfg.settings_file):
+            with open(cfg.settings_file) as f:
+                for m in re.finditer(r"(?m)^\s*(?:set\s+)?([A-Za-z_]\w*)\s*:?=", f.read()):
+                    names.add(m.group(1))
+        names = sorted(names)
+        if not names:
+            return
+        script = "".join('prints("@FLAG@|%s|",%s)\n' % (n, n) for n in names) + "quit\n"
+        out, _ = self._atlas_oneshot(self._load_args(), script, timeout=900)
+        flags = {}
+        for line in out.splitlines():
+            if line.startswith("@FLAG@|"):
+                _, name, val = line.split("|", 2)
+                flags[name] = val.strip()
+        path = os.path.join(cfg.logs_dir, "flags.txt")
+        with open(path, "w") as f:
+            for name in sorted(flags):
+                f.write("%s = %s\n" % (name, flags[name]))
+        self.log("recorded %d flag values (of %d candidates) -> flags.txt" % (
+            len(flags), len(names)))
 
     def _snapshot(self):
         for f in (__file__, "FPP.at", "fpp_settings.at", self.cfg.reference_init):
@@ -754,7 +805,7 @@ class FPPRun:
             self.log("nothing to do; exiting")
             return
         for job in range(cfg.workers):
-            w = AtlasWorker(job, cfg, self.worker_logger(job))
+            w = AtlasWorker(job, cfg)
             self.workers.append(w)
         gov = threading.Thread(target=self.governor_thread, name="governor", daemon=True)
         mrg = threading.Thread(target=self.merge_thread, name="merger", daemon=True)
@@ -807,6 +858,11 @@ def build_config(argv):
     p.add_argument("--merge-interval", type=float, default=120.0)
     p.add_argument("--keep-init", action="store_true",
                    help="do NOT reset the init file from the reference")
+    p.add_argument("--settings", default="fpp_settings.at",
+                   help="settings file loaded last to override defaults "
+                        "(debugging flags); default fpp_settings.at")
+    p.add_argument("--no-settings", action="store_true",
+                   help="do not load any settings/override file")
     a = p.parse_args(argv)
 
     pre = PRESETS[a.preset] if a.preset else None
@@ -837,11 +893,24 @@ def build_config(argv):
     if not os.path.isabs(init_file):
         init_file = os.path.join(SCRIPTS_DIR, init_file)
 
+    max_total = pick(a.max_total_gb, "max_total_gb")
+    max_proc = pick(a.max_proc_gb, "max_proc_gb")
+    if max_total is None or max_proc is None:
+        p.error("need --preset, or both --max-total-gb and --max-proc-gb")
+    if workers is None:
+        p.error("need --preset or --workers (-n)")
+
+    settings = ""
+    if not a.no_settings and a.settings:
+        settings = a.settings if os.path.isabs(a.settings) else os.path.join(SCRIPTS_DIR, a.settings)
+        if not os.path.exists(settings):
+            p.error("settings file not found: %s" % settings)
+
     return Config(
         name=name,
         workers=workers,
-        max_total_gb=pick(a.max_total_gb, "max_total_gb"),
-        max_proc_gb=pick(a.max_proc_gb, "max_proc_gb"),
+        max_total_gb=max_total,
+        max_proc_gb=max_proc,
         reference_init=reference,
         init_file=init_file,
         aux_files=aux,
@@ -852,6 +921,7 @@ def build_config(argv):
         poll_interval=a.poll_interval,
         merge_interval=a.merge_interval,
         keep_init=a.keep_init,
+        settings_file=settings,
     )
 
 
