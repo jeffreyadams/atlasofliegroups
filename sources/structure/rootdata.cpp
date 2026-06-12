@@ -54,11 +54,6 @@
 #include "weyl.h" // for classes |Twist|, |WeylWord|, |WeylElt|
 #include "prerootdata.h"
 
-// extra defs for windows compilation -spc
-#ifdef WIN32
-#include <iterator>
-#endif
-
 /*****************************************************************************
 
   This module contains the implementation of the RootDatum class. What we call a
