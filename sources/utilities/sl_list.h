@@ -397,6 +397,9 @@ template<typename T, typename Alloc>
       p.link_loc->reset(allocate_node(*first));
   }
 
+  simple_list(sl_list<T,Alloc>&& x); // undress and move constructor
+  simple_list(const sl_list<T,Alloc>& x); // copy and undress constructor
+
   ~simple_list() {} // when called, |head| is already destructed/cleaned up
 
   simple_list& operator= (const simple_list& x)
@@ -1006,6 +1009,8 @@ public:
       sort_next(cbegin(),n,less);
   }
 
+  sl_list<T,Alloc> dress(); // this is a sacrificial method
+
   std::vector<T> to_vector() const &
   { std::vector<T>result;
     result.reserve(length(head.get()));
@@ -1212,6 +1217,10 @@ template<typename T, typename Alloc>
     for ( ; *tail!=nullptr; tail=&(*tail)->next)
       ++node_count;
   }
+
+  explicit sl_list (const simple_list<T,Alloc>& x) // copy and dress constructor
+    : sl_list(simple_list<T,Alloc>(x)) // delegate to move&dress after copying
+  {}
 
   template<typename InputIt, typename = typename std::enable_if<
   std::is_base_of<std::input_iterator_tag,
@@ -1992,6 +2001,21 @@ template<typename T, typename Alloc>
   static bool at_end (weak_const_iterator p) { return p.at_end(); }
 
 }; // |class sl_list<T,Alloc>|
+
+template<typename T, typename Alloc>
+  sl_list<T,Alloc> simple_list<T,Alloc>::dress()
+{ return sl_list<T,Alloc>(std::move(*this)); }
+
+template<typename T, typename Alloc>
+  simple_list<T,Alloc>::simple_list(sl_list<T,Alloc>&& x)
+  : simple_list(x.undress())
+{}
+
+template<typename T, typename Alloc>
+  simple_list<T,Alloc>::simple_list(const sl_list<T,Alloc>& x)
+  : simple_list(sl_list<T,Alloc>(x).undress())
+{}
+
 
 // external functions for |sl_list<T,Alloc>|
 template<typename T,typename Alloc>
