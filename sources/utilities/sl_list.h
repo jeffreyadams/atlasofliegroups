@@ -777,6 +777,7 @@ template<typename T, typename Alloc>
     // cycle backward |(*pos.link_loc, *begin.link_loc, *end.link_loc)|:
     pos.link_loc->swap(*begin.link_loc);
     begin.link_loc->swap(*end.link_loc);
+    static_cast<void>(other); // tell compiler it is OK that |other| is unused
     return iterator(*end.link_loc);
   }
 
@@ -1771,7 +1772,7 @@ template<typename T, typename Alloc>
 		   const_iterator begin, const_iterator end)
   // here we take care to remove just the range |begin|-|end| from |other|
   { simple_list<T,Alloc> tmp;
-    tmp.splice(tmp.begin(),begin,end);
+    tmp.splice(tmp.begin(),other,begin,end);
     return splice(pos,tmp.dress()); // convert to |sl_list|, then splice in
   }
 
@@ -2224,19 +2225,21 @@ public:
 
   size_t size() const = delete;
 
-  T& pop_splice_to(sp_l& dest,typename sp_l::iterator it)
-  { dest.splice(it,static_cast<sp_l&>(this->c),this->c.begin()); return *it; }
-  const T& pop_splice_to(sp_l& dest,typename sp_l::const_iterator it)
-  { dest.splice(it,static_cast<sp_l&>(this->c),this->c.begin()); return *it; }
+  T& pop_splice_to(sp_l& dest,typename sp_l::const_iterator it)
+  { T& result = this->c.front(); // get non |const| reference while we can
+    dest.splice(it,static_cast<sp_l&>(this->c),this->c.begin());
+    return result; // which now equals |*it|, but the latter is |const T&|
+  }
 
   void push_splice_from(sp_l& src,typename sp_l::const_iterator it)
   { this->c.splice(this->c.begin(),src,it); }
 
   // the remaining cases are cross-type splices
-  T& pop_splice_to(sl_l& dest,typename sl_l::iterator it)
-  { dest.splice(it,static_cast<sp_l&>(this->c),this->c.begin()); return *it; }
-  const T& pop_splice_to(sl_l& dest,typename sl_l::const_iterator it)
-  { dest.splice(it,static_cast<sp_l&>(this->c),this->c.begin()); return *it; }
+  T& pop_splice_to(sl_l& dest,typename sl_l::const_iterator it)
+  { T& result = this->c.front(); // get non |const| reference while we can
+    dest.splice(it,static_cast<sp_l&>(this->c),this->c.begin());
+    return result; // which now equals |*it|, but the latter is |const T&|
+  }
 
   void push_splice_from(sl_l& src,typename sl_l::const_iterator it)
   { this->c.splice(this->c.begin(),src,it,std::next(it)); }
@@ -2264,22 +2267,20 @@ public:
   T& back() = delete;
   const T& back() const = delete;
 
-  T& pop_splice_to(sl_l& dest,typename sl_l::iterator it)
-  { dest.splice(it,this->c,this->c.begin()); return *it; }
-  const T& pop_splice_to(sl_l& dest,typename sl_l::const_iterator it)
-  { dest.splice(it,this->c,this->c.begin()); return *it; }
+  T& pop_splice_to(sl_l& dest,typename sl_l::const_iterator it)
+  { T& result = this->c.front(); // get non |const| reference while we can
+    dest.splice(it,this->c,this->c.begin());
+    return result; // which now equals |*it|, but the latter is |const T&|
+  }
 
   void push_splice_from(sl_l& src,typename sl_l::const_iterator it)
   { this->c.splice(this->c.end(),src,it); }
 
   // the remaining cases are cross-type splices
-  T& pop_splice_to(sp_l& dest,typename sp_l::iterator it)
-  { dest.splice(it,this->c,this->c.begin(),std::next(this->c.begin()));
-    return *it;
-  }
-  const T& pop_splice_to(sp_l& dest,typename sp_l::const_iterator it)
-  { dest.splice(it,this->c,this->c.begin(),std::next(this->c.begin()));
-    return *it;
+  T& pop_splice_to(sp_l& dest,typename sp_l::const_iterator it)
+  { T& result = this->c.front(); // get non |const| reference while we can
+    dest.splice(it,this->c,this->c.begin(),std::next(this->c.begin()));
+    return result;
   }
 
   void push_splice_from(sp_l& src,typename sp_l::const_iterator it)
