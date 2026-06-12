@@ -2208,6 +2208,8 @@ template<typename T,typename Alloc> class stack
 {
   using msl = mirrored_simple_list<T,Alloc>;
   using Base = std::stack<T,msl>;
+  using sl_l = sl_list<T,Alloc>;
+  using sp_l = simple_list<T,Alloc>;
 
 public:
   using Base::Base; // inherit constructors
@@ -2221,6 +2223,24 @@ public:
   stack(std::initializer_list<T> l) : Base(msl(l)) {}
 
   size_t size() const = delete;
+
+  T& pop_splice_to(sp_l& dest,typename sp_l::iterator it)
+  { dest.splice(it,static_cast<sp_l&>(this->c),this->c.begin()); return *it; }
+  const T& pop_splice_to(sp_l& dest,typename sp_l::const_iterator it)
+  { dest.splice(it,static_cast<sp_l&>(this->c),this->c.begin()); return *it; }
+
+  void push_splice_from(sp_l& src,typename sp_l::const_iterator it)
+  { this->c.splice(this->c.begin(),src,it); }
+
+  // the remaining cases are cross-type splices
+  T& pop_splice_to(sl_l& dest,typename sl_l::iterator it)
+  { dest.splice(it,static_cast<sp_l&>(this->c),this->c.begin()); return *it; }
+  const T& pop_splice_to(sl_l& dest,typename sl_l::const_iterator it)
+  { dest.splice(it,static_cast<sp_l&>(this->c),this->c.begin()); return *it; }
+
+  void push_splice_from(sl_l& src,typename sl_l::const_iterator it)
+  { this->c.splice(this->c.begin(),src,it,std::next(it)); }
+
 }; // |class stack|
 
 template<typename T,typename Alloc> class queue
@@ -2228,6 +2248,7 @@ template<typename T,typename Alloc> class queue
 {
   using sl_l = sl_list<T,Alloc>;
   using Base = std::queue<T,sl_l>;
+  using sp_l = simple_list<T,Alloc>;
 
 public:
   using Base::Base; // inherit constructors
@@ -2248,12 +2269,22 @@ public:
   const T& pop_splice_to(sl_l& dest,typename sl_l::const_iterator it)
   { dest.splice(it,this->c,this->c.begin()); return *it; }
 
-  T& pop_splice_to(simple_list<T,Alloc>& dest,
-		   typename simple_list<T,Alloc>::iterator it)
-  { dest.splice(it,this->c,this->c.begin()); return *it; }
-  const T& pop_splice_to(simple_list<T,Alloc>& dest,
-			 typename simple_list<T,Alloc>::const_iterator it)
-  { dest.splice(it,this->c,this->c.begin()); return *it; }
+  void push_splice_from(sl_l& src,typename sl_l::const_iterator it)
+  { this->c.splice(this->c.end(),src,it); }
+
+  // the remaining cases are cross-type splices
+  T& pop_splice_to(sp_l& dest,typename sp_l::iterator it)
+  { dest.splice(it,this->c,this->c.begin(),std::next(this->c.begin()));
+    return *it;
+  }
+  const T& pop_splice_to(sp_l& dest,typename sp_l::const_iterator it)
+  { dest.splice(it,this->c,this->c.begin(),std::next(this->c.begin()));
+    return *it;
+  }
+
+  void push_splice_from(sp_l& src,typename sp_l::const_iterator it)
+  { this->c.splice(this->c.end(),src,it,std::next(it)); }
+
 }; // |class queue|
 
 } // |namespace containers|
