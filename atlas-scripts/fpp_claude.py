@@ -148,18 +148,35 @@ class LineReader:
     """Read newline-terminated lines from a raw fd with a per-read timeout.
 
     Returns the line (bytes, incl. newline) on success, None on timeout, and
-    b"" on EOF.  Uses os.read so select() readiness is accurate (no hidden
-    buffering as with TextIOWrapper)."""
+    b"" on EOF.  Uses os.read so poll() readiness is accurate (no hidden
+    buffering as with TextIOWrapper).
+
+    Uses poll() rather than select(): with hundreds of workers the atlas pipe
+    fds exceed select()'s FD_SETSIZE (1024) limit, which raises
+    "filedescriptor out of range in select()".  poll() has no such limit.
+    Each poll wait is capped (so a multi-day timeout doesn't overflow poll's
+    millisecond int) and looped against an overall deadline."""
+
+    _MAX_WAIT_MS = 3600 * 1000   # cap a single poll() wait at 1 h
 
     def __init__(self, fd):
         self.fd = fd
         self.buf = b""
+        self.poller = select.poll()
+        self.poller.register(fd, select.POLLIN | select.POLLHUP | select.POLLERR)
 
     def readline(self, timeout):
+        deadline = None if timeout is None else time.time() + timeout
         while b"\n" not in self.buf:
-            r, _, _ = select.select([self.fd], [], [], timeout)
-            if not r:
-                return None
+            if deadline is not None:
+                remaining = deadline - time.time()
+                if remaining <= 0:
+                    return None
+                wait_ms = min(int(remaining * 1000) + 1, self._MAX_WAIT_MS)
+            else:
+                wait_ms = self._MAX_WAIT_MS
+            if not self.poller.poll(wait_ms):
+                continue                     # capped wait elapsed; deadline rechecked
             chunk = os.read(self.fd, 65536)
             if chunk == b"":
                 if self.buf:
