@@ -786,6 +786,14 @@ template<typename T, typename Alloc>
   iterator splice (const_iterator pos, simple_list&& other, const_iterator node)
   { return splice(pos,other,node,std::next(node)); }
 
+  // cross-type splicing is provided, but only the most general forms
+  iterator splice (const_iterator pos, sl_list<T,Alloc>& other,
+		   const_iterator begin,const_iterator end)
+  { return splice(pos,std::move(other),begin,end); } // defer to rvalue version
+
+  iterator splice (const_iterator pos, sl_list<T,Alloc>&& other,
+		   const_iterator begin, const_iterator end); // inline below
+
   void reverse () noexcept
   {
     if (empty() or singleton())
@@ -1753,6 +1761,27 @@ template<typename T, typename Alloc>
   iterator splice (const_iterator pos, sl_list&& other, const_iterator node)
   { return splice(pos,std::move(other),node,std::next(node)); }
 
+  // splicing from simple lists is possible, but requires |sl_list| conversion
+  iterator splice (const_iterator pos, simple_list<T,Alloc>&& other,
+		   const_iterator begin, const_iterator end)
+  // we can pilfer all of |other|, even if we only use the |begin|-|end| range
+  { return splice(pos,sl_list(std::move(other)),begin,end); }
+
+  iterator splice (const_iterator pos, simple_list<T,Alloc>& other,
+		   const_iterator begin, const_iterator end)
+  // here we take care to remove just the range |begin|-|end| from |other|
+  { simple_list<T,Alloc> tmp;
+    tmp.splice(tmp.begin(),begin,end);
+    return splice(pos,tmp.dress()); // convert to |sl_list|, then splice in
+  }
+
+  iterator splice
+    (const_iterator pos, simple_list<T,Alloc>& other, const_iterator node)
+  { return splice(pos,other,node,std::next(node)); }
+  iterator splice
+    (const_iterator pos, simple_list<T,Alloc>&& other, const_iterator node)
+  { return splice(pos,std::move(other),node,std::next(node)); }
+
   void reverse () noexcept { reverse(cbegin(),cend()); }
 
   // reverse range and return new ending iterator
@@ -2015,6 +2044,17 @@ template<typename T, typename Alloc>
   simple_list<T,Alloc>::simple_list(const sl_list<T,Alloc>& x)
   : simple_list(sl_list<T,Alloc>(x).undress())
 {}
+
+template<typename T, typename Alloc>
+  typename simple_list<T,Alloc>::iterator
+  simple_list<T,Alloc>::splice
+    (const_iterator pos, sl_list<T,Alloc>&& other,
+     const_iterator begin, const_iterator end)
+{
+  sl_list<T,Alloc>tmp;
+  tmp.splice(tmp.begin(),std::move(other),begin,end);
+  return splice(pos,tmp.undress());
+}
 
 
 // external functions for |sl_list<T,Alloc>|
