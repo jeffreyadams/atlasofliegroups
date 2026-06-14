@@ -2858,10 +2858,15 @@ set theta_induced(RealForm G) = void:
 	     	od {[[[ratvec]]]}
 	     od
 	  od
-     then Binmks = for unitary_listi@i in unitary_listinmks
+     then Binmks = [[[[[int]]]]]:
+     	  for unitary_listi@i in unitary_listinmks
      	  do for unitary_listin@n in unitary_listi
 	     do for unitary_listinm@m in unitary_listin
-	     	do box(for unitary_listinmk in unitary_listinm do #unitary_listinmk od)
+	     	do let cards = for unitary_listinmk in unitary_listinm do #unitary_listinmk od
+		   in if all(for b in cards do @bool: b> 0 od)
+		      then box(for unitary_listinmk in unitary_listinm do #unitary_listinmk od)
+		      else [[]]
+		      fi
 		od
 	     od
 	  od
@@ -3104,10 +3109,15 @@ set real_induced(RealForm G) = void:
 	     	od {[[[ratvec]]]}
 	     od
 	  od
-     then Binmks = for unitary_listi@i in unitary_listinmks
+     then Binmks = [[[[[int]]]]]:
+     	  for unitary_listi@i in unitary_listinmks
      	  do for unitary_listin@n in unitary_listi
 	     do for unitary_listinm@m in unitary_listin
-	     	do box(for unitary_listinmk in unitary_listinm do #unitary_listinmk od)
+	     	do let cards = for unitary_listinmk in unitary_listinm do #unitary_listinmk od
+		   in if all(for b in cards do @bool:b > 0 od)
+		      then box(cards)
+		      else [[]]
+		      fi
 		od
 	     od
 	  od
