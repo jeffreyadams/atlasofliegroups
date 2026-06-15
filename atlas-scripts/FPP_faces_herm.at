@@ -272,6 +272,10 @@ set xl_pair(RealForm G,[int] cumulative_sizes, int j)=(KGBElt,ratvec):
     x=KGB(G,x_number) in
     (x,FPP_lambdas(x)[lambda_index])
 
+{whether to compute xl_sizes when printing big_unitary_hash portions. Right now this takes ???
+more than seven minutes??? for E7_s}
+set jeff_sizes_flag = false
+
 set make_big_unitary_hash() = big_unitary_hash_table:
 (   let real_form_hash = make_RealForm_hash()
     then uhashes = [Param_hash]: [] {one for each real form}
@@ -1255,7 +1259,9 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		  od
 	     else prints("void: big_unitary_hash.finishxmap(",Gname,",",donemap,")")
 	     fi;
-             prints("void: big_unitary_hash.set_xl_sizes(",Gname,",",xl_sizes[i],")");
+	     if jeff_sizes_flag
+             then prints("void: big_unitary_hash.set_xl_sizes(",Gname,",",xl_sizes[i],")")
+	     fi;
              prints("set ",intlistname,"=[int]:[]");
 	     write_append(bitmapintlist,intlistname);
 	     prints("big_unitary_hash.finishall(",Gname,",",intlistname,")")
@@ -1264,27 +1270,24 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       let i = add_real_form(G)
       then Gname = "G_temp"
       then listname = Gname+"_list"
-      {then intlistname = Gname+"_XLK"}
       then plist = uhashes[i].list()
-      {then bitmapintlist = xl_known[i]}
       then donemap = x_known[i]
       then done_list = [int]:[]
       then () = if write_x_flag then done_list := set_bit_positions(donemap)
 		fi
       in write_real_form(G,Gname);
-	 prints("set j = big_unitary_hash.rf_number(",Gname,")");
-	 for p in plist
+	 prints("set Nullp = U(1,0).trivial");
+	 prints("set tempParams = [Param]: for i:",#plist," do Nullp od");
+	 for p@j in plist
 	 do let xnum = p.x.number
-	    in prints("void:  big_unitary_hash.long_match(parameter(",Gname,",",xnum,",",p.lambda,",",p.nu,"),j)")
+	    in prints("void:tempParams[",j,"]:=parameter(",Gname,",",xnum,",",p.lambda,",",p.nu,")")
 	 od;
-	 {prints("void: big_unitary_hash.finishall(",Gname,",",xl_known[i],")");} {this has length KGB_size(G), which is a lot; not worth including}
 	 if write_x_flag
 	 then for xnum in done_list
 	      do prints("void: big_unitary_hash.finishx_num(",Gname,xnum,")")
 	      od
 	 else prints("void: big_unitary_hash.finishxmap(G_temp,",donemap,")")
 	 fi;
-         prints("void: big_unitary_hash.set_xl_sizes(G_temp,",xl_sizes[i],")");
 	 if write_x_lambda_flag
 	 then for N@j in xl_known[i]
 	      do if N.!=
@@ -1292,7 +1295,10 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		 fi
 	      od
 	 fi;
-         prints("void: big_unitary_hash.set_xl_sizes(G_temp,",xl_sizes[i],")")
+	 prints("big_unitary_hash.uhash(",Gname,").fill(tempParams)");
+	 if jeff_sizes_flag
+	 then prints("void: big_unitary_hash.set_xl_sizes(G_temp,",xl_sizes[i],")")
+	 fi
     , (RealForm -> ): {writeG_nu} (RealForm G):
       let i = add_real_form(G)
       then Gname = "G_temp"
@@ -1325,11 +1331,14 @@ some lambdas for that x might be finished.}
       then done_list = set_bit_positions(donerangemap)
 	   {these are the x's being written for which list is complete}
       in write_real_form(G,Gname);
-	 prints("set j = big_unitary_hash.rf_number(",Gname,")"); {, ptemp = GL(1,R).trivial");}
-	 for p in plist
+	 prints("set j = big_unitary_hash.rf_number(",Gname,")");
+	 prints("set Nullp = U(1,0).trivial");
+	 prints("set tempParams = [Param]: for i:",#plist," do Nullp od");
+	 for p@j in plist
 	 do let xnum = p.x.number
-	    in prints("void: big_unitary_hash.long_match(parameter(G_temp,",xnum,",",p.lambda,",",p.nu,"),j)")
+	    in prints("void:tempParams[",j,"]:=parameter(",Gname,",",xnum,",",p.lambda,",",p.nu,")")
 	 od;
+	 prints("big_unitary_hash.uhash(",Gname,").fill(tempParams)");
 	 if write_x_flag
 	 then for xnum in done_list
 	      do prints("void: big_unitary_hash.finishx_num(",Gname,",",xnum,")")
@@ -1351,10 +1360,11 @@ some lambdas for that x might be finished.}
 		   od.##
       then N = to_bitset([position(x,lambda)])
       in write_real_form(G,Gname);
-	 prints("set j = big_unitary_hash.rf_number(",Gname,")");
-	 for p in plist
-	 do prints("void: big_unitary_hash.long_match(parameter(G_temp,",xnum,",",lambda,",",p.nu,"),j)")
+	 for p@j in plist
+	 do let xnum = p.x.number
+	    in prints("void:tempParams[",j,"]:=parameter(",Gname,",",xnum,",",p.lambda,",",p.nu,")")
 	 od;
+	 prints("big_unitary_hash.uhash(",Gname,").fill(tempParams)");
 	 if is_member_bitset(position(x,lambda), xl_known[i][xnum])
 	 then prints("big_unitary_hash.finish_num(",Gname,",",xnum,",",to_string(N),")")
 	 fi {this adds the location of lambda to the bitset of known lambdas at x}
@@ -1400,17 +1410,16 @@ some lambdas for that x might be finished.}
 		      fi
 		   od.##
       then N = to_bitset([position(x,lambda)])
-      in {write_real_form(G,Gname);}
-	 prints("set j = big_unitary_hash.rf_number(",Gname,")");
-	 for p in plist
-	 do prints("void: big_unitary_hash.long_match(parameter(G_temp,",xnum,",",lambda,",",p.nu,"),j)")
+      in for p@j in plist
+	 do let xnum = p.x.number
+	    in prints("void:tempParams[",j,"]:=parameter(",Gname,",",xnum,",",p.lambda,",",p.nu,")")
 	 od;
 	 if is_member_bitset(position(x,lambda), xl_known[i][xnum])
 	 then prints("big_unitary_hash.finish_num(",Gname,",",xnum,",",to_string(N),")")
 	 fi
       , ((KGBElt,ratvec) -> string ): {writexlam_no_G_string} (KGBElt x, ratvec lambda):
-      let str=string:""
-      then G = x.real_form
+      let G = x.real_form
+      then str = string:""
       then xnum = x.number
       then i = add_real_form(G)
       then Gname = "G_temp"
@@ -1423,14 +1432,16 @@ some lambdas for that x might be finished.}
 		      fi
 		   od.##
       then N = to_bitset([position(x,lambda)])
-      in {write_real_form(G,Gname);}
-	 str+:="set j = big_unitary_hash.rf_number(" + Gname + ")\n";
-	 for p in plist do
-           str+:="void: big_unitary_hash.long_match(parameter(G_temp," + xnum + "," +to_string(lambda) + "," + to_string(p.nu) +"),j)\n"
+      in str+:="set Nullp = U(1,0).trivial\n";
+	 str+:="set tempParams = [Param]: for i:"+#plist+" do Nullp od\n";
+	 for p@j in plist
+      	 do str+:="void:tempParams["+to_string(j)+"]:=parameter(G_temp," + xnum + "," +
+	 to_string(lambda)+","+to_string(p.nu) + ")\n"
 	 od;
+	 str+:="big_unitary_hash.uhash(G_temp).fill(tempParams)\n";
 	 if is_member_bitset(position(x,lambda), xl_known[i][xnum])
 	 then str+:="big_unitary_hash.finish_num(" + Gname + "," + xnum + "," + to_string(N) + ")\n"
-	 fi;str
+	 fi; str
    , ((RealForm,[int]) -> ): {set_xl_sizes} (RealForm G,[int] precomputed_xl_sizes):
        let i=add_real_form(G) in
        let ()=prints("OKOK") in
