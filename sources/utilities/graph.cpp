@@ -167,7 +167,8 @@ partition::Partition OrientedGraph::to_unoriented_components()
 
 namespace {
 using seqno = Vertex; // sequence number in depth-first traversal
-using work_addr = unsigned; // reference to an active vertex by stack location
+
+using work_addr = std::vector<struct info>::iterator;
 
 struct info
 {
@@ -181,16 +182,19 @@ struct info
     : v(x), parent(p), next_edge(0), min(rank) { }
 };
 
+
 } // |namespace|
 
 partition::Partition OrientedGraph::cells(OrientedGraph* gr) const
 {
   std::vector<seqno> rank(size(),0);
 
-  const work_addr nil= size(); // impossible index into |active|
+  std::vector<info> dummy;
+  const work_addr nil = dummy.end(); // impossible index into |active|
   const seqno infinity= size()+1; // impossible sequence number
 
   std::vector<info> active;
+  active.reserve(size()); // ensure no iterators ever get invalidated
 
   // the next variable provides local fast storage without (de)construction
   std::vector<const EdgeList*> out; // work space for each componenent
@@ -205,15 +209,16 @@ partition::Partition OrientedGraph::cells(OrientedGraph* gr) const
   for (Vertex x0 = 0; x0 <size(); ++x0)
     if (rank[x0]<infinity)
     {
+      assert(active.empty());
       seqno count=1;
       rank[x0]=count++;
-      active.push_back(info(x0,nil,rank[x0])); // x0 has no parent
-      work_addr cur_pos=0; // point current position to x0
+      work_addr cur_pos = active.end(); // current position points to x0
+      active.emplace_back(x0,nil,rank[x0]); // x0 has no parent
 
       while(cur_pos!=nil)
       {
       next_x:
-	info& x = active[cur_pos];
+	info& x = *cur_pos;
 	const EdgeList& edges = edgeList(x.v);
 
 	while (x.next_edge < edges.size())
@@ -221,9 +226,9 @@ partition::Partition OrientedGraph::cells(OrientedGraph* gr) const
 	  Vertex y = edges[x.next_edge++];
 	  if (rank[y]==0) // y is a fresh vertex
 	  {
-	    work_addr y_pos=active.size();
 	    rank[y]=count++;
-	    active.push_back(info(y,cur_pos,rank[y]));
+	    auto y_pos = active.end();
+	    active.emplace_back(y,cur_pos,rank[y]);
 	    cur_pos=y_pos;
 	    goto next_x;
 	  }
@@ -242,7 +247,7 @@ partition::Partition OrientedGraph::cells(OrientedGraph* gr) const
 	  unsigned long c =
 	    pi.new_class(x.v);  // x will be added again in loop, harmless
 	  out.clear(); // to gather outgoing edges
-	  for (auto it = &active[cur_pos]; it!=&*active.end(); ++it)
+	  for (auto it = cur_pos; it!=active.end(); ++it)
 	  {
 	    Vertex y=it->v; // the first time |y==x.v|
 	    pi.addToClass(c,y);
@@ -250,14 +255,14 @@ partition::Partition OrientedGraph::cells(OrientedGraph* gr) const
 	    out.push_back(&edgeList(y));
 	  }
 	  // now remove |x| and its descendance from |active|
-	  active.erase(active.begin()+cur_pos,active.end());
+	  active.erase(cur_pos,active.end());
 
 	  if (gr!=nullptr) gr->add_links(out,pi);
 	}
 	else // |x| matures but does not head a new strong component
 	{ // note that |x| cannot be |x0|, so active[x.parent] exists
-	  if (x.min < active[new_pos].min) // then update parent info
-	    active[new_pos].min=x.min; // what x sees, its parent sees
+	  if (x.min < new_pos->min) // then update parent info
+	    new_pos->min=x.min; // what x sees, its parent sees
 	}
 	cur_pos=new_pos;
       }  // while(cur_pos!=nil)
