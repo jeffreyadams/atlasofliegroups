@@ -163,7 +163,7 @@ partition::Partition OrientedGraph::to_unoriented_components()
 namespace {
 using seqno = Vertex; // sequence number in depth-first traversal
 
-using work_addr = std::vector<struct info>::iterator;
+using work_addr = typename containers::sl_list_iterator<struct info>;
 
 struct info
 {
@@ -184,12 +184,11 @@ partition::Partition OrientedGraph::cells(OrientedGraph* gr) const
 {
   std::vector<seqno> rank(size(),0);
 
-  std::vector<info> dummy;
+  containers::sl_list<info> dummy;
   const work_addr nil = dummy.end(); // impossible index into |active|
   const seqno infinity= size()+1; // impossible sequence number
 
-  std::vector<info> active;
-  active.reserve(size()); // ensure no iterators ever get invalidated
+  containers::sl_list<info> active;
 
   // the next variable provides local fast storage without (de)construction
   std::vector<const EdgeList*> out; // work space for each componenent
@@ -207,8 +206,8 @@ partition::Partition OrientedGraph::cells(OrientedGraph* gr) const
       assert(active.empty());
       seqno count=1;
       rank[x0]=count++;
-      work_addr cur_pos = active.end(); // current position points to x0
-      active.emplace_back(x0,nil,rank[x0]); // x0 has no parent
+      work_addr cur_pos =
+	active.emplace_back(x0,nil,rank[x0]); // x0 has no parent
 
       while(cur_pos!=nil)
       {
@@ -222,9 +221,7 @@ partition::Partition OrientedGraph::cells(OrientedGraph* gr) const
 	  if (rank[y]==0) // y is a fresh vertex
 	  {
 	    rank[y]=count++;
-	    auto y_pos = active.end();
-	    active.emplace_back(y,cur_pos,rank[y]);
-	    cur_pos=y_pos;
+	    cur_pos = active.emplace_back(y,cur_pos,rank[y]);
 	    goto next_x;
 	  }
 	  else // |y| was seen before (cross edge), or |y| is settled
@@ -242,15 +239,18 @@ partition::Partition OrientedGraph::cells(OrientedGraph* gr) const
 	  unsigned long c =
 	    pi.new_class(x.v);  // x will be added again in loop, harmless
 	  out.clear(); // to gather outgoing edges
-	  for (auto it = cur_pos; it!=active.end(); ++it)
+	  containers::sl_list<info> new_class;
+	  new_class.splice // chop off into |new_class| everything from |cur_pos|
+	    (new_class.begin(),active,cur_pos,active.end());
+
+	  // ship off |new_class|
+	  for (const auto& e : new_class)
 	  {
-	    Vertex y=it->v; // the first time |y==x.v|
+	    Vertex y=e.v; // the first time |y==x.v|
 	    pi.addToClass(c,y);
 	    rank[y]=infinity;     // |y| is now settled
 	    out.push_back(&edgeList(y));
 	  }
-	  // now remove |x| and its descendance from |active|
-	  active.erase(cur_pos,active.end());
 
 	  if (gr!=nullptr) gr->add_links(out,pi);
 	}
