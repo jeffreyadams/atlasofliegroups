@@ -74,51 +74,6 @@ typename std::allocator_traits<Alloc>::pointer
 }
 
 
-/* The basic node type used by |simple_list| and |sl_list|
-   It needs the |Alloc| template parameter to paramaterise |std::unique_ptr|
- */
-template<typename T,typename Alloc>
-struct sl_node
-{
-  using node_alloc_type =
-    typename std::allocator_traits<Alloc>::template rebind_alloc<sl_node>;
-  using node_ptr = typename std::allocator_traits<node_alloc_type>::pointer;
-  using deleter_type = allocator_deleter<node_alloc_type>;
-  using link_type = std::unique_ptr<sl_node, deleter_type >;
-
-  // data
-  link_type next;
-  T contents;
-
-  // constructors and destructor
-  sl_node(deleter_type d,const T& contents)
-    : next(static_cast<node_ptr>(nullptr),d), contents(contents) {}
-  sl_node(deleter_type d,T&& contents)
-    : next(static_cast<node_ptr>(nullptr),d), contents(std::move(contents)) {}
-  template<typename... Args> sl_node(deleter_type d,Args&&... args)
-    : next(static_cast<node_ptr>(nullptr),d)
-    , contents(std::forward<Args>(args)...)
-  {}
-
-  sl_node(const sl_node&) = delete;
-  sl_node(sl_node&&) = default;
-  ~sl_node() // could be empty, but would imply recursive destruction
-  { // so to avoid potential excessive stack build-up, we control the process
-    while (next.get()!=nullptr) // this loop bounds recursion depth to 2
-      next.reset(next->next.release()); // this destroys just the following node
-  }
-}; // |struct sl_node| template
-
-// compute length of list from a raw pointer to node
-template<typename T,typename Alloc>
-size_t length (const sl_node<T,Alloc>* l)
-{
-  size_t result=0;
-  for (; l!=nullptr; l=l->next.get())
-    ++result;
-  return result;
-}
-
 
 template<typename T,typename Alloc> class sl_list_iterator;
 template<typename T, typename Alloc >
@@ -130,6 +85,7 @@ template<typename T, typename Alloc >
   friend class sl_list_iterator<T,Alloc>; // lest |link_loc| needs |protected|
 
   using AT = std::allocator_traits<Alloc>;
+public:
   using node_type       = sl_node<T, Alloc>;
   using node_alloc_type = typename AT::template rebind_alloc<node_type>;
   using node_ptr = typename std::allocator_traits<node_alloc_type>::pointer;
@@ -171,13 +127,14 @@ class sl_list_iterator : public sl_list_const_iterator<T,Alloc>
 {
   using Base = sl_list_const_iterator<T,Alloc>;
   using self = sl_list_iterator<T,Alloc>;
+  using link_type =  typename Base::link_type;
 
   // no extra data
 
 public:
   // constructors
   sl_list_iterator() : Base() {}
-  explicit sl_list_iterator(typename Base::link_type& link) : Base(link) {}
+  explicit sl_list_iterator(link_type& link) : Base(link) {}
 
   // contents access methods; these override the base, return non-const ref/ptr
   T& operator*() const { return (*Base::link_loc)->contents; }
@@ -196,22 +153,23 @@ template<typename T, typename Alloc>
 {
   friend class weak_sl_list_iterator<T,Alloc>;
 public:
-  using pointer = typename sl_node<T,Alloc>::link_type::pointer;
-  using const_pointer = const sl_node<T,Alloc>*; // hard to describe this otherwise
+  using node_pointer = typename sl_node<T,Alloc>::link_type::pointer;
+  using const_node_pointer =
+    const sl_node<T,Alloc>*; // hard to describe this otherwise
 
 private:
   using self = weak_sl_list_const_iterator<T,Alloc>;
 
   // data
-  pointer ptr; // pointer to non-const, but only exploitable by derived type
+  node_pointer ptr; // pointer to non-const, but only exploitable by derived type
 
 public:
   // constructors
   weak_sl_list_const_iterator() : ptr(nullptr) {} // default iterator: |end()|
-  explicit weak_sl_list_const_iterator(const_pointer p)
+  explicit weak_sl_list_const_iterator(const_node_pointer p)
   /* the following const_cast is safe because not exploitable using a mere
      |const_iterator|; only used to allow weak_iterator to be derived */
-  : ptr(const_cast<pointer>(p)) {}
+  : ptr(const_cast<node_pointer>(p)) {}
 
   // contents access; return |const| ref/ptr only: we are a |const_iterator|
   const T& operator*() const { return ptr->contents; }
@@ -238,13 +196,14 @@ class weak_sl_list_iterator
 {
   using Base = weak_sl_list_const_iterator<T,Alloc>;
   using self = weak_sl_list_iterator<T,Alloc>;
+  using node_pointer = typename Base::node_pointer;
 
   // no extra data
 
 public:
   // constructors
   weak_sl_list_iterator() : Base() {} // default iterator: end
-  explicit weak_sl_list_iterator(typename Base::pointer p): Base(p) {}
+  explicit weak_sl_list_iterator(node_pointer p): Base(p) {}
 
   // contents access methods;  return non-const ref/ptr
   T& operator*() const { return Base::ptr->contents; }
@@ -258,6 +217,49 @@ public:
 
 
 
+/* The basic node type used by |simple_list| and |sl_list|
+   It needs the |Alloc| template parameter to paramaterise |std::unique_ptr|
+ */
+template<typename T,typename Alloc>
+struct sl_node
+{
+  using node_ptr = typename sl_list_const_iterator<T,Alloc>::node_ptr;
+  using deleter_type =  typename sl_list_const_iterator<T,Alloc>::deleter_type;
+  using link_type =  typename sl_list_const_iterator<T,Alloc>::link_type;
+
+  // data
+  link_type next;
+  T contents;
+
+  // constructors and destructor
+  sl_node(deleter_type d,const T& contents)
+    : next(static_cast<node_ptr>(nullptr),d), contents(contents) {}
+  sl_node(deleter_type d,T&& contents)
+    : next(static_cast<node_ptr>(nullptr),d), contents(std::move(contents)) {}
+  template<typename... Args> sl_node(deleter_type d,Args&&... args)
+    : next(static_cast<node_ptr>(nullptr),d)
+    , contents(std::forward<Args>(args)...)
+  {}
+
+  sl_node(const sl_node&) = delete;
+  sl_node(sl_node&&) = default;
+  ~sl_node() // could be empty, but would imply recursive destruction
+  { // so to avoid potential excessive stack build-up, we control the process
+    while (next.get()!=nullptr) // this loop bounds recursion depth to 2
+      next.reset(next->next.release()); // this destroys just the following node
+  }
+}; // |struct sl_node| template
+
+// compute length of list from a raw pointer to node
+template<typename T,typename Alloc>
+size_t length (const sl_node<T,Alloc>* l)
+{
+  size_t result=0;
+  for (; l!=nullptr; l=l->next.get())
+    ++result;
+  return result;
+}
+
 
 
 /*     Simple singly linked list, without |size| or |push_back| method   */
@@ -267,13 +269,12 @@ template<typename T, typename Alloc>
 {
   friend class sl_list<T, Alloc>;
 
-  using AT =  std::allocator_traits<Alloc>;
-
-  using node_type = sl_node<T, Alloc>;
-  using node_alloc_type = typename AT::template rebind_alloc<node_type>;
-  using node_ptr = typename std::allocator_traits<node_alloc_type>::pointer;
-  using deleter_type = allocator_deleter<node_alloc_type>;
-  using link_type = std::unique_ptr<node_type,deleter_type>;
+  using node_type =  typename sl_list_const_iterator<T,Alloc>::node_type;
+  using node_alloc_type =
+    typename sl_list_const_iterator<T,Alloc>::node_alloc_type;
+  using node_ptr =  typename sl_list_const_iterator<T,Alloc>::node_ptr;
+  using deleter_type =  typename sl_list_const_iterator<T,Alloc>::deleter_type;
+  using link_type =  typename sl_list_const_iterator<T,Alloc>::link_type;
 
  public:
   using value_type      = T;
@@ -1111,12 +1112,12 @@ template<typename T,typename Alloc>
 template<typename T, typename Alloc>
   class sl_list
 {
-  using AT = std::allocator_traits<Alloc>;
-  using node_type       = sl_node<T, Alloc>;
-  using node_alloc_type = typename AT::template rebind_alloc<node_type>;
-  using node_ptr = typename std::allocator_traits<node_alloc_type>::pointer;
-  using deleter_type = allocator_deleter<node_alloc_type>;
-  using link_type = std::unique_ptr<node_type,deleter_type>;
+  using node_type =  typename sl_list_const_iterator<T,Alloc>::node_type;
+  using node_alloc_type =
+    typename sl_list_const_iterator<T,Alloc>::node_alloc_type;
+  using node_ptr =  typename sl_list_const_iterator<T,Alloc>::node_ptr;
+  using deleter_type =  typename sl_list_const_iterator<T,Alloc>::deleter_type;
+  using link_type =  typename sl_list_const_iterator<T,Alloc>::link_type;
 
  public:
   using value_type      = T;
