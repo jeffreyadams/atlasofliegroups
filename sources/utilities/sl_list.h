@@ -171,13 +171,14 @@ class sl_list_iterator : public sl_list_const_iterator<T,Alloc>
 {
   using Base = sl_list_const_iterator<T,Alloc>;
   using self = sl_list_iterator<T,Alloc>;
+  using link_type =  typename Base::link_type;
 
   // no extra data
 
 public:
   // constructors
   sl_list_iterator() : Base() {}
-  explicit sl_list_iterator(typename Base::link_type& link) : Base(link) {}
+  explicit sl_list_iterator(link_type& link) : Base(link) {}
 
   // contents access methods; these override the base, return non-const ref/ptr
   T& operator*() const { return (*Base::link_loc)->contents; }
@@ -238,13 +239,14 @@ class weak_sl_list_iterator
 {
   using Base = weak_sl_list_const_iterator<T,Alloc>;
   using self = weak_sl_list_iterator<T,Alloc>;
+  using node_ptr = typename Base::node_ptr;
 
   // no extra data
 
 public:
   // constructors
   weak_sl_list_iterator() : Base() {} // default iterator: end
-  explicit weak_sl_list_iterator(typename Base::node_ptr p): Base(p) {}
+  explicit weak_sl_list_iterator(node_ptr p): Base(p) {}
 
   // contents access methods;  return non-const ref/ptr
   T& operator*() const { return Base::ptr->contents; }
@@ -258,8 +260,6 @@ public:
 
 
 
-
-
 /*     Simple singly linked list, without |size| or |push_back| method   */
 
 template<typename T, typename Alloc>
@@ -267,13 +267,12 @@ template<typename T, typename Alloc>
 {
   friend class sl_list<T, Alloc>;
 
-  using AT =  std::allocator_traits<Alloc>;
-
-  using node_type = sl_node<T, Alloc>;
-  using node_alloc_type = typename AT::template rebind_alloc<node_type>;
-  using node_ptr = typename std::allocator_traits<node_alloc_type>::pointer;
-  using deleter_type = allocator_deleter<node_alloc_type>;
-  using link_type = std::unique_ptr<node_type,deleter_type>;
+  using node_type =  sl_node<T, Alloc>;
+  using node_ptr =  node_type *;
+  using node_alloc_type =
+    typename sl_list_const_iterator<T,Alloc>::node_alloc_type;
+  using deleter_type =  typename sl_list_const_iterator<T,Alloc>::deleter_type;
+  using link_type =  typename sl_list_const_iterator<T,Alloc>::link_type;
 
  public:
   using value_type      = T;
@@ -1111,12 +1110,12 @@ template<typename T,typename Alloc>
 template<typename T, typename Alloc>
   class sl_list
 {
-  using AT = std::allocator_traits<Alloc>;
-  using node_type       = sl_node<T, Alloc>;
-  using node_alloc_type = typename AT::template rebind_alloc<node_type>;
-  using node_ptr = typename std::allocator_traits<node_alloc_type>::pointer;
-  using deleter_type = allocator_deleter<node_alloc_type>;
-  using link_type = std::unique_ptr<node_type,deleter_type>;
+  using node_type =  sl_node<T, Alloc>;
+  using node_ptr =  node_type *;
+  using node_alloc_type =
+    typename sl_list_const_iterator<T,Alloc>::node_alloc_type;
+  using deleter_type =  typename sl_list_const_iterator<T,Alloc>::deleter_type;
+  using link_type =  typename sl_list_const_iterator<T,Alloc>::link_type;
 
  public:
   using value_type      = T;
