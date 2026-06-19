@@ -129,7 +129,12 @@ template<typename T, typename Alloc >
   friend class sl_list<T,Alloc>;
   friend class sl_list_iterator<T,Alloc>; // lest |link_loc| needs |protected|
 
-  using link_type = typename sl_node<T,Alloc>::link_type;
+  using AT = std::allocator_traits<Alloc>;
+  using node_type       = sl_node<T, Alloc>;
+  using node_alloc_type = typename AT::template rebind_alloc<node_type>;
+  using node_ptr = typename std::allocator_traits<node_alloc_type>::pointer;
+  using deleter_type = allocator_deleter<node_alloc_type>;
+  using link_type = std::unique_ptr<node_type,deleter_type>;
 
 private:
   using self = sl_list_const_iterator<T,Alloc>;
