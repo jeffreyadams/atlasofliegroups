@@ -1499,12 +1499,13 @@ void Rep_table::add_block (const StandardReprMod& srm, const locator& loc)
   }
   auto& block = singleton.front().first; // pick up reference to moved block
 #else // so instead we shall construct the block directly into the pair
-  auto& block = singleton.emplace_back // build full block in place, take its ref
+  auto& block = // reference to block constructed here
+    singleton.emplace_back // build full block in place
     (std::piecewise_construct, // indicates constructiion, not passing, of args
      std::tuple<const common_context&,const StandardReprMod&>
      (common_context(*this,loc),srm), // arguments of full |common_block| ctor
      std::tuple<const locator&>(loc) // single |locator&| argument
-    ) .first;
+    )->first;
 #endif
 
   // record current boundary of "old" |place| values, before adding any
@@ -1697,7 +1698,7 @@ blocks::common_block& Rep_table::add_block_below
      std::tuple<const common_context&,sl_list<StandardReprMod>&>
      (ctxt,elements), // arguments of partial |common_block| constructor
      std::tuple<const locator&>(loc) // |locator| copy constructor
-    ) .first;
+    )->first;
 
   *subset=BitMap(block.size()); // this bitmap will be exported via |subset|
   sl_list<std::pair<BlockElt,BlockEltList> > partial_Hasse_diagram;
