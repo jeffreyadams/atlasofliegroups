@@ -2192,9 +2192,11 @@ bool check_braid
     containers::sl_list<BlockElt> l;
     if (eb.add_neighbours(l,s,z) or eb.add_neighbours(l,t,z))
       return true;
-    for (BlockElt y : l)
-      if (not used.isMember(y))
-	to_do.push(y);
+    for (auto it = l.begin(); not l.at_end(it); ) // no increment here
+      if (used.isMember(*it))
+	++it;
+      else
+	to_do.push_splice_from(l,it);
   }
   while (not to_do.empty());
 
