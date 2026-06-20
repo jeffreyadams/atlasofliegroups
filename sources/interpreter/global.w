@@ -1940,7 +1940,7 @@ function type through |definition_group::add|.
 
 @< Append to |store| bindings for the identifiers in |fields|... @>=
 { assert(tp.raw_kind()==tuple_type or tp.raw_kind()==union_type);
-  auto& @;record = store.emplace_back(definition_group(length(fields)));
+  auto& @;record = *store.emplace_back(definition_group(length(fields)));
 @/
   auto tp_it =wtl_const_iterator(tp.tuple());
   if (tp.raw_kind()==tuple_type)
