@@ -824,7 +824,7 @@ common_block::common_block // full block constructor
 
     packets.emplace(); // create empty involution packet at front
     auto& packet_row = // when popping |z_todo|, move elts here, sorted by |y|
-      packets.front().emplace_back(); // create sublist for the unique |x| value
+      *packets.front().emplace_back(); // create sublist for the unique |x| value
     do
     {
       const StandardReprMod& z = z_todo.front();
@@ -943,14 +943,14 @@ common_block::common_block // full block constructor
 	    const KGBElt x =
 	      ctxt.cross(s,row.front()).x(); // this is all we use from |row|
 	    x_seen.insert(x);
-	    auto& packet_row = new_packet.emplace_back();
+	    auto& packet_row = *new_packet.emplace_back();
 
 	    KGBElt y = y_count; // start at first new |y| for each |x|
 	    for (const auto& srm : crosses)
 	    { // inside the loop |y| is also incremented
 	      const auto gamma_lambda = srm.gamma_lambda();
 	      auto &sz =
-		packet_row.push_back(StandardReprMod::build(rc,x,gamma_lambda));
+		*packet_row.push_back(StandardReprMod::build(rc,x,gamma_lambda));
 	      const auto h = srm_hash.match(sz);
 	      assert (h==info.size()); // must be new; |z_pool| and |info| synced
 	      ndebug_use(h);
@@ -1023,14 +1023,14 @@ common_block::common_block // full block constructor
 	      continue;
 
 	    x_seen.insert(x);
-	    auto& packet_row = new_packet.emplace_back();
+	    auto& packet_row = *new_packet.emplace_back();
 
 	    KGBElt y = y_count; // start at first new |y| for each |x|
 	    for (auto srm : Cayleys) // distinct new |y|s
 	    { // inside the loop |y| is also incremented
 	      const auto gamma_lambda = srm.gamma_lambda();
 	      auto& new_srm =
-		packet_row.push_back(StandardReprMod::build(rc,x,gamma_lambda));
+		*packet_row.push_back(StandardReprMod::build(rc,x,gamma_lambda));
 	      const auto h = srm_hash.match(new_srm);
 	      assert (h==info.size()); // must be new; |z_pool| and |info| synced
 	      ndebug_use(h);

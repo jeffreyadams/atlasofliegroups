@@ -1478,37 +1478,37 @@ template<typename T, typename Alloc>
   }
 
 /*
-  Exceptionally |push_back| and |emplace_back| return a reference to the
+  Exceptionally |push_back| and |emplace_back| return an iterator to the
   inserted item, which would otherwise require keeping a copy of the |end|
   iterator from before the insertion and dereferencing it afterwards.
 */
-  T& push_back (const T& val)
+  iterator push_back (const T& val)
   {
     link_type& last = *tail; // hold this link field for |return| statement
     last.reset(allocate_node(val));
     tail = &last->next; // then move |tail| to point to null smart ptr again
     ++node_count;
-    return last->contents;
+    return iterator(last);
   }
 
-  T& push_back(T&& val)
+  iterator push_back(T&& val)
   {
     link_type& last = *tail; // hold this link field for |return| statement
     last.reset(allocate_node(std::move(val)));
     tail = &last->next; // then move |tail| to point to null smart ptr again
     ++node_count;
-    return last->contents;
+    return iterator(last);
   }
 
   template<typename... Args>
-    T& emplace_back (Args&&... args)
+    iterator emplace_back (Args&&... args)
   {
     link_type& last = *tail; // hold this link field for |return| statement
     // construct node value
     last.reset(allocate_node(std::forward<Args>(args)...));
     tail = &last->next; // then move |tail| to point to null smart ptr again
     ++node_count;
-    return last->contents;
+    return iterator(last);
   }
 
   bool empty () const noexcept { return tail==&head; } // or |node_count==0|
