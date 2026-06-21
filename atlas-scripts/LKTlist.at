@@ -1,0 +1,21 @@
+<FPP_globalDirac.at
+
+{list all reps of $K$ which are LKTs of FPP reps}
+{For now just simple G}
+set LKTlist(RealForm G) = [KType]:
+    let Khash = make_KType_hash(), start = elapsed_ms()
+    then xnum = KGB_size(G)
+    then freq = xnum\20 + 1
+    in for x@j in KGB(G)
+       do if j%freq = 0
+       	  then prints("at x = ",j," out of ",xnum,"; so far ",
+	       Khash.size()," FPP-K-types in ",print_time_string(
+       		     elapsed_ms() - start))
+	  fi;
+       for lambda in FPP_lambdas(x)
+     	  do Khash.fill(LKTs(parameter(x,lambda,0*lambda)))
+	  od
+       od;
+       prints("Found ",Khash.size()," FPP-K-types in ",print_time_string(
+       		     elapsed_ms() - start));
+       Khash.list()

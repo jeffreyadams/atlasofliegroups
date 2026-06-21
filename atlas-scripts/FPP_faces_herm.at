@@ -198,6 +198,7 @@ set_type
   , ((Param,int,int) -> int) check_to_ht_interrupt {check whether p is unitary to height}
   , (Param -> int) umatch {add p to its uhash table}
   , ((Param,int) -> int) numatch_height {add p known nonunitary to int to its hash table}
+  , (([Param],[int]) -> ) numatches_height {previous command done often}
   , (Param -> int) numatch {add p to its nuhash table}
   , ((Param,int) -> int) long_umatch {add p to ith uhash table}
 {  , ((int,ratvec,ratvec,int) -> int) long_umatch_coords {add p to ith uhash table}}
@@ -275,6 +276,9 @@ set xl_pair(RealForm G,[int] cumulative_sizes, int j)=(KGBElt,ratvec):
 {whether to compute xl_sizes when printing big_unitary_hash portions. Right now this takes ???
 more than seven minutes??? for E7_s}
 set jeff_sizes_flag = false
+
+{whether to write known NONUNITARY reps as well as unitary with writeG}
+set write_nu_flag = true
 
 set make_big_unitary_hash() = big_unitary_hash_table:
 (   let real_form_hash = make_RealForm_hash()
@@ -876,6 +880,35 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		 xl_known[i] := nullint(KGB_size(rf));
 		 x_known[i] := 0
 	    fi
+      then numatch_height(Param p,int H) = int:
+      let i = add_real_form(p.real_form)
+      then N = nuhashes[i].size()
+      in if nuhash_flag
+	 then let n = nuhashes[i].match(p)
+	 in if n=N
+	    then nu_heights[i] #:= H; n
+	    else if H >= 0 {if H<0, we're adding no info, so do nothing}
+	    	 then let Hold = nu_heights[i][n]
+		      in if Hold > H or Hold < 0
+		      	 then let nuhtsi = nu_heights[i]
+		      	      in nuhtsi[n]:=H;
+			      	 nu_heights[i]:=nuhtsi
+		 	 fi
+		  fi; n
+	    fi {n=N}
+	 else -1
+	 fi
+
+      then numatches_height([Param] ps,[int] HTs) = void:
+      if #ps=0 then return () fi;
+      let i = add_real_form(ps[0].real_form)
+      in if nuhashes[i].size() = 0
+      	 then nuhashes[i].fill(ps);
+	      nu_heights[i]##:=HTs
+	 else for j:#ps
+	      do numatch_height(ps[j],HTs[j])
+	      od
+	 fi
     in
     ( (->int): {real_form_size} @int: real_form_hash.size()
     , ( -> vec): {uhash_sizes} @vec: for uhash in uhashes
@@ -1167,52 +1200,13 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	      in if booHoo then 1 else -1 fi
 	 else 0
 	 fi
-{
-      let i = add_real_form(p.real_form)
-      {then () = prints("bitmap for ",p.x.number," is ",xl_known[i][p.x.number])}
-      then () = p := herm_center(p)
-      then j = add_param_inf(p)
-      then ju = uhashes[i].lookup(p)
-      in if ju.>= then true
-	 else let jn = nuhashes[i].lookup(p)
-	      in if jn.>= then false
-		 elif {now p was not found in either} is_member_bitset(p.x.number, x_known[i])
-		 then nuhashes[i].match(p); false
-		 elif {now x not completely known} position(p.x, p.lambda).>=
-		      and is_member_bitset(position(p.x, p.lambda), xl_known[i][p.x.number])	 then false
-		 else let sig = add_param
-		 chk = is_unitary(p)
-		      then () = if chk
-				then uhashes[i].match(p)
-				else if nuhash_flag
-				     then nuhashes[i].match(p)
-				     fi
-				fi
-		      in chk
-		 fi
-	 fi
-}
     , (Param -> int): {umatch} (Param p):
       let i = add_real_form(p.real_form)
       in uhashes[i].match(p)
     , ((Param,int) -> int): {numatch_height} (Param p, int H):
-      let i = add_real_form(p.real_form)
-      then N = nuhashes[i].size()
-      in if nuhash_flag
-	 then let n = nuhashes[i].match(p)
-	 in if n=N
-	    then nu_heights[i] #:= H; n
-	    else if H >= 0 {if H<0, we're adding no info, so do nothing}
-	    	 then let Hold = nu_heights[i][n]
-		      in if Hold > H or Hold < 0
-		      	 then let nuhtsi = nu_heights[i]
-		      	      in nuhtsi[n]:=H;
-			      	 nu_heights[i]:=nuhtsi
-		 	 fi
-		  fi; n
-	    fi {n=N}
-	 else -1
-	 fi
+      numatch_height(p,H)
+    , (([Param],[int]) -> ): {numatches_height} ([Param] ps, [int] HTs):
+      numatches_height(ps,HTs)
     , (Param -> int): {numatch} (Param p):
       let i = add_real_form(p.real_form)
       then N = nuhashes[i].size()
@@ -1296,6 +1290,19 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	      od
 	 fi;
 	 prints("big_unitary_hash.uhash(",Gname,").fill(tempParams)");
+	 if write_nu_flag
+	 then let pnulist = nuhashes[i].list()
+	      then nu_hts = nu_heights[i]
+	      	   in prints("set tempnuParams = [Param]: for j:",#pnulist,
+		      		  " do Nullp od");
+		      for p@j in pnulist
+	 	      do let xnum = p.x.number
+		      	 in prints("void:tempnuParams[",j,"]:=parameter(",Gname,",",
+			    xnum,",",p.lambda,",",p.nu,")")
+		      od;
+		      prints("set nu_hts = ",nu_hts);
+	       	      prints("big_unitary_hash.numatches_height(tempnuParams,nu_hts)")
+	 fi;
 	 if jeff_sizes_flag
 	 then prints("void: big_unitary_hash.set_xl_sizes(G_temp,",xl_sizes[i],")")
 	 fi
@@ -1448,7 +1455,7 @@ some lambdas for that x might be finished.}
               let ()=prints("i=", i) in
        let ()=prints("xl_sizes: ", xl_sizes) in 
        xl_sizes[i]:=
-         if #precomputed_xl_sizes=0
+         if #precomputed_xl_sizes=0 {using FPP_lambdas_size@KGBElt saves maybe 10}
             then {compute the answer} for x in KGB(G) do #FPP_lambdas(x) od
             else precomputed_xl_sizes
          fi;

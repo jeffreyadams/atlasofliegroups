@@ -422,16 +422,6 @@ set Lvd(KGBElt x, ratvec lambda) = LocalVertexData:
     then lamthlam = ratvec_as_vec((1+theta)*lambda)
     in LPm_table.Lvd(ic,theta,lamthlam)
 
-{set Lvd(KGBElt x, ratvec lambda) = LocalVertexData:
-    let theta = x.involution, ic = x.inner_class
-    then lamthlam = ratvec_as_vec((1+theta)*lambda)
-    in LPm_table.Lvd(ic, theta, lamthlam)
-    then (Lvd,) = if FPP_def_flag
-    	 	  then deform_trim(LPm_table.LPm_entry(ic,theta,lamthlam),x,lambda)
-		  else LPm_table.LPm_entry(ic,theta,lamthlam)
-		  fi
-    in Lvd}
-
 {this is the list of all possible lambda + theta*lambda for ic and theta}
 set FPP_lamthlams(InnerClass ic, mat theta) = [vec]:
     LPm_table.lamthlams(ic,theta)
@@ -469,15 +459,7 @@ set make_FPP_lambda_table() = FPP_lambda_table:
 	 let i = add_real_form(x.real_form)
 	 then n = x.number
 	 then () = if lambda_hashess[i][n].size() = 0 {haven't computed FPP_lambdas(x)}
-		   then {let theta = x.involution
-			then tworhoi = sum(imaginary_posroots(G,theta))
-			then imag_simple_roots = for alphav in imaginary_poscoroots(G,theta)
-					   do if tworhoi*alphav = 2
-					      then [alphav]
-					      else []
-					      fi
-					   od.##}
-			let zeroPol = null_module(x.real_form), zeroNu = null(x.real_form.rank)/1
+		   then let zeroPol = null_module(x.real_form), zeroNu = null(x.real_form.rank)/1
 			then longlist = LPm_table.lambda0s(x.inner_class, x.involution),
 			     twists = all_lambda_differential_0(x.involution)
 			then list0 = for lambda0 in longlist
@@ -514,13 +496,12 @@ set FPP_lam_table = make_FPP_lambda_table()
 {list of lambdas for x up to twist by differential zero}
 set FPP_lambda0s(KGBElt x) = [ratvec]:
     let longlist = LPm_table.lambda0s(x.inner_class, x.involution), G=x.real_form
-    then zeroPol = null_module(G), zeroNu = null(G.rank)/1
+    then zeroNu = null(G.rank)/1
     in for lambda0 in longlist
-       do if 1*parameter(x, lambda0, zeroNu) != zeroPol
-	  then [lambda0]
-	  else []
-	  fi
-       od.##
+       if (1*parameter(x, lambda0,zeroNu)).!=
+       do lambda0
+       fi
+       od
 
 set FPP_lambda_table_flag = true
 
@@ -536,6 +517,9 @@ set FPP_lambdas(KGBElt x) = [ratvec]:
 	       od
 	     od.##
     fi
+
+set FPP_lambdas_size(KGBElt x) = int:
+    (#FPP_lambda0s(x))*(#all_lambda_differential_0(x.involution))
 
 set position_time = int:0
 
