@@ -743,24 +743,17 @@ sl_list<WeylElt> convert_to_words
    const WeylGroup& W,
    const std::vector<WeylElt>& gens)
 {
-  sl_list<WeylElt> orbit(1,WeylElt()); // start with identity
-  std::vector<WeylElt*> ref; // for rapid indexed access
+  sl_list<WeylElt> orbit;
+
+  // the following vector will contain an indexable access to |orbit| entries
+  // every push/emplace to |orbit| then adds its returned iterator to |ref|
+  // use of |ref| involves iterators accessing to previous elements of |orbits|
+  std::vector<sl_list_const_iterator<WeylElt> > ref;
   ref.reserve(cosets.size());
 
-  auto it = orbit.begin();
-  // next loop body will both generate after |it| and advance it
-  while (not orbit.at_end(it))
-  {
-    ref.push_back(&*it); // save pointer to element in |orbit|
-    ++it; // then advance over it
-    for (auto jt = std::next(cosets.begin()); not cosets.at_end(jt); ++jt)
-    {
-      auto next = orbit.insert(it, W.prod(gens[jt->s],*ref[jt->prev]));
-      ref.push_back(&*it); // push pointer to just created |WeylElt|
-      it = next; // finally move |it| across the new element
-    } // |for(jt)|
-    ref.clear(); // for next element of original |orbit|, clean the slate
-  } // |while (not orbit.at_end(it))|
+  ref.push_back(orbit.emplace_back()); // start with identity element of $W$
+  for (auto jt = std::next(cosets.begin()); not cosets.at_end(jt); ++jt)
+    ref.push_back(orbit.push_back(W.prod(gens[jt->s],*ref[jt->prev])));
 
   return orbit;
 } // |convert_to_words|
