@@ -239,6 +239,7 @@ class weak_sl_list_iterator
 {
   using Base = weak_sl_list_const_iterator<T,Alloc>;
   using self = weak_sl_list_iterator<T,Alloc>;
+public: // no real need, but |Base::node_ptr| is public too
   using node_ptr = typename Base::node_ptr;
 
   // no extra data
