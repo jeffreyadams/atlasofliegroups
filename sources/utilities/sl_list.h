@@ -196,6 +196,7 @@ class weak_sl_list_iterator
 {
   using Base = weak_sl_list_const_iterator<T,Alloc>;
   using self = weak_sl_list_iterator<T,Alloc>;
+public: // no real need, but |Base::node_pointer| is public too
   using node_pointer = typename Base::node_pointer;
 
   // no extra data
