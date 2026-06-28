@@ -15,7 +15,6 @@
 #include <algorithm>
 #include <stdexcept>
 
-#include "sl_list.h"
 #include "matreduc.h"
 #include "permutations.h"
 #include "arithmetic.h"
