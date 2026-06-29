@@ -774,6 +774,12 @@ set red_coroots(KGBElt x) = [vec]:
 	  fi
        od.##
 
+{
+if p has infl char lambda and p.x = x and alphav is pos and alphav*theta neg, then NEITHER alphav*lambda
+NOR alphav*theta*lambda can be zero: in that case we would have ascended x. SO
+
+     alphav*lambda >0, alphav*theta*lambda < 0.
+}
 {this version guarantees that the range function in steve.at produces NONNEGATIVE integers, allowing
 the value to be stored as a bitset}
 set red_coroots_DV(KGBElt x, ratvec lambda) = [vec]:

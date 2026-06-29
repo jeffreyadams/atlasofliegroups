@@ -230,6 +230,57 @@ set all_shifts(KGPElt Q, ratvec v) = [vec]:
       then () = shift_count +:= #answer
       in answer
 
+{Q must be theta-stable! Take a unipotent on L, char v on center of L, total infl char gammaL on L.
+Induction to G gives infl char gammaL + rho_u(Q). SHIFTS are
+
+	  weights sigma in X^* central in L that can be subtracted from gammaL.
+
+That is, want
+
+1) rhou + v - sigma weakly dominant (weakly fair) AND
+2) gamma - sigma in FPP(G); gives an upper bound on jth coord:
+
+<alphav[j], gammaL + rho_u(Q) + v + m*fund_wt> <= dom_coroots[j]*rho
+1+m  <= dom_coroots[j]*rho
+
+Weakly good range allows some NEGATIVE shifts from rho_u. Include ALL
+those as well. Each will be an infl char in FPP on the center of L, so must
+be shorter than rho  ??? 6/28/26 ???}
+set all_shifts_new(KGPElt Q, ratvec v) = [vec]:
+    let G = Q.real_form, rhou = rho_u(Q), S = Q.S
+    then B(ratvec wt) = invariant_form(G)(wt,wt)
+    then BG = B(G.rho)
+    then T = complement(G.semisimple_rank, Q.S) {simple indices outside Q; necessarily delta-stable}
+    then Qdeltafixed = set_bit_positions(AND(to_bitset(T),to_bitset(delta_fixed(G)))) {one index from each delta-pair of
+    	 	       								      simple outside Q}
+    then terms = for t in Qdeltafixed {delta-fixed fundamental in center of L}
+		 do delta_fixed_fund_wts_long(G)[t]
+		 od
+    then dom_coroots = for t:G.semisimple_rank do dominant(G.simple_coroots[t], G) od
+    then mups = for j in Qdeltafixed
+		do ((rhou+v)*(G.simple_coroots[j]))\1
+		od
+	 {upper bound is the weakly fair condition}
+    then mdowns = for j@k in Qdeltafixed
+	 	  do (dom_coroots[j]*G.rho)\1 - mups[k] - 1
+		  od
+    then answersQ = [ratvec]: [null(G.rank)/1]
+    then answersZ = [vec]:[]
+    in for k:#Qdeltafixed
+       do answersQ := for shift in answersQ
+       	  	      do for j:mups[k]+mdowns[k]+1  from -mdowns[k]
+		      	 do shift+j*terms[k]
+			 od
+		      od.##
+       od;
+       answersZ := for ell in answersQ
+       		  if ell.denom = 1 and B(v+rhou -ell) <= BG {"and" has already been tested}
+       		  do ratvec_as_vec(ell)
+       		  fi
+       		  od;
+       shift_count +:= #answersZ;
+       answersZ
+
 {most of the weights that can be subtracted from a unipotent on L to get a weakly
 fair induction for G}
 set few_shifts(KGPElt Q) = [vec]:
@@ -340,6 +391,8 @@ set coh_ind_report_flag = false
 
 set coh_ind_report = [(Param,Param)]: []
 
+set new_shifts_flag=false
+
 {assume v is central for L}
 set coh_ind_unip_all(KGPElt Q, Param_hash Uhash,ratvec v) = void:
     let L = Q.Levi, G = Q.real_form
@@ -349,7 +402,10 @@ set coh_ind_unip_all(KGPElt Q, Param_hash Uhash,ratvec v) = void:
 	       else unipotent_representations(L,v)
 	       fi
     then rhou = rho_u(Q)
-    then Qshifts = all_shifts(Q,v)
+    then Qshifts = if new_shifts_flag
+    	 	   then all_shifts_new(Q,v)
+		   else all_shifts(Q,v)
+		   fi
     then step = max(#uLs\20,1)
     in void: for pL@j in uLs
 	     do if coh_ind_unip_verbose and (j%20).=
@@ -357,16 +413,16 @@ set coh_ind_unip_all(KGPElt Q, Param_hash Uhash,ratvec v) = void:
 		fi;
 	     for tau in Qshifts
 		do let gamma = pL.infinitesimal_character {has v in it} + rhou -tau
-		   in let P = if two_flag
-			      then theta_induce_irreducible2(parameter(pL.x,
+		   in if is_FPP(G, dominant(G,gamma))
+		      then let P = if two_flag
+			   then theta_induce_irreducible2(parameter(pL.x,
 					pL.lambda - tau, pL.nu), G)
-			      else theta_induce_irreducible(parameter(pL.x,
+			   else theta_induce_irreducible(parameter(pL.x,
 					pL.lambda - tau, pL.nu), G)
-			      fi {two_flag}
-		       in void: if P.!=
-		       	  	   and is_FPP(G,P.infinitesimal_character)
-			      	then for @q in P
-				     do if my_unitary_hash_flag
+			   fi {two_flag}
+		       	   in void: if P.!=
+		       	  	    then for @q in P
+				    do if my_unitary_hash_flag
 				       	then if coh_ind_report_flag
 					     then coh_ind_report#:=(pL,q)
 					     fi;
@@ -376,8 +432,9 @@ set coh_ind_unip_all(KGPElt Q, Param_hash Uhash,ratvec v) = void:
 					     fi;
 					     Uhash.match(q)
 				        fi
-				      od
-				      fi {P.!=}
+				     od
+				     fi {P.!=}
+			fi {is_FPP}
 		 od
 	     od
 
