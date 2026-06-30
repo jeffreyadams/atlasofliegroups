@@ -47,12 +47,13 @@
 #include "ioutils.h"
 
 /*
+  Comment by Fokko du Cloux, preseverd for historic reasons:
+
   This module contains code for the construction of a block in the
   one-sided parameter set (in other words, the subset of the one-sided
   parameter set corresponding to a single real form.) As explained in
   my Palo Alto III notes, this is equivalent to parameterizing the set
   K\\G/B of (K,B)-orbits in G; hence the provocative title.
-
 */
 
 namespace atlas {
