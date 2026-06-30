@@ -2,6 +2,8 @@
 < extended_misc {for cross}
 < translate {for translate_param_by}
 < hash {for hash tables}
+< W_reps {for taus(Weyl group rep)}
+< associated_variety_annihilator {for GK_dim}
 
 {Goal is to compute the special representation sigma(p) of the
 integral Weyl group W_int(p) attached to a Param p}
@@ -11,14 +13,17 @@ set regularize(Param p) = translate_param_by (p, p.root_datum.two_rho)
 
 {all these guys have the SAME sigma}
 set Talphabetas(Param p) = ParamPol:
-    let q = regularize(p), G = p.real_form
+    let q = if is_regular(p.root_datum,p.infinitesimal_character)
+    	    then p
+	    else regularize(p)
+	    fi, G = p.real_form
     then gamma = q.infinitesimal_character, empty = null_module(G)
     then R = integrality_datum(G, gamma)
     then S = R.simple_roots
-    then P1 = sum(G, for j:#S do Cayley_sum(j,p) od)
-    	    + sum(G, for j:#S do cross(j,p) od)
-    then T1 = sum(G, for @t in P1 do if is_subset(tau(t), tau(p)) or
-    	      	      	       	     is_subset(tau(p), tau(t))
+    then P1 = sum(G, for j:#S do Cayley_sum(j,q) od)
+    	    + sum(G, for j:#S do cross(j,q) od)
+    then T1 = sum(G, for @t in P1 do if is_subset(tau(t), tau(q)) or
+    	      	      	       	     is_subset(tau(q), tau(t))
 				  then empty
 				  else t
 				  fi od)
@@ -33,27 +38,56 @@ discrete series of E8_s}
 set TalphabetaRepeat(Param p) = [Param]:
     let q = regularize(p), G = p.real_form
     then nullmod = null_module(G)
-    then ParamHash = make_Param_hash() {will hold all our q's}
     then gamma = q.infinitesimal_character, toDo = Talphabetas(q)
+    then pHash = make_Param_hash([q]) {will hold answer}
+    {then () = prints("Starting size of pHash = ",pHash.size())}
     then () = while #toDo > 0
-    	      do toDo := sum(G, for @r in toDo
+	      do {prints("Starting size of toDo = ",#toDo,", pHash = ",pHash.size());}
+	      	 for @r in toDo
+	      	 do pHash.match(r)
+		 od;
+	      	 toDo := sum(G, for @r in toDo
 	      	  	    	do sum(G, for @t in Talphabetas(r)
-				      	  do let size = ParamHash.size()
-				      	     then j = ParamHash.match(t)
-				      	     in if j = size
-						then 1*t
-						else nullmod
-						fi
+				      	  do t
 					  od)
-				 od)
-
+				 od);
+		 toDo := sum(G, for @r in toDo
+		      	 	do let size = pHash.size()
+				   then j = pHash.match(r)
+				   in if j = size
+				      then 1*r
+				      else nullmod
+				      fi
+				od)
+		 {prints("Ending size of toDo = ",#toDo, ", pHash = ",pHash.size())}
               od
-    in for j:ParamHash.size()
-       do ParamHash.index(j)
-       od
+    in pHash.list()
 
-{ set proj(Param p, int m) = ParamPol:
-    let q regularize(p)
-    then gamma = q.infinitesimal_character
-    then R = integrality_datum(p.root_datum,gamma) }
-    
+{all distinct tau invariants reachable by T_{alpha,beta}'s from p}
+set TalphabetaTaus(Param p) = [vec]:
+    for q in TalphabetaRepeat(p) do tau(q) od.sort_u_lex
+
+{previous made into a big_int bitset (largest possible size 2^(2^(semisimple_rank(integrality_datum)))}
+set TalphabetaTaus_bitset(Param p) = int:
+    to_bitset(for tau in TalphabetaTaus(p) do to_bitset(tau) od)
+
+{lists the numbers in the character table of the special W reps that admit all the taus in Talphabetataus(p)}
+set cand_sigmas(Param p) = [int]:
+    let rd = integrality_datum(p)
+    then CT = character_table(rd)
+    then chars = CT.characters
+    then WCT = class_table(CT)
+    then special_inds = for j:#chars if is_special_representation(CT,j) do j fi od
+    then special_tauss = for j in special_inds do taus(WCT,chars[j]) od
+    then special_tauss_bitsets = for list in special_tauss
+    	 		       	 do to_bitset(for tau in list do to_bitset(tau) od)
+				 od
+    then M = TalphabetaTaus_bitset(p)
+    in for N@i in special_tauss_bitsets if AND(M,N) = M do special_inds[i] fi od
+
+set GK_dim_new(Param p) = int:
+    let js = cand_sigmas(p)
+    in if #js =	1
+       then #posroots(p.root_datum) - character_table(integrality_datum(p)).generic_degree(js[0])
+       else prints("Sorry, had to revert!"); GK_dim(p)
+       fi
