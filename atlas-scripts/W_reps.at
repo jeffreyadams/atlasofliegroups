@@ -292,7 +292,7 @@ set tau_mult_old (WeylClassTable WCT, [int] S, [int] char) = int:
    in sum(for T in power_set(Scomplement)
           do let TS = S ## T
              then sign = if #T%2=0 then 1 else -1 fi
-             in sign * mult_sgn(WCT, TS, char)
+             in sign * mult_sgn_old(WCT, TS, char)
           od)
 
 { Ind^W_{W(S)}(sgn_S): sign character of W(S) induced to W, as a W-character vector.
