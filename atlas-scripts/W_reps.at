@@ -270,3 +270,75 @@ set smallest_degree (WeylClassTable Wct, [int] character) = int:
   first(Wct.root_datum.nr_of_posroots+1
        ,(int k) bool: !=Wct.inner(character,Wct.sym_power_refl(k))
        )
+
+{ multiplicity of the sign character of W(S) in Res_{W(S)}^W(char)
+  S: subset of simple root indices, generating the Levi Weyl group W(S)
+  char: character of the full Weyl group W (as a vector indexed by W-classes) }
+set mult_sgn (WeylClassTable WCT, [int] S, [int] char) = int:
+   let rd_G = WCT.root_datum
+   then rd_L = Levi_datum(rd_G, S)
+   then WCT_L = W_class_table_generic(rd_L)
+   then res_char = for w_L in WCT_L.class_representatives
+                   do char[WCT.class_of(convert_to(rd_G,w_L))]
+                   od
+   in WCT_L.inner(res_char, WCT_L.sign)
+
+{ alternating sum: sum_{T supseteq S} (-1)^(#T-#S) mult_sgn(WCT,T,char)
+  gives the "tau-multiplicity" of char at S }
+set tau_mult (WeylClassTable WCT, [int] S, [int] char) = int:
+   let rd_G = WCT.root_datum
+   then rank = rd_G.semisimple_rank
+   then complement_S = for i:rank if not(is_member(S)(i)) do i fi od
+   in sum(for T in power_set(complement_S)
+          do let TS = S ## T
+             then sign = if #T%2=0 then 1 else -1 fi
+             in sign * mult_sgn(WCT, TS, char)
+          od)
+
+{ Ind^W_{W(S)}(sgn_S): sign character of W(S) induced to W, as a W-character vector.
+  By Frobenius reciprocity, WCT.inner(char, ind_sgn(WCT,S)) = mult_sgn(WCT,S,char). }
+set ind_sgn (WeylClassTable WCT, [int] S) = [int]:
+   let rd_G = WCT.root_datum
+   then rd_L = Levi_datum(rd_G, S)
+   then WCT_L = W_class_table_generic(rd_L)
+   in induce_character(WCT, WCT_L, WCT_L.sign)
+
+{ tau_ind_S = sum_{T supseteq S} (-1)^(#T-#S) ind_sgn(WCT,T), as a W-character vector.
+  WCT.inner(char, tau_ind(WCT,S)) = tau_mult(WCT,S,char). }
+set tau_ind (WeylClassTable WCT, [int] S) = [int]:
+   let rd_G = WCT.root_datum
+   then rank = rd_G.semisimple_rank
+   then n_cl = WCT.n_classes
+   then complement = for i:rank if not(is_member(S)(i)) do i fi od
+   then result = [int]: for i:n_cl do 0 od
+   then () = for T in power_set(complement)
+             do let sign = if #T%2=0 then 1 else -1 fi
+                then ind_T = ind_sgn(WCT, S##T)
+                in result := for ri@i in result do ri + sign*ind_T[i] od
+             od
+   in result
+
+{ taus(char) = list of subsets S for which tau_mult(WCT,S,char) != 0.
+  Precomputes all ind_sgn values once to avoid redundant Levi constructions. }
+set taus (WeylClassTable WCT, [int] char) = [[int]]:
+   let rank = WCT.root_datum.semisimple_rank
+   then all_S = power_set(rank)
+   then n_cl = WCT.n_classes
+   then ind_chars = for S in all_S do ind_sgn(WCT, S) od
+   then tau_chars =
+      for S@S_idx in all_S
+      do let n_S = #S
+         then result = [int]: for i:n_cl do 0 od
+         then () = for T@T_idx in all_S
+                   do if all(for s in S do is_member(T)(s) od)
+                      then let sign = if (#T-n_S)%2=0 then 1 else -1 fi
+                           in result := for ri@i in result do ri+sign*ind_chars[T_idx][i] od
+                      fi
+                   od
+         in result
+      od
+   in for S@S_idx in all_S
+      if !=WCT.inner(char, tau_chars[S_idx])
+      do S
+      fi
+      od
