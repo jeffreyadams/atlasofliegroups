@@ -288,8 +288,8 @@ set mult_sgn (WeylClassTable WCT, [int] S, [int] char) = int:
 set tau_mult (WeylClassTable WCT, [int] S, [int] char) = int:
    let rd_G = WCT.root_datum
    then rank = rd_G.semisimple_rank
-   then complement_S = for i:rank if not(is_member(S)(i)) do i fi od
-   in sum(for T in power_set(complement_S)
+   then Scomplement = complement(rank,S)
+   in sum(for T in power_set(Scomplement)
           do let TS = S ## T
              then sign = if #T%2=0 then 1 else -1 fi
              in sign * mult_sgn(WCT, TS, char)
@@ -303,15 +303,36 @@ set ind_sgn (WeylClassTable WCT, [int] S) = [int]:
    then WCT_L = W_class_table_generic(rd_L)
    in induce_character(WCT, WCT_L, WCT_L.sign)
 
+{ Ind^W_{W(S)}(sgn_S): sign character of W(S) induced to W, as a W-character vector.
+  By Frobenius reciprocity, WCT.inner(char, ind_sgn(WCT,S)) = mult_sgn(WCT,S,char). }
+set ind_sgn_hash = ((WeylClassTable, [int]) -> [int]):
+   let rd_hash = make_RootDatum_hash()
+   then ind_sgns = [[vec]]: [] {for each rd, a list of the 2^rank chars of ind_Levi(sgn)}
+   in ((WeylClassTable, [int]) -> [int]): (WeylClassTable WCT, [int] S):
+   let N = rd_hash.size()
+   then rd = WCT.root_datum
+   then n = rd_hash.match(rd), m = to_bitset(S)
+   in if n=N
+      then ind_sgns#:= for k:2^(rd.semisimple_rank) do (vec: []) od
+      fi;
+      if #ind_sgns[n][m] = 0
+      then let indsgnsn = ind_sgns[n], rd_L =  Levi_datum(rd, S)
+      	   then WCT_L = W_class_table_generic(rd_L)
+      	   in indsgnsn[m] := induce_character(WCT,WCT_L,WCT_L.sign);
+	      ind_sgns[n] := indsgnsn
+      fi;
+      ind_sgns[n][m]
+
+
 { tau_ind_S = sum_{T supseteq S} (-1)^(#T-#S) ind_sgn(WCT,T), as a W-character vector.
   WCT.inner(char, tau_ind(WCT,S)) = tau_mult(WCT,S,char). }
 set tau_ind (WeylClassTable WCT, [int] S) = [int]:
    let rd_G = WCT.root_datum
    then rank = rd_G.semisimple_rank
    then n_cl = WCT.n_classes
-   then complement = for i:rank if not(is_member(S)(i)) do i fi od
+   then Scomplement = complement(rank,S)
    then result = [int]: for i:n_cl do 0 od
-   then () = for T in power_set(complement)
+   then () = for T in power_set(Scomplement)
              do let sign = if #T%2=0 then 1 else -1 fi
                 then ind_T = ind_sgn(WCT, S##T)
                 in result := for ri@i in result do ri + sign*ind_T[i] od
