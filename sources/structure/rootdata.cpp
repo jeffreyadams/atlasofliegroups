@@ -1112,7 +1112,7 @@ WeylWord RootDatum::word_of_inverse_matrix
 template<typename C>
   WeylWord RootDatum::factor_dominant (matrix::Vector<C>& v) const
 {
-  containers::sl_list<weyl::Generator> w;
+  sl_list<weyl::Generator> w;
   weyl::Generator s;
 
   // greedy approach: find and apply reflections bringing |v| closer to dominant
@@ -1135,7 +1135,7 @@ template<typename C>
 template<typename C>
   WeylWord RootDatum::factor_codominant (matrix::Vector<C>& v) const
 {
-  containers::sl_list<weyl::Generator> w;
+  sl_list<weyl::Generator> w;
   weyl::Generator s;
 
   // greedy approach: find and apply reflections bringing |v| closer to dominant
@@ -1178,7 +1178,7 @@ template<typename C>
   auto RootDatum::factor_dominant (Gens g, matrix::Vector<C>& v) const
   -> GenWord
 {
-  containers::sl_list<weyl::Generator> w;
+  sl_list<weyl::Generator> w;
   weyl::Generator s;
 
   // greedy approach: find and apply reflections bringing |v| closer to dominant
@@ -1203,7 +1203,7 @@ template<typename C>
   auto RootDatum::factor_codominant (Gens g, matrix::Vector<C>& v) const
   -> GenWord
 {
-  containers::sl_list<weyl::Generator> w;
+  sl_list<weyl::Generator> w;
   weyl::Generator s;
 
   // greedy approach: find and apply reflections bringing |v| closer to dominant
