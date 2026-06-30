@@ -619,14 +619,14 @@ case die_expr: out << " die "; break;
 There are at least two syntactic categories that contain an (almost) arbitrary
 length sequence of subexpressions, namely tuple displays or row displays.
 Therefore, there will be a variant in~|expr| that accesses a list of
-subexpressions. We use our homegrown container type |containers::sl_list| for
-simply linked lists, and related types like |containers::simple_list|, to
+subexpressions. We use our homegrown container type |sl_list| for
+simply linked lists, and related types like |simple_list|, to
 implement this.
 
 @< Includes needed... @>=
 #include "sl_list.h"
 
-@~Historically implementing these lists using |containers::simple_list| was the
+@~Historically implementing these lists using |simple_list| was the
 first time a non-POD variant was introduced into the definition of |expr|, and
 it required passage to \Cpp11 as well as substantial refactoring of the code to
 make this possible and safe. However, it ultimately turned out to be simpler to
@@ -1186,7 +1186,7 @@ surprise that \.{x\pow-y\pow2} parses as $x^{(-y)^2}$.
 
 @ The data type necessary to store these intermediate data during priority
 resolutions is a dynamic list of triples subtree-operator-priority. We use a
-|containers::stack| instance, which is (trivially derived from) a |std::stack|
+|stack| instance, which is (trivially derived from) a |std::stack|
 using an appropriately adapted |simple_list| as container. That stack top
 represents the rightmost part of the formula seen do far. To implement the above
 solution for unary operators, we allow for the very first pending operator (at
@@ -1214,8 +1214,8 @@ struct formula_node
 };
 @)
 typedef containers::sl_node<formula_node>* raw_form_stack;
-struct form_stack : public containers::stack<formula_node>
-{ using base = containers::stack<formula_node>;
+struct form_stack : public stack<formula_node>
+{ using base = stack<formula_node>;
   using sub_base = containers::mirrored_simple_list<formula_node>;
   using ssub_base = containers::simple_list<formula_node>; // sub-sub base
 @)
@@ -1349,7 +1349,7 @@ constructors are from a |raw_id_pat| reference and from individual components.
    // so complete type definitions will be known in \.{parsetree.cpp}
 
 @< Type declarations needed in definition of |struct expr@;| @>=
-using patlist = containers::simple_list<struct id_pat>;
+using patlist = simple_list<struct id_pat>;
 using raw_patlist = @[containers::sl_node<struct id_pat>*@];
 @)
 struct raw_id_pat
@@ -1516,7 +1516,7 @@ by default; it is present only for backward compatibility \.{gcc}~4.6.
 
 @< Structure and typedef definitions for types built upon |expr| @>=
 struct let_pair { id_pat pattern; expr val; };
-using let_list = containers::simple_list<let_pair>;
+using let_list = simple_list<let_pair>;
 using raw_let_list = @[containers::sl_node<let_pair>*@];
 @)
 struct let_expr_node
@@ -2145,7 +2145,7 @@ struct case_variant
 @)
   bool is_default() const { return label==id_type(1); }
 };
-using case_list = containers::simple_list<case_variant>;
+using case_list = simple_list<case_variant>;
 using case_node = containers::sl_node<case_variant>;
 typedef case_node *raw_case_list; // for use in parser |union|
 @)

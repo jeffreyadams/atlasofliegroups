@@ -32,8 +32,8 @@ WGraph::WGraph(size_t r, size_t n)
   : d_rank(r), symmetric_graph(n), coefficients(n), descent_sets(n) {}
 
 WGraph::WGraph(unsigned short rank,
-	       const containers::sl_list<RankFlags>& tau,
-	       const std::vector<containers::sl_list<kl::Mu_pair> >& edge_list)
+	       const sl_list<RankFlags>& tau,
+	       const std::vector<sl_list<kl::Mu_pair> >& edge_list)
   : d_rank(rank)
   , symmetric_graph(edge_list.size())
   , coefficients(edge_list.size())
@@ -62,7 +62,7 @@ graph::OrientedGraph WGraph::oriented_graph() const
   for (graph::Vertex x=0; x<size(); ++x)
   {
     auto desc_x = descent_set(x);
-    containers::sl_list<graph::Vertex> filtered;
+    sl_list<graph::Vertex> filtered;
     for (graph::Vertex y : edge_list(x))
       if (not descent_set(y).contains(desc_x))
 	filtered.push_back(y);
@@ -87,8 +87,8 @@ DecomposedWGraph::DecomposedWGraph(const WGraph& wg)
     std::vector<unsigned int>& idn=d_id.back(); // call it |idn|
     idn.reserve(it->second-it->first);  // then dimension it to the cell size
 
-    containers::sl_list<RankFlags> tau;
-    std::vector<containers::sl_list<kl::Mu_pair> > edge_lists;
+    sl_list<RankFlags> tau;
+    std::vector<sl_list<kl::Mu_pair> > edge_lists;
     edge_lists.reserve(it->second-it->first); // reserve for cell size
 
     for (Partition::iterator::SubIterator jt=it->first; jt!=it->second; ++jt)
@@ -134,8 +134,8 @@ std::vector<WGraph> cells(const WGraph& wg)
 
   for (Partition::iterator it(pi); it(); ++it) // loop over cells
   {
-    containers::sl_list<RankFlags> tau;
-    std::vector<containers::sl_list<kl::Mu_pair> > edge_lists;
+    sl_list<RankFlags> tau;
+    std::vector<sl_list<kl::Mu_pair> > edge_lists;
 
     for (Partition::iterator::SubIterator jt=it->first; jt!=it->second; ++jt)
       relno[*jt]=jt-it->first; // relative number within this cell
@@ -186,8 +186,8 @@ WGraph wGraph
   size_t max_mu=1;                       // maximal mu found
   std::pair<BlockElt,BlockElt> max_pair; // corresponding (x,y)
 
-  containers::sl_list<RankFlags> tau;
-  std::vector<containers::sl_list<kl::Mu_pair> > edge_lists;
+  sl_list<RankFlags> tau;
+  std::vector<sl_list<kl::Mu_pair> > edge_lists;
 
   // fill in descent sets
   for (BlockElt y = 0; y < mi.block_size(); ++y)
