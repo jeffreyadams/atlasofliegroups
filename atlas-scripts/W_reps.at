@@ -274,7 +274,7 @@ set smallest_degree (WeylClassTable Wct, [int] character) = int:
 { multiplicity of the sign character of W(S) in Res_{W(S)}^W(char)
   S: subset of simple root indices, generating the Levi Weyl group W(S)
   char: character of the full Weyl group W (as a vector indexed by W-classes) }
-set mult_sgn (WeylClassTable WCT, [int] S, [int] char) = int:
+set mult_sgn_old (WeylClassTable WCT, [int] S, [int] char) = int:
    let rd_G = WCT.root_datum
    then rd_L = Levi_datum(rd_G, S)
    then WCT_L = W_class_table_generic(rd_L)
@@ -285,7 +285,7 @@ set mult_sgn (WeylClassTable WCT, [int] S, [int] char) = int:
 
 { alternating sum: sum_{T supseteq S} (-1)^(#T-#S) mult_sgn(WCT,T,char)
   gives the "tau-multiplicity" of char at S }
-set tau_mult (WeylClassTable WCT, [int] S, [int] char) = int:
+set tau_mult_old (WeylClassTable WCT, [int] S, [int] char) = int:
    let rd_G = WCT.root_datum
    then rank = rd_G.semisimple_rank
    then Scomplement = complement(rank,S)
@@ -297,7 +297,7 @@ set tau_mult (WeylClassTable WCT, [int] S, [int] char) = int:
 
 { Ind^W_{W(S)}(sgn_S): sign character of W(S) induced to W, as a W-character vector.
   By Frobenius reciprocity, WCT.inner(char, ind_sgn(WCT,S)) = mult_sgn(WCT,S,char). }
-set ind_sgn (WeylClassTable WCT, [int] S) = [int]:
+set ind_sgn_old (WeylClassTable WCT, [int] S) = [int]:
    let rd_G = WCT.root_datum
    then rd_L = Levi_datum(rd_G, S)
    then WCT_L = W_class_table_generic(rd_L)
@@ -305,7 +305,7 @@ set ind_sgn (WeylClassTable WCT, [int] S) = [int]:
 
 { Ind^W_{W(S)}(sgn_S): sign character of W(S) induced to W, as a W-character vector.
   By Frobenius reciprocity, WCT.inner(char, ind_sgn(WCT,S)) = mult_sgn(WCT,S,char). }
-set ind_sgn_hash = ((WeylClassTable, [int]) -> [int]):
+set ind_sgn = ((WeylClassTable, [int]) -> [int]):
    let rd_hash = make_RootDatum_hash()
    then ind_sgns = [[vec]]: [] {for each rd, a list of the 2^rank chars of ind_Levi(sgn)}
    in ((WeylClassTable, [int]) -> [int]): (WeylClassTable WCT, [int] S):
@@ -313,7 +313,7 @@ set ind_sgn_hash = ((WeylClassTable, [int]) -> [int]):
    then rd = WCT.root_datum
    then n = rd_hash.match(rd), m = to_bitset(S)
    in if n=N
-      then ind_sgns#:= for k:2^(rd.semisimple_rank) do (vec: []) od
+      then ind_sgns#:= for k:2^(rd.semisimple_rank) do null(0) od
       fi;
       if #ind_sgns[n][m] = 0
       then let indsgnsn = ind_sgns[n], rd_L =  Levi_datum(rd, S)
@@ -323,6 +323,11 @@ set ind_sgn_hash = ((WeylClassTable, [int]) -> [int]):
       fi;
       ind_sgns[n][m]
 
+{ multiplicity of the sign character of W(S) in Res_{W(S)}^W(char)
+  S: subset of simple root indices, generating the Levi Weyl group W(S)
+  char: character of the full Weyl group W (as a vector indexed by W-classes) }
+set mult_sgn (WeylClassTable WCT, [int] S, [int] char) = int:
+   WCT.inner(char,ind_sgn(WCT,S))
 
 { tau_ind_S = sum_{T supseteq S} (-1)^(#T-#S) ind_sgn(WCT,T), as a W-character vector.
   WCT.inner(char, tau_ind(WCT,S)) = tau_mult(WCT,S,char). }
@@ -338,6 +343,11 @@ set tau_ind (WeylClassTable WCT, [int] S) = [int]:
                 in result := for ri@i in result do ri + sign*ind_T[i] od
              od
    in result
+
+{ alternating sum: sum_{T supseteq S} (-1)^(#T-#S) mult_sgn(WCT,T,char)
+  gives the "tau-multiplicity" of char at S }
+set tau_mult (WeylClassTable WCT, [int] S, [int] char) = int:
+    WCT.inner(char,tau_ind(WCT,S))
 
 { taus(char) = list of subsets S for which tau_mult(WCT,S,char) != 0.
   Precomputes all ind_sgn values once to avoid redundant Levi constructions. }
