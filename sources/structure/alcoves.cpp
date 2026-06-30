@@ -42,7 +42,7 @@ RatNum frac_eval(const RootDatum& rd, RootNbr i, const RatWeight& gamma)
 }
 
 using level_pair = std::pair<RootNbr,RatNum>;
-using level_list = containers::sl_list<level_pair>;
+using level_list = sl_list<level_pair>;
 
 /* Put minima in front retaining relative order; return iterator to remainder
 

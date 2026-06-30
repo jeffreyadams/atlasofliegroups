@@ -1264,7 +1264,7 @@ for (const auto& node : comp_data)
 
 
 @ Pruning is quite simple, and gives us an occasion to exercise the |erase|
-method of |containers::sl_list|. In such loops one should not forget
+method of |sl_list|. In such loops one should not forget
 to \emph{not advance} the iterator in case a node is erased in front of it.
 
 Only if at least one conflicting type remains do we report an error; if so, the
@@ -1535,7 +1535,7 @@ Local identifiers will be accessed from the current execution context, which
 is a stack of variable bindings independent of the |execution_stack| (the
 latter being used for anonymous components of expressions being evaluated).
 This stack is implemented as a singly linked list, and accessed through a
-shared pointer. It is not an instance of |containers::simple_list| mainly
+shared pointer. It is not an instance of |simple_list| mainly
 because of sharing of parts between different contexts, which arises when
 closures are formed as will be described later. The structure pointed to by
 |shared_context| is described in \.{axis-types.w}; essentially, each node of the
@@ -2991,7 +2991,7 @@ certainly a relative high on the coolness scale in implicit \Cpp\ programming.
 @< Local function def... @>=
 id_pat copy_id_pat(const id_pat& p)
 {
-  containers::sl_list<id_pat> rl;
+  sl_list<id_pat> rl;
   std::transform(p.sublist.begin(),end(p.sublist)
                 , std::back_inserter(rl), copy_id_pat);
   return id_pat (p.name, p.kind, rl.undress());
@@ -6195,7 +6195,7 @@ accumulates values in reverse order), which we move-convert into a vector, in
 the appropriate order, when the loop terminates.
 
 @< Perform a |while| loop, accumulating values... @>=
-{ containers::simple_list<shared_value> result;
+{ simple_list<shared_value> result;
   size_t s=0;
   try
   { while (body->eval(),while_condition_result)
@@ -7584,8 +7584,8 @@ class multiple_assignment : public expression_base
  public:
   struct local_dest {@; size_t depth, offset; };
     // type to describe a local binding
-  typedef containers::simple_list<local_dest> loc_list;
-  typedef containers::simple_list<shared_share> glob_list;
+  typedef simple_list<local_dest> loc_list;
+  typedef simple_list<shared_share> glob_list;
  private:
   id_pat lhs;
   expression_ptr rhs;
@@ -7938,14 +7938,14 @@ surprisingly, both methods return |void|.
 
 @< Local class definitions @>=
 struct threader
-{ typedef containers::sl_list<multiple_assignment::local_dest> loc_list;
-  typedef containers::sl_list<shared_share> glob_list;
+{ typedef sl_list<multiple_assignment::local_dest> loc_list;
+  typedef sl_list<shared_share> glob_list;
 @)
   const expr& e; // the multiple assignment expression we are working on
   loc_list locs; // local variables occurring, in order
   glob_list globs; // global variables occurring, in order
   BitMap is_global; // tells how locals and globals are interspersed
-  containers::sl_list<std::pair<id_type,const_type_p> > assoc;
+  sl_list<std::pair<id_type,const_type_p> > assoc;
   // types found for them
 @)
   threader (const expr& e) : e(e), locs(), globs(), is_global(), assoc() @+{}

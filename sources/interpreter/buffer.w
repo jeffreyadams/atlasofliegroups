@@ -620,10 +620,10 @@ struct input_record
 };
 
 @ Our file stack is essentially a |std::stack| of |input_record| that uses
-|containers::mirrored_sl_list| as underlying container. Using that type rather
-than the simpler |containers::mirrored_simple_list| that would be used by
-|containers::stack| allows us to directly call |size| for our file stack, which
-will end up calling |containers::sl_list::size|. However this still is not quite
+|mirrored_sl_list| as underlying container. Using that type rather
+than the simpler |mirrored_simple_list| that would be used by
+|stack| allows us to directly call |size| for our file stack, which
+will end up calling |sl_list::size|. However this still is not quite
 sufficient, as in one place we also need to iterate over the input stack (to
 check for files currently being read), which |std::stack| does not allow.
 Therefore we derive from the |std::stack| instance, adding |ctop| and |cbottom|
@@ -638,7 +638,7 @@ using file_stack_t =
   std::stack<input_record,containers::mirrored_sl_list<input_record> >;
 struct file_stack : public file_stack_t
 { using const_iterator =
-    containers::simple_list<input_record>::weak_const_iterator;
+    simple_list<input_record>::weak_const_iterator;
 @)
   file_stack () : file_stack_t()
   @+{}
@@ -876,7 +876,7 @@ bool BufferedInput::getline()
   line_no+=cur_lines; cur_lines=0;
   std::string pr=@< Prompt for the next line@>@;@;;
   bool go_on, popped=false; unsigned int size=0;
-  containers::simple_list<std::string> lines;
+  simple_list<std::string> lines;
   do
   { lines.emplace_front(); // allocate a new empty |std::string|
     auto& line = lines.front();

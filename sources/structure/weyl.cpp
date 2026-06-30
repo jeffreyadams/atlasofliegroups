@@ -302,7 +302,7 @@ WeylGroup::Transducer::Transducer
     entry(unsigned int nr): nr(nr)
     { shift.fill(arc{nullptr,false}); out.fill(UndefGenerator); }
   };
-  containers::sl_list<entry> tab; // will determine |table| at the end
+  sl_list<entry> tab; // will determine |table| at the end
 
   // first row of transition and of transduction table
   elt.emplace_back(0); // length 0, empty |piece|, all fields Undef values
@@ -949,14 +949,14 @@ Twist WeylGroup::Chevalley_twist () const
 
   Algorithm: straightforward enumeration of the connected component of |w| in
   the graph defined by the operation |conjugate|, using a |std::set| structure
-  to record previously encountered elements and a |containers::queue| to store
+  to record previously encountered elements and a |queue| to store
   elements whose neighbors have not yet been generated.
 
 */
 WeylEltList conjugacy_class(const WeylGroup& W,const WeylElt& w)
 {
   std::set<WeylElt> found { w };
-  containers::queue<WeylElt> to_do { w };
+  queue<WeylElt> to_do { w };
 
   while (not to_do.empty())
   {
@@ -1372,7 +1372,7 @@ void TwistedWeylGroup::twistedConjugate // $tw = w.tw.twist(w)^{-1}$
 
   Algorithm: straightforward enumeration of the connected component of |w| in
   the graph defined by the operation |twistedConjugate|, using a |std::set|
-  to record previously encountered elements and a |containers::queue| to store
+  to record previously encountered elements and a |queue| to store
   elements whose neighbors have not yet been generated.
 */
 void TwistedWeylGroup::twistedConjugacyClass
@@ -1380,7 +1380,7 @@ void TwistedWeylGroup::twistedConjugacyClass
   const
 {
   std::set<TwistedInvolution> found { tw } ;
-  containers::queue<TwistedInvolution> to_do { tw };
+  queue<TwistedInvolution> to_do { tw };
 
   while (not to_do.empty())
   {

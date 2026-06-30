@@ -1017,7 +1017,7 @@ TorusPart InnerClass::grading_shift_repr (Grading diff) const
   of the imaginary Weyl group, the action depending on the square class |csc|;
   return list of |TorusPart| values that represent their differences with |y|.
 */
-containers::sl_list<TorusPart> preimage
+sl_list<TorusPart> preimage
 (const Fiber& fund_f, const cartanclass::square_class csc,
  const cartanclass::FiberElt y, const cartanclass::AdjointFiberElt image)
 {
@@ -1025,7 +1025,7 @@ containers::sl_list<TorusPart> preimage
   const unsigned int f_rk = fund_f.fiberRank();
   const Partition& pi = fund_f.fiber_partition(csc);
   const cartanclass::fiber_orbit srf = pi.class_of(y.data().to_ulong());
-  containers::sl_list<TorusPart> result;
+  sl_list<TorusPart> result;
   for (unsigned i=pi.classRep(srf); i<pi.size(); ++i) // only start is optimised
     if (pi.class_of(i)==srf) // beyond that, just test for the right class
     { cartanclass::FiberElt fe(RankFlags(i),f_rk);
@@ -1038,7 +1038,7 @@ containers::sl_list<TorusPart> preimage
 // now finding all fiber elements for |rf| with identical gradings is easy
 
 // list stabiliser subgroup, in fundamental fiber group, of gradings for |rf|
-containers::sl_list<TorusPart>
+sl_list<TorusPart>
 InnerClass::central_fiber(RealFormNbr rf) const
 {
   const Fiber& fund_f= d_fundamental;

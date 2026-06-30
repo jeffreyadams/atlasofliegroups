@@ -994,7 +994,7 @@ DescValue star (const repr::Ext_rep_context& ctxt,
 		const ext_param& E,
 		int length, // of |delta|-orbit of |alpha|
 		RootNbr n_alpha, // number of simply-integral root |alpha|
-		containers::sl_list<ext_param>& links)
+		sl_list<ext_param>& links)
 {
   ext_param E0=E; // a copy of |E| that might be modified below to "normalise"
   DescValue result;
@@ -1712,7 +1712,7 @@ bool ext_block::tune_signs
    const WeightInvolution& delta)
 {
   repr::Ext_rep_context ctxt (block.context(),delta);
-  containers::sl_list<ext_param> links;
+  sl_list<ext_param> links;
   for (BlockElt n=0; n<size(); ++n)
   { BlockElt z=this->z(n); // element number in |block|
     const auto E = ext_param::def_ext(ctxt,bm,block.representative(z));
@@ -2016,10 +2016,10 @@ void ext_block::swallow // integrate older partial block, using |embed| mapping
 // reduce matrix to rows for extended block elements without singular descents
 // the other rows are not removed, but the result lists the rows to retain
 template<typename C> // matrix coefficient type (signed)
-containers::simple_list<BlockElt> // returns list of elements selected
+simple_list<BlockElt> // returns list of elements selected
   ext_block::condense(matrix::Matrix<C>& M, RankFlags sing_orbs) const
 {
-  containers::simple_list<BlockElt> result;
+  simple_list<BlockElt> result;
 
   for (BlockElt y=M.n_rows(); y-->0; ) // reverse loop is essential here
   { auto s = first_descent_among(sing_orbs,y);
@@ -2126,7 +2126,7 @@ void show_mat(std::ostream& strm,const matrix::Matrix<Pol> M,unsigned inx)
 }
 
 bool ext_block::add_neighbours
-  (containers::sl_list<BlockElt>& dst, weyl::Generator s, BlockElt n) const
+  (sl_list<BlockElt>& dst, weyl::Generator s, BlockElt n) const
 {
   const BlockEltPair& links = data[s][n].links;
   if (links.first==UndefBlock)
@@ -2139,7 +2139,7 @@ bool ext_block::add_neighbours
 }
 
 bool check_quadratic (const ext_block& b, weyl::Generator s, BlockElt x0)
-{ containers::sl_list<BlockElt> l;
+{ sl_list<BlockElt> l;
 
   if (b.add_neighbours(l,s,x0))
     return true;
@@ -2183,13 +2183,13 @@ bool check_braid
   unsigned int len = cox_entry[eb.folded_diagram().edge_multiplicity(s,t)];
 
   BitMap used(eb.size());
-  containers::queue<BlockElt> to_do { x };
+  queue<BlockElt> to_do { x };
   do
   {
     BlockElt z=to_do.front();
     to_do.pop();
     used.insert(z);
-    containers::sl_list<BlockElt> l;
+    sl_list<BlockElt> l;
     if (eb.add_neighbours(l,s,z) or eb.add_neighbours(l,t,z))
       return true;
     for (auto it = l.begin(); not l.at_end(it); ) // no increment here
@@ -2208,7 +2208,7 @@ bool check_braid
   {
     set(Ts,j,j, eb.T_coef(s,y,y)-Pol(1));
     set(Tt,j,j, eb.T_coef(t,y,y)-Pol(1));
-    containers::sl_list<BlockElt> l;
+    sl_list<BlockElt> l;
     if (eb.add_neighbours(l,s,y))
       return true;
     for (BlockElt z : l)
@@ -2496,7 +2496,7 @@ K_type_poly extended_restrict_to_K
 	else if (eval==0 and
 		 i_tab.complex_is_descent(i_theta,rd.simpleRootNbr(s)))
 	{ // no change to |gamma2| is needed as relevant reflections fix it
-	  containers::sl_list<ext_param> links;
+	  sl_list<ext_param> links;
 	  auto type =
 	    star(ctxt,E,orbit.length(),rd.simpleRootNbr(s),links);
 	  assert(is_complex(type) or
@@ -2513,7 +2513,7 @@ K_type_poly extended_restrict_to_K
       {	assert(rd.simpleCoroot(s).dot(gamma2)==0); // so |gamma2| unchanged
 	if (E.gamma_lambda.dot(rd.simpleCoroot(s)) %2!=0) // nonparity?
 	  continue; // then |s| is an ascent; skip it
-	containers::sl_list<ext_param> links;
+	sl_list<ext_param> links;
 	auto type =
 	  star(ctxt,E,orbit.length(),rd.simpleRootNbr(s),links);
 	if (is_like_compact(type)) // real parity switched has 0 descents
@@ -2598,7 +2598,7 @@ weyl::Generator first_descent_among
  simple reflections to obtain real dominance; however handling of |ext_param|
  for that case, which does not occur in deformation, is experimental for now
  */
-containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
+sl_list<std::pair<StandardRepr,bool> > extended_finalise
   (const repr::Rep_context& rc, StandardRepr sr, const WeightInvolution& delta)
 {
   assert(rc.is_standard(sr));
@@ -2617,7 +2617,7 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
   // now make |gamma| dominant and finalise |scaled_sr|, while updating |E|
   // similar to |extended_restrict_to_K| above
 
-  containers::sl_list<std::pair<StandardRepr,bool> > result;
+  sl_list<std::pair<StandardRepr,bool> > result;
   using q_element = std::pair<ext_param,RatWeight>;
   queue<q_element> to_do;
   to_do.emplace(std::move(E),std::move(gamma));
@@ -2653,7 +2653,7 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
 	else if (eval==0 and
 		 i_tab.complex_is_descent(i_theta,rd.simpleRootNbr(s)))
 	{ // no change to |gamma| is needed as relevant reflections fix it
-	  containers::sl_list<ext_param> links;
+	  sl_list<ext_param> links;
 	  auto type =
 	    star(ctxt,E,orbit.length(),rd.simpleRootNbr(s),links);
 	  assert(is_complex(type) or
@@ -2685,7 +2685,7 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
 	{
 	  if (E.gamma_lambda.dot(rd.simpleCoroot(s)) %2!=0) // nonparity?
 	    continue; // then |s| is an ascent; skip it
-	  containers::sl_list<ext_param> links;
+	  sl_list<ext_param> links;
 	  auto type =
 	    star(ctxt,E,orbit.length(),rd.simpleRootNbr(s),links);
 	  if (is_like_compact(type)) // real parity switched has 0 descents
@@ -2790,7 +2790,7 @@ std::pair<StandardRepr,bool> scaled_extended_finalise
       else if (eval==0 and
 	       i_tab.complex_is_descent(i_theta,rd.simpleRootNbr(s)))
       { // no change to |gamma| is needed as relevant reflections fix it
-	containers::sl_list<ext_param> links;
+	sl_list<ext_param> links;
 	auto type =
 	  star(ctxt,E,orbit.length(),rd.simpleRootNbr(s),links);
 	assert(is_complex(type) or
@@ -2809,7 +2809,7 @@ return std::make_pair<StandardRepr,bool>
     (E.restrict(std::move(gamma)),not is_default(E));
 } // |scaled_extended_finalise|
 
-template containers::simple_list<BlockElt> ext_block::condense
+template simple_list<BlockElt> ext_block::condense
 (matrix::Matrix<ext_kl::Pol>& M, RankFlags sing_orbs) const;
 
 } // |namespace ext_block|
