@@ -120,30 +120,30 @@ class template \std{vector} rather than native \Cpp\ arrays. Since our software
 operates on mathematical structures specified by the user at run time, it is
 almost never possible for the size of composite values to be usefully fixed or
 bounded at compile time, which reason alone justifies our choice in most cases.
-Without container class templates, one would need to explicitly implement the
-dynamic memory management provided by \std{vector}, either separately every time
-a new type is involved, or (if using generic pointers) introducing type
-insecurity that needs shielding off; neither of these are nearly as convenient
-to the programmer as using the vector class template.
+If one would choose to forgo the dynamic memory management provided implicitly
+by the container library, one would need to explicitly implement it, either
+separately every time a new type is involved, or, if using generic pointers
+instead, in a way that introduces type insecurity; neither of these are nearly
+as convenient to the programmer as using the container class templates.
 
 With speed of random access almost on a par with that of native arrays, and with
 the added possibility to grow and shrink slots in amortised constant time, the
 vector class template is a good choice in many cases where one needs to store a
-sequence of values whose size is unknown at compile time. But there are of
-course purposes for which this type of container is less suited, and the
-\Cpp\ standard library provides several other container class templates that
-address other needs: \texttt{array}, \texttt{deque}, \texttt{forward\_list},
-\texttt{list}, \texttt{set}, \texttt{map}, \texttt{multiset}, \texttt{multimap},
+sequence of values whose size is unknown at compile time. But there are purposes
+for which this type of container is less suited, and the \Cpp\ standard library
+provides several other container class templates that address other needs:
+\texttt{array}, \texttt{deque}, \texttt{forward\_list}, \texttt{list},
+\texttt{set}, \texttt{map}, \texttt{multiset}, \texttt{multimap},
 \texttt{unordered\_set}, \texttt{unordered\_map}, \texttt{unordered\_multiset},
-\texttt{unordered\_multimap} (all inside the \texttt{std} namespace).
-The first two of these provide constant time random access, and can be
-considered to be variations of native arrays respectively of \texttt{vector};
-the remaining ones all to some extent use linked data structures (although for
-the ``unordered'' versions the primary access is through hashing). The templates
-\texttt{set}, \texttt{map} and their variations define associative containers,
-which are primarily accessed by looking up \emph{key} values; in this article
-our main interest will be in \emph{sequence} containers, where access is by
-position within the (linear) container.
+\texttt{unordered\_multimap} (all inside the \texttt{std} namespace). The first
+two of these provide constant time random access, and can be considered to be
+variations of native arrays respectively of \texttt{vector}; the remaining ones
+all to some extent use linked data structures (although for the ``unordered''
+versions the primary access is through hashing). The templates \texttt{set},
+\texttt{map} and their variations define associative containers, which are
+primarily accessed by looking up \emph{key} values; in this article our main
+interest will be in \emph{sequence} containers, where access is by position
+within the (linear) container.
 
 In linked data structures most items cannot be accessed directly, but must be
 reached via links through a sequence of other items; this means there is no
@@ -152,17 +152,20 @@ applications where access is naturally sequential (either one directional or
 going back and forth), especially when the size of the sequence varies. Such
 applications can be quite important though: for instance, \textsc{Lisp} and many
 functional programming languages are largely focused on handling linked
-structures, and in the \TeX\ typesetting engine most work involves handling
+structures; as an example of an application program using linked lists, we can
+mention the \TeX\ typesetting engine, most of whose work involves of handling
 linked lists of tokens, boxes, etc. In algebraic the core of our `Atlas'
 software, occasions where using linked lists are a natural choice are not as
 frequent as those where it is natural to prefer structures based on
-\std{vector}, but they certainly do occur. To name a few: some algorithms like
-orbit generation or similar closure processes need a stack or queue of ``yet to
-consider'' items; we often need a temporary container to pass a collection of
-values computed by one function to be processed by another. The software also
-supports a full user programming language, and its various parts (parser, type
-checker/compiler, and runtime execution system) very frequently employ linked
-structures of various kinds.
+\std{vector}, but they certainly do occur. As an example, some algorithms like
+orbit generation or similar closure processes maintain a collection of values to
+be considered that evolves dynamically in a manner that contiguous storage is
+not best suited to handle. Similarly we sometimes need storage of a sequence of
+values just as a conduit between one function producing them sequentially and
+another one processing them, where the flexibility of linked lists is an
+advantage. The software also supports a full user programming language, and its
+various parts (parser, type checker/compiler, and runtime execution system) very
+frequently employ linked structures of various kinds.
 
 Nonetheless, the linked list container class templates provided by the \Cpp.
 standard library appear to be not nearly as useful as \std{vector} is. In our
@@ -176,7 +179,7 @@ we needed and therefore sub-optimal in space and time. As an indication that we
 are not alone in our reluctance to use \std{list}, note that in the standard
 container library itself the container adaptors \std{queue} and \std{stack},
 which can perfectly well be implemented using \std{list}, prefer to be based by
-default on \std{deque} instead.
+default on the more complicated \std{deque} container instead.
 
 The \frwl. class template, which was introduced in the \Cpp11 revision of the
 language definition, does provide a singly linked list container type, and shows
@@ -236,7 +239,7 @@ state of our project (although we has since moved to requiring \Cpp14 support),
 being a compromise between adopting useful innovations and not restricting our
 software to users that have the most recent compiler versions installed.
 
-\section{Design}
+\section{Design considerations}
 \subsection{Iterators in \Cpp.}
 
 In \Cpp, the notion of iterator derives from and generalises the way in which
@@ -1110,82 +1113,43 @@ for \frwl. also can be taken to exclude before-the-beginning iterators.
 
 \subsection{Use of singly linked lists in the mathematical library}
 
-We only introduced \slls. (or sometimes \smpl.) in places where this was more
-convenient to the programmer or led to a simplified and no less efficient
-implementation.
+We introduced \slls. (or sometimes \smpl.) in places where this was more
+convenient to the programmer or led to a simplified implementation. In many
+cases there are no important differences with respect to using \std{vector}
+instead, as we would have done if we had not had \slls. available. The most
+common reason to prefer the latter is when creating a list of elements whose
+length is not available beforehand; even when it can be predicted, the usage of
+\std{vector} would leave us with the choice of doing that calculation and
+\textit{reserve} the proper amount of entries, or not bothering because the
+algorithm for growing the allocated size of a vector by exponentially growing
+chunks will succeed in getting enough memory in amortised linear time anyway,
+even if it might result in allocating a bit more space than necessary. By
+contrast, using \slls., no decision to reserve anything is necessary, and
+producing the list otherwise proceeds using repeated calls of
+\textit{push\_\!back} just like it would when using a vector. In some cases we
+want to store the result as a vector for reasons of efficiency of random access
+or of compactness, but even then this can simply be achieved using a final call
+of \textit{to\_\!vector}. Whether or not lists perform as well as vectors would
+in these cases (probably not quite) is not much of an issue, since these
+constructions are usually just an initial step in the actual computation with
+values produced. One practical advantage of using a linked list is that one can
+store a reference to a previously constructed element using a pointer or an
+iterator. When using \std{vector} neither of these is possible because any
+reallocation will invalidates them; instead one can store an index into the
+vector (which will lead to recomputation of the current address every time it is
+used), but using (unsigned) integers whose only meaningful use is to serve as an
+index to one particular vector decreases code readability.
 
-Apart from these cases, there are a number of places in the Atlas library where
-we decided to use lists instead of vectors when a sequence of values needs to
-be computed, and its length cannot be predicted beforehand. Whether or not lists
-are better or worse from a performance point of view is not the issue here: the
-old solution worked perfectly well, and since these are places where the program
-spends a quite insignificant fraction of its time, any effect that there might
-be would be impossible to measure. But the simple and straightforward task
-matches the characteristics of linked lists perfectly, while using vectors one
-knows that some effort (copying entries while growing) and space (in the final
-result) are being spent that are not strictly required for that task; the list
-solution avoids for the programmer distracting thoughts about some possible
-minute improvement.
-
-In a few cases, using a list rather than a vector to accumulate a sequence of
-values allowed code to more fluently express the operation being implemented. In
-particular we mention a normalisation process, in which for a certain class of
-values, some may be rewritten as combination of $0$, $1$, or $2$ other values,
-until being left with only ``final'' values that cannot be rewritten (which is
-ultimately bound to happen). The original implementation handled this in a
-somewhat clumsy manner, trying to produce a vector of values in a single sweep
-(repeatedly calling \textit{push\_back}), but having to revert to appending one
-vector (obtained from a recursive call) to another one in certain cases. Using
-lists we can follow the same logic, but the appending operation is now painless:
-the \slls.::\textit{append} method is efficiently implemented by just
-redirecting a link. But using linked lists in fact obviates any need to worry
-about finding a good organisation of the rewriting process in the first place:
-just about any approach can be realised efficiently, including ones in which
-values are being rewritten while sitting in the middle of a list that is being
-processed. So linked lists meets the requirements of the task particularly well
-here, although again this is more about elegance than efficiency, since the
-rewriting process is unlikely to lead to a large set of values anyway. So
-in conclusion, having a singly linked list container type available in the Atlas
-library occasionally allows a more satisfactory solution than before, even
-though the improvements are by no means a spectacular.
-
-%Exporting a list-valued result of variable (and unpredictable) length
-%structure/dynkin.h:  containers::sl_list<RankFlags> components() const;
-%structure/innerclass.h:containers::sl_list<TorusPart> preimage
-%structure/innerclass.h:containers::sl_list<TorusPart> central_fiber
-%gkmod/blocks.h:  containers::sl_list<BlockElt> finals_for(BlockElt)
-%gkmod/repr.h:  containers::sl_list<StandardRepr> finals_for(StandardRepr)
-%gkmod/ext_block.h:containers::sl_list<std::pair<..,..> > extended_finalise
-%gkmod/ext_block.h:containers::simple_list<BlockElt> condense(Matrix&,..)
-%gkmod/ext_block.h:DescValue star(...,containers::sl_list<param>& links);
-%gkmod/repr.cpp:  containers::simple_list<BlockElt> finals = ...
-%gkmod/ext_block.cpp: containers::sl_list<param> links; // receive |star| output
-%gkmod/ext_block.cpp: { containers::sl_list<param> links; // same
-%gkmod/ext_block.cpp:  containers::sl_list<param> links; // idem
-
-
-%Special case: normalising a term through certain {0,1,2}-valued descents
-%gkmod/repr.cpp:  containers::sl_list<StandardRepr> result { z };
-
-
-%Use as stack or queue while generating an orbit of equivalence class
-%structure/realredgp.cpp:{ containers::stack<std::pair<TorusPart,Grading> > to_do;
-%structure/weyl.cpp:  containers::queue<WeylElt> to_do { w };
-%structure/weyl.cpp:  containers::queue<TwistedInvolution> to_do { tw };
-%gkmod/standardrepk.cpp:  containers::queue<KGBElt> queue { root };
-%gkmod/standardrepk.cpp:  containers::queue<equation> queue;
-%gkmod/standardrepk.cpp:  containers::queue<q_equation> queue;
-%gkmod/blocks.cpp:  containers::queue<BlockElt> queue { size() }; // invol. packet
-%gkmod/blocks.cpp:   { auto to_do = containers::queue<KGBElt> { ctx1 };
-%gkmod/standardrepk.cpp:  containers::queue<KGBElt> queue { root };
-%gkmod/standardrepk.cpp:  containers::queue<equation> queue;
-%gkmod/standardrepk.cpp:  containers::queue<q_equation> queue;
-%gkmod/ext_block.cpp:  containers::queue<param> to_do { param(ctxt,sr) };
-
-%Intermediate storage when accumulating a vector
-%structure/rootdata.cpp:  containers::sl_list<weyl::Generator> w;
-%structure/rootdata.cpp:  containers::sl_list<weyl::Generator> w;
-%structure/rootdata.cpp:  containers::simple_list<weyl::Generator> w;
+We have already mentioned how, during a process of generating a collection of
+values, a list embedded in a queue object can conveniently represent a
+collection of values already generated but not yet inspected for generation of
+further values. An alternative is to represent the whole collection as a \slls.
+to which new elements are pushed (or emplaced) at the back, while the inspection
+of elements for further generation is done using a separate iterator, the
+procedure terminating when it manages to catch up with the back of the list.
+When it is necessary to record for each values the previous value from which it
+is generated, the can be done by storing the value of the latter iterator at the
+moment the new value is pushed to the back.
 
 \subsection{The interpreter}
 
@@ -1302,10 +1266,10 @@ accesses the node after the removal, if any; therefore methods like
 increment their iterator of traversal in the case where a node is removed. This
 is similar to what \frwl. requires, but contrasts with the situation for
 \std{list} where the iterator passed to \textit{erase} is invalidated by the
-call, whence a call of the form $\textit{erase}(p\PP)$ is needed. The latter
-idiom has no use with our \slls. (it would just make $p$ invalid after the
-erasure), and to avoid its accidental use we prefer to not declare any
-post-increment method for iterators at all.
+call, whence a call of the form $\textit{erase}(p\PP)$ is needed. With our
+lists, it is generally an error to use a posi-incremented iterator
+in a call of a methods like \textit{erase} or \textit{erase} that alters the
+list structure.
 
 Maintaining \textit{tail} correctly in all methods requires
 some care, but never requires more than constant time. Maintaining
