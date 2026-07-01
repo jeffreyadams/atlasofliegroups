@@ -1884,13 +1884,6 @@ should match the |nr| computed. All in all, what really happens here is just
 using and then incrementing~|it|, and returning a |local_ref| computed from its
 value.
 
-In the code below, it is tempting to try to write |nr=old_table_size+*it++|. But
-the post-increment operator for |sl_list| iterators was deliberately left
-undefined (to avoid the temptation of incorrectly using it in the argument of
-the |erase| method, as would be appropriate for certain other iterator types);
-therefore, that expression does not work, and we need to increment |it|
-separately after dereferencing it.
-
 In case the descendant we are called for not going to be tabled, we return its
 complete type |type_array[k].tp|; since this (unnamed) entry was created for a
 single parent, it will not be needed again, so we can safely move from it.
@@ -1898,7 +1891,7 @@ single parent, it will not be needed again, so we can safely move from it.
 @< Declare a local function |rewrite| @>=
 auto rewrite =
   @[ [&] (sl_list<unsigned short>::const_iterator& it) -> type_expr @] @;
-{ auto k=*it; ++it; // an index into |type_array|
+{ auto k=*it++; // an index into |type_array|
   if (keep.isMember(k))
   { if (type_array[k].tp.raw_kind()==tabled and
         type_array[k].tp.tabled_nr()>=old_table_size)
