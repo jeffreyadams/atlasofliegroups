@@ -109,7 +109,8 @@ set c_form_std(ParamPol P) = KTypePol:
 
 {set of pos coroots av so av*theta negative and (av+av*theta)*infl_char >=
 av*nu <= -av*lambda...}
-set down_walls(Param q) = [vec]:
+
+{set down_walls(Param q) = [vec]:}
 
 {local_verts(bump(p)) = set of rk(A) ratvecs}
 {one wall = sum(all but one of these)}
