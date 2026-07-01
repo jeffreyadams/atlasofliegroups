@@ -1,4 +1,5 @@
 <FPP_globalDirac.at
+<steve.at {for Levix}
 
 {list all reps of $K$ which are LKTs of FPP reps}
 {For now just simple G}
@@ -19,3 +20,96 @@ set LKTlist(RealForm G) = [KType]:
        prints("Found ",Khash.size()," FPP-K-types in ",print_time_string(
        		     elapsed_ms() - start));
        Khash.list()
+
+{ fails because when (x,lambda) is moved down to (x',lambda') passing
+status test, lambda' is no longer in FPP_lambdas(x')}
+{
+set LKTlist_fast(RealForm G) = [KType]:
+    let Khash = make_KType_hash(), start = elapsed_ms()
+    then xnum = KGB_size(G)
+    then freq = xnum\20 + 1
+    in for x@j in KGB(G)
+       do if j%freq = 0
+       	  then prints("at x = ",j," out of ",xnum,"; so far ",
+	       Khash.size()," FPP-K-types in ",print_time_string(
+       		     elapsed_ms() - start))
+	  fi;
+       	  if all(for r:G.semisimple_rank do status(r,x) <4 od)
+       	  then for lambda in FPP_lambdas(x)
+     	       do Khash.fill(LKTs(parameter(x,lambda,0*lambda)))
+	       od
+       	  fi
+       od;
+       prints("Found ",Khash.size()," FPP-K-types in ",print_time_string(
+       		     elapsed_ms() - start));
+       Khash.list()
+}
+
+set heights(KTypePol P) = [int]:
+    let ans = [int]: [], Q = P
+    in while Q.!=
+       do let HT = height(first_K_type(Q))
+       	  then (bott,Q1) = height_split(Q,HT)
+       	  in Q:=Q1;
+	     ans#:=HT
+       od;
+       ans
+
+{root datum from all coroots zero on nu}
+set Levinu(KGBElt x, ratvec nu) = (RealForm,KGBElt):
+    let G = x.real_form, theta = x.involution
+    then pos_r = G.posroots, pos_co = G.poscoroots
+    then js = for bv@j in pos_co
+    	      if bv*nu = 0
+	      do j
+	      fi
+	      od
+     then two_rho_L = sum(G.rank, for j in js do pos_r[j] od)
+     then min_js = for j in js
+     	  	   do if pos_co[j]*two_rho_L = 2
+		      then [j]
+		      else []
+		      fi
+		   od.##
+     then rdL = root_datum(mat: if #min_js = 0
+     	      		   	then null(G.rank,0)
+				else mat:for j in min_js do pos_r[j] od
+				fi,
+				if #min_js = 0
+				then null(G.rank,0)
+				else mat: for j in min_js do pos_co[j] od
+				fi, G.prefers_coroots)
+     then xL = KGB_elt(rdL, theta, x.torus_factor)
+    in (real_form(xL),xL)
+
+{meant to be nonzero on all non-imag roots where nu is zero}
+set nu_bump(Param p) = ratvec:
+    let ans = herm_center(p), G = p.real_form
+    then x_ans = ans.x, lambda_ans = ans.lambda, nu_ans = ans.nu,
+    	 gamma_ans = ans.infinitesimal_character
+    then (Lnu,xnu0) = Levinu(x_ans,nu_ans)
+    then (y,xnu1) = from_no_Cplus(xnu0) {y \cross xnu0 = xnu1}
+    in inverse(y)*(1-xnu1.involution)*rho(Lnu)
+{
+    in while (rL:= first(for r:Lnu.semisimple_rank do status(r,xnu) = 4 od)) >= 0
+       do xnu := cross(rL,xnu)
+       od;
+       cross_divide(xnu0,xnu)*(1-xnu.involution)*rho(Lnu)
+}
+
+{move "up" slightly to an open region for same x}
+set bump(Param p) = Param:
+    let nu_up = ((10^3 + 1)/10^3)*p.nu + (1/10^6)*nu_bump(p)
+    then theta = p.x.involution
+    in assert(@:all(for av in p.real_form.poscoroots do (av*theta-av).= or (av*nu_up).!=  od),"bad nu_up");
+    parameter(p.x,p.lambda,nu_up)
+
+set c_form_std(ParamPol P) = KTypePol:
+    sum(P.real_form,for c@p in P do c*c_form_std(p) od)
+
+{set of pos coroots av so av*theta negative and (av+av*theta)*infl_char >=
+av*nu <= -av*lambda...}
+set down_walls(Param q) = [vec]:
+
+{local_verts(bump(p)) = set of rk(A) ratvecs}
+{one wall = sum(all but one of these)}
