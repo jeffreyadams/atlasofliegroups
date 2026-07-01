@@ -1316,9 +1316,7 @@ sr_term_list Rep_context::finals_for(StandardRepr z) const
 	it=jt,++jt;
       else
       { do
-	{ it->second += jt->second;
-	  ++jt;
-	}
+	  it->second += (jt++)->second;
 	while(not result.at_end(jt) and jt->first==it->first);
 
 	jt = result.erase(it->second==0 ? it: ++it,jt);
