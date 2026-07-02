@@ -50,6 +50,10 @@
     atlas::interpreter::raw_patlist patl;
   } id_sp;
   atlas::interpreter::raw_patlist pl;
+  struct {
+    unsigned short arity;
+    atlas::interpreter::raw_patlist names;
+  } type_constrs;
   atlas::interpreter::type_p type_pt;
   atlas::interpreter::raw_type_list type_l;
   atlas::interpreter::raw_case_list case_l;
@@ -85,7 +89,7 @@
 %type <ini_form> formula_start
 %type <oper> operator symbol
 %type <id_code> id id_op id_eq type_or_constr
-%type <code> tilde_opt breaker typevar_list type_args settype_open
+%type <code> tilde_opt breaker typevar_list type_args setrectype_open
 %destructor { destroy_expr ($$); }
             expr expr_opt tertiary cast lettail or_expr and_expr not_expr
 	    formula operand secondary primary comprim unit selector
@@ -130,10 +134,14 @@
 	    id_spec type_spec typedef_type type_field typedef_type_field
 
 %type <id_sp>
-	    param_list id_specs struct_specs union_specs
+	    param_list id_specs struct_specs union_specs type_specifications
             typedef_struct_specs typedef_union_specs
 %destructor { destroy_type_list($$.typel);destroy_pattern($$.patl); }
-	    param_list id_specs struct_specs union_specs
+	    param_list id_specs struct_specs union_specs type_specifications
+%type <type_constrs>
+	    setclosedtype_open
+%destructor { destroy_pattern($$.names); }
+	    setclosedtype_open
 
 %type <case_l>
 	    caselist tagged_caselist do_caselist tagged_do_caselist
@@ -187,9 +195,20 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	  // reducing |typevar_list| prepares type variables in |closed_type|
 	| SET_TYPE id_eq type_spec '\n'
 	  { type_define_identifier($2,$3.type_pt,0,$3.ip,@$); YYABORT; }
-	| settype_open '[' type_equations ']' '\n'
+	| setrectype_open '[' type_equations ']' '\n'
 	  { process_type_definitions($3,$1,@$); YYABORT; }
-
+	| setclosedtype_open type_specifications ')'
+	  { lex->mid_closed_def(); } // a mid-rule action
+	  '=' '(' type_list1 '|' declarations ')'
+	  { type_list impl_types($7); impl_types.reverse();
+	    let_list method_decls($9); method_decls.reverse();
+	    lex->pop_nest(); // terminate range of type variables
+	    process_closed_type_definition
+	      ($1.names,$1.arity,
+	       make_tuple_type($2.typel),reverse_patlist($2.patl),
+	       impl_types.release(), method_decls.release(), @$);
+	    YYABORT;
+	  }
 	| QUIT	'\n'		{ *verbosity =-1; } /* causes immediate exit */
 	| SET IDENT '\n' // set an option; option identifiers have lowest codes
 	  { unsigned n=$2-lex->first_identifier();
@@ -960,9 +979,35 @@ id_list : IDENT
 	  }
 ;
 
-settype_open // before reducing this, the lexer must sense the following '['
+setrectype_open // before reducing this, the lexer must sense the following '['
 	: SET_TYPE { $$=0; lex->start_defining_types(); }
 	| SET_TYPE typevar_list { $$=$2; lex->start_defining_types(); }
+;
+
+setclosedtype_open
+	: SET_TYPE  '(' id_list '|'
+	  { $$.arity=0; $$.names=reverse_patlist($3);
+	    lex->start_closed_def(0,$3);
+	  }
+	| SET_TYPE typevar_list  '(' id_list '|'
+	  { $$.arity=$2; $$.names=reverse_patlist($4);
+	    lex->start_closed_def($2,$4);
+	  }
+;
+
+type_specifications
+	: type IDENT
+	  { $$.typel=make_type_singleton($1);
+	    atlas::interpreter::raw_id_pat ip;
+	    ip.kind=0x5; ip.name=$2;
+	    $$.patl=make_pattern_node(nullptr,ip);
+	  }
+	| type_specifications ',' type IDENT
+	  { $$.typel=make_type_list($1.typel,$3);
+	    atlas::interpreter::raw_id_pat ip;
+	    ip.kind=0x5; ip.name=$4;
+	    $$.patl=make_pattern_node($1.patl,ip);
+	  }
 ;
 
 type_equations : type_equation
