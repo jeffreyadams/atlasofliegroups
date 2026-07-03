@@ -120,9 +120,9 @@
 	    type closed_type
 
 %type <type_l>
-            union_list_opt union_list union_list_2 type_list
+            union_list_opt union_list1 union_list2 type_list1 type_list2
 %destructor { destroy_type_list($$); }
-            union_list_opt union_list type_list union_list_2
+            union_list_opt union_list1 union_list2 type_list1 type_list2
 
 %type <id_sp1>
 	    id_spec type_spec typedef_type type_field typedef_type_field
@@ -151,9 +151,9 @@
 	    td_type td_closed_type
 
 %type <type_l>
-            td_union_list_opt td_union_list td_union_list_2 td_type_list
+            td_union_list_opt td_union_list1 td_union_list2 td_type_list2
 %destructor { destroy_type_list($$); }
-            td_union_list_opt td_union_list td_union_list_2 td_type_list
+            td_union_list_opt td_union_list1 td_union_list2 td_type_list2
 
 
 
@@ -892,39 +892,42 @@ type	: PRIMTYPE	{ $$=make_prim_type($1); }
 	| TYPE_ID	{ $$ = make_tabled_type($1,nullptr); }
 	| TYPE_CONSTR '<' type '>'
 	  { $$=make_tabled_type($1,make_type_singleton($3)); }
-	| TYPE_CONSTR '<' type_list '>' { $$=make_tabled_type($1,$3); }
+	| TYPE_CONSTR '<' type_list2 '>' { $$=make_tabled_type($1,$3); }
 	| closed_type
 	| TYPE_VAR { $$=make_type_variable($1); }
 ;
 
-type_list // at least 2 comma-separated |type|s
-	: type ',' type  { $$=make_type_list(make_type_singleton($1),$3); }
-	| type_list ',' type { $$=make_type_list($1,$3); }
+type_list1
+	: type { $$ = make_type_singleton($1); }
+	| type_list2
+;
+type_list2 // at least 2 comma-separated |type|s
+	: type_list1 ',' type { $$=make_type_list($1,$3); }
 ;
 
 closed_type
-	: '(' union_list ')'	{ $$=make_union_type($2); }
+	: '(' union_list1 ')'	{ $$=make_union_type($2); }
 	| '(' union_list_opt ARROW union_list_opt ')'
 	  { $$=make_function_type(make_union_type($2),make_union_type($4)); }
-	| '[' union_list ']'	{ $$=make_row_type(make_union_type($2)); }
+	| '[' union_list1 ']'	{ $$=make_row_type(make_union_type($2)); }
 ;
 
 union_list_opt // 0 or more comma-or-bar-separated |type|s, as type list
 	:   { $$=make_type_singleton(make_tuple_type(nullptr)); }
-	| union_list
+	| union_list1
 ;
 
-union_list
+union_list1
 	: type { $$ = make_type_singleton($1); }
-	| union_list_2
+	| union_list2
 ;
 
-union_list_2
-	: type_list { $$ = make_type_singleton(make_tuple_type($1)); }
+union_list2
+	: type_list2 { $$ = make_type_singleton(make_tuple_type($1)); }
 	| union_list_opt '|'
 	  { $$ = make_type_list ($1, make_tuple_type(nullptr)); }
 	| union_list_opt '|' type { $$ = make_type_list($1,$3); }
-	| union_list_opt '|' type_list
+	| union_list_opt '|' type_list2
 	  { $$ = make_type_list($1,make_tuple_type($3)); }
 ;
 
@@ -972,9 +975,9 @@ type_equation
 ;
 
 typedef_type
-	:'[' td_union_list ']'
+	:'[' td_union_list1 ']'
 	  { $$.type_pt=make_row_type(make_union_type($2)); $$.ip.kind=0x0; }
-	| '(' td_union_list_2 ')'
+	| '(' td_union_list2 ')'
 	  { $$.type_pt=make_union_type($2); $$.ip.kind=0x0; }
 	| '(' td_union_list_opt ARROW td_union_list_opt ')'
 	  { $$.type_pt=
@@ -994,7 +997,7 @@ typedef_type
 	| TYPE_CONSTR '<' td_type '>'
 	  { $$.type_pt=make_tabled_type($1,make_type_singleton($3));
 	    $$.ip.kind=0x0; }
-	| TYPE_CONSTR '<' td_type_list '>'
+	| TYPE_CONSTR '<' td_type_list2 '>'
 	  { $$.type_pt=make_tabled_type($1,$3); $$.ip.kind=0x0; }
 ;
 
@@ -1005,39 +1008,39 @@ td_type	: PRIMTYPE	 { $$=make_prim_type($1); }
 	| type_or_constr { $$ = make_tabled_type($1,nullptr); }
 	| TYPE_CONSTR '<' td_type '>'
 	  { $$=make_tabled_type($1,make_type_singleton($3)); }
-	| TYPE_CONSTR '<' td_type_list '>' { $$=make_tabled_type($1,$3); }
+	| TYPE_CONSTR '<' td_type_list2 '>' { $$=make_tabled_type($1,$3); }
 	| td_closed_type
 	| TYPE_VAR { $$=make_type_variable($1); }
 ;
 
-td_type_list // at least 2 comma-separated |type|s
+td_type_list2 // at least 2 comma-separated |type|s
 	: td_type ',' td_type  { $$=make_type_list(make_type_singleton($1),$3); }
-	| td_type_list ',' td_type { $$=make_type_list($1,$3); }
+	| td_type_list2 ',' td_type { $$=make_type_list($1,$3); }
 ;
 
 td_closed_type
-	: '(' td_union_list ')'	{ $$=make_union_type($2); }
+	: '(' td_union_list1 ')'	{ $$=make_union_type($2); }
 	| '(' td_union_list_opt ARROW td_union_list_opt ')'
 	  { $$=make_function_type(make_union_type($2),make_union_type($4)); }
-	| '[' td_union_list ']'	{ $$=make_row_type(make_union_type($2)); }
+	| '[' td_union_list1 ']'	{ $$=make_row_type(make_union_type($2)); }
 ;
 
 td_union_list_opt // 0 or more comma-or-bar-separated |type|s, as type list
 	:   { $$=make_type_singleton(make_tuple_type(nullptr)); }
-	| td_union_list
+	| td_union_list1
 ;
 
-td_union_list
+td_union_list1
 	: td_type { $$ = make_type_singleton($1); }
-	| td_union_list_2
+	| td_union_list2
 ;
 
-td_union_list_2
-	: td_type_list { $$ = make_type_singleton(make_tuple_type($1)); }
+td_union_list2
+	: td_type_list2 { $$ = make_type_singleton(make_tuple_type($1)); }
 	| td_union_list_opt '|'
 	  { $$ = make_type_list ($1, make_tuple_type(nullptr)); }
 	| td_union_list_opt '|' td_type { $$ = make_type_list($1,$3); }
-	| td_union_list_opt '|' td_type_list
+	| td_union_list_opt '|' td_type_list2
 	  { $$ = make_type_list($1,make_tuple_type($3)); }
 ;
 
