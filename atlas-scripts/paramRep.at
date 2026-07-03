@@ -29,6 +29,9 @@ set Talphabetas(Param p) = ParamPol:
 				  fi od)
     in sum(G, for @t in T1 do t od)
 
+set TalphabetaRepeat_time = int:0
+set TalphabetaRepeat_count = int:0
+
 {gives all Param's accessible from p by T_{alpha,beta}}
 {for each q in this list, sigma(p) contains sign of W_{tau(q)}, AND
 sigma contains trivial of W_(complement of tau(q)). Want to list all
@@ -36,58 +39,151 @@ special sigma with those two properties.}
 {This function ran in a few minutes on my laptop for a
 discrete series of E8_s}
 set TalphabetaRepeat(Param p) = [Param]:
+    TalphabetaRepeat_count+:=1;
+    let start = elapsed_ms(), q = regularize(p), G = p.real_form
+    then nullmod = null_module(G)
+    then gamma = q.infinitesimal_character, toDo = 1*q
+    then pHash = make_Param_hash() {will hold answer}
+    then () = while #toDo > 0
+	      do {first record toDo's in pHash}
+	      	 for @r in toDo
+	      	 do pHash.match(r)
+		 od; {next compute all their Talphabeta}
+	      	 toDo := sum(G, for @r in toDo
+	      	  	    	do sum(G, for @t in Talphabetas(r)
+				      	  do t
+					  od)
+				 od); {next step eliminate already handled from toDo}
+		 toDo := sum(G, for @r in toDo
+		      	 	do let j = pHash.lookup(r)
+				   in if j < 0
+				      then 1*r
+				      else nullmod
+				      fi
+				od)
+              od
+    in pHash.list() next TalphabetaRepeat_time+:=elapsed_ms() - start
+
+{jth term is all Param's accessible from p by <=j T_{alpha,beta}'s}
+set TalphabetaRepeats(Param p) = [[Param]]:
     let q = regularize(p), G = p.real_form
     then nullmod = null_module(G)
-    then gamma = q.infinitesimal_character, toDo = Talphabetas(q)
-    then pHash = make_Param_hash([q]) {will hold answer}
-    {then () = prints("Starting size of pHash = ",pHash.size())}
+    then gamma = q.infinitesimal_character, toDo = 1*q
+    then pHash = make_Param_hash() {will hold answer.##; always things where Talphabeta
+    	       	 		      already computed}
+    then answer = [[Param]]:[[q]]
     then () = while #toDo > 0
-	      do {prints("Starting size of toDo = ",#toDo,", pHash = ",pHash.size());}
-	      	 for @r in toDo
+	      do for @r in toDo
 	      	 do pHash.match(r)
 		 od;
 	      	 toDo := sum(G, for @r in toDo
 	      	  	    	do sum(G, for @t in Talphabetas(r)
 				      	  do t
 					  od)
-				 od);
+				 od); {now everything in pHash has been Talphabeta'd}
+				 {next step eliminates from toDo stuff already Tab'd}
 		 toDo := sum(G, for @r in toDo
-		      	 	do let size = pHash.size()
-				   then j = pHash.match(r)
-				   in if j = size
+		      	 	do let j = pHash.lookup(r)
+				   in if j < 0
 				      then 1*r
 				      else nullmod
 				      fi
-				od)
-		 {prints("Ending size of toDo = ",#toDo, ", pHash = ",pHash.size())}
+				od);
+		 answer #:= pHash.list()
               od
-    in pHash.list()
+    in answer
 
 {all distinct tau invariants reachable by T_{alpha,beta}'s from p}
 set TalphabetaTaus(Param p) = [vec]:
     for q in TalphabetaRepeat(p) do tau(q) od.sort_u_lex
 
+{jth term is all tau invariants found in <= j T_{alpha,beta}'s from p}
+set TalphabetaTauss(Param p) = [[vec]]:
+    for list in TalphabetaRepeats(p) do for q in list do tau(q) od.sort_u_lex od
+
 {previous made into a big_int bitset (largest possible size 2^(2^(semisimple_rank(integrality_datum)))}
 set TalphabetaTaus_bitset(Param p) = int:
     to_bitset(for tau in TalphabetaTaus(p) do to_bitset(tau) od)
 
-{lists the numbers in the character table of the special W reps that admit all the taus in Talphabetataus(p)}
+{Tauss made into a list of big_int bitsets}
+set TalphabetaTauss_bitset(Param p) = [int]:
+    for list in TalphabetaTauss(p) do to_bitset(for tau in list do to_bitset(tau) od) od
+
+{If N is TalphabetaTaus_bitset(q), then this is a necessary condition for p and q to have
+the same primitive ideal}
+set same_PI(Param p, int Taus_bitset) = bool:
+    TalphabetaTaus_bitset(p) = Taus_bitset
+
+{If Ns is TalphabetaTauss_bitset(q), then this is a necessary condition for p and q to have
+the same primitive ideal, AS LONG AS there is only one root length. In case of two root lengths,
+present implementation of Talphabeta may take TWO steps to reach something that's really ONE
+step.}
+set same_PI_step(Param p, [int] Tauss_bitset) = bool:
+    let q = regularize(p), G = p.real_form, step = int:0, pHash = make_Param_hash()
+    then gamma = q.infinitesimal_character, toDo = 1*q, nullmod = null_module(G)
+    in while #toDo > 0
+       do for @r in toDo
+	  do pHash.match(r)
+	  od;
+	  if step >= #Tauss_bitset or
+	     to_bitset(for r in pHash.list() do to_bitset(tau(r)) od) !=
+		      	 Tauss_bitset[step]
+	  then return false
+	  fi;
+	  toDo := sum(G, for @r in toDo
+	      	  	 do sum(G, for @t in Talphabetas(r)
+				   do t
+				   od)
+			 od); {next eliminate duplicates}
+	  toDo := sum(G, for @r in toDo
+		      	 do let N = pHash.size()
+			    then j = pHash.match(r)
+			    in if j = N
+			       then 1*r
+			       else nullmod
+			       fi
+			  od);
+	  step +:=1
+       od;
+       step = #Tauss_bitset-1 and
+       to_bitset(for r in pHash.list() do to_bitset(tau(r)) od) =
+       Tauss_bitset[step]
+
+{lists the numbers AMONG SPECIAL REPS of the special W reps that admit all the taus
+in Talphabetataus(p)}
 set cand_sigmas(Param p) = [int]:
     let rd = integrality_datum(p)
-    then CT = character_table(rd)
-    then chars = CT.characters
-    then WCT = class_table(CT)
-    then special_inds = for j:#chars if is_special_representation(CT,j) do j fi od
-    then special_tauss = for j in special_inds do taus(WCT,chars[j]) od
-    then special_tauss_bitsets = for list in special_tauss
-    	 		       	 do to_bitset(for tau in list do to_bitset(tau) od)
-				 od
-    then M = TalphabetaTaus_bitset(p)
-    in for N@i in special_tauss_bitsets if AND(M,N) = M do special_inds[i] fi od
+    then special_tauss_bitsets = special_taus_bitsets(rd)
+    then M = TalphabetaTaus_bitset(p) {now test if M \subset N}
+    in for N@i in special_tauss_bitsets if AND(M,N) = M do i fi od
+
+{meant to hold Param's for which #js > 1}
+set badTab_hash = make_Param_hash()
 
 set GK_dim_new(Param p) = int:
-    let js = cand_sigmas(p)
+    let js = cand_sigmas(p), CT = character_table(integrality_datum(p))
+    then special_inds = for j:#CT.characters if is_special_representation(CT,j) do j fi od
     in if #js =	1
-       then #posroots(p.root_datum) - character_table(integrality_datum(p)).generic_degree(js[0])
-       else prints("Sorry, had to revert!"); GK_dim(p)
+       then #posroots(p.root_datum) - CT.generic_degree(special_inds[js[0]])
+       else badTab_hash.match(p); prints("Sorry, had to revert; p =",p); GK_dim(p)
        fi
+
+{#posroots of Levi defined by dual tau invariant to S; a lower bound for GK_codim of dual}
+set dualcodim(RootDatum rd, [int] S) = int:
+    let T = complement(rd.semisimple_rank,S)
+    in nr_of_posroots(Levi_datum(rd,T))
+
+{check whether a set of tau invariants can correspond to a dual orbit of codim D}
+{S0 is the target tau invariant, the set of singular simple for the infl char}
+set allowed(RootDatum rd, [[int]] taus, [int] S0) = bool:
+    let D0 = dualcodim(rd,S0), CT = character_table(rd), rk = rd.semisimple_rank
+    then S0c = complement(rk,S0)
+    then r0 = truncate_induce_sign(CT,S0c)
+    in all(for S in taus
+       	   do @bool: let D1 = dualcodim(rd,S)
+	      	     in D1 < D0
+		     	or D1 = D0 and truncate_induce_sign(CT,complement(rk,S)) = r0
+	   od)
+
+set testArthur(Param p, [int] S0) = bool:
+    tau(p) = S0 and allowed(p.integrality_datum,TalphabetaTaus(p),S0)

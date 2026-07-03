@@ -3,7 +3,7 @@
 <sort.at { for |sort_u@[vec]| }
 <sparse.at { for column-grouped |sparse_mat| type }
 <W_orbit.at { for |W_parabolic_act@(RootDatum,[int],int,[mat])| }
-
+<character_tables_reductive.at {for type CharacterTable, function character_table@RootDatum}
 { data type for representation of W
   operators[i] is the matrix of the action of simple generator #i
 }
@@ -303,16 +303,21 @@ set ind_sgn_old (WeylClassTable WCT, [int] S) = [int]:
    then WCT_L = W_class_table_generic(rd_L)
    in induce_character(WCT, WCT_L, WCT_L.sign)
 
+set ind_sign_count = int: 0
+set ind_sign_time = int: 0
+
 { Ind^W_{W(S)}(sgn_S): sign character of W(S) induced to W, as a W-character vector.
   By Frobenius reciprocity, WCT.inner(char, ind_sgn(WCT,S)) = mult_sgn(WCT,S,char). }
 set ind_sgn = ((WeylClassTable, [int]) -> [int]):
-   let rd_hash = make_RootDatum_hash()
+   let start = int: 0, rd_hash = make_RootDatum_hash()
    then ind_sgns = [[vec]]: [] {for each rd, a list of the 2^rank chars of ind_Levi(sgn)}
    in ((WeylClassTable, [int]) -> [int]): (WeylClassTable WCT, [int] S):
    let N = rd_hash.size()
    then rd = WCT.root_datum
    then n = rd_hash.match(rd), m = to_bitset(S)
-   in if n=N
+   in start := elapsed_ms();
+      ind_sign_count+:=1;
+      if n=N
       then ind_sgns#:= for k:2^(rd.semisimple_rank) do null(0) od
       fi;
       if #ind_sgns[n][m] = 0
@@ -321,6 +326,7 @@ set ind_sgn = ((WeylClassTable, [int]) -> [int]):
       	   in indsgnsn[m] := induce_character(WCT,WCT_L,WCT_L.sign);
 	      ind_sgns[n] := indsgnsn
       fi;
+      ind_sign_time+:=elapsed_ms() - start;
       ind_sgns[n][m]
 
 { multiplicity of the sign character of W(S) in Res_{W(S)}^W(char)
@@ -329,10 +335,43 @@ set ind_sgn = ((WeylClassTable, [int]) -> [int]):
 set mult_sgn (WeylClassTable WCT, [int] S, [int] char) = int:
    WCT.inner(char,ind_sgn(WCT,S))
 
+set tau_ind_count = int: 0
+set tau_ind_time = int: 0
+set tau_ind_new_flag = true
+
+{ tau_ind_S = sum_{T supseteq S} (-1)^(#T-#S) ind_sgn(WCT,T), as a W-character vector.
+  WCT.inner(char, tau_ind(WCT,S)) = tau_mult(WCT,S,char). }
+set tau_ind_new = ((WeylClassTable, [int]) -> [int]):
+   let start = int: 0, rd_hash = make_RootDatum_hash()
+   then tau_inds = [[vec]]: [] {for each rd, a list of the 2^rank chars of tau_ind(S)}
+   in ((WeylClassTable, [int]) -> [int]): (WeylClassTable WCT, [int] S):
+   tau_ind_count+:=1;
+   start:= elapsed_ms();
+   let N = rd_hash.size()
+   then rd = WCT.root_datum
+   then n = rd_hash.match(rd), m = to_bitset(S), rank = rd.semisimple_rank
+   in if n=N
+      then tau_inds#:= for j:2^rank
+      	   	       do null(0)
+		       od
+      fi;
+      if #tau_inds[n][m] = 0
+      then let tauindsn = tau_inds[n]
+      	   in tauindsn[m]:= (let Scomplement = complement(rank,S)
+	      		    in sum(for T in power_set(Scomplement)
+			       	   do (-1)^(#T)*ind_sgn(WCT,S##T)
+				   od));
+	      tau_inds[n]:=tauindsn
+      fi;
+      tau_ind_time+:= elapsed_ms() - start;
+      tau_inds[n][m]
+
 { tau_ind_S = sum_{T supseteq S} (-1)^(#T-#S) ind_sgn(WCT,T), as a W-character vector.
   WCT.inner(char, tau_ind(WCT,S)) = tau_mult(WCT,S,char). }
 set tau_ind (WeylClassTable WCT, [int] S) = [int]:
-   let rd_G = WCT.root_datum
+   if tau_ind_new_flag then return tau_ind_new(WCT,S) fi;
+   tau_ind_count+:=1;
+   let start = elapsed_ms(), rd_G = WCT.root_datum
    then rank = rd_G.semisimple_rank
    then n_cl = WCT.n_classes
    then Scomplement = complement(rank,S)
@@ -342,17 +381,49 @@ set tau_ind (WeylClassTable WCT, [int] S) = [int]:
                 then ind_T = ind_sgn(WCT, S##T)
                 in result := for ri@i in result do ri + sign*ind_T[i] od
              od
-   in result
+   in tau_ind_time+:= elapsed_ms() - start; result
 
 { alternating sum: sum_{T supseteq S} (-1)^(#T-#S) mult_sgn(WCT,T,char)
   gives the "tau-multiplicity" of char at S }
 set tau_mult (WeylClassTable WCT, [int] S, [int] char) = int:
     WCT.inner(char,tau_ind(WCT,S))
 
+set taus_count = int: 0
+set taus_time = int: 0
+set taus_new_flag = true
+
+{ taus(char) = list of subsets S for which tau_mult(WCT,S,char #r) != 0.}
+set taus_new = ((CharacterTable, int) -> [[int]]):
+   let start = int: 0, rd_hash = make_RootDatum_hash()
+   then taus = [[[vec]]]: [] {for each rd and int r, a list of the tau invariants for rep r}
+   in ((CharacterTable, int) -> [[int]]): (CharacterTable CT, int r):
+      taus_count+:=1;
+      start:=elapsed_ms();
+      let N = rd_hash.size()
+      then rd = CT.root_datum, WCT = CT.class_table
+      then rank = rd.semisimple_rank, n = rd_hash.match(rd)
+      in if n = N
+      	 then taus #:= ([[vec]]: for j:#CT.characters do [] od)
+	 fi;
+      	 if #taus[n][r]=0
+      	 then let tausn = taus[n], char = CT.characters[r]
+	      then all_S = power_set(rank)
+      	      in tausn[r]:= for S in all_S
+	      	 	    if !=WCT.inner(char, tau_ind(WCT,S))
+			    do S
+			    fi
+			    od;
+		 taus[n]:=tausn
+	  fi;
+	  taus_time+:= elapsed_ms() - start;
+	  taus[n][r]
+
+
 { taus(char) = list of subsets S for which tau_mult(WCT,S,char) != 0.
   Precomputes all ind_sgn values once to avoid redundant Levi constructions. }
 set taus (WeylClassTable WCT, [int] char) = [[int]]:
-   let rank = WCT.root_datum.semisimple_rank
+   taus_count+:=1;
+   let start = elapsed_ms(), rank = WCT.root_datum.semisimple_rank
    then all_S = power_set(rank)
    then n_cl = WCT.n_classes
    then ind_chars = for S in all_S do ind_sgn(WCT, S) od
@@ -372,4 +443,23 @@ set taus (WeylClassTable WCT, [int] char) = [[int]]:
       if !=WCT.inner(char, tau_chars[S_idx])
       do S
       fi
-      od
+      od next taus_time+:= elapsed_ms() - start
+
+set special_taus_bitsets = (RootDatum -> [int]):
+   let start = int: 0, rd_hash = make_RootDatum_hash()
+   then bitsets = [[int]]: [] {for each rd, a list of taus(special) as bitmaps: one big int
+   	       		    for each special sigma}
+   in (RootDatum -> [int]): (RootDatum rd):
+      let N = rd_hash.size()
+      then n = rd_hash.match(rd)
+      in if n=N
+      	 then let CT = character_table(rd)
+	      in bitsets#:=
+	      	 for j:#CT.characters
+	      	 if is_special_representation(CT,j)
+		 do let taus = taus_new(CT,j)
+		    in to_bitset(for tau in taus do to_bitset(tau) od)
+		 fi
+		 od
+	  fi;
+	  bitsets[n]
