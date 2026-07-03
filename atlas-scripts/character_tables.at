@@ -339,4 +339,9 @@ set special_representations(CharacterTable ct)=[int]:
 set special_representation_star(CharacterTable ct)=(int ->string):(int i):
 if ct.is_special_representation(i) then "*" else "" fi 
 
-
+set num_prim_ideals(CharacterTable CT) = int:
+    sum(for j:#CT.characters
+    	if is_special_representation(CT,j)
+	do dimension(CT,j)
+	fi
+	od)

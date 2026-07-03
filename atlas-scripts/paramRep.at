@@ -11,17 +11,24 @@ integral Weyl group W_int(p) attached to a Param p}
 {Move the param out where W_int(p)  can act}
 set regularize(Param p) = translate_param_by (p, p.root_datum.two_rho)
 
+set Cayley_cross_sum(int j, Param p) = ParamPol:
+    let q = Cayley(j,p)
+    in if q = p then 1*cross(j,p)
+       else q + cross(j,q)
+       fi
+
 {all these guys have the SAME sigma}
 set Talphabetas(Param p) = ParamPol:
     let q = if is_regular(p.root_datum,p.infinitesimal_character)
     	    then p
 	    else regularize(p)
 	    fi, G = p.real_form
-    then gamma = q.infinitesimal_character, empty = null_module(G)
+    then gamma = q.infinitesimal_character, empty = null_module(G), tau = tau(q)
     then R = integrality_datum(G, gamma)
     then S = R.simple_roots
-    then P1 = sum(G, for j:#S do Cayley_sum(j,q) od)
-    	    + sum(G, for j:#S do cross(j,q) od)
+    then P1 = sum(G, for j:#S {was Cayley_sum(j,q)}
+    	      	     do Cayley_cross_sum(j,q)
+		     od)
     then T1 = sum(G, for @t in P1 do if is_subset(tau(t), tau(q)) or
     	      	      	       	     is_subset(tau(q), tau(t))
 				  then empty
@@ -71,27 +78,25 @@ set TalphabetaRepeats(Param p) = [[Param]]:
     then gamma = q.infinitesimal_character, toDo = 1*q
     then pHash = make_Param_hash() {will hold answer.##; always things where Talphabeta
     	       	 		      already computed}
-    then answer = [[Param]]:[[q]]
-    then () = while #toDo > 0
-	      do for @r in toDo
-	      	 do pHash.match(r)
-		 od;
-	      	 toDo := sum(G, for @r in toDo
-	      	  	    	do sum(G, for @t in Talphabetas(r)
-				      	  do t
-					  od)
-				 od); {now everything in pHash has been Talphabeta'd}
-				 {next step eliminates from toDo stuff already Tab'd}
-		 toDo := sum(G, for @r in toDo
-		      	 	do let j = pHash.lookup(r)
-				   in if j < 0
-				      then 1*r
-				      else nullmod
-				      fi
-				od);
-		 answer #:= pHash.list()
-              od
-    in answer
+    then answer = [[Param]]:[]
+    then size = int:0
+    in while #toDo > 0
+       do for @r in toDo
+	  do pHash.match(r)
+	  od;
+	  size:= pHash.size();
+	  answer #:= pHash.list();
+	  toDo := sum(G, for @r in toDo
+	      	  	 do sum(G, for @t in Talphabetas(r)
+				   do let j = pHash.match(t)
+				      in if j >=size
+					 then 1*t
+					 else nullmod
+					 fi
+				   od)
+			  od)
+        od;
+    	answer#pHash.list()
 
 {all distinct tau invariants reachable by T_{alpha,beta}'s from p}
 set TalphabetaTaus(Param p) = [vec]:
@@ -120,11 +125,12 @@ present implementation of Talphabeta may take TWO steps to reach something that'
 step.}
 set same_PI_step(Param p, [int] Tauss_bitset) = bool:
     let q = regularize(p), G = p.real_form, step = int:0, pHash = make_Param_hash()
-    then gamma = q.infinitesimal_character, toDo = 1*q, nullmod = null_module(G)
+    then gamma = q.infinitesimal_character, toDo = 1*q, nullmod = null_module(G), size = int:0
     in while #toDo > 0
        do for @r in toDo
 	  do pHash.match(r)
 	  od;
+	  size:=pHash.size();
 	  if step >= #Tauss_bitset or
 	     to_bitset(for r in pHash.list() do to_bitset(tau(r)) od) !=
 		      	 Tauss_bitset[step]
@@ -132,17 +138,13 @@ set same_PI_step(Param p, [int] Tauss_bitset) = bool:
 	  fi;
 	  toDo := sum(G, for @r in toDo
 	      	  	 do sum(G, for @t in Talphabetas(r)
-				   do t
+				   do let j = pHash.match(t)
+				      in if j>= size
+				      	 then 1*t
+					 else nullmod
+					 fi
 				   od)
-			 od); {next eliminate duplicates}
-	  toDo := sum(G, for @r in toDo
-		      	 do let N = pHash.size()
-			    then j = pHash.match(r)
-			    in if j = N
-			       then 1*r
-			       else nullmod
-			       fi
-			  od);
+			 od);
 	  step +:=1
        od;
        step = #Tauss_bitset-1 and

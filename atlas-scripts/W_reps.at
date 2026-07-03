@@ -339,8 +339,6 @@ set tau_ind_count = int: 0
 set tau_ind_time = int: 0
 set tau_ind_new_flag = true
 
-{ tau_ind_S = sum_{T supseteq S} (-1)^(#T-#S) ind_sgn(WCT,T), as a W-character vector.
-  WCT.inner(char, tau_ind(WCT,S)) = tau_mult(WCT,S,char). }
 set tau_ind_new = ((WeylClassTable, [int]) -> [int]):
    let start = int: 0, rd_hash = make_RootDatum_hash()
    then tau_inds = [[vec]]: [] {for each rd, a list of the 2^rank chars of tau_ind(S)}
@@ -352,16 +350,16 @@ set tau_ind_new = ((WeylClassTable, [int]) -> [int]):
    then n = rd_hash.match(rd), m = to_bitset(S), rank = rd.semisimple_rank
    in if n=N
       then tau_inds#:= for j:2^rank
-      	   	       do null(0)
-		       od
+                      do null(0)
+                      od
       fi;
       if #tau_inds[n][m] = 0
       then let tauindsn = tau_inds[n]
-      	   in tauindsn[m]:= (let Scomplement = complement(rank,S)
-	      		    in sum(for T in power_set(Scomplement)
-			       	   do (-1)^(#T)*ind_sgn(WCT,S##T)
-				   od));
-	      tau_inds[n]:=tauindsn
+          in tauindsn[m]:= (let Scomplement = complement(rank,S)
+                           in sum(for T in power_set(Scomplement)
+                                  do (-1)^(#T)*ind_sgn(WCT,S##T)
+                                  od));
+             tau_inds[n]:=tauindsn
       fi;
       tau_ind_time+:= elapsed_ms() - start;
       tau_inds[n][m]
@@ -397,8 +395,8 @@ set taus_new = ((CharacterTable, int) -> [[int]]):
    let start = int: 0, rd_hash = make_RootDatum_hash()
    then taus = [[[vec]]]: [] {for each rd and int r, a list of the tau invariants for rep r}
    in ((CharacterTable, int) -> [[int]]): (CharacterTable CT, int r):
-      taus_count+:=1;
-      start:=elapsed_ms();
+      {taus_count+:=1;
+      start:=elapsed_ms();}
       let N = rd_hash.size()
       then rd = CT.root_datum, WCT = CT.class_table
       then rank = rd.semisimple_rank, n = rd_hash.match(rd)
@@ -415,14 +413,14 @@ set taus_new = ((CharacterTable, int) -> [[int]]):
 			    od;
 		 taus[n]:=tausn
 	  fi;
-	  taus_time+:= elapsed_ms() - start;
+	  {taus_time+:= elapsed_ms() - start;}
 	  taus[n][r]
 
 
 { taus(char) = list of subsets S for which tau_mult(WCT,S,char) != 0.
   Precomputes all ind_sgn values once to avoid redundant Levi constructions. }
 set taus (WeylClassTable WCT, [int] char) = [[int]]:
-   taus_count+:=1;
+   {taus_count+:=1;}
    let start = elapsed_ms(), rank = WCT.root_datum.semisimple_rank
    then all_S = power_set(rank)
    then n_cl = WCT.n_classes
@@ -443,7 +441,7 @@ set taus (WeylClassTable WCT, [int] char) = [[int]]:
       if !=WCT.inner(char, tau_chars[S_idx])
       do S
       fi
-      od next taus_time+:= elapsed_ms() - start
+      od {next taus_time+:= elapsed_ms() - start}
 
 set special_taus_bitsets = (RootDatum -> [int]):
    let start = int: 0, rd_hash = make_RootDatum_hash()

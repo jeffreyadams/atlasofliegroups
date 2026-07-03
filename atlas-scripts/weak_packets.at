@@ -200,21 +200,29 @@ in if not twist(delta_check,O_check)=O_check
       let Gs = split_form(G.root_datum), gamma_final=O_check.H/2+shift
       then OL_flag = is_one_root_length(integrality_datum(G,gamma_final))
       then q = parameter(x_open(Gs),Gs.rho,gamma_final)
-      {then Ns = if OL_flag
-      	      	then TalphabetaTauss_bitset(q)
-		else []
-		fi}
-      then N = {if not OL_flag
-      	       then} TalphabetaTaus_bitset(q)
-	       {else 0
-	       fi}
+      then N = TalphabetaTaus_bitset(q)
       then all = all_parameters_gamma(G,gamma_final)
       in for p in all
-      	 if FPP_def_test(p) and is_hermitian(p) and
-	    {if OL_flag
-	    then same_PI_step(p,Ns)
-	    else} same_PI(p,N)
-	    {fi}
+      	 if FPP_def_test(p) and is_hermitian(p) and same_PI(p,N)
+	 do p
+	 fi
+	 od
+   fi
+
+set weak_packet_faster (ComplexNilpotent O_check,RealForm G,ratvec shift) = [Param]:
+   if cells_verbose then prints("Computing fast weak packet for ",G) fi;
+   let delta_check= {distinguished involution of |G|, viewed on dual side}
+            ^G.distinguished_involution {NOT |G.dual.distinguished_involution| }
+in if not twist(delta_check,O_check)=O_check
+   then []
+   else
+      let Gs = split_form(G.root_datum), gamma_final=O_check.H/2+shift
+      then OL_flag = is_one_root_length(integrality_datum(G,gamma_final))
+      then q = parameter(x_open(Gs),Gs.rho,gamma_final)
+      then Ns = TalphabetaTauss_bitset(q)
+      then all = all_parameters_gamma(G,gamma_final)
+      in for p in all
+      	 if FPP_def_test(p) and is_hermitian(p) and same_PI_step(p,Ns)
 	 do p
 	 fi
 	 od
@@ -232,6 +240,9 @@ set weak_packet_newest (ComplexNilpotent O_check,RealForm G) = [Param]:
    weak_packet_newest(O_check,G,null(G.rank))
 
 set weak_packet_fast (ComplexNilpotent O_check,RealForm G) = [Param]:
+   weak_packet_fast(O_check,G,null(G.rank))
+
+set weak_packet_faster (ComplexNilpotent O_check,RealForm G) = [Param]:
    weak_packet_fast(O_check,G,null(G.rank))
 
 { run over a set of dual orbits; check if dual(O_check) intersects \g^(-theta) }
@@ -322,6 +333,24 @@ in for O_check in dual_orbits
       fi
    od
 
+set weak_packets_faster ([ComplexNilpotent] dual_orbits,RealForm G,ratvec shift) = [[Param]]:
+    if cells_verbose then prints("Computing weak packets_new for ", #dual_orbits,
+       " dual orbits of ",G) fi;
+   let {st = Springer_table(G),} delta_check= {distinguished involution of |G|, viewed on dual side}
+            ^G.distinguished_involution {NOT |G.dual.distinguished_involution| }
+in for O_check in dual_orbits
+   do if not twist(delta_check,O_check)=O_check
+      then if cells_verbose then prints("Skipping orbit: dual orbit is not delta_check fixed") fi
+      ;  []
+      else if cells_verbose then prints
+	   ( new_line
+	   , "Computing fast weak packet for orbit: ", O_check.root_datum
+	   , " ", O_check.H
+	   , " dim=", O_check.dim_nilpotent) fi
+      ;  weak_packet_faster(O_check,G,shift)
+      fi
+   od
+
 set weak_packets ([ComplexNilpotent] dual_orbits,RealForm G) =
       [ [[Param],[WCell]] , [int,int,Param] ]:
    weak_packets(dual_orbits,G,null(G.rank))
@@ -334,6 +363,9 @@ set weak_packets_newest ([ComplexNilpotent] dual_orbits,RealForm G) = [[Param]]:
 
 set weak_packets_fast ([ComplexNilpotent] dual_orbits,RealForm G) = [[Param]]:
    weak_packets_fast(dual_orbits,G,null(G.rank))
+
+set weak_packets_faster ([ComplexNilpotent] dual_orbits,RealForm G) = [[Param]]:
+   weak_packets_faster(dual_orbits,G,null(G.rank))
 
 {given just a RealForm G, compute the dual orbits then compute all weak packets
  as you run over these dual orbits}
@@ -349,6 +381,9 @@ set weak_packets_newest (RealForm G) = [[Param]]:
 set weak_packets_fast (RealForm G) = [[Param]]:
     weak_packets_fast(dual_orbits(G),G)
 
+set weak_packets_faster (RealForm G) = [[Param]]:
+    weak_packets_faster(dual_orbits(G),G)
+
 {given just a RealForm G, compute the dual orbits, then
 all weak packets as you run over these dual orbits}
 set weak_packets_even (RealForm G ) = [ [[Param],[WCell]] , [int,int,Param] ]:
@@ -363,6 +398,9 @@ set weak_packets_even_newest (RealForm G ) = [[Param]]:
 set weak_packets_even_fast (RealForm G ) = [[Param]]:
    weak_packets_fast(even_dual_orbits(G),G)
 
+set weak_packets_even_faster (RealForm G ) = [[Param]]:
+   weak_packets_faster(even_dual_orbits(G),G)
+   
 {reporting functions}
 
 set mult([[(int,int,Param)]] packet)=((int,int,int)->int):(int orbit,int block,int cell):
@@ -412,6 +450,7 @@ set blocks([[(int,int,Param)]] packets) =[int]:sort_u(##for i:#packets do for (b
 set weak_packets_new_flag = false
 set weak_packets_newest_flag = false
 set weak_packets_fast_flag = false
+set weak_packets_faster_flag = false
 
 set unipotent_representations(RealForm G)=[Param]: {G.weak_packets.parameters}
     if G = F4_s
@@ -436,6 +475,8 @@ set unipotent_representations(RealForm G)=[Param]: {G.weak_packets.parameters}
     then weak_packets_newest(G).##
     elif weak_packets_fast_flag
     then weak_packets_fast(G).##
+    elif weak_packets_faster_flag
+    then weak_packets_faster(G).##
     else G.weak_packets.parameters
     fi
 

@@ -176,6 +176,7 @@ set hash_code (mat M, int mod) = int: hash_code(vec:M.##,mod)
 {meant to hash a [rat_vec] to int in [0,mod)}
 set hash_code (ratvec v, int mod) = int: let(n,d)=%v in hash_code(n#d,mod)
 
+set hash_code(int N, int mod) = int: (N*2647 + 1359)%mod
 
 set make_vec_hash () = Hash<vec>: make_hash(hash_code@(vec,int),=@(vec,vec))
 set make_vec_hash ([vec] data) = Hash<vec>: make_hash((hash_code@(vec,int),=@(vec,vec)), data)
@@ -191,6 +192,9 @@ set make_ratvec_hash ([ratvec] data) = Hash<ratvec>:
    make_hash((hash_code@(ratvec,int),=@(ratvec,ratvec)), data)
 set make_ratvec_hash (int N) = Hash<ratvec>:
    make_hash((hash_code@(ratvec,int),=@(ratvec,ratvec)),N)
+
+set make_int_hash () = Hash<int>: make_hash(hash_code@(int,int),=@(int,int))
+set make_int_hash ([int] data) = Hash<int>: make_hash((hash_code@(int,int),=@(int,int)), data)
 
 {meant to hash KTypes for single group G}
 set hash_code (KType p, int mod) = int:
