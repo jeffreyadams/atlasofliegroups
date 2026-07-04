@@ -167,16 +167,28 @@ set eval_at_mod(int n, int m) = (vec->int):
     assert(@:n>1 and m=exp_2(pow)," bad values for eval_at_mod");
     (vec v) int: let sum=0 in  for e in v ~do sum:=AND(mask,e + n*sum) od; sum
 
+{ fast polynomial evaluation modulo power of 2, similar to polynomial |eval| }
+set eval_at_mod(int n, int m) = ([int]->int):
+    let mask = m-1 then pow=bit_length(mask) in
+    assert(@:n>1 and m=exp_2(pow)," bad values for eval_at_mod");
+    ([int] v) int: let sum=0 in  for e in v ~do sum:=AND(mask,e + n*sum) od; sum
+
+set hash_code_int(int N, int mod) = int: (N*2647 + 1359)%mod
+
+set hash_code_int_list([int] V, int mod) = int: eval_at_mod(8647,mod)(V)
+
+set hash_code (vec v, int mod) = int:
+    let V = [int]: v in hash_code_int_list(V,mod)
+ 
 {meant to hash a [vec] to int in [0,d_mod)}
-set hash_code (vec v, int mod) = int: eval_at_mod(8647,mod)(v)
+{set hash_code (vec v, int mod) = int: hash_code(v, mod)
+eval_at_mod(8647,mod)(v)}
 
 {meant to hash a [mat] to int in [0,mod)}
-set hash_code (mat M, int mod) = int: hash_code(vec:M.##,mod)
+set hash_code (mat M, int mod) = int: hash_code(M.##,mod)
 
 {meant to hash a [rat_vec] to int in [0,mod)}
 set hash_code (ratvec v, int mod) = int: let(n,d)=%v in hash_code(n#d,mod)
-
-set hash_code(int N, int mod) = int: (N*2647 + 1359)%mod
 
 set make_vec_hash () = Hash<vec>: make_hash(hash_code@(vec,int),=@(vec,vec))
 set make_vec_hash ([vec] data) = Hash<vec>: make_hash((hash_code@(vec,int),=@(vec,vec)), data)
@@ -193,8 +205,17 @@ set make_ratvec_hash ([ratvec] data) = Hash<ratvec>:
 set make_ratvec_hash (int N) = Hash<ratvec>:
    make_hash((hash_code@(ratvec,int),=@(ratvec,ratvec)),N)
 
-set make_int_hash () = Hash<int>: make_hash(hash_code@(int,int),=@(int,int))
-set make_int_hash ([int] data) = Hash<int>: make_hash((hash_code@(int,int),=@(int,int)), data)
+set make_int_hash () = Hash<int>: make_hash(hash_code_int@(int,int),=@(int,int))
+set make_int_hash ([int] data) = Hash<int>: make_hash((hash_code_int@(int,int),=@(int,int)), data)
+
+set int_list_eq ([int] list0, [int] list1) = bool:
+    if (#list0).= then (#list1).=
+    else #list0 = #list1
+    	 and all(for j:#list0 do @bool: list0[j] = list1[j] od)
+    fi
+
+set make_int_list_hash () = Hash<[int]>: make_hash(hash_code_int_list@([int],int),int_list_eq@([int],[int]))
+set make_int_list_hash ([[int]] datas) = Hash<[int]>: make_hash((hash_code_int_list@([int],int),int_list_eq@([int],[int])), datas)
 
 {meant to hash KTypes for single group G}
 set hash_code (KType p, int mod) = int:
@@ -209,6 +230,20 @@ set hash_code (Param p, int mod) = int:
 set to_vecs (KTypePol P) = [vec]:
    for c@p in P do let (a,b)=%c,(x,lr)=%p in [a,b,#x]##lr od
 set hash_code (KTypePol P, int mod) = int: hash_code(vec: to_vecs(P).##, mod)
+
+set make_KType_hash () = Hash<KType>:
+   make_hash(hash_code@(KType,int),=@(KType,KType))
+set make_Param_hash () = Hash<Param>:
+   make_hash(hash_code@(Param,int),=@(Param,Param))
+set make_Param_hash ([Param] data) = Hash<Param>: make_hash((hash_code@(Param,int),=@(Param,Param)), data)
+set make_KTypePol_hash () = Hash<KTypePol>:
+   make_hash(hash_code@(KTypePol,int),=@(KTypePol,KTypePol))
+
+{meant to hash a [KTypePol]}
+set to_vecs (KTypePol P) = [vec]:
+   for c@p in P do let (a,b)=%c,(x,lr)=%p in [a,b,#x]##lr od
+set hash_code (KTypePol P, int mod) = int: hash_code(vec: to_vecs(P).##, mod)
+
 
 set make_KType_hash () = Hash<KType>:
    make_hash(hash_code@(KType,int),=@(KType,KType))

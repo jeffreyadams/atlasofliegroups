@@ -157,11 +157,12 @@ in if not twist(delta_check,O_check)=O_check
       	       					  gamma_final))
       then all = all_parameters_gamma(G,gamma_final)
       in for p in all
-      	 if FPP_def_test(p) and is_hermitian(p) and tau(p) = T and GK_dim_new(p) = d
+      	 if FPP_def_test(p) and is_hermitian(p) and tau(p) = T and GK_dim{_new}(p) = d
 	 do p
 	 fi
 	 od
    fi
+
 
 set weak_packet_newest (ComplexNilpotent O_check,RealForm G,ratvec shift) = [Param]:
    if cells_verbose then prints("Computing newest weak packet for ",G) fi;
@@ -182,6 +183,8 @@ in if not twist(delta_check,O_check)=O_check
 	 fi
 	 od
    fi
+
+
 
 set is_one_root_length(RootDatum rd) = bool:
     all(for av in rd.simple_coroots
@@ -450,7 +453,7 @@ set blocks([[(int,int,Param)]] packets) =[int]:sort_u(##for i:#packets do for (b
 set weak_packets_new_flag = false
 set weak_packets_newest_flag = false
 set weak_packets_fast_flag = false
-set weak_packets_faster_flag = false
+set weak_packets_faster_flag = true
 
 set unipotent_representations(RealForm G)=[Param]: {G.weak_packets.parameters}
     if G = F4_s
