@@ -875,7 +875,7 @@ case tuple_display:
   wtl_const_iterator tl_it (ntt.tuple());
   for (wel_const_iterator it(e.sublist); not it.at_end(); ++it,++tl_it)
   {
-    type& comp_type = comp_types.push_back(type::wrap(*tl_it,fc));
+    type& comp_type = *comp_types.push_back(type::wrap(*tl_it,fc));
     @< Call |convert_expr| for |*it| with |comp_type| @>
     @< Handle |is_constant| maintenance and possible need for voiding @>
   }
@@ -1226,9 +1226,9 @@ purpose of pruning.
    converting the component, also add the incriminated types to |conflicts| @>=
 for (wel_const_iterator it(elist); not it.at_end(); ++it)
 { try
-  { auto& node = comp_data.emplace_back
+  { auto last = comp_data.emplace_back
      (std::make_unique<type>(common.copy()),expression_ptr());
-    node.second = convert_expr(*it,*node.first);
+    last->second = convert_expr(*it,*last->first);
   }
   catch (balance_error& err)
   { if (&err.offender!=&*it) // only incorporate top-level balancing errors
@@ -1920,7 +1920,7 @@ we set the variable to |false| in that case.
     for (wel_const_iterator it(args.sublist); not it.at_end();
          ++it,++arg_vector_it)
     {
-      type& comp_tp = comp_types.push_back(type::bottom(tp.floor()));
+      type& comp_tp = *comp_types.push_back(type::bottom(tp.floor()));
       *arg_vector_it = convert_expr(*it,comp_tp);
       is_constant = is_constant and
          dynamic_cast<const denotation*>(arg_vector_it->get()) != nullptr;
@@ -3346,7 +3346,7 @@ void thread_bindings
   {
     type tp = type::wrap(te,lvl);
     unsigned char flags = pat.kind;
-    if (tp.is_polymorphic())
+    if (is_const or tp.is_polymorphic())
       flags |= 0x4; // polymorphic type implies constant
     dst.add(pat.name,std::move(tp),flags);
   }

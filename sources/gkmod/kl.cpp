@@ -46,11 +46,6 @@
 #include "hashtable.h"
 #include "wgraph.h"	// for the |wGraph| function
 
-// extra defs for windows compilation -spc
-#ifdef WIN32
-#include <iterator>
-#endif
-
 /*
   [Fokko's original description, which referred to a slightly older
   version of the computation. Fokko implemented the change from using

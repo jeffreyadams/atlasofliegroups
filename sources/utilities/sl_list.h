@@ -80,9 +80,9 @@ typename std::allocator_traits<Alloc>::pointer
 template<typename T,typename Alloc>
 struct sl_node
 {
+  using node_ptr = struct sl_node *;
   using node_alloc_type =
     typename std::allocator_traits<Alloc>::template rebind_alloc<sl_node>;
-  using node_ptr = typename std::allocator_traits<node_alloc_type>::pointer;
   using deleter_type = allocator_deleter<node_alloc_type>;
   using link_type = std::unique_ptr<sl_node, deleter_type >;
 
@@ -127,13 +127,18 @@ template<typename T, typename Alloc >
 {
   friend class simple_list<T,Alloc>;
   friend class sl_list<T,Alloc>;
-  friend class sl_list_iterator<T,Alloc>; // lest |link_loc| needs |protected|
+  friend class sl_list_iterator<T,Alloc>; // lest |link_loc| need |protected|
 
-  using link_type = typename sl_node<T,Alloc>::link_type;
+  using self = sl_list_const_iterator<T,Alloc>;
+  using AT = std::allocator_traits<Alloc>;
+
+public:
+  using node_type       = sl_node<T, Alloc>;
+  using node_alloc_type = typename AT::template rebind_alloc<node_type>;
+  using deleter_type = allocator_deleter<node_alloc_type>;
+  using link_type = std::unique_ptr<node_type,deleter_type>;
 
 private:
-  using self = sl_list_const_iterator<T,Alloc>;
-
   // data
   link_type* link_loc; // pointer to link field
 
@@ -166,13 +171,14 @@ class sl_list_iterator : public sl_list_const_iterator<T,Alloc>
 {
   using Base = sl_list_const_iterator<T,Alloc>;
   using self = sl_list_iterator<T,Alloc>;
+  using link_type =  typename Base::link_type;
 
   // no extra data
 
 public:
   // constructors
   sl_list_iterator() : Base() {}
-  explicit sl_list_iterator(typename Base::link_type& link) : Base(link) {}
+  explicit sl_list_iterator(link_type& link) : Base(link) {}
 
   // contents access methods; these override the base, return non-const ref/ptr
   T& operator*() const { return (*Base::link_loc)->contents; }
@@ -191,22 +197,22 @@ template<typename T, typename Alloc>
 {
   friend class weak_sl_list_iterator<T,Alloc>;
 public:
-  using pointer = typename sl_node<T,Alloc>::link_type::pointer;
-  using const_pointer = const sl_node<T,Alloc>*; // hard to describe this otherwise
+  using node_ptr = sl_node<T,Alloc> *;
+  using const_node_ptr = const sl_node<T,Alloc> *;
 
 private:
   using self = weak_sl_list_const_iterator<T,Alloc>;
 
   // data
-  pointer ptr; // pointer to non-const, but only exploitable by derived type
+  node_ptr ptr; // pointer to non-const, but only exploitable by derived type
 
 public:
   // constructors
   weak_sl_list_const_iterator() : ptr(nullptr) {} // default iterator: |end()|
-  explicit weak_sl_list_const_iterator(const_pointer p)
+  explicit weak_sl_list_const_iterator(const_node_ptr p)
   /* the following const_cast is safe because not exploitable using a mere
      |const_iterator|; only used to allow weak_iterator to be derived */
-  : ptr(const_cast<pointer>(p)) {}
+  : ptr(const_cast<node_ptr>(p)) {}
 
   // contents access; return |const| ref/ptr only: we are a |const_iterator|
   const T& operator*() const { return ptr->contents; }
@@ -233,13 +239,14 @@ class weak_sl_list_iterator
 {
   using Base = weak_sl_list_const_iterator<T,Alloc>;
   using self = weak_sl_list_iterator<T,Alloc>;
+  using node_ptr = typename Base::node_ptr;
 
   // no extra data
 
 public:
   // constructors
   weak_sl_list_iterator() : Base() {} // default iterator: end
-  explicit weak_sl_list_iterator(typename Base::pointer p): Base(p) {}
+  explicit weak_sl_list_iterator(node_ptr p): Base(p) {}
 
   // contents access methods;  return non-const ref/ptr
   T& operator*() const { return Base::ptr->contents; }
@@ -253,8 +260,6 @@ public:
 
 
 
-
-
 /*     Simple singly linked list, without |size| or |push_back| method   */
 
 template<typename T, typename Alloc>
@@ -262,13 +267,12 @@ template<typename T, typename Alloc>
 {
   friend class sl_list<T, Alloc>;
 
-  using AT =  std::allocator_traits<Alloc>;
-
-  using node_type = sl_node<T, Alloc>;
-  using node_alloc_type = typename AT::template rebind_alloc<node_type>;
-  using node_ptr = typename std::allocator_traits<node_alloc_type>::pointer;
-  using deleter_type = allocator_deleter<node_alloc_type>;
-  using link_type = std::unique_ptr<node_type,deleter_type>;
+  using node_type =  sl_node<T, Alloc>;
+  using node_ptr =  node_type *;
+  using node_alloc_type =
+    typename sl_list_const_iterator<T,Alloc>::node_alloc_type;
+  using deleter_type =  typename sl_list_const_iterator<T,Alloc>::deleter_type;
+  using link_type =  typename sl_list_const_iterator<T,Alloc>::link_type;
 
  public:
   using value_type      = T;
@@ -396,6 +400,9 @@ template<typename T, typename Alloc>
     for ( ; first!=last; ++p,++first) // |insert(p,*first)|, realised as:
       p.link_loc->reset(allocate_node(*first));
   }
+
+  simple_list(sl_list<T,Alloc>&& x); // undress and move constructor
+  simple_list(const sl_list<T,Alloc>& x); // copy and undress constructor
 
   ~simple_list() {} // when called, |head| is already destructed/cleaned up
 
@@ -774,6 +781,7 @@ template<typename T, typename Alloc>
     // cycle backward |(*pos.link_loc, *begin.link_loc, *end.link_loc)|:
     pos.link_loc->swap(*begin.link_loc);
     begin.link_loc->swap(*end.link_loc);
+    static_cast<void>(other); // tell compiler it is OK that |other| is unused
     return iterator(*end.link_loc);
   }
 
@@ -782,6 +790,14 @@ template<typename T, typename Alloc>
 
   iterator splice (const_iterator pos, simple_list&& other, const_iterator node)
   { return splice(pos,other,node,std::next(node)); }
+
+  // cross-type splicing is provided, but only the most general forms
+  iterator splice (const_iterator pos, sl_list<T,Alloc>& other,
+		   const_iterator begin,const_iterator end)
+  { return splice(pos,std::move(other),begin,end); } // defer to rvalue version
+
+  iterator splice (const_iterator pos, sl_list<T,Alloc>&& other,
+		   const_iterator begin, const_iterator end); // inline below
 
   void reverse () noexcept
   {
@@ -1006,6 +1022,8 @@ public:
       sort_next(cbegin(),n,less);
   }
 
+  sl_list<T,Alloc> dress(); // this is a sacrificial method
+
   std::vector<T> to_vector() const &
   { std::vector<T>result;
     result.reserve(length(head.get()));
@@ -1015,7 +1033,8 @@ public:
   }
 
   std::vector<T> to_vector() &&
-  { std::vector<T>result; result.reserve(head.get());
+  { std::vector<T>result;
+    result.reserve(length(head.get()));
     for (auto it=wbegin(); not at_end(it); ++it) // non-counting fill
       result.push_back(std::move(*it));
     return result;
@@ -1091,12 +1110,12 @@ template<typename T,typename Alloc>
 template<typename T, typename Alloc>
   class sl_list
 {
-  using AT = std::allocator_traits<Alloc>;
-  using node_type       = sl_node<T, Alloc>;
-  using node_alloc_type = typename AT::template rebind_alloc<node_type>;
-  using node_ptr = typename std::allocator_traits<node_alloc_type>::pointer;
-  using deleter_type = allocator_deleter<node_alloc_type>;
-  using link_type = std::unique_ptr<node_type,deleter_type>;
+  using node_type =  sl_node<T, Alloc>;
+  using node_ptr =  node_type *;
+  using node_alloc_type =
+    typename sl_list_const_iterator<T,Alloc>::node_alloc_type;
+  using deleter_type =  typename sl_list_const_iterator<T,Alloc>::deleter_type;
+  using link_type =  typename sl_list_const_iterator<T,Alloc>::link_type;
 
  public:
   using value_type      = T;
@@ -1211,6 +1230,10 @@ template<typename T, typename Alloc>
     for ( ; *tail!=nullptr; tail=&(*tail)->next)
       ++node_count;
   }
+
+  explicit sl_list (const simple_list<T,Alloc>& x) // copy and dress constructor
+    : sl_list(simple_list<T,Alloc>(x)) // delegate to move&dress after copying
+  {}
 
   template<typename InputIt, typename = typename std::enable_if<
   std::is_base_of<std::input_iterator_tag,
@@ -1455,37 +1478,37 @@ template<typename T, typename Alloc>
   }
 
 /*
-  Exceptionally |push_back| and |emplace_back| return a reference to the
+  Exceptionally |push_back| and |emplace_back| return an iterator to the
   inserted item, which would otherwise require keeping a copy of the |end|
   iterator from before the insertion and dereferencing it afterwards.
 */
-  T& push_back (const T& val)
+  iterator push_back (const T& val)
   {
     link_type& last = *tail; // hold this link field for |return| statement
     last.reset(allocate_node(val));
     tail = &last->next; // then move |tail| to point to null smart ptr again
     ++node_count;
-    return last->contents;
+    return iterator(last);
   }
 
-  T& push_back(T&& val)
+  iterator push_back(T&& val)
   {
     link_type& last = *tail; // hold this link field for |return| statement
     last.reset(allocate_node(std::move(val)));
     tail = &last->next; // then move |tail| to point to null smart ptr again
     ++node_count;
-    return last->contents;
+    return iterator(last);
   }
 
   template<typename... Args>
-    T& emplace_back (Args&&... args)
+    iterator emplace_back (Args&&... args)
   {
     link_type& last = *tail; // hold this link field for |return| statement
     // construct node value
     last.reset(allocate_node(std::forward<Args>(args)...));
     tail = &last->next; // then move |tail| to point to null smart ptr again
     ++node_count;
-    return last->contents;
+    return iterator(last);
   }
 
   bool empty () const noexcept { return tail==&head; } // or |node_count==0|
@@ -1743,6 +1766,27 @@ template<typename T, typename Alloc>
   iterator splice (const_iterator pos, sl_list&& other, const_iterator node)
   { return splice(pos,std::move(other),node,std::next(node)); }
 
+  // splicing from simple lists is possible, but requires |sl_list| conversion
+  iterator splice (const_iterator pos, simple_list<T,Alloc>&& other,
+		   const_iterator begin, const_iterator end)
+  // we can pilfer all of |other|, even if we only use the |begin|-|end| range
+  { return splice(pos,sl_list(std::move(other)),begin,end); }
+
+  iterator splice (const_iterator pos, simple_list<T,Alloc>& other,
+		   const_iterator begin, const_iterator end)
+  // here we take care to remove just the range |begin|-|end| from |other|
+  { simple_list<T,Alloc> tmp;
+    tmp.splice(tmp.begin(),other,begin,end);
+    return splice(pos,tmp.dress()); // convert to |sl_list|, then splice in
+  }
+
+  iterator splice
+    (const_iterator pos, simple_list<T,Alloc>& other, const_iterator node)
+  { return splice(pos,other,node,std::next(node)); }
+  iterator splice
+    (const_iterator pos, simple_list<T,Alloc>&& other, const_iterator node)
+  { return splice(pos,std::move(other),node,std::next(node)); }
+
   void reverse () noexcept { reverse(cbegin(),cend()); }
 
   // reverse range and return new ending iterator
@@ -1992,6 +2036,32 @@ template<typename T, typename Alloc>
 
 }; // |class sl_list<T,Alloc>|
 
+template<typename T, typename Alloc>
+  sl_list<T,Alloc> simple_list<T,Alloc>::dress()
+{ return sl_list<T,Alloc>(std::move(*this)); }
+
+template<typename T, typename Alloc>
+  simple_list<T,Alloc>::simple_list(sl_list<T,Alloc>&& x)
+  : simple_list(x.undress())
+{}
+
+template<typename T, typename Alloc>
+  simple_list<T,Alloc>::simple_list(const sl_list<T,Alloc>& x)
+  : simple_list(sl_list<T,Alloc>(x).undress())
+{}
+
+template<typename T, typename Alloc>
+  typename simple_list<T,Alloc>::iterator
+  simple_list<T,Alloc>::splice
+    (const_iterator pos, sl_list<T,Alloc>&& other,
+     const_iterator begin, const_iterator end)
+{
+  sl_list<T,Alloc>tmp;
+  tmp.splice(tmp.begin(),std::move(other),begin,end);
+  return splice(pos,tmp.undress());
+}
+
+
 // external functions for |sl_list<T,Alloc>|
 template<typename T,typename Alloc>
 typename sl_list<T,Alloc>::size_type
@@ -2143,6 +2213,8 @@ template<typename T,typename Alloc> class stack
 {
   using msl = mirrored_simple_list<T,Alloc>;
   using Base = std::stack<T,msl>;
+  using sl_l = sl_list<T,Alloc>;
+  using sp_l = simple_list<T,Alloc>;
 
 public:
   using Base::Base; // inherit constructors
@@ -2154,6 +2226,28 @@ public:
 
   // unlike |std::stack|, we also provide initialisation by initializer list
   stack(std::initializer_list<T> l) : Base(msl(l)) {}
+
+  size_t size() const = delete;
+
+  T& pop_splice_to(sp_l& dest,typename sp_l::const_iterator it)
+  { T& result = this->c.front(); // get non |const| reference while we can
+    dest.splice(it,static_cast<sp_l&>(this->c),this->c.begin());
+    return result; // which now equals |*it|, but the latter is |const T&|
+  }
+
+  void push_splice_from(sp_l& src,typename sp_l::const_iterator it)
+  { this->c.splice(this->c.begin(),src,it); }
+
+  // the remaining cases are cross-type splices
+  T& pop_splice_to(sl_l& dest,typename sl_l::const_iterator it)
+  { T& result = this->c.front(); // get non |const| reference while we can
+    dest.splice(it,static_cast<sp_l&>(this->c),this->c.begin());
+    return result; // which now equals |*it|, but the latter is |const T&|
+  }
+
+  void push_splice_from(sl_l& src,typename sl_l::const_iterator it)
+  { this->c.splice(this->c.begin(),src,it,std::next(it)); }
+
 }; // |class stack|
 
 template<typename T,typename Alloc> class queue
@@ -2161,6 +2255,7 @@ template<typename T,typename Alloc> class queue
 {
   using sl_l = sl_list<T,Alloc>;
   using Base = std::queue<T,sl_l>;
+  using sp_l = simple_list<T,Alloc>;
 
 public:
   using Base::Base; // inherit constructors
@@ -2173,17 +2268,28 @@ public:
   // unlike |std::queue|, we also provide initialisation by initializer list
   queue(std::initializer_list<T> l) : Base(sl_l(l)) {}
 
-  T& pop_splice_to(sl_l& dest,typename sl_l::iterator it)
-  { dest.splice(it,this->c,this->c.begin()); return *it; }
-  const T& pop_splice_to(sl_l& dest,typename sl_l::const_iterator it)
-  { dest.splice(it,this->c,this->c.begin()); return *it; }
+  T& back() = delete;
+  const T& back() const = delete;
 
-  T& pop_splice_to(simple_list<T,Alloc>& dest,
-		   typename simple_list<T,Alloc>::iterator it)
-  { dest.splice(it,this->c,this->c.begin()); return *it; }
-  const T& pop_splice_to(simple_list<T,Alloc>& dest,
-			 typename simple_list<T,Alloc>::const_iterator it)
-  { dest.splice(it,this->c,this->c.begin()); return *it; }
+  T& pop_splice_to(sl_l& dest,typename sl_l::const_iterator it)
+  { T& result = this->c.front(); // get non |const| reference while we can
+    dest.splice(it,this->c,this->c.begin());
+    return result; // which now equals |*it|, but the latter is |const T&|
+  }
+
+  void push_splice_from(sl_l& src,typename sl_l::const_iterator it)
+  { this->c.splice(this->c.end(),src,it); }
+
+  // the remaining cases are cross-type splices
+  T& pop_splice_to(sp_l& dest,typename sp_l::const_iterator it)
+  { T& result = this->c.front(); // get non |const| reference while we can
+    dest.splice(it,this->c,this->c.begin(),std::next(this->c.begin()));
+    return result;
+  }
+
+  void push_splice_from(sp_l& src,typename sp_l::const_iterator it)
+  { this->c.splice(this->c.end(),src,it,std::next(it)); }
+
 }; // |class queue|
 
 } // |namespace containers|
