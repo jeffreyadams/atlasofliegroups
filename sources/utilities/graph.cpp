@@ -17,11 +17,6 @@
 #include "tags.h"
 #include "sl_list.h"
 
-// extra defs for windows compilation -spc
-#ifdef WIN32
-#include <iterator>
-#endif
-
 namespace atlas {
 
 /*****************************************************************************

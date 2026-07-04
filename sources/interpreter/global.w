@@ -1946,7 +1946,7 @@ function type through |definition_group::add|.
 
 @< Append to |store| bindings for the identifiers in |fields|... @>=
 { assert(tp.raw_kind()==tuple_type or tp.raw_kind()==union_type);
-  auto& @;record = store.emplace_back(definition_group(length(fields)));
+  auto& @;record = *store.emplace_back(definition_group(length(fields)));
 @/
   auto tp_it =wtl_const_iterator(tp.tuple());
   if (tp.raw_kind()==tuple_type)
@@ -4766,7 +4766,7 @@ small to fit even a single vector entry.
     const unsigned char_w = flat ? 1+l*(w+1) : per_line*(w+1);
 @)
     unsigned pos = per_line;
-    last = &result.emplace_back("");
+    last = &*result.emplace_back("");
     last->str.reserve(char_w);
     for (std::size_t i=0; i<l; ++i)
     { last->str.append(i==0?"[":",");
@@ -4774,14 +4774,14 @@ small to fit even a single vector entry.
       last->str.append(tmp[i]);
       if (not flat and --pos == 0) // wrap to a new line every |per_line| entries
       {@; pos = per_line;
-        last = &result.emplace_back("");
+        last = &*result.emplace_back("");
         last->str.reserve(char_w);
       }
     }
     if (flat or last->str.empty())
       last->str.append("]");
   @+else
-      last = &result.emplace_back("]");
+      last = &*result.emplace_back("]");
   }
 }
 
@@ -4833,7 +4833,7 @@ inserted, rather than just as a number |per_line| of columns between line breaks
     for (std::size_t i=0; i<k; ++i)
     {
       unsigned pos = per_line;
-      auto* p = &result.emplace_back("");
+      auto* p = &*result.emplace_back("");
       p->str.reserve(char_w);
       p->str.append("|");
       for (std::size_t j=0; j<l; ++j)
@@ -4842,7 +4842,7 @@ inserted, rather than just as a number |per_line| of columns between line breaks
         p->str.append(tmp);
         if (not flat and --pos == 0)
         { pos = per_line;
-          p = &result.emplace_back("");
+          p = &*result.emplace_back("");
           p->str.reserve(char_w);
           p->str.append(" ");
         }
@@ -4949,7 +4949,7 @@ in parentheses.
   const unsigned char_w = flat ? 1+l*(w+1) : per_line*(w+1);
 @)
   unsigned pos = per_line;
-  auto* last = &result.emplace_back("");
+  auto* last = &*result.emplace_back("");
   last->str.reserve(char_w);
   i=0;
   for (const auto& term : val)
@@ -4970,14 +4970,14 @@ in parentheses.
     if (not flat and --pos == 0)
       // wrap to a new line every |per_line| entries
     {@; pos = per_line;
-      last = &result.emplace_back("");
+      last = &*result.emplace_back("");
       last->str.reserve(char_w);
     }
   }
   if (flat or last->str.empty())
       last->str.append("}");
 @+else
-      last = &result.emplace_back("}");
+      last = &*result.emplace_back("}");
 }
 
 @ Formatting polynomials in module parameter now is a small variation of that

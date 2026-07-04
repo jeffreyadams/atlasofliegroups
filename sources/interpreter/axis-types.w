@@ -1756,7 +1756,7 @@ instantiation of a previously defined recursive type constructor (which
 apparently has at least one of the types being defined as argument or as type
 subexpression thereof), and reject the current type definition for that reason
 (as was mentioned above). Otherwise, we copy those nodes that are either a right
-hand side or are involves in a type recursion, to become entries of
+hand side or are involved in a type recursion, to become entries of
 |open_type_table|.
 
 @h "preorder.h"

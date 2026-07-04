@@ -1659,7 +1659,7 @@ The general form, for an expression U of union type with n variants, is
 
   case U                           or   case U
   |  t_0(p_0): body_0                   | (p_0).t_0: body_0
-  |  t_1(p_1): body_1                   | (p_1).t_0: body_1
+  |  t_1(p_1): body_1                   | (p_1).t_1: body_1
   |  ...                                | ...
   |  t_{n-1}(p_{n-1}): body_{n-1}       | (p_{n-1}).t_{n-1}: body_{n-1}
   esac				        esac

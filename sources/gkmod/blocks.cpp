@@ -201,9 +201,9 @@ RankFlags Block_base::descent_generators (BlockElt z) const
   return result;
 }
 
-containers::simple_list<BlockElt> down_set(const Block_base& block,BlockElt y)
+simple_list<BlockElt> down_set(const Block_base& block,BlockElt y)
 {
-  containers::simple_list<BlockElt> result;
+  simple_list<BlockElt> result;
 
   for (weyl::Generator s : block.descent_generators(y))
     switch (block.descentValue(s,y))
@@ -331,10 +331,9 @@ bool Block_base::survives(BlockElt z, RankFlags singular) const
 
 // descend through singular simple coroots and return any survivors that were
 // reached; they express singular $I(z)$ as sum of 0 or more surviving $I(z')$
-containers::sl_list<BlockElt>
-  Block_base::finals_for(BlockElt z, RankFlags singular) const
+sl_list<BlockElt> Block_base::finals_for(BlockElt z, RankFlags singular) const
 {
-  containers::sl_list<BlockElt> result;
+  sl_list<BlockElt> result;
   RankFlags::iterator it;
   do
   {
@@ -741,10 +740,6 @@ RankFlags common_block::singular
 common_block::~common_block() = default;
 
 
-// comparison of |StandardReprMod|s by |y| component used in constructor below
-bool y_less (const StandardReprMod& a,const StandardReprMod& b)
-{ return a.gamma_lambda() < b.gamma_lambda(); };
-
 // the full block constructor is usually only called on explicit user demand
 // it is long because of the need to find elements "in all corners" of the block
 
@@ -771,40 +766,45 @@ common_block::common_block // full block constructor
 
   const unsigned our_rank = int_sys.rank();
 
-  // step 1: initialise |z|
-  auto z = srm; // get a working copy
+  // comparison of |StandardReprMod|s by |gamma_lambda|, their |y| component
+  auto y_less = [] (const StandardReprMod& a,const StandardReprMod& b)
+    { return a.gamma_lambda() < b.gamma_lambda(); };
 
-  // step 2: move up |z| toward the most split fiber for the current real form
+
+  // step 1: initialise |z0|
+  auto z0 = srm; // get a working copy
+
+  // step 2: move up |z0| toward the most split fiber for the current real form
   {
     weyl::Generator s;
     do
       for(s=0; s<our_rank; ++s)
       {
-	std::pair<gradings::Status::Value,bool> stat = ctxt.status(s,z.x());
+	std::pair<gradings::Status::Value,bool> stat = ctxt.status(s,z0.x());
 	if (stat.first==gradings::Status::Complex
 	    and not stat.second) // complex ascent
 	{
-	  z = ctxt.cross(s,z);
+	  z0 = ctxt.cross(s,z0);
 	  break;
 	}
 	else if (stat.first==gradings::Status::ImaginaryNoncompact)
 	{
-	  z = ctxt.up_Cayley(s,z);
+	  z0 = ctxt.up_Cayley(s,z0);
 	  break;
 	}
 	// otherwise try next |s|
       } // |for(s)|
     while(s<our_rank); // loop until no ascents found in |int_sys|
   }
-  highest_x=z.x();
+  highest_x=z0.x();
   // end of step 2
 
-  using LL = containers::sl_list<containers::sl_list<StandardReprMod> >;
-  containers::queue<LL>elements; // involution packets, by |x| outer, |y| inner
+  using LL = sl_list<sl_list<StandardReprMod> >; // having rectangular shape
+  queue<LL>packets; // involution packets, by |x| outer, |y| inner
   KGBElt y_count = 0; // number of distinct |y| values generated so far
 
   // step 3: generate initial imaginary fiber-orbit of |y|'s (|x| is unaffected)
-  // the result is stored as a one-sorted-row, initial |LL| matrix in |elements|
+  // the result is stored as initial rectangle in |packets|, a single row
   {
     const InvolutionNbr theta = kgb.inv_nr(highest_x);
     // generating reflections are by subsystem real roots for |theta0|
@@ -820,71 +820,73 @@ common_block::common_block // full block constructor
       reflect[i] = int_sys.reflection_word(alpha); // word in integral gen's
     }
 
-    containers::sl_list<StandardReprMod> queue { z };
+    queue<StandardReprMod> z_todo { z0 };
 
-    elements.emplace(); // create empty involution packet at front
-    auto& list = // when popping |queue|, move elts here, sorted by |y|
-      elements.front().emplace_back(); // create sublist for the unique |x| value
+    packets.emplace(); // create empty involution packet at front
+    auto& packet_row = // when popping |z_todo|, move elts here, sorted by |y|
+      *packets.front().emplace_back(); // create sublist for the unique |x| value
     do
     {
-      const auto& zz = queue.front();
-      auto it = std::lower_bound(list.begin(),list.end(),zz,y_less);
-      if (not list.at_end(it) and *it==zz)
-	queue.pop_front(); // if already known, simply drop the element
+      const StandardReprMod& z = z_todo.front();
+      auto it = std::lower_bound(packet_row.begin(),packet_row.end(),z,y_less);
+      if (not packet_row.at_end(it) and *it==z)
+	z_todo.pop(); // if already known, simply drop |z|
       else
       {
-	list.splice(it,queue,queue.begin()); // move |zz| ointo sorted |list|
+	z_todo.pop_splice_to(packet_row,it); // move |z| to |packet_row| at |it|
 	for (const auto& w : reflect)
 	{
-	  auto new_z = zz; // take a copy each time
+	  auto new_z = z; // take a copy each time
 	  for (auto s : w) // order is irrelevant for a reflection word
 	    new_z = ctxt.cross(s,new_z);
 	  assert(new_z.x()==highest_x); // since we have a real reflection
-	  queue.push_back(new_z); // queue every new element, filter later
+	  z_todo.push(new_z); // queue every new element, filter later
 	} // |for (w)|
       } // |if (match)| |else|
     }
-    while (not queue.empty());
+    while (not z_todo.empty());
 
-    // now insert elements from |list| as first R-packet of block
-    for (auto it=list.wcbegin(); not list.at_end(it); ++it,++y_count)
+    // now insert elements from |packet_row| as first R-packet of block
+    for (auto it=packet_row.wcbegin(); not packet_row.at_end(it); ++it,++y_count)
     {
       auto h=srm_hash.match(*it);
       assert(h==info.size()); // must be new; keep |z_pool| and |info| synced
       ndebug_use(h);
       info.emplace_back(highest_x,y_count); // extend |info|; sets |length==0|
     }
-    assert(y_count==list.size()); // we have taken into account the first packet
+    assert(y_count==packet_row.size()); // we have taken into account the first packet
   } // end of step 3
 
   // step 4: generate packets for successive involutions
-  containers::queue<BlockElt> queue { size() }; // involution packet boundaries
-
+  queue<BlockElt> packet_separators // involution packet boundaries
+    { size() }; // start with end point of first packet prepared in step 3
   BitMap x_seen(kgb.size()); // for |x| below |highest_x|, record encounters
   x_seen.insert(highest_x);
-  BlockElt next=0; // starting |info| index of completed block elements we use
-  containers::sl_list<LL> bundles; // element list-lists grouped by involution
+  BlockElt start=0; // starting |info| index of completed block elements we use
 
-  do // process involution packet of elements from |next| to |queue.front()|
-  { // |next| is constant throughout the loop body, popped from |queue| at end
-    const KGBElt first_x = x(next);
+  do // |while(not packet_separators.empty())|
+  // process involution packet numbered |start| to |packet_separators.front()|
+  { // |start| remains fixed throughout loop body
+    // until it is popped from |packet_separators| just before next iteration
+    const KGBElt first_x = x(start);
 
     // precompute (reversed) length for anything generated this iteration
-    const auto next_length = info[next].length+1;
+    const auto cur_length = info[start].length+1;
 
-    const LL& bundle = // keep handle on packet being transferred
-      elements.pop_splice_to(bundles,bundles.end()); // transfer bundle
+    const LL& base_packet = packets.front();
+    // we shall hold on to this until end of body, and do |packets.pop()| there
 
-    const unsigned int nr_x = bundle.size();
-    const unsigned int nr_y = bundle.front().size();
+    const unsigned int nr_x = base_packet.size();
+    const unsigned int nr_y = base_packet.front().size();
 
-#ifndef NDEBUG // check regularity of the previously constructed |bundle|
-    assert((queue.front()-next)==nr_x*nr_y);
+#ifndef NDEBUG // check regularity of the previously constructed |base_packet|
+    assert((packet_separators.front()-start)==nr_x*nr_y);
     {
-      const auto first_row = bundle.front(); // |y| value models are found here
-      const KGBElt first_y = y(next);
-      auto z=next;
-      for (const auto& row : bundle)
+      const auto first_row = // use to find models for each |y| value
+	base_packet.front();
+      const KGBElt first_y = y(start);
+      auto z=start;
+      for (const auto& row : base_packet)
       {
 	assert(kgb.inv_nr(x(z))==kgb.inv_nr(first_x));
 	auto it = row.wcbegin(), f_it=first_row.wcbegin();
@@ -892,7 +894,7 @@ common_block::common_block // full block constructor
 	{
 	  assert(x(z)==row.front().x()); // |x|'s are constant in row, and match
 	  assert(y(z)==first_y+j);   //  the |y|s are consecutive
-	  assert(it->x()==x(z)); // |x| values from |bundle| and |info| match
+	  assert(it->x()==x(z)); // |x| values from |base_packet| and |info| match
 	  assert(it->gamma_lambda()==f_it->gamma_lambda()); // alignment
 	}
       }
@@ -900,28 +902,28 @@ common_block::common_block // full block constructor
 #endif
 
     for (weyl::Generator s=0; s<our_rank; ++s)
-    { // generate new |StandardReprMod| valued from |bundle| using |s| links
+    { // generate new |StandardReprMod| valued from |base_packet| using |s| links
       std::vector<block_fields>& tab_s = data[s]; // we will store links here
       tab_s.resize(size()); // ensure enough slots for now
 
       const bool cross_new_involution = // whether cross link into uncharted |x|
-	not x_seen.isMember(ctxt.cross(s,bundle.front().front()).x());
+	not x_seen.isMember(ctxt.cross(s,base_packet.front().front()).x());
       const bool is_real = // whether |s| is real for this involution packet
 	ctxt.status(s,first_x).first==gradings::Status::Real;
       const bool is_type1 = is_real and ctxt.status(s,first_x).second;
 
       // the following are filled only when cross/Cayley sees a fresh involution
-      containers::sl_list<StandardReprMod> crosses, Cayleys;
+      sl_list<StandardReprMod> crosses, Cayleys;
       KGBElt sample_x=UndefKGB; // to be set only when finding any |Cayleys|
 
       { // if leading to a fresh involution, compute model values |crosses|
 	// respectively for |Cayleys|, both for their |gamma_lambda()| only
 	;
 	if (cross_new_involution)
-	  for (const auto& srm : bundle.front())
+	  for (const auto& srm : base_packet.front())
 	    crosses.push_back(ctxt.cross(s,srm));
 	else if (is_real)
-	  for (const auto& srm : bundle.front())
+	  for (const auto& srm : base_packet.front())
 	    if (ctxt.is_parity(s,srm)) // then do Cayley
 	    { // looking only for |y| values, so just one Cayley descent suffices
 	      auto sz = ctxt.down_Cayley(s,srm);
@@ -935,35 +937,35 @@ common_block::common_block // full block constructor
 	if (cross_new_involution)
 	{ // add a new involution packet
 	  crosses.sort(y_less); // ensure |y| increases within |x| packet
-	  LL packet;
-	  for (const auto& row : bundle)
+	  LL new_packet;
+	  for (const auto& row : base_packet)
 	  {
 	    const KGBElt x =
 	      ctxt.cross(s,row.front()).x(); // this is all we use from |row|
 	    x_seen.insert(x);
-	    auto& packet_list = packet.emplace_back();
+	    auto& packet_row = *new_packet.emplace_back();
 
 	    KGBElt y = y_count; // start at first new |y| for each |x|
 	    for (const auto& srm : crosses)
 	    { // inside the loop |y| is also incremented
 	      const auto gamma_lambda = srm.gamma_lambda();
 	      auto &sz =
-		packet_list.push_back(StandardReprMod::build(rc,x,gamma_lambda));
+		*packet_row.push_back(StandardReprMod::build(rc,x,gamma_lambda));
 	      const auto h = srm_hash.match(sz);
 	      assert (h==info.size()); // must be new; |z_pool| and |info| synced
 	      ndebug_use(h);
 	      info.emplace_back(x,y++);
-	      info.back().length=next_length;
+	      info.back().length=cur_length;
 	    } // |for (crosses,y_count)|
 	  } // |for (row,x)|
 	  y_count += crosses.size(); // record that we have created new |y|s
-	  elements.push(std::move(packet)); // consolidate the created packet
-	  queue.push(info.size()); // mark end of a new involution packet
+	  packets.push(std::move(new_packet)); // consolidate the created packet
+	  packet_separators.push(info.size()); // close new involution packet
 	} // |if (cross_new_involution)|
 
 	// now, whether or not |cross_new_involution|, compute cross links
-	BlockElt cur = next; // start of old involution packet
-	for (const auto& row : bundle)
+	BlockElt cur = start; // start of old involution packet
+	for (const auto& row : base_packet)
 	  for (const auto& srm : row)
 	  {
 	    auto h = srm_hash.find(ctxt.cross(s,srm));
@@ -971,12 +973,12 @@ common_block::common_block // full block constructor
 	    tab_s[cur++].cross_image = h;
 	  }
 
-	cur = next; // back up for setting descent status
+	cur = start; // back up for setting descent status
 	if (is_real) // in this case (only), status depends on |y|
 	{ const auto parity = // supposing |y| says "parity", which type is it?
 	      is_type1 ? DescentStatus::RealTypeI : DescentStatus::RealTypeII
 	    , nonparity = DescentStatus::RealNonparity;
-	  for (const auto& row : bundle) // actually |x| is irrelevant
+	  for (const auto& row : base_packet) // actually |x| is irrelevant
 	    for (const auto& z : row)
 	      info[cur++].descent.set(s,
 				      ctxt.is_parity(s,z) ? parity : nonparity);
@@ -1006,14 +1008,14 @@ common_block::common_block // full block constructor
 	  // complete |sample_x| to its subsystem fiber over new involution
 	  Cayleys.sort(y_less);  // ensure |y| increases within |x| packet
 	  Cayleys.unique(); // and remove duplicates (from real type 2 descents)
-	  LL packet;
 
 	  RootNbrSet pos_imag = // subsystem positive imaginary roots
 	    int_sys.positive_roots() &
 	    i_tab.imaginary_roots(kgb.inv_nr(sample_x));
 	  RootNbrList imaginary_generators = rd.simpleBasis(pos_imag);
 
-	  auto to_do = containers::queue<KGBElt> { sample_x };
+	  LL new_packet;
+	  auto to_do = queue<KGBElt> { sample_x };
 	  do
 	  {
 	    KGBElt x = to_do.front(); to_do.pop();
@@ -1021,19 +1023,19 @@ common_block::common_block // full block constructor
 	      continue;
 
 	    x_seen.insert(x);
-	    auto& packet_list = packet.emplace_back();
+	    auto& packet_row = *new_packet.emplace_back();
 
 	    KGBElt y = y_count; // start at first new |y| for each |x|
 	    for (auto srm : Cayleys) // distinct new |y|s
 	    { // inside the loop |y| is also incremented
 	      const auto gamma_lambda = srm.gamma_lambda();
 	      auto& new_srm =
-		packet_list.push_back(StandardReprMod::build(rc,x,gamma_lambda));
+		*packet_row.push_back(StandardReprMod::build(rc,x,gamma_lambda));
 	      const auto h = srm_hash.match(new_srm);
 	      assert (h==info.size()); // must be new; |z_pool| and |info| synced
 	      ndebug_use(h);
 	      info.emplace_back(x,y++);
-	      info.back().length=next_length;
+	      info.back().length=cur_length;
 	    }
 
 	    // push any new neighbours of |x| onto |to_do|
@@ -1044,14 +1046,14 @@ common_block::common_block // full block constructor
 	  assert (z_pool.size()==info.size());
 	  y_count += Cayleys.size(); // record that we have created new |y|s
 
-	  elements.push(std::move(packet));
-	  queue.push(info.size()); // mark end of a new involution packet
+	  packets.push(std::move(new_packet));
+	  packet_separators.push(info.size()); // close new involution packet
 	  tab_s.resize(info.size()); // ensure the Cayley link slots below exist
 	} // |if (not x_seen.isMember(sample_x))|: finished extending |info|
 
 	// it remains to set Cayley links in both directions
-	BlockElt cur = next; // start of old involution packet
-	for (const auto& row : bundle)
+	BlockElt cur = start; // start of old involution packet
+	for (const auto& row : base_packet)
 	{
 	  for (const auto& srm : row)
 	  {
@@ -1072,11 +1074,14 @@ common_block::common_block // full block constructor
 	    } // |if(parity)|
 	    ++cur; // increase for every old |(x,y)|, whether or not productive
 	  } // |for(z : row)|
-	} // |for(row : bundle)|
+	} // |for(row : base_packet)|
       } // |if (not Cayley_ys.empty())|
     } // |for(s)|
+    packets.pop(); // we are done with |base_packet|
+    start=packet_separators.front();
+    packet_separators.pop();
   }
-  while (next=queue.front(), queue.pop(), not queue.empty());
+  while (not packet_separators.empty());
   // end of step 4
 
   highest_x = last(x_seen); // to be sure; length need not increase with |x|
@@ -1099,7 +1104,7 @@ common_block::common_block // full block constructor
 
 common_block::common_block // partial block constructor
     (const repr::common_context& ctxt,
-     containers::sl_list<StandardReprMod>& elements)
+     sl_list<StandardReprMod>& elements)
   : Block_base(ctxt.subsys().rank())
   , rc(ctxt.rc()) // copy reference to longer living |Rep_context| object
   , simply_integrals(ctxt.simply_integrals())
@@ -1118,10 +1123,11 @@ common_block::common_block // partial block constructor
     DynkinDiagram(int_sys.Cartan_matrix().transposed());
 
   // a type to represent |rho+gamma-lambda| values, increasing
-  using y_list = containers::sl_list<RatWeight>;
+  using y_list = sl_list<RatWeight>;
   struct inv_y_data
   {
-    y_list list; unsigned long offset;    inv_y_data() : list(), offset(-1) {}
+    y_list list; unsigned long offset;
+    inv_y_data() : list(), offset(-1) {}
   };
 
   std::vector<inv_y_data> y_table (i_tab.size());
@@ -1485,7 +1491,7 @@ void common_block::swallow
 } // |common_block::swallow|
 
 void common_block::set_Bruhat
-  (containers::sl_list<std::pair<BlockElt,BlockEltList> >&& partial_Hasse)
+  (sl_list<std::pair<BlockElt,BlockEltList> >&& partial_Hasse)
 {
   for (auto& pair : partial_Hasse)
     set_Bruhat_covered(pair.first,std::move(pair.second));
