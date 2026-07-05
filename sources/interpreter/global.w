@@ -765,23 +765,23 @@ done via |analyse_types|, which takes care of catching any exceptions thrown,
 and printing error messages.
 
 @< Declarations of exported functions @>=
-type analyse_types(const expr& e,expression_ptr& p, unsigned int fc);
+type analyse_types(const expr& e,type tp, expression_ptr& p);
 
-@~The function |analyse_types| switches the roles of the output parameter
-|type| of |convert_expr| and its return value: the former becomes the return
-value and the latter is assigned to the output parameter~|p|. The initial
-value of |type| passed to |convert_expr| is a completely unknown type. Since
-we cannot return any type from |analyse_types| in the presence of errors, we
-map these errors to |runtime_error| after printing their error message;
-that error is an exception for which the code that calls us will have to
-provide a handler anyway, and which handler will serve as a more practical
-point to really resume after an error.
+@~The function |analyse_types| switches the roles of the output parameter |type|
+of |convert_expr| and its return value: the former becomes the return value and
+the latter is assigned to the output parameter~|p|. The initial value of |type|
+is usually completely undetermined (|type::bottom(0)|), but since this is not
+always the case, we have made |tp| an argument of |analyse_types| for more
+flexibility. Since we cannot return any type from |analyse_types| in the
+presence of errors, we map these errors to |runtime_error| after printing their
+error message; that error is an exception for which the code that calls us will
+have to provide a handler anyway, and which handler will serve as a more
+practical point to really resume after an error.
 
 @< Global function definitions @>=
-type analyse_types(const expr& e,expression_ptr& p, unsigned int fc)
+type analyse_types(const expr& e, type tp, expression_ptr& p)
 { try
-  { type tp=type::bottom(0); // this starts out as an |undetermined_type|
-    p = convert_expr(e,tp);
+  { p = convert_expr(e,tp);
     tp.wring_out();
     return tp;
   }
@@ -1133,7 +1133,7 @@ void do_global_set(id_pat&& pat, const expr& rhs, int overload,
   { phase=0; // type check
     expression_ptr e;
     {
-      type tp=analyse_types(rhs,e,0);
+      type tp=analyse_types(rhs,type::bottom(0),e);
       if (not tp.bake().can_specialise(pattern_type(pat)))
         @< Report that type |tp| of |rhs| does not have required structure,
            and |throw| @>
@@ -2282,27 +2282,17 @@ function.
   implementation_tp =
     closed_subst(*interface_tp_p,std::move(repr_types).to_vector());
 
-@ Type checking is done by calling |analyse_types|, which does not impose a type
-on the expression it is analysing. But we do want to impose a type here;
-therefore we wrap |implementation| in a cast to |implementation_tp| before
-calling |analyse_types|. This is like what is done in the parse function
-|make_cast|, but we cannot call it here since it wants to convert |loc| from
-|YYLTYPE| to |source_location|, but we already have the latter here. Therefore
-we essentially write out here what |make_cast| does; we can however avoid
-calling |new expr@;|, instead creating the |expr| involved as a local variable
-|cast_impl|. Since we will not be needing |implementation_tp| nor the
-un-cast |implementation| any more, we can move from both into the cast
-expression.
+@ Type checking is done by calling |analyse_types|, which usually does not
+impose a type on the expression, but here |implementation| is required to get
+type |implementation_tp|. We therefore changed the signature of |analyse_types|
+so that the required type is passed as argument; this is usually
+|type::bottom(0)|, but here we pass (by move construction) |implementation_tp|.
 
 @< Type check and convert expression |implementation| in the strong type context
    of |implementation_tp|, and store the converted expression
    as |converted_impl| @>=
-{ expr cast_impl
-     (new cast_node @|
-       { std::move(implementation_tp), std::move(implementation)}
-     ,loc);
-  analyse_types(cast_impl,converted_impl,0);
-}
+analyse_types(implementation, type::wrap(implementation_tp,0),converted_impl);
+
 
 @ Calling the evaluator is easy; the method |expression::eval| calls
 |expression::evaluate| with as second argument |eval_level::single_value|.
@@ -2412,7 +2402,8 @@ void type_of_expr(expr_p raw)
   else
   { try
     {@; expression_ptr p;
-      *output_stream << "Type: " << analyse_types(e,p,0) << std::endl;
+      *output_stream
+      << "Type: " << analyse_types(e,type::bottom(0),p) << std::endl;
     }
     catch (std::exception& err) {@; std::cerr<<err.what()<<std::endl; }
   }
