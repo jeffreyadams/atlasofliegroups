@@ -9,18 +9,34 @@
 integral Weyl group W_int(p) attached to a Param p}
 
 {Move the param out where W_int(p)  can act}
-set regularize(Param p) = translate_param_by (p, p.root_datum.two_rho)
+set regularize_new(Param p) = Param:
+    let gamma = p.infinitesimal_character, rd = p.root_datum
+    then shift = sum(#gamma, for av@j in rd.simple_coroots
+    	       	     if (av*gamma).=
+		     do rd.fundamental_weights[j]
+		     fi
+		     od).numer
+    in translate_param_by (p, shift)
+
+set regularize_new_flag = false
+
+{Move the param out where W_int(p)  can act}
+set regularize(Param p) = Param:
+    if regularize_new_flag
+    then regularize_new(p)
+    else translate_param_by (p, p.root_datum.two_rho)
+    fi
 
 set Cayley_cross_sum(int j, Param p) = ParamPol:
     let q = Cayley(j,p)
     in if q = p
        then if {is_complex(j,p.x) This is wrong: refers to G-simple root #j, not integ datum}
        	       ((status(j,p)%4).=)
-       	    then 1*cross(j,p) {genuine complex cross}
+	    then 1*cross(j,p) {genuine complex cross}
 	    else 0*p
 	    fi
-       else {now genuine Cayley} q + cross(j,q)
-       fi
+        else {now genuine Cayley} q + cross(j,q)
+       	fi
 
 {all these guys have the SAME sigma}
 set Talphabetas_old(Param p) = [Param]:
@@ -265,3 +281,74 @@ set allowed(RootDatum rd, [[int]] taus, [int] S0) = bool:
 
 set testArthur(Param p, [int] S0) = bool:
     tau(p) = S0 and allowed(p.integrality_datum,TalphabetaTaus(p),S0)
+
+set ideal_intList_hash = make_int_list_hash()
+
+{tests whether  TalphabetaTauss_bitset really distinguished primitive ideals}
+set test_faster_packets(RootDatum rd) = bool:
+    let start = elapsed_ms(), G = split_form(rd)
+    then B = block_of(G.trivial)
+    then PInum = num_prim_ideals(character_table(rd))
+    then freq = min(#B\10 + 1,1000)
+    in ideal_intList_hash.clear();
+       for p@j in B
+       do if (j%freq).=
+       	  then prints("at block elt ",j," out of ",#B," at time ",
+	  print_time_string(elapsed_ms() -start),"; so far ",ideal_intList_hash.size(),
+	       " out of ",PInum," different prim ideals")
+	  fi;
+	  ideal_intList_hash.match(TalphabetaTauss_bitset (p))
+       od;
+       prints("Total time = ",print_time_string(elapsed_ms() -start),
+       	      " to distinguish ",ideal_intList_hash.size(), " prim ideals.");
+       PInum = ideal_intList_hash.size()
+
+{Since previous test gave false for Spin(6,6), test whether TalphabetaTauss_bitset distinguishes
+primitive ideals in case of distinguished nilpotent}
+{E7 tested positive!}
+
+
+set test_faster_distinguished_packets(RootDatum rd) = bool:
+    let start = elapsed_ms(), G = split_form(rd), rd_dual = dual(rd)
+    then distHs = distinguished_Hs(rd_dual)
+    then distps = for H in distHs
+    	 	  do parameter(x_open(G),G.rho,H/2)
+		  od
+    then Dims = for  p in distps do GK_dim(p) od
+    then () = prints("At time ",print_time_string(elapsed_ms() - start),
+    	 	  ", staring to compute Tauss_bitset for ",#distHs," parameters.")
+    then distTauss_bits = for p in distps
+    	 		  do  TalphabetaTauss_bitset(p)
+			  od
+    then () = prints("At time ",print_time_string(elapsed_ms() - start),
+    	 	  ", completed computing Tauss_bitset for ",#distHs," parameters.")
+    in all(for p@j in distps
+       	   do prints("At time ",print_time_string(elapsed_ms() - start),
+	      	 " started testing distinguished orbit #",j);
+	   @bool: (let all = all_parameters_gamma(G, distHs[j]/2)
+	      	      then cands = for q in all
+		      	   	   if same_PI_step(q,distTauss_bits[j])
+				   do q
+				   fi
+				   od
+		      then actuals = {if rd = root_datum(E8_s) or rd = root_datum(E7_s) or
+		      	   	     	rd = root_datum(E6_s)
+				     then for q in unipotent_representations(G)
+				     	  if q.infinitesimal_character = distHs[j]/2
+					  do q
+					  fi
+					  od
+				     else} for q in cands
+				     	  if GK_dim(q) = Dims[j]
+					  do q
+					  fi
+					  od
+				      {fi}
+		       in if #cands != #actuals
+		       	  then prints("for j = ",j," and H = ",distHs[j],", bad candidates are ",
+			       for q in cands if first(for r in actuals do
+			       		   q=r od) = -1 do q fi od);
+			       false
+			  else true
+			  fi)
+	     od) next prints("Finished at ",print_time_string(elapsed_ms() - start))
