@@ -98,10 +98,13 @@ class Lexical_analyser
   using eggs = sl_list<id_type>; // type of each clutch in the |nest|
 @)BufferedInput& input;
   Hash_table& id_table;
-  id_type keyword_limit; // first non-keyword identifier
-  id_type type_limit; // first non-type identifier
+  id_type keyword_limit, type_limit;
+    // first non-keyword respectively non-type identifier
   simple_list<eggs> nest;
   BitMap type_vars; // flag identifiers used as a type variable
+  simple_list<id_type> temp_types;
+    // temporarily defined type or type constructor identifiers
+  bool temp_is_constr; // whether |temp_types| are in fact type constructors
   char prevent_termination, previous_termination;
     // either |'\0'| or character requiring more input
   int comment_start, comment_end; // characters that start/end a comment
@@ -124,6 +127,8 @@ public:
   void put_type_variable(id_type v); // add an egg to the current clutch
   unsigned int typevar_level() const; // report combined size of all clutches
   void start_defining_types() @+{@; state = type_defining; }
+  void start_closed_def(unsigned short arity,raw_patlist names);
+  void mid_closed_def();
 private:
   void skip_space() const;
   bool becomes_follows();
@@ -160,11 +165,15 @@ cannot match any |char| value; we would have like to use |EOF| defined
 in \.{ctype.h} here, but it is only guaranteed to be non-|(unsigned char)|, and
 since using the type |(unsigned char*)| is unwieldy, we use another value.
 
+The non initialisation of |temp_is_constr| below is on purpose: the variable
+only has meaning when |temp_types| is non empty, and it will be set whenever
+something is added to that list.
+
 @< Definitions of class members @>=
 Lexical_analyser::Lexical_analyser
   (BufferedInput& source, Hash_table& hash,
    const char** keywords, const char** type_names)
-: input(source),id_table(hash),nest(), type_vars()
+: input(source),id_table(hash),nest(), type_vars(), temp_types()
  ,prevent_termination('\0'),previous_termination('\0'),state(initial)
 { @< Install |keywords| and |type_names| into |id_table| and set |type_vars| @>
   comment_start=comment_end=0x100; // a non-|char| value
@@ -202,6 +211,7 @@ void Lexical_analyser::reset()
 {@;
   nest.clear();
   type_vars.reset();
+  temp_types.clear();
   state=initial;
   input.reset();
 }
@@ -439,29 +449,38 @@ token scanned.
 @ Everything that looks like an identifier is either that, or a keyword, or a
 type name, type constructor or type variable (those last three each have a
 distinct token type). In any case we start with looking it up in the |id_table|,
-and setting |id_code| to the numeric value of the code returned (determined by
-the order in which names were first entered into |id_table|), which will allow
-us to discriminate the possibilities. All keywords get distinct token types,
-determined by their offset from the first keyword (this implies that we cannot
-handle distinct but synonymous keywords, in other words that scan as the same
-token, but there does not seem to be any need for that anyway). By contrast,
-type names for primitive types all get the same token type |PRIMTYPE|, with the
-actual name stored in the token value |valp->type_code|.
+and setting |id_code| to the numeric value of the code returned. All keywords
+get distinct token types, determined by their offset from the first keyword
+(this implies that we cannot handle distinct but synonymous keywords, in other
+words that scan as the same token, but there does not seem to be any need for
+that anyway). By contrast, type names for primitive types all get the same token
+type |PRIMTYPE|, with the actual name stored in the token value
+|valp->type_code|.
 
-While user defined type names (abbreviations) are equivalent to primitive ones
-at the syntactic level, we give them a different category |TYPE_ID|, because
-the nature of the associated token value is different: the identifier code is
-stored, and finding the designated type will require looking it up in
-|global_id_table|. Distinguishing type identifiers from other identifiers
-during lexical analysis also uses |global_id_table|: the method
-|is_defined_type| can determine from the stored value whether this is a type
-identifier. However between |SET_TYPE| followed by `[' and the end of that
-command, all identifiers are given code |TYPE_ID|, so that (mutually) recursive
-types can be used in type expressions, even before their actual definition has
-been seen. (The syntax takes into account the fact that any identifiers in such
-a type definition, including injector or projector names, will be scanned as
-|TYPE_ID|.)
-
+While user defined type names are equivalent to primitive ones during parsing,
+we give them a different category |TYPE_ID|, because the nature of the
+associated token value is different: the identifier code is stored, and finding
+the designated type will require looking it up in |global_id_table|. Since type
+constructors are syntactically different from such type names (they require a
+list of argument types), they are give a separate token type |TYPE_CONSTR|.
+Distinguishing these three different kinds of identifiers and type variables
+during lexical analysis is generally done using |global_id_table| as basic
+resource, but which can be overridden by some specific mechanisms handled by the
+|Lexical_analyser| class itself. To handle the temporary change of certain
+identifiers to a type variable, they are placed in |nest| and at the same time
+recorded in |type_vars|, whose membership is therefore tested before all else.
+Then |temp_types| can record names that are temporarily to be treated as type or
+type constructor names, with |temp_is_constr| telling which one applies (for all
+identifiers involved). Finally, while |type_defining| is true (between
+|SET_TYPE| followed by `[' and the matching ']'), \emph{all} ordinary
+identifiers are given code |TYPE_ID| without calling |is_defined_type|; this is
+done so that (mutually) recursive types can be used in type expressions, even
+before their actual definition has been seen. (The syntax takes into account the
+fact that any identifiers in such a type definition, including injector or
+projector names, will be scanned as |TYPE_ID|.) When none of these apply, the
+|global_id_table| methods |is_defined_type| and the more specific
+|is_type_constructor| determine the token type (which will be |IDENT| if neither
+return |true|).
 
 @h "global.h" // need to inspect |global_id_table|
 
@@ -483,7 +502,10 @@ a type definition, including injector or projector names, will be scanned as
     }
     else
     { valp->id_code=id_code;
-      if (global_id_table->is_type_constructor(id_code))
+      if (std::find(temp_types.wcbegin(),temp_types.wcend(),id_code)
+          !=temp_types.wcend())
+        token_type = temp_is_constr ? TYPE_CONSTR : TYPE_ID ;
+      else if (global_id_table->is_type_constructor(id_code))
         token_type=TYPE_CONSTR;
       else if (state==type_defining or global_id_table->is_defined_type(id_code))
         token_type=TYPE_ID;
@@ -583,21 +605,22 @@ been scanned as look-ahead token, so that the corresponding call of |push_nest|
 has already been performed; the lexer is therefore ready to receive those type
 variables, even though the identifiers are textually outside the closed
 expression that is their scope. However it may happen that the parser performs a
-reduction to |typevar_list|, which involves calling |put_type_variable|, when it
-has seen a look-ahead symbol rules out any interpretation of the identifiers
-other than as members of a |typevar_list|, even though the look-ahead symbol is
-not an opening symbol and therefore not a valid for |typevar_list| either. (The
-parser produced by the \.{bison} parser generator may perform certain reductions
-even in circumstances where a token that has already been seen will inevitably
-cause a syntax error after the reduction; the parser is not guaranteed to flag
-syntax errors at the first possible moment.) When called in such erroneous
-situations, |put_type_variable| may either find an already formed clutch present
-that is not expecting any more type variables, or (more likely) a completely
-empty nest (not even en empty clutch is present). We don't mind that in the
-former case the clutch is unduly extended, since the coming syntax error will
-wipe it out anyway, but in the latter case we do not want to crash the program
-by accessing a non-existing |nest.front()|, so we test for |nest.empty()|, in
-which case we do nothing.
+reduction to |typevar_list| (which involves calling |put_type_variable|) at a
+point where it has already seen a look-ahead symbol that is incompatible with
+|typevar_list| (since not an opening symbol), but which also rules out any
+interpretation of the identifiers other than as members of a |typevar_list|.
+(The parser produced by the \.{bison} parser generator may perform certain
+reductions even in circumstances where a token that has already been seen will
+inevitably cause a syntax error after the reduction; the parser is not
+guaranteed to flag syntax errors at the first possible moment.) When called in
+such erroneous situations, |put_type_variable| may either find an already formed
+clutch present that is not expecting any more type variables, or (more likely) a
+completely empty nest (not even en empty clutch is present). We don't mind that
+in the former case the clutch is unduly extended, since the coming syntax error
+will wipe it out anyway, but in the latter case we do not want to crash the
+program by accessing a non-existing |nest.front()| before the syntax error can
+be reported; therefore we test for |nest.empty()| in the code below, and if an
+empty nest is found, we do nothing.
 
 @< Definitions of class members @>=
 void Lexical_analyser::put_type_variable(id_type v)
@@ -610,13 +633,13 @@ void Lexical_analyser::put_type_variable(id_type v)
 @ The type variables will revert to their previous status at the matching call
 of |pop_nest|. We might have tested in |put_type_variable| whether all
 identifiers in the clutch are actually distinct, but there is no obvious action
-to take if this should fail to be the case. Moreover, all that would result from
-letting such an error pass is that any repeated occurrence of a same type
-variable in the list cannot later be referred to (uses of the identifier return
-the number corresponding to the first occurrence in the list), and so the type
-variable number for the repeated occurrence will necessarily remain unused. This
-is no catastrophe, so for once we'll let slip by this kind of error without
-reporting anything.
+to take if this should fail to be the case. Moreover, all that will result from
+letting such an error pass, is that any repeated occurrence of a same type
+variable in the list cannot later be referred to (all uses of the identifier
+return the number corresponding to the first occurrence in the list), and so the
+type variable number for the repeated occurrence will necessarily remain unused.
+This is no catastrophe, so for once we decide to let this kind of error slip by
+without reporting anything.
 
 @< Definitions of class members @>=
 void Lexical_analyser::pop_nest()
@@ -641,6 +664,67 @@ unsigned int Lexical_analyser::typevar_level () const
   for (auto it = nest.wcbegin(); not nest.at_end(it); ++it)
     count += it->size();
   return count;
+}
+
+@ The method |start_closed_def| is invoked in a closed type definition once the
+list of type variables (in the case of a type constructor definition) and the
+list of type names to define have been seen. Since the sequence contains an
+opening parenthesis token, the scanner will have seen a call of |push_nest|, and
+any type variables listed will have been laid in the nest (as in recursive type
+definitions, the opening symbol is scanned as look-ahead token for the type
+variable list, so its reduction takes place \emph{after} the |push_nest|, the
+relative lexical positions of the two notwithstanding). Since the type variables
+are to remain in scope after the matching closing parenthesis (which will call
+|pop_nest|), we perform an explicit second |push_nest| in |start_closed_def|
+that will be cancelled by the |pop_nest|. Our explicit |push_nest| (not provoked
+by scanning an opening symbol) will have to be balanced by an explicit
+|pop_nest| at the end of the closed type definition.
+
+We also copy the type names to |temp_types|, which will cause them to scan as
+type identifiers or type constructors in the specification part of the
+definition, and set |temp_is_constr| according to |arity| to determine which of
+the two applies. This will be undone by an calling the method |mid_closed_def|
+halfway the closed type definition.
+
+Unlike parsing functions that get a list argument passed in a call from the
+parser, this method does not get to own the list of type names, which has also
+been stored in the parsing values of the rule that calls us. Therefore we do not
+build a |patlist| from |names|, which would destroy the list on exit from our
+method unless we explicitly call |release|; instead we for once traverse the
+list using the raw pointer |names|.
+
+(Wondering whether temporarily pretend owning |names| would prevent a memory
+leak in case an exception was thrown in the code below, we realised that the
+scenario of \emph{any} parsing function throwing an exception leads to leaking
+the memory occupied by semantic values currently on the parser stack: the
+parser's destructor mechanism is only activated by parsing errors and explicit
+termination of the parsing function. Such throwing can basically only happen for
+memory overflow building the parse tree, and this is a desperate situation
+anyway; therefore we decided it is not worth worrying about this.)
+
+Because |temp_types| is a |simple_list| we only have |push_front| available,
+which reverses the order of identifiers; since the list only serves as a set, it
+is unnecessary to call |reverse| afterwards to undo this.
+
+@< Definitions of class members @>=
+void Lexical_analyser::start_closed_def
+  (unsigned short arity,raw_patlist names)
+{ push_nest(); // will remain empty, and closed at end of specification part
+  temp_is_constr = arity>0;
+  while (names!=nullptr)
+  {
+    temp_types.push_front(names->contents.name);
+    names = names->next.get();
+  }
+}
+
+@ When we hit the end the range of temporary definition of the symbols added by
+|start_closed_def| we simply clear |temp_types|. That makes the value of
+|temp_is_constr| irrelevant, but there is no need to reset it.
+
+@< Definitions of class members @>=
+void Lexical_analyser::mid_closed_def()
+{@; temp_types.clear();
 }
 
 @ For reasons of limited look-ahead in the parser, certain operator symbols
