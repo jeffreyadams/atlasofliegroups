@@ -4759,7 +4759,7 @@ small to fit even a single vector entry.
       w=entry.length();
   }
   if (l==0)
-    result.emplace_back("[ ]");
+    last = &*result.emplace_back("[ ]");
   else
   { const bool flat = 1+l*(w+1)<=width; // whether all will fit on a line
     const unsigned per_line = flat ? l : width<=w ? 1 : width/(w+1);
