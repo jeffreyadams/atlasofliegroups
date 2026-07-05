@@ -100,7 +100,7 @@ class Lexical_analyser
   Hash_table& id_table;
   id_type keyword_limit; // first non-keyword identifier
   id_type type_limit; // first non-type identifier
-  sl_list<eggs> nest;
+  simple_list<eggs> nest;
   BitMap type_vars; // flag identifiers used as a type variable
   char prevent_termination, previous_termination;
     // either |'\0'| or character requiring more input
@@ -558,7 +558,8 @@ position within its clutch plus the sizes of all later clutches.
 @< Set |valp->id_code| to the sequence number of |id_code| in the |nest| @>=
 {
   unsigned int count=0; bool seen=false;
-  for (const auto& clutch : nest)
+  for (auto it = nest.wcbegin(); not nest.at_end(it); ++it)
+  { const auto& clutch = *it;
     if (seen)
       count += clutch.size();
     else
@@ -569,6 +570,7 @@ position within its clutch plus the sizes of all later clutches.
         ++pos;
       }
     }
+  }
   valp->id_code = count;
   assert(seen); // we should not come here unless |id_code| is a type variable
 }
@@ -636,8 +638,8 @@ total number of eggs in the |nest|.
 unsigned int Lexical_analyser::typevar_level () const
 {
   unsigned int count=0;
-  for (const auto& clutch : nest)
-    count += clutch.size();
+  for (auto it = nest.wcbegin(); not nest.at_end(it); ++it)
+    count += it->size();
   return count;
 }
 
