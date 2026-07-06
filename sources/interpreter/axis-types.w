@@ -322,9 +322,9 @@ The possibility |tabled| provides a way to reference a type indirectly (its
 details are to be found after looking up the reference), which is essential for
 being able to specify recursive types. The final possibility |closed_type| is
 used for a type or type constructor introduced by the user but the details of
-whose definition have been hidden after their definition is fully processed
-(which includes introduction of a number of (mostly function) values relating to
-the new type and that serve as gateway to the implementation. In use, the
+whose definition have been hidden after their definition, which includes
+introduction of a number of (mostly function) values relating to the new type
+and that serve as gateway to the implementation, is fully processed. In use, the
 structure of the |closed_type| variant will be the same as the |tabled| one, but
 contrary to the latter there are no details of a definition to look up, so such
 types will behave as new primitive type or new basic type constructors.
@@ -423,7 +423,7 @@ class type_expr
     func_type* func_variant; // when |kind==function_type|
     type_p row_variant; // when |kind==row_type|
     raw_type_list tuple_variant; // when |kind==tuple_type| or |kind==union_type|
-    tabled_type_cons tabled_variant; // when |kind==tabled| or |kind==closed_type|
+    tabled_type_cons tabled_variant; // when |is_symbolic()|
   };
 @)
   class defined_type_mapping;
@@ -470,16 +470,17 @@ expansion when |tag==tabled|, and the non-|const| method |expand| provides for
 this.
 
 The tables |open_type_table| and |closed_info| provide some additional
-information about their types. The methods |ctor_args|, |ctor_arity|, and
-|type_name| access such information for a |type_expr| with
-|tag==tabled| or |tag==closed_type|, while other methods are only valid when
-|tag==tabled|, as for instance |is_recursive|.
+information about their types. The methods |ctor_args|, |ctor_arity|,
+|type_name|, and |stored_nr| access such information for a |type_expr|
+satisfying |is_symbolic()| (so with |tag==tabled| or |tag==closed_type|), while
+other methods are only valid when |tag==tabled|, as for instance |is_recursive|.
 
 @< Ordinary methods of the |type_expr| class @>=
 type_tag raw_kind () const @+{@; return tag; } // don't translate |tabled|
 const type_expr& tabled_eq () const; // what |tabled_variant| is equated to
 type_tag top_kind () const @+
 {@; return raw_kind()==tabled ? tabled_eq().raw_kind() : raw_kind(); }
+bool is_symbolic () const @+{@; return tag==tabled or tag==closed_type; }
 bool is_void () const;
 @)
 primitive_tag prim () const @+
@@ -501,16 +502,18 @@ const_raw_type_list tuple () const
 @)
 type_nr_type tabled_nr () const @+
     {@; assert(tag==tabled); return tabled_variant.nr; }
-void replace_tabled_nr (type_nr_type nr) @+
-    {@; assert(tag==tabled); tabled_variant.nr=nr; }
+void replace_stored_nr (type_nr_type nr) @+
+    {@; assert(is_symbolic()); tabled_variant.nr=nr; }
 const raw_type_list ctor_args() const @+
-    {@; assert(tag==tabled or tag==closed_type);
+    {@; assert(is_symbolic());
       return tabled_variant.type_args; }
 unsigned short ctor_arity() const; // number of arguments taken
 bool is_recursive() const; // whether |tabled| type is recursive
 id_type type_name () const; // identifier corresponding to |tabled_variant|
 type_nr_type closed_nr () const @+
     {@; assert(tag==closed_type); return tabled_variant.nr; }
+type_nr_type stored_nr () const @+
+    {@; assert(is_symbolic()); return tabled_variant.nr; }
 @)
 type_expr expanded () const; // top level expansion of |tabled_variant|
 type_expr& expand () @+
@@ -732,7 +735,7 @@ type_expr type_expr::copy() const
       @< Assign a deep copy of |tuple_variant| to |result.tuple_variant| @>
     break;
     case tabled: case closed_type:
-      result.tabled_variant.nr=tabled_nr();
+      result.tabled_variant.nr=stored_nr();
       @< Assign a deep copy of |tabled_variant.type_args| to
          |result.tabled_variant.type_args| @>
   }
@@ -1275,7 +1278,7 @@ type_expr simple_subst
     case tabled:
     case closed_type:
     // apply |assign| to argument types, then reconstruct |tabled| type
-    { auto nr = tp.tabled_nr(); dressed_type_list aux;
+    { auto nr = tp.stored_nr(); dressed_type_list aux;
       if (group.isMember(nr)) // in-group referral preserves argument list
         for (const auto& t : assign)
           aux.push_back(t.copy());
@@ -1526,9 +1529,9 @@ sl_list<const type_binding*> type_expr::matching_bindings (const type& tp)
   return result;
 }
 
-@ Here are two accessor methods for |type_expr| values that have either
-|tag==tabled| or |tag==closed_type|. The latter have their individual
-information stores in |closed_info| rather than |open_type_table|, but the two
+@ Here are two accessor methods for |type_expr| values that satisfy
+|is_symbolic()|. The ones with |tag==closed_type| have their individual
+information stored in |closed_info| rather than |open_type_table|, but the two
 fields of interest here are present in the entries of both tables, and under the
 same name.
 
@@ -2066,7 +2069,7 @@ first of the types being defined), and clear it for all other ones.
       { dressed_type_list aux;
         for (wtl_const_iterator it(data.tp.ctor_args()); not it.at_end(); ++it)
           aux.push_back(rewrite(oit));
-        tp = type_expr::user_type(data.tp.tabled_nr(),aux.undress(),true);
+        tp = type_expr::user_type(data.tp.closed_nr(),aux.undress(),true);
       }
     }
     open_type_table.emplace_back(std::move(tp),n_args);
@@ -2553,7 +2556,7 @@ type_expr shift
       for (wtl_const_iterator it(t.ctor_args()); not it.at_end(); ++it)
         aux.push_back(shift(*it,fix,amount));
       return type_expr::user_type
-        (t.tabled_nr(),aux.undress(),t.raw_kind()==closed_type);
+        (t.stored_nr(),aux.undress(),t.raw_kind()==closed_type);
     }
     case undetermined_type: assert(false); // forbidden case
   }
@@ -2872,7 +2875,7 @@ type_expr type_assignment::substitution
       for (wtl_const_iterator it(tp.ctor_args()); not it.at_end(); ++it)
         aux.push_back(substitution(*it,shift_amount));
       return type_expr::user_type
-        (tp.tabled_nr(),aux.undress(),tp.raw_kind()==closed_type);
+        (tp.stored_nr(),aux.undress(),tp.raw_kind()==closed_type);
     }
     case variable_type:
       @< If a type is associated to type variable |tp.typevar_count()|,
@@ -3257,6 +3260,7 @@ const type_expr& top_expr () const;
 type_expr& top_expr ();
 type_tag kind () const @+{@; return te.raw_kind(); }
 type_tag top_kind () const @+{@; return top_expr().top_kind(); }
+bool is_symbolic () const @+{@; return te.is_symbolic(); }
 primitive_tag prim () const     @+{@; return te.prim(); }
 unsigned int typevar_count () const @+{@; return te.typevar_count(); }
 const func_type* func() const  @+{@; return te.func(); }
@@ -3265,6 +3269,7 @@ type_expr result_type() const;
 func_type f_type() const; // cut through type assignments and |tabled|
 const_raw_type_list tuple () const @+{@; return te.tuple(); }
 type_nr_type tabled_nr () const @+{@; return te.tabled_nr(); }
+type_nr_type stored_nr () const @+{@; return te.stored_nr(); }
 @)
 type_assignment& assign () @+{@; return a; }
 const type_assignment& assign () const @+{@; return a; }
@@ -3516,7 +3521,7 @@ type_expr pack(const type_expr& te, trans_list& translate)
       for (wtl_const_iterator it(te.ctor_args()); not it.at_end(); ++it)
         aux.push_back(pack(*it,translate));
       return type_expr::user_type
-        (te.tabled_nr(),aux.undress(),te.raw_kind()==closed_type);
+        (te.stored_nr(),aux.undress(),te.raw_kind()==closed_type);
     }
     case undetermined_type:
     { unsigned int k=translate.start+translate.vars.size();
