@@ -2107,7 +2107,8 @@ void process_closed_type_definition
    type_p iftp, raw_patlist iface, @|
    raw_type_list reptps, raw_let_list imp, @|
    const source_location& loc)
-{ patlist id_list(idl);
+{ std::ostringstream o;
+  patlist id_list(idl);
   type_ptr interface_tp_p(iftp);
   patlist interface_list(iface);
   type_list repr_types(reptps);
@@ -2115,12 +2116,10 @@ void process_closed_type_definition
   // ensure clean-up
 @)
   try {
-    std::ostringstream o;
-    std::vector<id_type> ids;
-    ids.reserve(length(id_list));
-  @/@< Define a vector |ids| of new type identifiers, the interface
-    |id_pat interface@;| and a |definition_group g@;| to hold the interface
-    specification @>
+    @< While ensuring appropriate |swallow| conversions, define a vector
+       |ids| of new type identifiers, the interface |id_pat interface@;|,
+       its |type_expr interface_te@;| and a |definition_group g@;| to hold
+       the interface specification @>@;
   @)
     expr implementation;
     @< Check that all components named in |interface| are defined in |impl|,
@@ -2128,7 +2127,7 @@ void process_closed_type_definition
        with a tuple of those components in the order of |interface| @>
     type_expr implementation_tp;
     @< Set |implementation_tp| to the result of substituting,
-       into |*interface_tp_p|, each of the |repr_types| for the corresponding
+       into |interface_te|, each of the |repr_types| for the corresponding
        |closed_type| being defined @>
     expression_ptr converted_impl;
     @< Type check and convert expression |implementation| in the strong type
@@ -2151,15 +2150,42 @@ statement, which is easy thanks to the fact that any instance of a type
 (constructor) being defined is already represented in |iftp| by the
 |closed_type| expression that will later denote it.
 
-@< Define a vector |ids| of new type identifiers, the interface
-|id_pat interface@;| and a |definition_group g@;| to hold the interface
-specification @>=
+We must however take care that every type is passed through an appropriate call
+of |Id_table::swallow| before being used, in order to properly interpret any
+tabled or closed type references it contains, since the parser has just stored
+type identifier codes. The types in |repr_types| are to be interpreted in the
+initial state of |*global_id_table| (we let |swallow| make the substitution in
+place), but the types in |*interface_tp_p| will contain uses of the closed
+type(s) being defined here, so appropriate entries must be created for them in
+|*global_id_table| first, before calling |global_id_table->swallow|. Such an
+entry is a |type| value representing a constructor of degree |arity|, with as
+|type_expr| a closed type |new_tp| without arguments. The stored number in
+|new_tp| is the value that in the future will represent the closed type being
+defined (the actual extension of |type_expr::closed_info| has not yet been done
+when we come here, but such an extension is not necessary for
+|global_id_table->swallow| to do its work); it is computed by
+|type_expr::new_abstract_type| from the position in |id_list|; this call
+internally takes into account the current size of |type_expr::closed_info|.
+
+@< While ensuring appropriate |swallow| conversions, define a vector |ids| of
+   new type identifiers, the interface... @>=
+for (auto it = repr_types.wbegin(); not repr_types.at_end(it); ++it)
+  *it = global_id_table->swallow(*it);
+std::vector<id_type> ids;
+ids.reserve(length(id_list));
 for (auto it=id_list.begin(); not id_list.at_end(it); ++it)
+{
+  auto new_tp = type_expr::new_abstract_type(ids.size(),type_list());
+    // a new |closed_type|
+  global_id_table->add_type_def
+      (it->name,type::constructor(std::move(new_tp),arity),loc);
   ids.push_back(it->name);
+}
 if (ids.size()!=length(reptps))
   @< Report a wrong number of type representations in |repts| for |ids| @>
 @) // prepare the effect of the definition for future type analysis
 id_pat interface(std::move(interface_list));
+type_expr interface_te = global_id_table->swallow(*interface_tp_p);
 auto n_id = count_identifiers(interface);
 definition_group g(n_id);
 #ifndef NDEBUG // syntax rules should ensure that the following always succeeds
@@ -2167,7 +2193,7 @@ if (not interface_tp_p->can_specialise(pattern_type(interface)))
   @< Report that the interface pattern is incompatible with its specified
      type @>
 #endif
-g.thread_bindings(interface,*interface_tp_p,true);
+g.thread_bindings(interface,interface_te,true);
 
 @ The liberty we provide of giving implementation values in any order means that
 we must do a bit of checking and expression rewriting. The latter involves doing
@@ -2277,10 +2303,10 @@ type_expr closed_subst
 function.
 
 @< Set |implementation_tp| to the result of substituting,
-   into |*interface_tp_p|, each of the |repr_types| for the corresponding
+   into |interface_te|, each of the |repr_types| for the corresponding
    |closed_type| being defined @>=
   implementation_tp =
-    closed_subst(*interface_tp_p,std::move(repr_types).to_vector());
+    closed_subst(interface_te,std::move(repr_types).to_vector());
 
 @ Type checking is done by calling |analyse_types|, which usually does not
 impose a type on the expression, but here |implementation| is required to get
