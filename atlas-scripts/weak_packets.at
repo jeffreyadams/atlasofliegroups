@@ -453,7 +453,8 @@ set blocks([[(int,int,Param)]] packets) =[int]:sort_u(##for i:#packets do for (b
 set weak_packets_new_flag = false
 set weak_packets_newest_flag = false
 set weak_packets_fast_flag = false
-set weak_packets_faster_flag = true
+set weak_packets_faster_flag = false {until verification and non-dist
+induction added}
 
 set unipotent_representations(RealForm G)=[Param]: {G.weak_packets.parameters}
     if G = F4_s

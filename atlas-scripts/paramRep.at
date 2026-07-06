@@ -212,6 +212,7 @@ set same_PI(Param p, [int] Taus_bitset) = bool:
 {If Ns is TalphabetaTauss_bitset(q), then this is a necessary condition for p and q to have
 the same primitive ideal.}
 set same_PI_step(Param p, [int] Tauss_bit) = bool:
+    if to_bitset([to_bitset(tau(p))]) != Tauss_bit[0] then return false fi;
     let q = regularize(p), G = p.real_form, step = int:0, pHash = make_Param_hash()
     then test = int:0
     then gamma = q.infinitesimal_character, toDo = 1*q, nullmod = null_module(G), size = int:0
@@ -307,8 +308,9 @@ set test_faster_packets(RootDatum rd) = bool:
 primitive ideals in case of distinguished nilpotent}
 {E7 tested positive!}
 
+{If preload isn't empty, should be all distinguished unipotent}
 
-set test_faster_distinguished_packets(RootDatum rd) = bool:
+set test_faster_distinguished_packets(RootDatum rd, [Param] preload) = bool:
     let start = elapsed_ms(), G = split_form(rd), rd_dual = dual(rd)
     then distHs = distinguished_Hs(rd_dual)
     then distps = for H in distHs
@@ -331,19 +333,18 @@ set test_faster_distinguished_packets(RootDatum rd) = bool:
 				   do q
 				   fi
 				   od
-		      then actuals = {if rd = root_datum(E8_s) or rd = root_datum(E7_s) or
-		      	   	     	rd = root_datum(E6_s)
-				     then for q in unipotent_representations(G)
+		      then actuals = if #preload > 0
+				     then for q in preload
 				     	  if q.infinitesimal_character = distHs[j]/2
 					  do q
 					  fi
 					  od
-				     else} for q in cands
+				     else for q in cands
 				     	  if GK_dim(q) = Dims[j]
 					  do q
 					  fi
 					  od
-				      {fi}
+				      fi
 		       in if #cands != #actuals
 		       	  then prints("for j = ",j," and H = ",distHs[j],", bad candidates are ",
 			       for q in cands if first(for r in actuals do
@@ -352,3 +353,6 @@ set test_faster_distinguished_packets(RootDatum rd) = bool:
 			  else true
 			  fi)
 	     od) next prints("Finished at ",print_time_string(elapsed_ms() - start))
+
+set test_faster_distinguished_packets(RootDatum rd) = bool:
+    test_faster_distinguished_packets(rd,[])
