@@ -301,41 +301,30 @@ shared_share Id_table::address_of(id_type id)
 
 @ The method |Id_table::swallow| transforms a |type_expr| from an external form
 produced by the parser into one used internally, updating the representation of
-user-defined types and type constructors. The parser stores these as nodes with
-|raw_kind()==tabled|, but in it stores just the code for the type identifier; it
-is the task of |swallow| to replace it by the actual tabled number of the
-corresponding type (constructor). It used to be the case that for defined type
-identifiers |Id_table| could store any type rather than just one of the |tabled|
-kind. We then used |simple_subst| (with appropriate arguments), rather than
-|user_type| as we do below. This is no longer the case: even in the case of a
-type constructor, |Id_table| stores a |tabled| type with an empty argument list.
+user-defined types and type constructors. The parser stores these as |type_expr|
+values with |raw_kind()==tabled|, but the |tabled_nr| stored is just the code
+for the type identifier. It is the task of |swallow| to replace it by the actual
+tabled number of the corresponding type (constructor) found in our |Id_table|;
+it may also return a |closed_type| instead if that is what the table stores. The
+table stores no type arguments; |swallow| will generate these from what the
+parser produced.
 
-For any |type_expr| whose |raw_kind()| is not |tabled|, the recursive method
-|swallow| simply descends into its subexpressions. When a |tabled| case is
-encountered, we look up the type |defined_type| associated to the identifier,
-which must succeed since the scanner only produces nodes with
-|raw_kind()==tabled| for identifiers that our |Id_table| had reported to have
-the property |is_defined_type| (or the stronger |is_type_constructor|). Then we
-check the number of type arguments against its arity, and also recursively
-descend into those arguments. Finally we build a new |tabled| reference by
-calling |type_expr::user_type|, taking the transformed list of argument types,
-and using |defined_type.tabled_nr()| as new |tabled_nr()| value.
+For any |type_expr| whose |tag| is not |tabled|, the recursive method |swallow|
+simply descends into its subexpressions. When a |tabled| case is encountered, we
+look up the identifier; no value should be associated (the scanner only produces
+tokens with token type |TYPE_ID| or |TYPE_CONSTR| for identifiers for which
+|Id_table::is_defined_type| holds, and the parser then calls
+|make_tabled_type|), but a |defined_type| should be. This type should satisfy
+|is_symbolic|, and |swallow| will return a |type_expr| of the same kind. It
+checks the number of type arguments provided by the parser against the arity of
+the type found, and also recursively descends into those arguments; a call of
+|type_expr::user_type| combines the kind and |stored_nr()| of the |defined_type|
+with the transformed list of argument types.
 
 The above statement that |is_defined_type| always holds in the |tabled| case is
 not true when one is processing grouped type definitions, since an as yet unseen
 identifier will be scanned as type identifier there. For this reason, calling
 this |swallow| method should be avoided when processing such definitions.
-
-Since we are assuming that type definitions stored in |Id_table| directly refer
-to a |open_type_table| entry, the effect of |swallow| is to make a copy of the type in
-which only the |tabled_nr()| values have been changed. Rather than making a
-copy, this could have been achieved in-place using calls of the
-|type_expr::replace_tabled_nr| method, provided our method took~|tp| as a
-non-|const| reference argument (maybe also returning the same). This in turn
-would require making changes in calling functions to be able to pass such a
-reference, possibly involving making a copy of a |type_expr| value there; we
-decided that the very marginal gains in simplicity and efficiency of our current
-method that could so be achieved do not justify making such changes.
 
 @< Global function def... @>=
 type_expr Id_table::swallow(const type_expr& tp) const
@@ -351,12 +340,13 @@ type_expr Id_table::swallow(const type_expr& tp) const
         aux.push_back(swallow(*it));
       return type_expr::tuple_or_union(tp.raw_kind(),aux.undress());
     }
+    case closed_type: // should not happen, but treated together with |tabled|
     case tabled: // this is where something happens
-    { const id_type id = tp.tabled_nr();
+    { const id_type id = tp.stored_nr();
     @/const auto* p = type_of(id);
       assert(p!=nullptr); // the scanner ensures this
       const type& defined_type = *p;
-      assert(defined_type.kind()==tabled);
+      assert(defined_type.is_symbolic());
       unsigned int len=length(tp.ctor_args()), degree = defined_type.degree();
       if (len!=degree)
         @< Throw a |program_error| signalling an incorrectly applied type symbol
@@ -364,7 +354,9 @@ type_expr Id_table::swallow(const type_expr& tp) const
       dressed_type_list arg_list;
       for (wtl_const_iterator it(tp.ctor_args()); not it.at_end(); ++it)
         arg_list.push_back(swallow(*it));
-      return type_expr::user_type(defined_type.tabled_nr(),arg_list.undress());
+      return type_expr::user_type @|
+        (defined_type.stored_nr(),arg_list.undress(),
+         defined_type.kind()==closed_type);
     }
   default: return tp.copy(); // undetermined should not occur
   }
@@ -1380,9 +1372,9 @@ removes the entry |id| from |type_expr::open_type_table|.
 void clean_out_type_identifier(id_type id)
 {
   const type* defined_type = global_id_table->type_of(id);
-  if (defined_type->kind()!=tabled)
+  if (not defined_type->is_symbolic())
     return; // we cannot clear out the pro/in/jector functions, not recorded
-  auto type_number = defined_type->tabled_nr();
+  auto type_number = defined_type->stored_nr();
   const auto& fields = type_expr::fields(type_number);
   if (not fields.empty())
   { if (defined_type->kind()==tuple_type)
@@ -1494,7 +1486,7 @@ grouping introduced by the \&{any\_type} keyword.
 We start with the simple type definitions, which are handled by the function
 |type_define_identifier|. Its argument |id| is a new type identifier that is
 defined to stand for the type expression~|t|, or for a type constructor with
-|deg| type arguments is |deg>0|. A fourth argument~|ip| may provide a list of
+|deg| type arguments if |deg>0|. A fourth argument~|ip| may provide a list of
 ``field names'' (which will be set to certain functions related to the type)
 that can be useful in the case of a tuple or union type. Even though |ip| stands
 for ``identifier pattern'', the grammar restricts it to be a simple list of
@@ -1673,9 +1665,9 @@ void process_type_definitions
   @/@< For each equation |i| in |defs| set |position[id]=i| for the
        identifier |id| defined by the equation; |throw| a |program_error|
        if any identifiers in the equation are problematic @>
-  @/@< Replace, for any type with |kind==tabled| occurring in |defs|,
-       the stored identifier code |id| by |position[id]| if that is set, or else
-       by the |tabled_nr()| obtained from its type in |global_id_table| @>
+  @/@< Replace, for any type occurring in |defs| satisfying |is_symbolic()|,
+       the stored code |id| by |global_id_table->type_of(id)->stored_nr()|,
+       or if |tag=tabled| and |position[id]| is defined, by |position[id]| @>
 @)
 @/  std::vector<std::pair<id_type,const_type_p> > b; b.reserve(n_defs);
     for (auto it=defs.wcbegin(); not defs.at_end(it); ++it)
@@ -1738,7 +1730,7 @@ status as a type identifier would make the field name unusable.
 
 @ The code below serves to prohibit introducing the name of an existing (global)
 variable or function as a type name, which would make the former inaccessible.
-We call the method |global_id_table.is_ordinary| to test for this. To make it
+We call the method |global_id_table->is_ordinary| to test for this. To make it
 possible to reload a script a second time without error, we do allow redefining
 a previous type identifier again as a type identifier.
 
@@ -1773,10 +1765,10 @@ can tell whether the latter is the case and check that the type constructor is
 used properly.
 
 Having the parser store an identifier code in a place that normally holds a
-tabled number (an index into |type_expr::open_type_table|) used to be a trick used only
-for the purpose of representing types in the right hand side of grouped type
-definitions. It is however now the case throughout, and all type expressions
-built in the parser must be either transformed by calling
+tabled number (an index into |type_expr::open_type_table|) used to be a trick
+used only for the purpose of representing types in the right hand side of
+grouped type definitions. It is however now the case throughout, and all type
+expressions built in the parser must be either transformed by calling
 |global_id_table->swallow|, or else be given some other special treatment, as
 will be the case here.
 
@@ -1785,41 +1777,71 @@ side type expression, with the actual replacement detailed in a later module.
 Traversing type expressions is naturally done recursively, but we are getting a
 bit bored by defining a recursive function for every little task, so we do this
 one iteratively instead, with the aid of a manually maintained queue |work| of
-pointers to types remaining to be visited (a stack would have done equally
-well).
+pointers to types remaining to be visited.
 
-@< Replace, for any type with |kind==tabled| occurring in |defs|... @>=
+@< Replace, for any type occurring in |defs| satisfying |is_symbolic()|... @>=
 { containers::queue<type_p> work;
   for (auto it=defs.begin(); not defs.at_end(it); ++it)
   {
-    work.push(it->tp);
-    while (not work.empty())
+    work.push(it->tp); // push a pointer, ownership remains in |defs|
+    do // |while (not work.empty())@;|
     { type_expr& t = *work.front();
-      work.pop(); // copy pointer as non-owned reference, then pop pointer
+      work.pop(); // now |t| is a non-owned reference
       switch(t.raw_kind())
-      { default: break;
-      case function_type:
+      { @+ default:
+      break; case function_type:
       @/{@; auto f=t.func();
           work.push(&f->result_type);
           work.push(&f->arg_type);
         }
-      break;
-      case row_type: work.push(&t.component_type());
-      break;
-      case tuple_type: case union_type:
+      break; case row_type: work.push(&t.component_type());
+      break; case tuple_type: case union_type:
         for (wtl_iterator it(t.tuple()); not it.at_end(); ++it)
           work.push(&*it);
-      break;
-      case tabled:
+      break; case tabled:
         for (wtl_iterator it(t.ctor_args()); not it.at_end(); ++it)
           work.push(&*it);
         @< Replace |t.tabled_nr()| by the number that either |position| or the
            |global_id_table| associates to it; if there is none
            |throw| a |program_error| @>
-      break;
-      }
-    }
-  }
+      break; case closed_type:
+        { for (wtl_iterator it(t.ctor_args()); not it.at_end(); ++it)
+            work.push(&*it);
+          id_type id = t.closed_nr();
+          @< Check that the type |tp| in |*global_id_table| stored for |id| is
+             a defined type or type constructor of degree matching the length
+             of |t.ctor_args()|... @>
+        }
+      } // |switch(t.raw_kind())|
+    } while (not work.empty());
+  } // |for(it)|
+}
+
+@ The following code is included twice, once for the case of a |closed_type|
+being used in the right hand side of a type definition, and a second time for
+the case of a |tabled| type reference that is not internal to the group being
+currently defined. The manipulation done here is necessary because the right
+hand sides of recursive type definitions have not been (and should not be)
+passed through |type_expr::swallow|.
+
+@< Check that the type |tp| in |*global_id_table| stored for |id| is a defined
+   type or type constructor of degree matching the length of |t.ctor_args()|,
+   and on success replace the type number stored in |t| by |tp.stored_nr()| @>=
+if (global_id_table->is_defined_type(id))
+{
+  const type& defined_type = *global_id_table->type_of(id);
+  assert(defined_type.is_symbolic());
+  unsigned int len=length(t.ctor_args()), degree = defined_type.degree();
+  if (len!=degree)
+     @< Throw a |program_error| signalling an incorrectly applied type symbol
+        or type constructor @>
+  t.replace_stored_nr(defined_type.stored_nr());
+}
+else
+{ std::ostringstream o;
+  o << "Identifier '" << main_hash_table->name_of(id) @|
+    << "' does not refer to any type";
+  throw program_error(o.str());
 }
 
 @ We come here for any type subexpression of a right hand side that is given as
@@ -1834,7 +1856,7 @@ that |global_id_table->swallow| performs, but we cannot use that method since it
 does not make the exception for the latter case (and it applies itself
 recursively to type constructor arguments, which application we cannot control
 or suppress). So instead we make the replacement explicitly using the
-|type_expr::replace_tabled_nr| method specifically created for this occasion.
+|type_expr::replace_stored_nr| method specifically created for this occasion.
 In-place replacement is possible since we own the type expressions in |defs|.
 
 Here we explicitly use that the |global_it_table| entry for a user defined type
@@ -1853,8 +1875,8 @@ since the scanner marks all identifiers as types during grouped type
 definitions, we must be prepared to see identifiers that are not known as type
 identifiers at all, and to throw a |program_error| in such cases.
 
-@<  Replace |t.tabled_nr()| by the number that either |position| or the
-    |global_id_table| associates to it... @>=
+@< Replace |t.tabled_nr()| by the number that either |position| or the
+   |global_id_table| associates to it... @>=
 { id_type id = t.tabled_nr();
   if (position.count(id)>0)
     // then type is defined in our group: replace by future tabled reference
@@ -1867,24 +1889,12 @@ identifiers at all, and to throw a |program_error| in such cases.
     }
     auto it = position.find(id);
     assert(it!=position.end());
-    t.replace_tabled_nr(type_expr::table_size()+it->second);
-  }
-  else if (global_id_table->is_defined_type(id))
-  {
-    const type& defined_type = *global_id_table->type_of(id);
-    assert(defined_type.kind()==tabled); // defined types are stored this way
-    unsigned int len=length(t.ctor_args()), degree = defined_type.degree();
-    if (len!=degree)
-       @< Throw a |program_error| signalling an incorrectly applied type symbol
-          or type constructor @>
-    t.replace_tabled_nr(defined_type.tabled_nr());
+    t.replace_stored_nr(type_expr::table_size()+it->second);
   }
   else
-  { std::ostringstream o;
-    o << "Identifier '" << main_hash_table->name_of(id) @|
-      << "' does not refer to any type";
-    throw program_error(o.str());
-  }
+    @< Check that the type |tp| in |*global_id_table| stored for |id| is a
+       defined type or type constructor of degree matching the length of
+       |t.ctor_args()|... @>
 }
 
 @ When we come here, the newly defined types from |defs| have been tested for
@@ -2281,11 +2291,10 @@ type_expr closed_subst
     }
     case closed_type:
     case tabled:
-    { auto nr = tp.tabled_nr(); dressed_type_list aux;
+    { auto nr = tp.stored_nr(); dressed_type_list aux;
       for (wtl_const_iterator it(tp.ctor_args()); not it.at_end(); ++it)
         aux.push_back(closed_subst(*it,ctors));
-      if (tp.raw_kind()==closed_type and
-      nr>=type_expr::closed_count())
+      if (tp.raw_kind()==closed_type and nr>=type_expr::closed_count())
       { BitMap nothing(type_expr::table_size());
         // what needs attention from |simple_subst|
         const type_expr& ctor = // the chosen one of the |ctors|
@@ -2362,7 +2371,7 @@ we can in fact share some modules with that code.
   }
 }
 
-@ Finally, we must adopt the static member |type_expr::closed_info|, which can
+@ Finally, we must update the static member |type_expr::closed_info|, which can
 be done by calling |type_expr::add_closed_types|.
 
 @< Update |type_expr::closed_type_table| with the new |arity|
