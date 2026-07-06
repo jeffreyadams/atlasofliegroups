@@ -588,8 +588,10 @@ static type_expr user_type(type_nr_type type_nr,type_list&& l,bool closed=false)
 }
 
 static type_expr local_ref(type_nr_type type_nr)
-@+{@; return user_type(type_nr,type_list(),false);
-}
+{@; return user_type(type_nr,type_list(),false);}
+
+static type_expr new_abstract_type(type_nr_type type_nr,type_list&& l)
+{@; return user_type(closed_info.size()+type_nr,std::move(l),true);}
 
 
 @ A move constructor for |type_expr| is provided, but no copy constructor;
