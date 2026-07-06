@@ -493,8 +493,8 @@ public:
 private:
   map_type table;
 public:
-  overload_table (const Id_table&) =delete;
-  overload_table& operator=(const Id_table&) = delete;
+  overload_table (const overload_table&) =delete;
+  overload_table& operator=(const overload_table&) = delete;
   overload_table() : table() @+{} // the default and only constructor
 @) // accessors
   const variant_list* variants(id_type id) const
