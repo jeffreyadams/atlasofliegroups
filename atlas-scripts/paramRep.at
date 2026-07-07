@@ -4,6 +4,7 @@
 < hash {for hash tables}
 < W_reps {for taus(Weyl group rep)}
 < associated_variety_annihilator {for GK_dim}
+< time.at {for print_time_string}
 
 {Goal is to compute the special representation sigma(p) of the
 integral Weyl group W_int(p) attached to a Param p}
@@ -395,7 +396,6 @@ set test_faster_distinguished_packets(RootDatum rd, [Param] preload, int N) = bo
     then () = prints("At time ",print_time_string(elapsed_ms() - start),
     	      	     ", starting computation of target GK_dims.")
     then Dims = for O in Os do dim(O)\2 od
-    {for  p in distps do GK_dim(p) od}
     then () = prints("At time ",print_time_string(elapsed_ms() - start),
     	      	     ", completed computation of target GK_dims.")
     then () = prints("At time ",print_time_string(elapsed_ms() - start),
@@ -405,34 +405,50 @@ set test_faster_distinguished_packets(RootDatum rd, [Param] preload, int N) = bo
 			  od
     then () = prints("At time ",print_time_string(elapsed_ms() - start),
     	 	  ", completed computing Tauss_bitset to ",N," for ",#distHs," parameters.")
+    then allH = [Param]:[]
+    then actualsH = [Param]:[]
+    then candsH = [Param]:[]
     in all(for p@j in distps
-       	   do prints("At time ",print_time_string(elapsed_ms() - start),
+       	   do allH := all_parameters_gamma(G,distHs[j]/2);
+	      if #preload > 0
+	      then actualsH :=
+	      	   for q in preload
+		   if q.infinitesimal_character = distHs[j]/2
+		   do q
+		   fi
+		   od
+	       fi;
+	   prints("At time ",print_time_string(elapsed_ms() - start),
 	      	 " started testing distinguished orbit #",j);
-	   @bool: (let all = all_parameters_gamma(G, distHs[j]/2)
-	      	      then cands = for q in all
-		      	   	   if same_PI_step(q,distTauss_bits[j],N)
-				   do q
-				   fi
-				   od
-		      then actuals = if #preload > 0
-				     then for q in preload
-				     	  if q.infinitesimal_character = distHs[j]/2
-					  do q
-					  fi
-					  od
-				     else for q in cands
-				     	  if GK_dim(q) = Dims[j]
-					  do q
-					  fi
-					  od
+	   prints("need to test ",#allH," candidates");
+	   @bool: (candsH := for q@k in allH
+		      	     do if same_PI_step(q,distTauss_bits[j],N)
+				then prints("positive result for cand #",k," of ",#allH);
+				[q]
+				else []
+				fi
+				od.##;
+		     if #preload = 0
+		     then actualsH := for q in candsH
+				      if GK_dim(q) = Dims[j]
+				      do q
 				      fi
-		       in if #cands != #actuals
-		       	  then prints("for j = ",j," and H = ",distHs[j],", bad candidates are ",
-			       for q in cands if first(for r in actuals do
+				      od
+		     fi;
+		     prints("candsH = ",candsH);
+		     prints("actuals = ",actualsH);
+		     if #candsH > #actualsH
+		     then prints("for j = ",j," and H = ",distHs[j],", extra candidates are ",
+			       for q in candsH if first(for r in actualsH do
 			       		   q=r od) = -1 do q fi od);
 			       false
-			  else true
-			  fi)
+		     elif #candsH < #actualsH
+		     then prints("for j = ",j," and H = ",distHs[j],", missing candidates are ",
+			       for q in actualsH if first(for r in candsH do
+			       		   q=r od) = -1 do q fi od);
+			       false
+		     else true
+		     fi)
 	     od) next prints("Finished at ",print_time_string(elapsed_ms() - start))
 
 set test_faster_distinguished_packets(RootDatum rd, [Param] preload) = bool:
