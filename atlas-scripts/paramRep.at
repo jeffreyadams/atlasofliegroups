@@ -243,8 +243,8 @@ set same_PI_step(Param p, [int] Tauss_bit, int N) = bool:
 	  od;
 	  size:=pHash.size();
 	  test:=to_bitset(for r in pHash.list() do to_bitset(tau(r)) od );
-	  prints("at step = ",step,", test = ",test, ", Tauss_bit = ",
-	  	      Tauss_bit[min(step,#Tauss_bit - 1)]);
+	  {prints("at step = ",step,", test = ",test, ", Tauss_bit = ",
+	  	      Tauss_bit[min(step,#Tauss_bit - 1)]);}
 	  if test != Tauss_bit[min(step,#Tauss_bit - 1)]
 	  then return false
 	  fi;
@@ -260,8 +260,8 @@ set same_PI_step(Param p, [int] Tauss_bit, int N) = bool:
 	  step +:=1
        od;
        test:=to_bitset(for r in pHash.list() do to_bitset(tau(r)) od );
-       prints("After while, step = ",step, ", #toDo = ",#toDo,", test = ",test,", #Tauss_bit = ",
-       #Tauss_bit);
+       {prints("After while, step = ",step, ", #toDo = ",#toDo,", test = ",test,", #Tauss_bit = ",
+       #Tauss_bit);}
        step <= #Tauss_bit and test = Tauss_bit[min(step, #Tauss_bit -1)]
 
 {If Ns is TalphabetaTauss_bitset(q), then this is a necessary condition for p and q to have
@@ -405,51 +405,50 @@ set test_faster_distinguished_packets(RootDatum rd, [Param] preload, int N) = bo
 			  od
     then () = prints("At time ",print_time_string(elapsed_ms() - start),
     	 	  ", completed computing Tauss_bitset to ",N," for ",#distHs," parameters.")
-    then allH = [Param]:[]
-    then actualsH = [Param]:[]
-    then candsH = [Param]:[]
-    in all(for p@j in distps
-       	   do allH := all_parameters_gamma(G,distHs[j]/2);
-	      if #preload > 0
-	      then actualsH :=
-	      	   for q in preload
-		   if q.infinitesimal_character = distHs[j]/2
-		   do q
-		   fi
-		   od
-	       fi;
+    in all(#distps, (int j) bool:
+	   let allH = all_parameters_gamma(G,distHs[j]/2)
+	   then actualsH =
+	   	if #preload > 0
+	   	then for q in preload
+		     if q.infinitesimal_character = distHs[j]/2
+		     do q
+		     fi
+		     od
+	   	else [Param]:[]
+	   	fi
+	   in
 	   prints("At time ",print_time_string(elapsed_ms() - start),
-	      	 " started testing distinguished orbit #",j);
+	   	 " started testing distinguished orbit #",j);
 	   prints("need to test ",#allH," candidates");
-	   @bool: (candsH := for q@k in allH
-		      	     do if same_PI_step(q,distTauss_bits[j],N)
-				then prints("positive result for cand #",k," of ",#allH);
-				[q]
-				else []
-				fi
-				od.##;
-		     if #preload = 0
-		     then actualsH := for q in candsH
-				      if GK_dim(q) = Dims[j]
-				      do q
-				      fi
-				      od
-		     fi;
-		     prints("candsH = ",candsH);
-		     prints("actuals = ",actualsH);
-		     if #candsH > #actualsH
-		     then prints("for j = ",j," and H = ",distHs[j],", extra candidates are ",
-			       for q in candsH if first(for r in actualsH do
-			       		   q=r od) = -1 do q fi od);
-			       false
-		     elif #candsH < #actualsH
-		     then prints("for j = ",j," and H = ",distHs[j],", missing candidates are ",
-			       for q in actualsH if first(for r in candsH do
-			       		   q=r od) = -1 do q fi od);
-			       false
-		     else true
-		     fi)
-	     od) next prints("Finished at ",print_time_string(elapsed_ms() - start))
+	   let candsH = for q@k in allH
+			 do if same_PI_step(q,distTauss_bits[j],N)
+			    then {prints("positive result for cand #",k," of ",#allH);}
+			         [q]
+			    else []
+			    fi
+			 od.##
+	   then actualsH =
+	   	if #preload = 0
+	   	then for q in candsH if GK_dim(q) = Dims[j] do q fi od
+	   	else actualsH
+	   	fi
+	   in
+	   {prints("candsH = ",candsH);}
+	   {prints("actuals = ",actualsH);}
+	   if #candsH > #actualsH
+	   then prints("for j = ",j," and H = ",distHs[j],", the ",#candsH - #actualsH,
+	   	" extra candidates are ",
+		       for q in candsH if first(for r in actualsH do q=r od) = -1
+		       do q fi od);
+		       false
+	   elif #candsH < #actualsH
+	   then prints("for j = ",j," and H = ",distHs[j],", the ",#actualsH - #candsH,
+	   	" missing candidates are ",
+		       for q in actualsH if first(for r in candsH do q=r od) = -1
+		       do q fi od);
+		       false
+	   else true
+	   fi) next prints("Finished at ",print_time_string(elapsed_ms() - start))
 
 set test_faster_distinguished_packets(RootDatum rd, [Param] preload) = bool:
     let start = elapsed_ms(), G = split_form(rd), rd_dual = dual(rd)
@@ -469,35 +468,34 @@ set test_faster_distinguished_packets(RootDatum rd, [Param] preload) = bool:
 			  od
     then () = prints("At time ",print_time_string(elapsed_ms() - start),
     	 	  ", completed computing Tauss_bitset for ",#distHs," parameters.")
-    in all(for p@j in distps
-       	   do prints("At time ",print_time_string(elapsed_ms() - start),
-	      	 " started testing distinguished orbit #",j);
-	   @bool: (let all = all_parameters_gamma(G, distHs[j]/2)
-	      	      then cands = for q in all
-		      	   	   if same_PI_step(q,distTauss_bits[j])
-				   do q
-				   fi
-				   od
-		      then actuals = if #preload > 0
-				     then for q in preload
-				     	  if q.infinitesimal_character = distHs[j]/2
-					  do q
-					  fi
-					  od
-				     else for q in cands
-				     	  if GK_dim(q) = Dims[j]
-					  do q
-					  fi
-					  od
-				      fi
-		       in if #cands != #actuals
-		       	  then prints("for j = ",j," and H = ",distHs[j],", bad candidates are ",
-			       for q in cands if first(for r in actuals do
-			       		   q=r od) = -1 do q fi od);
-			       false
-			  else true
-			  fi)
-	     od) next prints("Finished at ",print_time_string(elapsed_ms() - start))
+    in all(#distps, (int j) bool:
+	   prints("At time ",print_time_string(elapsed_ms() - start),
+	   	 " started testing distinguished orbit #",j);
+	   let allH = all_parameters_gamma(G, distHs[j]/2)
+	   then cands = for q in allH
+			 if same_PI_step(q,distTauss_bits[j])
+			 do q
+			 fi
+			 od
+	   then actuals = if #preload > 0
+			   then for q in preload
+			   	  if q.infinitesimal_character = distHs[j]/2
+				  do q
+				  fi
+				  od
+			   else for q in cands
+			   	  if GK_dim(q) = Dims[j]
+				  do q
+				  fi
+				  od
+			   fi
+	   in if #cands != #actuals
+	   then prints("for j = ",j," and H = ",distHs[j],", bad candidates are ",
+		       for q in cands if first(for r in actuals do q=r od) = -1
+		       do q fi od);
+		       false
+	   else true
+	   fi) next prints("Finished at ",print_time_string(elapsed_ms() - start))
 
 set test_faster_distinguished_packets(RootDatum rd, int N) = bool:
     test_faster_distinguished_packets(rd,[],N)
