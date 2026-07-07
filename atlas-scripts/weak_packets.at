@@ -403,7 +403,25 @@ set weak_packets_even_fast (RealForm G ) = [[Param]]:
 
 set weak_packets_even_faster (RealForm G ) = [[Param]]:
    weak_packets_faster(even_dual_orbits(G),G)
-   
+
+set weak_packets_distinguished(RealForm G) =  [ [[Param],[WCell]] , [int,int,Param] ]:
+    weak_packets(distinguished_orbits(G.root_datum.dual),G)
+
+set weak_packets_distinguished_new (RealForm G ) = [[Param]]:
+   weak_packets_new(distinguished_orbits(G.root_datum.dual),G)
+
+set weak_packets_distinguished_newest (RealForm G ) = [[Param]]:
+   weak_packets_newest(distinguished_orbits(G.root_datum.dual),G)
+
+set weak_packets_distinguished_fast (RealForm G ) = [[Param]]:
+   weak_packets_fast(distinguished_orbits(G.root_datum.dual),G)
+
+set weak_packets_distinguished_faster (RealForm G ) = [[Param]]:
+   weak_packets_faster(distinguished_orbits(G.root_datum.dual),G)
+
+set weak_packets_distinguished_faster (RealForm G, ratvec shift ) = [[Param]]:
+   weak_packets_faster(distinguished_orbits(G.root_datum.dual),G,shift)
+
 {reporting functions}
 
 set mult([[(int,int,Param)]] packet)=((int,int,int)->int):(int orbit,int block,int cell):

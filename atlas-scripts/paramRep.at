@@ -119,6 +119,7 @@ set TalphabetaRepeat(Param p) = [Param]:
               od
     in pHash.list() next TalphabetaRepeat_time+:=elapsed_ms() - start
 
+set pHashOut = make_Param_hash()
 
 {jth term is all Param's accessible from p by <=j T_{alpha,beta}'s}
 {seek a result of size N + 1 >= 1}
@@ -126,19 +127,21 @@ set TalphabetaRepeats(Param p, int N) = [[Param]]:
     let q = regularize(p), G = p.real_form
     then nullmod = null_module(G)
     then gamma = q.infinitesimal_character, toDo = 1*q
+    then () = pHashOut.clear()
+    {
     then pHash = make_Param_hash() {will hold answer.##; always things where Talphabeta
-    	       	 		      already computed}
+    	       	 		      already computed}}
     then answer = [[Param]]:[]
     then size = int:0
     in while #toDo > 0 and #answer < N
        do for @r in toDo
-	  do pHash.match(r)
+	  do pHashOut.match(r)
 	  od;
-	  size:= pHash.size();
-	  answer #:= pHash.list();
+	  size:= pHashOut.size();
+	  answer #:= pHashOut.list();
 	  toDo := sum(G, for @r in toDo
 	      	  	 do sum(G, for t in Talphabetas(r)
-				   do let j = pHash.match(t)
+				   do let j = pHashOut.match(t)
 				      in if j >=size
 					 then 1*t
 					 else nullmod
@@ -146,7 +149,7 @@ set TalphabetaRepeats(Param p, int N) = [[Param]]:
 				   od)
 			  od)
         od;
-    	answer#pHash.list()
+    	answer#pHashOut.list()
 
 
 {jth term is all Param's accessible from p by <=j T_{alpha,beta}'s}
@@ -154,19 +157,22 @@ set TalphabetaRepeats(Param p) = [[Param]]:
     let q = regularize(p), G = p.real_form
     then nullmod = null_module(G)
     then gamma = q.infinitesimal_character, toDo = 1*q
+    {
     then pHash = make_Param_hash() {will hold answer.##; always things where Talphabeta
     	       	 		      already computed}
+    }
+    then () = pHashOut.clear()
     then answer = [[Param]]:[]
     then size = int:0
     in while #toDo > 0
        do for @r in toDo
-	  do pHash.match(r)
+	  do pHashOut.match(r)
 	  od;
-	  size:= pHash.size();
-	  answer #:= pHash.list();
+	  size:= pHashOut.size();
+	  answer #:= pHashOut.list();
 	  toDo := sum(G, for @r in toDo
 	      	  	 do sum(G, for t in Talphabetas(r)
-				   do let j = pHash.match(t)
+				   do let j = pHashOut.match(t)
 				      in if j >=size
 					 then 1*t
 					 else nullmod
@@ -174,7 +180,7 @@ set TalphabetaRepeats(Param p) = [[Param]]:
 				   od)
 			  od)
         od;
-    	answer#pHash.list()
+    	answer#pHashOut.list()
 
 {all distinct tau invariants reachable by T_{alpha,beta}'s from p}
 
@@ -236,9 +242,9 @@ set same_PI_step(Param p, [int] Tauss_bit, int N) = bool:
 	  od;
 	  size:=pHash.size();
 	  test:=to_bitset(for r in pHash.list() do to_bitset(tau(r)) od );
-	  {prints("at step = ",step,", test = ",test, ", Tauss_bit = ",
-	  	      Tauss_bit[min(step,#Tauss_bit -1)]);}
-	  if test != Tauss_bit[min(step,#Tauss_bit -1)]
+	  prints("at step = ",step,", test = ",test, ", Tauss_bit = ",
+	  	      Tauss_bit[min(step,#Tauss_bit - 1)]);
+	  if test != Tauss_bit[min(step,#Tauss_bit - 1)]
 	  then return false
 	  fi;
 	  toDo := sum(G, for @r in toDo
@@ -253,7 +259,8 @@ set same_PI_step(Param p, [int] Tauss_bit, int N) = bool:
 	  step +:=1
        od;
        test:=to_bitset(for r in pHash.list() do to_bitset(tau(r)) od );
-       {prints("After while, step = ",step, ", test = ",test,", #Tauss_bit = ",#Tauss_bit);}
+       prints("After while, step = ",step, ", #toDo = ",#toDo,", test = ",test,", #Tauss_bit = ",
+       #Tauss_bit);
        step <= #Tauss_bit and test = Tauss_bit[min(step, #Tauss_bit -1)]
 
 {If Ns is TalphabetaTauss_bitset(q), then this is a necessary condition for p and q to have
@@ -382,7 +389,15 @@ set test_faster_distinguished_packets(RootDatum rd, [Param] preload, int N) = bo
     then distps = for H in distHs
     	 	  do parameter(x_open(G),G.rho,H/2)
 		  od
-    then Dims = for  p in distps do GK_dim(p) od
+    then ST_dual = Springer_table(rd_dual)
+    then O_duals = for H in distHs do (rd_dual,(),H) od
+    then Os = for O_dual in O_duals do ST_dual.dual_map(O_dual) od
+    then () = prints("At time ",print_time_string(elapsed_ms() - start),
+    	      	     ", starting computation of target GK_dims.")
+    then Dims = for O in Os do dim(O)\2 od
+    {for  p in distps do GK_dim(p) od}
+    then () = prints("At time ",print_time_string(elapsed_ms() - start),
+    	      	     ", completed computation of target GK_dims.")
     then () = prints("At time ",print_time_string(elapsed_ms() - start),
     	 	  ", starting to compute Tauss_bitset to ",N," for ",#distHs," parameters.")
     then distTauss_bits = for p in distps
@@ -426,7 +441,11 @@ set test_faster_distinguished_packets(RootDatum rd, [Param] preload) = bool:
     then distps = for H in distHs
     	 	  do parameter(x_open(G),G.rho,H/2)
 		  od
-    then Dims = for  p in distps do GK_dim(p) od
+    then ST_dual = Springer_table(rd_dual)
+    then O_duals = for H in distHs do (rd_dual,(),H) od
+    then Os = for O_dual in O_duals do ST_dual.dual_map(O_dual) od
+    then Dims = for O in Os do dim(O)\2 od
+    {then Dims = for  p in distps do GK_dim(p) od}
     then () = prints("At time ",print_time_string(elapsed_ms() - start),
     	 	  ", starting to compute Tauss_bitset for ",#distHs," parameters.")
     then distTauss_bits = for p in distps

@@ -1,0 +1,72 @@
+< misc.at {for simple_root_index}
+< time.at {for print_time_string}
+< FPP_faces_herm.at {for big_unitary_hash}
+< parabolics.at
+< weak_packets.at {for unipotent representations}
+< induction.at {for induction functors}
+< cohIndUnip.at {for Qs}
+
+set real_simple(RealForm G) = [int]:
+    let xo = x_open(G)
+    in for j:G.semisimple_rank
+       if status(j,xo) = 2
+       do j
+       fi
+       od
+
+set complex_descent_simple(RealForm G) = [int]:
+    let xo = x_open(G)
+    then thetao = xo.involution
+    in for j:G.semisimple_rank
+    if status(j,xo) = 0 and
+       first(for k:G.semisimple_rank - j from j
+       	     do G.fundamental_weights[k]*(G.simple_coroots[j]*thetao) < 0
+    	     od) >= 0
+    do j
+    fi
+    od
+
+set realQs(RealForm G) = [KGPElt]:
+    let xo = x_open(G)
+    then thetao = xo.involution
+    then inds = real_simple(G) ## complex_descent_simple(G)
+    then wts = for m in inds do (1-thetao)*G.fundamental_weights[m] od
+    in for S in power_set(#inds)
+       do parabolic_by_wt(sum(G.rank, for j in S do wts[j] od),xo)
+       od
+
+{for each conj class of real parabolics LU, the dominant rep of rho(L), and a weight defining a
+Q with x_open}
+
+set realQ_weights(RealForm G) = [(ratvec,vec)]:
+    let rat_hash = make_ratvec_hash()
+    then Qs = realQs(G)
+    in for Q in Qs
+       do let L = Q.Levi
+       	  then N = rat_hash.size()
+	  then domRhoL = dominant(G,rho(L))
+	  then n = rat_hash.match(domRhoL)
+	  in if n = N
+	     then [(domRhoL, rho_u(Q).numer)]
+	     else []
+	     fi
+        od.##
+
+set dist_real_ind(RealForm G) = [[Param]]:
+    for(r,lam) in realQ_weights(G)
+    do let Q = parabolic_by_wt(lam,x_open(G))
+       then L = Q.Levi
+       in monomials(sum(G,for listL in weak_packets_distinguished_faster(L)
+       	  		  do let PL = sum(L, for pL in listL do 1*pL od)
+       	  		     in real_induce_irreducible(PL,G)
+			  od))
+    od
+
+set dist_theta_ind(RealForm G) = [Param]:
+    let Qs = Qs(G)
+    then uLs = for Q in Qs
+    	       do weak_packets_distinguished_faster(Q.Levi,-rho_u(Q))
+	       od {type [[[Param]]]}
+    in monomials(sum(G,for pL in uLs.##.##
+       		       do theta_induce_irreducible(1*pL,G)
+		       od))
