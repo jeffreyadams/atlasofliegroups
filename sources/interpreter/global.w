@@ -2145,10 +2145,10 @@ void process_closed_type_definition
       |converted_impl| @>
   @)
     @< Evaluate |converted_impl|, pushing the result on the evaluation stack @>
+    @< Update |type_expr::closed_type_table| with the new... @>
     @< Pop the value from the evaluation stack, and distribute its components
        according to the identifiers of |interface| to variable and
        overload tables @>
-    @< Update |type_expr::closed_type_table| with the new... @>
   }
   @< Catch block for errors thrown while processing a closed type definition @>
 }
