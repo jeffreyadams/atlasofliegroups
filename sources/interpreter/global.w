@@ -2322,11 +2322,16 @@ impose a type on the expression, but here |implementation| is required to get
 type |implementation_tp|. We therefore changed the signature of |analyse_types|
 so that the required type is passed as argument; this is usually
 |type::bottom(0)|, but here we pass (by move construction) |implementation_tp|.
+Since the implementation type can (and usually will) involve the |arity| type
+variables that are abstracted in the whole closed type definition, we make sure
+these variables are treated as fixed types during the type analysis by passing
+|arity| to the |type::wrap| conversion.
 
 @< Type check and convert expression |implementation| in the strong type context
    of |implementation_tp|, and store the converted expression
    as |converted_impl| @>=
-analyse_types(implementation, type::wrap(implementation_tp,0),converted_impl);
+analyse_types
+  (implementation, type::wrap(implementation_tp,arity),converted_impl);
 
 
 @ Calling the evaluator is easy; the method |expression::eval| calls
