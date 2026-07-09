@@ -1383,13 +1383,15 @@ struct type_binding
   // |starter| signals the first of a group of related tabled types
   type_expr tp;
   std::vector<id_type> fields;
+  unsigned short fields_key;
   type_binding(type_expr&& t, unsigned short arity)
   : name(no_id)
   , arity(arity)
   , recursive(false)
   , starter(true)
   , tp(std::move(t))
-  , fields() @+{}
+  , fields()
+  , fields_key(-1) @+{}
 };
 @)
 class type_expr::defined_type_mapping : public std::vector<type_binding>
@@ -1476,10 +1478,12 @@ const std::vector<id_type>& type_expr::fields(type_nr_type type_number)
 }
 void type_expr::set_fields(id_type type_number, std::vector<id_type>&& fields)
 {@; assert(type_number<table_size());
+   open_type_table[type_number].fields_key = table_size();
    open_type_table[type_number].fields=std::move(fields);
 }
 void type_expr::copy_fields(id_type from, id_type to)
 {@; assert(from<table_size() and to<table_size());
+   open_type_table[to].fields_key = open_type_table[from].fields_key;
    open_type_table[to].fields=open_type_table[from].fields;
 }
 
@@ -1512,10 +1516,19 @@ type_expr type_expr::tabled_call(type_nr_type type_nr)
 tuple or union type, in order to interpret a field assignment or a
 discrimination clause, respectively; it returns a list of non-owning pointers to
 |type_binding| whose |tp| member can unify with |tp|. Since all type variables
-in entries of |open_type_table| are polymorphic, but |tp| can have some fixed
-type variables, the former need to be shifted if |tp.floor()>0|, so that all
-polymorphic type variables start at the same level.
+in entries of |open_type_table| are polymorphic variables, but |tp| can have
+some fixed type variables, the former need to be shifted if |tp.floor()>0|, so
+that all polymorphic type variables start at the same level.
 
+It is possible that one tabled type is defined as a specialisation of another
+(previously defined) tables type, in which case the field list of the latter
+will be a copy of that of the former, and any type that unifies with the latter
+also unifies with the former. In such cases it is counterproductive to keep the
+second one among our matches, since it will prevent a unique candidate from
+being selected, all while providing no advantage over using the former match for
+the purpose of interpreting a field assignment or a discrimination clause..
+Therefore we eliminate such secondary matches, using the |fields_key| to detect
+the situation of having a duplicated list of fields.
 
 @< Function definitions @>=
 sl_list<const type_binding*> type_expr::matching_bindings (const type& tp)
@@ -1526,6 +1539,17 @@ sl_list<const type_binding*> type_expr::matching_bindings (const type& tp)
     if (not open_type_table[i].fields.empty() and
         tp_clean.has_unifier(tabled_call(i)))
       result.push_back(&open_type_table[i]);
+
+  for (auto it=result.begin(); not result.at_end(it);)
+  { auto jt=result.begin();
+    while (jt!=it and (*jt)->fields_key!=(*it)->fields_key)
+      ++jt;
+    if (jt==it) // whether search was completed without finding a clone
+      ++it;
+    else
+      result.erase(it);
+  }
+
   return result;
 }
 

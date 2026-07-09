@@ -6170,10 +6170,10 @@ report the first tag that fails to match it as the offender.
   throw expr_error(e,o.str());
 }
 
-@ We already tested there were defined union types, or type constructors, with
-tags, that match the |subject_type| of the discrimination clause, so if we find
-there are none left, the error message should focus on the tags that failed to
-all match for one of the candidates.
+@ We already tested that there were defined union types, or type constructors,
+that match the |subject_type| of the discrimination clause, and that have tags;
+therefore if we find that there are none left, the error message should focus on
+the tags that failed to all match for one of the candidates.
 
 @< Report that the number of |candidates| accommodating all |tags| is not
    exactly one @>=
