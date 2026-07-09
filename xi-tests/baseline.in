@@ -1,0 +1,46 @@
+prints("### tori")
+set Ts = split_torus(2)
+set Tc = compact_torus(2)
+set pt = trivial(Ts)
+pt
+block_of(pt)
+set pc = trivial(Tc)
+pc
+prints("### SL(2,R)")
+set G = SL(2,R)
+set p = trivial(G)
+p
+%p
+p.lambda
+p.nu
+block_of(p)
+for q in block_of(p) do prints(q, "  herm: ", hermitian_form_irreducible(q)) od
+KL_sum_at_s(p)
+full_deform(p)
+prints("### SL(2,R) nonintegral")
+set p6 = parameter(KGB(G,2),[1],[2/3])
+p6
+hermitian_form_irreducible(p6)
+is_unitary(p6)
+prints("### Sp(4,R)")
+set G2 = Sp(4,R)
+set p2 = trivial(G2)
+block_of(p2)
+KL_sum_at_s(p2)
+hermitian_form_irreducible(p2)
+full_deform(p2)
+is_unitary(p2)
+branch_std(ParamPol: p2, 8)
+prints("### SU(2,1)")
+set G3 = SU(2,1)
+set p3 = trivial(G3)
+block_of(p3)
+hermitian_form_irreducible(p3)
+prints("### SL(3,R) with twist")
+set G4 = SL(3,R)
+set p4 = trivial(G4)
+block_of(p4)
+twist(p4)
+is_unitary(p4)
+prints("### done")
+quit

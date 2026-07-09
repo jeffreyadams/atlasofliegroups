@@ -1,0 +1,273 @@
+cd sources/io && ../../cwebx/ctanglex ++ -pl filekl.w
+This is CTANGLE (version x3.6), in C++ mode.
+cd sources/io && ../../cwebx/ctanglex ++ -pl filekl.w
+(No errors were found.)
+This is CTANGLE (version x3.6), in C++ mode.
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/test/testrun.d -MT "sources/test/testrun.o sources/test/testrun.d" sources/test/testrun.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/test/testprint.d -MT "sources/test/testprint.o sources/test/testprint.d" sources/test/testprint.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/test/test.d -MT "sources/test/test.o sources/test/test.d" sources/test/test.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/test/interrupt.d -MT "sources/test/interrupt.o sources/test/interrupt.d" sources/test/interrupt.cpp
+(No errors were found.)
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/interface/reprmode.d -MT "sources/interface/reprmode.o sources/interface/reprmode.d" sources/interface/reprmode.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/interface/realmode.d -MT "sources/interface/realmode.o sources/interface/realmode.d" sources/interface/realmode.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/interface/mainmode.d -MT "sources/interface/mainmode.o sources/interface/mainmode.d" sources/interface/mainmode.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/interface/main.d -MT "sources/interface/main.o sources/interface/main.d" sources/interface/main.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/interface/io.d -MT "sources/interface/io.o sources/interface/io.d" sources/interface/io.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/interface/input.d -MT "sources/interface/input.o sources/interface/input.d" sources/interface/input.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/interface/helpmode.d -MT "sources/interface/helpmode.o sources/interface/helpmode.d" sources/interface/helpmode.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/interface/emptymode.d -MT "sources/interface/emptymode.o sources/interface/emptymode.d" sources/interface/emptymode.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/interface/commands.d -MT "sources/interface/commands.o sources/interface/commands.d" sources/interface/commands.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/interface/blockmode.d -MT "sources/interface/blockmode.o sources/interface/blockmode.d" sources/interface/blockmode.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/error/error.d -MT "sources/error/error.o sources/error/error.d" sources/error/error.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/io/wgraph_io.d -MT "sources/io/wgraph_io.o sources/io/wgraph_io.d" sources/io/wgraph_io.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/io/realweyl_io.d -MT "sources/io/realweyl_io.o sources/io/realweyl_io.d" sources/io/realweyl_io.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/io/realweyl.d -MT "sources/io/realweyl.o sources/io/realweyl.d" sources/io/realweyl.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/io/prettyprint.d -MT "sources/io/prettyprint.o sources/io/prettyprint.d" sources/io/prettyprint.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/io/poset_io.d -MT "sources/io/poset_io.o sources/io/poset_io.d" sources/io/poset_io.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/io/output.d -MT "sources/io/output.o sources/io/output.d" sources/io/output.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/io/kl_io.d -MT "sources/io/kl_io.o sources/io/kl_io.d" sources/io/kl_io.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/io/kgb_io.d -MT "sources/io/kgb_io.o sources/io/kgb_io.d" sources/io/kgb_io.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/io/ioutils.d -MT "sources/io/ioutils.o sources/io/ioutils.d" sources/io/ioutils.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/io/interactive_lietype.d -MT "sources/io/interactive_lietype.o sources/io/interactive_lietype.d" sources/io/interactive_lietype.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/io/interactive_lattice.d -MT "sources/io/interactive_lattice.o sources/io/interactive_lattice.d" sources/io/interactive_lattice.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/io/interactive.d -MT "sources/io/interactive.o sources/io/interactive.d" sources/io/interactive.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/io/block_io.d -MT "sources/io/block_io.o sources/io/block_io.d" sources/io/block_io.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/io/basic_io.d -MT "sources/io/basic_io.o sources/io/basic_io.d" sources/io/basic_io.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/gkmod/wgraph.d -MT "sources/gkmod/wgraph.o sources/gkmod/wgraph.d" sources/gkmod/wgraph.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/gkmod/standardrepk.d -MT "sources/gkmod/standardrepk.o sources/gkmod/standardrepk.d" sources/gkmod/standardrepk.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/gkmod/repr.d -MT "sources/gkmod/repr.o sources/gkmod/repr.d" sources/gkmod/repr.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/gkmod/K_repr.d -MT "sources/gkmod/K_repr.o sources/gkmod/K_repr.d" sources/gkmod/K_repr.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/gkmod/klsupport.d -MT "sources/gkmod/klsupport.o sources/gkmod/klsupport.d" sources/gkmod/klsupport.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/gkmod/kl.d -MT "sources/gkmod/kl.o sources/gkmod/kl.d" sources/gkmod/kl.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/gkmod/kgp.d -MT "sources/gkmod/kgp.o sources/gkmod/kgp.d" sources/gkmod/kgp.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/gkmod/kgb.d -MT "sources/gkmod/kgb.o sources/gkmod/kgb.d" sources/gkmod/kgb.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/gkmod/ext_kl.d -MT "sources/gkmod/ext_kl.o sources/gkmod/ext_kl.d" sources/gkmod/ext_kl.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/gkmod/ext_block.d -MT "sources/gkmod/ext_block.o sources/gkmod/ext_block.d" sources/gkmod/ext_block.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/gkmod/bruhat.d -MT "sources/gkmod/bruhat.o sources/gkmod/bruhat.d" sources/gkmod/bruhat.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/gkmod/blocks.d -MT "sources/gkmod/blocks.o sources/gkmod/blocks.d" sources/gkmod/blocks.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/structure/y_values.d -MT "sources/structure/y_values.o sources/structure/y_values.d" sources/structure/y_values.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/structure/weylsize.d -MT "sources/structure/weylsize.o sources/structure/weylsize.d" sources/structure/weylsize.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/structure/weyl.d -MT "sources/structure/weyl.o sources/structure/weyl.d" sources/structure/weyl.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/structure/tori.d -MT "sources/structure/tori.o sources/structure/tori.d" sources/structure/tori.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/structure/topology.d -MT "sources/structure/topology.o sources/structure/topology.d" sources/structure/topology.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/structure/tits.d -MT "sources/structure/tits.o sources/structure/tits.d" sources/structure/tits.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/structure/subsystem.d -MT "sources/structure/subsystem.o sources/structure/subsystem.d" sources/structure/subsystem.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/structure/subquotient.d -MT "sources/structure/subquotient.o sources/structure/subquotient.d" sources/structure/subquotient.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/structure/rootdata.d -MT "sources/structure/rootdata.o sources/structure/rootdata.d" sources/structure/rootdata.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/structure/realredgp.d -MT "sources/structure/realredgp.o sources/structure/realredgp.d" sources/structure/realredgp.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/structure/prerootdata.d -MT "sources/structure/prerootdata.o sources/structure/prerootdata.d" sources/structure/prerootdata.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/structure/lietype.d -MT "sources/structure/lietype.o sources/structure/lietype.d" sources/structure/lietype.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/structure/lattice.d -MT "sources/structure/lattice.o sources/structure/lattice.d" sources/structure/lattice.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/structure/involutions.d -MT "sources/structure/involutions.o sources/structure/involutions.d" sources/structure/involutions.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/structure/innerclass.d -MT "sources/structure/innerclass.o sources/structure/innerclass.d" sources/structure/innerclass.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/structure/gradings.d -MT "sources/structure/gradings.o sources/structure/gradings.d" sources/structure/gradings.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/structure/dynkin.d -MT "sources/structure/dynkin.o sources/structure/dynkin.d" sources/structure/dynkin.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/structure/cartanclass.d -MT "sources/structure/cartanclass.o sources/structure/cartanclass.d" sources/structure/cartanclass.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/structure/bitvector.d -MT "sources/structure/bitvector.o sources/structure/bitvector.d" sources/structure/bitvector.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/structure/alcoves.d -MT "sources/structure/alcoves.o sources/structure/alcoves.d" sources/structure/alcoves.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/utilities/size.d -MT "sources/utilities/size.o sources/utilities/size.d" sources/utilities/size.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/utilities/ratvec.d -MT "sources/utilities/ratvec.o sources/utilities/ratvec.d" sources/utilities/ratvec.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/utilities/preorder.d -MT "sources/utilities/preorder.o sources/utilities/preorder.d" sources/utilities/preorder.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/utilities/poset.d -MT "sources/utilities/poset.o sources/utilities/poset.d" sources/utilities/poset.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/utilities/permutations.d -MT "sources/utilities/permutations.o sources/utilities/permutations.d" sources/utilities/permutations.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/utilities/partition.d -MT "sources/utilities/partition.o sources/utilities/partition.d" sources/utilities/partition.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/utilities/mod2_system.d -MT "sources/utilities/mod2_system.o sources/utilities/mod2_system.d" sources/utilities/mod2_system.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/utilities/matrix.d -MT "sources/utilities/matrix.o sources/utilities/matrix.d" sources/utilities/matrix.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/utilities/matreduc.d -MT "sources/utilities/matreduc.o sources/utilities/matreduc.d" sources/utilities/matreduc.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/utilities/graph.d -MT "sources/utilities/graph.o sources/utilities/graph.d" sources/utilities/graph.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/utilities/constants.d -MT "sources/utilities/constants.o sources/utilities/constants.d" sources/utilities/constants.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/utilities/bitset.d -MT "sources/utilities/bitset.o sources/utilities/bitset.d" sources/utilities/bitset.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/utilities/bits.d -MT "sources/utilities/bits.o sources/utilities/bits.d" sources/utilities/bits.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/utilities/bitmap.d -MT "sources/utilities/bitmap.o sources/utilities/bitmap.d" sources/utilities/bitmap.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/utilities/bigint.d -MT "sources/utilities/bigint.o sources/utilities/bigint.d" sources/utilities/bigint.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/utilities/arithmetic.d -MT "sources/utilities/arithmetic.o sources/utilities/arithmetic.d" sources/utilities/arithmetic.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/utilities/abelian.d -MT "sources/utilities/abelian.o sources/utilities/abelian.d" sources/utilities/abelian.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/io/filekl_in.d -MT "sources/io/filekl_in.o sources/io/filekl_in.d" sources/io/filekl_in.cpp
+g++ -std=c++14 -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -MM -MF sources/io/filekl.d -MT "sources/io/filekl.o sources/io/filekl.d" sources/io/filekl.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/utilities/abelian.o sources/utilities/abelian.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/utilities/arithmetic.o sources/utilities/arithmetic.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/utilities/bigint.o sources/utilities/bigint.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/utilities/bitmap.o sources/utilities/bitmap.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/utilities/bits.o sources/utilities/bits.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/utilities/bitset.o sources/utilities/bitset.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/utilities/constants.o sources/utilities/constants.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/utilities/graph.o sources/utilities/graph.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/utilities/matreduc.o sources/utilities/matreduc.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/utilities/matrix.o sources/utilities/matrix.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/utilities/mod2_system.o sources/utilities/mod2_system.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/utilities/partition.o sources/utilities/partition.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/utilities/permutations.o sources/utilities/permutations.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/utilities/poset.o sources/utilities/poset.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/utilities/preorder.o sources/utilities/preorder.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/utilities/ratvec.o sources/utilities/ratvec.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/utilities/size.o sources/utilities/size.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/structure/alcoves.o sources/structure/alcoves.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/structure/bitvector.o sources/structure/bitvector.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/structure/cartanclass.o sources/structure/cartanclass.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/structure/dynkin.o sources/structure/dynkin.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/structure/gradings.o sources/structure/gradings.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/structure/innerclass.o sources/structure/innerclass.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/structure/involutions.o sources/structure/involutions.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/structure/lattice.o sources/structure/lattice.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/structure/lietype.o sources/structure/lietype.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/structure/prerootdata.o sources/structure/prerootdata.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/structure/realredgp.o sources/structure/realredgp.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/structure/rootdata.o sources/structure/rootdata.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/structure/subquotient.o sources/structure/subquotient.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/structure/subsystem.o sources/structure/subsystem.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/structure/tits.o sources/structure/tits.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/structure/topology.o sources/structure/topology.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/structure/tori.o sources/structure/tori.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/structure/weyl.o sources/structure/weyl.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/structure/weylsize.o sources/structure/weylsize.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/structure/y_values.o sources/structure/y_values.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/gkmod/blocks.o sources/gkmod/blocks.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/gkmod/bruhat.o sources/gkmod/bruhat.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/gkmod/ext_block.o sources/gkmod/ext_block.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/gkmod/ext_kl.o sources/gkmod/ext_kl.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/gkmod/kgb.o sources/gkmod/kgb.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/gkmod/kgp.o sources/gkmod/kgp.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/gkmod/kl.o sources/gkmod/kl.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/gkmod/klsupport.o sources/gkmod/klsupport.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/gkmod/K_repr.o sources/gkmod/K_repr.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/gkmod/repr.o sources/gkmod/repr.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/gkmod/standardrepk.o sources/gkmod/standardrepk.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/gkmod/wgraph.o sources/gkmod/wgraph.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/io/basic_io.o sources/io/basic_io.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/io/block_io.o sources/io/block_io.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/io/filekl.o sources/io/filekl.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/io/filekl_in.o sources/io/filekl_in.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/io/interactive.o sources/io/interactive.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/io/interactive_lattice.o sources/io/interactive_lattice.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/io/interactive_lietype.o sources/io/interactive_lietype.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/io/ioutils.o sources/io/ioutils.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/io/kgb_io.o sources/io/kgb_io.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/io/kl_io.o sources/io/kl_io.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/io/output.o sources/io/output.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/io/poset_io.o sources/io/poset_io.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/io/prettyprint.o sources/io/prettyprint.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/io/realweyl.o sources/io/realweyl.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/io/realweyl_io.o sources/io/realweyl_io.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/io/wgraph_io.o sources/io/wgraph_io.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/error/error.o sources/error/error.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/interface/blockmode.o sources/interface/blockmode.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/interface/commands.o sources/interface/commands.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/interface/emptymode.o sources/interface/emptymode.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/interface/helpmode.o sources/interface/helpmode.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/interface/input.o sources/interface/input.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -DMESSAGE_DIR_MACRO=\""/home/jda/claudeDesktop/atlasCovering/messages/"\" -o sources/interface/io.o sources/interface/io.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/interface/main.o sources/interface/main.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/interface/mainmode.o sources/interface/mainmode.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/interface/realmode.o sources/interface/realmode.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/interface/reprmode.o sources/interface/reprmode.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/test/interrupt.o sources/test/interrupt.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/test/test.o sources/test/test.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/test/testprint.o sources/test/testprint.cpp
+g++ -std=c++14 -c -Wall -O3 -DNDEBUG -Isources -Isources/utilities -Isources/structure -Isources/gkmod -Isources/io -Isources/error -Isources/interface -Isources/test -o sources/test/testrun.o sources/test/testrun.cpp
+cd sources/interpreter && make atlas-types.cpp
+make[1]: Entering directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+../../cwebx/ctanglex ++ -p atlas-types.w
+This is CTANGLE (version x3.6), in C++ mode.
+cd sources/interpreter && make axis-types.cpp
+make[1]: Entering directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+../../cwebx/ctanglex ++ -p axis-types.w
+This is CTANGLE (version x3.6), in C++ mode.
+(No errors were found.)
+(No errors were found.)
+make[1]: Leaving directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+make[1]: Leaving directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+cd sources/interpreter && make axis.cpp
+cd sources/interpreter && make buffer.cpp
+make[1]: Entering directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+../../cwebx/ctanglex ++ -p axis.w
+make[1]: Entering directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+../../cwebx/ctanglex ++ -p buffer.w
+This is CTANGLE (version x3.6), in C++ mode.
+This is CTANGLE (version x3.6), in C++ mode.
+(No errors were found.)
+make[1]: Leaving directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+cd sources/interpreter && make global.cpp
+make[1]: Entering directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+../../cwebx/ctanglex ++ -p global.w
+This is CTANGLE (version x3.6), in C++ mode.
+(No errors were found.)
+make[1]: Leaving directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+cd sources/interpreter && make lexer.cpp
+(No errors were found.)
+make[1]: Leaving directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+cd sources/interpreter && make main.cpp
+make[1]: Entering directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+../../cwebx/ctanglex ++ -p lexer.w
+This is CTANGLE (version x3.6), in C++ mode.
+(No errors were found.)
+make[1]: Leaving directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+cd sources/interpreter && make parsetree.cpp
+make[1]: Entering directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+../../cwebx/ctanglex ++ -p main.w
+This is CTANGLE (version x3.6), in C++ mode.
+(No errors were found.)
+make[1]: Leaving directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+cd sources/interpreter && make parsetree.h
+make[1]: Entering directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+../../cwebx/ctanglex ++ -p parsetree.w
+This is CTANGLE (version x3.6), in C++ mode.
+make[1]: Entering directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+../../cwebx/ctanglex ++ -p parsetree.w
+This is CTANGLE (version x3.6), in C++ mode.
+(No errors were found.)
+make[1]: Leaving directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+cd sources/interpreter && make parse_types.h
+(No errors were found.)
+make[1]: Leaving directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+cd sources/interpreter && make parser.tab.h
+make[1]: Entering directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+make[1]: 'parse_types.h' is up to date.
+make[1]: Leaving directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+cd sources/interpreter && make parser.tab.c
+make[1]: Entering directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+bison -d parser.y
+make[1]: Entering directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+bison -d parser.y
+cd sources/interpreter && make buffer.o
+make[1]: Entering directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+g++ -std=c++14 -Wall -O3 -DNDEBUG -c -I../ -I../utilities/ -I../structure/ -I../gkmod/ -I../error/ -I../io/ -I../interface/ -Wno-parentheses  buffer.cpp -o buffer.o
+make[1]: Leaving directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+cd sources/interpreter && make atlas-types.o
+make[1]: Entering directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+g++ -std=c++14 -Wall -O3 -DNDEBUG -c -I../ -I../utilities/ -I../structure/ -I../gkmod/ -I../error/ -I../io/ -I../interface/ -Wno-parentheses  atlas-types.cpp -o atlas-types.o
+cd sources/interpreter && make axis-types.o
+make[1]: Entering directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+g++ -std=c++14 -Wall -O3 -DNDEBUG -c -I../ -I../utilities/ -I../structure/ -I../gkmod/ -I../error/ -I../io/ -I../interface/ -Wno-parentheses  axis-types.cpp -o axis-types.o
+make[1]: Leaving directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+cd sources/interpreter && make axis.o
+make[1]: Entering directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+g++ -std=c++14 -Wall -O3 -DNDEBUG -c -I../ -I../utilities/ -I../structure/ -I../gkmod/ -I../error/ -I../io/ -I../interface/ -Wno-parentheses  axis.cpp -o axis.o
+cd sources/interpreter && make global.o
+make[1]: Entering directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+g++ -std=c++14 -Wall -O3 -DNDEBUG -c -I../ -I../utilities/ -I../structure/ -I../gkmod/ -I../error/ -I../io/ -I../interface/ -Wno-parentheses  global.cpp -o global.o
+cd sources/interpreter && make lexer.o
+make[1]: Entering directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+g++ -std=c++14 -Wall -O3 -DNDEBUG -c -I../ -I../utilities/ -I../structure/ -I../gkmod/ -I../error/ -I../io/ -I../interface/ -Wno-parentheses  lexer.cpp -o lexer.o
+cd sources/interpreter && make main.o
+make[1]: Entering directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+g++ -std=c++14 -Wall -O3 -DNDEBUG -c -I../ -I../utilities/ -I../structure/ -I../gkmod/ -I../error/ -I../io/ -I../interface/ -Wno-parentheses  main.cpp -o main.o
+cd sources/interpreter && make parsetree.o
+make[1]: Entering directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+g++ -std=c++14 -Wall -O3 -DNDEBUG -c -I../ -I../utilities/ -I../structure/ -I../gkmod/ -I../error/ -I../io/ -I../interface/ -Wno-parentheses  parsetree.cpp -o parsetree.o
+cd sources/interpreter && make parser.tab.o
+make[1]: Entering directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+g++ -std=c++14 -Wall -O3 -DNDEBUG -c -I../ -I../utilities/ -I../structure/ -I../gkmod/ -I../error/ -I../io/ -I../interface/ -Wno-parentheses  parser.tab.c -o parser.tab.o
+make[1]: Leaving directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+make[1]: Leaving directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+make[1]: Leaving directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+make[1]: Leaving directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+make[1]: Leaving directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+make[1]: Leaving directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+g++ -std=c++14 -o Fokko sources/utilities/abelian.o sources/utilities/arithmetic.o sources/utilities/bigint.o sources/utilities/bitmap.o sources/utilities/bits.o sources/utilities/bitset.o sources/utilities/constants.o sources/utilities/graph.o sources/utilities/matreduc.o sources/utilities/matrix.o sources/utilities/mod2_system.o sources/utilities/partition.o sources/utilities/permutations.o sources/utilities/poset.o sources/utilities/preorder.o sources/utilities/ratvec.o sources/utilities/size.o sources/structure/alcoves.o sources/structure/bitvector.o sources/structure/cartanclass.o sources/structure/dynkin.o sources/structure/gradings.o sources/structure/innerclass.o sources/structure/involutions.o sources/structure/lattice.o sources/structure/lietype.o sources/structure/prerootdata.o sources/structure/realredgp.o sources/structure/rootdata.o sources/structure/subquotient.o sources/structure/subsystem.o sources/structure/tits.o sources/structure/topology.o sources/structure/tori.o sources/structure/weyl.o sources/structure/weylsize.o sources/structure/y_values.o sources/gkmod/blocks.o sources/gkmod/bruhat.o sources/gkmod/ext_block.o sources/gkmod/ext_kl.o sources/gkmod/kgb.o sources/gkmod/kgp.o sources/gkmod/kl.o sources/gkmod/klsupport.o sources/gkmod/K_repr.o sources/gkmod/repr.o sources/gkmod/standardrepk.o sources/gkmod/wgraph.o sources/io/basic_io.o sources/io/block_io.o sources/io/filekl.o sources/io/filekl_in.o sources/io/interactive.o sources/io/interactive_lattice.o sources/io/interactive_lietype.o sources/io/ioutils.o sources/io/kgb_io.o sources/io/kl_io.o sources/io/output.o sources/io/poset_io.o sources/io/prettyprint.o sources/io/realweyl.o sources/io/realweyl_io.o sources/io/wgraph_io.o sources/error/error.o sources/interface/blockmode.o sources/interface/commands.o sources/interface/emptymode.o sources/interface/helpmode.o sources/interface/input.o sources/interface/io.o sources/interface/main.o sources/interface/mainmode.o sources/interface/realmode.o sources/interface/reprmode.o sources/test/interrupt.o sources/test/test.o sources/test/testprint.o sources/test/testrun.o -lreadline
+make[1]: Leaving directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+make[1]: Leaving directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+make[1]: Leaving directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+cd sources/interpreter && make ../../atlas
+make[1]: Entering directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
+g++ -std=c++14 -o ../../atlas buffer.o parsetree.o lexer.o axis-types.o global.o axis.o atlas-types.o main.o parser.tab.o ../structure/prerootdata.o ../structure/lietype.o ../utilities/arithmetic.o ../error/error.o ../structure/rootdata.o ../utilities/bitmap.o ../utilities/constants.o ../structure/dynkin.o ../structure/lattice.o ../utilities/bits.o ../utilities/bitset.o ../utilities/permutations.o ../structure/innerclass.o ../structure/tits.o ../structure/cartanclass.o ../structure/weyl.o ../utilities/partition.o ../utilities/poset.o ../utilities/size.o ../utilities/preorder.o ../structure/tori.o ../structure/weylsize.o ../structure/gradings.o ../structure/realredgp.o ../structure/topology.o ../io/prettyprint.o ../io/basic_io.o ../gkmod/blocks.o ../gkmod/kgb.o ../gkmod/bruhat.o ../io/ioutils.o ../io/block_io.o ../io/output.o ../io/realweyl.o ../io/realweyl_io.o ../gkmod/klsupport.o ../gkmod/kl.o ../gkmod/wgraph.o ../io/kl_io.o ../utilities/graph.o ../io/kgb_io.o ../io/wgraph_io.o ../io/filekl.o ../io/filekl_in.o ../utilities/matrix.o ../utilities/ratvec.o ../structure/bitvector.o ../structure/subquotient.o ../utilities/matreduc.o ../gkmod/K_repr.o ../gkmod/repr.o ../structure/alcoves.o ../structure/subsystem.o ../structure/involutions.o ../structure/y_values.o ../gkmod/ext_block.o ../utilities/bigint.o ../gkmod/ext_kl.o -lreadline
+make[1]: Leaving directory '/home/jda/claudeDesktop/atlasCovering/sources/interpreter'
