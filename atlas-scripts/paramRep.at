@@ -86,6 +86,7 @@ set Talphabetas = (Param -> [Param]):
        fi;
        assert(@:pHash.size() = #answers,"Talphabetas is damaged");
        for j in answers[n] do TabHash.index(j) od
+       {regroup(p.real_form,TabHash.index(j)) od}
 
 set TalphabetaRepeat_time = int:0
 set TalphabetaRepeat_count = int:0
@@ -386,7 +387,7 @@ primitive ideals in case of distinguished nilpotent}
 
 set test_faster_distinguished_packets(RootDatum rd, [Param] preload, int N) = bool:
     let start = elapsed_ms(), G = split_form(rd), rd_dual = dual(rd)
-    then distHs = distinguished_Hs(rd_dual)
+    then distHs = for H in distinguished_Hs(rd_dual) ~do H od
     then distps = for H in distHs
     	 	  do parameter(x_open(G),G.rho,H/2)
 		  od
@@ -433,8 +434,8 @@ set test_faster_distinguished_packets(RootDatum rd, [Param] preload, int N) = bo
 	   	else actualsH
 	   	fi
 	   in
-	   {prints("candsH = ",candsH);}
-	   {prints("actuals = ",actualsH);}
+	   prints("candsH = ",candsH);
+	   prints("actualsH = ",actualsH);
 	   if #candsH > #actualsH
 	   then prints("for j = ",j," and H = ",distHs[j],", the ",#candsH - #actualsH,
 	   	" extra candidates are ",
@@ -447,12 +448,14 @@ set test_faster_distinguished_packets(RootDatum rd, [Param] preload, int N) = bo
 		       for q in actualsH if first(for r in candsH do q=r od) = -1
 		       do q fi od);
 		       false
-	   else true
+	   else prints("for j = ",j," and H = ",distHs[j],", identified correctly the ",
+	   	#candsH," unipotent representations");
+	   true
 	   fi) next prints("Finished at ",print_time_string(elapsed_ms() - start))
 
 set test_faster_distinguished_packets(RootDatum rd, [Param] preload) = bool:
     let start = elapsed_ms(), G = split_form(rd), rd_dual = dual(rd)
-    then distHs = distinguished_Hs(rd_dual)
+    then distHs = for H in distinguished_Hs(rd_dual) ~do H od
     then distps = for H in distHs
     	 	  do parameter(x_open(G),G.rho,H/2)
 		  od

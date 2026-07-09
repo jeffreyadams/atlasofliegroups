@@ -113,6 +113,10 @@ set simple_factorsRF(RealForm G) = [RealForm]:
        fi
     od; Factors
 
+set is_simpleRF(RealForm G) = bool:
+    if G.semisimple_rank < G.rank then return false fi;
+    #simple_factorsRF(G) = 1
+
 {if the kth entry is (i,j), then G-simple root k belongs to ith simple factor and is #j there}
 set G_root_labels(RealForm G) = [(int,int)]:
     let Sindexers = for S in simple_factorsRF(G)

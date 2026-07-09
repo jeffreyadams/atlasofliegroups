@@ -62,6 +62,35 @@ set dist_real_ind(RealForm G) = [[Param]]:
 			  od))
     od
 
+{shift should be central in G}
+set dist_real_ind(RealForm G, ratvec shift) = [[Param]]:
+    for(r,lam) in realQ_weights(G)
+    do let Q = parabolic_by_wt(lam,x_open(G))
+       then L = Q.Levi
+       in monomials(sum(G,for listL in weak_packets_distinguished_faster(L, shift)
+       	  		  do let PL = sum(L, for pL in listL do 1*pL od)
+       	  		     in real_induce_irreducible(PL,G)
+			  od))
+    od
+
+set dist_real_ind_hash(RealForm G) = [[Param]]:
+    for(r,lam) in realQ_weights(G)
+    do let Q = parabolic_by_wt(lam,x_open(G))
+       then L = Q.Levi
+       in monomials(sum(G,for pL in UHT.dist_unip_reps(L)
+       	  		  do real_induce_irreducible(1*pL,G)
+			  od))
+    od
+
+set dist_real_ind_hash(RealForm G, ratvec shift) = [[Param]]:
+    for(r,lam) in realQ_weights(G)
+    do let Q = parabolic_by_wt(lam,x_open(G))
+       then L = Q.Levi
+       in monomials(sum(G,for pL in UHT.dist_unip_reps_shift(L,shift)
+       	  		  do real_induce_irreducible(1*pL,G)
+			  od))
+    od
+
 set dist_theta_ind(RealForm G) = [Param]:
     let Qs = Qs(G)
     then uLs = for Q in Qs
@@ -70,3 +99,87 @@ set dist_theta_ind(RealForm G) = [Param]:
     in monomials(sum(G,for pL in uLs.##.##
        		       do theta_induce_irreducible(1*pL,G)
 		       od))
+
+set dist_theta_ind_hash(RealForm G) = [Param]:
+    let Qs = Qs(G)
+    then uLs = for Q in Qs
+    	       do UHT.dist_unip_reps_shift(Q.Levi,-rho_u(Q))
+	       od {type [[Param]]}
+    in monomials(sum(G,for pL in uLs.##
+       		       do theta_induce_irreducible(1*pL,G)
+		       od))
+
+set unipotent_representations_fastTR(RealForm G) = [Param]:
+    let phash = make_Param_hash()
+    in for (r,lam) in realQ_weights(G)
+       do let Q = parabolic_by_wt(lam,x_open(G))
+       	  then L = Q.Levi
+	  then Llist = dist_theta_ind(L)
+	  in for p in monomials(sum(G, for pL in Llist
+	     	      		       do real_induce_irreducible(1*pL,G)
+				       od))
+	     do phash.match(p)
+	     od
+       od;
+       phash.list()
+
+set unipotent_representations_hashTR(RealForm G) = [Param]:
+    let phash = make_Param_hash()
+    in for (r,lam) in realQ_weights(G)
+       do let Q = parabolic_by_wt(lam,x_open(G))
+       	  then L = Q.Levi
+	  then Llist = dist_theta_ind_hash(L)
+	  in for p in monomials(sum(G, for pL in Llist
+	     	      		       do real_induce_irreducible(1*pL,G)
+				       od))
+	     do phash.match(p)
+	     od
+       od;
+       phash.list()
+
+set unipotent_representations_fastRT(RealForm G) = [Param]:
+    let phash = make_Param_hash()
+    then Qs = Qs(G)
+    in for Q in Qs
+       do let L = Q.Levi
+       	  then Llist = dist_real_ind(L,-rho_u(Q))
+	  in for p in monomials(sum(G, for pL in Llist.##
+	     	      		       do theta_induce_irreducible(1*pL,G)
+				       od))
+	     do phash.match(p)
+	     od
+        od;
+	phash.list()
+
+set unipotent_representations_hashRT(RealForm G) = [Param]:
+    let phash = make_Param_hash()
+    then Qs = Qs(G)
+    in for Q in Qs
+       do let L = Q.Levi
+       	  then Llist = dist_real_ind_hash(L,-rho_u(Q))
+	  in for p in monomials(sum(G, for pL in Llist.##
+	     	      		       do theta_induce_irreducible(1*pL,G)
+				       od))
+	     do phash.match(p)
+	     od
+        od;
+	phash.list()
+
+
+set rep_tester(RealForm G) = [vec]:
+    let rd_hash = make_RootDatum_hash()
+    then theta_hash = make_mat_hash()
+    then status_hash = make_vec_hash()
+    then  data = [vec]:[]
+    in for Q in Qs(G)
+       do let L = Q.Levi
+       in for QR in realQs(L)
+       	  do let LRd = QR.Levi.derived
+	     then xd = KGB(LRd,0)
+	     in data#:= (vec: [rd_hash.match(LRd), theta_hash.match(xd.involution),
+	     	status_hash.match(vec: for j:LRd.semisimple_rank do status(j,xd) od)])
+	  od
+       od;
+       prints("Found ",#(data.sort_u_lex)," distinct derived groups among ",#data," Levi subgroups");
+       data
+

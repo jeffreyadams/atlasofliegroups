@@ -20,6 +20,7 @@
 <FPP_faces_herm.at {for big_unitary_hash}
 <paramRep.at {for GK_dim_new}
 
+
 {extract just the parameters from [(int,int,Param)]}
 set parameters([(int,int,Param)] triples)=[Param]:for (,,p) in triples do p od
 
@@ -565,12 +566,136 @@ set factor_my_representations(RealForm G, ratvec v) = [Param]:
 		      od
     in glue_params(G,my_unip_lists,v)
 
-{already defined at line 190}
-{set mult([[(int,int,Param)]] packet)=((int,int,int)->int):(int orbit,int block,int cell):
-let rv=0 in
-for (b,c,p) in packet[orbit] do
- if b=block and c=cell then rv+:=1 fi
-od;rv}
+set_type
+[unip_hash_table =
+( ( -> int) real_form_size {number of real forms included}
+  , ( -> vec) unip_sizes {for every real form, the number of unipotent reps}
+  , (RealForm -> int) unip_size {for one real form, number of unipotent reps}
+  , ( -> ) clear
+  , (RealForm -> ) clearG
+  , (RealForm -> int) rf_number {number of real form in list}
+  , (int -> RealForm) rf_index {jth real form in list}
+  , (RealForm -> [Param]) dist_unip_reps {list of distinguished unipotent reps of G}
+  , ((RealForm, ratvec) -> [Param]) dist_unip_reps_shift {unip reps rest to v on z(g)}
+{  , (Param -> bool) is_Arthur_unip {whether p is an Arthur unipotent rep}}
+  , ((RealForm,[Param],int) -> ) heres_Arthur {fill with these unip reps; first n are distinguished}
+  , ( -> (RealForm_hash,RealForm_hash,[Param_hash],[Param_hash],[int],[int],[vec])) dump
+)
+]
+
+set make_unip_hash() = unip_hash_table:
+(   let rf_hash = make_RealForm_hash()
+    then srf_hash = make_RealForm_hash() {derived simple factors}
+    then unip_hashes = [Param_hash]: [] {one for each real form}
+    then s_unip_hashes = [Param_hash]: [] {one for each derived simple factor, to hold distinguished unip}
+    then filled = [int]: [] {one for each real form; 0 if unfilled, -#dist if filled w dist, #dist if filled}
+    then s_filled = [int]: [] {one for each derived simple factor; 0 if unfilled, -#dist if filled w dist, #dist if filled}
+    then DSFs =[vec]: [] {one for each real form; locations in srf_hash of derived simple factors}
+    then clearUHT() = void:
+    	 rf_hash.clear();
+	 unip_hashes := [];
+	 filled := [];
+	 s_filled := [];
+	 DSFs := []
+     then clearG(RealForm G) = void:
+     	  let i = rf_hash.lookup(G)
+	  in if i>= 0
+	     then let remaining = rf_hash.list()[:i] ## rf_hash.list()[i+1:]
+	     	  in rf_hash.clear();
+		     rf_hash.fill(remaining);
+	     	     unip_hashes := unip_hashes[:i] ## unip_hashes[i+1:];
+	     	     filled := filled[:i] ## filled[i+1:];
+	     	     DSFs := DSFs[:i]##DSFs[i+1:]
+	      fi
+     then add_srf(RealForm G) = int:
+     	  if not is_simpleRF(G)
+	  then prints("Sorry, can't add non-simple ",G); -1
+	  else let N = srf_hash.size()
+	       then n = srf_hash.match(G)
+	       in if n = N
+	       	  then s_unip_hashes #:= make_Param_hash();
+		       s_filled #:= 0
+		  fi;
+ 		  n
+	  fi
+     then fill_dist_srf(RealForm G) = int:
+     	  let n = add_srf(G)
+	  in if s_filled[n] = 0 {assumes distinguished_faster not too large! need to fix G = E8!}
+	     then let wdf = weak_packets_distinguished_faster(G).##
+	     	  in s_unip_hashes[n].fill(wdf);
+	     	  s_filled[n] := -#wdf
+	     fi;
+	     n
+     then add_rf(RealForm G) = int:
+     	  let N = rf_hash.size()
+	  then n = rf_hash.match(G)
+	  in if n = N
+	     then unip_hashes#:= make_Param_hash();
+	     	  filled #:=0;
+	     	  DSFs #:= (vec: for Ld in derived_simple_factorsRF(G) do add_srf(Ld) od)
+	     fi;
+	     n
+     then fill_dist_rf(RealForm G) = int:
+     	  let n = add_rf(G)
+	  in if filled[n] = 0
+	     then let dLs = derived_simple_factorsRF(G)
+	     	  then js = for dL in dLs
+		       	    do fill_dist_srf(dL)
+			    od {locations of factors in srf_hash}
+		  in unip_hashes[n].fill(glue_params(G,
+		     for j in js do s_unip_hashes[j].list()[:abs(s_filled[j])] od));
+		     filled[n]:=-unip_hashes[n].size()
+	     fi; n
+	     {weak_packets_distinguished_faster(G));}
+    {then fill_srf(RealForm G) = int n:
+    	 let n = fill_dist_srf(G)
+	 in if filled[n] < 0
+	    then }
+      in
+      (	( -> int): {real_form_size} @int: rf_hash.size()
+      , ( -> vec): {unip_sizes} @vec:
+       for unip_hash in unip_hashes
+       do unip_hash.size()
+       od
+      , (RealForm -> int): {unip_size}(RealForm rf):
+       let rfnum = add_rf(rf)
+       in unip_hashes[rfnum].size()
+      , ( -> ): {clear} clearUHT
+      , (RealForm -> ): {clearG} (RealForm rf): clearG(rf)
+      , (RealForm -> int): {rf_number} {number of real form in list} (RealForm rf):
+       add_rf(rf)
+      , (int -> RealForm): {rf_index} (int j): rf_hash.index(j)
+      , (RealForm -> [Param]): {dist_unip_reps} (RealForm rf):
+       let n = fill_dist_rf(rf)
+       in unip_hashes[n].list()[:abs(filled[n])]
+      , ((RealForm, ratvec) -> [Param]): {dist_unip_reps_shift} (RealForm rf, ratvec shift):
+       if shift.=
+       then let n = fill_dist_rf(rf)
+       	    in return unip_hashes[n].list()[:abs(filled[n])]
+       fi;
+       let n = add_rf(rf)
+       then dLs = derived_simple_factorsRF(rf)
+       then js = for dL in dLs
+		 do fill_dist_srf(dL)
+	  	 od {locations of factors in srf_hash}
+       in glue_params(rf, for j in js do s_unip_hashes[j].list()[:abs(s_filled[j])] od, shift)
+{  , (Param -> bool) is_Arthur_unip {whether p is an Arthur unipotent rep} }
+     , ((RealForm,[Param],int) -> ): {heres_Arthur} (RealForm rf, [Param] us, int n):
+       let j = add_rf(rf)
+       in if filled[j] = 0
+       	  then unip_hashes[j].fill(us);
+	       filled[j] := #us
+	  elif filled[j] < 0
+	  then unip_hashes[j].fill(us[n:]);
+	       filled[j] := #us
+	  fi
+      , ( -> (RealForm_hash,RealForm_hash,[Param_hash],[Param_hash],[int],[int],[vec])): {dump}
+      @(RealForm_hash,RealForm_hash,[Param_hash],[Param_hash],[int],[int],[vec]):
+      (rf_hash, srf_hash, unip_hashes, s_unip_hashes, filled, s_filled, DSFs)
+      )
+)
+
+set UHT = make_unip_hash()
 
 {  output routines: show_...   }
 
@@ -1052,3 +1177,4 @@ parameters(weak_packets(G))}
 
 set unipotent_representations_by_orbit(RealForm G)=[[Param]]:
 let wp=weak_packets(G) in for (,b) in wp do parameters(b) od
+
