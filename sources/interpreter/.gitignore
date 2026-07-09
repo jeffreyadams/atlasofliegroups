@@ -1,0 +1,9 @@
+*.cpp
+*.h
+*.dvi
+*.log
+*.tex
+*.toc
+*.pdf
+*.c
+parser.output

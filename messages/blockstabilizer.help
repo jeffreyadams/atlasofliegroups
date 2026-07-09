@@ -1,0 +1,34 @@
+
+The "blockstabilizer" command describes the structure of the
+stabilizer in the Weyl group of a block element x.  This is a subgroup W_x
+of the real Weyl group W(G,H_x) for the corresponding Cartan subgroup
+H_x (see the help file for "realweyl"). The subgroup depends up to
+conjugacy only on the block and the Cartan subgroup; the software
+therefore asks only for these two pieces of information. (As usual the
+block is specified by a real form of the dual group, and the Cartan
+subgroup by a number explained by the "cartan" command.)
+
+The structure of W_x, like that of W(G,H_x), is described in Vogan,
+Irreducible Characters of Semisimple Lie Groups IV, Duke Math J. 49,
+no. 4, pp. 943--1073. Recall that W(G,H_x) has the structure
+
+W^C.((A_i.W_ic) x W^R)
+
+explained in the help for "realweyl." The subgroup W_x has the
+structure
+
+W^C.((A_i.W_ic) x (A_r.W_rc)).
+
+Here W_rc is the Weyl group of the real roots not satisfying the
+parity condition; these correspond to the even coroots in a
+Z/2Z-grading of the real roots. The group A_r is an elementary abelian
+2-group normalizing W_rc. The structure of A_r.W_rc is therefore
+entirely analogous to that of A_i.W_ic. In fact A_r.W_rc may be
+identified with the compact imaginary Weyl group (A^v_i.W^v_ic) inside
+W^v_i in the Weyl group of the dual Cartan for the dual block in G^v.
+
+Just as for realweyl, only the 2-groups A_i and A_r are subtle and
+depend on the group (as opposed to the Lie algebra).
+
+Note that the number of block elements attached to the Cartan H_x is
+equal to the index of W_x in W.

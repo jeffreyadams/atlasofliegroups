@@ -1,0 +1,74 @@
+<basic.at
+<K_types.at
+
+{Two different definitions of normal:
+
+1)Parameter p=(x,lambda,nu) is normal if
+gamma is (weakly) dominant, and all singular complex roots are type C+,
+i.e. dominant and no complex descents
+
+2)a KType mu=(x,lambda), i.e. parameter with nu=0, i.e. a
+standardrepk, is normal if (see standardrepk.h): 
+
+Normal: $\<\alpha^\vee(1+\theta),\lambda>\geq0$ when $\alpha$ simple,
+complex, and orthogonal to sums of positive imaginary resp. real
+roots.
+}
+
+{this file defines 
+is_normal@Param
+is_normal_K@KType
+the different names aren't necessary but are to avoid accidentally using the wrong one
+}
+set RC_simple(KGBElt x)=[int]:
+##for alpha@i in x.root_datum.simple_roots do
+let alpha_check=x.root_datum.simple_coroots[i] in
+  if is_complex(i,x)
+   and =alpha_check*rho_i(x)
+   and =alpha_check*rho_r(x)
+ then [i]
+ else []
+ fi
+od
+
+{return (true,-1) or (false,witness)}
+set is_normal_K(KType mu)=(bool,int):
+let rd=mu.root_datum then
+gamma=infinitesimal_character(parameter(mu)) then
+RC_simple=RC_simple(x(mu)) then
+index=first(#RC_simple,(int i)bool:rd.simple_coroots[RC_simple[i]]*gamma<0) in (index = -1,index)
+
+{note: can be multiplicities here}
+set monomials([(vec,KType)] Q)=[KType]:for (,p) in Q do p od
+
+{return (true,-1) if all terms are normal, otherwise
+ return is_normal(p)=(false,witness) for some p in monomials[Q]}
+set is_normal_K([(vec,KType)] Q)=(bool,int):
+let m=monomials(Q) then
+index=first(#m,(int i)bool:let (normal,)=is_normal_K(m[i]) in not normal) in
+{let ()=prints("index:", index) in}
+if index=-1 then (true,-1) else (false,let (,root_number)=is_normal_K(m[index]) in {prints("rn=",root_number);}root_number) fi
+
+{normal: integrally dominant and no singular complex descents}
+{correction: normal: dominant and no singular complex descents}
+set is_normal(Param p)=(bool,int):
+  let rd=p.root_datum,gamma=p.infinitesimal_character in
+  if not is_dominant(p)
+  then (false,first(rd.semisimple_rank,(int i)bool: <coroot(rd,i)*gamma))
+  else
+    let index=first(rd.semisimple_rank,(int i)bool:
+          =coroot(rd,i)*gamma and is_complex(i,p.x) and is_descent(i,p.x))
+    in (index.<,index)
+ fi
+
+{return (bool,# of term, #of simple coroot)}
+set is_normal ([(vec,Param)] Q) = (bool,int,int):
+   let i = for (,p) in Q do let (normal,)=is_normal(p) in not normal od.first
+   in if i.< then (true,minus_1,minus_1)
+   else (false,i,let (,j)=is_normal(let(,p)=Q[i] in p) in j)
+   fi
+
+{For parameters on a general (not necessarily theta-stable) Levi}
+set is_normal ([int] Levi, Param p) = is_normal (p_N (p,find_N (Levi,p),Levi))
+
+

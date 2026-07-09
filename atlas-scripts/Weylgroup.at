@@ -1,0 +1,237 @@
+<basic.at
+<sort.at { for |sort@[int]| }
+<group_operations.at {for is_abelian@RootDatum}
+<simple_factors.at { for |simple_factors@RootDatum| }
+{ Functions for computing with Weyl group elements }
+
+set sgn (WeylElt w) = int: minus_1^length(w)
+
+set length ((RootDatum,mat) rd_M) = int: W_elt(rd_M).length
+
+{ whether multiplication by simple reflection lengthens or shortens M }
+set lengthens (RootDatum rd, mat M, int s) = bool: { for right multiplication }
+  rd.is_positive_root(M*root(rd,s))
+set lengthens (RootDatum rd, int s, mat M) = bool: { for left multiplication }
+  rd.is_positive_coroot(coroot(rd,s)*M)
+
+{ write given root (assumed positive) as |w*beta| with |beta| simple }
+set from_simple (RootDatum rd, vec alpha) = (WeylElt,vec):
+  let ssr = semisimple_rank(rd)
+  then ww = { simple reflections done left-to-right, so back is right-to-left }
+    while { first find index that will make alpha shorter, which should exist }
+      let i = last( ssr, (int i): coroot(rd,i)*alpha>0 ) in
+      assert(@:i>=0,"Not a positive root")  { some descent must be found }
+    ; alpha != root(rd,i) { this is the condition of the outer while! }
+    do alpha := W_gen(rd,i)*alpha; i
+    od
+  in (W_elt(rd,ww),alpha)
+
+set root_reflection (RootDatum rd, vec alpha) = WeylElt:
+   W_refl(rd,root_index(rd,alpha))
+
+
+{		--- translating to dominant gamma ---			}
+
+
+{ |gamma| is integrally dominant, need to add a sum of roots to it to make it
+  dominant; this does not change the integral Weyl chamber of |gamma|,
+  so when acting on parameters it is another parameter with the same types of
+  roots, generating an isomorphic block
+  this algorithm is crude: it adds a big enough multiple of |2*rho(rd)|
+}
+set make_dominant_using_roots (RootDatum rd, ratvec gamma) = (ratvec,vec):
+  let diff = two_rho(rd) * { minimal scalar>=0 making |gamma+diff| dominant: }
+    -min(0)(gamma*simple_coroots(rd)\2)
+  in (gamma+diff,diff)
+
+{ if vector was in $X^*$ it remains so, so return it as |vec| }
+set make_dominant_using_roots (RootDatum rd, vec v) = (vec{dom},vec{shift}):
+  let (,shift) = make_dominant_using_roots(rd,v/1) in (v+shift,shift)
+
+{ assume infinitesimal character |gamma| of |p| is integrally dominant
+  translate by sum of roots to make it dominant
+  return (new parameter, sum of roots)
+}
+set translate_to_dominant (Param p) = (Param{dom},vec{shift}):
+  let (x,lambda_rho,gamma) = %p
+  then  (new_gamma,shift) = make_dominant_using_roots(root_datum(p),gamma)
+  in (param(x,lambda_rho+shift,new_gamma),shift)
+
+{      ---------- integrally dominant functions -------------		}
+
+set integrally_from_dominant ((RootDatum,ratvec)(,v):rd_v) = (WeylElt,ratvec):
+  from_dominant(integrality_datum(rd_v),v)
+set integrally_dominant ((RootDatum,ratvec)(,v):rd_v) = ratvec:
+  dominant(integrality_datum(rd_v),v)
+
+{ a W-invariant form on X^* (or its rational span) }
+
+{ Each coroot alpha^v defines defines a rank-1 bilinear form on X^* by
+  multiplying its evaluations at the pair of argument weights. Since alpha^v
+  and -\alpha^v in this way give the same form, one can obtain a W-invariant
+  biliear form by summing these rank-1 forms over all positive coroots; the
+  radical of this form is the coradical of the root datum. In formula
+  $$
+    (\mu,\nu)=\sum_{\alpha^v\in\Delta^{\vee+}} <\alpha^v,\mu><\alpha^v\nu>
+  $$
+  The summation is conveniently done by multiplying a wide matrix M by ^M
+}
+set invariant_form_matrix (RootDatum rd) = mat: let M=poscoroots(rd) in M*^M
+set invariant_form (RootDatum rd) = (ratvec,ratvec->rat):
+  let A = rd.invariant_form_matrix in (ratvec v, ratvec w) rat: v*A*w
+
+set nondegenerate_invariant_form (RootDatum rd) = (ratvec,ratvec->rat):
+  let A = rd.invariant_form_matrix + (let M=radical_basis(rd) in M*^M)
+  in (ratvec v, ratvec w) rat: v*A*w
+
+{ a W-invariant form on X_*\otimes Q; not directly related to invariant_form }
+set co_invariant_form_matrix (RootDatum rd) =mat: let M=posroots(rd) in M*^M
+set co_invariant_form (RootDatum rd) = (ratvec,ratvec->rat):
+  let A = rd.co_invariant_form_matrix in (ratvec v, ratvec w) rat: v*A*w
+
+
+{ elliptic elements of W: their reflection action has no fixed points }
+
+set is_elliptic (WeylElt w) = bool:
+  #eigen_lattice(matrix(w),1)=0 { |eigen_lattice| empty means no eigenvalue 1 }
+
+{ a nonzero central torus makes it impossible to be elliptic; therefore a more
+  practical condition, the weaker |is_relatively_ellptic|, ignores that torus }
+set is_relatively_elliptic (WeylElt w) = bool:
+  #eigen_lattice(matrix(w),1) = w.root_datum.central_torus_rank
+
+{ use complex cross actions to find a KGBElt x0 in a fiber with no C- roots
+  by descending through complex descents until none are left
+  return (w,x0) where x=cross(w,x0)
+}
+set from_no_Cminus (KGBElt x) = (WeylElt,KGBElt):
+  let rd=x.root_datum then w=id_W(rd), r=rd.semisimple_rank in
+  while let s = last(r, (int i)bool: =status(i,x) { complex descent } ) in s>=0
+  do w:=w#s; x:=cross(s,x) od; (w,x)
+
+set from_no_Cplus (KGBElt x) = (WeylElt,KGBElt):
+  let rd=x.root_datum then w=id_W(rd), r=rd.semisimple_rank in
+  while let s = last(r, (int i)bool: status(i,x)=4 { complex ascent } ) in s>=0
+  do w:=w#s; x:=cross(s,x) od; (w,x)
+
+{ the same for parameters }
+set from_no_Cminus (Param p) = (WeylElt, Param):
+  let (w,x0)=from_no_Cminus(p.x) then w1=w.inverse
+  in (w,parameter(x0,w1*p.lambda,w1*p.nu))
+
+set from_no_Cplus (Param p) = (WeylElt, Param):
+  let (w,x0)=from_no_Cplus(p.x) then w1=w.inverse
+  in (w,parameter(x0,w1*p.lambda,w1*p.nu))
+
+set from_dlambda_dom(Param p) = (WeylElt, Param):
+let (w,) = from_dominant(p.root_datum, p.d_lambda)
+then winv = w.inverse
+in (w,parameter(cross(winv,p.x), winv*p.lambda, winv*p.nu))
+
+set to_no_Cminus (KGBElt x) = KGBElt: let (,y)=from_no_Cminus(x) in y
+set to_no_Cplus (KGBElt x) = KGBElt:  let (,y)=from_no_Cplus(x) in y
+set to_no_Cminus (Param p) = Param: let (,q)=from_no_Cminus(p) in q
+set to_no_Cplus (Param p) = Param:  let (,q)=from_no_Cplus(p) in q
+
+{action of invertible matrix on RootDatum}
+set *(mat M,RootDatum rd)=RootDatum:
+root_datum(M*simple_roots(rd)
+	  ,^inverse(M)*simple_coroots(rd)
+	  ,rd.prefers_coroots)
+
+set *(WeylElt w,RootDatum rd)=RootDatum:matrix(w)*rd
+
+{ The magic formula below for the order of the Weyl group must handle the simple
+  factors separately: while all the ingredients are defined for arbitrary Lie
+  types and root data, the factor |factorial(rank)| comes from the volume
+  formula for a simplex, applicable only when the fundamental alcove is one.
+  Labels could also be for simple coroots, as only their product matters here.
+}
+
+set order_W_simple ((string,int)(,rank):pair) = int:
+  let rd=Lie_type(pair).adjoint in
+  factorial(rank)*product(simple_root_labels(rd))*det(rd.Cartan_matrix)
+
+set order_W_simple (LieType lt) = int:
+  assert(@:lt.derived_is_simple,"Derived Root Datum is not simple");
+{ magic formula for the order of the Weyl group for a simple Lie type: }
+  let rd=lt.adjoint, r=semisimple_rank(lt)
+  in factorial(r)*product(simple_root_labels(rd))*det(lt.Cartan_matrix)
+
+set order_W (LieType lt) = int:
+  for pair in lt.simple_factors do order_W_simple(pair) od.product
+set order_W (RootDatum rd) = int: order_W(Lie_type(rd))
+
+{ factor w into elements for subgroups of W(rd) for simple factors of rd }
+set factors (WeylElt w) = [WeylElt]:
+  let rd=w.root_datum then (type,map)=Cartan_matrix_type(rd.Cartan_matrix)
+  then codes = simple_factors(type)
+   , offset=0 { rank within |type| already seen in loop below }
+in for (,rank):code in codes { traverse the simple factors }
+   do let range = map[offset:offset+rank].sort { index range for this factor }
+      then test = is_member_sorted(range)
+      then factor_word = for s in w.word if test(s) do s fi od
+   in W_elt(rd,factor_word)
+   next offset +:= rank
+   od
+
+{w in rd.W, factor_strong(w)=[w_1,...,w_n]:
+ w_i is in very_simple_factor(rd)[i]
+ these are distinct root data and not directly related
+}
+set factor_strong (WeylElt w) = [WeylElt]:
+   let rd = root_datum(w)
+in if rd.is_abelian then [w]
+   else
+      let sf=simple_factors(rd)
+      , factors_w=factors(w)  {[w_1,...,w_n]: w_i \in W(rd) }
+   in for sub@i in sf { each |sub| has rank of |rd|0, but simple derived group }
+      do let sub_d=sub.derived {simple}
+         then  x=W_elt(sub,factors_w[i].matrix)  {matrix of size rank(rd)}
+      in W_elt(sub_d,x.word)   {corresponding WeylElt of actual simple factor}
+      od
+   fi
+
+set char_poly (WeylElt w) = vec: char_poly(matrix(w))
+
+{    Coxeter element    }
+
+{. Coxeter element of W .}
+set coxeter_element (RootDatum rd) = WeylElt: W_elt(rd,all_simples(rd))
+
+{. Coxeter number .}
+set coxeter_number_simple (RootDatum rd) = int:
+assert(rd.derived.is_simple,"derived RootDatum is not simple");
+  rat_as_int(highest_root(rd)*rho_check(rd)+1)
+
+set coxeter_number (RootDatum rd) = int:
+  sum(for f in rd.simple_factors do f.coxeter_number_simple od)
+
+{. torus element representing the Coxeter Weyl group element .}
+set coxeter_torus_element (RootDatum rd) = ratvec:
+  rho_check(rd)/coxeter_number(rd)
+
+{lift Weyl group element to simply connected group}
+set lift_sc(WeylElt w)=W_elt(w.root_datum.simply_connected,w.word)
+
+{Weyl group element of a KGB element}
+
+set w(KGBElt x)=W_elt(x.real_form,x.involution*x.real_form.distinguished_involution)
+set w(Param p)=p.x.w
+
+{need invariant_form to (easily) determine if a root is short/long}
+
+set is_long(RootDatum rd,vec alpha) = bool:
+   assert(is_root(rd,alpha),"not a root");
+   let L=simple_factor(rd,alpha)
+   then f = (ratvec,ratvec->rat): invariant_form(L)
+   , beta=highest_root(L)
+   in f(alpha,alpha)=f(beta,beta)
+
+set is_short(RootDatum rd,vec alpha)=bool: not is_long(rd,alpha)
+
+set root_lengths(RootDatum rd)=void:
+let rv="" in
+for alpha in rd.simple_roots do if is_short(rd,alpha) then rv+:="S"
+else rv+:="L" fi od;prints(rv)
+

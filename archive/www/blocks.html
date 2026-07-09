@@ -1,0 +1,103 @@
+<html>
+<head>
+<title>Atlas software user guide -- Blocks</title>
+</head>
+
+<body>
+
+<center>
+<h2>Blocks</h2>
+</center>
+
+<p>
+<i>Last updated: October 16, 2005</i>
+</p>
+
+<p>
+Let G be a connected reductive complex group, with a fixed
+<a href="realforms.html">involution</a> &theta;; let K be the group of 
+&theta;-fixed points in G, and <b>g</b>=Lie(G).
+</p>
+
+<p>
+Fix a regular integral infinitesimal character &chi; for G. The category of 
+(finite-length)
+(<b>g</b>,K)-modules with generalized infinitesimal character &chi; naturally
+splits up as a finite direct sum of "indecomposables"; the summands are called 
+the <i>blocks</i> of the category. A definition is as follows: consider the
+set of (classes of) irreducible (<b>g</b>,K)-modules with infinitesimal
+character &chi;, and put an edge between two irreducibles when there is a
+non-trivial Ext<sup>1</sup> between them. Then the blocks correspond to the
+connected components of this graph; a module belongs to a block, if all its
+irreducible subquotients are in the corresponding connected component, and each
+(<b>g</b>,K)-module with generalized infinitesimal character &chi; splits
+up canonically as a direct sum of submodules lying in the various blocks.
+</p>
+
+<p>
+As explained <a href="parameters.html">here</a>, there is a nice description of
+the blocks in terms of the parameters we are using to describe
+representations. Each block is again partitioned over the set of conjugacy 
+classes of <a href="cartan.html">Cartan subgroups</a> of (G,&theta;); and for 
+each Cartan, the resulting piece is an orbit of the natural action of W on the
+parameter space. This makes it rather easy to count the number of elements
+in the blocks, without having to fully construct the parameter space. The 
+&#8220;blocksizes&#8221command will print out the blocksizes as a matrix, where
+the rows are indexed by real forms of G, and the columns by real forms
+of G<sup>&or;</sup>.
+</p>
+
+<p>
+<i>Example:</i> <b>SL</b>(2). This is much too simple, but it will
+at least give an idea. For <b>SL</b>(2), up to equivalence
+there are three strong real forms:
+two compact ones corresponding to <b>SU</b>(2), and the split one 
+<b>SL</b>(2,<b>R</b>). The dual group is <b>PSL</b>(2), and has two strong
+real forms, <b>PSU</b>(2) and <b>PSL</b>(2,<b>R</b>).
+For the compact real form, picking any of the two corresponding strong forms,
+there is a single parameter, corresponding to the split real form of 
+<b>PSL</b>(2). For the split real form, there are four parameters, two for
+the compact Cartan, and two for the split Cartan. The two for the compact
+Cartan correspond to the split real form of <b>PSL</b>(2), because that is
+the only real form of the dual group that &#8220;lives&#8221 over that
+Cartan. The two parameters for the split Cartan correspond one to the split
+dual real form, and one to the compact one. So for <b>SU</b>(2) there is of
+course a single block of representations, consisting of a single element,
+whereas for <b>SL</b>(2,<b>R</b>) there are two: if we look, say, at the
+infinitesimal character of the trivial representation then the one-element
+block is the non-spherical principal series, the other is made up of the
+trivial representation (lying over the split torus), and the two discrete
+series (lying over the compact torus.) This would be the 
+&#8220;(split,split)&#8221 block; the two one-element blocks are the
+&#8220;(split,compact)&#8221 for <b>SL</b>(2,<b>R</b>) and
+&#8220;(compact,split)&#8221 for <b>SU</b>(2), while the 
+&#8220;(compact,compact)&#8221 block is empty. Notice that if we looked at an
+infinitesimal character where the finite-dimensional representation has even
+dimension, then it would be the <i>spherical</i> principal series that is
+in a block by itself, the equivalence of categories does not preserve the
+action of the center of the group.
+</p>
+
+<p>
+<i>Example:</i> <b>PSL</b>(2). If we look now at <b>PSL</b>(2), there 
+are two translation classes of infinitesimal characters to consider. One is 
+dual to the picture obtained for the two compact strong real forms of 
+<b>SL</b>(2), and will yield two one-element blocks
+(two irreducible principal series of <b>PSL</b>(2,<b>R</b>)); the other 
+infinitesimal character will correspond to the picture dual to the one for 
+<b>SL</b>(2,<b>R</b>): there will be two blocks, one one-element block for the 
+compact real form <b>PSU</b>(2), and a three-element block containing the
+one discrete series representation and two finite-dimensional ones for
+<b>PSL</b>(2,<b>R</b>)).
+</p>
+
+<hr>
+
+<p>
+<a href="userintro.html">Back</a> to the introduction.<br>
+<a href="http://atlas.math.umd.edu">Back</a> to the Atlas homepage.
+</p>
+
+</body>
+</html>
+

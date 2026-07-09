@@ -1,0 +1,36 @@
+<tabulate.at
+
+set unipotent_principal(RealForm G)=[Param]:
+parameters(weak_packet(principal_orbit(dual(G)),G))
+
+set unipotent_principal(InnerClass ic)=[Param]:
+for G in strong_real_forms(ic) do unipotent_principal(G) od.##
+
+set dual_unipotent_princpal(RealForm G)=[Param]:
+for p in unipotent_principal(G) do dual(p) od
+
+set dual_unipotent_principal(InnerClass ic)=[Param]:
+for p in unipotent_principal(ic) do dual(p) od
+
+set dim_nil_cone(RealForm G)=half(dimension(G)-rank(G))
+
+set large_av(Param p)=[Param]:
+assert(GK_dim(p)=dim_nil_cone(p.real_form),"parameter is not large");monomials(finalize(p*0))
+
+set unipotent_principal_long(InnerClass ic)=
+let pairs=for p in unipotent_principal(ic) do (p, dual(p)) od in
+for (p,q) in pairs do (p,q,large_av(q)) od
+
+set show_unipotent_principal(InnerClass ic)=void:
+prints("real forms: inner class of ", form_name(quasisplit_form(ic)));
+prints("dual quasisiplit group: ", form_name(dual_quasisplit_form(ic)));
+prints("GK dimension of large representations of dual: ", dim_nil_cone(dual_quasisplit_form(ic)));
+prints("strong real forms of G and the order of their component group:");
+tabulate(for G in strong_real_forms(ic) do [form_name(G), (2^components_rank(G)).to_string] od);
+tabulate(
+  ["p","G","q","av"] #
+  for (p,q,params) in unipotent_principal_long(ic) do
+    [short_format(p),form_name(p.real_form),short_format(q), short_format(params[0])]#
+    for r in params[1:] do ["","","",short_format(r)] od
+  od.##
+)

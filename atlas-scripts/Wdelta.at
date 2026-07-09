@@ -1,0 +1,46 @@
+<basic.at
+<K.at          { for K_root_datum, K_0 }
+<Weylgroup.at  { for |from_simple@(RootDatum.vec)| }
+
+{ functions related to W^\delta }
+
+{ make quotient root datum of |rd| by distinguished automorphism delta }
+
+set delta_fixed_root_datum (InnerClass ic) = RootDatum:
+  K_root_datum(KGB(quasicompact_form(ic),0))
+
+{ express generators for $W^\delta$ as elements of $W$ }
+set Wdelta_generators (InnerClass ic) = [WeylElt]:
+  let P = projection_to_K_matrix(ic)
+  , rd_delta=delta_fixed_root_datum(ic), rd = RootDatum: ic
+  then gens = let e=id_W(rd) in for :rd.semisimple_rank do e od
+  in
+  for beta@i in simple_roots(rd)
+  do let j = root_index(rd_delta,P*beta) then gen_j=gens[j] in
+    gens[j] :=
+    if =gen_j then gen_j # i { or equivalently |W_gen(rd,i)| }
+    elif { now |gen_j| should be simple reflection forming a pair with i }
+      assert(@:length(gen_j)=1,"more than two roots mapping to "+j)
+    ; gen_j*beta=beta
+    then gen_j # i { commuting product with |W_gen(rd,i)| }
+    else i # gen_j # i { non-commuting; conjugate |gen_j|  by |W_gen(rd,i)| }
+    fi
+  od; gens
+
+set convert_from_W_K (InnerClass ic, WeylElt w) = WeylElt:
+  let gens = Wdelta_generators(ic), result=id_W(root_datum(ic)) in
+  for s in w.word do result *:= gens[s] od; result
+
+{ find $w\in W^\delta$ taking |alpha=root(rd,j)| to simple root for |rd_delta|
+  returns |(w1,v)| where |v = w1 * alpha|; |P*v= root(rd_delta,k)|
+  and where |P| projects weight lattice from |rd| to that of |rd_delta|,
+  and |k| is the index of a simple root in |rd_delta|
+}
+set Wdelta_conjugate (RootDatum rd, mat delta, int j) = (WeylElt, vec):
+  let alpha = root(rd,j), ic = inner_class(rd,delta)
+  then rd_delta = delta_fixed_root_datum(ic), P = projection_to_K_matrix(ic)
+  then beta = P*alpha { a root for |rd_delta| }
+  then (w_K,beta_simple)= from_simple(rd_delta,beta)
+  then w= convert_from_W_K(ic,w_K.inverse) { a Weyl element for full $W$ }
+  then beta_simple_upstairs = w*alpha { a root for |rd| }
+  in assert(@:P*beta_simple_upstairs=beta_simple); (w,beta_simple_upstairs)

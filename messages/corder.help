@@ -1,0 +1,46 @@
+
+The command "corder" prints the Hasse diagram for the conjugacy
+classes of Cartan subgroups of G, with successors defined by Cayley
+transform from a more compact Cartan to a more split one.  A little
+more abstractly, the order is
+
+  H < H' if and only if the compact torus (H' \cap K)_0 is conjugate
+  to a subtorus of H \cap K.
+
+The conjugacy classes of Cartan subgroups are listed by the "cartan"
+command, which assigns them numbers beginning with 0 (the fundamental
+Cartan).  The first line of the output of "corder" is
+
+  Hasse diagram of Cartan class ordering:
+
+Each subsequent row of the output corresponds to a single Cartan, and
+the first column is the Cartan number followed by a colon.  Following
+the Cartan number i is a comma-separated list of the immediate
+predecessors j of Cartan i. We have
+
+  dim(H_j \cap K) = dim(H_i \cap K) + 1,
+
+and the identity component of H_i \cap K is conjugate to a subtorus of
+H_j \cap K. (These two conditions are equivalent to H_j being an
+immediate predecessor of H_i.)
+
+Here for example is the output of "corder" for the simply connected
+split group Sp(4,R) of type C_2:
+
+  Hasse diagram of Cartan class ordering:
+  0:
+  1: 0
+  2: 0
+  3: 2,1
+
+Cartan 0 is compact, Cartan 3 is split, and Cartans 1 and 2 have
+one-dimensional compact part.
+
+If several different real forms in the same inner class have been
+considered, the numbering of the Cartans can depend on the order in
+which they have been considered. For example, if one considers the
+inner class of type C_4, and looks first at the real form Sp(2,2),
+its three Cartan subgroups are numbered 0, 1, 2.  If however one
+first examines Sp(8,R) and then Sp(2,2), the Cartans of Sp(2,2) are
+assigned the numbers 0, 2, and 5 (these being the numbers of the
+Sp(8,R) Cartans to which they are stably conjugate).

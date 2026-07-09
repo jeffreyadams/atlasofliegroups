@@ -1,0 +1,106 @@
+<basic.at
+<sort.at
+<W_classes.at
+<class_tables.at { for |class_table_E6| }
+<character_tables.at { for type |CharacterTable| }
+
+{from Magma}
+set !e6_table = [vec]: { characters, with conjugacy classes in Magma order }
+[[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]           { trivial }
+,[1,-1,1,1,-1,1,1,1,1,-1,-1,1,1,1,1,-1,1,-1,1,-1,-1,1,-1,-1,1] { sign }
+,[6,4,-2,2,0,-3,3,0,2,-2,2,0,1,1,1,1,-2,-2,-1,0,0,0,-1,1,-1]   { reflection }
+,[6,-4,-2,2,0,-3,3,0,2,2,-2,0,1,1,1,-1,-2,2,-1,0,0,0,1,-1,-1]
+,[10,0,-6,2,0,1,-2,4,2,0,0,-2,0,-3,0,0,0,0,2,0,0,1,0,0,-1]
+,[15,-5,7,3,-1,-3,0,3,-1,-3,1,1,0,1,-2,-2,1,1,0,-1,1,0,0,0,-1]
+,[15,-5,-1,-1,3,6,3,0,3,-1,-1,-1,0,2,-1,1,2,-2,-1,0,1,0,0,-1,0]
+,[15,5,7,3,1,-3,0,3,-1,3,-1,1,0,1,-2,2,1,-1,0,1,-1,0,0,0,-1]
+,[15,5,-1,-1,-3,6,3,0,3,1,1,-1,0,2,-1,-1,2,2,-1,0,-1,0,0,1,0]
+,[20,10,4,4,2,2,5,-1,0,2,2,0,0,-2,1,1,1,1,1,-1,0,-1,0,-1,0]
+,[20,-10,4,4,-2,2,5,-1,0,-2,-2,0,0,-2,1,-1,1,-1,1,1,0,-1,0,1,0]
+,[20,0,4,-4,0,-7,2,2,4,0,0,0,0,1,-2,0,-2,0,2,0,0,-1,0,0,1]
+,[24,4,8,0,4,6,0,3,0,0,0,0,-1,2,2,-2,-1,1,0,1,0,0,-1,0,0]
+,[24,-4,8,0,-4,6,0,3,0,0,0,0,-1,2,2,2,-1,-1,0,-1,0,0,1,0,0]
+,[30,-10,-10,2,2,3,3,3,-2,4,0,0,0,-1,-1,-1,-1,-1,-1,-1,0,0,0,1,1]
+,[30,10,-10,2,-2,3,3,3,-2,-4,0,0,0,-1,-1,1,-1,1,-1,1,0,0,0,-1,1]
+,[60,10,-4,4,2,6,-3,-3,0,-2,-2,0,0,2,-1,1,-1,1,1,-1,0,0,0,1,0]
+,[60,-10,-4,4,-2,6,-3,-3,0,2,2,0,0,2,-1,-1,-1,-1,1,1,0,0,0,-1,0]
+,[60,0,12,4,0,-3,-6,0,4,0,0,0,0,-3,0,0,0,0,-2,0,0,0,0,0,1]
+,[64,16,0,0,0,-8,4,-2,0,0,0,0,-1,0,0,-2,0,-2,0,0,0,1,1,0,0]
+,[64,-16,0,0,0,-8,4,-2,0,0,0,0,-1,0,0,2,0,2,0,0,0,1,-1,0,0]
+,[80,0,-16,0,0,-10,-4,2,0,0,0,0,0,2,2,0,2,0,0,0,0,-1,0,0,0]
+,[81,9,9,-3,-3,0,0,0,-3,3,-1,-1,1,0,0,0,0,0,0,0,1,0,-1,0,0]
+,[81,-9,9,-3,3,0,0,0,-3,-3,1,-1,1,0,0,0,0,0,0,0,-1,0,1,0,0]
+,[90,0,-6,-6,0,9,0,0,2,0,0,2,0,-3,0,0,0,0,0,0,0,0,0,0,-1]
+]
+
+
+{ some stuff to figure out in what order Magma has listed classes:
+  element orders, then class sizes, of conjugacy classes, in Magma order }
+
+set e6_profile = mat: { 4*25 matrix with unique columns, characterising a class }
+   let e6_orders_sizes = mat:
+	[1, 2, 2,  2,  2, 3,  3,  3,  4,  4,   4,   4,   5
+                     ,  6,   6,   6,   6,   6,   6,   6,   8,   9,  10,  12,  12
+	|1,36,45,270,540,80,240,480,540,540,1620,3240,5184
+		     ,720,1440,1440,1440,1440,2160,4320,6480,5760,5184,4320,4320
+	]
+   , sgn_index=1
+   , reflection_index=2
+in e6_orders_sizes ^ ^[e6_table[sgn_index],e6_table[reflection_index]]
+
+set Magma_positions_E6 (WeylClassTable Wct) = [int]: { |Wct| classes to Magma }
+   let Magma_ranked = [int]: { column indices of |e6_profile| ranked |lex_leq| }
+      ranking(rlex_leq@(vec,vec))([vec]:e6_profile)
+   then profiles_sorted = for r in Magma_ranked do e6_profile[r] od
+   , lookup = binary_lookup(rlex_leq@(vec,vec))
+   , torus_rank = Wct.root_datum.rank - Wct.root_datum.semisimple_rank
+   in for w@i in Wct.class_representatives
+      do let prof = vec:
+         [order(w),Wct.class_size(i),Wct.sign[i], Wct.reflection[i]-torus_rank]
+      in Magma_ranked[lookup(prof,profiles_sorted).requisition]
+      od
+
+set to_special_E6 = (int i) int:
+   case i
+   in 0{sp}, 1{sp}
+   , 2{sp}, 3{sp}
+   , 21
+   , 14, 14, 15, 15
+   , 9{sp}, 10{sp}, 21
+   , 12{sp}, 13{sp}
+   , 14{sp}, 15{sp}
+   , 16{sp}, 17{sp}, 21
+   , 19{sp}, 20{sp}
+   , 21{sp}
+   , 22{sp}, 23{sp}
+   , 21
+   else error("Wrong E6 irrep number")
+   esac
+
+set character_table_E6 (WeylClassTable Wct) = CharacterTable:
+   let M_pos = Magma_positions_E6(Wct)
+   then class_names = [string]:
+      for w in Wct.class_representatives
+      do class_signature_E6(w).compressed_string
+      od
+   , chars = for line in e6_table do for p in M_pos do line[p] od od
+   then named_chars = [[int],string]:
+      let limit = Wct.root_datum.nr_of_posroots+1 in
+      for chi@i in chars
+      do let degree =
+	 first(limit,(int k) bool: Wct.inner(chi,Wct.sym_power_refl(k))>0)
+      in ( chi
+	 , case i in "trivial", "sign", "reflection"
+	   else to_string("irrep(dim:",chi[0],",deg:",degree,")")
+	   esac
+	 )
+      od
+   in character_table(Wct,class_names,named_chars,to_special_E6@int)
+
+set character_table_E6 = (RootDatum->CharacterTable):
+((RootDatum rd) CharacterTable: character_table_E6(class_table_E6(rd))
+, standard_datum_E6
+).memo_1_rd
+
+set character_table_E6() = CharacterTable:
+   character_table_E6(standard_datum_E6)

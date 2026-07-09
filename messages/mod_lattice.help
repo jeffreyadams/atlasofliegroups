@@ -1,0 +1,86 @@
+
+The "mod_lattice" command is provided to help the user understand the
+coordinates used by other commands such as Ktypemat, Ktypeform and
+branch.
+
+A basic object used by Ktypeform, Ktypemat and branch is the set
+X^*(T)+rho/(1-theta)X^*(T), where X^*(T) is the character lattice of
+the Cartan subgroup T, theta is an involution of T, and rho is
+one-half the sum of the positive roots.
+
+The lattice L=(1-theta)X^*(T) may not be saturated, so the quotient
+X^*(T)/(1-theta)X^*(T) may have torsion; only 2-torsion can
+occur. Thus X^*(T)/L is isomorphic to Z^{n-k}x(Z/2Z)^m for some k,m
+(n=rank X^*(T)), in which case
+
+L = Z<v_1,...,v_k,2w_1,...,2w_m>
+
+for certain vectors v_i, w_j. The mod_lattice command prints these
+vectors, in the standard basis of Z^n.
+
+The action of theta is given by choosing a Cartan class, as in the
+output of the cartan command. The vectors v_i (if any) are listed
+first, as "modulo multiples of ...". The vectors w_j (if any) are
+listed second, as "modulo even multiples of ...".
+
+Note: k (respectively m) is the number of C^* (resp. R^*) factors in
+the real form of T(R) defined by theta.
+
+
+Example: here is mod_lattice for G a torus, with real form S^1R^*C^*
+
+real: type
+Lie type: T1.T1.T2 sc csC
+main: mod_lattice
+there is a unique real form: u(1).gl(1,R).gl(1,C)
+the unique conjugacy class of Cartan subgroups is #0.
+At Cartan class 0 weights are modulo multiples of [0,0,1,-1] and even
+multiples of [0,1,0,0].
+
+
+Example: SL(2,R)
+
+Lie type: A1 sc s
+main: mod_lattice
+(weak) real forms are:
+0: su(2)
+1: sl(2,R)
+enter your choice: 1
+choose Cartan class (one of 0,1): 0
+At Cartan class 0 weights are used unchanged.
+real: mod_lattice
+choose Cartan class (one of 0,1): 1
+At Cartan class 1 weights are modulo even multiples of [1].
+
+Cartan 0 is compact, so theta=1, and L is empty. Cartan 1 is split,
+theta=-1, and L=2X^*(T)=Z<[2]>.  This is the lattice Z modulo even
+multiples of [1].
+
+
+Example: Sp(6,R)
+
+Here are the 6 Cartan classes of Sp(6,R):
+
+real: mod_lattice
+choose Cartan class (one of 0,1,2,3,4,5): 0
+At Cartan class 0 weights are used unchanged.
+real: mod_lattice
+choose Cartan class (one of 0,1,2,3,4,5): 1
+At Cartan class 1 weights are modulo multiples of [0,1,0].
+real: mod_lattice
+choose Cartan class (one of 0,1,2,3,4,5): 2
+At Cartan class 2 weights are modulo even multiples of [1,0,0].
+real: mod_lattice
+choose Cartan class (one of 0,1,2,3,4,5): 3
+At Cartan class 3 weights are modulo even multiples of [1,0,0], [0,1,0].
+real: mod_lattice
+choose Cartan class (one of 0,1,2,3,4,5): 4
+At Cartan class 4 weights are modulo multiples of [1,0,1] and even
+multiples of [0,0,1].
+real: mod_lattice
+choose Cartan class (one of 0,1,2,3,4,5): 5
+At Cartan class 5 weights are modulo even multiples of [1,0,0],
+[0,1,0], [0,0,1].
+
+For example Cartan #4 is isomorphic to R^*C^*, and
+L=Z<[1,0,1],2[0,0,1]>.

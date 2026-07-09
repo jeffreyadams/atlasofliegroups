@@ -1,0 +1,506 @@
+<basic.at { for |assert| }
+<combinatorics.at { for type |Permutation| }
+
+{ Several representations of univariate polynomials are defined below, all have
+  in common a dense representation of coefficients starting at degree 0
+}
+
+set_type i_poly = vec { compact storage, machine integers as coefficients }
+set_type i_poly_mat = [[i_poly]] { sublists are matrix rows, not columns! }
+
+set_type { more expensive formats, unbounded coefficients; dummy final part }
+[ int_poly = (string indeterminate, [int] coefficients, void .)
+, rat_poly = (string indeterminate, [rat] coefficients, void .)
+]
+
+{ addition of vectors (overrides definition in basic.at) to allow vectors of
+  possibly different lengths, implicitly extending on the right by zeros as
+  needed. This gives the right thing for coefficient vectors of polynomials.
+}
+
+
+set fix_add = +@(vec,vec)
+set fix_sub = -@(vec,vec) { save fixed-length vector addition and subtraction }
+set dot_product = *@(vec,vec) { and scalar product }
+
+{ prepare for different binding of operators |i_poly| inside this file }
+forget +@(vec,vec)
+forget -@(vec,vec)
+forget *@(vec,vec)
+
+set + = flex_add@(i_poly,i_poly)
+set - = flex_sub@(i_poly,i_poly)
+set * = convolve@(i_poly,i_poly)
+
+{ reduce polynomial by dropping trailing zeros; shouldn't really be needed }
+set strip (i_poly v) = i_poly: v + null(0) { operator + does actual stripping }
+set degree (i_poly P) = int: #P.strip-1 { degree is -1 for the zero polynomial }
+set degree (int_poly(,a,)) = int: #a-1 { |int_poly| presumed always stripped }
+set degree (rat_poly(,a,)) = int: #a-1 { |int_poly| presumed always stripped }
+
+set constant_poly (int n) = i_poly: if =n then [] else [n] fi
+set constant_poly (int n,string X) = int_poly: (X,if =n then [] else [n] fi,())
+set constant_poly (rat c,string X) = rat_poly: (X,if =c then [] else [c] fi,())
+set to_int_poly ([int] coefs,string X) = int_poly: (X,coefs,())
+set to_rat_poly ([rat] coefs,string X) = rat_poly: (X,coefs,())
+
+{ equality tests ignore the name of the indeterminate }
+set  = (int_poly(,a,)) = bool: =#a
+set != (int_poly(,a,)) = bool: !=#a
+set  = (int_poly(,a,),int_poly(,b,)) = bool: a=b
+set != (int_poly(,a,),int_poly(,b,)) = bool: a!=b
+
+set  = (rat_poly(,a,)) = bool:  =#a
+set != (rat_poly(,a,)) = bool: !=#a
+set  = (rat_poly(,a,),rat_poly(,b,)) = bool: a=b
+set != (rat_poly(,a,),rat_poly(,b,)) = bool: a!=b
+
+{ for convenience declare some constants, the ! makes changes to these illegal }
+set !poly_0 = constant_poly(0),
+    !poly_1 = constant_poly(1),
+    !poly_2 = constant_poly(2),
+    !poly_q  = i_poly: [0,1],
+    !poly_q2 = i_poly: [0,0,1]
+
+set monic_divide (i_poly P, i_poly D) = (i_poly,i_poly): { quotient, remainder }
+   assert(@:#D>0 and D~[0]=1,"Not a monic divisor");
+   let deg_D = #D-1, l_P=#P in
+   if l_P<deg_D then (poly_0,P##null(deg_D-l_P))
+   else
+      for i: l_P-deg_D { quotient has $\deg P+1-\deg D$ terms }
+      do let c=P~[i] in for j:deg_D from 1 do P~[i+j] -:= c*D~[j] od
+      od
+   ;  (P[deg_D:] {quotient from upper part}, P[:deg_D] {remainder, unstripped } )
+   fi
+
+{ for |int_poly| values, indeterminate names inherit from first operand }
+set - (int_poly(X,a,)) = int_poly: (X,for x in a do -x od,())
+set + (int_poly(X,a,), int_poly(,b,)) = int_poly:
+( X
+, let na=#a, nb=#b in
+  case na-nb
+  in { equal length; find necessary length for sum first }
+     let i=0 in while i<na and =a~[i]+b~[i] do i+:=1 od
+  ;  for k:na-i do a[k]+b[k] od
+  then { |a| shorter } for ai@i in a do ai+b[i] od ## b[na:]
+  else { |a| longer  } for bi@i in b do a[i]+bi od ## a[nb:]
+  esac
+, () { dummy }
+)
+set - (int_poly(X,a,), int_poly(,b,)) = int_poly:
+( X
+, let na=#a, nb=#b in
+  case na-nb
+  in { equal length; find necessary length for sum first }
+     let i=0 in while i<na and a~[i]=b~[i] do i+:=1 od
+  ;  for k:na-i do a[k]-b[k] od
+  then { |a| shorter } for ai@i in a do ai-b[i] od ## for x in b[na:] do -x od
+  else { |a| longer  } for bi@i in b do a[i]-bi od ## a[nb:]
+  esac
+, () { dummy }
+)
+set * (int_poly(X,a,), int_poly(,b,)) = int_poly:
+( X
+, let na=#a, nb=#b in
+  if =na or =nb then []
+  else let result = for :na+nb-1 do int: 0 od in
+     for ai@i in a do if !=ai then for bj@j in b do result[i+j]+:=ai*bj od fi od
+  ; result
+  fi
+, () { dummy }
+)
+set monic_divide (int_poly(X,P,), int_poly(,D,)) =
+   (int_poly,int_poly): { quotient, remainder unstripped: size |degree(D)| }
+   assert(@:#D>0 and D~[0]=1,"Not a monic divisor");
+   let deg_D = #D-1, l_P=#P in
+   if l_P<deg_D
+   then ( constant_poly(int:0,X), to_int_poly(P##for :deg_D-l_P do int:0 od,X) )
+   else
+      for i: l_P-deg_D { quotient has $\deg P+1-\deg D$ terms }
+      do let c=P~[i] in for j:deg_D from 1 do P~[i+j] -:= c*D~[j] od
+      od
+   ;  ( (X,P[deg_D:],()) {quotient from upper part}
+      , (X,P[:deg_D],()) {remainder}
+      )
+   fi
+
+{ this is basically copy-pasted from the above, then substituted rat for int }
+set - (rat_poly(X,a,)) = rat_poly: (X,for x in a do -x od,())
+set + (rat_poly(X,a,), rat_poly(,b,)) = rat_poly:
+( X
+, let na=#a, nb=#b in
+  case na-nb
+  in { equal length; find necessary length for sum first }
+     let i=0 in while i<na and =a~[i]+b~[i] do i+:=1 od
+  ;  for k:na-i do a[k]+b[k] od
+  then { |a| shorter } for ai@i in a do ai+b[i] od ## b[na:]
+  else { |a| longer  } for bi@i in b do a[i]+bi od ## a[nb:]
+  esac
+, () { dummy }
+)
+set - (rat_poly(X,a,), rat_poly(,b,)) = rat_poly:
+( X
+, let na=#a, nb=#b in
+  case na-nb
+  in { equal length; find necessary length for sum first }
+     let i=0 in while i<na and a~[i]=b~[i] do i+:=1 od
+  ;  for k:na-i do a[k]-b[k] od
+  then { |a| shorter } for ai@i in a do ai-b[i] od ## for x in b[na:] do -x od
+  else { |a| longer  } for bi@i in b do a[i]-bi od ## a[nb:]
+  esac
+, () { dummy }
+)
+
+{ some mixed scalar/polynomial operations, for convenience }
+set + (int c,int_poly(X,,):p) = int_poly: constant_poly(c,X)+p
+set - (int c,int_poly(X,,):p) = int_poly: constant_poly(c,X)-p
+set + (int_poly(X,,):p,int c) = int_poly: p+constant_poly(c,X)
+set - (int_poly(X,,):p,int c) = int_poly: p-constant_poly(c,X)
+set * (int c,int_poly(X,p,))  = int_poly: to_int_poly(p*c,X)
+set * (int_poly(X,p,),int c)  = int_poly: to_int_poly(p*c,X)
+set \ (int_poly(X,p,),int c)  = int_poly: to_int_poly(p\c,X)
+set % (int_poly(X,p,),int c)  = int_poly: to_int_poly(p%c,X)
+
+set + (rat c,rat_poly(X,,):p) = rat_poly: constant_poly(c,X)+p
+set - (rat c,rat_poly(X,,):p) = rat_poly: constant_poly(c,X)-p
+set + (rat_poly(X,,):p,rat c) = rat_poly: p+constant_poly(c,X)
+set - (rat_poly(X,,):p,rat c) = rat_poly: p-constant_poly(c,X)
+set * (rat c,rat_poly(X,p,))  = rat_poly: to_rat_poly(p*c,X)
+set * (rat_poly(X,p,),rat c)  = rat_poly: to_rat_poly(p*c,X)
+set \ (rat_poly(X,p,),int c)  = int_poly: to_int_poly(p\c,X)
+set / (rat_poly(X,p,),rat c)  = rat_poly: to_rat_poly(p/c,X)
+set % (rat_poly(X,p,),rat c)  = rat_poly: to_rat_poly(for x in p do x%c od,X)
+
+set * (int_poly(X,p,),rat c)  = rat_poly: to_rat_poly((ratvec:p)*c,X)
+set / (int_poly(X,p,),rat c)  = rat_poly: to_rat_poly((ratvec:p)/c,X)
+
+
+set convolve ([rat]a,[rat]b) = [rat]: { the heart of polynomial multiplication }
+   let na=#a, nb=#b in
+   if =na or =nb then []
+   else let result = for :na+nb-1 do rat: 0 od in
+      for ai@i in a do if !=ai then for bj@j in b do result[i+j]+:=ai*bj od fi od
+   ; result
+   fi
+
+set * (rat_poly(X,a,), rat_poly(,b,)) = rat_poly: ( X, convolve(a,b), ())
+
+set ^ (rat_poly (X,,):P,int n) = rat_poly: { power of a rational polynomial }
+   if =n then constant_poly(rat:1,X) elif =P then constant_poly(rat:0,X)
+   else { no point in trying to do this by repeated squaring: is not faster }
+      let result=P in while (n-:=1)>0 do result *:= P od; result
+   fi
+
+set monic_divide (rat_poly(X,P,), rat_poly(,D,)) =
+       (rat_poly,rat_poly): { quotient, remainder unstripped: size |degree(D)| }
+   assert(@:#D>0 and D~[0]=1,"Not a monic divisor");
+   let deg_D = #D-1, l_P=#P in
+   if l_P<deg_D
+   then ( constant_poly(rat:0,X), to_rat_poly(P##for :deg_D-l_P do rat:0 od,X) )
+   else
+      for i: l_P-deg_D { quotient has $\deg P+1-\deg D$ terms }
+      do let c=P~[i] in for j:deg_D from 1 do P~[i+j] -:= c*D~[j] od
+      od
+   ;  ( (X,P[deg_D:],()) {quotient from upper part}
+      , (X,P[:deg_D],()) {remainder}
+      )
+   fi
+
+{ division of integer polynomial |p| by integer polynomial |d|, with remainder,
+  |d| is not required to be monic, but might division fail in |exact_divide|;
+  not particularly written for speed, rather for simplicity and transparency
+}
+{. division of integer polynomials p=dq+r .}
+set unsafe_divide (i_poly p,i_poly d) = (i_poly,i_poly):
+   let nd=#d, lcd=d~[0] { number of terms and leading coefficient |d| } in
+   (poly_0,p) { initial pair (q,r) for recursion } .
+   (rec_fun f(i_poly q, i_poly r) (i_poly,i_poly):
+      if #r<nd then (q,r)
+      else let term=i_poly: null(#r-nd) # exact_divide(r~[0],lcd) in
+         f( q+term , r-term*d )
+      fi
+   )
+
+set divide (rat_poly(X,P,), rat_poly(,D,)) =
+       (rat_poly,[rat]): { quotient, remainder unstripped: size |degree(D)| }
+   let deg_D = #D-1, l_P=#P in assert(@:deg_D.>=,"Euclidean division by 0");
+   if l_P<deg_D
+   then ( constant_poly(rat:0,X), P##for :deg_D-l_P do rat:0 od )
+   else let lcD = D~[0] in
+      for i: l_P-deg_D { quotient has $\deg P+1-\deg D$ terms }
+      do let c=(P~[i]/:=lcD) in for j:deg_D from 1 do P~[i+j] -:= c*D~[j] od
+      od
+   ;  ( (X,P[deg_D:],()) {quotient from upper part}, P[:deg_D] {remainder} )
+   fi
+
+set \% (rat_poly A,rat_poly B) = (rat_poly,rat_poly):
+  let ((X,,):q,r)=divide(A,B) then i=0,nr=#r in
+  while i<nr and =r~[i] do i+:=1 od; { remove leading zeros from remainder }
+  (q,(X,if =i then r else r[:i~] fi,()))
+
+set \ (rat_poly A, rat_poly B) = rat_poly: let (result,)= A\%B in result
+set % (rat_poly A, rat_poly B) = rat_poly: let (,result)= A\%B in result
+
+{ extended euclidean algorithm
+  find $D=\gcd(A,B)$ and $S,T$ such that $D=SA+TB$ (returns |(D,S,T)| )
+}
+set Bezout = (rat_poly,rat_poly->rat_poly,rat_poly,rat_poly):
+   let sub ((rat_poly X, rat_poly SX, rat_poly TX)
+           , rat_poly c
+           , (rat_poly Y, rat_poly SY, rat_poly TY)) = (X-c*Y, SX-c*SY, TX-c*TY)
+   in { Bezout = } (rat_poly(X,,):A,rat_poly B) (rat_poly,rat_poly,rat_poly):
+   let L=[rat_poly,rat_poly,rat_poly]:
+       let X0=constant_poly(rat:0,X),X1=constant_poly(rat:1,X) in
+       [(A,X1,X0), (B,X0,X1)]
+   , (Q,R)=A\%B
+   in
+   while !=R
+   do L#:=sub(L~[1],Q,L~[0])
+   ; let (A,,)=L~[1], (B,,)=L~[0] in set (Q,R):= A\%B
+   od; let ((,d,):D,S,T)=L~[0] then c=constant_poly(/d~[0],X) in (D*c, S*c, T*c)
+
+
+{ evaluate polynomial at integer }
+set evaluate_at_1 (i_poly v) = int: { often we need this easy case }
+   dot_product(v,ones(#v)) { use vector dot-product here }
+
+set eval (i_poly v,int k) = int:
+  let sum=0 in  for e in v ~do sum:= e + k*sum od; sum
+
+{ evaluate polynomial at Split value }
+set eval (i_poly v,Split w)= Split:
+  let sum=Split:0 in  for e in v ~do sum:= e + w*sum od; sum
+set at_s (i_poly v) = Split: eval(v,Split:(0,1))
+
+set evaluate_at_1 (int_poly (,c,)) = int: sum(c)
+set eval (int_poly(,v,),int k) = int:
+  let sum=int:0 in  for e in v ~do sum:= e + k*sum od; sum
+set eval (int_poly(,v,),Split w)= Split:
+  let sum=Split:0 in  for e in v ~do sum:= e + w*sum od; sum
+
+set evaluate_at_1 (rat_poly (,c,)) = rat: sum(c)
+set eval (rat_poly(,v,),rat k) = rat:
+  let sum=rat:0 in  for e in v ~do sum:= e + k*sum od; sum
+{ cannot evaluate rational polynomial at split integer, so noting here }
+
+
+{			  Polynomial matrices				}
+
+{ this is currently done based on |i_poly| entries only }
+
+set shape (i_poly_mat M) = (int,int): if =#M then (0,0) else (#M,#M[0]) fi
+
+{ dot product of two vectors of polynomials (the name avoids *@(mat,mat)) }
+set dot_product([i_poly] v,[i_poly] w) = i_poly:
+  let sum=i_poly:[] in for p@i in v do sum +:= p*w[i] od; sum
+
+{ multiply two matrices of polynomials; here row-based representation really
+  makes a difference. Using operator * here does not conflict with other uses
+}
+set *(i_poly_mat A,i_poly_mat B) = i_poly_mat:
+  let B_tr=transpose(B) { best to rearrange B once and for all }
+  in for Ai in A do for B_tr_j in B_tr do dot_product(Ai,B_tr_j) od od
+
+{ add lists of polynomials, assumed of same length (name avoids +@(mat,mat)) }
+set poly_list_add([i_poly] v,[i_poly] w) = [i_poly]:
+( assert(@:#v=#w,"length mismatch adding lists of polynomials")
+; for p@i in v do p+w[i] od
+)
+set poly_list_sub([i_poly] v,[i_poly] w) = [i_poly]:
+( assert(@:#v=#w,"length mismatch adding lists of polynomials")
+; for p@i in v do p-w[i] od
+)
+
+set -(i_poly_mat M) = i_poly_mat: for row in M do for p in row do -p od od
+
+{ add or subtract matrices of the same size }
+set +(i_poly_mat A,i_poly_mat B)=i_poly_mat:
+( assert(@:#A=#B,"number of rows mismatch adding matrices of polynomials")
+; for row@i in A do poly_list_add(row,B[i]) od
+)
+set -(i_poly_mat A,i_poly_mat B)=i_poly_mat:
+( assert(@:#A=#B,"number of rows mismatch adding matrices of polynomials")
+; for row@i in A do poly_list_sub(row,B[i]) od
+)
+
+set scalar_multiply([i_poly] v,i_poly f) = [i_poly]:
+  for p in v do p*f od
+
+{ polynomial scalar times polynomial matrix }
+set *(i_poly f,i_poly_mat M) = i_poly_mat:
+  for row in M do scalar_multiply(row,f) od
+{ integer scalar case can be done a bit more efficiently }
+set *(int c, i_poly_mat M) = i_poly_mat:
+  for row in M do for p in row do p*c { use the *@(vec,int) built-in } od od
+
+{ update one entry in a list of polynomials, for instance in a row of a matrix }
+set update_row ([i_poly] R, int j,i_poly v) = [i_poly]: R[j]:=v; R
+{ update one row of a matrix (replacing it by a given new row) }
+set update_matrix_row (i_poly_mat M, int i, [i_poly] row)= i_poly_mat:
+   M[i]:=row; M
+
+set zero_poly_row (int n) = [i_poly]: for :n do poly_0 od
+set zero_poly_matrix (int rows, int columns) = i_poly_mat:
+  let !row=zero_poly_row(columns) in for :rows do row od
+set zero_poly_matrix(int n) = i_poly_mat:zero_poly_matrix(n,n)
+set scalar_poly_matrix (int n, int c) = i_poly_mat:
+   let !row=zero_poly_row(n) { model row, almost equal to each wanted row }
+   , cc =constant_poly(c)
+in for i:n do update_row(row,i,cc) od
+
+set identity_poly_matrix (int n) = i_poly_mat: scalar_poly_matrix(n,1)
+set mat_as_poly_mat (mat M) = i_poly_mat:
+   let (r,c)=shape(M) in for i:r do for j:c do M[i,j].constant_poly od od
+
+set + (i_poly_mat M, i_poly p) = i_poly_mat: { add polynomial scalar matrix }
+  for row@i in M  do for e@j in row do if i=j then e+p else e fi od od
+set - (i_poly_mat M, i_poly p) = i_poly_mat: M+-p
+
+set ^ = (i_poly,int->i_poly): { power of a polynomial }
+  let one=i_poly:[1] { use local constant for efficiency } in
+  (i_poly p,int n) i_poly: { the actual powering function }
+    if n=0 then [1]
+    else { no point in trying to do this by repeated squaring: is not faster }
+      let f=p in while (n-:=1)>0 do f *:= p od; f
+    fi
+
+{ equality of polynomial matrices }
+set = (i_poly_mat M,i_poly_mat N) = bool:
+  all(#M, (int i): let r=M[i],s=N[i] in #r=#s and all(#r, (int j): r[j]=s[j] ))
+
+{ polynomial matrix is 0 if all its entries are zero-length polynomials }
+set is_zero (i_poly_mat M) = bool:
+  all(#M, (int i): let r=M[i] in all(#r, (int j): =#r[j]) )
+
+set upper_unitriangular_inverse (i_poly_mat M) = i_poly_mat:
+  let n=#M { number of rows in matrix }, dummy_row=zero_poly_row(0)
+  then R= for :n do dummy_row od { prepare |n| rows, but leave them empty now }
+  in { solve equation $M*R=I$ for $Q$, proceeding from bottom to top }
+  for i:n { reverse traversal loop with reverse accumulation -> straight value }
+  ~do let Mi=M[i] { we use only this part of M during this iteration } in
+    R[i] := { computed row is stored as |R[i]|, and contributed to result }
+    (zero_poly_row(i) # poly_1) { beginning of row |R[i]| is somewhat boring }
+    ## { concatenate with more interesting newly computed part of |R[i]| }
+      for j: n-i-1 from i+1 { left to right, but computations are independent }
+      do let sum=poly_0 in for k: j-i from i+1 do sum -:= Mi[k] * R[k][j] od
+      ; sum    { contribute $R_{i,j} = - \sum_{k=i+1}^j M_{i,k}R_{k,j}$ }
+      od
+  ~od
+
+set lower_unitriangular_inverse (i_poly_mat M) = i_poly_mat:
+  transpose(upper_unitriangular_inverse(transpose(M)))
+
+{ $PMP^{-1}$ where $P$ is a permutation matrix, and $M$ a polynomial matrix }
+set poly_permute_basis(Permutation sigma, i_poly_mat M) = i_poly_mat:
+  for i:#M do let row=M[sigma[i]] in for j:#row do row[sigma[j]] od od
+
+{ some printing functions }
+
+{ make a printable string out of a polynomial and name of indeterminate,
+  for use in other print functions }
+
+set poly_format (i_poly v, string q)= string:
+   if =v then "0"
+   else
+      for c@k in v
+      do
+         if =c then ""
+         else
+            let coef = if c<0 then "-" else "+" fi +
+                if abs(c)=1 and k>0 then "" else int_format(abs(c)) fi
+	    ,  term = if k>1 then q+"^"+int_format(k) elif k=0 then "" else q fi
+	    in string: coef+term
+         fi
+      od.##
+   fi
+
+{ we cannot reuse |poly_format| below, as it takes a |vec| of coefficients }
+
+{ for |int_poly| and |rat_poly| that value names the indeterminate; use it }
+set format (int_poly(X,cs,)) = string:
+   if =#cs then "0"
+   else
+      let pow(int k) = string: { print monomial X^k, possibly shortened }
+          if k>1 then X+"^"+k.to_string elif k=1 then X else "" fi
+   in for c@k in cs
+      do case c
+         then "-" + if c!=minus_1 or =k then (-c).to_string else "" fi + pow(k)
+         in "" { nothing for terms with a zero coefficient }
+         else "+" + if c>1 or =k then c.to_string else "" fi + pow(k)
+         esac
+      od.##
+   fi
+
+set format (rat_poly(X,cs,)) = string:
+   if =#cs then "0"
+   else ##
+      for c@k in cs
+      do if c.= then ""
+         else
+	    let (sign,ac) = if c.< then ("-",-c) else ("+",c) fi then (n,d)=%ac
+	 in sign
+         ## if d>1 then ac.to_string elif n>1 or k=0 then n.to_string else "" fi
+         ## if k>1 then X+"^"+k.to_string elif k=1 then X else "" fi
+         fi
+      od
+   fi
+
+
+{ nice printing of a polynomial }
+set printPoly (i_poly v) = void: prints(poly_format(v,"q"))
+set printPoly (i_poly v,string q) = void: prints(poly_format(v,q))
+{synonym}
+set show(i_poly v)=void:printPoly(v)
+
+{ M=poly_mat is a polynomial matrix; e.g.
+  expr> set M= poly_mat: [[ [0,1], [0,0,1]], [[0], [1]]]
+  expr> printPolyMatrix (M)
+   +q +q^2
+   0 +1
+}
+
+set printPolyMatrix (i_poly_mat M,int space_size, string X_name) = void:
+   let string_mat = for row in M do for e in row do poly_format(e,X_name) od od
+   then space= " "*space_size, wd =
+     if =#string_mat then []
+     else for j:#M[0] do for row in string_mat do #row[j] od.max od
+     fi
+in for s_row in string_mat
+   do for s@j in s_row do space+l_adjust(wd[j],s) od.##.prints
+   od
+
+set printPolyMatrix (i_poly_mat M,int space_size) = void:
+   printPolyMatrix(M,space_size,"q")
+set printPolyMatrix (i_poly_mat M,string char) = void: printPolyMatrix(M,3,char)
+set printPolyMatrix (i_poly_mat M) = void: printPolyMatrix(M,3,"q")
+
+{ this provides maybe more meaningful names for |flex_add| and friends }
+set poly_plus    = +@(i_poly,i_poly) { this binding will remain exported }
+set poly_minus   = -@(i_poly,i_poly) { this binding will remain exported }
+set poly_product = *@(i_poly,i_poly) { this binding will remain exported }
+
+{ restore normal vector arithmetic }
+forget +@(vec,vec)
+forget -@(vec,vec)
+forget *@(vec,vec)
+set + = fix_add@(vec,vec)
+set - = fix_sub@(vec,vec)
+set * = dot_product@(vec,vec)
+
+set sgn_poly (int k) = i_poly:
+  assert(@:k!=0,"taking sign of 0"); [if k.< then -1 else 1 fi]
+
+set divide_by (int k,i_poly v) = i_poly: ratvec_as_vec(v/k)
+
+{ whether an |i_poly| has only non-negative coefficients }
+set is_non_negative = (i_poly->bool): >=@vec { same condition as "dominance" }
+
+set top_left_square_block (i_poly_mat M,int size) = i_poly_mat:
+  for row in M[:size] do row[:size] od
+
+set vee=i_poly:[0,1]  {polynomial v}
+set v_power(int k)=i_poly:vee^k
+set vshow(i_poly v)=void:printPoly(v,"v")
+
+{write f(q) as a polynomial in v^2=q}
+set at_v_squared(i_poly f)=i_poly: ##for a in f do [a,0] od

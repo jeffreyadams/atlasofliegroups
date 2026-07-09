@@ -1,0 +1,177 @@
+\documentclass[11pt]{article}
+
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\g}{\mathfrak{g}}
+\newcommand{\p}{\mathfrak{p}}
+\newcommand{\uu}{\mathfrak{u}}
+\newcommand{\orr}{\operatorname{or}}
+\newcommand{\sig}{\operatorname{sig}}
+\DeclareMathOperator{\dimm}{dim}
+
+\title{The role of orientation numbers in the \texttt{atlas} unitarity algorithm}
+\author{}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{The question}
+
+The \texttt{atlas} algorithm for deciding whether an irreducible representation
+$\pi=J(\gamma)$ is unitary proceeds in two stages:
+\begin{enumerate}
+  \item[(1)] compute the signature of the \emph{$c$-form} on $\pi$;
+  \item[(2)] \emph{convert} that signature into the signature of the genuine
+        invariant Hermitian form on $\pi$.
+\end{enumerate}
+The representation is unitary iff the resulting Hermitian form is definite
+(\texttt{is\_pure} in the code).  The question is: where do orientation numbers
+enter?  Do they belong to stage~(1), the $c$-form computation, or only to
+stage~(2), the Hermitian conversion?
+
+\medskip
+\noindent\textbf{Short answer.}  Orientation numbers belong to stage~(1).  They
+appear in the passage from \emph{standard} modules to the \emph{irreducible}
+module \emph{inside the $c$-form computation}.  They do \emph{not} appear in the
+$c$-to-Hermitian conversion of stage~(2); that conversion is governed by a
+different invariant $\mu$ (built from $\dimm(\uu\cap\p)$ and the value of the
+lowest $K$-type).  So the naive guess --- ``orientation numbers are the thing
+that turns the $c$-form into the Hermitian form'' --- is, perhaps surprisingly,
+\emph{not} how the algorithm is organized.
+
+\section{What an orientation number is}
+
+The signature characters live in the ring of \emph{split integers}
+$\Z[s]/(s^2-1)$: the unit $s$ records a sign, i.e.\ it interchanges the positive
+and negative parts of a signature $(p,q)$.
+
+The orientation number $\orr(\gamma)$ of a parameter $\gamma=(x,\lambda,\nu)$ is a
+nonnegative integer attached to $\gamma$.  It is computed by the built-in
+\texttt{orientation\_nr} (the C\texttt{++} routine
+\texttt{Rep\_context::orientation\_number}), and counts the \emph{non-integral}
+positive roots that contribute, namely
+\begin{itemize}
+  \item each non-integral positive \emph{real} root $\alpha$ that is
+        ``oriented'' with respect to $\gamma$ (a parity condition on
+        $\langle\gamma-\lambda+\rho_{\mathbb R},\alpha^\vee\rangle$ together with
+        the sign of $\langle\nu,\alpha^\vee\rangle$), and
+  \item each non-integral complex quadruple $\{\pm\alpha,\pm\theta\alpha\}$ that
+        is a complex descent (these are counted in pairs and then halved).
+\end{itemize}
+The essential point for us is that $\orr(\gamma)$ depends on the continuous
+parameter $\nu$: it is a property of where $\gamma$ sits relative to the
+non-integral root hyperplanes, not merely of the block.
+
+\section{Stage (1): the $c$-form, and where orientation numbers live}
+
+\subsection*{$c$-form on a standard module: no orientation numbers}
+
+The $c$-form on a \emph{standard} module $I(x)$ is computed purely by
+deformation in $\nu$ (\texttt{c\_form\_std} $=$ \texttt{full\_deform}).  As
+$\nu\to0$ one reaches the tempered case, where the $c$-form is positive; the
+deformation accumulates the controlled sign changes at reducibility points,
+encoded by Kazhdan--Lusztig--Vogan polynomials evaluated at $q=s$.  No
+orientation number is involved in this step.
+
+\subsection*{$c$-form on an irreducible module: orientation numbers enter here}
+
+To get the $c$-form on the irreducible $J(y)$ one inverts the
+Kazhdan--Lusztig--Vogan relationship.  In the Grothendieck group,
+\begin{equation}
+  J(y)=\sum_x (-1)^{\ell(x)-\ell(y)}\,P_{x,y}(1)\,I(x).
+\end{equation}
+This identity of \emph{characters} does \emph{not} carry over verbatim to
+\emph{forms}.  At the level of $c$-forms one has instead
+\begin{equation}\label{eq:cform-irr}
+  J(y)_c=\sum_x (-1)^{\orr(x)-\orr(y)}\,(-1)^{\ell(x)-\ell(y)}\,P_{x,y}(s)\,I(x)_c,
+\end{equation}
+where two things change relative to the character formula:
+\begin{itemize}
+  \item the polynomial is evaluated at $q=s$ rather than $q=1$ (this is the
+        signature refinement of the multiplicity), and
+  \item each term acquires the \textbf{orientation-number sign}
+        $(-1)^{\orr(x)-\orr(y)}$.
+\end{itemize}
+The difference $\orr(x)-\orr(y)$ is always even on terms that occur (an odd
+difference signals an error), so this sign is well defined; in the split ring it
+is the factor $s^{(\orr(y)-\orr(x))/2}$.
+
+In the code this is exactly \texttt{c\_form\_irreducible}:
+\begin{verbatim}
+set c_form_irreducible (Param p) = KTypePol:
+   let ori_nr_p = orientation_nr(p)
+   then oriented_KL_sum = ParamPol: null_module(p) +
+      for c@q in KL_sum_at_s(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
+in map(c_form_std@Param, oriented_KL_sum )
+\end{verbatim}
+Here \texttt{KL\_sum\_at\_s(p)} supplies $(-1)^{\ell(x)-\ell(y)}P_{x,y}(s)$, and
+\begin{verbatim}
+orientation_nr_term(orientation_nr(p),q) = s^{[or(p)-or(q)]/2}
+\end{verbatim}
+supplies the orientation-number sign.  Only after these standard-module
+coefficients are fixed up is each $I(x)_c$ replaced by its deformed value
+(\texttt{c\_form\_std}).  The same factor appears at the built-in level as
+\texttt{exp\_i(orient\_y - orientation\_number(x))} in
+\texttt{Rep\_context}'s deformation routines.
+
+\medskip
+\noindent
+\emph{Why it must be here.}  The $c$-form is canonically normalized on each
+\emph{standard} module by the deformation (its sign is pinned down at the
+tempered endpoint).  When one re-expresses $J(y)_c$ in that fixed basis of
+standard $c$-forms, the relative normalization between $J(y)$ and each $I(x)$ is
+precisely $(-1)^{\orr(x)-\orr(y)}$.  Orientation numbers are therefore an
+intrinsic part of computing the $c$-form \emph{on the irreducible}, even though
+they are absent from the $c$-form on a single standard module.
+
+\section{Stage (2): converting the $c$-form to the Hermitian form}
+
+The conversion is \texttt{convert\_cform\_hermitian}, and it does \emph{not} use
+orientation numbers.  It multiplies the $c$-form's value on each $K$-type $p$ by
+$s$ raised to $\mu(p)-\mu(p_0)$, where $p_0$ is a chosen normalizing $K$-type and
+\begin{equation}
+  \mu(p)= \underbrace{(g-l-\rho^\vee_{\mathbb R})\cdot(\lambda-\rho)}_{\text{$\lambda$-term}}
+        + \underbrace{\tfrac12\,l\,(\delta-1)\,\tau}_{\text{$\tau$-term}}
+        + \underbrace{\dimm(\uu\cap\p)}_{\text{dimension term}} .
+\end{equation}
+In code:
+\begin{verbatim}
+set convert_cform_hermitian (KTypePol P, mat delta, KType p0) = KTypePol:
+  let a_mu = mu(p0,delta) in
+    P.null_K_module +
+      for c@p in P do (c*(mu(p,delta)-a_mu).rat_as_int.exp_s, p) od
+\end{verbatim}
+The governing quantity here is $\mu$ --- dominated by the parity of
+$\dimm(\uu\cap\p)$ together with the lowest-$K$-type valuation --- and not the
+orientation number.  This is the only place the genuine real form (via $\delta$
+and $\dimm(\uu\cap\p)$) enters the sign bookkeeping; in the equal-rank case the
+twist is trivial and \texttt{hermitian\_form\_irreducible} is just
+\texttt{c\_form\_irreducible} followed by this conversion.
+
+\section{Conclusion}
+
+\begin{center}
+\begin{tabular}{lll}
+\hline
+Step & atlas routine & orientation numbers?\\
+\hline
+$c$-form on standard $I(x)$           & \texttt{c\_form\_std}\,/\,\texttt{full\_deform} & no \\
+$c$-form on irreducible $J(y)$        & \texttt{c\_form\_irreducible}                   & \textbf{yes} \\
+convert $c$-form $\to$ Hermitian      & \texttt{convert\_cform\_hermitian}              & no (uses $\mu$)\\
+\hline
+\end{tabular}
+\end{center}
+
+\noindent
+Orientation numbers are part of \textbf{computing the $c$-form}, specifically the
+step that assembles the $c$-form on the irreducible from the $c$-forms on
+standard modules via formula~\eqref{eq:cform-irr}.  They are \textbf{not} the
+mechanism that converts the $c$-form into the Hermitian form; that role is played
+by $\mu$ and, in particular, by $\dimm(\uu\cap\p)$.
+
+\end{document}

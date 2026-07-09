@@ -1,0 +1,402 @@
+/*
+  This is prettyprint.cpp
+
+  Copyright (C) 2004,2005 Fokko du Cloux
+  part of the Atlas of Lie Groups and Representations
+
+  For license information see the LICENSE file
+*/
+
+#include "prettyprint.h"
+
+#include <iostream>
+#include <iomanip>
+#include <sstream>
+
+#include "poset.h"
+#include "bitmap.h"
+#include "polynomials.h"
+
+#include "gradings.h"   // |gradings::Status|
+#include "rootdata.h"	// |RootSystem|
+#include "tori.h"       // |tori::classify|
+
+#include "tits.h"
+
+#include "basic_io.h"	// |operator<<| for vectors, |seqPrint|
+
+/*****************************************************************************
+
+        Chapter I -- Functions declared in prettyprint.h
+
+******************************************************************************/
+
+namespace atlas {
+
+namespace prettyprint {
+
+// Output the first values of the bitmap left-to-right, on a single line
+std::ostream& prettyPrint(std::ostream& strm, const BitMap& b,
+			  size_t n)
+{
+  if (n == 0)
+    n = b.capacity();
+
+  for (size_t j = 0; j < n; ++j)
+    if (b.isMember(j))
+      strm << "1";
+    else
+      strm << "0";
+
+  return strm;
+}
+
+
+// Print the |n| first bits of |b| on |strm| left-to-right.
+template<unsigned int d>
+std::ostream& prettyPrint(std::ostream& strm, const BitSet<d>& b,
+			  size_t n)
+{
+  for (size_t j = 0; j < n; ++j)
+    if (b.test(j))
+      strm << "1";
+    else
+      strm << "0";
+
+  return strm;
+}
+
+
+// Print the bits of |v| on |strm| in a "vector-like" format.
+template<unsigned int dim>
+std::ostream& prettyPrint(std::ostream& strm, const BitVector<dim>& v)
+{
+  Poset::EltList vi;
+
+  for (size_t i = 0; i < v.size(); ++i)
+    vi.push_back(v[i]?1:0);
+
+  const Poset::EltList& vir=vi; // this type already used with |seqPrint|
+  basic_io::seqPrint(strm,vir.begin(),vir.end(),",","(",")");
+
+  return strm;
+}
+
+
+// Pretty-print a list of bitvectors, one per line.
+template<unsigned int dim>
+std::ostream& prettyPrint(std::ostream& strm,
+			  const std::vector<BitVector<dim> >& a)
+{
+  for (size_t i = 0; i<a.size(); ++i)
+  {
+    prettyPrint(strm,a[i]);
+    strm << std::endl;
+  }
+
+  return strm;
+}
+
+// This is a function to output a basis as columns in denuded matrix form.
+// The component type |V| is indexable, and elements of |b| have same size.
+template<typename V>
+std::ostream& printBasis(std::ostream& strm, const std::vector<V>& b)
+{
+  if (b.size() == 0) // do nothing, needed because |b[0].size()| inexistent
+    return strm;
+
+  size_t dim = b[0].size();
+
+  for (size_t i = 0; i < dim; ++i) // row index is index into each |b[j]|
+  {
+    for (size_t j = 0; j < b.size(); ++j)
+      strm << std::setw(4) << b[j][i];
+    strm << std::endl;
+  }
+
+  return strm;
+}
+
+
+/*
+  Prints the descent set |d| to |strm|.
+
+  Here rank is the number of significant bits in d; the output format is
+  pre * sep * ... * post, where the * are the bits in d, output as their
+  bitposition starting from 1.
+*/
+std::ostream& printDescentSet(std::ostream& strm, const RankFlags& d,
+			      size_t rank, const char* sep, const char* pre,
+			      const char* post)
+{
+  strm << pre;
+
+  bool first = true;
+
+  for (size_t s = 0; s < rank; ++s)
+    if (d.test(s))
+    {
+      if (first)
+	first = false;
+      else
+	strm << sep;
+      strm << s+1;
+    }
+
+  strm << post;
+
+  return strm;
+}
+
+
+// Output root #n to strm in the root coordinates.
+std::ostream& printInRootBasis(std::ostream& strm, RootNbr n,
+			       const RootSystem& rs)
+{
+  return strm << rs.root_expr(n);
+}
+
+/*
+  Output the set of roots contained in |r| to |strm|, expressed in root
+  coordinates.
+*/
+std::ostream& printInRootBasis(std::ostream& strm, const RootNbrSet& r,
+			       const RootSystem& rs)
+{
+  int_VectorList rl; rl.reserve(r.size());
+
+  for (RootNbrSet::iterator it=r.begin(); it(); ++it)
+    rl.push_back(rs.root_expr(*it));
+
+  const int_VectorList& rlr=rl; // share instantiation with |mainmode::roots_f|
+  basic_io::seqPrint(strm,rlr.begin(),rlr.end(),"\n","","\n");
+
+  return strm;
+}
+
+/*
+  prints the roots in the list in the lattice basis, by default
+  as one per line.
+*/
+std::ostream& printRootList(std::ostream& strm, const RootNbrList& r,
+			    const RootDatum& rd, const char* sep)
+{
+  for (size_t i=0; i<r.size(); ++i)
+  {
+    strm << rd.root(r[i]);
+    if (i+1 < r.size())
+      strm << sep;
+  }
+
+  return strm;
+}
+
+/*
+  prints the coroots in the list in the lattice basis, by default
+  as one per line.
+*/
+std::ostream& printCorootList(std::ostream& strm, const RootNbrList& r,
+			      const RootDatum& rd, const char* sep)
+{
+  for (size_t j=0; j<r.size(); ++j) {
+    strm << rd.coroot(r[j]);
+    if (j+1 < r.size())
+      strm << sep;
+  }
+
+  return strm;
+}
+/*
+  Output an expression for the twisted involution.
+
+  Precondition: |w| is a (twisted) involution.
+
+  Symbols are to be interpreted from right to left as operations performed on
+  an initially empty twisted involution; if the number |s| is followed by a
+  '^' it means left multiplication by a (twisted-commuting) generator |s|, if
+  followed by an 'x' (for cross action) it means twisted conjugation by |s|.
+*/
+std::ostream& printInvolution(std::ostream& strm,
+			      const TwistedInvolution& tw,
+			      const TwistedWeylGroup& W)
+{
+  weyl::InvolutionWord dec=W.canonical_involution_expr(tw);
+  for (size_t i=0; i<dec.size(); ++i)
+    if (dec[i]>=0) strm << static_cast<char>('1'+dec[i]) << '^';
+    else strm << static_cast<char>('1'+~dec[i]) << 'x';
+
+  return strm<<'e';
+}
+
+template<typename C>
+std::ostream& printVector(std::ostream& strm, const std::vector<C>& v,
+			  unsigned long width)
+{
+  for (size_t i = 0; i < v.size(); ++i)
+    strm << (i==0 ? '[' : ',') << std::setw(width) << v[i];
+
+  strm << " ]";
+  return strm;
+}
+
+/*
+  Output the matrix to a stream. It is assumed that operator << is defined
+  for C, and that C is "small" (in particular, has no newlines in its output.)
+*/
+template<typename C>
+std::ostream& printMatrix(std::ostream& strm, const matrix::Matrix_base<C>& m,
+			  unsigned long width)
+{
+  std::vector<unsigned int> widths(m.n_columns(),width);
+
+  { std::ostringstream o;
+    for (size_t j=0; j<m.n_columns(); ++j)
+      for (size_t i=0; i<m.n_rows(); ++i)
+      {
+        o.str(""); o << m(i,j);
+	size_t w=o.str().length()+1;
+        if (w>widths[j])
+	  widths[j]=w;
+      }
+  }
+
+  for (size_t i = 0; i < m.n_rows(); ++i)
+  {
+    for (size_t j = 0; j < m.n_columns(); ++j)
+      strm << std::setw(widths[j]) << m(i,j);
+
+    strm << std::endl;
+  }
+
+  return strm;
+}
+
+
+/*
+  Print the status flags.
+
+  Precondition: there are rank valid fields in gs;
+
+  Explanation: the output is in the format [xxx...] where each entry is
+  C for complex, c for (imaginary) compact, n for (imaginary) noncompact,
+  and r for real.
+*/
+std::ostream& printStatus(std::ostream& strm, const gradings::Status& gs,
+			  size_t rank)
+{
+  strm << '[';
+
+  for (size_t s = 0; s < rank; ++s)
+  {
+    if (s>0) strm<<',';
+    switch (gs[s])
+    {
+    case gradings::Status::Complex:
+      strm << "C";
+      break;
+    case gradings::Status::ImaginaryCompact:
+      strm << "c";
+      break;
+    case gradings::Status::ImaginaryNoncompact:
+      strm << "n";
+      break;
+    case gradings::Status::Real:
+      strm << "r";
+      break;
+    }
+  }
+
+  strm << ']';
+
+  return strm;
+}
+
+std::ostream& printTitsElt(std::ostream& strm, const TitsElt& a,
+			   const TitsGroup& Tg)
+{
+  prettyPrint(strm,Tg.left_torus_part(a));
+  printWeylElt(strm,a.w(),Tg.Weyl_group());
+
+  return strm;
+}
+
+
+// Output the type of the real torus associated to the involution |tau|
+std::ostream& printTorusType(std::ostream& strm, const WeightInvolution& tau)
+{
+  const auto ranks = tori::classify(tau);
+  strm << "compact: ";
+  strm << std::get<0>(ranks);
+
+  strm << "; complex: ";
+  strm << std::get<1>(ranks);
+
+  strm << "; split: ";
+  strm << std::get<2>(ranks);
+
+  return strm;
+}
+
+
+// Output |w| as a reduced expression.
+std::ostream& printWeylElt(std::ostream& strm, const WeylElt& w,
+			   const WeylGroup& W)
+{
+  strm << W.word(w);
+  return strm;
+}
+
+/*
+  Output the list of |WeylElt|s as words in the outer representation,
+  with the given separator, prefix and postfix.
+*/
+std::ostream& printWeylList(std::ostream& strm, const WeylEltList& wl,
+			    const WeylGroup& W, const char* sep,
+			    const char* pre, const char* post)
+{
+  std::vector<WeylWord> wwl(wl.size());
+
+  for (size_t i = 0; i < wl.size(); ++i)
+    wwl[i]=W.word(wl[i]);
+
+  basic_io::seqPrint(strm,wwl.begin(),wwl.end(),sep,pre,post);
+
+  return strm;
+}
+
+// Instantiations
+
+template std::ostream& prettyPrint
+  (std::ostream&, const RankFlags&, size_t);
+
+template std::ostream& prettyPrint
+  (std::ostream&, const BitVector<constants::RANK_MAX>&);
+
+template std::ostream& prettyPrint
+  (std::ostream&,
+   const std::vector<BitVector<constants::RANK_MAX> >&);
+
+template std::ostream& printBasis
+  (std::ostream&, const std::vector<Weight>&);
+
+template std::ostream& printVector
+  (std::ostream&, const std::vector<int>&, unsigned long);
+
+template std::ostream& printMatrix
+  (std::ostream&, const matrix::Matrix_base<int>&, unsigned long);
+
+template std::ostream& printMatrix // in standardreprk coefficients are |long|
+  (std::ostream&, const matrix::Matrix_base<long int>&, unsigned long);
+
+template std::ostream& printMatrix // in |printBlockSizes|: |big_int|
+  (std::ostream&, const matrix::Matrix_base<arithmetic::big_int>&,
+   unsigned long);
+
+template std::ostream& printMatrix
+  (std::ostream&,
+   const matrix::Matrix_base<Polynomial<int> >&,
+   unsigned long);
+
+} // |namespace prettyprint|
+
+} // |namespace atlas|

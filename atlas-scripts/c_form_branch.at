@@ -1,0 +1,27 @@
+<hodge_normalize.at
+
+set h_form_branch_std (Param p, int N) = KTypePol:
+   branch_std(hermitian_form_std(p),N)
+set h_form_branch_irr (Param p, int N) = KTypePol:
+   branch_irr(param_pol(hermitian_form_irreducible(p)),N)
+
+set c_form_branch_std (Param p,int N) = KTypePol:
+(  assert(is_equal_rank(p.real_form),"G is not equal rank");
+   let hf_branch_std=h_form_branch_std(p,N)
+   then lkt=first_K_type(hf_branch_std)
+   then a=mu(lkt)
+in null_K_module(p.real_form) +
+   for c@q in hf_branch_std do (c*s^(rat_as_int(a-mu(q))),q) od
+)
+
+set c_form_branch_irr (Param p,int N) = KTypePol:
+(  assert(is_equal_rank(p.real_form),"group is not equal rank");
+   let hf_branch_irr=h_form_branch_irr(p,N)
+   then lkt=first_K_type(hf_branch_irr)
+   then a=mu(lkt)
+in null_K_module(p.real_form) +
+   for c@q in hf_branch_irr do (c*s^(rat_as_int(a-mu(q))),q) od
+)
+
+set c_form_branch_std(ParamPol P,int N) = KTypePol:
+   sum(P.real_form,for c@q in P do c*c_form_branch_std(q,N) od)

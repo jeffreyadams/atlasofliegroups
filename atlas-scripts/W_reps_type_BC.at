@@ -1,0 +1,623 @@
+<basic.at
+<sort.at
+<nilpotent_orbits.at { for <@([int],[int]) (subset), $\tau$ invariants }
+<nilpotent_orbit_partitions.at { for eponymous function, |is_valid| }
+<combinatorics.at
+<W_reps.at { for types |W_rep|, |WCell| }
+
+{ types C and B }
+{ in this file we handle three kinds of objects
+  Orbit P: partition for nilpotent orbit of type C_n
+         (odd parts have even multiplicity)
+  [[int] f,[int] g]: symbol as defined by Lusztig
+  (Partition p, Partition q):
+  pair of partitions, |p|+|q|=n, corresponding to a Weyl group representation
+  note that symbol is of type [[int]] (always with two parts)
+  Hn_rep is of type ([int],[int]), both [int]s being partitions
+}
+
+{this test aborts via an assert, or returns void}
+set test_simple_BC(RootDatum rd)=void:
+assert(rd.is_simple,"root datum is not simple");
+assert(rd.type_number=1 or rd.type_number=2,"root datum not type B or C")
+
+set_type Orbit = Partition
+  { all odd(C) or even(B) parts must have even multiplicity }
+set_type Hn_rep = BiPartition
+  { hyperoctahedral representation: pair (triv,sign) of partitions; |p|+|q|=n }
+
+{ if S=(f,g) is a symbol for C_n then rank(f)=rank(g)=n,
+  independently of equivalence classes of f and g rank(f)=sum f_i -n(n-1)/2
+}
+set symbol_ranks (Symbol S) = (int,int):
+   let f=S[0],g=S[1] in (sum(f)-binom(#f,2), sum(g)-binom(#g,2))
+
+{ maps between |Orbit|s and |Hn_rep|s of |Symbol|s }
+
+{ The map from nilpotent Jordan types to |Hn_rep| should be such that the
+  regular nilpotent class [2n] (type $C_n$) or [2n+1] (type $B_n$) or [2n-1,1]
+  (type $D_n$) map to the trivial representation {n +|- }. Given that the
+  |BiPartition| produced by |core_quotient_2| has the partition form the
+  even-class (with an edge just after the main diagonal) before the partition
+  from the odd-class edges, this means partitions need to be swapped in type C.
+}
+
+{ this is correct in types B and C, see Carter pp. 421-422}
+set wrep (Orbit P) = Hn_rep:
+   let (d,(lambda,mu):pair) = core_quotient_2(P)
+   then type_C = =d { or more weakly |P.sum.is_even| }
+in if type_C then { switch } (mu,lambda)
+   else assert(d=1,"Wrong type B Jordan type"); { no switch } pair
+   fi
+
+{ JordanType -> Symbol (normalised), injective maps separately for types B, C }
+{ One has |symbol(lambda)=symbol(wrep(lambda))| when |lambda| valid for B or C }
+set symbol (Orbit P) = Symbol:
+   let type_C=is_even(sum(P)) in
+(  if type_C and is_even(#P) then P#:=0 { make length odd in all cases } fi
+;  let e = { transform partition into strictly increasing sequence }
+           for i:#P do P~[i]+i od
+   then f = for x in e if x.is_odd  do x\2 fi od
+   ,    g = for x in e if x.is_even do x\2 fi od
+in if type_C then [g,f] else [f,g] fi
+)
+
+set symbol_C (Orbit P) = Symbol:
+   assert(@:is_valid("C",P),"not a type C orbit"); symbol(P)
+set symbol_B (Orbit P) = Symbol:
+   assert(@:is_valid("B",P),"not a type B orbit"); symbol(P)
+
+set (orbit_C,orbit_B) = ((Symbol->Orbit),(Symbol->Orbit)):
+   let merger([int]T0,[int]T1) = Partition: { common workhorse function }
+      if #T0 != 1+#T1 then return [] fi
+   ;  for t@i in T1
+      do if   T0[i]>t
+         then if T0[i] = t+1 then T0[i]:=t; T1[i]:=t+1 else return [] fi
+	 elif t>T0[i+1]
+	 then if t-1 = T0[i+1] then T0[i+1]:=t; T1[i]:=t-1 else return [] fi
+	 fi { now |T0[i] <= T1[i] <= T0[i+1]| }
+      od
+   ;  for j: #T0+#T1
+      do case j in {even} T0[j\2]-j, {odd} T1[j\2]-j esac { shrink differences }
+     ~od { reverse to partition, may have a trailing 0 in case C }
+in
+(  (Symbol S) Orbit: {Orbit_C}
+   merger(for s in S[0] do s+s od,for s in S[1] do s+s+1 od).strip_to_partition
+,  (Symbol S) Orbit: {Orbit_B}
+   merger(for s in S[0] do s+s+1 od,for s in S[1] do s+s od)
+)
+
+set orbit (string type,Symbol S) = Orbit:
+  case ASCII(type)-ASCII("B") in orbit_B(S), orbit_C(S)
+  else error("wrong type")
+  esac
+set orbit (RootDatum rd,Symbol S) = Orbit:
+  let sf=simple_factors(Lie_type(rd))
+  then (letter,) = assert(@:#sf=1,"not a simple type"); sf[0]
+  in orbit(letter,S)
+
+set large_symbol_C(Symbol S)=Symbol:
+[for i:#S[0] do S[0][i]+i od,for j:#S[1] do S[1][j]+j+1 od]
+set large_symbol_B(Symbol S)=Symbol:
+[for i:#S[0] do S[0][i]+i od,for j:#S[1] do S[1][j]+j od]
+
+set large_symbol(RootDatum rd,Symbol S)=Symbol:
+test_simple_BC(rd);
+if rd.type_number=1 then large_symbol_B(S) else  large_symbol_C(S) fi
+
+set small_symbol_C(Symbol S_large)=Symbol:
+[for i:#S_large[0] do S_large[0][i]-i od,for j:#S_large[1] do S_large[1][j]-(j+1) od]
+set small_symbol_B(Symbol S_large)=Symbol:
+[for i:#S_large[0] do S_large[0][i]-i od,for j:#S_large[1] do S_large[1][j]-j od]
+set small_symbol(RootDatum rd,Symbol S_large)=Symbol:
+test_simple_BC(rd);
+if rd.type_number=1 then small_symbol_B(S_large)
+else  small_symbol_C(S_large) fi
+
+{Hn_rep to Symbol}
+set large_symbol (RootDatum rd,Hn_rep pair) = Symbol:
+test_simple_BC(rd);large_symbol(rd,symbol(pair))
+
+{ Hn_rep -> Orbit, depends on type B/C }
+set orbit_C (Hn_rep(lambda,mu)) = Orbit:
+  let orbit=from_core_quotient_2(0,(mu,lambda)) in
+  if is_valid("C",orbit) then orbit else [] fi
+
+set orbit_B (Hn_rep pair) = Orbit:
+  let orbit=from_core_quotient_2(1,pair) in
+  if is_valid("B",orbit) then orbit else [] fi
+
+set orbit(string type,Hn_rep pi) = Orbit:
+  if type ="B" then orbit_B(pi)
+  elif type="C" then orbit_C(pi)
+  else error("wrong type")
+  fi
+
+set orbit (RootDatum rd, Hn_rep pi) = Orbit:
+  let sf=simple_factors(Lie_type(rd))
+  then (letter,) = assert(@:#sf=1,"not a simple type"); sf[0]
+  in orbit(letter,pi)
+
+{ equality of Hn_reps }
+set = (Hn_rep(a1,a2),Hn_rep(b1,b2)) = bool: a1=b1 and a2=b2
+
+{ equality of symbols (not equivalence) }
+set symbols_equal(Symbol a,Symbol b) = bool: a[0]=b[0] and a[1]=b[1]
+
+set hook_length (Partition P, int i, int j) =int:
+  let arm = P[i]-j, leg = transpose(P)[j]-i in arm + leg -1
+
+set dim_rep (Partition P) = int:
+  let dim=factorial(sum(P)) in
+  for i:#P do for j:P[i] do dim \:= hook_length(P,i,j) od od; dim
+
+set dimension (Hn_rep(p,q)) = int: { using hook length formula twice: }
+   dim_rep(p)*dim_rep(q)* binom(sum(p)+sum(q),sum(q))
+
+set all_reps_BC (int n) = [Hn_rep]:
+   let ps = for r: n+1 do partitions(r) od in
+   for pr@r in ps { every list |pr| of |ps| will be paired with another one: }
+      for p in pr { traverse partitions of |r| }
+         for q in ps[n-r] { and of |n-r| }
+	 do (p,q)
+	 od
+      od
+   od
+
+set all_reps_BC(RootDatum rd)=[Hn_rep]:
+test_simple_BC(rd);all_reps_BC(rd.rank)
+
+{ a (normalized) symbol is special if f_0<=g_0<= f_1...;
+  this is the "raison d'etre" of |Symbol|
+}
+set is_special (Symbol S) = bool:
+   let f=S[0], g=S[1] in all(for gi@i in g do f[i]<=gi and gi<=f[i+1] od)
+
+set is_special (Hn_rep(nu,mu)) = bool:
+(  let d=#(mu:=mu.strip_to_partition)+1-#(nu:=nu.strip_to_partition)
+in case d then return false in () else nu ##:= for :d do 0 od esac
+;  all(for mu_i@i in mu do nu[i]+1>=mu_i and mu_i>=nu[i+1] od)
+)
+
+set is_special (Orbit P) =bool: is_special(wrep(P))
+
+set special_star (Symbol S)  = string: if is_special(S) then "*" else "" fi
+set special_star (Orbit P)   = string: if is_special(P) then "*" else "" fi
+set special_star (Hn_rep sigma) = string:
+   if is_special(sigma) then "*" else "" fi
+
+{reorder a list of symbols to put a special one first,
+ typically this is used when the special symbol is unique,
+ but that isn't enforced}
+set special_first([Symbol] symbols)=[Symbol]:
+let index=first(for S in symbols do S.is_special od) in
+symbols[index]#symbols[:index]##symbols[index+1:]
+
+
+{wreps for B_n/C_n are the same: all (p,q) with |p|+|q|=n
+ symbols are the same (apply symbol to (p,q))
+}
+set wreps(RootDatum rd)=[Hn_rep]:
+test_simple_BC(rd);
+let (,rank)=rd.simple_type in
+##for i:rank+1 do
+ ##for p in partitions(i) do
+  for q in partitions(rank-i) do (p,q)
+  od
+ od
+od
+
+set symbols (RootDatum rd) = [Symbol]:
+   for rep in wreps(rd) do symbol(rep) od
+
+set large_symbols(RootDatum rd)=[Symbol]:
+for S in rd.symbols do large_symbol(rd,S) od
+
+{ given a cell C, get list of tau invariants from it,
+  then construct the Levi set of C:
+  ( [P_0,...,P_r], [Q_0,...,Q_s] )
+  P_i: partition of n
+  Q_i: labelled partition of n, i.e. partition of n with one part specified:
+       Q_i=([b0,...,bs],c) where c=bj for some j (not necessarily unique)
+  P_i=[a0,...,ar] -> Levi factor of type GL(a1)x...xGL(ar), with Weyl group
+  S_{a0}x...xS_{ar}  (a1+...ar=n)
+  Q_i=([b0,...,bs],c) -> Levi factor GL(a1)x...xSp(2bj)x...xGL(bs)
+  with Weyl group S_{b0}x...x W(C_{bj}) x ... S_{bs} (b1+...+bs=n)
+
+  roots are labelled 0,...,n-1
+  If tau=[c_0,...,c_k] occurs in C, then this contributes to the Levi set of C:
+  c_k<n-1: type A Levi factor
+  c_k=n-1: type AC Levi factor
+
+  the Levi factor is obtained by grouping strings of adjacent c_j
+  each string of length t not including n gives GL(t+1), S_{t+1} factor in P
+  a string of length t including n gives Sp(2t), W(C_t)
+
+  for example in C_8 (roots labelled 0-7)
+  tau=[0,2,3,4] -> P=[4,2,1,1] (always add 1's at the end to add up to n)
+  tau=[1,2,3,5,6,7] -> Q=([4,3,1],3) -> GL(4)xSp(6)xGL(1)
+}
+
+
+{ given v=[a_0,...,a_n] increasing, returns (j,[a_j,...,a_n])
+  where [a_0,...,a_{j-1}] is the longest string (of length j)
+  increasing by 1 at each step
+}
+set cut_off_string ([int] v) = (int,[int]):
+   if =#v then (0,v)
+   else let v01=v[0]+1 then i=1+first(#v-1,(int i)bool: v[i+1]>v01+i)
+   in if =i then (#v,[]) else (i,v[i:]) fi
+   fi
+
+{ given v=[a_0,...,a_n] increasing, returns (k,[a_0,...,a_{n-k}]) where
+  [a_{n-k+1},..,a_n] is the longest string (of length k)
+  increasing by 1 at each step
+  where [a_0,...,a_{j-1}] is the longest string (of length j)
+ increasing by 1 at each step
+}
+
+set cut_off_last_string ([int] v) = (int,[int]):
+   if =#v then (0,v)
+   else let v01=v~[0]-1 then k=1+first(#v-1, (int k)bool: v~[k+1]<v01-k)
+   in if =k then (#v,[]) else (k,v[:k~]) fi
+   fi
+
+{ given v=[a1,...,am] (increasing) return [c1,...,cr]: length of strings in v
+  for example [0, 1, 4,5, 7, 9,10,11,12] -> [4,2,2,1]
+}
+set extract_strings ([int] v) = Partition:
+   let j=0 in while >#v do set (j,v):=cut_off_string(v); j od.sort_to_partition
+
+{ type A Levi factor(tau invariant): strings, padded with ones to make rank=n }
+set A_Levi_factor (int rank, [int] tau) = Partition:
+   let tau=sort(tau) in
+   assert(@:tau~[0]< rank,"last entry of tau is greater than rank-1");
+   assert(@:tau~[0] != rank-1,"Levi factor is of type AC not A");
+   let strings = for a in extract_strings(tau) do a+1 od in
+   strings##(for i:rank-sum(strings) do 1 od)
+
+set ALf (int rank, [int] tau) = [int]: Partition:
+   let C=Cartan_matrix(Lie_type("C",rank)), r=#tau { Levi rank }
+   then (type,) =
+        Cartan_matrix_type(matrix((r,r),(int i,int j):C[tau[i],tau[j]]))
+   then factors = type.simple_factors
+in for (t,rk) in factors do assert(@:t="A"); rk+1 od.sort_to_partition ##
+   for :rank-type.rank-#factors do 1 od
+
+{ AC Levi factor(tau invariant): size of the type C factor in the Levi type
+  (assumed to be present), and partition giving all factor sizes (as in
+  A_Levi_factor, A_i gives i+1 and completed by factors 1), type C included
+}
+set AC_Levi_factor(int rank, [int] tau) = (int,Partition):
+   let tau=sort(tau) in
+   assert(@:tau~[0] = rank-1,"Levi factor is type A not AC");
+   let (c,)=cut_off_last_string(tau) then strings=extract_strings(tau) in
+   for i:#strings-1 do strings[i]:=strings[i]+1 od;
+   (c,strings## ones(rank-sum(strings)))
+
+{ get partition for type A factors, and rank of possible type C factor }
+set ACLf (int rank, [int] tau) = (Partition,int):
+   let C=Cartan_matrix(Lie_type("C",rank)), r=#tau { Levi rank }
+   then (type,) =
+        Cartan_matrix_type(matrix((r,r),(int i,int j):C[tau[i],tau[j]]))
+   then factors = type.simple_factors
+   then C_rank =
+      if =r or tau~[0]<rank-1 { final simple root absent? } then 0
+      else { now final factor interpreted as type C, even if it is ("A",1) }
+        let (,rk) = factors~[0] in factors := factors[:1~]; rk
+      fi
+   then lambda = for (,rk) in factors do rk+1 od.sort_to_partition
+in (lambda ## for :rank-sum(lambda)-C_rank do 1 od, C_rank)
+
+{ maximal (by inclusion) }
+set is_max([[int]] taus,[int] tau)=bool:
+  none(for x in taus do tau<x od)
+
+{ maximal tau sets only, and without repetition }
+set max_only ([[int]] taus) = [[int]]:
+  let result = [[int]]: [] in
+  for tau in taus
+  do
+    if is_max(taus,tau) and none(for x in result do x=tau od)
+    then result#:=tau
+    fi
+  od; result
+
+set is_sorted_subset ([int] a) = ([int] b) bool:
+   let !nb = #b, i=0 in
+   =nb or
+(  for x in a
+   do case b[i]-x then return false { |b[i]<x|, not a subset }
+      in { |x=b[i]| ; move on unless |b| exhausted }
+         if (i+:=1)=nb then return true fi
+      else () { |x<b[i]|, skip |x| and continue }
+      esac
+   od
+;  false { |b[i]| exceeds all elements of |a|, not a subset }
+)
+
+set inclusion_maximals ([[int]] taus) = [[int]]:
+   taus := taus.(sort_by(#@[int],<=@(int,int)));
+   while >#taus
+   do let tau=taus~[0] then is_sub = is_sorted_subset(tau)
+   in taus := for i:#taus-1 if not taus[i].is_sub do taus[i] fi od
+   ;  tau
+  ~od
+
+set Levi_signature (int rank,[[int]] tau_invariants) =
+      ([Partition],[int,Partition]):
+{  if #tau_invariants=0 or #tau_invariants[0]=0 then ([],[]) el(if) }
+   if #tau_invariants=0 then ([],[])
+   elif #tau_invariants[0]=0 then ([[]],[])
+   else tau_invariants := max_only(tau_invariants) { filter out }
+   ;  let A_Levis=[Partition]:[], AC_Levis=[int,Partition]:[]
+   in for tau in tau_invariants
+      do let tau=sort(tau) in
+         if tau~[0]=rank-1 { is a type C factor present? }
+         then AC_Levis #:= AC_Levi_factor(rank,tau)
+         else  A_Levis #:=  A_Levi_factor(rank,tau)
+         fi
+      od; (A_Levis,AC_Levis)
+   fi
+
+set C_Levi_signature (int rank,[[int]] tau_invariants) = [Partition,int]:
+   for tau in tau_invariants do ACLf(rank,tau) od
+
+set max_first_entry ([Partition] v) = int:
+   if #v=1 and #v[0]=0 then 0 else 0.max(for x in v do x.reverse_sort[0] od) fi
+set keep_by_first_entry ([Partition] v,int k)=[Partition]:
+   if #v=1 and #v[0]=0 then v
+   else for w in v if w.reverse_sort[0]=k do w fi od
+   fi
+set keep_by_first_entry_and_truncate ([Partition] v,int k) = [Partition]:
+   let w=keep_by_first_entry(v,k) in
+   for u in w if #u>1 do u.reverse_sort[1:] fi od
+
+{ set max_first_entry([(int,Partition)] v)=int:
+    max(for i:#v do let (,w)=v[i] in w[0] od)
+}
+
+set max_tagged_entry ([int,Partition] v)=int: 0.max(for (c,) in v do c od)
+set keep_by_first_entry ([int,Partition] v,int k) = [int,Partition]:
+   for (c,w) in v
+   do let r=w.reverse_sort in if r[0]=k do (c,r) fi
+   od.##
+set keep_by_first_entry_and_truncate ([int,Partition] v,int k) =
+      [int,Partition]:
+   for (c,u) in keep_by_first_entry(v,k) if c>0 and #u>1 do (c,u[1:]) fi od
+
+{ find maxmimal part, maximal label, and filter to only maximal part owners }
+set filter_max ([Partition,int] sig) = (int,int,[Partition,int]):
+(  assert(@:>#sig,"empty signature")
+;  let max_part=0, max_label=0
+in for (lambda,C_rank) in sig
+   do if >#lambda and lambda[0]>max_part then max_part:=lambda[0] fi
+   ;  if C_rank>max_label then max_label:=C_rank fi
+   od
+;  if max_part>=max_label
+   then
+      (max_part,max_label
+      ,for (lambda,r) in sig { |C_rank| is ignored for filtering purposes }
+          if >#lambda and lambda[0]=max_part do (lambda[1:],r) fi
+       od
+      )
+   else { avoid producing empty set by grabbing |max_label|, but clear labels }
+      ( max_label, max_label
+      , for (lambda,r) in sig if r=max_label do (lambda,0) fi od
+      )
+   fi
+)
+
+{ Heart of the matter, implements the Noel-Jackson algorithm
+
+  Given a set of tau-invariants, gives a collection of Levi factors;
+  find the unique irreducible W-rep containing the sign representation of
+  precisely these Levis
+  Note: tau_invariants=[[int]]:[] (in the inductive step signals done)
+  is different from [[int]]:[[]] (gives the trivial rep, principal orbit
+}
+set max_Hn_rep (int rank,[[int]] tau_invariants) = Hn_rep:
+(  let Levis = C_Levi_signature(rank,tau_invariants)
+   , q=Partition:[], p=Partition:[]
+in assert(@:>#Levis,"empty Levi signature")
+;  while let (max_part,max_label,new_Levis) = filter_max(Levis) in >max_part
+   do q#:=max_part-max_label; p#:=max_label; Levis:=new_Levis
+   od
+;  prints("Done with p=",p, "q=",q)
+;  assert(@:sum(p)+sum(q)=rank,"Error: |p|+|q| != rank")
+; (transpose(q),transpose(p))
+)
+
+set max_Hn_rep (Block B,[int] cell) = Hn_rep:
+   max_Hn_rep(rank(real_form(B)),tau_invariants_of_cell_raw(B,cell))
+
+set max_Hn_reps (Block B,[[int]] cells) = [Hn_rep]:
+   for cell in cells do max_Hn_rep(B,cell) od
+
+set print_Hn_rep_compact (Block B, [int] cell) = void:
+   let rep=max_Hn_rep(B,cell), spc=" "*15 in
+   prints(cell,spc
+	 ,Aq_reps(B,cell),spc
+	 ,rep,special_star(rep),spc
+	 ,orbit(B.real_form,rep))
+
+set print_Hn_reps_compact (Block B, [[int]] cells) = void:
+   prints("cell             Aq's             special_rep        orbit");
+   for cell in cells do print_Hn_rep_compact(B,cell) od
+
+set print_Hn_rep (Block B, [int] cell) = void:
+(  let taus=tau_invariants_of_cell_raw(B,cell)
+   then max_taus=max_only(taus), rep=max_Hn_rep(B.real_form.rank,taus)
+in prints("cell: ",cell, "  (",#cell,")")
+;  let Aq = Aq_reps(B,cell)
+in if =#Aq then prints("Not an Aq cell") else prints("Aq reps: ", Aq) fi
+;  prints("tau invs.: ",taus)
+;  prints("max taus: ",max_taus)
+;  prints("special rep: ", rep, special_star(rep))
+;  prints("orbit: ", orbit(B.real_form,rep))
+)
+
+set print_Hn_reps (Block B,[[int]] cells) = void:
+  for cell@i in cells do prints("Cell ",i); print_Hn_rep(B,cell); prints() od
+
+
+set wrep (int rank,[[int]] tau_invariants) = Hn_rep:
+   let (A_Levis,AC_Levis) = Levi_signature(rank,tau_invariants)
+   , p=Partition:[], q=Partition:[]
+in (rank,A_Levis,AC_Levis,Partition:[],Partition:[]) { initial values } .
+   (rec_fun f
+         (int rank, [Partition] A_Levis, [(int,Partition)] AC_Levis
+         , Partition p, Partition q)
+         Hn_rep:
+      if #A_Levis=0 and #AC_Levis=0
+      then prints("Done with p=",p, "q=",q)
+      ;  assert(@:sum(p)+sum(q)=rank,"Error: |p|+|q| != rank")
+      ;  (transpose(q),transpose(p))
+      elif #A_Levis=1 and #A_Levis[0]=0 and #AC_Levis=0
+      then ([rank],[])
+      else print() ;prints("p=",p," q=",q)
+      ;  prints("A_Levis: ", A_Levis, " AC_Levis: ", AC_Levis)
+   { algorithm:
+     x+y=a
+       x=b => y=a-b
+    add x to p, y to q
+    keep only the Levis with first term a
+   }
+      ;  let a=max_first_entry(A_Levis), b=max_tagged_entry(AC_Levis)
+	 then x=b,y=a-b
+      in { prints("a= ", a, " b= ", b); }
+      {add x to p, y to q, keep only Levis with first term a}
+      { prints("x= ", x, " y=", y); }
+         if x>0 then p:=p#x fi; if y>0 then q:=q#y fi
+      ;  f ( rank
+           , keep_by_first_entry_and_truncate(A_Levis,a)
+	   , keep_by_first_entry_and_truncate(AC_Levis,a)
+           , p,q)
+     fi
+   )
+
+set wrep (Block B,[int] cell) = Hn_rep:
+   wrep(rank(real_form(B)), tau_invariants_of_cell_raw(B,cell))
+
+set wreps (Block B,[[int]] cells) = [Hn_rep]:
+   for cell in cells do wrep(B,cell) od
+
+set print_wrep_cpt (Block B, [int] cell) = void:
+   let rep=wrep(B,cell), spc=" "*15 in
+   prints(cell,spc
+	 ,Aq_reps(B,cell),spc
+         ,rep,special_star(rep),spc
+	 ,orbit(B.real_form,rep))
+
+set print_wrep(Block B, [int] cell) = void:
+(  let rep=wrep(B,cell)
+   then taus=tau_invariants_of_cell_raw(B,cell)
+   then max_taus=max_only(taus)
+in prints("cell: ",cell, "  (",#cell,")")
+;  let Aq=Aq_reps(B,cell)
+in if #Aq=0 then prints("Not an Aq cell")
+   else prints("Aq reps: ", Aq)
+   fi
+;  prints("tau invs.: ",taus)
+;  prints("max taus: ",max_taus)
+;  prints("special rep: ", rep, special_star(rep))
+;  prints("orbit: ", orbit(B.real_form,rep))
+)
+
+set print_wreps_cpt (Block B,[[int]] cells) = void:
+   prints("cell             Aq's             special_rep        orbit");
+   for cell in cells do print_wrep_cpt(B,cell) od
+
+set print_wreps (Block B,[[int]] cells) = void:
+  for cell@i in cells do prints("Cell ",i); print_wrep(B,cell); prints() od
+
+set show_orbits_and_reps(RootDatum rd)=
+let (letter,rank)=simple_type(rd) in
+assert(letter="B" or letter="C", "only types B/C allowed");
+let reps=all_reps_BC(rank) in
+prints(new_line,"type ",letter,rank);tabulate(
+["symbol","large symbol","rep","Sp.","orbit"]#
+ for rep in reps do
+  let S=symbol(rep) then
+  orbit=orbit(letter,rep) then
+  orbit_string=
+   if is_valid(letter,orbit) then orbit.to_string else "" fi
+  in
+  [S.to_string,large_symbol(rd,S).to_string,rep.to_string,rep.special_star,orbit_string] od)
+
+{support of a symbol: multiset of entries}
+set support(Symbol S)=[int]:sort(##S)
+
+set lusztig_cell_classical(RootDatum rd,Symbol S_0) =[Symbol]:
+test_simple_BC(rd);
+let orig=support(S_0) in
+##for S in symbols(rd) do if support(S)=orig then [S] else [] fi od
+
+set lusztig_cell_classical(RootDatum rd,Hn_rep pi) =[Hn_rep]:
+test_simple_BC(rd);
+let orig=support(symbol(pi)) in
+##for sigma in all_reps_BC(rd) do if support(symbol(sigma))=orig then [sigma] else [] fi od
+
+set lusztig_cells_classical(RootDatum rd) =[[Symbol]]:
+test_simple_BC(rd);
+let symbols=symbols(rd) then
+rv=[[Symbol]]:[] in
+for S in symbols do
+ let index=first(for i:#rv do support(rv[i][0])=support(S) od) in
+ if index=-1 then rv##:=[[S]] else  rv[index]##:=[S] fi
+od;rv
+
+set springer_cell_classical(RootDatum rd,Symbol large_symbol_S_0) =[Symbol]:
+test_simple_BC(rd);
+let orig=support(large_symbol_S_0) in
+##for S in symbols(rd) do
+ let T=large_symbol(rd,S) in
+  if support(T)=orig then [T] else [] fi od
+
+set springer_cell_classical(RootDatum rd,Hn_rep pi) =[Hn_rep]:
+test_simple_BC(rd);
+let orig=support(large_symbol(rd,symbol(pi))) in
+##for sigma in all_reps_BC(rd) do if support(large_symbol(rd,sigma))=orig then [sigma] else [] fi od
+
+set springer_cells_classical(RootDatum rd) = [[Symbol]]:
+test_simple_BC(rd);
+let rv=[[Symbol]]:[] in
+for T in large_symbols(rd) do
+ let index=first(for i:#rv do support(rv[i][0])=support(T) od) in
+ if index=-1 then rv##:=[[T]] else  rv[index]##:=[T] fi
+od;
+{now process to put the special one first}
+for symbols in rv do special_first(symbols) od
+
+set show_lusztig_cells_classical (RootDatum rd) = void:
+   for symbol in lusztig_cells_classical(rd)
+   do prints(new_line,"support: ", support(symbol[0]))
+   ;  tabulate
+      ( [" ","symbol","rep"]
+      # for S in symbol
+        do [" ",S.to_string, S.symbol_to_bipartition.to_string]
+	od
+      )
+od
+
+set show_springer_cells_classical (RootDatum rd) = void:
+   for large_symbol_list in springer_cells_classical(rd)
+   do let large_symbol = large_symbol_list[0]
+      then small_symbol = small_symbol(rd,large_symbol)
+   in prints( new_line
+            , "orbit: ", orbit(rd,small_symbol)
+            , "  support: ", support(large_symbol)
+	    )
+   ;  tabulate
+      ( [" ","symbol","large symbol","rep","orbit"]
+      # for T in large_symbol_list
+        do let S=small_symbol(rd,T)
+	in [ " "
+	   , S.to_string+S.special_star
+	   , T.to_string
+	   , S.symbol_to_bipartition.to_string
+	   , orbit(rd,S).to_string
+	   ]
+	od
+      )
+   od

@@ -1,0 +1,153 @@
+<basic.at
+<lazy_lists.at
+<polynomial.at
+
+primes : inf_list:
+   let odd_primes () = inf_node:die
+   then composite = {predicate to be used when (re)defining |odd_primes|}
+     let p=0 {scratch variable to use in multiple assignment:} in
+     (int n) bool: { actual |composite| predicate }
+       let rem=odd_primes { think of rem as pointer into |odd_primes| } in
+       while set(p,rem):=rem(); let (q,r)=n\%p
+       in r>0 { any zero remainder suffices for being composite }
+       do if q<=p then { no further divisibility possible } return false fi
+       od; true
+in odd_primes :=
+   ( let m=3 {we always start adding 2, so effectively from 5} in
+     @: (3,rec_fun gen() inf_node: while composite(m+:=2) do () od; (m,gen))
+   ).memoize; (@:(2,odd_primes)) { finally prefix the unique even prime }
+
+set factorization (int n) = [int,int]: { (prime,exponent) }
+   case n then n:=-n in error("Cannot factorize 0") else () esac;
+   let (p,prs)=primes()
+   then factors = [int,int]:
+     while p*p<=n
+     do let (q,r)=n\%p
+        then count = int: while r=0 do set (q,r):=(n:=q)\%p od
+     in if count>0 do (p,count) fi
+        next set(p,prs):=prs() { advance to next prime }
+     od.##
+   in if n=1 then factors else factors # (n,1) fi
+
+{ find prime factors up to |limit| and quotient that might be 1 or composite }
+set easy_factors (int n, int limit) = ([int,int],int): { (factors,quotient) }
+   case n then n:=-n in error("Cannot factorize 0") else () esac;
+   let (p,prs)=primes()
+   then factors =
+     while p<=limit and p*p<=n
+     do let (q,r)=n\%p
+        then count = int: while r=0 do set (q,r):=(n:=q)\%p od
+     in if count>0 do (p,count) fi
+        next set(p,prs):=prs() { advance to next prime }
+     od.##
+   in if n=1 or p*p<=n then (factors,n) else (factors#(n,1),1) fi
+
+set prime_divisors (int n) = [int]:
+   for (p,) in factorization(n) do p od
+
+{ all divisors, unsorted but in order compatible with divisibility relation }
+set divisors (int n) = [int]:
+   let result=[int]:[1] in
+   for (p,c) in factorization(n)
+   do result ##:=
+      (let pow=1 in for i:c do pow *:= p; for f in result do pow*f od od.##)
+   od; result
+
+set invertibles_modulo (int n) = [int]:
+   list (abs(n),(int i)bool: gcd([i,n])=1)
+
+{ Euler totient function }
+set phi (int n) = int:
+   assert(@:n>0); for (p,c) in factorization(n) do (p-1)*p^(c-1) od.product
+
+set gcd_Bezout_coef (int !a, int !b) = (int,int): { (d,s) such that d=s*a mod b }
+   let (s0,s1) = (1,0) { coefficients of |a| modulo |b| in current remainders }
+   , (r0,r1) = (a,b)
+in while r0>0
+   do let (q,r)= r1 \% r0 then s=s1-q*s0 in set (r0,r1,s0,s1) := (r,r0,s,s0)
+   od; if s1<0 then s1+:=b fi; (r1,s1)
+
+set Bezout ((int,int) (a,b):pair) = (int,int,int): { (d,s,t) with d=s*a+t*b) }
+   let (d,s)= gcd_Bezout_coef(pair) then (q,r)=(s*a)\%b
+   in assert(@:d=r); (d,s,-q)
+
+set inverse_mod  ((int,int) pair) = int:
+(  let (d,s)= gcd_Bezout_coef(pair)
+   in assert(@:(d=1
+	       ,let (a,n)=pair in a+" is not invertible modulo "+n+", gcd="+d))
+;  s
+)
+
+set power_mod (int x, int k, int n) = int:
+(  if k<0 then x:=inverse_mod(x,n); k:=-k fi
+;  let acc=1
+   , diffs = [int]: { distances between set bits in |n|, MSB to LSB }
+        let pos=0 in for p in set_bit_positions(k) do p-pos next pos:=p ~od
+   , mod_mult ((int,int) operands) = *operands % n
+in for d in diffs
+   do acc mod_mult:= x { incorporate a set bit }
+   ; for : d do acc mod_mult:= acc od { repeat squaring up to next set bit }
+   od
+;  acc
+)
+
+set test_Fermat (int x, int p) = bool: power_mod(x,p,p)=x%p
+
+set prime_candidats_after (int n, [int] sieve_primes) = [int]:
+(  let sieve_size { interval length to apply sieve to }
+     = bit_length(n) { prime number theorem says prime density is $1/ln(n)$ }
+   then sieve=[sieve_size].to_bitset-1 { all bits set initially }
+in for p in sieve_primes
+   do let pos=(-n)%p-p { value |-p<=pos<0| such that |p| divides |n+pos| }
+   in sieve AND_NOT:= while pos<sieve_size do pos +:= p od.to_bitset
+   od
+;  for pos in set_bit_positions(sieve) do n+pos od
+)
+
+set search_probable_prime ([int] sieve_primes, [int] Fermat_bases) = (int->int):
+   let test (int n) = bool:
+      for b in Fermat_bases do @bool: test_Fermat(b,n) od.all
+in (int n) int:
+   while { terminate only at explicit |return| }
+   do for cand in prime_candidats_after(n,sieve_primes)
+      do if test(cand) then return cand fi od
+   ;  n+:=bit_length(n) { skip forward by range used for candidates }
+   od
+
+set_type phi_data = (int n, int phi_n, [int] prime_factors_phi)
+
+set phi_data_of (int n) = phi_data:
+   let phi_n = phi(n) in (n,phi_n,prime_divisors(phi_n))
+
+set prime_phi_data (int p) = phi_data: (p,p-1,prime_divisors(p-1))
+
+set is_multiplicative_generator (int i, phi_data(n,phi,factors)) = bool:
+  for p in factors do @: power_mod(i,phi\p,n)=1 od.none
+
+set is_multiplicative_generator (int i, int n) = bool:
+   is_multiplicative_generator (i,phi_data_of(n))
+
+set search_probable_generator (phi_data d) = int:
+   let n=d.n
+in for i:n-2 from 2
+   do if gcd(i,n)=1 and is_multiplicative_generator(i,d) then return i fi
+   od; 1
+
+set search_probable_generator (int n) = int:
+   if test_Fermat(2,n) then prime_phi_data(n) else phi_data_of(n) fi.
+   search_probable_generator
+
+
+set expand (int_poly(X,a,), int k) = int_poly: { substitute X^k for X }
+   ((## for i:#a-1 do a[i] # for :k-1 do int:0 od od) # a~[0],X).to_int_poly
+
+set cyclotomic_polynomial (int n) = int_poly:
+(  let result = to_int_poly([-1,1],"X"), f = factorization(n), prod=1 in
+   for (p,c) in f
+   do set (result,) := monic_divide(expand(result,p),result)
+   ; prod *:= p^(c-1)
+   od
+;  expand(result,prod)
+)
+
+set is_prime(int n)=bool:#divisors(n)=2

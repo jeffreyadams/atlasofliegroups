@@ -1,0 +1,134 @@
+<basic.at
+<affine.at
+<conjugate.at
+<group_operations.at { for |*@(RootDatum,RootDatum)| }
+
+set is_distinguished(RootDatum rd,mat delta)=bool:
+all(for alpha in rd.simple_roots do find(rd.simple_roots,delta*alpha) !=-1 od)
+
+set_type TwistedRootDatum= (RootDatum rd, mat delta)
+
+set *(TwistedRootDatum (rd1,delta1),TwistedRootDatum (rd2,delta2))=TwistedRootDatum:(rd1*rd2,block_matrix(delta1,delta2))
+{order of twist: not just the order of delta
+reason: given (rd,delta) we consider (factor,delta)
+where factor is delta-invariant
+}
+set order_twist(TwistedRootDatum (rd,delta))=int:
+assert(is_distinguished(rd,delta),"automorphism is not distinguished");
+max(for alpha in rd.simple_roots do first(for i:order(delta) from 1 do delta^i*alpha=alpha od)+1 od)
+
+{rd is semsimple and delta is distinguished
+ returns roots and coroots matrices for the folded diagram
+}
+set pre_folded(TwistedRootDatum (rd,delta)) = (mat,mat):
+(  assert(rd.is_semisimple or delta=id_mat(#delta),
+	  "root datum is not semisimple and delta !=1");
+   assert(is_distinguished(rd,delta),"delta is not distinguished");
+   let T = mat: eigen_lattice(^delta,1) { inclusion of sublattice of $X_*$ }
+   then   {T=(H^\delta)^0; columns are a basis of X_*(T)}
+{T is nxr where n=rd.rank and r=dimension(T)}
+{ T: matrix of map X_*(T)->X_*(H) \simeq Z^r -> Z^n: this is T.inject
+ ^T: matrix of map X^*(H)->X^*(T) \simeq Z^n->Z^r:   this is T.project=T.restrict
+}
+     T_dim = n_columns(T)
+   , roots_nonreduced = sort_u_rlex((^T)*rd.posroots) { restricted roots }
+   then roots = mat: T_dim #
+   ( let locate = binary_search_in (roots_nonreduced,rlex_leq@(vec,vec)) in
+     for alpha in roots_nonreduced
+        if not locate(alpha*2).succeeds	do alpha fi
+     od
+   )
+   then coroots = null(T_dim,0)
+in for alpha in roots
+   do let pullback = mat: columns_with((vec beta): beta*T = alpha, rd.roots)
+      then v = sum(rd.rank # for beta in pullback do coroot(rd,beta) od)
+      then w=v*2/(v*pullback[0]) {element of X_*(H) which lives in X_*(T)}
+      then corestrict_w=solve(T,w).requisition
+           {coordinates of w in the given basis of X_*(T)}
+   in coroots#:=ratvec_as_vec(corestrict_w)
+   od
+;  (roots,coroots)
+)
+
+{rd is semsimple and delta is distinguished
+returns (RootDatum folded, mat T) where T is a matrix relating H and H^delta
+}
+set folded(TwistedRootDatum(rd,delta):args) = (RootDatum,mat):
+   ( root_datum_from_positive(pre_folded(args),rd.prefers_coroots)
+   , eigen_lattice(^delta,1)
+   )
+
+{ make it easy to construct in simple case: search for a diagram automorphism
+  of order |n|
+  if you need to specify delta more precisely use folder(RootDatum,mat) above
+}
+set folded (RootDatum rd,int n) = (RootDatum,mat):
+    let (get,incr) = diagram_automorphism_iterator(rd)
+in  while true { exit by error or return }
+    do case get()
+       | none: error("No automorphism of order ",n," found")
+       | some(auto): if order(auto)=n then return(rd,auto) else incr() fi
+       esac
+    od; die { to keep the type  checker happy }
+
+
+{ all simple factors of rd mapping to given simple factor of folded root datum }
+set inverse_image_simple_factor \
+  (TwistedRootDatum (rd,delta),RootDatum folded_factor, mat T) = RootDatum:
+let pred =
+   for alpha@i in rd.posroots
+   if find(folded_factor.posroots,alpha*T)>=0
+   do i
+   fi od.is_member_fast
+then roots = columns_with(pred,rd.posroots)
+, coroots=columns_with(pred,rd.poscoroots)
+in root_datum_from_positive((roots,coroots),rd.prefers_coroots)
+
+set affine_root_of_factor(TwistedRootDatum trd, RootDatum folded_factor,mat T)=
+let inv=inverse_image_simple_factor(trd,folded_factor,T) then
+order_upstairs=order_twist(inv,trd.delta) then
+order=rat_as_int(order_upstairs/number_simple_factors(inv))
+in
+assert(order<=3,"order >3");
+if order=1 then folded_factor.highest_root
+elif order=2 then folded_factor.highest_short_root
+else folded_factor.highest_short_root
+fi
+
+set affine_datum(TwistedRootDatum trd)=
+let (frd,T)=trd.folded then
+affine_roots=for factor in frd.simple_factors do affine_root_of_factor(trd,factor,T) od then
+affine_coroots=for alpha in affine_roots do coroot(frd,alpha) od in
+(affine_coroots,frd,affine_roots)
+
+{construct automorphism delta of (rd,rd,...,rd) (r copies)
+(x_1,...,x_r) -> (tau(x_r),x_1,...,x_{r-1})
+delta^r=tau (automorphism of first factor)
+return ((rd,rd,...,rd),delta)
+}
+
+set cyclic_twist(RootDatum rd,mat tau,int r) = TwistedRootDatum:
+  let n=rd.rank
+  then rd_r=root_datum(for :r do rd.simple_roots od.block_matrix
+                      ,for :r do rd.simple_coroots od.block_matrix
+		      ,rd.prefers_coroots)
+  then cycle=permutation_matrix((r-1)#(#(r-1))) { [r-1,0,1,2,3,...,r-2] }
+  then basic_twist = Kronecker_product(cycle,id_mat(n))
+  then diag = block_matrix(id_mat(n*(r-1)),tau)
+  in (rd_r,diag*basic_twist)
+
+set cyclic_twist(RootDatum rd,int r)=TwistedRootDatum:
+cyclic_twist(rd,id_mat(rd.rank),r)
+
+{various constructions of AffineDatum}
+
+set affine_datum(LieType lt)=AffineDatum:
+affine_datum(simply_connected(lt))
+
+set affine_datum_long(LieType lt)=AffineDatum:affine_datum(simply_connected(lt))
+
+set affine_datum_short(LieType lt)=AffineDatum:
+let rd=simply_connected(lt) in
+affine_datum(rd,highest_short_root(rd))
+
+set dual(AffineDatum (alpha_ch,rd,alpha))=AffineDatum:(alpha,rd,alpha_ch)

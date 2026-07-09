@@ -1,0 +1,2704 @@
+{=== GENERIC TYPE CONSTRUCTORS ===}
+
+set_type Pair<S,T>   = ( S fst , T snd ) !
+set_type One_of<S,T> = ( S fail | T succeed ) !
+
+{ Often failure needs no extra information; then |One_of| becomes |Maybe|.
+  It is important that, like in |One_of|, failure is the first alternative, but
+  calling it |fail| would create an ambiguous overload of that name; therefore
+  we use a different and in this case more evocative label |none| here.
+}
+set_type Maybe<T>    = ( void none | T some ) !
+
+{ A process producing a stream of |T| can be presented as a |Iterator<T>| value.
+  In each state (including the initial one) the |get| method tries to produce
+  a |T| value, but it may find out there are none left. This may or may not have
+  a side effect, but |get| is not responsible for advancing in the sequence; to
+  do that, call |incr| which moves beyond the current value (it should only be
+  called after |get| succeeding). Although usually not done, calling |get| twice
+  in succession without intervening |incr| should produce the same value.
+}
+set_type Iterator<T> = ((->Maybe<T>) get, (->) incr) !
+
+{ Give a name |LinearSolution| to the type returned by built-in |linear_solve|.
+  The type |AffineSubspace| and its field names only serve as documentation.
+}
+set_type AffineSubspace = ( vec base_point, int denom, mat tangent_basis )
+set_type LinearSolution = ( void empty_set | AffineSubspace solution )
+
+{ auxiliary functions for |One_of<S,T>|: test just the tag and strip failure }
+any_type S,T begin
+set succeeds (One_of<S,T> v) = bool: case v | fail: false | succeed: true esac
+set fails    (One_of<S,T> v) = bool: case v | fail: true | succeed: false esac
+set as_list (One_of<S,T> v) = [T]: case v | fail: [] | succeed(x): [x] esac
+
+{ insist upon succeeding; don't take |fail| for an answer }
+set requisition (string message) = (One_of<S,T> v) T:
+    case v | fail: error(message) | succeed(v): v esac
+set requisition = (One_of<S,T>->T):
+    requisition("No solution found; having one was required")
+end
+
+{ auxiliary functions for |Maybe<T>| and for |Iterator<T>| }
+any_type T begin
+{ |can(v)| just means |succeeds(v)|, but |if can(solve(eqn)) then| sounds nice }
+set can (Maybe<T> v) = bool:
+    case v | none: false | some: true esac
+
+{ gather actual items from a list of potential contributions }
+set collect ([Maybe<T>] L) = [T]: for x in L do x.as_list od.##
+
+{ iterate, but bound number of iterations to at most |n| }
+set take (int n,Iterator<T> (get,incr) ) = [T]:
+   for :n do case get() | none: break | some(value): value next incr() esac od
+
+{ iterate exhaustively, but only print results without storing them }
+set ! (Iterator<T> (get,incr)) = void:
+   while
+     case get()
+     | none: false
+     | some(value): prints(value); true
+     esac
+   do incr()
+   od
+
+{ iterate exhaustively, but just count the number of iterations }
+set count (Iterator<T> (get,incr)) = int: { run through iteration, counting }
+   while get().succeeds do incr() od { in |int| context, |while| loop counts }
+
+{ iterate exhaustively and store all results in a list }
+set to_list (Iterator<T> (get,incr)) = [T]:
+   while
+     case get()
+     | none: dont
+     | some(value): do value next incr()
+     esac
+   od
+end
+
+{ === TIMING, DIAGNOSTICS, PRINTING, AND TESTING ASSERTIONS === }
+
+any_type T begin
+set time ((->T)f) = T: let t=elapsed_ms() in f() next print(elapsed_ms ()-t)
+
+set where() = void:
+   for line@i in back_trace
+   do if line[:3]="In " then prints([i]," ",line) fi
+   od
+
+set print_lines ([T] a) = void: for x in a do print(x) od
+set prints_lines ([T] a) = void: for x in a do prints(x) od
+set ! = prints_lines@[T] { allow printing any list line-by-line as |list!| }
+end
+
+set seat_belt_on = true { whether runtime tests are activated }
+
+set assert ((->bool,string)f) = void: { the fastest form when disabled }
+   if seat_belt_on
+   then let (b,message)=f() in if not b then error(message) fi
+   fi
+set assert ((->bool)b,string message) = void: { for easier conversion }
+   if seat_belt_on { using |and| here would be slightly less efficient }
+   then if not b() then error(message) fi
+   fi
+set assert ((->bool)b) = void: assert(@:(b(),"assertion failed"))
+
+{ === SOME DEFINITIONS USEFUL FOR AVOIDING OR RESOLVING AMBIGUITIES === }
+
+{ distributing a relation over lists, almost as in |map(rel)(zip(a,b)).all| }
+any_type S,T begin
+set ! ((S,T->bool)rel) = ([S] a,[T] b)bool:
+  #a=#b and (for x@i in a do if not rel(x,b[i]) then return false fi od; true)
+end
+
+{ Some concrete instaces of distribution of an equality relation over a list.
+  Proximity with certain built-in tests forbids calling these |=|, so instead we
+  use |==| or |===|. WHen safe, using |=| (with implicit conversion) is faster.
+}
+set == = =@(int,int)! { make comparison of two |[int]| available as |==| }
+set == = =@(vec,vec)! { make comparison of two |[int]| available as |==| }
+set === = ==@([int],[int])! { comparison of two |[[int]]| available as |===| }
+
+{ one more ambiguity avoiding definition: make an alias for a |#| instance }
+set append = #@ T ([[T]],[T]) { so |LL append:= []| is unambiguous }
+
+
+{ === ITERATION AND LIST SUPPORT FUNCTIONS === }
+
+set !minus_1 = -1 { used to be more efficient than |-1|, now equally efficient }
+
+set # (int n) = [int]: for i:n do i od       { [0,1,...,n-1] }
+any_type T begin
+set indices ([T]a) = [int]: # #a { faster than |for @i in a do i od| }
+end
+
+set # (bool b) = int: if b then 1 else 0 fi { Iverson symbol }
+set sign (bool b) = int: { |(-1)^#b|, i.e.: } if b then -1 else 1 fi
+
+set range (int a, int b) = [int]: for i : b-a from a do i od
+
+set ^ = !=@(bool,bool) { simple exclusive or }
+
+set count (int limit,(int->bool) predicate) = int:
+  let c=0 in for i:limit do if predicate(i) then c+:=1 fi od; c
+
+set all ([bool] p) = bool:
+  for x in p do if not x then return false fi od; true
+set any ([bool] p) = bool:
+  for x in p do if x then return true fi od; false
+set none ([bool] p) = bool:
+  for x in p do if x then return false fi od; true
+set first ([bool] p) = int:
+  for x@i in p do if x then return i fi od; -1
+set last ([bool] p) = int:
+  let i=#p-1 in while >=i and not p[i] do i-:=1 od; i
+set count ([bool] p) = int: { count (sum) number of truths in list }
+  let c=0 in for b in p do if b then c+:=1 fi od; c
+set XOR ([bool] p) = bool: { exclusive or (sum modulo 2) of all truths in list }
+  let c=false in for b in p do c:=(c!=b) od; c
+
+{ if evaluating conditions is expensive, procedure them with '@:' and call: }
+set all ([(->bool)] p) = bool:
+  for x in p do if not x() then return false fi od; true
+set any ([(->bool)] p) = bool:
+  for x in p do if x() then return true fi od; false
+set none ([(->bool)] p) = bool:
+  for x in p do if x() then return false fi od; true
+set first ([(->bool)] p) = int:
+  for x@i in p do if x() then return i fi od; -1
+set last ([(->bool)] p) = int: { this is somewhat more efficient than first }
+  let i=#p-1 in while >=i and not p[i]() do i-:=1 od; i
+{ there are no lazy versions of |count| and |XOR| }
+
+{ if cases to test are produced as predicates of an integer, one can use: }
+set all (int limit,(int->bool) predicate) = bool:
+  for i:limit do if not predicate(i) then return false fi od; true
+set any (int limit,(int->bool) predicate) = bool:
+  for i:limit do if predicate(i) then return true fi od; false
+set none (int limit,(int->bool) predicate) = bool:
+  for i:limit do if predicate(i) then return false fi od; true
+set first (int limit,(int->bool) predicate) = int:
+  for i:limit do if predicate(i) then return i fi od; -1
+set last (int limit,(int->bool) predicate) = int:
+  for i:limit ~do if predicate(i) then return i fi od; -1
+
+{ With values stored in an array, similar functions can be applied to it.
+  As the row value already exists, directly looping over it is efficient here.
+}
+any_type T begin
+set all ([T] L,(T->bool) predicate) = bool:
+  for x in L do if not predicate(x) then return false fi od; true
+set any ([T] L,(T->bool) predicate) = bool:
+  for x in L do if predicate(x) then return true fi od; false
+set none ([T] L,(T->bool) predicate) = bool:
+  for x in L do if predicate(x) then return false fi od; true
+set first ([T] L,(T->bool) predicate) = int:
+  for x@i in L do if predicate(x) then return i fi od; -1
+set last ([T] L,(T->bool) predicate) = int:
+  for x@i in L ~do if predicate(x) then return i fi od; -1
+
+set get_first ([T] L,(T->bool) predicate) = Maybe<T>:
+  for x in L do if predicate(x) then return x.some fi od; ().none
+set get_last ([T] L,(T->bool) predicate) = Maybe<T>:
+  for x in L ~do if predicate(x) then return x.some fi od; ().none
+end
+
+any_type S,T begin
+set get_first ((T->S) attr, (S,S->bool)eq) = ([T]a, S b) Maybe<T>:
+   for x in a do if eq(x.attr,b) then return x.some fi od; ().none
+set get_last ((T->S) attr, (S,S->bool)eq) = ([T]a, S b) Maybe<T>:
+   for x in a ~do if eq(x.attr,b) then return x.some fi od; ().none
+
+{ test for being in a relation to some/none/all of the elements of a list }
+set for_some ((S,T->bool)rel, [T]a) = (S x) bool:
+   for y in a do if rel(x,y) then return true fi od; false
+set for_none ((S,T->bool)rel, [T]a) = (S x) bool:
+   for y in a do if rel(x,y) then return false fi od; true
+set for_all  ((S,T->bool)rel, [T]a) = (S x) bool:
+   for y in a do if not rel(x,y) then return false fi od; true
+end
+
+
+{ Generic functions on any type with a provided total ordering }
+
+any_type T begin
+{ minimum or maximum of 2 candidates }
+set min ((T,T->bool)leq) = (T x, T y) T: if leq(x,y) then x else y fi
+set max ((T,T->bool)leq) = (T x, T y) T: if leq(x,y) then y else x fi
+
+{ extensions of these to lists of any posiitve length }
+set min_list ((T,T->bool)leq) = ([T] a) T:
+  let l=#a in assert(@:l>0,"Minimum of an empty list");
+  let m=a~[0] in for i:l-1 do if not leq(m,a[i]) then m:=a[i] fi od; m
+set max_list ((T,T->bool)leq) = ([T] a) T:
+  let l=#a in assert(@:l>0,"Maximum of an empty list");
+  let m=a~[0] in for i:l-1 do if not leq(a[i],m) then m:=a[i] fi od; m
+
+{ versions seeded with a "limit value" to use in case of an empty list }
+set min_init ((T,T->bool)leq) = (T !seed) ([T]->T):
+  ([T] l)T: let m=seed in for a in l do if not leq(m,a) then m:=a fi od; m
+set max_init ((T,T->bool)leq) = (T !seed) ([T]->T):
+  ([T] l)T: let m=seed in for a in l do if not leq(a,m) then m:=a fi od; m
+
+{ position of first occurrence of minimum, or -1 }
+set mindex ((T,T->bool)leq) = ([T] a) int:
+  let l=#a in
+  if =l then -1
+  else let p=0, m=a[0] in
+    for i:l-1 from 1 do if not leq(m,a[i]) then set (p,m):=(i,a[i]) fi od; p
+  fi
+
+set maxdex ((T,T->bool)leq) = ([T] a) int:
+  let l=#a in
+  if =l then -1
+  else let p=0, m=a[0] in
+    for i:l-1 from 1 do if not leq(a[i],m) then set (p,m):=(i,a[i]) fi od; p
+  fi
+
+set reverse ([T] r) = [T]: r~[:]
+end
+
+
+{ === MEMBERSHIP TESTING AND SEARCHING === }
+
+any_type T begin
+set is_member   ((T,T->bool)eq) = ([T] a) (T->bool): for_some(eq,a)
+set isnt_member ((T,T->bool)eq) = ([T] a) (T->bool): for_none(eq,a)
+end
+
+{ binary search first |i| in [low,high) with |pred(i)|, or |high| if none }
+{ of course |pred| is assumed monotonic here: $pred(i)\implies pred(i+1)$ }
+set binary_search_first ((int->bool)pred, int low, int high) = int:
+  while low<high
+  do let mid=(low+high)\2 in if pred(mid) then high:=mid else low:=mid+1 fi
+  od; low
+
+any_type S,T begin
+set binary_search_in ([T] a,(T,T->bool) leq) = (T->Maybe<int>):
+  (T x) Maybe<int>:
+  let i = binary_search_first( (int i)bool:leq(x,a[i]) , 0,#a)
+  in if i<#a and leq(a[i],x) then some(i) else none() fi
+
+set binary_search_in ([S] a,(S->T)f,(T,T->bool) leq) = (T->Maybe<int>):
+  (T x) Maybe<int>:
+  let i = binary_search_first( (int i)bool:leq(x,f(a[i])) , 0,#a)
+  in if i<#a and leq(f(a[i]),x) then some(i) else none() fi
+
+set binary_search_get ([S] a,(S->T)f,(T,T->bool) leq) = (T->Maybe<S>):
+  (T x) Maybe<S>:
+  let i = binary_search_first( (int i)bool:leq(x,f(a[i])) , 0,#a)
+  in if i<#a and leq(f(a[i]),x) then some(a[i]) else none() fi
+
+set binary_lookup ((T,T->bool) leq) = (T x,[T]a) Maybe<int>:
+  binary_search_in(a,leq)(x)
+set binary_lookup_by ((S->T)f,(T,T->bool) leq) = (T x,[S]a) Maybe<int>:
+  binary_search_in(a,f,leq)(x)
+
+end
+
+set binary_lookup = (int,[int]->Maybe<int>): binary_lookup(<=@(int,int))
+set binary_lookup = (string,[string]->Maybe<int>):
+    binary_lookup(<=@(string,string))
+
+set locate_sorted ([int] v,int lwb) = int: { first index of entry >= |lwb| }
+  binary_search_first((int i):v[i]>=lwb,0,#v)
+
+{ transform "stops" representation of weakly increasing function to function }
+set from_stops ([int] stops) = (int->int):
+  { at |k| find last index |i| with |stops[i]<=k|; calculated via complement }
+  (int k): locate_sorted(stops,k+1)-1 { find first excess, then back up 1 }
+
+
+{ === BASIC NON BUILT-IN FUNCTIONALITY FOR SPECIFIC TYPES === }
+
+{                               Integers                                }
+
+set abs (int k)= int: if k<0 then -k else k fi
+set sign (int k)= int: case k then -1 in 0 else 1 esac
+
+set is_odd  (int n) = bool: !=n%2
+set is_even (int n) = bool:  =n%2
+
+set min = min(<=@(int,int))
+set max = max(<=@(int,int))
+set min = min_list(<=@(int,int))
+set max = max_list(<=@(int,int))
+set min = min_init(<=@(int,int))
+set max = max_init(<=@(int,int))
+set min_loc = mindex(<=@(int,int))
+set max_loc = maxdex(<=@(int,int))
+
+set gcd = (int,int->int): { greatest common divisor; no size limit }
+   let limit = 2^31 in
+   (int a,int b) int:
+   if   case a then a:=-a in return abs(b) else a esac<limit then [a,b%a].gcd
+   elif case b then b:=-b in return a      else b esac<limit then [a%b,b].gcd
+   else { too big for |vec|, so do Euclid's algorithm explicitly }
+      while let r=a%b in r.!= do a:=b; b:=r od; b
+   fi
+
+{ the following cannot be called |gcd|: too close to built-in |gcd@vec| }
+set gcd_big([int] v) = int:
+   let d=0 in for x in v do if (d:=gcd(d,x))=1 then break fi od; d
+
+set lcm (int a,int b) = int: let d=gcd(a,b) in if d=1 then a*b else a\d*b fi.abs
+
+set lcm ([int] v) = int: let m=1 in for x in v do m:=lcm(m,x) od; m
+
+set =  ((int,int)(x0,y0),(int,int)(x1,y1)) = bool: x0=x1 and y0=y1
+set != ((int,int)(x0,y0),(int,int)(x1,y1)) = bool: x0!=x1 or y0!=y1
+
+{ scalar multiplication of list (note: *@(vec,int) returning vec is built-in) }
+set * (int c,[int] r) = [int]: for a in r do c*a od
+
+{ sum, product of a list of values }
+set sum ([int] r) = int: let s=0 in for a in r do s+:=a od; s
+set product ([int] r) = int: let p=1 in for a in r do p*:=a od; p
+
+set half (int n) = int: let (q,r)=n\%2 in assert(@:r=0,"Inexact halving"); q
+set exact_divide (int a, int b) = int:
+    let (q,r)=a\%b in assert(@:r=0,"Inexact division"); q
+
+set int_format = to_string@int
+
+{ bitsets encoded as functions (int->bool) together with upper bound |limit| }
+
+set exp_2 (int n) = int: [n].to_bitset { 2^n, but more efficient }
+set full_bitset (int n) = int: exp_2(n)-1 { to_bitset(#n), but more efficient }
+
+set is_member_bitset (int i,int B) = bool: bitwise_subset(exp_2(i),B)
+set isnt_member_bitset (int i,int B) = bool: bitwise_subset(exp_2(i),~B)
+
+set is_member_fast (vec L) = (int->bool):
+   let B=L.to_bitset in (int n) bool: is_member_bitset(n,B)
+set isnt_member_fast  (vec L) = (int->bool):
+   let B = ~L.to_bitset in (int n) bool: is_member_bitset(n,B)
+
+set list (int limit, (int->bool) predicate) = [int]:
+  for i:limit if predicate(i) do i fi od
+set complement (int limit,(int->bool) predicate) = [int]:
+  for i:limit if not predicate(i) do i fi od
+set complement (int n, vec list) = [int]: list(n, isnt_member_fast(list) )
+
+{ sorting lists of relatively small natural numbers can be done fast }
+set sort_u_below (int n) = ([int] L) [int]: list(n,is_member_fast(L))
+
+set is_subset (vec S,vec L) = bool: bitwise_subset(S.to_bitset,L.to_bitset)
+set is_disjoint (vec S,vec L) = bool: bitwise_subset(S.to_bitset,~L.to_bitset)
+
+set contains (vec S) = (vec->bool):
+   let b = S.to_bitset in (vec L)bool: bitwise_subset(b,L.to_bitset)
+set contains (int s) = (vec->bool): contains(vec:[s])
+
+set is_subset_of (vec L) = (vec->bool):
+   let b = L.to_bitset in (vec S)bool: bitwise_subset(S.to_bitset,b)
+set is_disjoint_from (vec L) = (vec->bool):
+   let b = ~L.to_bitset in (vec S)bool: bitwise_subset(S.to_bitset,b)
+
+set first_set_bit (int n) = int: bit_length(AND_NOT(n-1,n))
+set unset_first_set_bit (int n) = int: AND(n,n-1)
+set set_bit_positions (int n) = vec:
+   assert(@:n>=0,"Infinite number of set bits for negative number");
+   while n>0 do first_set_bit(n) next n AND:= n-1 od
+set set_bit_positions (int n,int limit) = vec:
+   n AND:= full_bitset(limit); while n>0 do first_set_bit(n) next n AND:= n-1 od
+
+set first_unset_bit (int n) = int: bit_length(AND_NOT(n,n+1))
+set set_first_unset_bit (int n) = int: OR(n,n+1)
+set unset_bit_positions (int n) = vec:
+   assert(@:n<0,"Infinite number of unset bits for positive number");
+   while n<-1 do first_unset_bit(n) next n OR:= n+1 od
+set unset_bit_positions (int n,int limit) = vec: set_bit_positions(~n,limit)
+
+set bitwise_intersection ([int] ns) = int:
+   let a=-1 in for n in ns do a AND:= n od; a
+set bitwise_union ([int] ns) = int:
+   let a=0 in for n in ns do a OR:= n od; a
+
+
+set is_member   = ([int]->(int->bool)): is_member(=@(int,int))
+set isnt_member = ([int]->(int->bool)): isnt_member(=@(int,int))
+
+{ when |v| is known to be sorted (and long), this can be done faster }
+set is_member_sorted ([int] v) = (int->bool):
+  let l=#v in
+  case l { special cases for |l<=5| }
+  in (int .): false
+  , (int n): n=v[0]
+  , (int n): n=v[0] or n=v[1]
+  , (int n): case n-v[1] then n=v[0] in true else n=v[2] esac
+  , (int n): if n<v[2] then n=v[0] or n=v[1] else n=v[2] or n=v[3] fi
+  , (int n):
+       case n-v[2] then n=v[0] or n=v[1] in true else n=v[3] or n=v[4] esac
+  else
+     (int n)bool: succeeds(binary_lookup(n,v))
+  esac
+set isnt_member_sorted ([int] v) = (int->bool):
+  let member = is_member_sorted(v) in (int n): not member(n)
+
+set is_subset_of_sorted ([int] sorted) = ([int]->bool):
+   let test = is_member_sorted(sorted) in
+   ([int] S)bool: all(#S,(int i)bool: test(S[i]))
+set is_disjoint_from_sorted ([int] sorted) = ([int]->bool):
+   let test = isnt_member_sorted(sorted) in
+   ([int] S)bool: all(#S,(int i)bool: test(S[i]))
+
+set factorial (int n) = int: let p=1 in for i:n-1 from 2 do p *:=i od; p
+set ! = factorial@int { allo conventional factorial notation }
+
+{ convert to base n as polynomial: small coef polynomial evaluating to k at n }
+set to_base_poly (int b) = (int->vec):
+  assert(@:b>=2,"Cannot express integers in base "##b.to_string);
+  (int n):
+    assert(@:n>=0,"Cannot express negative integer in base "##b.to_string);
+    let r=0{dummy for multi-assign} in vec: while n>0 do set (n,r):=n\%b; r od
+
+set to_base_fixed_length (int b, int l) = (int->vec{of length |l|}):
+  assert(@:b>=2,"Cannot express integers in base "##b.to_string);
+  (int n): let r=0{dummy for multi-assign} in
+  vec: for :l do set (n,r):=n\%b; r od { get |l| finals digits, regardless }
+
+
+set to_base (int b, (int->string) digit) = (int->string):
+  let tbp=to_base_poly(b) in
+  (int n) string: for c in tbp(n) ~do c.digit od.##
+
+set binary = (int->string):
+  let f=to_base(2,to_string@int) in
+  (int n)string: if n.< then "-"##f(-n) else f(n) fi
+
+set digits36 = (int->string): { map digits in base up to 36 to a letter }
+  let !shift = "A".ASCII-10
+  in (int k)string: if k<=9 then k.to_string else ASCII(k+shift) fi
+
+set hexadecimal = (int->string):
+  let !shift = "A".ASCII-10 then f=to_base(16,digits36@int)
+  in (int n)string: if n.< then "-"##f(-n) else f(n) fi
+
+{		some transformations of sequences of numbers		}
+
+set cumulate_forward ([int] seq) = [int]:
+   let sum=0 in for k in seq do sum+:=k od
+set cumulate_backward ([int] seq) = [int]:
+   let sum=0 in for k in seq ~do sum+:=k ~od
+
+set forward_differences ([int] seq) = [int]: { inverse of |cumulate_forward| }
+   let last=0 in for k in seq do k-last next last:=k od
+set backward_differences ([int] seq) = [int]: { inverse of |cumulate_backward| }
+   let last=0 in for k in seq ~do k-last next last:=k ~od
+
+
+{                           Rational numbers                            }
+
+set numer (rat a) = let (n,)=%a in n
+set denom (rat a) = let (,d)=%a in d
+
+set is_integer (rat r) = bool: denom(r)=1
+set sign (rat a) = int: sign(numer(a)) { denominator is always positive }
+
+set abs (rat a) = rat: sign(a)*a
+
+set \ ((rat,rat)p) = int: floor(/p)
+set \% ((rat,int)p) = (int,rat): (\p,%p) { shouldn't these two be built-in? }
+set \% ((rat,rat)p) = (int,rat): (\p,%p)
+
+{ these are mostly for ratvec arguments, but [rat] avoids coercion from vec }
+set floor ([rat] v) = vec: for a in v do floor(a) od
+set ceil  ([rat] v) = vec: for a in v do  ceil(a) od
+
+set min = min(<=@(rat,rat))
+set max = max(<=@(rat,rat))
+set min = min_list(<=@(rat,rat))
+set max = max_list(<=@(rat,rat))
+set min = min_init(<=@(rat,rat))
+set max = max_init(<=@(rat,rat))
+set min_loc = mindex(<=@(rat,rat))
+set max_loc = maxdex(<=@(rat,rat))
+
+set sum ([rat] r) = rat: let s=rat:0 in for a in r do s+:=a od; s
+set product ([rat] r) = rat: let p=rat:1 in for a in r do p*:=a od; p
+
+{ extend built-in scalar product of vectors to list of rationals case }
+set * ([rat] v, [rat] w) = rat:
+   let s=rat:0 in for vi@i in v do s +:= vi*w[i] od; s
+
+set * ([int] v, [rat] w) = rat:
+   let s=rat:0 in for vi@i in v do s +:= vi*w[i] od; s
+
+{ make a rational into an integer if possible }
+set rat_as_int (rat r) = int:
+  let (n,d)=%r in if d=1 then n else error("Not an integer") fi
+
+set with_decimals (int n) = (rat->string): (rat r) string:
+(  let sign=if >=r then "+" else r:=-r; "-" fi, i=floor(r), f=frac(r)
+in sign
+## i.to_string ## "."
+## for :n do let x=10*f in x.floor.to_string next f:=x.frac od.##
+)
+
+
+{                               Strings                                 }
+
+set !new_line = ASCII(10) { including this in a string passes to a new line }
+
+set char_index (string c, string s) = int: first(#s,(int i)bool: c=s[i])
+
+set is_member   = ([string]->(string->bool)): is_member(=@(string,string))
+set isnt_member = ([string]->(string->bool)): isnt_member(=@(string,string))
+
+set + = ##@(string,string) { + aliases string concatenation "ax" ## "is" }
+set * = (string,int->string): { repeat string; use recursive doubling }
+  let rec_fun rep(string s,int n) = string:
+    if n=1 then s
+    else let (q,r)=n\%2 then half=rep(s,q) in
+      half + if =r then half else half+s fi
+    fi
+  in (string s,int n) string: if n<=0 then "" else rep(s,n) fi
+set * (int n,string s) = string: s*n { allow factor to come first }
+
+set + (string s, int i)= string: s + int_format(i)
+set + (int i, string s)= string: int_format(i) + s
+
+set + (string s, (int,int)(x,y)) = s + "(" + x + "," + y + ")"
+
+set plural (int n) = string: if n=1 then "" else "s" fi
+set plural (int n,string s) = string: n + if n=1 then s else s+"s" fi
+
+set concat = ##@[string]
+set join ([string] elts, string sep, string unit) = string:
+   if #elts=0 then unit
+   else elts[0] ## for elt in elts[1:] do sep ## elt od.##
+   fi
+
+set l_adjust (int w, string s) = string:
+  let d=w-#s in if d<=0 then s else s##(" "*d) fi
+set r_adjust (int w, string s) = string:
+  let d=w-#s in if d<=0 then s else (" "*d)##s fi
+set c_adjust (int w, string s) = string:
+  let d=w-#s in if d<=0 then s else let h=d\2 in (" "*h) ## s ## (" "*(d-h)) fi
+
+set width (int n) = int: #int_format(n)
+
+set split (string S) = [string]: for l in S do l od
+
+set split_lines (string text) = [string]:
+( if text~[0]!=new_line then text := (text next text:="") ## new_line fi
+; let last=0 in
+  for c@i in text if c=new_line do text[last:i] next last:=i+1 fi od
+)
+
+set is_substring (string key, string text) = bool:
+  let l=#key then n_tries=#text+1-l { number of interletter positions to try }
+  in any(n_tries,(int start)bool: text[start:start+l]=key)
+
+set fgrep (string s, string text) = [string]:
+  for line in split_lines(text) if is_substring(s,line) do line fi od
+
+set compact_string (ratvec v) = string:
+   let (a,b)=%v in
+   ([int]:a).to_string + if b=1 then "" else "/"+b.to_string fi
+
+{				Generics				}
+
+any_type S,T begin
+set filter ((T->bool) pred) = ([T]->[T]):
+  ([T] r): for x in r if pred(x) do x fi od
+
+set map ((S->T) f) = ([S] a) [T]: for x in a do f(x) od
+
+set split ([S,T] l) = ([S],[T]): ( for(s,)in l do s od, for(,t)in l do t od )
+
+set zip ([S] a,[T] b) = [S,T]:
+  if #a<=#b then for x@i in a do (x,b[i]) od else for y@i in b do (a[i],y) od fi
+
+set unzip ([S,T] list) = ([S],[T]):
+  ( for (x,) in list do x od , for (,y) in list do y od )
+
+set transpose ([[T]] rr) = [[T]]:
+{ only for rectangular array with at least one entry no information is lost }
+  if #rr=0 then rr { avoid error for minimum of empty list }
+  else for i: min(map(#@t([t]))(rr)) do for r in rr do r[i] od od
+  fi
+
+{ change one entry, in list-of-rows format }
+set matrix_assign([[T]] a,int i, int j, T v) = [[T]]:
+  let r = a[i] in a[i]:=[]; r[j]:=v; a[i]:=r; a
+
+end
+
+{                               Vectors                                 }
+
+set vector (int n,(int->int)f) = vec: for i:n do f(i) od
+
+{ standard basis in rank n }
+set identity_row (int n,int i) = vec: for j:n do #(i=j) od
+
+set ones (int n) = vec: for i:n do 1 od
+
+set is_member   = ([vec]->(vec->bool)): is_member(=@(vec,vec))
+set isnt_member = ([vec]->(vec->bool)): isnt_member(=@(vec,vec))
+
+set ~ (vec v)= vec: v~[:]
+set lower (int k,vec v)= vec: v[:k]
+set upper (int k,vec v)= vec: v[k~:]
+set drop_lower (int k,vec v)= vec: v[k:]
+set drop_upper (int k,vec v)= vec: v[:k~]
+
+set <= (vec v) = bool: >= -v { anti-dominance (in fundamental weight coords) }
+set <  (vec v) = bool: > -v  { strict anti-dominance }
+
+set sum (int l,[vec] list) = vec: { sum of vecs of constant length l }
+  let result = null(l) in for v in list do result+:=v od; result
+{ for large sums |sum(l#list)|, using |sum@mat|, might be marginally faster }
+
+{ all words with letter |i| running over elements of |alphabets[i]| }
+set all_words ([vec] alphabets) = mat:
+{ matrix records |#alphabets| as |n_rows|, even if there whoudl be no columns }
+  let rec_fun generate(int final) = [vec]:
+     if final=0 then [null(0)]
+     else final-:=1; let alphabet=alphabets[final] in
+	for prefix in generate(final)
+	   for letter in alphabet do prefix#letter od
+	od
+     fi
+  , size=#alphabets
+  in size # generate(size) { convert list of vectors to matrix with |size| rows }
+
+{ we can do the same for other types than integers }
+any_type T begin
+set all_words ([[T]] alphabets) = [[T]]:
+  (#alphabets).
+  (rec_fun generate(int final) [[T]]:
+     if final=0 then [[]] { a single empty list }
+     else final-:=1; let alphabet=alphabets[final] in
+	for prefix in generate(final)
+	   for letter in alphabet do prefix#letter od
+	od
+     fi
+  )
+{ if any alphabet is empty, the result is an empty list, forgetting #alphabets }
+end
+
+{ all words of length |#limits|, with letter |i| running over |#limits[i]| }
+set all_words ([int] limits) = mat:
+   for n in limits do #n od.all_words
+
+set all_0_1_vecs (int n) = [vec]: all_words(for :n do 2 od)
+
+any_type T begin
+
+set rec_fun power_set (int n) = [[int]]: { indices where 0_1_vecs have 1 }
+  if =n then [[]] else let p=power_set(n-:=1) in p ## for S in p do S#n od fi
+set power_set ([T] S) = [[T]]:
+  for inx in power_set(#S) do for i in inx do S[i] od od
+set choices_from ([T] S, int k) = [[T]]: { all $k$-subsets of $S$ }
+  if k>#S then []
+  else { now we will assume $n\geq k$ }
+    let rec_fun from_first(int n,int k) = [[T]]: { $k$ from first $n$ of $S$ }
+      if k=0 then [[]] { unique choice of 0 }
+      else { generate by final element, and concatenate }
+        for i:n-k+1 from k-1
+        do let Si=S[i] in for l in from_first(i,k-1) do l#Si od
+        od.##
+      fi
+    in from_first(#S,k)
+  fi
+
+set multiplicity ((T,T->bool)eq) = (T,[T]->int):
+  (T n, [T] S) int: for x in S do eq(x,n) od.count
+
+end
+
+set all_0_1_vecs_with_sum (int n,int k) = [vec]:
+   let !zero = null(n) in
+   for S in choices_from(#n,k)
+   do let v=zero in for i in S do v[i]:=1 od; v
+   od
+
+{ index of |word| in |all_words(radix)| }
+set mixed_radix_nr([int] radix) = (vec->int):
+   (vec word) int: let s=0 in for l@i in word do s:=s*radix[i]+l od; s
+{ its inverse, in other words, the function |f=mixed_radix_word(radix)| is
+  such that |all_words(radix)| is equal to |for i:product(radix) do f(i) od| }
+set mixed_radix_word([int] radix) = (int->vec):
+  (int N) vec: for rad@i in radix ~do let (q,r)= N\%rad in N:=q; r ~od
+
+{. number of times n occurs in [int] S .}
+
+{add zeros to make total length =N}
+set pad ([int] v,int N) = vec: v##null(N-#v)
+
+
+
+{                               Matrices                                }
+
+{ matrix defined by its dimension and expression for general entry }
+set matrix ((int,int)(r,c),(int,int->int) f) = mat:
+  r#for j:c do for i:r do f(i,j) od od
+
+set n_rows    (mat m) = int: let (r,) = shape(m) in r
+set n_columns = #@mat { this one is built in as a # operator overload }
+
+set as_column (vec v) = mat: [v] { interpret v as single column }
+set as_row = ^@vec               { interpret v as single row }
+
+set ~ (mat A) = mat: { reverse rows and reverse columns }
+  swiss_matrix_knife(45,A,0,0,0,0) { transform 45 = 36 + 9, rows&cols reversed }
+
+set block_matrix (mat A,mat B) = mat:
+  let ra=n_rows(A), rb=n_rows(B) then za=null(ra), zb=null(rb) in
+  (ra+rb)# (for col in A do col##zb od ## for col in B do za##col od)
+
+set block_matrix ([mat] list) = mat:
+(  let m = sum(for A in list do n_rows(A) od), pos=0
+in m
+#  for A in list
+   do let pre=null(pos) then {sequential!} post=null(m-(pos+:=n_rows(A))) in
+      for col in A do pre##col##post od
+   od.##
+)
+
+set main_diagonal (mat A) = vec:  for i:shape(A).min do A[i,i] od
+
+{ test matrix against a multiple of the identity }
+set = (mat m,int k) = bool: =(m-k)
+
+{ add a column to a matrix, which is not predefined as operator # }
+set # (mat m, vec v) = mat: n_rows(m) { require size match } # (columns(m)#v)
+set # (vec v, mat m) = mat: n_rows(m) { require size match } # (v#columns(m))
+
+{ add row to a matrix, which is similar; use operator ^ for it }
+set ^ (mat m, vec v) = mat: n_columns(m) ^ (rows(m)#v)
+set ^ (vec v, mat m) = mat: n_columns(m) ^ (v#rows(m))
+
+set ## (mat A, mat B) = mat: { concatenate horizontally, must have same depth }
+   n_rows(B) # (columns(A)##columns(B))
+set ^ (mat A, mat B) = mat: { concatenate vertically, must have same width }
+   n_columns(B) ^ (rows(A)##rows(B))
+
+{ concatenate horizontally a list of matrices; each of n rows }
+set ## (int n,[mat] L) = mat:
+  n # ## for M in L do [vec]:M od
+
+{ apply a function to all matrix entries }
+set map_on (mat m) = ((int->int)->mat):
+  let nr = n_rows(m)
+  in ((int->int)f) mat: nr # for c in m do for e in c do f(e) od od
+
+{ scalar multiplication }
+set * (int c,mat m) = mat: map_on(m)((int e) int: c*e)
+set - (mat m)= mat: { transform 36+128=164: 128 means negate entries }
+  swiss_matrix_knife(164,m,0,0,0,0)
+
+{ sum of list of matrices, with given shape for when list is empty }
+set sum ((int,int) shape, [mat] L) = mat:
+  let len=#L in
+  if =len then null(shape)
+  else let s=L~[0] in assert(@:shape(s)=shape); for i:len-1 ~do s +:= L[i] od; s
+  fi
+{ square matrices are frequent, so there is a special case of |sum| for them }
+set sum (int n,[mat] L) = mat: sum((n,n),L)
+
+{ product left-to-right of list of square matrices, all square of size |n| }
+set product (int n, [mat] L) = mat:
+  let len=#L in
+  if len=0 then id_mat(n)
+  else let p=L[0] in for i:len-1 from 1 do p *:= L[i] od; p
+  fi
+
+set gcd(mat M) = int:
+   let d=0 in
+   for col in M
+   do d := case d in gcd(col), return 1 else gcd(d,gcd(col%d)) esac
+   od; d
+
+{ integer division }
+set \ (mat m,int d) = mat: map_on(m)((int e) int: e\d)
+
+{ entrywise modulo }
+set % (mat m,int d) = mat: map_on(m)((int e) int: e%d)
+
+set Smith_basis (mat M) = mat: let (basis,)=Smith(M) in basis
+set inv_fact (mat M) = vec: let (,invf)=Smith(M) in invf
+
+set image (mat M) = mat: let (im,,,)=echelon(M) in im
+
+{ matrix exponentiation }
+set ^ = (mat,int->mat):
+  let rec_fun matrix_power (mat m,int n) = mat:
+    if n=1 then m
+    else let (q,r)=n\%2 then mm=matrix_power(m,q) in
+        mm*if =r then mm else mm*m fi
+    fi
+  in { ^@(mat,int) = } (mat m,int n) mat:
+    assert(@:shape(m).=,"Non square matrix in exponentiation");
+  if n>0 then matrix_power(m,n) elif =n then id_mat(n_rows(m))
+  else let (m1,d)=invert(m) in
+     if d=1 then matrix_power(m1,-n)
+     elif =d then error("Negative power of singular matrix")
+     else error("Negative power of matrix not invertible over Z")
+     fi
+  fi
+
+set inverse (mat M) = mat:
+  let (inv,d)=invert(M) in
+  if d=1 then inv else error("Matrix not invertible over the integers") fi
+
+set / = inverse@mat { so |/M| is the same as |M^-1|, but more direct }
+
+set rank (mat A) = int: let (,,pivots,)=A.echelon in #pivots
+
+set det (mat A) = int:
+( assert(@:shape(A).=,"Determinant of non-square matrix")
+; let (M,,,flip) = echelon(A) in
+  if =shape(M) then flip*M.main_diagonal.product else 0 fi
+)
+
+set trace (mat A) = int:
+  let (n,):sh=shape(A) in
+  assert(@: =sh,"Non square matrix"); A.main_diagonal.sum
+
+set char_poly (mat A) = vec: { characteristic polynomial of integer matrix }
+  let ps = vec:[] { power sums of the eigenvalues }
+  , es = vec:[1] { elementary sym.fct.s of minus the eigenvalues, reversed }
+  , B=null(0,0), (n,):sh=shape(A)
+  then trace (mat M) = sum(for i:n do M[i,i] od) { a bit faster than the above }
+in assert(@: =sh,"Non square matrix");
+  { use Newton's identities $k*e_k=-\sum_{i=1}^k p_i*e_{k-i}$ to compute |es| }
+  for k:n from 1
+  do ps #:= trace(B := if k=1 then A else B*A fi) { compute $p_k(\Spec(A))| }
+  ; es := (es*ps\-k) # es { prefix $e_k(-\Spec(A))$ to |es| }
+  od; es
+
+set cokernel (mat M) = ^kernel(^M) { minimal matrix wose kernel is our image }
+
+set saturated_span (mat M) = bool: { whether columns span saturated sublattice }
+  let inv_f = inv_fact(M) in
+  #inv_f=0 or inv_f~[0]=1 { all invariant factors are 1? test last one, if any }
+
+{ test all vectors in a list }
+
+
+set all (mat m,(vec->bool) pred) = bool: all([vec]:m,pred)
+set any (mat m,(vec->bool) pred) = bool: any([vec]:m,pred)
+set none (mat m,(vec->bool) pred) = bool: none([vec]:m,pred)
+set first (mat m,(vec->bool) pred) = int: first([vec]:m,pred)
+set last (mat m,(vec->bool) pred) = int: last([vec]:m,pred)
+
+set columns_with ((int,vec->bool) p,mat m) = mat:
+  n_rows(m)# for col@j in m if p(j,col) do col fi od
+set columns_with ((vec->bool) p,mat m) = mat:
+  n_rows(m)# for col in m if p(col) do col fi od
+set columns_with ((int->bool) p,mat m) = mat:
+  n_rows(m)# for col@j in m if p(j) do col fi od
+set a_column_with ((vec->bool) p,mat m) = Maybe<vec>:
+  for col in m do if p(col) then return some(col) fi od; none()
+
+set rows_with ((int,vec->bool) p,mat m) = mat:
+  n_columns(m) ^ for row@i in rows(m) if p(i,row) do row fi od
+set rows_with ((vec->bool) p,mat m) = mat:
+  n_columns(m) ^ for row in rows(m) if p(row) do row fi od
+set rows_with ((int->bool) p,mat m) = mat:
+  n_columns(m) ^ for row@i in rows(m) if p(i) do row fi od
+set a_row_with ((vec->bool) p,mat m) = Maybe<vec>:
+  for row in rows(m) do if p(row) then return some(row) fi od; none()
+
+set >=([vec] m) = bool: { non-negative (dominant) columns only } all(m,>=@vec)
+set >([vec] m) = bool: { strictly positive (dominant) columns only } all(m,>@vec)
+set <=([vec] m) = bool: all(m,<=@vec)
+set <([vec] m) = bool: all(m,<@vec)
+
+set lookup_column (vec v,mat m) = int: last(columns(m),(vec w)bool: w=v)
+set lookup_row    (vec v,mat m) = int: last(   rows(m),(vec w)bool: w=v)
+
+{ sum of columns of a matrix; this is so neat, avoid calling it sum_columns }
+set sum (mat m)= vec: m*ones(n_columns(m))
+
+{ solve(mat A,vec b): find a |vec| solution x of A*x=b, or indicate none exists
+  Method:
+  - write A*C = M using echelon, with C an invertible matrix and, M echelon
+  - solve M*y = b (possibly finding none); this is easy using the echelon form
+  - if a solution is found, return x = C*y
+}
+set solve (mat A,vec b) = Maybe<vec>:
+(  let (M,C,s,) = echelon(A) then (n,k)=shape(M)
+   then j=0 { runs up to k, used to index backwards }, sol=null(k)
+   in assert(@:#b=n,"equation mismatch")
+;  for i:n
+  ~do if j<#s and i=s~[j] { then it is a pivot row, with pivot at M[j][i] }
+      then let Mj=M~[j] then (q,r)=b[i]\%Mj[i] in
+         if !=r then return ().none { because inexact division} fi
+       ;  sol~[j]:=q; b-:=Mj*q { correct for contribution from sol[j~] }
+       ;  j+:=1
+       elif !=b[i] then return ().none { because no pivot available }
+       fi
+   od
+;  (C[:k]*sol).some
+)
+
+set solve (mat A,mat B) = Maybe<mat>: { matrix |X| satisfying |A*X=B|, if any }
+(  let (M,C,s,) = echelon(A) then (n,k)=shape(M)
+   then sols = mat: { column |j| is solutions of |M*y=B[j]| }
+      assert(@:n_rows(B)=n,"equation mismatch");
+      k { size of each solution column} #
+      for b in B
+      do let j=0 { runs up to |k|, used to index |s|, |M| backwards }
+	 , sol=null(k), rem=b { remaining RHS, gets modified }
+      in for i:n
+	~do if j<#s and i=s~[j] { a pivot row, with pivot at |M~[j][i]| }
+	    then let Mj=M~[j] then (q,r)=rem[i]\%Mj[i]
+	    in if !=r then return ().none { because inexact division} fi
+	    ;  sol~[j]:=q; rem-:=Mj*q { correct for contribution from sol[j~] }
+	    ;  j+:=1
+	    elif !=rem[i] then return ().none { because no pivot available }
+	    fi
+	 od
+      ;  sol
+      od
+   in (C[:k]*sols).some
+)
+
+set required_solution ((mat,vec) system) = vec: system.solve.requisition
+
+{system (A,B) means solving AX = B}
+set required_solution ((mat,mat) system) = mat: system.solve.requisition
+
+{ multiplicative order of a matrix, hangs unless finite }
+set order (mat !M) = int:
+  let (n,):p =shape(M) in assert(@: =p,"Matrix is not square");
+  let N=M, order=1, I=id_mat(n) in
+  while N!=I do N *:= M; order+:=1 od; order
+
+
+
+{                           Rational vectors                            }
+
+set numer (ratvec a) = vec: let (n,)=%a in n
+set denom (ratvec a) = int: let (,d)=%a in d
+
+{ allow scalar multiplication form left; from right it is built-in }
+set * (int i,ratvec v) = ratvec: v*i
+set * (rat r,ratvec v) = ratvec: v*r
+
+{ concatenate ratvec values: use conversion to and from [rat] }
+set ## (ratvec a,ratvec b) = ratvec: ##([rat]:a,[rat]:b)
+set ## ([ratvec] rs) = ratvec: ## for r in rs do [rat]:r od
+
+set sum (int l,[ratvec] list) = ratvec: { sum of ratvecs of constant length l }
+  let result = ratvec: null(l) in for v in list do result+:=v od; result
+
+
+{ multiply rational matrix represented as list of columns by a rational vector
+  the m*n matrix M is given as a list of n ratvec values of size m
+  v is a ratvec of size n, the result is a ratvec of size m
+}
+set * ([ratvec] M,ratvec v) = ratvec:
+  let m=#M { number of columns } in
+  assert(@:m!=0 { cannot handle empty matrix } and m=#v,"size mismatch");
+  let result = null(#M[0])/1 in for col@j in M do result +:= col*v[j] od;
+  result
+
+set is_integer (ratvec v) = bool: let (,d)=%v in d=1 { equivalently =(v%1) }
+
+{ vector floor of quotient by int operation; makes vector from rational vector }
+set \ (ratvec v, int k) = vec: let (n,d)=%v in n\(k*d)
+
+{ do as |v.numer| (or |\ %v|) would do, but check that denominator is 1 }
+set ratvec_as_vec (ratvec v) = vec:
+  let (w,d)=%v in assert(@:d=1,"Not an integer vector"); w
+
+set ~ (ratvec v)= ratvec: v~[:]
+set lower (int k,ratvec v)= ratvec: v[:k]
+set upper (int k,ratvec v)= ratvec: v[k~:]
+set drop_lower (int k,ratvec v)= ratvec: v[k:]
+set drop_upper (int k,ratvec v)= ratvec: v[:k~]
+
+{ dominance conditions }
+set <= (ratvec v) = bool: <=numer(v)
+set <  (ratvec v) = bool: < numer(v)
+
+{ solve(mat A,ratvec b): find a solution ratvec x of A*x=b, or indicate that
+  none exists. Solution as in vec case, but exact division requirement is OK.
+}
+set solve (mat A, ratvec b) = Maybe<ratvec>:
+(  let (M,C,s,) = echelon(A) then (n,k)=shape(M)
+   then j=0 { runs up to k, used to index backwards }, sol=for :k do rat:0 od
+   in assert(@:#b=n,"equation mismatch")
+;  for i:n
+  ~do if j<#s and i=s~[j] { then it is a pivot row, with pivot at M[j][i] }
+      then let Mj=M~[j] then q=b[i]/Mj[i] in
+         sol~[j]:=q; b-:=Mj*q { correct for contribution from sol[j~] }
+      ;  j+:=1
+      elif !=b[i] then return ().none { because no pivot here }
+      fi
+   od
+;  (C[:#sol]*sol).some
+)
+
+set required_solution ((mat,ratvec) system) = ratvec: system.solve.requisition
+
+
+
+{                           Split integers                              }
+
+set !s = Split:(0,1) { ! means it is a constant }
+set !split_1 = Split:1 { do conversion now }
+set !split_minus_1 = Split: -1
+set !one_minus_s = Split:(1,-1), !one_plus_s = Split:(1,1)  { near idempotents }
+
+set int_part (Split x) = int: let (r,)=%x in r
+set s_part (Split x) = int: let (,y)=%x in y
+
+set s_to_1 (Split x) = int: +%x        { let (a,b)=%x in a+b }
+set s_to_minus_1 (Split x) = int: -%x  { let (a,b)=%x in a-b }
+set times_s (Split x) = let (a,b)=%x in Split: (b,a)
+
+set split_as_int (Split x) = int:
+  let (r,y)=%x in assert(@:y.=,"split is not an integer"); r
+set \% (Split x, int n) = (Split,Split):
+  let (a,b)=%x then (qa,rq)=a\%n, (qb,rb)=b\%n in ((qa,qb),(rq,rb))
+{ divide Split by integer, quotient of \% but requiring rest to be zero }
+set half (Split w) = Split: let (q,r)=w\%2 in assert(@: =r,"Inexact halving"); q
+set / (Split w,int n) = Split:
+  let (q,r)=w\%n in assert(@: =r,"Inexact division"); q
+set % (Split w,int n) = Split: let (a,b)=%w in (a%n,b%n)
+set exp_s(int n) = Split: if n.is_even then 1 else s fi
+
+{ a Split coefficient is pure if it has at most one nonzero component }
+set is_pure (Split w)=bool: =*%w { test if product of both components is zero }
+
+{ nicer display of Splits }
+set split_format (Split w) = string:
+  let (a,b)=%w in
+  if =a
+  then case b+1 in "-s","0","s" else int_format(b)+"s" esac
+  else int_format(a) +
+     case b+1 then int_format(b)+"s" in "-s","","+s"
+              else "+"+int_format(b)+"s"
+     esac
+  fi
+
+{ same formatting, but supplying parentheses when necessary if used as factor }
+set split_factor_format (Split w) = string:
+  if =*%w { pure } then split_format(w) else "(" +  split_format(w) + ")" fi
+
+set ^ = (Split,int->Split): { exponentiation of split integers }
+  let rec_fun split_power (Split x,int n) = Split: { we shall have n>0 }
+    if n=1 then x
+    else let (q,r)=n\%2 then y=split_power(x,q) in y*if =r then y else x*y fi
+    fi
+  in { ^@(Split,int) = } (Split x,int n): Split:
+    if let (a,b)=%x in abs(a)+abs(b)=1 { cases of invertible (unit) Split }
+    then if n.is_even then split_1 else x fi { all are square roots of +1 }
+    elif n.> then split_power(x,n)
+    elif n.= then split_1
+    else error("Negative power ",n," of split integer ",split_format(x))
+    fi
+
+set sum ([Split] list) = Split:
+  let result=Split:0 in for x in list do result+:=x od; result
+
+{                               Lie types				}
+
+set Lie_type (string code, int rank) = LieType: extend(LieType:"",code,rank)
+
+set semisimple_rank (LieType t) = int:
+  for (,rank) in simple_factors(t) do rank od.sum
+
+set central_torus_rank (LieType t) = int: t.rank-t.semisimple_rank
+
+set factors (LieType t) = [string,int]:
+  let tr = central_torus_rank(t) in
+  if =tr then  t.simple_factors else t.simple_factors#("T",tr) fi
+
+set semisimple (LieType t) = LieType:
+  let s = LieType: "" in
+  for (code,rank) in simple_factors(t) do s:=extend(s,code,rank) od; s
+
+set derived_is_simple (LieType t) = bool: #simple_factors(t)=1
+set is_simple (LieType t) = bool: t.derived_is_simple and =t.central_torus_rank
+
+{ compute |t.semisimple.adjoint.two_rho| without constructing a |RootDatum| }
+set adjoint_2rho (LieType t) = vec: { $2\rho$ on basis of simple roots }
+  for (letter,n) in simple_factors(t)
+  do case ASCII(letter)-ASCII("A")
+     in { A } for i:n from 1 do i*(1+n-i) od
+     ,  { B } for i:n from 1 do i*(n+n-i) od
+     ,  { C } for i:n from 1 do i*(1+n+n-i)   \ if i<n then 1 else 2 fi od
+     ,  { D } for i:n from 2 do (i-1)*(n+n-i) \ if i<n then 1 else 2 fi od
+     ,  { E } case n-6
+              in [16,22,30,42,30,16]
+	      ,  [34,49,66,96,75,52,27]
+	      ,  [92,136,182,270,220,168,114,58]
+	      esac
+     , { F4 } [16,30,42,22]
+     , { G2 } [10,6]
+     esac
+  od.##
+
+{ similarly $2\check\rho$ on basis of simple coroots }
+set simply_connected_2rho_check (LieType t) = vec:
+  for (letter,n) in simple_factors(t)
+  do case ASCII(letter)-ASCII("A")
+     in { A } for i:n from 1 do i*(1+n-i) od
+     ,  { B } for i:n from 1 do i*(1+n+n-i)   \ if i<n then 1 else 2 fi od
+     ,  { C } for i:n from 1 do i*(n+n-i) od
+     ,  { D } for i:n from 2 do (i-1)*(n+n-i) \ if i<n then 1 else 2 fi od
+     ,  { E } case n-6
+              in [16,22,30,42,30,16]
+	      ,  [34,49,66,96,75,52,27]
+	      ,  [92,136,182,270,220,168,114,58]
+	      esac
+     , { F4 } [22,42,30,16]
+     , { G2 } [6,10]
+     esac
+  od.##
+
+set str (LieType t) = string:
+  (## for (code,rank) in factors(t) do code ## rank.to_string ## "." od)[:1~]
+
+
+
+{                               Root data                               }
+
+set root_indices (RootDatum rd) = [int]: { list of all legal root indices }
+   let npr=rd.nr_of_posroots in for i:npr+npr do i-npr od
+
+set central_torus_rank (RootDatum rd) = int: rd.Lie_type.central_torus_rank
+
+set dimension (RootDatum rd) = int: 2*nr_of_posroots(rd)+rank(rd)
+
+{ provide default values for coroot preference when building root data }
+
+set derived_is_simple(RootDatum rd) = bool: Lie_type(rd).derived_is_simple
+set is_simple(RootDatum rd) = bool: Lie_type(rd).is_simple
+
+set root_datum (mat simple_roots, mat simple_coroots) = RootDatum:
+  root_datum(simple_roots,simple_coroots,false) { by default prefer roots }
+
+set torus_datum (int rank) = RootDatum:
+  root_datum(null(rank,0),null(rank,0),false)
+
+set root_datum (LieType type, mat lattice) = RootDatum:
+  root_datum(type,lattice,false) { by default prefer roots }
+
+set simply_connected (LieType type) = RootDatum:
+  simply_connected(type,true) { by default prefer coroots here }
+
+set adjoint (LieType type) = RootDatum:
+  adjoint(type,false) { by default prefer roots here }
+
+set simply_connected (RootDatum rd) = RootDatum:
+  root_datum(^Cartan_matrix(rd),id_mat(semisimple_rank(rd)),true)
+set adjoint (RootDatum rd) = RootDatum: { change weight basis to simple roots }
+  root_datum(id_mat(semisimple_rank(rd)),Cartan_matrix(rd),false)
+
+{ in |sub_datum| the (co)roots at indices |S| must give a valid Cartan matrix,
+  but they need not be positive, and will be taken in the order specified.
+  indices: [-n,...,0,1,...,n-1] where n is the number of positive roots
+  simple roots are numbered [0,1,...,rank-1]
+  In particular any subset of simple roots taken in any order will be valid. }
+set sub_datum (RootDatum rd, [int]S) = RootDatum:
+  let r = rd.rank in
+  root_datum(r # for i in S do   root(rd,i) od
+	    ,r # for i in S do coroot(rd,i) od
+	    ,rd.prefers_coroots)
+
+{ backwards compatibility function; used to be the built-in prototype }
+set root_datum ([vec] simple_roots, [vec] simple_coroots, int r) = RootDatum:
+  root_datum(r#simple_roots,r#simple_coroots,false)
+
+set root_datum (LieType t, [ratvec] gens) = RootDatum:
+  root_datum(t,quotient_basis(t,gens))
+
+{ allow single kernel generator in root datum construction }
+set root_datum (LieType t, ratvec gen) = RootDatum: root_datum(t,[gen])
+
+{ list of indices of all simple roots or coroots }
+set all_simples (RootDatum rd) = [int]: #semisimple_rank(rd)
+set all_posroots (RootDatum rd) = [int]: #nr_of_posroots(rd)
+set all_roots (RootDatum rd) = [int]: let npr = rd.nr_of_posroots in
+    for i: 2*npr from -npr do i od
+
+{ the following uses that root_index(rd,v)=nr_of_posroots(rd) for a non-root v }
+set is_root ((RootDatum,vec) (rd,):p) = bool:
+  root_index(p)<nr_of_posroots(rd)
+set is_coroot ((RootDatum,vec) (rd,):p) = bool:
+  coroot_index(p)<nr_of_posroots(rd)
+set is_posroot ((RootDatum,vec)(rd,):p) = bool:
+  let ri=root_index(p) in ri>=0 and ri<nr_of_posroots(rd)
+set is_poscoroot ((RootDatum,vec)(rd,):p) = bool:
+  let cri=coroot_index(p) in cri>=0 and cri<nr_of_posroots(rd)
+set is_negroot ((RootDatum,vec)(rd,):p) = bool:   root_index(p)<0
+set is_negcoroot ((RootDatum,vec)(rd,):p) = bool: coroot_index(p)<0
+
+set posroot_index ((RootDatum,vec)p) = int: { fold roots to positive }
+  let i=root_index(p) in if i<0 then ~i else i fi
+set poscoroot_index ((RootDatum,vec)p) = int: { fold coroots to positive }
+  let i=coroot_index(p) in if i<0 then ~i else i fi
+
+
+set Cartan_matrix (RootDatum rd,[int] simples) = mat: { NB strange convention }
+   let r=#simples in
+   matrix((r,r),(int i,int j)int: coroot(rd,simples[j])*root(rd,simples[i]))
+
+set rho (RootDatum rd) = ratvec: rd.two_rho/2
+set rho_check (RootDatum rd) = ratvec: rd.two_rho_check/2
+{ see also rho_i@KGBElt and rho_r@KGBElt defined below }
+
+set two_rho (RootDatum rd,(int->bool) select) = vec: { sum of selected posroots }
+   columns_with(select,posroots(rd)).sum
+set two_rho_check (RootDatum rd,(int->bool) select) = vec:
+   columns_with(select,poscoroots(rd)).sum
+
+set two_rho (RootDatum rd,[int] simples) = vec:
+   let (lt,map) = Cartan_matrix_type(Cartan_matrix(rd,simples))
+   then v=adjoint_2rho(lt)
+in (rd.rank # for pos@i in map do root(rd,simples[pos])*v[i] od).sum
+set two_rho_check (RootDatum rd,[int] simples) = vec:
+   let (lt,map) = Cartan_matrix_type(Cartan_matrix(rd,simples))
+   then v=simply_connected_2rho_check(lt)
+in (rd.rank # for pos@i in map do coroot(rd,simples[pos])*v[i] od).sum
+
+
+{ these functions assume the vec alpha or alphav is a root resp. coroot }
+set is_positive_root (RootDatum rd) = (vec->bool):
+  let rc = rho_check(rd) in (vec alpha) bool: rc*alpha>0
+set is_positive_coroot (RootDatum rd) = (vec->bool):
+  let rho = rho(rd) in (vec alphav) bool: alphav*rho>0
+set is_negative_root (RootDatum rd) = (vec->bool):
+  let rc = rho_check(rd) in (vec alpha) bool: rc*alpha<0
+set is_negative_coroot (RootDatum rd) = (vec->bool):
+  let rho = rho(rd) in (vec alphav) bool: alphav*rho<0
+
+{ uncurried versions of the previous four; again being root/coroot is assumed }
+set is_positive_root (RootDatum rd,vec alpha) = bool:
+  is_positive_root(rd)(alpha)
+set is_positive_coroot (RootDatum rd,vec alphav) = bool:
+  is_positive_coroot(rd)(alphav)
+set is_negative_root (RootDatum rd,vec alpha) = bool:
+  is_negative_root(rd)(alpha)
+set is_negative_coroot (RootDatum rd,vec alphav) = bool:
+  is_negative_coroot(rd)(alphav)
+
+{ test whether all columns, being assumed root/coots, are positive }
+set roots_all_positive (RootDatum rd) = (mat->bool): { no negative roots }
+  let are_pos = is_positive_root(rd) in (mat roots) bool: all(roots,are_pos)
+set coroots_all_positive (RootDatum rd) = (mat->bool): { no negative coroots }
+  let are_pos = is_positive_coroot(rd) in
+  (mat coroots) bool: all(coroots,are_pos)
+
+{ the following test rather than assume that columns are roots/cooroots }
+set among_posroots (RootDatum rd) = (mat M)bool: { all columns M posroots? }
+  all(M,(vec v)bool: is_posroot(rd,v))
+set among_poscoroots (RootDatum rd) = (mat M)bool: { all columns M poscoroots? }
+  all(M,(vec v)bool: is_poscoroot(rd,v))
+
+set negative_system (mat posroots) = mat: { the missing half of the root system }
+  swiss_matrix_knife(172,posroots,0,0,0,0) { 172= 36+8+128: reverse cols,neg }
+
+{ having _all_ roots can be useful }
+set roots (RootDatum rd) = mat:
+  let pr=posroots(rd) in negative_system(pr) ## pr
+set coroots (RootDatum rd) = mat:
+  let pcr=poscoroots(rd) in negative_system(pcr) ## pcr
+
+{ the correspondence between roots and coroots }
+set root (RootDatum rd, vec alpha_v) = vec: root(rd,coroot_index(rd,alpha_v))
+set coroot (RootDatum rd, vec alpha) = vec: coroot(rd,root_index(rd,alpha))
+
+set is_orthogonal (RootDatum rd, int i, int j) = bool: =coroot(rd,i)*root(rd,j)
+set is_orthogonal (RootDatum rd, vec alpha, vec beta) = bool:
+   is_orthogonal(rd,root_index(rd,alpha),root_index(rd,beta))
+set is_orthogonal (RootDatum rd, [int] S, int j) = bool:
+   for i in S do is_orthogonal(rd,i,j) od.all
+
+{ reflection action of roots }
+set reflection (RootDatum rd, int i) = mat: { i indexes a root/coroot pair }
+  1 - root(rd,i).as_column*coroot(rd,i).as_row
+set reflection ((RootDatum,vec)(rd,):p) = mat: { specify root (not coroot) }
+  reflection(rd,root_index(p))
+set reflection_co ((RootDatum,vec)(rd,):p) = mat: { specify coroot (not root) }
+  reflection(rd,coroot_index(p))
+set reflect (RootDatum rd, int i, vec v) = vec: { apply reflection(rd,i)*v }
+  v -:= root(rd,i) * (coroot(rd,i)*v) { more efficient than matrix multiply }
+set reflect (RootDatum rd, vec alpha, vec v) = vec: { reflection(rd,alpha)*v }
+  v -:= alpha * (coroot(rd,alpha)*v)
+set coreflect (RootDatum rd, vec v, int i) = vec: { apply v*reflection(rd,i) }
+  v -:= (v*root(rd,i)) * coroot(rd,i)
+set coreflect (RootDatum rd, vec v, vec alpha) = vec: { v*reflection(rd,alpha) }
+  v -:= (v*alpha) * coroot(rd,alpha)
+
+set reflect (RootDatum rd, int i, ratvec v) = ratvec:
+  let (n,d) = %v in reflect(rd,i,n)/d
+set reflect (RootDatum rd, vec alpha, ratvec v) = ratvec:
+  let (n,d) = %v in reflect(rd,alpha,n)/d
+set coreflect (RootDatum rd, ratvec v, int i) = ratvec:
+  let (n,d) = %v in coreflect(rd,n,i)/d
+set coreflect (RootDatum rd, ratvec v, vec alpha) = ratvec:
+  let (n,d) = %v in coreflect(rd,n,alpha)/d
+
+{ in matrix version reflect becomes left_reflect and coreflect right_reflect }
+set left_reflect (RootDatum rd, int i, mat M) = mat: { reflection(rd,i)*M }
+  n_rows(M) # for v in M do reflect(rd,i,v) od
+set left_reflect (RootDatum rd, vec alpha, mat M) = mat:
+  left_reflect(rd,root_index(rd,alpha),M)
+set right_reflect (RootDatum rd, mat M, int i) = mat: { M*reflection(rd,i) }
+  n_columns(M) ^ for row in rows(M) do coreflect(rd,row,i) od
+set right_reflect (RootDatum rd, mat M, vec alpha) = mat:
+  right_reflect(rd,M,root_index(rd,alpha))
+
+set conjugate (RootDatum rd, int i, mat M) = mat: { r*M*r where r=reflection }
+  left_reflect(rd,i,right_reflect(rd,M,i))
+set conjugate (RootDatum rd, vec alpha, mat M) = mat:
+  conjugate(rd,root_index(rd,alpha),M)
+
+
+{ orthogonal projection on span of subset of simple roots, a rational matrix }
+set root_span_projector (RootDatum rd ,[int] S) = (mat,int):
+  let in_S = is_member(S)
+  then sub_simple_roots   =  columns_with(in_S,rd.simple_roots)
+  , tr_sub_simple_coroots =  rows_with(in_S,^rd.simple_coroots)
+  then (M,d) = invert(tr_sub_simple_coroots * sub_simple_roots)
+  then A=sub_simple_roots*M*tr_sub_simple_coroots
+  then dd=gcd([d,gcd(A)])
+  in (A\dd,d\dd)
+
+{ complementary orthogonal projection, to intersection of walls }
+set wall_projector ((RootDatum,[int]) arg) = (mat,int):
+   let (A,d)=root_span_projector(arg) in (d-A,d)
+
+{ for (anti)dominant |v|, find simple generators of its singular subsystem }
+set singular_simple_indices (RootDatum rd,ratvec v) = [int]:
+   for a@j in simple_coroots(rd) if =a*v do j fi od
+
+set is_imaginary (mat theta) = (vec->bool): (vec alpha): theta*alpha=alpha
+set is_real      (mat theta) = (vec->bool): (vec alpha): theta*alpha=-alpha
+set is_complex   (mat theta) = (vec->bool): (vec alpha):
+  let ta = theta*alpha in ta!=alpha and ta!=-alpha
+
+{ these functions are just for convenience; posroot versions are more useful }
+set imaginary_roots (RootDatum rd, mat theta) = mat:
+  columns_with(is_imaginary(theta),roots(rd))
+set real_roots (RootDatum rd, mat theta) = mat:
+  columns_with(is_real(theta),roots(rd))
+
+{ for coroots we need to use the transpose matrix }
+set imaginary_coroots (RootDatum rd, mat theta) = mat:
+  columns_with(is_imaginary(^theta),coroots(rd))
+set real_coroots (RootDatum rd, mat theta) = mat:
+  columns_with(is_real(^theta),coroots(rd))
+
+{ positive (co)roots versions are actually more useful }
+set imaginary_posroots (RootDatum rd,mat theta) = mat:
+  columns_with(is_imaginary(theta),posroots(rd))
+set real_posroots (RootDatum rd,mat theta) = mat:
+  columns_with(is_real(theta),posroots(rd))
+set imaginary_poscoroots (RootDatum rd,mat theta) = mat:
+  columns_with(is_imaginary(^theta),poscoroots(rd))
+set real_poscoroots (RootDatum rd,mat theta) = mat:
+  columns_with(is_real(^theta),poscoroots(rd))
+set imaginary_sys ((RootDatum,mat)p) = (mat,mat):
+  (imaginary_posroots(p),imaginary_poscoroots(p))
+set real_sys ((RootDatum,mat)p) = (mat,mat):
+  (real_posroots(p),real_poscoroots(p))
+
+{ whether v is a weakly dominant weight for rd }
+set is_dominant (RootDatum rd, ratvec v) = bool:
+  >=(numer(v)*simple_coroots(rd))
+set is_strictly_dominant (RootDatum rd, ratvec v) = bool:
+  >(numer(v)*simple_coroots(rd))
+set is_regular (RootDatum rd,ratvec v)= bool: { tests all positive coroots }
+  all(for x in numer(v)*poscoroots(rd) do !=x od)
+set is_integral (RootDatum rd, ratvec v) = bool: { integral on all coroots }
+  =(v*simple_coroots(rd)%1)
+{ and |is_integrally_dominant@(RootDatum,ratvec)| is built-in }
+
+{ reversing order, similar questions about coweight v }
+set is_dominant (ratvec v, RootDatum rd) = bool:
+  >=(numer(v)*simple_roots(rd))
+set is_strictly_dominant (ratvec v,RootDatum rd) = bool:
+  >(numer(v)*simple_coroots(rd))
+set is_regular (ratvec v, RootDatum rd)= bool: { tests all positive roots }
+  all(for x in numer(v)*posroots(rd) do !=x od)
+set is_integral (ratvec v, RootDatum rd) = bool: { integral on all roots }
+  =(v*simple_roots(rd)%1)
+set is_integrally_dominant (ratvec v,RootDatum rd) = bool:
+  is_integrally_dominant(dual(rd),v)
+
+{ the following should replace the needlessly complicated built-ins they use }
+set radical_basis (RootDatum rd) = mat: { columns are coweights }
+  coroot_radical(rd)[:,semisimple_rank(rd):] { drop coroots part }
+set coradical_basis (RootDatum rd) = mat: { columns are weights }
+  root_coradical(rd)[:,semisimple_rank(rd):] { drop roots part }
+
+set is_semisimple (RootDatum rd) = bool: semisimple_rank(rd) = rank(rd)
+
+set derived_is_simply_connected (RootDatum rd) = bool:
+  saturated_span(simple_coroots(rd))
+set has_connected_center (RootDatum rd) = bool:
+  saturated_span(simple_roots(rd))
+set is_simply_connected (RootDatum rd) = bool:
+  is_semisimple(rd) and derived_is_simply_connected(rd)
+set is_adjoint (RootDatum rd) = bool:
+  is_semisimple(rd) and has_connected_center(rd)
+
+{ the following functions give but partial information; giving a more complete
+  definition for InnerClass values needs more work (see group_operations.at)
+}
+set derived (RootDatum rd) = RootDatum: let (d,)=derived_info(rd) in d
+set mod_central_torus (RootDatum rd) = RootDatum:
+  let (d,)=mod_central_torus_info(rd) in d
+
+{ from appropriate (subsystem) dual 2rho value, deduce test for being simple }
+set is_simple_for (vec dual_two_rho) = (vec->bool):
+  (vec alpha): dual_two_rho*alpha=2
+
+{ get generating simple system from set of matching posroots and poscoroots }
+set simple_system_from_positive (mat posroots,mat poscoroots) = (mat,mat):
+  let sub_2rho = sum(posroots), sub_2rho_check=sum(poscoroots)
+  then test = is_simple_for(sub_2rho_check), co_test = is_simple_for(sub_2rho)
+  then Levi = list( #posroots,   (int i)bool: test(posroots[i]) )
+  , co_Levi = list( #poscoroots, (int i)bool: co_test(poscoroots[i]) )
+  in assert(@:Levi=co_Levi,"Not a valid positive system");
+  ( n_rows(posroots) # for i in Levi do posroots[i] od
+  , n_rows(poscoroots) # for i in co_Levi do poscoroots[i] od
+  )
+
+set root_datum_from_positive \
+  ( (mat,mat) (posroots,poscoroots):pair, bool prefer_coroots ) = RootDatum:
+  let (simple_roots,simple_coroots) = pair.simple_system_from_positive
+  then rd = root_datum(simple_roots,simple_coroots,prefer_coroots)
+  in assert(@:sum(posroots)=two_rho(rd) and sum(poscoroots)=two_rho_check(rd));
+  rd
+
+{ |sub_datum| with predicate argument preserves positivity of (co)roots }
+set sub_datum(RootDatum rd, (int->bool) select {from posroot indices}) =
+      RootDatum:
+(  root_datum_from_positive
+     ((columns_with(select,rd.posroots),columns_with(select,rd.poscoroots))
+     ,rd.prefers_coroots
+     )
+)
+
+{ some code proceeds by "simple factor", isolating a |sub_datum| for each;
+  functions that expect a specific simple type can call |test_simple_type| }
+
+{ test |rd| for being of simple type T (a letter in "ABCDEFG"), and return (as
+  a list of integers) a map from standard diagram labelling to |rd| simple roots
+}
+set test_simple_type(string T, RootDatum rd) = [int]:
+(  let  (lt,map)=Cartan_matrix_type(rd.Cartan_matrix)
+in if lt=Lie_type("A1A1") and T="D" { unique reducible case that is accepted }
+   then return map
+   fi
+;  let factors=simple_factors(lt)
+in case #factors
+   else error("Reducible ",lt," found; simple type ",T," was required")
+   in error("Pure torus found where type ",T," root diagram was required")
+   , let (type,rank)=factors[0] in
+     if type=T then map { the main case }
+     else { accept some low rank types under an alternative designation }
+       case rank-1
+       in if T="B" or T="C" { and |rank=1| implies that |type="A"| }
+	  then return map { accept $A_1$ to be interpreted as $B_1$ or $C_1$ }
+	  fi
+       ,  { in rank 2 accept $B_2$ or $C_2$ as the reversed other }
+          if type="B" and T="C" or type="C" and T="B" then return map~[:] fi
+       ,  { in rank 3 accept $A_3$ as $D_3$ by putting middle node in front }
+       if type="A" and T="D" then return [map[1],map[0],map[2]] fi
+       else { in higher ranks there are no ambiguous cases: fall through } ()
+       esac
+     ; error(lt," found where type ",T," was required")
+     fi
+   esac
+)
+
+set fundamental_weights (RootDatum rd) = [ratvec]:
+  for i:semisimple_rank(rd) do fundamental_weight(rd,i) od
+set fundamental_coweights (RootDatum rd) = [ratvec]:
+  for i:semisimple_rank(rd) do fundamental_coweight(rd,i) od
+
+{ root datum of singular roots }
+set singular_root_datum(RootDatum rd,ratvec gamma) = RootDatum:
+   let pcr = poscoroots(rd)
+   then pred(int i) = bool: { whether coroot |i| is singular } =pcr[i]*gamma
+in root_datum_from_positive((columns_with(pred,posroots(rd))
+			    ,columns_with(pred,pcr)
+			    )
+			   ,rd.prefers_coroots
+			   )
+
+set project_to_dominant_cone (RootDatum rd, ratvec gamma) =
+  (ratvec,int): { (nearest dominant vector to |gamma|, facet identification nr }
+(  let candidates = [rd.semisimple_rank].to_bitset-1 { simple roots to start }
+   then !simples = candidates { to use as universe for complementation }
+in while let new_indices = int:
+	 for i in set_bit_positions(candidates) if (coroot(rd,i)*gamma).<=
+	 do i
+	 fi od.to_bitset
+   in new_indices.> { |while|-condition: whether new roots were found }
+   do candidates AND_NOT:= new_indices { clear bits }
+   ;  let (M,d)=wall_projector(rd,(simples-candidates).set_bit_positions)
+      in gamma := M*gamma/d
+   od
+;  ( gamma, candidates )
+)
+
+set (highest_root_indices,highest_coroot_indices) =
+    ((RootDatum->[int]),(RootDatum->[int])):
+   let work((RootDatum,int->[int])bottom_f) = (RootDatum rd)[int]:
+   (  let (lt,map)= rd.Cartan_matrix.Cartan_matrix_type
+      , ssr = semisimple_rank(rd)
+      then sf = simple_factors(lt), factor_of=for :ssr do -1 od
+      , i=0
+   in for (,r)@j in sf do for :r do factor_of[map[i]]:=j; i+:=1 od od
+   ;  let result = for :#sf do -1 od
+      , tops = [int]: { bitsets marking ladder tops for the simple roots }
+	 for i: ssr downto -ssr
+	 do let t=bottom_f(rd,i) in t[locate_sorted(t,0):].to_bitset
+	 od
+      in for i in tops.bitwise_intersection.set_bit_positions
+	 do let re = root_expression(rd,i) { of size |ssr| }
+	    then f=factor_of[first(ssr,(int k):re[k].>)]
+	 in assert(@:for v@j in re do =v or factor_of[j]=f od.all)
+	 ;  result[f]:=i
+	 od
+      ;  result
+   )
+in (work(  root_ladder_bottoms@(RootDatum,int))
+   ,work(coroot_ladder_bottoms@(RootDatum,int))
+   )
+
+{ list of all highest roots (one for each simple factor) }
+set highest_roots (RootDatum rd) = [vec]:
+   for i in highest_root_indices(rd) do root(rd,i) od
+set highest_coroots (RootDatum rd) = [vec]:
+   for i in highest_coroot_indices(rd) do coroot(rd,i) od
+set lowest_roots (RootDatum rd) = [vec]:
+   for i in highest_root_indices(rd) do root(rd,~i) od
+set lowest_coroots (RootDatum rd) = [vec]:
+   for i in highest_coroot_indices(rd) do coroot(rd,~i) od
+
+set simple_root_labels (RootDatum rd) = vec:
+   let exprs = [vec]:
+      for i in highest_root_indices(rd) do root_expression(rd,i) od
+in sum(rd.semisimple_rank,exprs)
+set simple_coroot_labels (RootDatum rd) = vec:
+   let exprs = [vec]:
+      for i in highest_coroot_indices(rd) do coroot_expression(rd,i) od
+in sum(rd.semisimple_rank,exprs)
+
+{ single highest root, or error if |rd| has not exactly one simple factor }
+set highest_root (RootDatum rd) = vec:
+  assert(@:derived_is_simple(rd),
+         "Multiple simple factors, no unique highest root");
+  let pr=posroots(rd) in
+  if not rd.prefers_coroots { when generated in root order, take short cut }
+  then pr~[0] { since the last generated root will be a high root }
+  else let level=rho_check(rd) in pr[for alpha in pr do level*alpha od.max_loc]
+  fi
+
+{                               Weyl group				}
+
+set is_member   = ([WeylElt]->(WeylElt->bool)): is_member(=@(WeylElt,WeylElt))
+set isnt_member = ([WeylElt]->(WeylElt->bool)): isnt_member(=@(WeylElt,WeylElt))
+
+set id_W (RootDatum rd) = WeylElt: W_elt(rd,[int]:[])
+set W_gen (RootDatum rd, int s) = W_elt(rd,[s])
+set W_gens (RootDatum rd) = [WeylElt]:
+  for s:rd.semisimple_rank do W_elt(rd,[s]) od
+set * (WeylElt w,mat theta) = mat: theta.n_rows # for col in theta do w*col od
+set * (mat theta,WeylElt w) = mat:
+  theta.n_columns ^ for row in rows(theta) do row*w od
+
+{ morphism W(rd)->W(dual(rd)), involves transpose inverse on matrices }
+set for_dual_datum(WeylElt w) = WeylElt: W_elt(dual(w.root_datum), word(w))
+
+{ product of Weyl group elements respects Left (index 0) and Right; compute LtR }
+set product (RootDatum rd, [WeylElt] L) = WeylElt:
+  let p = id_W(rd) in for w in L do p *:= w od; p
+
+set order (WeylElt !w) = int: let x=w in 1+(int:while !=x do x*:=w od)
+set rho_diff (WeylElt w) = vec: let rho2=w.root_datum.two_rho in (rho2-w*rho2)\2
+set rho_check_diff (WeylElt w) = vec:
+  let rho_check2=w.root_datum.two_rho_check in (rho_check2-rho_check2*w)\2
+
+{ the set of posroots that w maps to negative roots, as a bitset }
+set positive_to_negative (WeylElt w) = [int]:
+  let n=w.root_datum.nr_of_posroots in
+  for x@i in root_permutation(w)[n:] if x<n do i fi od
+set posroot_sum (RootDatum rd,[int] select) = vec:
+  sum(rd.rank # for i in select do root(rd,i) od)
+set poscoroot_sum (RootDatum rd,[int] select) = vec:
+  sum(rd.rank # for i in select do coroot(rd,i) od)
+
+{ make dominant for a Levi subsystem, and find a witness for returning }
+set from_dominant (RootDatum rd, [int] S, vec v) = (WeylElt,vec):
+( let refl = for alpha in S do W_refl(rd,alpha) od
+  , last_asc () = int: last(#S,(int i): coroot(rd,S[i])*v<0)
+  , w = id_W(rd)
+  in while let i=last_asc() in i>=0 do w *:= refl[i]; v:=refl[i]*v od
+; (w,v)
+)
+set from_dominant (RootDatum rd, [int] S, ratvec rv) = (WeylElt,ratvec):
+  let (n,d)=%rv then (w,v) = from_dominant(rd,S,n) in (w,v/d)
+
+set from_dominant (vec v, RootDatum rd, [int] S) = (vec,WeylElt):
+( let refl = for alpha in S do W_refl(rd,alpha) od
+  , last_asc () = int: last(#S,(int i): v*root(rd,S[i])<0)
+  , w = id_W(rd)
+  in while let i=last_asc() in i>=0 do v:=v*refl[i]; w := refl[i]*w od
+  ; (v,w)
+)
+set from_dominant (ratvec rv, RootDatum rd, [int] S) = (ratvec,WeylElt):
+  let (n,d)=%rv then (v,w) = from_dominant(n,rd,S) in (v/d,w)
+
+set chamber ((RootDatum,vec) rd_lambda) = WeylElt:
+  let (w,)=from_dominant(rd_lambda) in w
+set dominant ((RootDatum,vec) rd_lambda) = vec:
+  let (,dom_wt)=from_dominant(rd_lambda) in dom_wt
+set chamber ((RootDatum,[int],vec) triple) = WeylElt:
+  let (w,)=from_dominant(triple) in w
+set dominant ((RootDatum,[int],vec) triple) = vec:
+  let (,dom_wt)=from_dominant(triple) in dom_wt
+
+set chamber ((vec,RootDatum) lambda_rd) = WeylElt:
+  let (,w)=from_dominant(lambda_rd) in w
+set dominant ((vec,RootDatum) lambda_rd) = vec:
+  let (dom_cwt,)=from_dominant(lambda_rd) in dom_cwt
+set chamber ((vec,RootDatum,[int]) triple) = WeylElt:
+  let (,w)=from_dominant(triple) in w
+set dominant ((vec,RootDatum,[int]) triple) = vec:
+  let (dom_cwt,)=from_dominant(triple) in dom_cwt
+
+set permuted_root (WeylElt w, int alpha) = int:
+   let npr = w.root_datum.nr_of_posroots in
+   root_permutation(w)[alpha+npr]-npr
+set permuted_coroot (int alpha,WeylElt w) = int:
+   let npr = w.root_datum.nr_of_posroots in
+   root_permutation(/w)[alpha+npr]-npr
+
+set from_dominant_root(RootDatum rd, [int]S, int alpha) = (WeylElt,int):
+(  let npr = rd.nr_of_posroots
+   then w=id_W(rd)
+   , invols = for i in S do root_involution(rd,i) od
+   , last_asc () = int: last(#S,(int i): coroot(rd,S[i])*root(rd,alpha)<0)
+   in while let i=last_asc() in i>=0
+      do w *:= W_refl(rd,i); alpha:=invols[i][npr+alpha]-npr
+      od
+   ;  (w,alpha)
+)
+
+
+set w0 (RootDatum rd) = chamber(rd,-rd.two_rho)
+
+set * (WeylElt w, ratvec gamma) = ratvec: let (n,d)=%gamma in (w*n)/d
+set * (ratvec gamma, WeylElt w) = ratvec: let (n,d)=%gamma in (n*w)/d
+set from_dominant (RootDatum rd, ratvec gamma) = (WeylElt,ratvec):
+  let (n,d)=%gamma then (w,v)=from_dominant(rd,n) in (w,v/d)
+set chamber (RootDatum rd, ratvec gamma) = WeylElt: chamber(rd,gamma.numer)
+set dominant ((RootDatum,ratvec) rd_gamma) = ratvec:
+  let (,dom_wt)=from_dominant(rd_gamma) in dom_wt
+set from_dominant (ratvec gamma,RootDatum rd) = (ratvec,WeylElt):
+  let (n,d)=%gamma then (v,w)=from_dominant(n,rd) in (v/d,w)
+set chamber (ratvec gamma,RootDatum rd) = WeylElt: chamber(gamma.numer,rd)
+set dominant ((ratvec,RootDatum) gamma_rd) = ratvec:
+  let (dom_cwt,)=from_dominant(gamma_rd) in dom_cwt
+
+set inverse (WeylElt w) = WeylElt: /w
+set ^ = (WeylElt,int->WeylElt):
+  let rec_fun power (WeylElt w,int n) = WeylElt:
+    if n=1 then w
+    else let (q,r)=n\%2 then wq=power(w,q) in wq*if =r then wq else wq*w fi
+    fi
+  in (WeylElt w,int n) WeylElt:
+  if n>0 then power(w,n) elif =n then id_W(root_datum(w)) else /power(w,-n) fi
+
+set matrix (WeylElt w) = mat:
+   let n=w.root_datum.rank in n # for c in id_mat(n) do w*c od
+set W_elt (RootDatum rd, mat M) = WeylElt:
+   let w = chamber(rd,M*two_rho(rd))
+   in assert(@:matrix(w)=M,"Not the matrix of any Weyl group element"); w
+set W_elt_of_reflection(RootDatum rd,int root) = WeylElt:
+   chamber(rd,reflect(rd,root,two_rho(rd)))
+set W_elt_of_reflection(RootDatum rd,vec alpha) = WeylElt:
+   chamber(rd,reflect(rd,alpha,two_rho(rd)))
+
+{ |convert_to| serves when |rd| differs from |w.root_datum|, but nonetheless
+  |W_elt(rd,matrix(w)| is defined; it computes that value more efficiently }
+set convert_to (RootDatum rd, WeylElt w) = WeylElt: chamber(rd,w*two_rho(rd))
+
+{                               Inner classes                           }
+
+set involution (LieType lt, string ict) = mat: involution(lt,#lt.rank,ict)
+
+{ get inner class of G symbolically from root datum and inner class type
+  Use the complex reductive group given by the root datum, but compute the
+  distinguished involution from the string describing it symbolically.
+}
+set inner_class (RootDatum rd, string ict) = InnerClass:
+   let inv0 = { involution named |ict|, for |simply_connected(Lie_type(rd))| }
+     let (lt,pi) = rd.Cartan_matrix.Cartan_matrix_type { |lt| is semisimple }
+     , r=rd.rank-rd.semisimple_rank { rank of the central torus }
+     in involution(extend(lt,"T",r),pi ## for i:r from #pi do i od,ict)
+   , P=^coroot_radical(rd) { sublattice basis, in |simply_connected(...)| }
+   then (P1,d)=invert(P) then prod=P1*inv0*P { base change from |P|, times |d| }
+   in assert(@:(prod%d).=,"Inner class not compatible with root datum");
+   inner_class(rd,prod\d) { construct inner class from explicit involution }
+
+set inner_class (LieType lt, [ratvec] gens, string ict) = InnerClass:
+   let basis = quotient_basis(lt,gens) in
+   inner_class(root_datum(lt,basis),involution(lt,basis,ict))
+
+set twist (InnerClass ic) = vec: { automorphism of Dynkin diagram, mapped }
+  for alpha in distinguished_involution(ic)*simple_roots(ic)
+  do root_index(ic,alpha)
+  od
+
+{ integrality inner class (dual side) defined by inf. character and involution }
+set dual_integral (InnerClass ic, ratvec gamma) = InnerClass:
+  inner_class(dual(integrality_datum(ic,gamma)),-^distinguished_involution(ic))
+
+set big_block (InnerClass ic) = Block:
+  block(quasisplit_form(ic), dual_quasisplit_form(ic))
+
+
+{                               Cartan classes                          }
+
+set Cartan_classes (InnerClass ic) = [CartanClass]:
+  for i:nr_of_Cartan_classes(ic) do Cartan_class(ic,i) od
+
+set print_Cartan_info (CartanClass cc) = void:
+  let show (string s) = string: if s="" then "empty" else s fi
+  , ((cr,Cr,sr),ww,(orbit_size,fiber_size),(i_tp,r_tp,C_tp)) = Cartan_info(cc)
+  in
+  ( "compact: ",cr,", complex: ",Cr,", split: ",sr, new_line
+  , "canonical twisted involution: "
+  ,  if #ww=0 then "e"
+     else to_string(ww[0]+1, for s in ww[1:] do to_string(",",s+1) od.##)
+     fi
+  , new_line
+  , "twisted involution orbit size: ",orbit_size,
+           "; fiber size: ",fiber_size,"; strong inv: ",orbit_size*fiber_size
+  , new_line
+  , "imaginary root system: ",show(str(i_tp)), new_line
+  , "real root system: ",show(str(r_tp)), new_line
+  , "complex factor: ",show(str(C_tp)), new_line
+  ).prints
+
+
+set fundamental_Cartan (InnerClass ic) = CartanClass: Cartan_class(ic,0)
+{ implicitly fundamental_Cartan(RealForm f) = fundamental_Cartan(InnerClass:f) }
+set most_split_Cartan (InnerClass ic) = CartanClass:
+  Cartan_class(ic,nr_of_Cartan_classes(ic)-1)
+{ also most_split_Cartan@RealForm is built-in, but is not that of inner class }
+
+{ in the following, Complex factors count as half-compact, half-split }
+set compact_rank (CartanClass cc) = int:
+  let ((c,C,),,,) = Cartan_info(cc) in c+C
+set split_rank (CartanClass cc) = int:
+  let ((,C,s),,,) = Cartan_info(cc) in C+s
+
+set compact_rank (InnerClass ic) = int: compact_rank(fundamental_Cartan(ic))
+set split_rank (RealForm G)     = int: split_rank(most_split_Cartan(G))
+
+set is_equal_rank (InnerClass ic) = bool: { whether distinguished_involution=1 }
+  =split_rank(fundamental_Cartan(ic))
+{ implicitly is_equal_rank (RealForm G) = bool: is_equal_rank(InnerClass:G) }
+
+set is_split (RealForm G) = bool: { whether most split Cartan has theta = -1 }
+  =compact_rank(most_split_Cartan(G))
+{ avoid implicit conversion RealForm->InnerClass: would give wrong answer }
+set is_split (InnerClass ic) = bool: is_split(quasisplit_form(ic))
+
+{ equality of Cartan classes }
+set = (CartanClass H,CartanClass J) = bool:
+  let (,theta_H,,)=Cartan_info(H), (,theta_J,,)=Cartan_info(J) in
+  theta_H=theta_J { compare their twisted involutions }
+
+{ number of the Cartan class H in the list of those for the real form G }
+set number(CartanClass H,RealForm G) = int:
+  last(nr_of_Cartan_classes(G), (int i)bool: Cartan_class(G,i)=H)
+
+{                               Real forms                              }
+
+set form_name (RealForm f) = string: form_names(f)[form_number(f)]
+
+set real_forms (InnerClass ic)= [RealForm]:
+  real_forms(fundamental_Cartan(ic))
+set dual_real_forms (InnerClass ic) = [RealForm]:
+  dual_real_forms(most_split_Cartan(ic))
+
+set dual_real_forms (RealForm G) = [RealForm]:
+  dual_real_forms(most_split_Cartan(G))
+
+set is_quasisplit (RealForm G) = bool: form_number(G)=nr_of_real_forms(G)-1
+set is_quasicompact (RealForm G) = bool: form_number(G)=0
+
+set split_form (RootDatum r) = RealForm:
+  quasisplit_form(inner_class(r,-id_mat(rank(r))))
+
+{ split form of a Lie type is taken simply connected (times a split torus) }
+set split_form (LieType t) = RealForm: split_form(simply_connected(t))
+
+set quasicompact_form (InnerClass ic) = RealForm: real_form(ic,0)
+{ quasisplit_form@InnerClass is built-in }
+
+set compact_form (RootDatum r) = RealForm:
+  quasicompact_form(inner_class(r,id_mat(rank(r))))
+
+set compact_torus (int rank) = RealForm:
+  let ic = inner_class(torus_datum(rank),id_mat(rank)) in real_form(ic,0)
+set split_torus (int rank) = RealForm:
+  let ic = inner_class(torus_datum(rank),-id_mat(rank)) in real_form(ic,0)
+set real_complex_torus (int complex_rank) = RealForm:
+  let rank=2*complex_rank then M=null(rank,rank)
+  then ic = for i:complex_rank do M[i+i,i+i+1]:=1; M[i+i+1,i+i]:=1 od
+          ; inner_class(torus_datum(rank),M)
+  in real_form(ic,0)
+
+set torus(CartanClass C) = RealForm:
+   let ((a,b,c),,,)=Cartan_info(C) then rank = a+b+b+c
+   then M = diagonal(ones(a)##null(b+b)##-ones(c))
+   then ic = for i:b do let k=a+i+i in M[k,k+1]:=1; M[k+1,k]:=1 od
+           ; inner_class(torus_datum(rank),M)
+   in real_form(ic,0)
+
+set is_compatible (RealForm f, RealForm g) = bool:
+  let ic = inner_class(f) in
+  inner_class(g)=dual(ic) and block_sizes(ic)[form_number(f),form_number(g)]>0
+
+set is_compact (RealForm G) = bool: { real form 0 in equal rank inner class }
+  KGB_size(G)=1 and distinguished_involution(G)=1
+
+
+
+{                              KGB elements                             }
+
+set real_form (KGBElt x) = let (rf,) = %x in rf
+set # (KGBElt x) = let (,n) = %x in n
+set number = #@KGBElt
+set root_datum (KGBElt x) = RootDatum: real_form(x)
+set inner_class (KGBElt x) = InnerClass: real_form(x)
+
+set KGB (RealForm rf) = [KGBElt]: for i:KGB_size(rf) do KGB(rf,i) od
+
+set in_distinguished_fiber (KGBElt x) = bool: length(x)=0
+set distinguished_fiber (RealForm G) = [KGBElt]:
+  for i: KGB_size(G) do let x=KGB(G,i) in if length(x)>0 then break fi; x od
+
+{ all KGB elements of G mapping to its Cartan class H }
+set KGB (CartanClass H,RealForm G) = [KGBElt]:
+  for x in KGB(G) if Cartan_class(x)=H do x fi od
+
+set KGB_elt ((InnerClass, mat, ratvec) (,theta,v):all) = KGBElt:
+  let rf = real_form(all)   { find real form within ic }
+  in KGB_elt(rf,theta,v)    { find KGB element within rf }
+
+set KGB_elt (RootDatum rd, mat theta, ratvec v) = KGBElt:
+  KGB_elt(inner_class(rd,theta), theta, v)
+
+{ transfer to other inner class (or real form) that shares coordinates,
+  this can be used for instance to embed the KGB set of a Levi subgroup }
+set KGB_elt (InnerClass ic, KGBElt x) = KGBElt:
+  KGB_elt(ic, x.involution, x.torus_factor)
+
+set Cartan_class (InnerClass ic, mat theta) = CartanClass:
+  KGB_elt(ic,theta,ratvec:null(rank(ic))).Cartan_class
+
+{ use the following as follows: |set <= = Bruhat_order(G)| }
+set Bruhat_order (RealForm G) = (KGBElt,KGBElt->bool):
+  let M=inverse(1-KGB_Hasse(G)) in (KGBElt x, KGBElt y) bool: !=M[#x,#y]
+
+set cross (WeylElt w,KGBElt x) = KGBElt:
+  assert(@:w.root_datum=x.root_datum);
+  for s in w.word ~do x:=cross(s,x) od; x
+set cross (KGBElt x,WeylElt w) = KGBElt:
+  assert(@:w.root_datum=x.root_datum);
+  for s in w.word do x:=cross(s,x) od; x
+
+set status (vec alpha,KGBElt x) = int: status(root_index(real_form(x),alpha),x)
+
+set cross (vec alpha,KGBElt x) = KGBElt:
+  cross(root_index(root_datum(x),alpha),x)
+set Cayley (vec alpha,KGBElt x) = KGBElt:
+  Cayley(root_index(real_form(x),alpha),x)
+
+set W_cross (WeylElt w,KGBElt x) = KGBElt:
+  for s in w.word ~ do x:=cross(s,x) od; x
+
+set KGB_status_text (int i) = string:
+  case i in "C-","ic","r ","nc","C+" else error("Illegal KGB status") esac
+
+set status_text ((int,KGBElt)p) = string: KGB_status_text(status(p))
+set status_text ((vec,KGBElt)p) = string: KGB_status_text(status(p))
+set status_texts (KGBElt x) = [string]:
+  for s:semisimple_rank(real_form(x)) do status_text(s,x) od
+
+set is_complex ((int,KGBElt)p) = status(p)%4=0
+set is_real ((int,KGBElt)p) = status(p)=2
+set is_imaginary ((int,KGBElt)p) = status(p)%2=1
+set is_noncompact ((int,KGBElt)p) = status(p)=3
+set is_compact ((int,KGBElt)p) = status(p)=1
+set is_descent ((int,KGBElt)p) = status(p)<3
+set is_ascent ((int,KGBElt)p) = status(p)>=3
+set is_strict_descent ((int,KGBElt)p) = { is_descent(p) and not is_compact(p) }
+  case status(p) in true,false,true,false,false esac
+
+{ status of general roots for a KGBElt (which here just represents its fiber) }
+
+set is_imaginary (KGBElt x) = (vec->bool): is_imaginary(involution(x))
+set is_real (KGBElt x)      = (vec->bool): is_real(involution(x))
+set is_complex (KGBElt x)   = (vec->bool): is_complex(involution(x))
+
+
+set imaginary_posroots (KGBElt x) = mat:
+  imaginary_posroots(root_datum(x),involution(x))
+set real_posroots (KGBElt x) = mat:
+  real_posroots(root_datum(x),involution(x))
+set imaginary_poscoroots (KGBElt x) = mat:
+  imaginary_poscoroots(root_datum(x),involution(x))
+set real_poscoroots (KGBElt x) = mat:
+  real_poscoroots(root_datum(x),involution(x))
+set imaginary_sys (KGBElt x) = (mat,mat):
+  let p = (root_datum(x),involution(x))
+  in (imaginary_posroots(p),imaginary_poscoroots(p))
+set real_sys (KGBElt x) = (mat,mat):
+  let p = (root_datum(x),involution(x))
+  in (real_posroots(p),real_poscoroots(p))
+
+set rho_i (KGBElt x) = ratvec: sum(imaginary_posroots(x))/2
+set rho_r (KGBElt x) = ratvec: sum(real_posroots(x))/2
+set rho_check_i (KGBElt x) = ratvec: sum(imaginary_poscoroots(x))/2
+set rho_check_r (KGBElt x) = ratvec: sum(real_poscoroots(x))/2
+
+set rho_i ((RootDatum,mat) rd_theta) = ratvec:
+  sum(imaginary_posroots(rd_theta))/2
+set rho_r ((RootDatum,mat) rd_theta) = ratvec:
+  sum(real_posroots(rd_theta))/2
+set rho_check_i ((RootDatum,mat) rd_theta) = ratvec:
+  sum(imaginary_poscoroots(rd_theta))/2
+set rho_check_r ((RootDatum,mat) rd_theta) = ratvec:
+  sum(real_poscoroots(rd_theta))/2
+
+{ compact/noncompact status for a given KGBElt of general imaginary roots }
+set is_compact (KGBElt x) = (vec->bool):
+  let coweight = rho_check_i(x)+torus_factor(x), is_im=is_imaginary(x)
+  in (vec alpha) bool: assert(@:is_im(alpha)); =(coweight*alpha)%2
+set is_noncompact (KGBElt x) = (vec->bool):
+  let coweight = rho_check_i(x)+torus_factor(x), is_im=is_imaginary(x)
+  in (vec alpha) bool: assert(@:is_im(alpha)); !=(coweight*alpha)%2
+
+{ for roots not known to be imaginary, use these functions instead }
+set is_compact_imaginary (KGBElt x) = (vec->bool):
+  let p=is_imaginary(x), q=is_compact(x) { allow pre-computation for x }
+  in (vec alpha) bool: p(alpha) and q(alpha)
+set is_noncompact_imaginary (KGBElt x) = (vec->bool):
+  let p=is_imaginary(x), q=is_noncompact(x) { allow pre-computation for x }
+  in (vec alpha) bool: p(alpha) and q(alpha)
+
+set compact_posroots (KGBElt x) = mat:
+  columns_with(is_compact(x),imaginary_posroots(x))
+set noncompact_posroots (KGBElt x) = mat:
+  columns_with(is_noncompact(x),imaginary_posroots(x))
+
+set dimension (KGBElt x) = int: { dimension as $K$-orbit on $G/B$ }
+  let G=x.real_form then x0=KGB(G,0), posroots=G.posroots in
+( x.length
++ #columns_with(is_compact_imaginary(x0),posroots)
++ #columns_with(is_complex(x0.involution),posroots)\2
+)
+
+{ codimension as $K$-orbit on $G/B$ }
+set codimension(KGBElt x) = int: nr_of_posroots(root_datum(x))-dimension(x)
+
+
+set rho_ci (KGBElt x)  = ratvec: sum(compact_posroots(x))/2
+set rho_nci (KGBElt x) = ratvec: sum(noncompact_posroots(x))/2
+
+set is_imaginary (vec v,KGBElt x) = bool: v.(is_imaginary(x))
+set is_real (vec v,KGBElt x) =      bool: v.(is_real(x))
+set is_complex (vec v,KGBElt x) =   bool: v.(is_complex(x))
+set is_compact_imaginary (vec v,KGBElt x) = bool: v.(is_compact_imaginary(x))
+set is_noncompact_imaginary (vec v,KGBElt x) = bool:
+  v.(is_noncompact_imaginary(x))
+
+set print_KGB (KGBElt x) = void:
+( prints(new_line,"Element is number ",#x, " in following KGB set")
+; print_KGB(real_form(x)) )
+
+set no_Cminus_roots (KGBElt x) = bool:
+  none(semisimple_rank(real_form(x)), (int i)bool: =status(i,x))
+set no_Cplus_roots (KGBElt x) = bool:
+  none(semisimple_rank(real_form(x)), (int i)bool: status(i,x)=4)
+
+{                               Blocks                                  }
+
+set blocks (RealForm rf) = [Block]:
+   let ic=InnerClass:rf then sizes=row(block_sizes(ic),rf.form_number)
+in for drf in dual_real_forms(ic)
+     if sizes[drf.form_number]>0 do block(rf,drf) fi
+   od
+
+set blocks (InnerClass ic) = [Block]:
+   let sizes=block_sizes(ic)
+in for rf@i in real_forms(ic)
+      for drf@j in dual_real_forms(ic)
+	 if sizes[i,j]>0
+	 do block(rf,drf)
+	 fi
+      od
+   od
+
+set raw_KL  ((RealForm,RealForm) p) = (mat,[vec],vec): raw_KL(block(p))
+set dual_KL ((RealForm,RealForm) p) = (mat,[vec],vec): dual_KL(block(p))
+
+set print_block  ((RealForm,RealForm) p) = void: print_block (block(p))
+set print_blocku ((RealForm,RealForm) p) = void: print_blocku(block(p))
+set print_blockd ((RealForm,RealForm) p) = void: print_blockd(block(p))
+set print_KL_basis ((RealForm,RealForm) p) = void: print_KL_basis(block(p))
+set print_prim_KL  ((RealForm,RealForm) p) = void: print_prim_KL(block(p))
+set print_KL_list  ((RealForm,RealForm) p) = void: print_KL_list(block(p))
+set print_W_cells  ((RealForm,RealForm) p) = void: print_W_cells(block(p))
+set print_W_graph  ((RealForm,RealForm) p) = void: print_W_cells(block(p))
+
+{				K-types					}
+
+set root_datum (KType t) = RootDatum: real_form(t)
+set inner_class (KType t) = InnerClass: real_form(t)
+
+set x (KType t) = KGBElt: let (x,)=%t in x
+set lambda_minus_rho (KType t) = vec: let (,lr)=%t in lr
+set lambda_rho = lambda_minus_rho@KType { shorter name allowed }
+set lambda (KType t) = ratvec: let (x,lr)=%t in rho(x.real_form)+lr
+set theta_plus_1_lambda (KType t) = vec:
+    let (x,lr) =%t in (1+involution(x))*(x.real_form.rho+lr) \ 1
+
+{ this constructor could be called |K_type|, but that would be confusing }
+set K_type_lambda (KGBElt x, ratvec lambda) = KType:
+  K_type(x,ratvec_as_vec(lambda-rho(x.root_datum)))
+
+set Cartan_class (KType t) = CartanClass: Cartan_class(x(t))
+
+{ list or poscoroot indices that exhibit non-dominance of the parameter }
+set non_dominant_simples (KType t) = [int]:
+  let lambda=lambda(t) in
+  for alpha_v@i in t.root_datum.simple_coroots
+     if (alpha_v*lambda).< do i fi
+  od
+
+{ questions about status of x component with respect to full datum simple root }
+set is_noncompact_imaginary (int i,KType t) = bool:
+  is_noncompact_imaginary(t.root_datum.simple_roots[i],t.x)
+set is_compact_imaginary (int i,KType t) = bool:
+  is_compact_imaginary(t.root_datum.simple_roots[i],t.x)
+
+set involution (KType t) = mat: involution(t.x)
+
+{			  Polynomials in K-types			}
+
+set root_datum (KTypePol P) = RootDatum: real_form(P)
+
+set K_type_formula (KType t) = KTypePol: K_type_formula(t,-1) { no cutoff }
+
+set null_module (KType t) = KTypePol:
+  null_K_module(real_form(t)) { avoid useless conversion to KTypePol }
+set null_module (KTypePol P) = KTypePol: 0*P { built-in does this efficiently }
+set null_K_module = null_module@KType    { allow more explicit name }
+set null_K_module = null_module@KTypePol { allow more explicit name }
+set -(KTypePol P) = KTypePol: (-1)*P
+
+set first_K_type (KTypePol P) = KType: let (,p)=first_term(P) in p
+set last_K_type (KTypePol P)  = KType: let (,p)=last_term(P) in p
+
+set s_to_1       (KTypePol P) = KTypePol: 0*P + for x@q in P do (+%x,q) od
+set s_to_minus_1 (KTypePol P) = KTypePol: 0*P + for x@q in P do (-%x,q) od
+
+{ counterpart to built-in +@(KTypePol,(Split,KType)) }
+set - (KTypePol a, (Split,KType) (c,p)) = KTypePol: a+(-c,p)
+
+set + (KTypePol P, [KType] ps) = KTypePol: P+for p in ps do (split_1,p) od
+set - (KTypePol P, [KType] ps) = KTypePol: P+for p in ps do (split_minus_1,p) od
+
+{ |KTypePol| summation by divide and conquer to privilege balanced additions }
+set sum = (RealForm,[KTypePol]->KTypePol):
+ { define recursive hart of |sum| without capturing its arguments }
+  let rec_fun s([KTypePol] Ps) = KTypePol: { |Ps| has at least one term }
+        let h = (#Ps)\2 in if =h then Ps[0] else s(Ps[:h])+s(Ps[h:]) fi
+  in (RealForm G,[KTypePol] Ps) KTypePol:
+  if #Ps=0 then G.null_K_module else s(Ps) fi
+
+set + (KTypePol P,[KTypePol] Ps) = KTypePol: P+sum(P.real_form,Ps)
+set - (KTypePol P,[KTypePol] Ps) = KTypePol: P-sum(P.real_form,Ps)
+
+set map ((KType->KType)f, KTypePol P) = KTypePol:
+  0*P + for c@p in P ~do (c,f(p)) od
+set map ((Param->KType)f, ParamPol P) = KTypePol:
+  P.real_form.null_K_module + for c@p in P ~do (c,f(p)) od
+
+set map ((KType->KTypePol)f, KTypePol P) = KTypePol:
+  sum(P.real_form,for c@p in P ~do c*f(p) od)
+set map ((Param->KTypePol)f, ParamPol P) = KTypePol:
+  sum(P.real_form,for c@p in P ~do c*f(p) od)
+
+set half (KTypePol P) = KTypePol: 0*P+ for c@t in P do (half(c),t) od
+{ inverse of multiplication *@(int,KTypePol); don't confuse with scaling }
+set divide_by (int n, KTypePol P) = KTypePol: 0*P+ for c@t in P do (c/n,t) od
+
+set as_pol (KType p) = KTypePol: p { for making implicit conversion explicit }
+set as_pol (RealForm G, [KType] ps) = KTypePol:
+  let one=Split:(1,0) in null_K_module(G)+for p in ps do (one,p) od
+{ DON'T define as_pol ([KType] pp): cannot be correctly defined when #pp=0 }
+
+{                           Module parameters                           }
+
+set root_datum (Param p) = RootDatum: real_form(p)
+set inner_class (Param p) = InnerClass: real_form(p)
+
+set null_module (Param p) = ParamPol:
+  null_module(real_form(p)) { avoid useless conversion to ParamPol }
+
+set x (Param p) = KGBElt: let (x,,) =%p in x
+set lambda_minus_rho (Param p) = vec: let (,lambda_rho,) =%p in lambda_rho
+set lambda (Param p) = ratvec: lambda_minus_rho(p)+rho(real_form(p))
+set infinitesimal_character (Param p) = ratvec: let (,,gamma) =%p in gamma
+set theta_plus_1_lambda (Param p) = vec:
+    let (x,,gamma) =%p in ratvec_as_vec((1+involution(x))*gamma)
+set d_lambda (Param p) = ratvec: let (x,,gamma) =%p in (1+involution(x))*gamma/2
+set nu (Param p) = ratvec:       let (x,,gamma) =%p in (1-involution(x))*gamma/2
+set Cartan_class (Param p) = CartanClass: Cartan_class(x(p))
+set codimension (Param p) = int: codimension(p.x)
+
+{ root datum whose coroots are those integral on p.infinitesimal_character }
+set integrality_datum (Param p)= RootDatum:
+  integrality_datum(p.real_form, p.infinitesimal_character)
+set integrality_rank (Param p) = int:
+  integrality_rank(p.real_form, p.infinitesimal_character)
+
+{ list or poscoroot indices that exhibit non-dominance of the parameter }
+set non_dominant_simples (Param p) = [int]:
+  let gamma=infinitesimal_character(p) in
+  for alpha_v@i in p.root_datum.simple_coroots
+     if (alpha_v*gamma).< do i fi
+  od
+
+{ list of integrally simple poscoroots that exhibit integral-non-dominance }
+set non_integrally_dominant_simples (Param p) = [vec]:
+  let gamma=infinitesimal_character(p) in
+  for alpha_v in integrality_datum(p.real_form,gamma).simple_coroots
+     if (alpha_v*gamma).< do alpha_v fi
+  od
+
+{ whether gamma integrally dominant }
+set is_integrally_dominant (Param p) = bool: #p.non_integrally_dominant_simples=0
+
+{ questions about status of x component with respect to full datum simple root }
+set is_noncompact_imaginary (int i,Param p) = bool:
+  is_noncompact_imaginary(p.root_datum.simple_roots[i],p.x)
+set is_compact_imaginary (int i,Param p) = bool:
+  is_compact_imaginary(p.root_datum.simple_roots[i],p.x)
+
+set involution (Param p) = mat: involution(x(p))
+
+set is_regular (Param p) = bool:
+  is_regular(root_datum(p),infinitesimal_character(p))
+
+{. Test whether (the infinitesimal character of) a parameter is
+   strongly regular. .}
+set is_strongly_regular (Param p)=bool:
+   let G=real_form(p) in let ic=infinitesimal_character(p)
+   in is_dominant(root_datum(G),ic-rho(G))
+
+{ whether irreducible rpn survives translation functor from regular inf.char. }
+set survives = (Param->bool): is_final@Param { defined to mean exactly that }
+
+set x_open (RealForm G) = KGBElt: KGB(G,G.KGB_size-1)
+set trivial (RealForm G) = Param: { parameter for the trivial representation }
+  param(G.x_open,null(rank(G)),rho(G))
+
+set cross (WeylElt w,Param p) = Param:
+  assert(@:w.root_datum=p.integrality_datum);
+  for s in w.word ~do p:=cross(s,p) od; p
+set cross (Param p,WeylElt w) = Param:
+  assert(@:w.root_datum=p.integrality_datum);
+  for s in w.word do p:=cross(s,p) od; p
+
+set K_type_pol (Param p) = KTypePol: K_type(p) { restrict, implicitly convert }
+set param_pol (KType t) = ParamPol: param(t)
+
+{ parameter(G,x,lambda,nu)=param(KGB(G,x),lambda-rho(G),nu), so you can enter
+  lambda without the rho shift; lambda may have denominator 2 or be a vec
+}
+set parameter (RealForm G,int x,ratvec lambda,ratvec nu) = Param:
+  param(KGB(G,x),ratvec_as_vec(lambda-G.rho),nu)
+set parameter (KGBElt x,ratvec lambda,ratvec nu) = Param:
+  param(x,ratvec_as_vec(lambda-x.real_form.rho),nu)
+
+{ set parameter ensuring (upon success) that the infinitesimal char. is |gamma|;
+  achieve this by ignoring |(1+theta)*lambda|, replace it by |(1+theta)*gamma| }
+set parameter_gamma (KGBElt x, ratvec lambda, ratvec gamma) = Param:
+  let (G,nx)=%x, theta=involution(x) in
+  { ((1-theta)*lambda+(1+theta)*gamma)/2 = lambda+(1+theta)*(gamma-lambda)/2 }
+  parameter(G,nx,lambda+(1+theta)*(gamma-lambda)/2,gamma)
+
+{ variation of built-in |block@Param| that weeds out non-starred block elts }
+set singular_block (Param p) = ([Param],int):
+  let (B,i)=block(p) then block = for q in B if q.survives do q fi od
+  in (block, { new index of |p|:} first(for q in block do p=q od))
+
+{ get just the parameters from a block, just a shortcut to: (params,)=block(p) }
+set block_of (Param p) = [Param]: let (params,)=block(p) in params
+set singular_block_of (Param p) = [Param]:
+  let (params,)=singular_block(p) in params
+
+{ status of parameter with respect to integrality generator s, or root alpha }
+
+set imaginary_type (int s, Param p) = int: if cross(s,p)=p then 2 else 1 fi
+set real_type (int s,Param p) = int: if cross(s,p)=p then 1 else 2 fi
+
+set imaginary_type (vec alpha, Param p) = int:
+  if cross(alpha,p)=p then 2 else 1 fi
+set real_type (vec alpha, Param p) = int:
+  if cross(alpha,p)=p then 1 else 2 fi
+
+set is_nonparity (int s,Param p)=bool: is_real(s,x(p)) and Cayley(s,p)=p
+set is_parity (int s,Param p)= bool: is_real(s,x(p)) and Cayley(s,p)!=p
+
+set is_nonparity (vec alpha,Param p)=bool:
+  is_real(alpha,x(p)) and Cayley(alpha,p)=p
+set is_parity (vec alpha,Param p)= bool:
+  is_real(alpha,x(p)) and Cayley(alpha,p)!=p
+
+set status (vec alpha,Param p) = int: { enum: C-, ic, r1, r2, C+, rn, i1, i2 }
+  let st=status(alpha,x(p)) in
+  if st<=1 or st=4 then st { complex and imaginary compact cases keep old code }
+  elif st=3 then { imaginary non-compact } 5+imaginary_type(alpha,p)
+  elif Cayley(alpha,p)=p then { real non-parity } 5
+  else 1+real_type(alpha,p)
+  fi
+
+set status (int s,Param p) = int: { this is NOT related to status(s,x(p)) }
+  status(root(integrality_datum(p),s),p)
+
+set block_status_text (int i) = string:
+  case i in "C-","ic","r1","r2","C+","rn","i1","i2"
+  else error("Out of range status ",i)
+  esac
+
+set status_text (int s,Param p) = string: block_status_text(status(s,p))
+set status_texts (Param p) = [string]:
+  for s:integrality_rank(p) do status_text(s,p) od
+
+set status_text ((vec,Param) ap) = string: block_status_text(status(ap))
+
+set parity_poscoroots (Param p) = mat: { set of positive real parity coroots }
+  let (alpha,real_poscoroots)=real_sys(x(p))
+  in columns_with((int i):status(alpha[i],p)!=5,real_poscoroots)
+set nonparity_poscoroots (Param p) = mat: { positive real nonparity coroots }
+  let (alpha,real_poscoroots)=real_sys(x(p))
+  in columns_with((int i):status(alpha[i],p)=5,real_poscoroots)
+
+set is_descent (int s,Param p) = bool: status(s,p)<4
+set tau_bitset (Param p) = (int,(int->bool)):
+  (integrality_rank(p), (int s): is_descent(s,p))
+
+set tau (Param p)            = [int]: list(tau_bitset(p))
+set tau_complement (Param p) = [int]: complement(tau_bitset(p))
+
+set is_descent ((vec,Param) ap) = bool: status(ap)<4
+
+set is_ascent ((int,Param) ip) = bool: not is_descent(ip)
+set is_ascent ((vec,Param) ap) = bool: not is_descent(ap)
+
+{ (moved from hermitian.at) orientation_number_term(orientation_nr(p),q) =
+  s^{[\ell_0(p)-\ell_0(q)]/2} which should be defined and gives 1 or s
+}
+set orientation_nr_term = (int,Param->Split):
+  let err()=
+    error("computing orientation number for odd difference of lengths")
+  in (int ori_nr_p,Param q) Split:
+  case ori_nr_p-orientation_nr(q) in 1, err(), s, err() esac
+
+
+{                       Extended blocks                                 }
+
+set extended_status_texts = [string]:
+  [ { 0:} "1C+","1C-","1i1","1r1f","1i2f","1r2","1i2s","1r1s","1rn","1ic"
+  , {10:} "2C+","2C-","2Ci","2Cr"
+     ,"2i11","2r11","2i12f","2r21f","2i22","2r22","2i12s","2r21s","2rn","2ic"
+  , {24:} "3C+","3C-","3Ci","3r","3i","3Cr","3rn","3ic"
+  ]
+
+set print_extended_block = (Param,mat->):
+  let has_double_Cayley (int n) =
+    if n<5 then n>=3 else n>=15 and n<19 fi { 1r1f,1i2f,2r11,2i12f,2r21f,2i22 }
+  , has_defect(int n) =
+    if n<14 then n>=12 else n>=26 and n<30 fi { 2Ci, 2Cr, 3Ci, 3r, 3i, 3Cr }
+  in (Param p, mat delta) void:
+  let (block,types,L0,L1) = extended_block(p,delta)
+  , G=p.real_form, parent_block=block_of(p)
+  then (l,r)=shape(types), pbs=#parent_block
+  then indices =
+      let i=0 in
+      for p in block
+      do for j:pbs from 1
+         do if parent_block[(i+j)%pbs]=p then i:=(i+j)%pbs; break fi
+	 od
+      ; i
+      od
+  then wx=width(G.KGB_size-1), wp=width(#parent_block-1)
+  , with_sign(int n) = string:
+    if n<0 then "-"+(indices[~n]) else "+"+indices[n] fi
+  in
+  for q@i in block
+  do prints
+  (r_adjust(wp,int_format(indices[i]))
+  ,": ["
+  , { statuses }
+    for j:r
+    do if j=0 then "" else "," fi
+    ## l_adjust(5,extended_status_texts[types[i,j]])
+    od.##
+  , "]"
+  , { cross actions }
+    for j:r
+    do r_adjust (wp+2, with_sign(
+       if L0[i,j]=l or has_double_Cayley(types[i,j]) or has_defect(types[i,j])
+       then i { self cross when either 0 or 2 Cayleys or there is a defect }
+       elif L1[i,j]=l then L0[i,j] else L1[i,j] { complex resp single Cayley }
+       fi))
+    od.##
+  , "; "
+  , { Cayley transforms }
+    for j:r
+    do c_adjust (2*wp+3,
+       if has_double_Cayley(types[i,j])
+       then L0[i,j].with_sign+","+L1[i,j].with_sign { double valued Cayley }
+       elif has_defect(types[i,j]) or L1[i,j]<l
+       then L0[i,j].with_sign { defect case or other single valued Cayley }
+       else "." { compact, nonparity or complex: no Cayley }
+       fi)
+    od.##
+  , "  x=" , r_adjust(wx,to_string(#x(q))) , ", " , lambda_minus_rho(q)
+  )
+  od
+
+{                   Polynomials in module parameters                    }
+
+set root_datum (ParamPol P) = RootDatum: real_form(P)
+
+set null_module (ParamPol P) = ParamPol: 0*P { built-in does this efficiently }
+set -(ParamPol P) = ParamPol: (-1)*P
+
+set param_pol (KTypePol P) = ParamPol:
+   null_module(P.real_form) + for c@t in P do (c,param(t)) od
+
+set first_param (ParamPol P) = Param: let (,p)=first_term(P) in p
+set last_param (ParamPol P)  = Param: let (,p)=last_term(P) in p
+
+set s_to_1       (ParamPol P) = ParamPol: 0*P + for x@q in P do (+%x,q) od
+set s_to_minus_1 (ParamPol P) = ParamPol: 0*P + for x@q in P do (-%x,q) od
+
+{ counterpart to built-in +@(ParamPol,(Split,Param)) }
+set - (ParamPol a, (Split,Param) (c,p)) = ParamPol: a+(-c,p)
+
+set + (ParamPol P, [Param] ps) = ParamPol: P+for p in ps do (split_1,p) od
+set - (ParamPol P, [Param] ps) = ParamPol: P+for p in ps do (split_minus_1,p) od
+
+{ |ParamPol| summation by divide and conquer to privilege balanced additions }
+set sum = (RealForm,[ParamPol]->ParamPol):
+ { define recursive hart of |sum| without capturing its arguments }
+  let rec_fun s([ParamPol] Ps) = ParamPol: { |Ps| has at least one term }
+        let h = (#Ps)\2 in if =h then Ps[0] else s(Ps[:h])+s(Ps[h:]) fi
+  in (RealForm G,[ParamPol] Ps) ParamPol:
+  if #Ps=0 then G.null_module else s(Ps) fi
+
+set + (ParamPol P,[ParamPol] Ps) = ParamPol: P+sum(P.real_form,Ps)
+set - (ParamPol P,[ParamPol] Ps) = ParamPol: P-sum(P.real_form,Ps)
+
+
+set map ((Param->Param)f, ParamPol P) = ParamPol:
+  0*P + for c@p in P ~do (c,f(p)) od
+
+set map ((Param->ParamPol)f, ParamPol P) = ParamPol:
+  sum(P.real_form,for c@p in P ~do c*f(p) od)
+
+set half (ParamPol P) = ParamPol: 0*P+ for c@t in P do (half(c),t) od
+{ inverse of multiplication *@(int,ParamPol); don't confuse with scaling }
+set divide_by (int n, ParamPol P) = ParamPol: 0*P+ for c@t in P do (c/n,t) od
+
+set as_pol (Param p) = ParamPol: p { for making implicit conversion explicit }
+set as_pol (RealForm G, [Param] ps) = ParamPol:
+  let one=Split:(1,0) in null_module(G)+for p in ps do (one,p) od
+{ DON'T define as_pol ([Param] pp): cannot be correctly defined when #pp=0 }
+
+{ branch to get only the coefficient of a specific K-type }
+set branch (KTypePol P, KType t) = Split: branch(P,height(t))[t]
+set branch (ParamPol P, KType t) = Split: branch(K_type_pol(P),t)
+
+set full_deform (ParamPol P) = KTypePol:
+  sum(P.real_form, for c@q in P do c*full_deform(q) od )
+
+set deform_to_height (ParamPol P, int height) = KTypePol:
+( let !empty_K=null_K_module(P.real_form), !empty=null_module(P)
+  then output = empty_K, def = empty
+  in
+  P := empty +
+  { snap every term down to a reducibility point, or tempered parameter }
+    for c@p in P
+    do let rp = reducibility_points(p) in
+       if #rp=0 then output +:= (c,p.K_type); [] else [(c,p*rp~[0])] fi
+    od.##
+; while #P>0
+  do set (def,P) :=
+        (let p=first_param(P) in block_deform(p,P next P:=empty,height))
+  ;  let kt = for c@q in def if  =nu(q) do (c,q.K_type) fi od
+     ,   pp = for c@q in def if !=nu(q) do (c,q) fi od
+  in output := (output next output:=empty_K) + kt; P := (P next P:=empty) + pp
+  od
+; output
+)
+
+{ nice output of KTypePol and ParamPol: split_format the coefficients }
+set pol_format (KTypePol P)= string:
+  for w@tp in P do to_string("(",w.split_format,")*",tp,new_line) od.##
+set pol_format (ParamPol P)= string:
+  for w@p in P do to_string("(",w.split_format,")*",p,new_line) od.##
+
+{ find what should be unique infinitesimal character shared by all terms }
+set infinitesimal_character(ParamPol P) = ratvec:
+  assert(@:P.!=,"empty polynomial has no infinitesimal character");
+  let (,,gamma)=%first_param(P) in
+  for @p in P
+  do assert(@:infinitesimal_character(p)=gamma
+           ,"infinitesimal character not unique")
+  od; gamma
+
+{ split up a KTypePol or ParamPol into terms below a given height and others }
+set height_split ((KTypePol,int)(P,):pair) = (KTypePol,KTypePol):
+  let lower = truncate_above_height(pair) in (lower,P-lower)
+set height_split ((ParamPol,int)(P,):pair) = (ParamPol,ParamPol):
+  let lower = truncate_above_height(pair) in (lower,P-lower)
+
+{ more generally, groups terms into different ParamPol, by value of gamma }
+set separate_by_infinitesimal_character (ParamPol P) = [(ratvec,ParamPol)]:
+  let M = [(ratvec,ParamPol)]:[]
+  then insert ((Split,Param)(,p):term ) = void: { insert into M }
+    let inserted=false, gamma=infinitesimal_character(p) in
+    for (key,P)@i in M
+    do if key=gamma then M[i]:=(key,P+term); inserted:=true fi
+    od
+  ; if not inserted then M #:= (gamma,ParamPol: p) fi
+  in for c@p in P do insert(c,p) od; M
+
+{ whether all coefficients are integer respectively integer multiples of |s| }
+set is_pure_1 ([Split] L) = bool: all(#L,(int i) bool: =L[i].s_part)
+set is_pure_s ([Split] L) = bool: all(#L,(int i) bool: =L[i].int_part)
+set is_pure   ([Split] L) = bool: L.is_pure_1 or L.is_pure_s
+
+{ a module is considered pure if either all coefficients are integer of if all
+  coefficients are integer multiples of s; stronger than all coefficients pure }
+set is_pure_1 (KTypePol P) = bool:
+   for c in P do if !=c.s_part then return false fi od; true
+set is_pure (KTypePol P) = bool: for c in P do c od.is_pure
+set is_pure_1 (ParamPol P) = bool:
+   for c in P do if !=c.s_part then return false fi od; true
+set is_pure (ParamPol P) = bool: for c in P do c od.is_pure
+
+{ report number of integer, purely s, and mixed terms }
+set purity (KTypePol P) = (int,int,int):
+  let (x,y,z)=(0,0,0) in
+  for coef in P
+  do let (a,b)=%coef in { we know (a,b)/=(0,0), so 3 cases arise }
+    if =b then x+:=1 elif =a then y+:=1 else z+:=1 fi
+  od; (x,y,z)
+
+{ moved these earlier to use in no_reps }
+{ for user convenience; a ParamPol is an associative array ParamPol->Split
+  so selecting its monomials (Param values) by position is not reliable, but
+  allowing so is useful in user sessions to pick terms from a computed result
+}
+set monomials (KTypePol P) = [KType]: for @t in P do t od
+set monomials (ParamPol P) = [Param]: for @p in P do p od
+set monomial  (KTypePol P,int i) = KType: monomials(P)[i]
+set monomial  (ParamPol P,int i) = Param: monomials(P)[i]
+
+
+{		Rapid look-up in certain fixed structures		}
+
+{ remove repetitions from a list of vecs, assumed all same size }
+set no_reps([vec] L) = [vec]:
+    if =#L then []
+    else
+       let n = #L[0] then R=null(n,0)
+       then G = inner_class(root_datum(R,R),id_mat(n)).quasicompact_form
+       then x0 = KGB(G,0)
+       then P = sum(G, for v in L do K_type(x0,v) od)
+       in for p in monomials(P) do lambda_rho(p) od
+    fi
+
+{ remove repetitions from a list of ratvecs, assumed all same size }
+set no_reps([ratvec] L) = [ratvec]:
+    if =#L then []
+    else
+       let n = #L[0] then R=null(n,0)
+       then G = inner_class(root_datum(R,R),-id_mat(n)).quasisplit_form
+       then x0 = KGB(G,0), zero = null(n)
+       then P = sum(G, for v in L do param(x0,zero,v) od)
+       in for p in monomials(P) do p.nu od
+    fi
+
+set index_in = ([vec]->(vec->int)):
+   let limit = [30].to_bitset { $2^{30}$ } in
+   ([vec] L) { equal size vectors } (vec->int):
+  if #L=0 then (vec .)int: -1 { search in empty list always fails }
+  else
+     let n=#L[0] then R=null(n,0)
+     then G = inner_class(root_datum(R,R),id_mat(n)).quasicompact_form
+     then x0 = KGB(G,0)
+  in if #L<limit
+     then let P = null_K_module(G) + for v@i in L do (i+1,K_type(x0,v)) od
+          in (vec v) int: P[K_type(x0,v)].int_part-1
+     else let P = null_K_module(G) +
+             for v@i in L
+	     do let (q,r)= (i+1)\%limit in (Split:(r,q),K_type(x0,v))
+	     od
+	  in (vec v) int: let (r,q) = %P[K_type(x0,v)] in q*limit+r-1
+     fi
+  fi
+
+set index_in ([ratvec] L) { equal size vectors } = (ratvec->int):
+  if #L=0 then (ratvec .)int: -1 { search in empty list always fails }
+  else
+     let n=#L[0] then R=null(n,0)
+     then G = inner_class(root_datum(R,R),-id_mat(n)).quasisplit_form
+     then x0 = KGB(G,0), zero = null(n)
+     then P = null_module(G) + for v@i in L do (i+1,param(x0,zero,v)) od
+  in (ratvec v) int: P[param(x0,zero,v)].int_part-1
+  fi
+
+set index_in ([Param] L) = (Param->int): { an efficiency hack: }
+  if #L=0 then (Param .)int: -1 { search in empty list always fails }
+  else
+     let G=L[0].real_form
+     then P = G.null_module + for q@i in L do (i+1,q) od
+  in (Param p) int: P[p].int_part-1
+  fi
+
+set lookup (Param p, [Param] block) = int: index_in(block)(p)
+
+{                               Miscellaneous                           }
+
+{                   Miscellaneous find functions                     }
+
+{ find index of item in list, or -1 if not found; |first| does this }
+
+any_type S,T begin
+set present_in ([T]a,(T,T->bool)eq) = is_member(eq)(a)
+set find ((T,T->bool)eq) = ([T] a, T y) int: first(a,(T x)bool:eq(x,y))
+set find_in ([T] a, (T,T->bool)eq) = (T x) int: first(a,(T y)bool:eq(x,y))
+set delete ([T] a, int i) = [T]: a[:i] ## a[i+1:]
+end
+
+set find = find(=@(int,int))
+set find = find(=@((int,int),(int,int)))
+set find = find(=@(vec,vec))
+set find = find(=@(ratvec,ratvec))
+set find = find(=@(KGBElt,KGBElt))
+set find = find(=@(Param,Param))
+
+set delete (vec v, int i) = vec: v[:i] ## v[i+1:]
+set delete (mat M, int j) = mat: M[:j] ## M[j+1:]
+
+{ No version for finding [int] due to potential ambiguity with vec version.
+  Note that |find(L,x)| has alternative |first(for y in L do x=y od)| which
+  can be used for all types having =, without separate definition of |find|
+}
+
+set in_string_list (string s,[string] S) = bool: s.(is_member(S))
+
+set positive_imaginary_roots_and_coroots = imaginary_sys@(RootDatum,mat)
+set positive_imaginary_roots_and_coroots = imaginary_sys@KGBElt
+
+set imaginary_roots_and_coroots ((RootDatum, mat)p) = (mat,mat):
+  let (a,b)=imaginary_sys(p) in (negative_system(a)##a, negative_system(b)##b)
+set imaginary_roots_and_coroots (KGBElt x) = (mat,mat):
+  imaginary_roots_and_coroots (root_datum(real_form(x)),involution(x))
+
+set positive_real_roots_and_coroots = real_sys@(RootDatum,mat)
+set positive_real_roots_and_coroots = real_sys@KGBElt
+
+set real_roots_and_coroots ((RootDatum, mat)p) = (mat,mat):
+  let (a,b)=real_sys(p) in (negative_system(a)##a, negative_system(b)##b)
+set real_roots_and_coroots (KGBElt x) = (mat,mat):
+  real_roots_and_coroots (root_datum(real_form(x)),involution(x))
+
+set complex_posroots (RootDatum rd,mat theta) =  mat:
+  columns_with(is_complex(theta),posroots(rd))
+set complex_posroots (KGBElt x) =  mat:
+  complex_posroots(root_datum(x),involution(x))
+
+{ pad string with blanks (for lining up columns in tables) }
+set pad (string s,int width) = string: l_adjust(width,s)
+
+set min_height (KTypePol P) = Maybe<int>:
+   if =P then none() else some(height(first_K_type(P))) fi
+set min_height (ParamPol P) = Maybe<int>:
+   if =P then none() else some(height(first_param(P))) fi
+set max_height (KTypePol P) = Maybe<int>:
+   if =P then none() else some(height(last_K_type(P))) fi
+set max_height (ParamPol P) = Maybe<int>:
+   if =P then none() else some(height(last_param(P))) fi
+
+{ height of polynomial is that of highest term, or -1 for an empty polynomial }
+set height (KTypePol P) = int:
+   case max_height(P) | none(): -1 | some(h): h esac
+set height (ParamPol P) = int:
+   case max_height(P) | none(): -1 | some(h): h esac
+
+set min_height([Param] params) = [Param]: { keep only minimal height terms }
+   if #params=0 then []
+   else
+      let min=min(for p in params do height(p) od)
+   in for p in params if height(p)=min do p fi od
+   fi
+
+{ for user convenience; a ParamPol is an associative array ParamPol->Split
+  so selecting its monomials (Param values) by position is not reliable, but
+  allowing so is useful in user sessions to pick terms from a computed result
+}
+set monomials (KTypePol P) = [KType]: for @t in P do t od
+set monomials (ParamPol P) = [Param]: for @p in P do p od
+set monomial  (KTypePol P,int i) = KType: monomials(P)[i]
+set monomial  (ParamPol P,int i) = Param: monomials(P)[i]
+
+{. Convert a list of KTypePol into the list of distinct parameters occurring;
+   careful: don't let terms cancel! .}
+set monomials([KTypePol] list) = [KType]:
+   if #list=0 then []
+   else
+      let sum = list[0].null_K_module +
+	  for P in list for @p in P do (split_1,p) od od
+   in monomials(sum)
+   fi
+
+set monomials([ParamPol] list) = [Param]:
+   if #list=0 then []
+   else
+      let sum = list[0].null_module +
+	  for P in list for @p in P do (split_1,p) od od
+   in monomials(sum)
+   fi
+
+set min_height([Param] params) = [Param]: { keep only minimal height terms }
+   if #params=0 then []
+   else
+      let min=min(for p in params do height(p) od)
+   in for p in params if height(p)=min do [p] fi od.##
+   fi
+
+{ for script backward compatibility, but we should wean off using these: }
+set assert (bool b,(->string) report) = void: if not b then error(report()) fi
+set assert (bool b) = void: assert(b,@:"assertion failed") { default message }
+set assert (bool b,string message) = void: if not b then error(message) fi

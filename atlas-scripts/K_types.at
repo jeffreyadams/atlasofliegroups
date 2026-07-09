@@ -1,0 +1,67 @@
+<basic.at     { for *@(Param,rat) }
+<hermitian.at { for hermitian_form_irreducible }
+<K_highest_weights.at
+
+set int_part (KTypePol P) = KTypePol:
+   P.null_K_module + for c@t in P do (c.int_part,t) od
+set s_part (KTypePol P) = KTypePol:
+   P.null_K_module + for c@t in P do (c.s_part,t) od
+
+set branch_std = (KTypePol,int->KTypePol): branch@(KTypePol,int) { built-in }
+set branch_std (KType t, int cut_off) = KTypePol: branch_std(KTypePol:t,cut_off)
+set branch_std (ParamPol P, int bound) = KTypePol: branch(K_type_pol(P),bound)
+
+set branch_irr (Param p, int bound) = KTypePol:
+  branch_std(K_type_pol(character_formula(p)),bound)
+
+set branch_irr (ParamPol P,int bound) = KTypePol:
+  branch_std(K_type_pol(character_formula(P)),bound)
+
+{ multiplicity of K-type p_K in standard module p }
+set mult_std (KType p_K,KTypePol P) = int:
+  (branch_std(P,height(p_K))[p_K]).int_part
+
+{ multiplicity of K-type p_K in irreducible module p }
+set mult_irr (KType p_K,ParamPol P) = int:
+  (branch_irr(P,height(p_K))[p_K]).int_part
+
+set K_signature_irr (Param p,int bound) = (KTypePol,KTypePol):
+  let b=branch(hermitian_form_irreducible(p),bound) in (int_part(b),s_part(b) )
+
+set signed_mult (KType p_K,Param p) = (int,int):
+  let (P,Q)=K_signature_irr(p,height(p_K)) in (P[p_K].int_part,Q[p_K].int_part)
+
+{ this should be modified to print all LKTs }
+set print_K_types (ParamPol P) = void:
+  for c@p in P
+  do let mu=highest_weight_one(LKT(p)) in
+    prints(split_as_int(c), " ", fundamental_weight_coordinates (mu)
+          , " ", dimension(mu), " ", length(mu))
+  od
+
+set print_K_types (ParamPol P, KGBElt x_K) = void:
+  for c@p in P
+  do let mu=highest_weight_one(LKT(p),x_K) in
+    prints(split_as_int(c), " ", fundamental_weight_coordinates (mu)
+          , " ", dimension(mu), " ", length(mu))
+  od
+
+{K_basis is the basis of a vector space, v is a vector in this basis
+ return sum_i v[i]*K_types[i]
+ need G only if #K_basis=0}
+set expand ([int] v,[KType] K_basis, RealForm G) = KTypePol:
+   null_K_module(G) + for c@i in v do c*K_basis[i] od
+
+{ convenience function; gives error if K_basis=[] }
+set expand ([int] v,[KType] K_basis) =KTypePol:
+  expand(v,K_basis,K_basis[0].real_form)
+
+{find KType in list of K_types}
+set find ([KType] list,KType mu) = int: first(#list,(int i)bool:list[i]=mu)
+
+{sort KTypes uniquely}
+set sort_u ([KType] K_types) = [KType]:
+  if =#K_types then []
+  else
+     for @t in K_types[0].null_K_module+for Kt in K_types do (1,Kt) od do t od
+  fi

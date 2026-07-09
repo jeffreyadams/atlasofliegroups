@@ -1,0 +1,160 @@
+<basic.at
+<Levi_subgroups.at
+<diagram.at { for |sanitize|, |diagram_automorphism_iterator| }
+<W_orbit.at
+<simple_factors.at
+<lietypes.at  { for |is_locally_isomorphic| }
+<group_operations.at
+
+{ Goal: given two sub-root systems of |rd| associated to pseudo Levi subgroups,
+  find, and count, Weyl elements |w| taking one to the other
+
+N.B. If these are Levi subsystems, this can be done efficiently by using
+  a |StdLeviFinder| like |Levi_lookup(rd,orbits_table(rd))|, which for both
+  subsystems will find a conjugate standard Levi subgroup, with a witness.
+  The functions here however do not require de sub-rootsystem to be saturated.
+}
+
+
+{ root datum of coroots perpendicular to all columns of |wts| }
+set centralizer(RootDatum rd,mat wts) = RootDatum:
+  sub_datum(rd,(int i) bool: =coroot(rd,i)*wts)
+
+{ in spite of the name, this works for pseudo Levi subsystems as well }
+set move_by_Levi (RootDatum rd,[int]Levi,int alpha,int beta) = Maybe<WeylElt>:
+   let (x,dom0) = from_dominant_root(rd,Levi,alpha)
+     , (y,dom1) = from_dominant_root(rd,Levi,beta)
+in if dom0=dom1 then (y*/x).some else ().none fi
+
+{ Find all Weyl group elements that send the |mamas| in order to the |papas|;
+  the result is in general a right coset for a Levi subgroup, which we return.
+}
+set transporter(RootDatum rd, [int] mamas, [int] papas) =
+      Maybe<([int],WeylElt)>: { (L,w) represents right coset |Levi_of(L)*w| }
+   if Cartan_matrix(rd,mamas) = Cartan_matrix(rd,papas)
+   else none()
+   then
+      let cur_w = id_W(rd), Levi = [int]: all_simples(rd)
+   in
+      for (alpha,beta) in zip(mamas,papas)
+      do case move_by_Levi(rd,Levi,permuted_root(cur_w,alpha),beta)
+	 | none: return none()
+	 | some(w): cur_w := w*cur_w { combine from right to left }
+	   ; let (,select) = Levi_info(rd,Levi)
+	     then stricter (int i) = bool:
+	        select(i) and coroot(rd,i)*root(rd,beta)=0
+	     in Levi := simples(rd,stricter)
+	 esac
+     ~od
+   ;  some(Levi,cur_w)
+   fi
+
+{ similar, but forget the Levi subgroup, return just a coset representative }
+set maybe_conjugate_strict (RootDatum rd,[vec] A,[vec] B) =
+   Maybe<WeylElt>:
+   case transporter(rd,uproot(rd,A),uproot(rd,B))
+   | none: none()
+   | some(,w): some(w)
+   esac
+
+{ Now try all permutations, intelligently }
+
+{ Find some Weyl group element that sends the |mamas| in to the |papas|
+  as sets of root indices, possibly permuting them.
+}
+set permuting_transporter(RootDatum rd, [int] mamas, [int] papas) =
+      Maybe<(WeylElt)>:
+   let degree(int i,[int]js) = int:
+      for j in js do coroot(rd,i)*root(rd,j)!=0 od.count
+   , n = if #mamas=#papas then #mamas else return none() fi
+   , crts = mat: rd.rank # for m in mamas do coroot(rd,m) od { by columns }
+   then mdegs = for i in mamas do degree(i,mamas) od
+   ,    pdegs = for i in papas do degree(i,papas) od
+   ,  maps = [[int]]:
+      { maps |indices(mamas)->indices(papas)| preserving degree and more }
+      ([]).
+      (rec_fun perms([int]f) [[int]]:
+       let k=#f in { now |f| maps #k->#n injectively }
+       if k=n then [f]
+       else
+          let deg = degree(mamas[k],mamas), mcr_vec = root(rd,mamas[k])*crts[:k]
+          , pcr = mat: rd.rank # for i:k do coroot(rd,papas[f[i]]) od
+       in for im in complement(n,f)
+          do if =(deg,degree(papas[im],papas))
+	    and =(mcr_vec,coroot(rd,papas[im])*pcr)
+	     do perms(f#im)
+	     fi
+	  od.##.##
+       fi
+      )
+in for f in maps
+   do case transporter(rd,mamas,for v in f do papas[v] od)
+      | none: () { skip unproductive maps  }
+      | some(,w): return some(w)
+      esac
+   od; none()
+
+set is_conjugate_weak (RootDatum rd,RootDatum sub1,RootDatum sub2) = bool:
+   dominant(rd,two_rho(sub1))=dominant(rd,two_rho(sub2))
+set is_conjugate_weak (RootDatum sub1,RootDatum sub2,RootDatum rd) = bool:
+   dominant(two_rho_check(sub1),rd)=dominant(two_rho_check(sub2),rd)
+
+{ which standard Levi is conjugate to (the non-standard) L, and by which w? }
+{ actually: makes a choice from a list of representatives of conjugacy classes
+  of Levi subgroups. Here |L| can be non-standard, but even if it is standard
+  it will return another Levi in case it isn't the elected representative }
+set standard_Levi_and_witness (RootDatum rd,RootDatum rd_L) =
+      (RootDatum,WeylElt):
+   let finder = StdLeviFinder: Levi_lookup(rd,orbits_table(rd))
+   , Levi = un_datum(rd,rd_L)
+   then (w,std_Levi) = finder(Levi) { |w| conjugates |std_Levi| to |Levi| }
+in (Levi_datum(rd,std_Levi),inverse(w)) { our convention is inverse for |w| }
+
+set standard_Levi ((RootDatum,RootDatum) args) = RootDatum:
+   fst(standard_Levi_and_witness(args))
+
+{ return a WeylElt, assumed to exist, taking rd_L to a standard Levi root datum }
+set standard_Levi_witness ((RootDatum,RootDatum) args) = WeylElt:
+   snd(standard_Levi_and_witness(args))
+
+
+{ witness of conjugation from |rd_L| to |rd_M|, using standard Levi in |rd| }
+set Levi_witness(RootDatum rd, RootDatum rd_L,RootDatum rd_M) = WeylElt:
+   let finder = StdLeviFinder: Levi_lookup(rd,orbits_table(rd))
+   then (w1,Levi1) = finder(un_datum(rd,rd_L))
+   ,    (w2,Levi2) = finder(un_datum(rd,rd_M))
+in assert(Levi1=Levi2,"Non conjugate Levi data"); /w2*w1
+
+{ classes of (pseudo-)Levi normalizer, modulo its centralizer }
+set normalizer_classes (RootDatum rd,[int] sub_simples) = [WeylElt]:
+   let (lt,map_to_rd) =
+      Cartan_matrix_type(Cartan_matrix(rd,sub_simples)).(sanitize(false))
+   then (get,incr) = diagram_automorphism_iterator(lt)
+   , go = true
+in while
+      case get()
+      | none: dont { stop loop }
+      | some(sigma):
+         case transporter(rd,sub_simples,for k in sigma do sub_simples[k] od)
+	 | none: do [] next incr() { not induced by any $w$ in $W(rd)$, skip }
+         | some(,w): do [w] next incr()
+	 esac
+      esac
+   od.##
+
+{ enumerate the full normalizer of a pseudo Levi subgroup }
+set normalizer_iterator ((RootDatum,[int])(rd,sub_simples):args) =
+      Iterator<WeylElt>:
+   let N_mod_C = normalizer_classes(args)
+   , C = for w in
+           W(centralizer(rd, rd.rank # for i in sub_simples do root(rd,i) od))
+	 do W_elt(rd,w.matrix) od { convert to element of full Weyl group }
+   then k=#N_mod_C, l=#C
+   , i=0, j=0
+in ( @Maybe<WeylElt>: if i<k then some(N_mod_C[i] * C[j]) else none() fi
+   , @void: if (j+:=1)=l then j:=0; i+:=1 fi
+   )
+
+set normalizer (RootDatum rd_L,RootDatum rd) = [WeylElt]:
+   let simples = un_datum(rd,rd_L)
+in normalizer_iterator(rd,simples).to_list

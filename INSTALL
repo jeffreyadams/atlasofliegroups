@@ -1,0 +1,153 @@
+Instructions  installation of the Atlas software.
+For more information about the software see the README file.
+More details at www.liegroups.org
+
+The Atlas software provides two main programs, called 'atlas' and 'Fokko'.
+
+Prerequisites: you must have a C++ compiler, the GNU programs make and bison.
+You also need a _development version_ of the GNU readline library (one that
+includes header files needed during compilation). If you have difficulties
+with readline, you can do without it by specifying an argument readline=false
+in the make commands below, but command editing will then not be available.
+
+The default compiler name configured in the Makefile is g++ with language
+selection flag -std=c++0x, but you can substitute other compilers for this,
+provided they have at least some support for C++11 (notably basic rvalue
+references and the unique_ptr and shared_ptr class templates; g++-4.4 is OK).
+
+There is some dependence on UNIX conventions (for instance using '/'
+as directory separator. Compilation on Linux and Solaris is
+straightforward, see www.liegroups.org/linux. Mac OSX is similar, see
+www.liegroups.org/mac. For Windows see www.liegroups.org/windows.
+
+SHORT INSTRUCTIONS:
+
+On many systems simply do:
+
+make
+
+(the impatient may add a flag -jN to compile up to N files in parallel)
+which should compile binaries atlas and Fokko in the current directory.
+
+Apart from potential difficulties involving "readline", which must be
+installed independently of our project or else turned off, the compilation
+should normally be clean. But if you do encounter problems, please inform the
+Atlas project (see the end of this file for addresses), as we like to be aware
+of any difficulties encountered in compiling the software.
+
+Once compiled you can run the programs by giving their name in a path with at
+least one '/', for instance ./Fokko for the Fokko program (which one
+terminates with the command 'qq'). For atlas it is best to change directory to
+atlas-scripts and then run ../atlas; then scripts that come with the
+distribution can be loaded by commands like '<basic' (which loads the
+standard prelude); the atlas program is terminated by the command 'quit'.
+
+Then to complete, one can optionally do either
+
+make install BINDIR=<dir>
+
+where <dir> is a directory in your search path (usually ~/bin), or, to install
+the essential files separately from the source files, do something like
+
+rm sources/interface/io.o
+make install INSTALLDIR=/usr/local/atlas BINDIR=/usr/local/bin
+
+(the example is for system-wide installation, and requires privilege to do so).
+
+
+LONGER VERSION:
+
+The 'make install' command serves two purposes: to make 'Fokko' and 'atlas'
+more easily callable (from your search path), and possibly move the compiled
+system to a place where it can function independently of the source directory.
+
+the general form is
+
+make install INSTALLDIR=... BINDIR=...
+
+Both of the assignments are optional; if INSTALLDIR is given the this installs
+the essential programs and data separately from the sources in that directory
+(created if necessary), and if BINDIR is given this creates executable files
+'atlas' and 'Fokko' in the specified directory (actually a symbolic link and
+a short shell script invoking the programs in INSTALLDIR). The default for
+both INSTALLDIR and BINDIR is the current directory, but leaving both so, the
+call 'make install' does nothing. It is advised to change at least BINDIR from
+the default, allowing 'make' to create the shell script BINDIR/atlas that
+executes the binary INSTALLDIR/atlas with some hidden arguments; these ensure
+loading a small "standard prelude" of predefined functions and setting a
+search path for further atlas scripts that you might want to load manually.
+
+If specified, INSTALLDIR should probably be a not yet existing subdirectory
+with 'atlas' in its name to keep things together, as the programs and
+directories with auxiliary files are placed directly into INSTALLDIR. On the
+other hand BINDIR should be an existing directory mentioned in your $PATH.
+
+The Fokko program also needs to locate some auxiliary (help) files for which
+it uses a search path fixed during compilation. This means that if you set
+INSTALLDIR to differ from the compilation directory, the Fokko program needs to
+be slightly modified to be able to locate the (moved) help files. This is
+easily obtained by removing the small object file that stores the search path,
+after which recompilation is automatically done within the 'make install'
+command, and uses the INSTALLDIR value to correctly set the compiled path.
+This explains the need for 'rm sources/interface/io.o' above.
+
+Should Fokko nevertheless report problem in locating help files (in which case
+it will tell where it looked in vain) the compiled-in search path can be
+overridden by a path on the 'Fokko' command line (ending with /messages/)
+
+
+COMPILING OPTIONS
+
+There are some switches that can be used to control the compilation process.
+
+If you get some errors about readline see below, you may try:
+
+  make readline=false
+
+to compile without readline.
+
+Some other options are (their opposites are the default)
+
+  verbose=true
+  debug=true
+  optimize=true
+  profile=true
+
+We recommend verbose=true, which prints out a very small amount of
+information about how far along the process is.
+
+Do
+
+make clean
+
+to start from scratch.
+
+For information using the enhanced command line interpreter atlas, see below.
+
+-------------------------------------------------------------------
+Compiling with readline
+
+Both Fokko and atlas programs are built to use the readline library which
+allows to more easily type commands, providing simple editing, history (with
+arrow keys) and command completion (with <tab>) among other useful command
+line features. You should be able to compile with readline on most Linux
+distributions, which usually requires installing the "development" readline
+package (for instance libreadline-dev or libreadline6-dev), which might not be
+pre-installed in the distribution, even if readline is. For Mac OSX see below.
+
+The variable rl_libs tells the compiler to include certain
+libraries needed for readline. The default is
+
+rl_libs = -lreadline
+
+Another possibility is to add -lcurses or -lncurses to the variable, if this
+is required on you system
+
+If you can't get them to compile with readline, you can as last resort do
+
+make readline=false
+
+to compile the programs without this feature.
+
+Please report any problems to Jeffrey Adams jda@math.umd.edu or to
+Marc van Leeuwen Marc.van-Leeuwen@math.univ-poitiers.fr.

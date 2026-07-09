@@ -1,0 +1,66 @@
+<basic.at
+<parameters.at { for parameter@(KGBElt,KGBElt,ratvec) }
+<synthetic.at { for type KGBElt_gen }
+<Vogan-dual.at { for |dual@(Param,InnerClass)| }
+<polynomial.at { types |i_poly|, |i_poly_mat| }
+<extended.at { for type ExtParam }
+<KL_polynomial_matrices.at
+
+{some similar stuff to Vogan-dual.at, also some extra functionality}
+
+{-------------------------  dual of a block --------------------------}
+
+{ various functions for constructing dual block:
+  dual(B), dual(B,g), dual(B,g,dual_inner_class), dual(B,dual_inner_class)
+  each returns ([Param] B_vee,[int] permutation)
+  B_vee is block for for G^vee(infinitesimal character)
+  Vogan duality is B[i] -> B_vee(permutation[i])
+}
+set dual_block ([Param] B, InnerClass dual_inner_class) = ([Param],[int]):
+  let B_vee=block_of(dual(B[0],dual_inner_class))
+  then (perm,success) =
+     let B_dual=for p in B do dual(p,dual_inner_class) od
+     in permutation(B_dual,B_vee)
+  in assert(@:success,"Parameters not in a single dual block"); (B_vee,perm)
+  { B_vee is in length *increasing* order
+    B_dual is in length *decreasing* order; B[i]->B_dual[i] is Vogan duality
+    B_vee=B_dual up to permutation, roughly reversing order
+  }
+
+{don't specify the inner class and/or the dual infinitesimal character}
+set dual_block ([Param] B) = ([Param],[int]):
+  dual_block(B,dual_inner_class(B[0]))
+
+set dual_ExtParameter (
+       ExtParam(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)) = ExtParam:
+    (dual(ic),^delta,g,l,omega,gamma,lambda,theta,t,tau)
+
+{ KL_Q_polynomials@Param is defined in KL_polynomial_matrices }
+
+{ individual Q polynomials
+  given B to make sure we have the right basis in the right order
+  given Q so don't need to recompute it
+}
+set KL_Q_polynomial ([Param] B, i_poly_mat Q,Param irr,Param std) = i_poly:
+  let index_irr=find(B,irr) then index_std=find(B,std) in
+  assert(@:index_irr>=0 and index_std>=0,"irr and/or std not found in block");
+  Q[index_irr][index_std]
+
+{ in some cases this test fails because it is off by a permutation which
+  I don't understand
+}
+{ for example G=Sp(6,R), test_duality(spherical_principal_series(G,rho(G))) }
+{ returns P,Q, and true/false;
+  P*Q should be the identity}
+set test_duality (Param p) = (i_poly_mat,i_poly_mat,bool):
+(  let B=block_of(p)
+   then P_signed=KL_P_signed_polynomials(B), Q=KL_Q_polynomials(B)
+in prints("P_signed="); printPolyMatrix(P_signed)
+;  prints("Q="); printPolyMatrix(Q)
+;  let R=P_signed*Q
+   then success = R=identity_poly_matrix(#P_signed)
+in if success then prints("passed: P*Q=I")
+   else prints("failed: P*Q=I"); printPolyMatrix(R)
+   fi
+;  (P_signed,Q,success)
+)

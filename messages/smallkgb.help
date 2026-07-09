@@ -1,0 +1,88 @@
+
+The "small" commands are: smallkgb, smallblock, smalldualkgb and
+smalldualblock. Each of these performs a piece of the corresponding
+basic command kgb, block, dualkgb and dualblock.
+
+Choose a real form of G, with corresponding (complexified) maximal
+compact subgroups K. The kgb command lists the orbits of K on
+G/B, numbered 0,..,m. 
+
+Choose a real form of G^v, with corresponding (complexified) maximal
+compact subgroups K^v. The dualkgb command lists the orbits of K^v on
+G^v/B^v, numbered 0,..,m.
+
+The choice of real forms of G and G^v determines a block B of
+representations of the given real form of G. The block is parametrized
+by a subset of elements (x,y) with x<=m, y<=n. See the help file for
+the block command. In general not all x or y occur.
+
+The small commands each take as arguments real forms of G and
+G^v. They compute only the elements needed for the corresponding
+block. Thus:
+
+
+smallkgb computes and displays only the kgb elements x arising as the
+first coordinate of an element (x,y) of B
+
+smalldualkgb computes and displays only the kgb elements y arising as
+the second coordinate of an element (x,y) of B
+
+smallblock displays the block. The list of representations is the same
+as in the output of block, but (see below) the number of the elements
+(x,y) may be different. Similarly for smalldualblock. These
+computations are less intensive than block and dualblock, since they
+only compute the kgb/dualkgb elements needed for the block.
+
+Warning: the elements of smallkgb are numbered consecutively starting
+at 0. These numbers do NOT coincide with the number of elements of the
+kgb command. This holds as well for small block, and the dual
+versions.
+
+Example: Here is the block of Sp(4,R) dual to the compact group 
+SO(5). This block has one element. 
+
+First we run kgb and dualkgb. Note that element #10 in the output of
+kgb is the same as element #0 in the output of smallkgb.
+
+Then we run block and small block. The only difference in the output
+is x=10 versus x=0.
+
+block: type
+Lie type: C2 sc s
+main: kgb
+(weak) real forms are:
+0: sp(2)
+1: sp(1,1)
+2: sp(4,R)
+enter your choice: 2
+kgbsize: 11
+Name an output file (return for stdout, ? to abandon):
+ 0:  0  0  [n,n]    1   2     4   5  e
+ 1:  0  0  [n,n]    0   3     4   6  e
+ 2:  0  0  [c,n]    2   0     *   5  e
+ 3:  0  0  [c,n]    3   1     *   6  e
+ 4:  1  1  [r,C]    4   9     *   *  1
+ 5:  1  2  [C,r]    7   5     *   *  2
+ 6:  1  2  [C,r]    8   6     *   *  2
+ 7:  2  2  [C,n]    5   8     *  10  1,2,1
+ 8:  2  2  [C,n]    6   7     *  10  1,2,1
+ 9:  2  1  [n,C]    9   4    10   *  2,1,2
+10:  3  3  [r,r]   10  10     *   *  2,1,2,1
+real: smallkgb
+possible (weak) dual real forms are:
+0: so(5)
+1: so(4,1)
+2: so(3,2)
+enter your choice: 0
+relevant Cartan classes: {3}
+partial kgb size: 1
+Name an output file (return for stdout, ? to abandon):
+0:  3  3  [r,r]   0  0    *  *  2,1,2,1
+block: block
+Name an output file (return for stdout, ? to abandon):
+entering block construction... K\G/B and dual generated... done
+0(10,0):  3  3  [rn,rn]  0  0   (*,*)  (*,*)   2,1,2,1
+block: smallblock
+Name an output file (return for stdout, ? to abandon):
+entering block construction... K\G/B and dual generated... done
+0(0,0):  3  3  [rn,rn]  0  0   (*,*)  (*,*)   2,1,2,1

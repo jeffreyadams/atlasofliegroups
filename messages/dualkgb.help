@@ -1,0 +1,11 @@
+
+The "dualkgb" command computes the same output as the kgb command, but
+for a real form of the dual group. The user can thus compute kgb for
+the dual group without having to reset the current complex group. 
+
+The dualblock and dualmap commands use the numbering of kgb elements
+for the dual group provided by dualkgb. 
+
+NB: the numbering of kgb elements provided by the dualkgb command and
+the kgb command (applied with the dual group in place of G) may fail
+to agree.

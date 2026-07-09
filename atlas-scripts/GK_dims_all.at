@@ -1,0 +1,37 @@
+<associated_variety_annihilator.at { GK_dim, #posroots; pulls in cells.at, K_highest_weights.at }
+
+{ Compute GK dimension of all irreducible representations of G with
+  infinitesimal character gamma. Returns [(Param,int)] pairs.
+
+  Precomputes W-cells once per block rather than recomputing for each
+  parameter, so it scales well when the block is large. }
+set GK_dims (RealForm G, ratvec gamma) = [(Param,int)]:
+   let params = all_parameters_gamma(G, gamma)
+   then n_pos = #posroots(G.root_datum)
+in for (block, cells) in blocks_and_cells(params)
+   do for p in block
+      do let (,cell) = W_cell(block, cells, p)
+         then ct = cell.root_datum.character_table
+      in (p, n_pos - ct.degree(ct.special_character_inefficient(cell)))
+      od
+   od.##
+
+{ Convenience overload: use real_form and infinitesimal_character of p. }
+set GK_dims (Param p) = [(Param,int)]:
+   GK_dims(p.real_form, p.infinitesimal_character)
+
+{ Print table: x, lambda, nu, GK-dim for every irreducible with inf char gamma. }
+set show_GK_dims (RealForm G, ratvec gamma) = void:
+   tabulate(
+      ["x", "lambda", "nu", "GK-dim"] #
+      for (p, gk) in GK_dims(G, gamma)
+      do [ (#p.x).to_string
+         , p.lambda.compact_string
+         , p.nu.compact_string
+         , gk.to_string
+         ]
+      od
+   )
+
+set show_GK_dims (Param p) = void:
+   show_GK_dims(p.real_form, p.infinitesimal_character)

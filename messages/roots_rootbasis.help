@@ -1,0 +1,7 @@
+
+The "roots_rootbasis" prints the roots in the basis of simple
+roots.
+
+The "roots" command prints the roots in the chosen basis of
+X^*(T). See also coroots, coroots_rootbasis, posroots,
+posroots_rootbasis, poscoroots, poscoroots_rootbasis and rootdatum.

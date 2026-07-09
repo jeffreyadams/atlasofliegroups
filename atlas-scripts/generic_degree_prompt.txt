@@ -1,0 +1,22 @@
+I want to examine the atlas software. To run it do ..atlas all.at, which loads many atlas files from
+the current directory.
+
+On of the subtle points of the theory is the definition of the generic
+degree of a representation of the Weyl group. The important notion of
+special representation is defined in terms of this: the generic degree
+and another degree (I think it is called the fake degree, or just
+degree) are equal is the defining property of special. There is a
+complicated algorithm in geck_generic.at to compute generic degree,
+which is inductive in nature.
+
+We also compute generic degree at least one other way: I think every
+weyl group representation is contained in a "family" of weyl group
+representations, which contains one special representation, the the
+reps in the family all have the same generic degree. So you can
+compute the generic degree by finding this family and identifying the
+special. For classical groups this is given by an algorithm, and for
+exceptional groups in tables.
+
+Write a summary of all of this with some details about how this works,
+including references if necessary. See the books by Lusztig (pdf file)
+and Carter (djvu file) in this directory. Write this to a latex file.

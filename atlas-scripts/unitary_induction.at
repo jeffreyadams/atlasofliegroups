@@ -1,0 +1,45 @@
+<induction.at
+<center.at
+<K_highest_weights.at
+
+{try to write p as induced from one dimensional unitary}
+
+{all one-dimensional unitary of G, assume no central compact torus
+to make this a finite set}
+set all_one_dimensional_unitary(RealForm G)=
+assert(=#compact_radical_basis(G), "G has a compact central torus");
+let x=KGB(G,G.KGB_size-1) in
+##for gamma in all_lambda_differential_0(x) do 
+let p=parameter(x, G.rho+gamma,G.rho)  in
+if is_one_dimensional(p) then [p] else [] fi od
+
+{run over all real parabolics, all one-dimensional unitary
+representations of each, and induce}
+set all_real_induced_one_dimensional (RealForm G) =
+for P in all_real_parabolics(G) do
+ let t_L=P.Levi.trivial then
+ characters_of_M=all_lambda_differential_0(t_L.x) in
+ for gamma in characters_of_M do
+  let p_L=parameter(t_L.x,t_L.lambda+gamma,t_L.nu) in
+  (p_L,monomials(real_induce_irreducible(p_L,G)))
+ od
+od
+
+{given p try to write it as real induced from one-dimensional.
+Only try those parabolic which give the correct infinitesimal character}
+set realize_as_real_induced_from_one_dimensional(Param p)=
+let all=all_real_parabolics(p.real_form) then
+gamma=p.infinitesimal_character then
+candidate_parabolics=##for P in all do
+ if dominant(p.root_datum,P.Levi.rho)=gamma then [P] else [] fi od
+in
+##(##for P in candidate_parabolics do
+ for pl in all_one_dimensional_unitary(P.Levi) do 
+  if not =real_induce_irreducible(pl,p.real_form)[p] then [pl] else [] fi
+ od
+od)
+
+
+
+
+

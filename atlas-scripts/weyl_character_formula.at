@@ -1,0 +1,213 @@
+<basic.at
+<cyclotomic.at
+<W_orbit.at
+<representations.at
+<finite_dimensional.at
+
+{! Weyl character formula computed at elements of finite order
+
+Suppose G is a connected, complex reductive group, or a connected
+compact group. An irreducible finite dimensional representation (pi,V)
+of G is determined by its highest weight. The Weyl character formula
+computes the trace of pi(t), for t a (semisimple) element of G, as a
+quotient. If t is regular (the identity component of its centralizer
+is a torus) both numerator and denominator are nonzero.
+
+If t is singular both the numerator and denominator can vanish, in
+which case a version of L'Hopital's rule is needed. For example when
+t=1 this gives the Weyl dimension formula.
+
+There is a version of the Weyl character formula, which can be
+directly evaluated on any element t, which involves the Weyl dimension
+formula on the centralizer of t. This is the formula we have
+implemented. If t has order n then trace(pi(t)) is an algebraic
+integer in the cyclotomic field of n^th roots of 1, i.e. an integral
+linear combination of roots of 1.
+
+See https://www2.bc.edu/mark-reeder/WeylChar.pdf Proposition 6.1 !}
+
+{. set true for more output .}
+set verbose_trace=false
+
+{ see if w is equivalent to v mod Z^n for some v in list}
+set find_ratvec_mod_vec ([ratvec] v, ratvec w) = int:
+   first(for r in v do =(r-w)%1 od)
+
+{ keep coset representatives of list of ratvecs mod Z^n}
+set reduce_ratvecs_mod_lattice ([ratvec] S) = [ratvec]:
+   let reduced= for s in S do s%1 od, result=[ratvec]:[] in
+   for x in reduced
+   do if all(for y in result do x!=y od) then result#:=x fi
+   od; result
+
+{ action is by dual(rd) since v is in X_*(T)_Q }
+set W_orbit_torus_element(RootDatum rd,ratvec v)=[ratvec]:
+   reduce_ratvecs_mod_lattice(W_orbit(dual(rd),v))
+
+{ the dual notion to |integrality_datum@(RootDatum,ratvec)| }
+set centralizer(RootDatum rd,ratvec cowt) = RootDatum:
+   sub_datum(rd,(int i)bool: (cowt*root(rd,i)).is_integer)
+
+{. order of element of Q/Z.}
+set QmodZ_order(ratvec v)=int:denom(v)
+
+{ evaluate character (in Z^n) of T on t\in T of finite order,
+giving result in the given cyclotomic field}
+set eval_char_T(vec lambda, ratvec v,CyclotomicField F)=CyclotomicFieldElement:
+   exp_1(lambda*v,F)
+
+{.product of $1-\exp(-alpha)(t)$ over all posroots $\alpha$ making it nonzero.}
+set weyl_denominator_quotient(RootDatum rd, ratvec v,CyclotomicField F) =
+      CyclotomicFieldElement:
+   let result=F.one in
+   for alpha in posroots(rd)
+   do let eval=(alpha*v)%1 in
+      if !=eval then result*:=(F.one-F.one*exp_1(-eval,F)) fi
+   od; result
+
+
+{.Weyl character formula for finite dimensional with extremal weight lambda
+  at t=exp_1(v), in the semisimple simply connected case.}
+set trace_semisimple_simply_connected(
+      RootDatum rd, vec lambda,ratvec v,CyclotomicField F) =
+      CyclotomicFieldElement:
+   assert(@:is_simply_connected(rd)
+         ,"root datum is not semisimple and simply connected");
+   let S=W_orbit_torus_element(rd,v), result=F.zero in
+   for w in S do
+    let rd_w=centralizer(rd,w), num=eval_char_T(lambda,w,F)
+      ,  denom=weyl_denominator_quotient(rd,w,F)
+      then dim_factor= dimension(rd_w,lambda+rho(rd)-rho(rd_w))
+      then contribution = dim_factor*(num/denom)
+      in if verbose_trace
+         then prints(new_line, "t= ", w)
+         ;  prints("numerator= ", to_string(num),new_line
+                  ,"denominator= ", to_string(denom), new_line
+                  ,"dimension factor= ", dim_factor)
+         ;  prints("centralizer: ", rd_w)
+         ;  prints("contribution: ", contribution.to_string)
+         fi
+      ;  result +:= contribution
+   od;
+   assert(@:is_integer(result.v),"Character value is not an algebraic integer");
+   result
+
+{ Weyl character formula in general case is obtained by reduction to
+  the semisimple simply connected case }
+{.Weyl character formula for finite dimensional with extremal weight
+ lambda exp_1(v).}
+set trace (RootDatum rd, vec lambda, ratvec t, CyclotomicField F) =
+      CyclotomicFieldElement:
+   let (rd_sc,M)=simply_connected_cover_derived_info(rd)
+   then lambda_sc=ratvec_as_vec(M*lambda)
+   , t_sc=left_inverse(^M)*t then
+{t and ^M*t_sc=^M*(left_inverse(^M)) differ by something central}
+central_term=lambda*(t-^M*t_sc) in
+exp_1(central_term,F)*trace_semisimple_simply_connected(rd_sc,lambda_sc,t_sc,F)
+
+{mainly for debugging;
+ same as previous, also returning an array of terms from the computation }
+set trace_long (RootDatum rd, vec lambda,ratvec v,CyclotomicField F) =
+      (CyclotomicFieldElement,[CyclotomicFieldElement]):
+   let S=W_orbit_torus_element(rd,v)
+   , result=F.zero, list=[CyclotomicFieldElement]:[]
+   in
+   for w in S
+   do let rd_w=centralizer(rd,w), num=eval_char_T(lambda,w,F)
+      ,  denom=weyl_denominator_quotient(rd,w,F)
+      then dim_factor= dimension(rd_w,lambda+rho(rd)-rho(rd_w))
+      then contribution = dim_factor*(num/denom)
+      in if verbose_trace
+         then prints(new_line, "t= ", w)
+         ;  prints("numerator= ", to_string(num),new_line
+                  ,"denominator= ", to_string(denom), new_line
+                  ,"dimension factor= ", dim_factor)
+         ;  prints("centralizer: ", rd_w)
+         ;  prints("contribution: ", contribution.to_string)
+	 fi
+      ;  result +:= contribution
+      ;  list   #:= contribution
+   od; (result,list)
+
+{variants of trace functions}
+set trace (RootDatum rd, vec lambda,ratvec v) = CyclotomicFieldElement:
+   trace(rd,lambda,v,CF(denom(v)))
+set trace (vec lambda,(RootDatum rd,ratvec v)) = CyclotomicFieldElement:
+   trace(rd,lambda,v,CF(denom(v)))
+set trace(Param p, ratvec v) = CyclotomicFieldElement:
+   trace(root_datum(p),highest_weight_finite_dimensional(fd_only(p)),v)
+
+set trace_long (RootDatum rd, vec lambda,ratvec v) =
+      (CyclotomicFieldElement,[CyclotomicFieldElement]):
+   trace_long(rd,lambda,v,CF(denom(v)))
+set trace_long (vec lambda,(RootDatum rd,ratvec v)) =
+      (CyclotomicFieldElement,[CyclotomicFieldElement]):
+   trace_long(rd,lambda,v,CF(denom(v)))
+
+{special case of Weyl character formula: x^2\in Z (strong real form)
+ used for computing signatures of Hermitian forms
+ returns (rat theta,int k) representing Trace(pi(x))=e^{2\pi i theta}*k
+ since x^2\in Z, \pi(x)=\zeta^{1/2}diag(\pm 1,...,\pm 1) where
+ zeta^{1/2} is a square root of the central character evaluated as x^2
+ zeta=e^{\pi i\theta}
+}
+
+{.Weyl character formula for highest weight lambda evaluated on an element x
+  in T with x^2 in Z.}
+set trace_strong_real (RootDatum rd, ratvec lambda,ratvec v) = (rat,int):
+(  let S=W_orbit_torus_element(rd,v)
+   , denominator=weyl_denominator_quotient(rd,v,cyclotomic_field(2)).to_rational
+       { this is a power of 2, and same on all elements of orbit }
+   , result=rat: 0
+   in if verbose_trace
+      then prints("centralizer(x): ", centralizer(rd,v), new_line
+                 ,"denominator: ", denominator)
+      fi
+   ;  for w in S
+      do let rd_w=centralizer(rd,w) in
+         result+:= minus_1^(lambda*2*(w-v)).rat_as_int
+                  *(dimension(rd_w,lambda+rho(rd)-rho(rd_w))/denominator)
+      od
+   ;  (lambda*v,result.rat_as_int)
+)
+
+{.Weyl character formula for finite dimensional p evaluated on an element x
+ in T with x^2 in Z.}
+set trace_strong_real (Param p,ratvec v) = (rat,int):
+   trace_strong_real(root_datum(p),
+      p.fd_only.highest_weight_finite_dimensional,
+      v)
+
+{ Weyl character formula: given set of weights, add them up at exp(2i\pi t)
+  input should be the set of weights (with multiplicities) of a representation }
+{.evaluate sum of weights at t.}
+set trace ([vec] weights,ratvec v) = CyclotomicFieldElement:
+   let F=cyclotomic_field(denom(v)) then result=F.zero in
+   for mu in weights
+   do let trace=exp_1(mu*v,F) in
+      if verbose_trace then prints("mu= ", mu, " trace= ", to_string(trace)) fi
+   ;  result+:=trace
+   od; result
+
+{.torus factor of strong real form of x.}
+set torus_factor_x (RealForm G) = (RootDatum,ratvec):
+   ( root_datum(G), (torus_factor(KGB(G,0))+rho_check(G))/2 )
+
+{.output of Weyl character formula.}
+set trace_report (RealForm G, vec lambda, ratvec t) = void:
+   prints("highest weight=", lambda, "  "
+         ," dimension=", dimension(finite_dimensional(G,lambda))
+         ," trace=", trace(lambda,(G,t)).to_string)
+
+set trace_report (Param p,ratvec t) = void:
+   trace_report(real_form(p), highest_weight_finite_dimensional(fd_only(p)), t)
+
+{.run over all finite dimensionals up to height bound.}
+set trace_report (RealForm G, int height_bound, ratvec t) = void:
+   prints("Computing trace of exp(2i\pi",t
+         ,") on representations up to height ", height_bound,new_line);
+   let M=ratvecs_as_ratmat(fundamental_weights(G)) in
+   for mu in box(height_bound,ss_rank(G))
+   do let lambda=M*mu in
+      if lambda.is_integer then trace_report(G, lambda.ratvec_as_vec, t) fi
+   od

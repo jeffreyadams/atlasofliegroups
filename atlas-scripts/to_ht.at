@@ -1,0 +1,131 @@
+<basic.at
+<hermitian.at
+<convert_c_form.at
+{preferred to_ht(ParamPol,int)}
+{ set to_ht0(int N) = (ParamPol->ParamPol): (ParamPol P):
+    let (below,)=height_split(P,N+1) in below }
+
+{following is better in is_unitary_to_ht(E6_q.trivial,24):
+took 60 seconds versus 80 for above}
+
+{set to_htA(int N) = (ParamPol->ParamPol):(ParamPol P):
+let result=0*P,zero=0*P,left=P in
+while (not(left=zero) and not(height(first_param(left))> N)) do result+:=(first_term(left));
+left-:=(first_term(left)) od; result}
+
+{following is better still...}
+{set to_htB(int N) = (ParamPol->ParamPol):(ParamPol P):
+let result=0*P, Mon = monomials(P), i=0 in
+while (i < #Mon and height(Mon[i])<N+1) do result+:=(P[Mon[i]],Mon[i]); i+:=1 od; result}
+
+set to_ht (int N) = (ParamPol->ParamPol): (ParamPol P):
+  let (below,)=height_split(P,N) in below
+
+set to_ht (KTypePol P,int N) = KTypePol:
+  let (below,)=height_split(P,N) in below
+
+set full_deform_to_ht(Param p, int height) = KTypePol:
+  if height < 0 then return full_deform(p) fi;
+  let !empty_K=null_K_module(p.real_form), !empty=null_module(p)
+  then output = empty_K, def = empty
+  then P = empty +
+       	 { snap p down to a reducibility point, or tempered parameter }
+     	 (let rp = reducibility_points(p)
+      	  in if =#rp
+      	     then output +:= p.K_type; []
+	     else [p*rp~[0]]
+	     fi)
+      then () = while >#P
+       	    do set (def,P) :=
+               (let q=first_param(P) in block_deform(q,P next P:=empty,height))
+  	       ;  let kt = for c@m in def if  =nu(m) do (c,m.K_type) fi od
+     	       	  ,   pp = for c@m in def if !=nu(m) do (c,m) fi od
+  	      in output := (output next output:=empty_K) + kt; P := (P next P:=empty) + pp
+  	    od
+  in output
+
+set twisted_full_deform_to_ht(Param p,int N) = KTypePol:
+  to_ht(twisted_full_deform(p),N)
+
+set KL_sum_at_s_to_ht(int N) = (Param p) ParamPol:
+  KL_sum_at_s_to_height(p,N)
+
+set twisted_KL_sum_at_s_to_ht(int N) = (Param p) ParamPol:
+  to_ht(N)(twisted_KL_sum_at_s(p))
+
+
+{.write c-invariant form on standard module as a ParamPol of
+standardrepKs to specified height.}
+
+set c_form_std_to_ht(int N) = (Param->KTypePol):(Param p):
+{ never involves |twisted_full_deform| }
+   full_deform_to_ht(p,N)
+
+set twisted_c_form_std_to_ht(int N) = (Param p)KTypePol:
+   twisted_full_deform_to_ht(p,N)
+
+{    c_form_to_ht on irreducible representations   }
+
+set oriented_KL_sum_to_ht  (int N) = (Param p)ParamPol:
+   let ori_nr_p = orientation_nr(p) in  null_module(real_form(p)) +
+   for c@q in KL_sum_at_s_to_ht(N)(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
+
+{ untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
+{.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
+set c_form_irreducible_to_ht (Param p,int N) = KTypePol:
+  map(c_form_std_to_ht(N), oriented_KL_sum_to_ht(N)(p) )
+
+{    twisted_c_form_irreducible_to_ht   }
+
+{ utility: compute fixed and unfixed contributions to c-form on irreducible(p)
+  no deformation is done, but orientation numbers are included;
+  fixed contributions are already halved; for unfixed ones this needs to wait
+}
+set twisted_c_form_irreducible_contributions_to_ht(Param p,int N) =
+    (ParamPol,ParamPol): { (fixed part, 2*unfixed part) }
+  let G=p.real_form, ori_nr_p = orientation_nr(p)
+  then formula = (1+s)*KL_sum_at_s_to_ht(N)(p) + (1-s)*twisted_KL_sum_at_s_to_ht(N)(p)
+  in { two value-producing loops can be a lot more efficient than one: }
+  ( G.null_module +
+      for c@q in formula
+      do if twist(q)=q then [(half(c)*orientation_nr_term(ori_nr_p,q),q)]
+         else []
+	 fi
+      od.##
+   , G.null_module +
+      for c@q in formula
+      do if twist(q)=q then []
+         else [(c*orientation_nr_term(ori_nr_p,q),q)]
+	 fi
+      od.##
+  )
+
+{ The following function implements algorithm from Vogan in email 9/22/16:
+  * for each delta-fixed term q add c_form_std(q) (fully twisted-deformed)
+  * for each pair {q,delta(q)} add q.K_type_pol (deformation to nu=0 of q).
+  For second kind it it convenient to add q.K_type_pol and delta(q).K_type_pol
+  separately and at the end divide the sum of such contributions by 2.
+}
+{.twisted c-invariant form to height N on an irreducible in terms of
+standardrepKs.}
+
+set twisted_c_form_irreducible_to_ht (Param p,int N) = KTypePol:
+( let (fixed,unfixed)=twisted_c_form_irreducible_contributions_to_ht(p,N)
+{ |1+s| divides |unfixed|, no need for |scale_extended|; take half at |nu=0| }
+  in map(twisted_c_form_std_to_ht(N),fixed)+half(unfixed.K_type_pol)
+)
+
+{.Hermitian form to ht on a irreducible module, normalization from its
+initial term.}
+
+set hermitian_form_irreducible_to_ht (Param p,int N) = KTypePol:
+  if is_equal_rank(real_form(p))
+  then c_form_irreducible_to_ht(p,N) { not twisted, in equal rank case this is faster }
+  else  check_hermitian(p,true); twisted_c_form_irreducible_to_ht(p,N)
+  fi.convert_cform_hermitian
+
+{ compute Hermitian form to ht on p, and report if it is unitary }
+set is_unitary_to_ht (Param p,int N) = bool:
+  p.is_hermitian and hermitian_form_irreducible_to_ht(p,N).is_pure
+
+

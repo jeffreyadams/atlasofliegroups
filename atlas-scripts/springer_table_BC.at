@@ -1,0 +1,319 @@
+<basic.at
+<combinatorics.at { for |core_quotient_2| }
+<springer_tables.at
+<nilpotent_orbit_partitions.at
+<character_tables_reductive.at { for |character_table@RootDatum| }
+
+
+{ convert 1-based list of part multiplicities to H for Sp(2n) or SO(m) }
+set part_mults_to_classical_H ([int] frequencies_shifted) = vec:
+(  let freq_H = frequencies_shifted { vector to be modified }
+in for f@i in frequencies_shifted ~ { frequency |f| of |i+i|, decreasing |i| }
+   do if i>=2 then freq_H[i-2]+:=freq_H[i] fi { cumulate backward by steps 2 }
+   od
+;  freq_H[0]\:=2 { multiplicity of 0 in H was double counted, +1 for SO(odd) }
+;  for fH@i in freq_H ~do for :fH do i od od.##
+)
+
+{ Springer correspondence from nilpotent orbits to representations of W
+  in type B/C
+  orbit: partition encoded as semisimple H -> W(C_n)-irrep as pair of partitions
+  see Carter pg. 419}
+
+{ ---------------- type C ------------------}
+
+
+set partitions_C = (int->[Partition]):
+  let gen =  parity_restricted_partitions(true) { restrict odd parts }
+  in (int n) [Partition]: gen(n+n)
+
+
+set freq_test_C ([int] frequencies) = [int]:
+   assert(=frequencies.odd_places%2,"type C wrong partition"); frequencies
+
+{ from (Jordan) partition (or composition) to Sp(2n) complex nilpotent orbit }
+set nilpotent_orbit_Sp (Partition lambda) = ComplexNilpotent:
+   let freqs = frequencies(lambda).freq_test_C
+in complex_nilpotent(Sp(sum(lambda)),part_mults_to_classical_H(freqs[1:]))
+
+set nilpotent_orbit_C (RootDatum rd) = (Partition->ComplexNilpotent):
+   let map = test_simple_type("C",rd) then n=#map { semisimple rank }
+in (Partition lambda) ComplexNilpotent:
+(  assert(sum(lambda)=n+n,"Jordan type should be for C"+n)
+;  let freqs = frequencies(lambda).freq_test_C
+   then H_Sp = part_mults_to_classical_H(freqs[1:])
+   then H = vec:
+     sum(rd.rank # for c@i in cumulate_forward(H_Sp) do coroot(rd,map[i])*c od)
+in complex_nilpotent(rd,H)
+)
+
+{ an inverse operation, starting from |stratified_diagram(orbit)| }
+set diagram_C_to_partition ([int] diagram) = Partition:
+   let H_Sp = vec:
+      let (q,r) = diagram~[0]\%2 in assert(=r,"Final diagram entry is odd)")
+      ; diagram~[0]:=q
+      ; diagram.cumulate_backward
+   then freq_H = [int]: frequencies(H_Sp)
+   then max = #freq_H { maximal entry plus one } next freq_H[0] *:= 2
+   then mult(int i) = int: { multiplicity of part |i| in result }
+      let m =
+         if i+1<max then freq_H[i-1]-freq_H[i+1] else freq_H[i-1] fi
+      in assert(m.>=,"Invalid diagram, negative multiplicity of "+i); m
+in for i:max from 1 ~ do for :mult(i) do i od od.##
+
+{ when |O| is an orbit for some |rd| passing |test_simple_type("C",rd)|, the
+  function |partition_of_orbit_C| will find the corresponding Jordan type.
+  By using the (stratified) diagram, any radical component of |O.H| is ignored.
+}
+set partition_of_orbit_C (ComplexNilpotent O) = Partition:
+   let perm = test_simple_type("C",O.root_datum)
+   in stratified_diagram(O,perm).diagram_C_to_partition
+
+
+{ Springer map from Cn nilpotent orbit to BiPartition indexing a W-irrep }
+set springer_C (ComplexNilpotent O) = BiPartition:
+   let (,(mu,lambda)) = { partitions are swapped for type C, see |wrep@Orbit| }
+      core_quotient_2(partition_of_orbit_C(O))
+   in (lambda,mu)
+
+set inverse_springer_partition_C (BiPartition (P,Q)) =
+      (bool,Partition):
+      { whether in image of springer_C, and if so Jordan type of pre-image }
+   let lambda = from_core_quotient_2(0,(Q,P))
+in (is_valid("C",lambda),lambda)
+
+{ inverse Springer map, from pair (P,Q) of partitions, both (padded with zeros
+  to be?) of size n, and sum(P)+sum(Q)=n, to ComplexNilpotent for Sp(2n)
+}
+set inverse_springer_C(BiPartition partition_pair) = (bool,ComplexNilpotent):
+    let (valid,P)=inverse_springer_partition_C(partition_pair)
+in  if valid then (valid,nilpotent_orbit_Sp(P))
+    else (false,trivial_group.zero_orbit)
+    fi
+
+
+{ ---------------- type B ------------------}
+
+
+set partitions_B = (int->[Partition]):
+  let gen =  parity_restricted_partitions(false) { restrict even parts }
+  in (int n) [Partition]: gen(n+n+1)
+
+set freq_test_B ([int] frequencies) = [int]:
+(  assert(=frequencies.even_places%2,"type B wrong partition")
+;  assert(frequencies.odd_places.sum.is_odd,"partition for type D, not B")
+;  frequencies
+)
+
+{ from (Jordan) partition (or composition) to SO(2n+1) complex nilpotent orbit }
+set nilpotent_orbit_SO (Partition lambda) = ComplexNilpotent:
+   let freqs = frequencies(lambda).freq_test_B
+in complex_nilpotent(SO(sum(lambda)),part_mults_to_classical_H(freqs[1:]))
+
+set nilpotent_orbit_B (RootDatum rd) = (Partition->ComplexNilpotent):
+   let map = test_simple_type("B",rd) then n=#map { semisimple rank }
+in (Partition lambda) ComplexNilpotent:
+(  assert(sum(lambda)=n+n+1,"Jordan type should be for B"+n)
+;  let freqs = frequencies(lambda).freq_test_B
+   then H_SO = part_mults_to_classical_H(freqs[1:])
+   then H = vec:
+     let v = cumulate_forward(H_SO) then (q,r) = v~[0]\%2 in assert(=r)
+     ; v~[0]:=q { correct for final simple coroot [0,..,0,2] of SO(2n+1) }
+     ; sum(rd.rank # for c@i in v do coroot(rd,map[i])*c od)
+in complex_nilpotent(rd,H)
+)
+
+{ an inverse operation, starting from |stratified_diagram(orbit)| }
+set diagram_B_to_partition ([int] diagram) = Partition:
+   let H_SO = vec: diagram.cumulate_backward
+   then freq_H = [int]: frequencies(H_SO)
+   then max = #freq_H { maximal entry plus one } next freq_H[0] +:= freq_H[0]+1
+   then mult(int i) = int: { multiplicity of part |i| in result }
+      let m =
+         if i+1<max then freq_H[i-1]-freq_H[i+1] else freq_H[i-1] fi
+      in assert(m.>=,"Invalid diagram, negative multiplicity of "+i); m
+in for i:max from 1 ~ do for :mult(i) do i od od.##
+
+{ when |O| is an orbit for some |rd| passing |test_simple_type("B",rd)|, the
+  function |partition_of_orbit_B| will find the corresponding Jordan type. }
+set partition_of_orbit_B (ComplexNilpotent O) = Partition:
+   let perm = test_simple_type("B",O.root_datum)
+   in stratified_diagram(O,perm).diagram_B_to_partition
+
+{ Springer map from Cn nilpotent orbit to BiPartition indexing a W-irrep }
+set springer_B (ComplexNilpotent O) = BiPartition:
+   let (,pair) = { partitions unswapped for type B, see |wrep@Orbit| }
+      core_quotient_2(partition_of_orbit_B(O))
+   in pair
+
+set inverse_springer_partition_B (BiPartition partition_pair) =
+      (bool,Partition): { whether in image of springer_C, and if so pre-image }
+   let lambda = from_core_quotient_2(0,partition_pair)
+in (is_valid("B",lambda),lambda)
+
+{ inverse Springer map, from pair (P,Q) of partitions, both (padded with zeros
+  to be?) of size n, and sum(P)+sum(Q)=n, to ComplexNilpotent for SO(2n+1)
+}
+set inverse_springer_C(BiPartition partition_pair) = (bool,ComplexNilpotent):
+    let (valid,P)=inverse_springer_partition_B(partition_pair)
+in  if valid then (valid,nilpotent_orbit_SO(P))
+    else (false,trivial_group.zero_orbit)
+    fi
+
+
+{------------------ duality ----------------------------------}
+
+{ The function |C_adjust| takes an arbitrary partition of an even number, and
+  returns a modified version in which the multiplicity over every odd part size
+  is even. This is achieved by repeatedly moving a square of the diagram from a
+  row of odd length down to the end of the next row of strictly shorter odd
+  length (thus creating two new rows of even length, possibly the same length).
+  Progress is from longer to shorter rows, although given that the number of
+  rows of odd length must always be even, it could have been defined in to
+  opposite order with the same result: for the smallest odd row length with odd
+  multiplicity one square is borrowed from the next larger odd length row, then
+  repeat for the now smallest odd row length with odd multiplicity,and so on.
+  All in all a diagram valid for type C is found with minimal distance of
+  squares moved, though not necessarily with minimal number of squares moved (to
+  achieve that, odd lengths with even frequency would have to remain untouched).
+}
+
+set C_adjust (Partition P) = Partition:
+(  assert(sum(P).is_even,"Partition not even");
+   let freq=frequencies(P) then l=#freq\2 { so |2*(l-1)+1<#freq| }
+in while (l:=last(l,(int i)bool: freq[i+i+1].is_odd) ).>= { stop at "none" }
+   do assert(l.>) { since at least another odd part size has odd multiplicity }
+   ;  let k=last(l,(int i)bool: freq[i+i+1].>) { for next odd part that occurs }
+   in assert(k.>=) { for the reason above: odd (multiplicity) implies nonzero }
+   ; (let L=l+l in freq[L+1]-:=1; freq[L]+:=1)
+   ; (let K=k+k in freq[K+2]+:=1; freq[K+1]-:=1)
+   ; l:=k+1 { so search for next smaller |l| will start at |k| }
+   od
+;  repeat_parts(freq) { reconstruct a partition }
+)
+
+{ With respect to |C_adjust|, the function |B_adjust| only differs in that it
+  assumes a partition of an odd number is given (though this is less essential
+  for its functioning), and that the multiplicities of nonzero even row lengths
+  rather then of odd ones are made even, systematically replacing "odd length"
+  by "even length". The reasoning is somewhat modified, since the number of rows
+  with nonzero even length can have either parity; however if we need to move
+  down a box from the last nonzero even length with odd multiplicity, we can
+  move it to an empty row, thus adding a row of length~$1$. Therefore ordering
+  the traversal by decreasing row length is essential here. The number of rows
+  of nonzero length is always made odd, since the number of rows with odd length
+  must be odd, and that of nonzero even length is made even. To implement, we
+  manually set the frequency of parts of size zero to $1$, so that the search
+  for a smaller even length with odd multiplicity cannot fail (if it turns out
+  to be used, the loop will stop immediately thereafter; if not the frequency of
+  the zero length remains $1$, but this is ignored by the final |repeat_parts|).
+}
+
+set B_adjust (Partition P) = Partition:
+(  assert(sum(P).is_odd,"Partition not odd");
+   let freq=frequencies(P)
+   then l=(#freq+1)\2 { so |2*(l-1)<#freq| }
+   next freq[0]:=1 { potential part to increase, ignored by |repeat_parts| }
+in
+   while (l:=last(l,(int i)bool: freq[i+i].is_odd) ).> { stop at none, or |l=0| }
+   do let k=last(l,(int i)bool: freq[i+i].>) { for next even part that occurs }
+   in assert(k.>=) { because if no other, |i=0| makes |freq[i+i].>| }
+   ; (let L=l+l in freq[L]-:=1; freq[L-1]+:=1)
+   ; (let K=k+k in freq[K+1]+:=1; freq[K]-:=1)
+   ; l:=k+1 { so search for next smaller |l| will start at |k| }
+   od
+;  repeat_parts(freq) { reconstruct a partition }
+)
+
+{ To map a partition of 2n+1 valid for type $B_n$ to a partition of 2n valid for
+  type $C_n$ we can conceptually first transpose (so every even nonzero column
+  length has even multiplicity), then remove a square from the last longest row,
+  run the transposed form of |C_adjust| (which ensures that all odd column
+  lengths occur with even multiplicity), and finally run the normal |C_adjust|.
+  This ensures that each maximal group of equal odd length rows starts at an
+  even index (so has an even number of preceding rows), and ends at an odd one.
+  To see this, the transposed |C_adjust| has ensured that each odd-indexed row
+  is shorter that the previous one by an even (possibly zero) amount, from which
+  one easily deduces that each maximal group of successive odd length rows
+  starts at an even index and has an even number of rows. The application of
+  normal |C_adjust| then operates within such groups, and any squares moved are
+  from an even-indexed row to the next row. As a consequence, the row length
+  property established by executing the transposed |C_adjust| still holds after
+  the normal |C_adjust| has run. The diagram of the resulting partition can then
+  be characterised by the fact that it meets all 2x2 squares of a doubly-sized
+  grid with the origin as vertex in an even number (0,2, or 4) of squares.
+}
+
+set B_to_C_dual (Partition lambda) = Partition:
+  lambda:=lambda.strip_to_partition; lambda~[0]-:=1;
+  lambda.C_adjust.transpose.C_adjust
+
+{ To map to a partition of 2n valid for type $C_n$ to a partition of 2n+1 valid
+  for type $B_n$, we conceptually first transpose, add a square to the first
+  column, run the transposed form of |B_adjust| (which ensures that all nonzero
+  ven column lengths occur with even multiplicity), and finally run the normal
+  |B_adjust|. This time row 0 has odd length, and following pairs of odd-index
+  and successive even-index rows have lengths of equal parity. Again every
+  square that moves is between two such successive rows, and the property
+  established by the transposed |B_adjust| is preserved by the normal
+  |B_adjust|. The diagram of the resulting partition can then be characterised
+  by the fact that it meets all 2x2 squares of a doubly-sized grid with $(1,1)$
+  as vertex, with the exception of the 2x2 square centered at the origin, in an
+  even number of squares
+}
+
+set C_to_B_dual (Partition lambda) = Partition:
+   if =#lambda then lambda:=[1] else lambda[0]+:=1 fi;
+   lambda.B_adjust.transpose.B_adjust
+
+
+{ the dual maps are defined in terms of the |diagram| or |stratified_diagram| of
+  |O|, thus ignoring, and they should any radical component of |O.H|
+}
+
+set dual_map_C(RootDatum rd) = (ComplexNilpotent->ComplexNilpotent):
+   let perm = test_simple_type("C",rd)
+   , drd = dual(rd) { this avoids recomputing the dual datum all the time }
+in if perm = #semisimple_rank(rd) { case of standard order, somewhat easier }
+   then (ComplexNilpotent O) ComplexNilpotent:
+      drd.nilpotent_orbit_B(diagram(O).diagram_C_to_partition.C_to_B_dual)
+   else (ComplexNilpotent O) ComplexNilpotent:
+      drd.nilpotent_orbit_B
+        (stratified_diagram(O,perm).diagram_C_to_partition.C_to_B_dual)
+   fi
+
+set dual_map_B(RootDatum rd) = (ComplexNilpotent->ComplexNilpotent):
+   let perm = test_simple_type("B",rd), drd = dual(rd)
+in if perm = #semisimple_rank(rd) { case of standard order, somewhat easier }
+   then (ComplexNilpotent O_B) ComplexNilpotent:
+      drd.nilpotent_orbit_C(diagram(O_B).diagram_B_to_partition.B_to_C_dual)
+   else (ComplexNilpotent O_B) ComplexNilpotent:
+      drd.nilpotent_orbit_B
+        (stratified_diagram(O_B,perm).diagram_B_to_partition.B_to_C_dual)
+   fi
+
+set dual_map_C (ComplexNilpotent O) = ComplexNilpotent:
+   O.root_datum.dual.nilpotent_orbit_B(C_to_B_dual(partition_of_orbit_C(O)))
+
+set dual_map_B(ComplexNilpotent O_B)=ComplexNilpotent:
+   O_B.root_datum.dual.nilpotent_orbit_C(B_to_C_dual(partition_of_orbit_B(O_B)))
+
+set springer_table_C (RootDatum rd) = SpringerTable:
+   let (table, , irrep_of_bipartition) = character_table_C(rd)
+   , orbit = (Partition->ComplexNilpotent): nilpotent_orbit_C(rd)
+in ( table
+   , for lambda in partitions_C(rd.semisimple_rank) do orbit(lambda) od
+   , dual_map_C(rd)
+   , dual_map_B(dual(rd)) { "inverse" of dual map is dual map for B }
+   , (ComplexNilpotent O) int: irrep_of_bipartition(springer_C(O))
+   )
+
+set springer_table_B (RootDatum rd) = SpringerTable:
+   let (table, , irrep_of_bipartition) = character_table_B(rd)
+   , orbit = (Partition->ComplexNilpotent): nilpotent_orbit_B(rd)
+in ( table
+   , for lambda in partitions_B(rd.semisimple_rank) do orbit(lambda) od
+   , dual_map_B(rd)
+   , dual_map_C(dual(rd)) { "inverse" of dual map is dual map for C }
+   , (ComplexNilpotent O) int: irrep_of_bipartition(springer_B(O))
+   )

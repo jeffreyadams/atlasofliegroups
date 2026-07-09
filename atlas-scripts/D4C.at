@@ -1,0 +1,56 @@
+<K_type_formula_generalized.at
+set G=complexification(Spin(8))
+set xopen = KGB(G,191)
+set x0=KGB(G,0)
+set holom(int a, int b, int c, int d) = parameter(xopen,[a,b,c,d,0,0,0,0],[a+1,b+1,c+1,d+1,a+1,b+1,c+1,d+1])
+set mu(int a,int b,int c,int d) = holom(a,b,c,d).LKT
+set KF(int a,int b,int c,int d) = K_type_formula(mu(a,b,c,d))
+set KF(vec mu) = KF(mu[0],mu[1],mu[2],mu[3])
+{ height(mu(a,b,c,d) = 2*(3*a+5*b+3*c+3*d)= 6*(a+b+c+d) + 4*b}
+
+set Kheight(int a, int b, int c, int d) = 6*(a+b+c+d) + 4*b
+set twoInf(Param p) = let gamma=p.infinitesimal_character
+in [(gamma[0] + gamma[4]), (gamma[1] + gamma[5]),(gamma[2] +
+gamma[6]), (gamma[3]+gamma[7])]
+
+set Inf(Param p) = let gamma=p.infinitesimal_character
+in [(gamma[0] + gamma[4]), (gamma[1] + gamma[5]),(gamma[2] +
+gamma[6]), (gamma[3]+gamma[7])].numer
+
+{ Need to add terms to height ht(mu) }
+set ladder0(int a, int b, int c, int d) = KTypePol:
+G.null_K_module + for m:7 do K_type_formula(mu(a,b+m,c,d)) od
+
+set ladder1(int a, int b, int c, int d) =
+cut(ladder0(a,b,c,d),Kheight(a,b,c,d) + 56)
+
+set is_very_reg(Param p) = Inf(p)[0] >= 2 and Inf(p)[1] >= 2 and
+Inf(p)[2] >= 2 and Inf(p)[3] >= 2
+
+{highest wt of p is mu(0,1,0,0)}
+{Kheight(mu+m*beta) = Kheight(mu) + 10*m}
+{Kheight(mu+rho) = Kheight(mu) + 56}
+
+set LastTwoInf(ParamPol P) = twoInf(last_param(P))
+
+set ladder2(int a, int b, int c, int d)= let rv = ladder1(a,b,c,d) in
+while (is_very_reg(last_K_type(rv).param)) do let (c,p) = last_term(rv) in
+rv-:=c*KF(Inf(p.param)-[2,2,2,2]) od;
+rv
+
+set top(int a,int b,int c,int d) = Inf(last_K_type(ladder2(a,b,c,d)).param)
+
+{converts fundamental weight coordinates [a,b,c,d] to "product of four
+SL(2)" coordinates [x,y,z,w]=[a, a+2b+c+d, c, d]. These are subject to
+x+y+z+w EVEN; Weyl group is...complicated. If we look instead at the
+full outer automorphism group, which is W(F4), order 1152, then the
+subgroup BC4 of order 384 = 2^4*4! acts by permutations and sign
+changes in these coordinates. The other two cosets of W(BC4) in W(F4)
+aren't so easy to write.}
+
+set FourSL2(vec v) = v + [0,v[0]+v[1]+v[2]+v[3],0,0]
+
+set test(int M) = void:
+  for i:M+1 do for j:i+1 do for k:j+1 do
+    let T=top(i,0,j,k) in prints("[",i,",0,",j,",",k,"] ",T,FourSL2(T))
+  od od od

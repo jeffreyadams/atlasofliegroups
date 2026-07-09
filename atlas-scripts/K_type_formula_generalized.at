@@ -1,0 +1,38 @@
+<basic.at
+<K.at { for type |KHighestWeight| }
+<K_highest_weights.at { for |highest_weight@KType| }
+
+set ladder (RealForm G,KType mu) = (int cutoff)KTypePol:
+   let hw_mu=highest_weight(mu), beta=G.highest_root, i=minus_1
+   , tau=mu
+in G.null_K_module +
+   while K_norm(tau)<cutoff
+   do tau:=K_type(k_highest_weight(hw_mu.x,hw_mu.mu+(i+:=1)*beta))
+   od
+
+{ use |f| to produce (presumably) truncated |KTypePol|, then apply
+  truncated |K_type_formula| }
+set K_type_formula(RealForm G,(int->KTypePol) f, int cutoff) =
+   sum(G,for z@mu in f(cutoff) do z*K_type_formula(mu,cutoff) od)
+
+set K_type_formula_ladder(KType mu,int cutoff)=
+let f=ladder(mu.real_form,mu) in K_type_formula(mu.real_form,f,cutoff)
+
+set truncate(ParamPol P,int n)=P.real_form.null_module+
+for w@p in P do if K_norm(p)<=n then w*p else 0*p fi od
+
+set cut(KTypePol P, int n) = KTypePol:
+P.null_module+for w@p in P do if K_norm(p)<=n then [(w,p)] else [] fi od.##
+
+{compute formula for K-types out to K_norm=cutoff,
+ then throw away terms with K_norm>truncate}
+set K_type_formula_ladder(KType mu, int cutoff, int truncate) = KTypePol:
+   cut(K_type_formula_ladder(mu,cutoff),truncate)
+
+{
+set K_type_formula(RealForm G,(KType-> int) f,int cutoff)=
+let
+K_types=K_parameters_height_upto(G,cutoff)
+then K_types=G.null_module + for mu in K_types do f(mu)*parameter(mu) od in
+K_types
+}

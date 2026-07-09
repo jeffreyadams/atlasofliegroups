@@ -1,0 +1,275 @@
+$(atlas_dir)/main.cpp: $(atlas_dir)/main.w
+$(atlas_dir)/buffer.cpp $(atlas_dir)/buffer.h: \
+  $(atlas_dir)/buffer.w
+$(atlas_dir)/lexer.cpp $(atlas_dir)/lexer.h: \
+  $(atlas_dir)/lexer.w
+$(atlas_dir)/parsetree.cpp $(atlas_dir)/parse_types.h $(atlas_dir)/parsetree.h: \
+  $(atlas_dir)/parsetree.w
+$(atlas_dir)/axis-types.cpp $(atlas_dir)/axis-types.h: \
+  $(atlas_dir)/axis-types.w
+$(atlas_dir)/axis.cpp $(atlas_dir)/axis.h: \
+  $(atlas_dir)/axis.w
+$(atlas_dir)/atlas-types.cpp $(atlas_dir)/atlas-types.h: \
+  $(atlas_dir)/atlas-types.w
+
+$(atlas_dir)/parser.tab.o: \
+ $(atlas_dir)/parsetree.h \
+ $(atlas_dir)/parse_types.h \
+ $(atlas_dir)/parser.tab.h \
+ $(atlas_dir)/axis-types.h \
+ $(atlas_dir)/global.h
+
+$(atlas_dir)/buffer.o: $(atlas_dir)/buffer.cpp
+$(atlas_dir)/buffer.o $(atlas_dir)/buffer.tex: $(atlas_dir)/buffer.h\
+ $(atlas_dir)/lexer.h \
+ $(atlas_dir)/global.h \
+ $(sources_dir)/Atlas.h \
+ $(sources_dir)/utilities/bitmap.h \
+ $(sources_dir)/utilities/sl_list.h
+
+$(atlas_dir)/parsetree.o: $(atlas_dir)/parsetree.cpp
+$(atlas_dir)/parsetree.o $(atlas_dir)/parsetree.tex: \
+ $(atlas_dir)/parsetree.h \
+ $(atlas_dir)/parse_types.h \
+ $(atlas_dir)/parser.tab.h \
+ $(sources_dir)/utilities/sl_list.h \
+ $(atlas_dir)/axis-types.h \
+ $(atlas_dir)/lexer.h \
+ $(atlas_dir)/buffer.h
+
+$(atlas_dir)/lexer.o: $(atlas_dir)/lexer.cpp
+$(atlas_dir)/lexer.o $(atlas_dir)/lexer.tex: \
+ $(atlas_dir)/lexer.h \
+ $(atlas_dir)/buffer.h \
+ $(atlas_dir)/parsetree.h \
+ $(atlas_dir)/parse_types.h \
+ $(atlas_dir)/parser.tab.h
+
+$(atlas_dir)/global.o: $(atlas_dir)/global.cpp
+$(atlas_dir)/global.o $(atlas_dir)/global.tex: \
+ $(atlas_dir)/global.h \
+ $(atlas_dir)/axis-types.h \
+ $(atlas_dir)/parsetree.h \
+ $(atlas_dir)/parse_types.h \
+ $(atlas_dir)/parser.tab.h \
+ $(atlas_dir)/buffer.h \
+ $(atlas_dir)/axis.h \
+ $(atlas_dir)/lexer.h \
+ $(sources_dir)/Atlas.h \
+ $(sources_dir)/utilities/arithmetic.h \
+ $(sources_dir)/utilities/constants.h \
+ $(sources_dir)/utilities/matrix.h \
+ $(sources_dir)/utilities/tags.h \
+ $(sources_dir)/utilities/ratvec.h \
+ $(sources_dir)/utilities/matrix.h \
+ $(sources_dir)/utilities/arithmetic.h \
+ $(sources_dir)/utilities/bigint.h \
+ $(sources_dir)/utilities/matreduc.h \
+ $(sources_dir)/utilities/bitmap.h \
+ $(sources_dir)/utilities/constants.h \
+ $(sources_dir)/structure/lattice.h \
+ $(sources_dir)/structure/bitvector.h \
+ $(sources_dir)/utilities/bitset.h \
+ $(sources_dir)/utilities/bits.h \
+ $(sources_dir)/utilities/permutations.h \
+ $(sources_dir)/utilities/permutations_def.h \
+ $(sources_dir)/utilities/bitmap.h
+
+$(atlas_dir)/axis-types.o: $(atlas_dir)/axis-types.cpp
+$(atlas_dir)/axis-types.o $(atlas_dir)/axis-types.tex : \
+ $(atlas_dir)/axis-types.h \
+ $(atlas_dir)/buffer.h \
+ $(atlas_dir)/parsetree.h \
+ $(atlas_dir)/parse_types.h \
+ $(atlas_dir)/parser.tab.h \
+ $(atlas_dir)/lexer.h \
+ $(atlas_dir)/global.h \
+ $(sources_dir)/Atlas.h \
+ $(sources_dir)/utilities/arithmetic.h \
+ $(sources_dir)/utilities/bigint.h \
+ $(sources_dir)/utilities/bitmap.h \
+ $(sources_dir)/utilities/bitset.h \
+ $(sources_dir)/utilities/bits.h \
+ $(sources_dir)/utilities/constants.h \
+ $(sources_dir)/utilities/matrix.h \
+ $(sources_dir)/utilities/ratvec.h \
+ $(sources_dir)/utilities/sl_list.h
+
+$(atlas_dir)/axis.o: $(atlas_dir)/axis.cpp
+$(atlas_dir)/axis.o $(atlas_dir)/axis.tex : \
+ $(atlas_dir)/axis.h \
+ $(atlas_dir)/axis-types.h \
+ $(atlas_dir)/parsetree.h \
+ $(atlas_dir)/parse_types.h \
+ $(atlas_dir)/parser.tab.h \
+ $(atlas_dir)/buffer.h \
+ $(atlas_dir)/lexer.h \
+ $(atlas_dir)/global.h \
+ $(atlas_dir)/atlas-types.h \
+ $(sources_dir)/Atlas.h \
+ $(sources_dir)/utilities/arithmetic.h \
+ $(sources_dir)/utilities/bitmap.h \
+ $(sources_dir)/utilities/bits.h \
+ $(sources_dir)/utilities/bitset.h \
+ $(sources_dir)/utilities/constants.h \
+ $(sources_dir)/utilities/free_abelian.h \
+ $(sources_dir)/utilities/free_abelian_def.h \
+ $(sources_dir)/utilities/hashtable.h \
+ $(sources_dir)/utilities/hashtable_def.h \
+ $(sources_dir)/utilities/matrix.h \
+ $(sources_dir)/utilities/partition.h \
+ $(sources_dir)/utilities/partition_def.h \
+ $(sources_dir)/utilities/permutations.h \
+ $(sources_dir)/utilities/permutations_def.h \
+ $(sources_dir)/utilities/poset.h \
+ $(sources_dir)/utilities/ratvec.h \
+ $(sources_dir)/utilities/size.h \
+ $(sources_dir)/utilities/sl_list.h \
+ $(sources_dir)/utilities/tags.h \
+ $(sources_dir)/structure/bitvector.h \
+ $(sources_dir)/structure/cartanclass.h \
+ $(sources_dir)/structure/innerclass.h \
+ $(sources_dir)/structure/dynkin.h \
+ $(sources_dir)/structure/gradings.h \
+ $(sources_dir)/structure/involutions.h \
+ $(sources_dir)/structure/lietype.h \
+ $(sources_dir)/structure/prerootdata.h \
+ $(sources_dir)/structure/realredgp.h \
+ $(sources_dir)/structure/rootdata.h \
+ $(sources_dir)/structure/subquotient.h \
+ $(sources_dir)/structure/tits.h \
+ $(sources_dir)/structure/topology.h \
+ $(sources_dir)/structure/tori.h \
+ $(sources_dir)/structure/weyl.h \
+ $(sources_dir)/structure/y_values.h \
+ $(sources_dir)/gkmod/blocks.h \
+ $(sources_dir)/gkmod/descents.h \
+ $(sources_dir)/gkmod/kgb.h \
+ $(sources_dir)/gkmod/repr.h
+
+$(atlas_dir)/atlas-types.o: $(atlas_dir)/atlas-types.cpp
+$(atlas_dir)/atlas-types.o $(atlas_dir)/atlas-types.tex: \
+ $(atlas_dir)/atlas-types.h \
+ $(atlas_dir)/axis-types.h \
+ $(atlas_dir)/parsetree.h \
+ $(atlas_dir)/parse_types.h \
+ $(atlas_dir)/parser.tab.h \
+ $(atlas_dir)/buffer.h \
+ $(atlas_dir)/global.h \
+ $(atlas_dir)/axis.h \
+ $(atlas_dir)/lexer.h \
+ $(sources_dir)/Atlas.h \
+ $(sources_dir)/utilities/arithmetic.h \
+ $(sources_dir)/utilities/bitmap.h \
+ $(sources_dir)/utilities/bits.h \
+ $(sources_dir)/utilities/bitset.h \
+ $(sources_dir)/utilities/constants.h \
+ $(sources_dir)/utilities/free_abelian.h \
+ $(sources_dir)/utilities/free_abelian_def.h \
+ $(sources_dir)/utilities/graph.h \
+ $(sources_dir)/utilities/hashtable.h \
+ $(sources_dir)/utilities/hashtable_def.h \
+ $(sources_dir)/utilities/matreduc.h \
+ $(sources_dir)/utilities/matrix.h \
+ $(sources_dir)/utilities/partition.h \
+ $(sources_dir)/utilities/partition_def.h \
+ $(sources_dir)/utilities/permutations.h \
+ $(sources_dir)/utilities/permutations_def.h \
+ $(sources_dir)/utilities/polynomials.h \
+ $(sources_dir)/utilities/polynomials_def.h \
+ $(sources_dir)/utilities/poset.h \
+ $(sources_dir)/utilities/ratvec.h \
+ $(sources_dir)/utilities/size.h \
+ $(sources_dir)/utilities/sl_list.h \
+ $(sources_dir)/utilities/tags.h \
+ $(sources_dir)/structure/bitvector.h \
+ $(sources_dir)/structure/cartanclass.h \
+ $(sources_dir)/structure/innerclass.h \
+ $(sources_dir)/structure/dynkin.h \
+ $(sources_dir)/structure/gradings.h \
+ $(sources_dir)/structure/involutions.h \
+ $(sources_dir)/structure/lattice.h \
+ $(sources_dir)/structure/lietype.h \
+ $(sources_dir)/structure/prerootdata.h \
+ $(sources_dir)/structure/prerootdata.h \
+ $(sources_dir)/structure/realredgp.h \
+ $(sources_dir)/structure/rootdata.h \
+ $(sources_dir)/structure/rootdata.h \
+ $(sources_dir)/structure/subquotient.h \
+ $(sources_dir)/structure/tits.h \
+ $(sources_dir)/structure/topology.h \
+ $(sources_dir)/structure/tori.h \
+ $(sources_dir)/structure/weyl.h \
+ $(sources_dir)/structure/alcoves.h \
+ $(sources_dir)/structure/y_values.h \
+ $(sources_dir)/gkmod/blocks.h \
+ $(sources_dir)/gkmod/bruhat.h \
+ $(sources_dir)/gkmod/descents.h \
+ $(sources_dir)/gkmod/ext_block.h \
+ $(sources_dir)/gkmod/kgb.h \
+ $(sources_dir)/gkmod/ext_kl.h \
+ $(sources_dir)/gkmod/kl.h \
+ $(sources_dir)/gkmod/klsupport.h \
+ $(sources_dir)/gkmod/K_repr.h \
+ $(sources_dir)/gkmod/repr.h \
+ $(sources_dir)/gkmod/wgraph.h \
+ $(sources_dir)/error/error.h \
+ $(sources_dir)/io/basic_io.h \
+ $(sources_dir)/io/block_io.h \
+ $(sources_dir)/io/ioutils.h \
+ $(sources_dir)/io/kgb_io.h \
+ $(sources_dir)/io/kl_io.h \
+ $(sources_dir)/io/prettyprint.h \
+ $(sources_dir)/io/wgraph_io.h
+
+$(atlas_dir)/main.o: $(atlas_dir)/main.cpp
+$(atlas_dir)/main.o $(atlas_dir)/main.tex: \
+ $(atlas_dir)/buffer.h \
+ $(atlas_dir)/atlas-types.h \
+ $(atlas_dir)/axis.h \
+ $(atlas_dir)/global.h \
+ $(atlas_dir)/lexer.h \
+ $(atlas_dir)/parsetree.h \
+ $(atlas_dir)/parser.tab.h \
+ $(atlas_dir)/parse_types.h \
+ $(atlas_dir)/axis-types.h \
+ $(sources_dir)/Atlas.h \
+ $(sources_dir)/utilities/arithmetic.h \
+ $(sources_dir)/utilities/bitmap.h \
+ $(sources_dir)/utilities/bits.h \
+ $(sources_dir)/utilities/bitset.h \
+ $(sources_dir)/utilities/constants.h \
+ $(sources_dir)/utilities/free_abelian.h \
+ $(sources_dir)/utilities/free_abelian_def.h \
+ $(sources_dir)/utilities/hashtable.h \
+ $(sources_dir)/utilities/hashtable_def.h \
+ $(sources_dir)/utilities/matrix.h \
+ $(sources_dir)/utilities/partition.h \
+ $(sources_dir)/utilities/partition_def.h \
+ $(sources_dir)/utilities/permutations.h \
+ $(sources_dir)/utilities/permutations_def.h \
+ $(sources_dir)/utilities/poset.h \
+ $(sources_dir)/utilities/ratvec.h \
+ $(sources_dir)/utilities/size.h \
+ $(sources_dir)/utilities/tags.h \
+ $(sources_dir)/structure/bitvector.h \
+ $(sources_dir)/structure/cartanclass.h \
+ $(sources_dir)/structure/innerclass.h \
+ $(sources_dir)/structure/gradings.h \
+ $(sources_dir)/structure/involutions.h \
+ $(sources_dir)/structure/lietype.h \
+ $(sources_dir)/structure/prerootdata.h \
+ $(sources_dir)/structure/realredgp.h \
+ $(sources_dir)/structure/rootdata.h \
+ $(sources_dir)/structure/subquotient.h \
+ $(sources_dir)/structure/subsystem.h \
+ $(sources_dir)/structure/tits.h \
+ $(sources_dir)/structure/tits.h \
+ $(sources_dir)/structure/topology.h \
+ $(sources_dir)/structure/tori.h \
+ $(sources_dir)/structure/weyl.h \
+ $(sources_dir)/structure/y_values.h \
+ $(sources_dir)/gkmod/kgb.h \
+ $(sources_dir)/gkmod/K_repr.h \
+ $(sources_dir)/gkmod/repr.h \
+ $(sources_dir)/version.h

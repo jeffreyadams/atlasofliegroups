@@ -1,0 +1,6041 @@
+% Copyright (C) 2012--2017 Marc van Leeuwen
+% This file is part of the Atlas of Lie Groups and Representations (the Atlas)
+
+% This program is made available under the terms stated in the GNU
+% General Public License (GPL), see http://www.gnu.org/licences/licence.html
+
+% The Atlas is free software; you can redistribute it and/or modify
+% it under the terms of the GNU General Public License as published by
+% the Free Software Foundation; either version 2 of the License, or
+% (at your option) any later version.
+
+% The Atlas is distributed in the hope that it will be useful,
+% but WITHOUT ANY WARRANTY; without even the implied warranty of
+% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+% GNU General Public License for more details.
+
+% You should have received a copy of the GNU General Public License
+% along with the Atlas; if not, write to the Free Software
+% Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
+
+\def\emph#1{{\it#1\/}}
+\def\foreign#1{{\sl#1\/}}
+\def\id{\mathop{\rm id}}
+\def\Zee{{\bf Z}} % cwebx uses \Z and \ZZ itself
+\def\axis.{\.{axis}}
+
+@* Outline.
+%
+This file originated from splitting off a part of the module \.{axis.w}
+that was getting too large. It collects functions that are important to the
+evaluation process, but which are not part of the recursive machinery of
+type-checking and evaluating all different expression forms.
+
+This module has three major, largely unrelated, parts. The first part defines
+the structure of the global identifier table, and groups some peripheral
+operations to the main evaluation process: the calling interface to the type
+checking and conversion process, and operations that implement global changes
+such as the introduction of new global identifiers. The second part is dedicated
+to some fundamental types, like integers, Booleans, strings, without which the
+programming language would be an empty shell (but types more specialised to the
+Atlas software are defined in another module, \.{atlas-types}). Finally there is
+a large section with basic functions related to these types.
+
+@( global.h @>=
+
+#ifndef GLOBAL_H
+#define GLOBAL_H
+
+#include "Atlas.h" // must be very first \.{atlas} include
+
+@< Includes needed in the header file @>@;
+namespace atlas { namespace interpreter {
+@< Type definitions @>@;
+@< Declarations of global variables @>@;
+@< Declarations of exported functions @>@;
+@< Template and inline function definitions @>@;
+}}
+#endif
+
+@ The implementation unit follows the usual pattern, although not all possible
+sections are present.
+
+@h "global.h"
+@h <cstdlib>
+@c
+namespace atlas { namespace interpreter {
+@< Global variable definitions @>@;
+namespace {@;
+@< Local function definitions @>@;
+}
+@< Global function definitions @>@;
+}}
+
+@* The global identifier table.
+%
+We need an identifier table to record the values of globally bound identifiers
+and their types. The run time values are held in shared pointers, so that we can
+evaluate a global identifier without duplicating the value in the table itself.
+Modifying the value of such an identifier by an assignment will produce a new
+pointer, so that any ``shareholders'' that might hold a pointer to the old value
+directly (rather than as is being the current value of that global identifier)
+will not see any change. On the other hand expressions that are or contain
+an applied occurrence of the global identifier in question are expected to
+obtained the new (assigned) value when evaluated at a later time; to this end
+such applied occurrences, as well as assignment expression to the variable,
+hold a pointer to a shared location where the pointer to the current value is
+stored. This introduced a second level of sharing, so the global identifier
+table will hold shared pointers to shared pointers to run time values.
+
+If a new identifier of the same name should be introduced, a new value pointer
+will be stored in a different location that is created at the new introduction;
+applied or assigning occurrences of the identifier, which might occur in
+function values that still exist, will continue to access the old location, so
+that the possibility of accessing a value of unexpected type is avoided. In such
+a circumstance, the old shared pointer location itself will no longer be owned
+by the identifier table, and shared ownership of that location ensures that the
+location will be freed as soon as no occurrences of the variable remain.
+Apart from the |val| field, we store a type |tp|, an attribute |constant| that
+determines whether we allow assignments, and a |source_location| where the
+global variable (or user defined type, as we shall see) was introduced.
+
+This double level of pointers allows us to (ab)use this structure to hold two
+different levels of entries without value: either the pointer to the current
+value can be the null (shared) pointer, which we interpret as an undefined
+value, or the |val| field in the table itself be a null pointer, which we
+interpret as the name not actually being a variable. The former possibility is
+used for a declared but not yet initialised variable (a non null pointer will be
+stored the location pointed to by |val| once a value is assigned), while the
+latter is used for an identifier introduced as user defined type (here we only
+use the |tp| and |loc| fields). These special uses do not require any special
+provisions in the |id_data| class, as the main constructor can handle the case
+where |val| refers to a null pointer value (entered as |shared_share(nullptr)|),
+and the |get_value| method can return such a value.
+
+@< Type definitions @>=
+
+typedef std::shared_ptr<shared_value> shared_share;
+class id_data
+{ shared_share val; @+ type tp; bool is_constant; @+ source_location loc;
+public:
+  id_data(shared_share&& val,type&& t,bool is_const, const source_location& loc)
+  : val(std::move(val)), tp(std::move(t))
+  , is_constant(is_const), loc(loc) @+{}
+  id_data (id_data&& x) = default;
+  id_data& operator=(id_data&& x) = default; // no copy-and-swap needed
+@)
+  const shared_share& get_value() const @+{@; return val; }
+  const type& get_type() const @+{@; return tp; }
+  type& hold_type() @+{@; return tp; }
+  // non-|const| reference; may be specialised by caller
+  bool is_const() const @+{@; return is_constant; }
+  const source_location& get_loc() const @+{@; return loc; }
+};
+
+@ We shall use the class template |std::map| to implement the identifier
+table, and the above code needs some types defined elsewhere.
+
+@< Includes needed in the header file @>=
+#include <cstddef> // for |std::size_t|
+#include <map>
+#include "buffer.h" // for |id_type|
+#include "axis-types.h" // for |shared_value|
+#include "parse_types.h" // for |expr_p|
+
+@~Overloading is not done in this table, so a simple associative table with
+the identifier as key is used.
+
+@< Type definitions @>=
+class Id_table
+{ using map_type = std::map<id_type,id_data>;
+  map_type table;
+public:
+  Id_table(const Id_table&) = delete;
+  Id_table& operator=(const Id_table&) = delete;
+  Id_table() : table() @+{} // the default and only constructor
+@)
+  void add(id_type id, shared_value v, type&& t,
+           bool is_const, const source_location& loc);
+   // insertion
+  void add_type_def(id_type id, type&& t,
+                    const source_location& loc); // insertion of type only
+  bool remove(id_type id); // deletion
+  shared_share address_of(id_type id); // locate
+@)
+  bool present (id_type id) const
+  @+{@; return table.find(id)!=table.end(); }
+  bool is_ordinary(id_type id) const; // whether |id| stands for a variable
+  bool is_defined_type(id_type id) const; // whether |id| stands for a type
+  bool is_type_constructor(id_type id) const;
+    // whether |id| is defined as a type constructor
+  const type* type_of(id_type id,bool& is_const) const;
+  // pure lookup, may return |nullptr|
+  const type* type_of(id_type id) const; // same without asking for |const|
+  const source_location* location_of(id_type id) const;
+  type_expr swallow(const type_expr& tp) const;
+  shared_value value_of(id_type id) const; // look up
+@)
+  std::size_t size() const @+{@; return table.size(); }
+  void print(std::ostream&) const;
+};
+
+@ The method |add| tries to insert the new mapping from the key |id| to a new
+value-type pair. Since the |std::map::emplace| method with rvalue argument
+will move from that argument regardless of whether ultimately insertion takes
+place, we cannot use that method. Instead we look up the key using the method
+|std::map::equal_range|, and use the resulting pair of iterators to decide
+whether the key was absent (if they are equal), and then use the first
+iterator either as a hint in |emplace_hint|, or as a pointer to the
+identifier-data pair found, of which the data (of type |id_data|) is
+move-assigned from the argument of |add|. The latter assignment abandons the
+old |shared_value| (which may or may not destruct the value, depending on
+whether the old identifier is referred to from some lambda expression),
+resetting the pointer to it to point to a newly allocated one, and inserts the
+new type (destroying the previous).
+
+@< Global function def... @>=
+void Id_table::add
+  (id_type id, shared_value val, type&& tp
+  , bool is_const, const source_location& loc)
+{ auto its = table.equal_range(id);
+
+  if (its.first==its.second) // no global identifier was previously known
+    table.emplace_hint(its.first,id, id_data @|
+    (std::make_shared<shared_value>
+      (std::move(val)),std::move(tp),is_const,loc));
+  else // a global identifier was previously known
+    its.first->second = id_data(
+      std::make_shared<shared_value>
+        (std::move(val)), std::move(tp),is_const,loc);
+}
+
+@ Inserting a type definition is similar, but inserts a |shared_value| object
+holding a null pointer, produced by |shared_share(nullptr)| (this indeed binds
+to the rvalue reference parameter of the |id_data| constructor). The resulting
+|id_data| object will have |value()==nullptr|, and the methods |is_normal| and
+|is_defined_type| distinguish based on this attribute; the method
+|is_type_constructor| in addition checks for a polymorphism of the stored type.
+Type definitions will be formally marked as constant (the final |true|
+argument) but this has no consequences, since types cannot be assigned anyway.
+
+@< Global function def... @>=
+void Id_table::add_type_def(id_type id, type&& tp, const source_location& loc)
+{ auto its = table.equal_range(id);
+
+  if (its.first==its.second) // no global identifier was previously known
+    table.emplace_hint @|
+      (its.first,id,id_data(shared_share(),std::move(tp),true,loc));
+  else // a global identifier was previously known, replace it
+    its.first->second = id_data(shared_share(),std::move(tp),true,loc);
+}
+@)
+bool Id_table::is_ordinary(id_type id) const
+{ map_type::const_iterator p = table.find(id);
+@/ return p!=table.end() and p->second.get_value()!=nullptr;
+}
+bool Id_table::is_defined_type(id_type id) const
+{ map_type::const_iterator p = table.find(id);
+@/ return p!=table.end() and p->second.get_value()==nullptr;
+}
+bool Id_table::is_type_constructor(id_type id) const
+{ map_type::const_iterator p = table.find(id);
+@/ return p!=table.end() and p->second.get_value()==nullptr
+  and p->second.get_type().is_polymorphic();
+}
+
+@ The |remove| method removes an identifier if present, and returns whether
+this was the case.
+
+@< Global function def... @>=
+bool Id_table::remove(id_type id)
+{ map_type::iterator p = table.find(id);
+  if (p==table.end())
+    return false;
+  table.erase(p); return true;
+}
+
+@ In order to have a |const| look-up method |type_of| for types, we must refrain
+from inserting into the table if the key is not found; we return a null pointer
+in that case. The method |address_of| that is used to access the slot for the
+value associated to a global identifier is also morally a manipulator of the
+table, since the pointer returned will in many cases be used to modify that
+value (but not its type).
+
+@h "lexer.h" // for |main_hash_table|
+
+@< Global function def... @>=
+const type* Id_table::type_of(id_type id,bool& is_const) const
+{ map_type::const_iterator p=table.find(id);
+  if (p==table.end())
+  {@; is_const=false; return nullptr; } // avoid later ``uninitialized'' warning
+  is_const=p->second.is_const();
+  return &p->second.get_type();
+}
+const type* Id_table::type_of(id_type id) const
+{ map_type::const_iterator p=table.find(id);
+  return p==table.end() ? nullptr : &p->second.get_type();
+}
+const source_location* Id_table::location_of(id_type id) const
+{ map_type::const_iterator p=table.find(id);
+  return p==table.end() ? nullptr : &p->second.get_loc();
+}
+@)
+shared_value Id_table::value_of(id_type id) const
+{ map_type::const_iterator p=table.find(id);
+  return p==table.end() ? shared_value(value(nullptr)) : *p->second.get_value();
+}
+shared_share Id_table::address_of(id_type id)
+{ map_type::iterator p=table.find(id);
+  if (p==table.end())
+  { std::ostringstream o;
+    o << "Identifier without table entry:" @|
+      << main_hash_table->name_of(id);
+    throw logic_error(o.str());
+  }
+@.Identifier without table entry@>
+  return p->second.get_value();
+}
+
+@ The method |Id_table::swallow| transforms a |type_expr| from an external form
+produced by the parser into one used internally, updating the representation of
+user-defined types and type constructors, represented as nodes with
+|raw_kind()==tabled|. The parser stores the code for the type identifier as
+|tabled_nr()|, and our |Id_table| provides the type it is defined as. Due to the
+way type definitions are processed, this type is always |tabled|, holding the
+index into the static table |type_expr::type_map|; some later code essentially
+depends on that, so we feel free to assume it here as well. This has not always
+been the case: rather than calling the |user_type| factory method below, we
+could apply |simple_subst| to the |defined_type| with appropriate arguments, and
+this would cater for arbitrary defining type expressions with fairly little
+hassle.
+
+For any |type_expr| whose |raw_kind()| is not |tabled|, the recursive method
+|swallow| simply descends into its subexpressions. When a |tabled| case is
+encountered, we look up the type |defined_type| associated to the identifier,
+which must succeed since the scanner only produces nodes with
+|raw_kind()==tabled| for identifiers that our |Id_table| had reported to have
+the property |is_defined_type| (or the stronger |is_type_constructor|). Then we
+check the number of type arguments against its arity, and also recursively
+descend into those arguments. Finally we build a new |tabled| reference by
+calling |type_expr::user_type|, taking the transformed list of argument types,
+and using |defined_type.tabled_nr()| as new |tabled_nr()| value.
+
+The above statement that |is_defined_type| always holds in the |tabled| case is
+not true when one is processing grouped type definitions, since an as yet unseen
+identifier will be scanned as type identifier there. For this reason, calling
+this |swallow| method should be avoided when processing such definitions.
+
+Since we are assuming that type definitions stored in |Id_table| directly refer
+to a |type_map| entry, the effect of |swallow| is to make a copy of the type in
+which only the |tabled_nr()| values have been changed. Rather than making a
+copy, this could have been achieved in-place using calls of the
+|type_expr::replace_tabled_nr| method, provided our method took~|tp| as a
+non-|const| reference argument (maybe also returning the same). This in turn
+would require making changes in calling functions to be able to pass such a
+reference, possibly involving making a copy of a |type_expr| value there; we
+decided that the very marginal gains in simplicity and efficiency of our current
+method that could so be achieved do not justify making such changes.
+
+@< Global function def... @>=
+type_expr Id_table::swallow(const type_expr& tp) const
+{ switch(tp.raw_kind())
+  { case row_type: return type_expr::row(swallow(tp.component_type()));
+    case function_type: return
+      type_expr::function(swallow(tp.func()->arg_type),
+                          swallow(tp.func()->result_type));
+    case tuple_type:
+    case union_type:
+    { dressed_type_list aux;
+      for (wtl_const_iterator it(tp.tuple()); not it.at_end(); ++it)
+        aux.push_back(swallow(*it));
+      return type_expr::tuple_or_union(tp.raw_kind(),aux.undress());
+    }
+    case tabled: // this is where something happens
+    { const id_type id = tp.tabled_nr();
+      const auto* p = type_of(id);
+      assert(p!=nullptr); // the scanner ensures this
+      const type& defined_type = *p;
+      unsigned int len=length(tp.tabled_args()), degree = defined_type.degree();
+      if (len!=degree)
+        @< Throw a |program_error| signalling an incorrectly applied type symbol
+           or type constructor @>
+      dressed_type_list arg_list;
+      for (wtl_const_iterator it(tp.tabled_args()); not it.at_end(); ++it)
+        arg_list.push_back(swallow(*it));
+      return type_expr::user_type(defined_type.tabled_nr(),arg_list.undress());
+    }
+  default: return tp.copy(); // undetermined should not occur
+  }
+}
+
+@ Since this code is to be executed during type analysis, the error thrown here
+will be caught there. We cannot however provide an location here.
+
+@< Throw a |program_error| signalling an incorrectly applied type symbol or
+   type constructor @>=
+{ std::ostringstream o;
+  o << "Type constructor '"
+    << main_hash_table->name_of(id) @| << "' called with " << len
+    << " type arguments" << ", expected " << degree;
+  throw program_error(o.str());
+}
+
+@ We provide a |print| member that shows the contents of the entire table.
+Since identifiers might have undefined values, we must test for that condition
+and print dummy output in that case. This signals that attempting to evaluate
+the identifier at this point would cause the evaluator to raise an exception.
+
+@< Global function def... @>=
+
+void Id_table::print(std::ostream& out) const
+{ for (map_type::const_iterator p=table.begin(); p!=table.end(); ++p)
+  { out << main_hash_table->name_of(p->first);
+    const shared_share& v= p->second.get_value();
+    if (v==nullptr)
+      out << " = " << p->second.get_type();
+    else
+    { out << ": " << p->second.get_type() << ": ";
+      if (*v==nullptr)
+        out << '*';
+      else
+        out << **p->second.get_value();
+    }
+    out << std::endl;
+  }
+}
+
+std::ostream& operator<< (std::ostream& out, const Id_table& p)
+@+{@; p.print(out); return out; }
+
+@~We shouldn't forget to declare that operator, or it won't be found, giving
+kilometres of error message.
+
+@< Declarations of exported functions @>=
+std::ostream& operator<< (std::ostream& out, const Id_table& p);
+
+@ We declare just a pointer to the global identifier table here.
+@< Declarations of global variables @>=
+extern Id_table* global_id_table;
+
+@~Here we set the pointer to a null value; the main program will actually
+create the table.
+
+@< Global variable definitions @>=
+Id_table* global_id_table=nullptr; // will never be |nullptr| at run time
+
+@*1 The overload table.
+%
+To implement overloading we use a similar structure as the ordinary global
+identifier table. However the basic table entry for an overloading needs a
+level of sharing less, since the function that is bound to an identifier for
+given argument types cannot be changed by assignment, which allows us to refer
+directly to the value stored rather than to its location. We also take into
+account that the stored types are always function types, so that we can store
+a |func_type| structure |tp| without tag or pointer to it. This saves space,
+although it makes access the full function type as a |type_expr| rather
+difficult; however the latter is seldom needed in normal use. Remarks about
+ownership of the type apply without change from the non-overloaded case
+however. Finally, now that types can be polymorphic, we add a field |degree| to
+indicate the number of polymorphic type variables that |tp| contains (in
+argument and result type combined).
+
+@h "axis.h"
+// implementation needs definition of |function_base|; also and many uses
+
+@< Type definitions @>=
+
+class overload_data
+{ shared_function val;
+@+func_type tp;
+@+unsigned int degree;
+  source_location loc;
+public:
+  overload_data(shared_function&& val,func_type&& t, unsigned int deg,
+                const source_location& loc)
+  : val(std::move(val)), tp(std::move(t)), degree(deg), loc(loc) @+{}
+  overload_data (overload_data&& x) = default;
+  overload_data& operator=(overload_data&& x) = default;
+   // no copy-and-swap needed
+@)
+  const shared_function& @;value() const @+{@; return val; }
+  const func_type& f_tp() const @+{@; return tp; }
+  unsigned int poly_degree() const@+{@; return degree; }
+  bool is_polymorphic() const@+{@; return degree>0; }
+  const source_location& location() const@+{@; return loc; }
+};
+
+@ Looking up an overloaded identifier should be done using an ordered list of
+possible overloads; the ordering is important since we want to try matching
+more specific (harder to convert to) argument types before trying less
+specific ones. Therefore, rather than using a |std::multimap| multi-mapping
+identifiers to individual value-type pairs, we use a |std::map| from
+identifiers to vectors of value-type pairs.
+
+An identifier is entered into the table when it is first given an overloaded
+definition, so the table will not normally associate an empty vector to an
+identifier; however this situation can arise after removal of a (last)
+definition for an identifier. The |variants| method will signal absence of an
+identifier by returning an empty list of variants, and no separate test for
+this condition is provided.
+
+@< Type definitions @>=
+
+class overload_table
+{
+public:
+  using variant_list = sl_list<overload_data>;
+  using map_type = std::map<id_type,variant_list>;
+private:
+  map_type table;
+public:
+  overload_table (const Id_table&) =delete;
+  overload_table& operator=(const Id_table&) = delete;
+  overload_table() : table() @+{} // the default and only constructor
+@) // accessors
+  const variant_list* variants(id_type id) const
+  {@; auto p=table.find(id);
+    return p==table.end() ? nullptr : &p->second;
+  }
+  const overload_data* entry
+    (id_type id, const type_expr& arg_t, unsigned int shift_amount=0) const;
+  std::size_t size() const @+{@; return table.size(); }
+   // number of distinct identifiers
+  void print(std::ostream&) const;
+@) // manipulators
+  variant_list* variants(id_type id)
+  {@; auto p=table.find(id);
+    return p==table.end() ? nullptr : &p->second;
+  }
+  void add(id_type id, shared_function v, const type& t,
+          const source_location& loc); // insertion
+  bool remove(id_type id, const type_expr& arg_t); //deletion
+};
+
+@ We introduce a single overload table in the same way as the global
+identifier table.
+
+@< Declarations of global variables @>=
+extern overload_table* global_overload_table;
+
+@~Here we set the pointer to a null value; the main program will actually
+create the table.
+
+@< Global variable definitions @>=
+overload_table* global_overload_table=nullptr;
+
+@ The |entry| method returns a pointer to the overload instance if |id| for
+arguments of type |arg_t|, or a null pointer if none exists. It can be called
+from a context where there are fixed type variables, which could be included in
+|arg_t|; in this case the method should find nothing (since such fixed variables
+cannot occur in the types of the overload table), but we must still take care to
+not accidentally match this with type variables in a polymorphic types in the
+table entry. Therefore we pass a non-zero |shift_amount| in such cases, and in
+those cases we shift any polymorphic types by it before testing against |arg_t|.
+
+@< Global function definitions @>=
+const overload_data* overload_table::entry
+  (id_type id, const type_expr& arg_t, unsigned int shift_amount) const
+{ if (@[const variant_list* vars = variants(id)@;@])
+  {
+    if (shift_amount==0)
+      for (const auto& entry : *vars)
+      @/{@;
+        if (entry.f_tp().arg_type==arg_t)
+          return &entry;
+      }
+    else
+      for (const auto& entry : *vars)
+        if (entry.is_polymorphic())
+        @/{@;
+          if (shift(entry.f_tp().arg_type,0,shift_amount)==arg_t)
+          return &entry;
+        }
+  }
+  return nullptr; // indicate that |(id,arg_t)| was not found
+}
+
+
+@ The local function |locate_overload| compares an argument type against those
+in a list of existing variants, and returns the index where it is to be
+inserted. It may also throw a |program_error| when a conflict is encountered;
+there will be some occasions where testing for conflicts is the only reason we
+call |locate_overload|.
+
+We call |is_close| to do the comparisons. If it returns a nonzero value it must
+be either |0x6|, in which case insertion must be after that entry, or |0x5|, in
+which case insertion must be not after that entry; in that case we opt for
+insertion at the current iterator, which will push the entry ahead of it. In
+case none of the comparisons came close, we indicate to insert at the end.
+
+Mutually convertible but unequal types, or close but mutually non convertible
+types, are a problem because some (third) actual argument type might be
+convertible to both, and we have no way to prefer one over the other. In such
+cases we refuse to find a place to add the new overload, and |throw| a
+|program_error| instead. The case of an argument type being equal to an existing
+argument type is legal, and will lead to replacing the old definition by the new
+one.
+
+@< Local function... @>=
+overload_table::variant_list::iterator locate_overload
+  (id_type id,
+   overload_table::variant_list& slot,
+   const type_expr& arg_type,
+   bool& equal)
+{ equal=false;
+  for (auto it = slot.begin(); not slot.at_end(it); ++it)
+  { unsigned int cmp= is_close(arg_type,it->f_tp().arg_type);
+    switch (cmp)
+    {
+      case 0x6: break;
+        // type at |it| converts to |arg_type| so skip over |it|
+      case 0x5: return it;
+        // |arg_type| can convert to type at |it|, so insert before |it|
+      case 0x7: // mutually convertible types, maybe identical ones
+        if (it->f_tp().arg_type==arg_type)
+          // identical ones: overload redefinition case
+          {@; equal=true; return it; }
+      @/// |else| {\bf fall through}
+      case 0x4:
+       @< Throw a |program_error| reporting a conflict of attempted overload
+          for |id| with previous one in |*it| @>
+      default: @+{} // nothing for unrelated argument types
+    }
+  }
+  return slot.end(); // nothing forcing early insertion was found, so append
+}
+
+@ When we get here the argument types to be added are either mutually
+convertible but distinct form existing types (the fall through case above), or
+close to existing types without being convertible in any direction (which
+would have given a way to disambiguate), so we must report an error. The error
+message is quite verbose, but tries to precisely pinpoint the kind of problem
+encountered so that the user will hopefully be able to understand.
+
+@< Throw a |program_error| reporting a conflict... @>=
+{ std::ostringstream o;
+  o << "Cannot overload `" << main_hash_table->name_of(id) << "':\n" @|
+       "already overloaded type '" << it->f_tp().arg_type
+ @| << "' is too close to new argument type '"@| << arg_type
+ @| << "',\nwhich would make overloading ambiguous for certain arguments. " @|
+       "Simultaneous\noverloading for these types is not possible, " @|
+       "forget the other one first.";
+  throw program_error(o.str());
+}
+
+
+
+
+@ The |overload_table::add| method is what introduces and controls
+overloading. We first look up the identifier; if it is not found we associate
+a singleton vector with the given value and type to the identifier, but if the
+identifier already had a vector associate to it, we must test the new pair
+against existing elements, reject it if there is a conflicting entry present,
+and otherwise make sure it is inserted before any strictly less specific
+overloaded instances.
+
+@< Global function def... @>=
+void overload_table::add
+  (id_type id, shared_function val, const type& tp, const source_location& loc)
+{ assert (tp.top_kind()==function_type);
+  func_type ftype(tp.f_type());
+  auto its = table.equal_range(id);
+  if (its.first==its.second) // a fresh overloaded identifier
+  {
+    auto pos=table.emplace_hint(its.first,id,variant_list());
+    pos->second.emplace_back(std::move(val), std::move(ftype), tp.degree(),loc);
+  }
+  else
+    @< Insert an overload for function |val| with function type |ftype| and
+       degree |deg| into the list of variants at |its->first.second|,
+       or throw an error if there is an incompatibility with a
+       previously existing variant @>
+}
+
+@ By calling |locate_overload|, we find out where to insert our new entry, while
+throwing an error in cases where there is a conflict with a previously existing
+entry. The call also sets a Boolean value (here call |overwrite|) that tells
+whether an exact match of identifier and argument type was found; if that is the
+case, the iterator returned points at the node to overwrite.
+
+@< Insert an overload for function |val| with function type |ftype|... @>=
+{ variant_list& slot=its.first->second; // vector of all variants
+  bool overwrite;
+  auto it=locate_overload(id,slot,ftype.arg_type,overwrite); // may |throw|
+  if (overwrite)     // equality found
+    *it = overload_data(std::move(val),std::move(ftype),tp.degree(),loc);
+  else
+    slot.emplace(it,std::move(val),std::move(ftype),tp.degree(),loc);
+}
+
+@ The |remove| method allows removing an entry from the overload table, for
+instance to make place for another one. It returns a Boolean telling whether any
+such binding was found (and removed). If the |variants| becomes empty, the entry
+is removed from the |overload_table|, so that absence of an identifier |id| from
+the table can be tested as |global_overload_table->variants(is)==nullptr|; this
+also ensures that code cannot accidentally introduce a difference of behaviour
+between an identifier that once was known in the table and one that was never
+overloaded.
+
+It might be tempting to call |locate_overload| here, but we cannot: that would
+throw an error if |arg_t| were absent but close (in the sense of |is_close|) to
+a type that was present in the table, which would be wrong.
+
+@< Global function def... @>=
+bool overload_table::remove(id_type id, const type_expr& arg_t)
+{ map_type::iterator p=table.find(id);
+  if (p==table.end())
+    return false; // |id| was not known at all
+  if (@[variant_list* variants = &p->second@;@])
+    for (auto it = variants->begin(); it!=variants->end(); ++it)
+      if (it->f_tp().arg_type==arg_t)
+      @/{@;
+        variants->erase(it);
+        if (variants->size()==0)
+          table.erase(p);
+        return true;
+      }
+  return false; // |id| was known, but no such overload is present
+}
+
+@ We provide a |print| member of |overload_table| that shows the contents of
+the entire table, just like for identifier tables. Only this one prints
+multiple entries per identifier.
+
+@< Global function def... @>=
+
+void overload_table::print(std::ostream& out) const
+{ for (auto p=table.begin(); p!=table.end(); ++p)
+    for (const auto& entry : p->second)
+      out << main_hash_table->name_of(p->first) << ": " @|
+        << entry.f_tp() << ": " << *entry.value() << std::endl;
+}
+
+std::ostream& operator<< (std::ostream& out, const overload_table& p)
+{@; p.print(out); return out; }
+
+@~We shouldn't forget to declare that operator, if we want to use it.
+
+@< Declarations of exported functions @>=
+std::ostream& operator<< (std::ostream& out, const overload_table& p);
+
+@* Operations other than evaluation of expressions.
+%
+We start with several operations at the outer level of the interpreter such as
+initialisations and the initial invocation of the type checker.
+
+Before executing anything the evaluator needs some initialisation, called
+from the main program.
+
+@< Declarations of exported functions @>=
+void initialise_evaluator();
+
+@ The details of this initialisation will be given when the variables involved
+are introduced.
+
+@< Global function definitions @>=
+void initialise_evaluator()
+@+{@; @< Initialise evaluator @> }
+
+@~Although not necessary, the following will avoid some early reallocations of
+|execution_stack|, a vector variable defined in \.{axis-types.w}.
+
+@< Initialise evaluator @>=
+execution_stack.reserve(16); // avoid some early reallocations
+
+@*1 Invoking the type checker.
+%
+Let us recapitulate the general organisation of the evaluator, explained in
+more detail in the introduction of \.{axis.w}. The parser reads what the
+user types, and returns an |expr| value representing the abstract syntax tree.
+Then the highly recursive function |convert_expr| is called for this value,
+which will either produce (a pointer to) an executable object of a type
+derived from |expression_base|, or throw an exception in case a type error or
+other problem is detected. In the former case we are ready to call the
+|evaluate| method of the value returned by |convert_expr|; after this main
+program will print the result. The initial call to |convert_expr| however is
+done via |analyse_types|, which takes care of catching any exceptions thrown,
+and printing error messages.
+
+@< Declarations of exported functions @>=
+type analyse_types(const expr& e,expression_ptr& p, unsigned int fc);
+
+@~The function |analyse_types| switches the roles of the output parameter
+|type| of |convert_expr| and its return value: the former becomes the return
+value and the latter is assigned to the output parameter~|p|. The initial
+value of |type| passed to |convert_expr| is a completely unknown type. Since
+we cannot return any type from |analyse_types| in the presence of errors, we
+map these errors to |runtime_error| after printing their error message;
+that error is an exception for which the code that calls us will have to
+provide a handler anyway, and which handler will serve as a more practical
+point to really resume after an error.
+
+@< Global function definitions @>=
+type analyse_types(const expr& e,expression_ptr& p, unsigned int fc)
+{ try
+  { type tp=type::bottom(0); // this starts out as an |undetermined_type|
+    p = convert_expr(e,tp);
+    tp.wring_out();
+    return tp;
+  }
+  catch (const type_error& err)
+  { std::cerr << "Error during analysis of expression " << e.loc << std::endl;
+    std::cerr << err.what() << ":\n  Subexpression " << err.offender
+@|            << ' ' << err.offender.loc
+@|            << "\n  has wrong type: found " << err.actual
+@|            << " while " << err.required << " was needed.\n";
+@.Subexpression has wrong type@>
+  }
+  catch (const balance_error& err)
+  { std::cerr << "Error in expression "
+              << err.offender << ' ' << err.offender.loc << "\n  " @|
+              << err.what() ;
+    for (auto it=err.variants.wcbegin(); not err.variants.at_end((it)); ++it)
+      std::cerr << ( it==err.variants.wcbegin() ? ": { " : ", " ) << *it;
+    std::cerr<< " }" << std::endl;
+  }
+  catch (const expr_error& err)
+  { std::cerr << "Error in expression "
+              << err.offender << ' ' << err.offender.loc << "\n  " @|
+              << err.what() << std::endl;
+  }
+  catch (const program_error& err)
+  { std::cerr << "Error during analysis of expression " << e.loc << "\n  " @|
+              << err.what() << std::endl;
+  }
+  throw program_error("Expression analysis failed");
+@.Expression analysis failed@>
+}
+
+@*1 Operations to change the state of user environment.
+%
+This section will be devoted to some interactions between user and program
+that do not consist just of evaluating expressions.
+
+The function |global_set_identifier| handles introducing identifiers, either
+normal ones (for non-functions) or overloaded instances of functions, using
+the \&{set} syntax. It has a variant for multiple, grouped, declarations
+|global_set_identifiers|. The function |global_declare_identifier| just
+introduces an identifier into the global (non-overloaded) table with a definite
+type, but does not provide a value (it will then have to be assigned to before
+it can be validly used). Conversely |global_forget_identifier| removes an
+identifier from the global table. The function |type_define_identifier| will
+define an identifier as an abbreviation of a type expression, while
+|process_type_definition| handles the more heavy-weight introduction of new type
+identifiers in a group, which may introduce recursive types that could not
+otherwise be written, and projector and injector functions with a special status
+relative to the types they relate to. The function |set_back_trace| is used in
+error handlers to transmit to the user information of the context in which the
+error occurred. The last four functions serve to provide the user with
+information about the state of the global tables (but invoking |type_of_expr|
+will actually go through the full type analysis and conversion process).
+
+Some of the functions here take a |const source_location& loc@;| final
+argument, which upon calling gets implicitly converted from an |YYLTYPE| value
+maintained in the parser, and describes where in the source files the command
+given was located. It serves to provide this indication on error messages,
+which is why it is not currently passed to functions like
+|global_declare_identifier| that never can cause error message.
+
+@< Declarations of exported functions @>=
+void global_set_identifier (const struct raw_id_pat& id, expr_p e,
+			    int overload, const source_location& loc);
+void global_set_identifiers(raw_let_list d, const source_location& loc);
+void sequentially_set_identifiers(raw_let_list d, const source_location& loc);
+void global_declare_identifier(id_type id, type_p tp, const source_location& loc);
+void global_forget_identifier(id_type id);
+void global_forget_overload(id_type id, type_p tp);
+void type_define_identifier
+  (id_type id, type_p tp, unsigned int deg, raw_id_pat ip,
+   const source_location& loc);
+void process_type_definitions
+  (raw_typedef_list l, unsigned int deg, const source_location& loc);
+void set_back_trace(const simple_list<std::string>& back_trace);
+void show_ids(std::ostream& out);
+void type_of_expr(expr_p e);
+void type_of_type_name(id_type t);
+void show_overloads(id_type id,std::ostream& out);
+
+@ These functions produce a brief report of what they did, for which they use
+the pointer variable |output_stream|, so that it can be redirected during the
+prelude. The same pointer is also used for all normal output from the
+evaluator, and can for that purpose also be redirected on a per-command basis.
+
+If a runtime errors occur, for instance during the evaluation of the expression
+in |global_set_identifier|, the thrown error object will contain a back-trace of
+the nested evaluations that were interrupted. The catch clauses for the error
+will then transfer the information to a variable accessed through
+|back_trace_pointer| to be defined here.
+
+@< Declarations of global variables @>=
+extern std::ostream* output_stream;
+extern shared_share back_trace_pointer;
+
+@ The |output_stream| will normally point to |std::cout|, but the pointer may be
+assigned to in the main program, which causes output redirection. Similarly
+|back_trace_pointer| will be set by the main program once the corresponding
+``magic'' user variable has been created and installed into the global
+identifier table. It is important that we can access it without searching the
+identifier table, as we cannot exclude the possibility that the user has
+overridden the entry created there initially.
+
+
+@< Global variable definitions @>=
+std::ostream* output_stream= &std::cout;
+shared_share back_trace_pointer;
+
+@ Global identifiers can be introduced (or overridden) by the function
+|global_set_identifiers|, handling the \&{set} syntax with the same
+possibilities as for local definitions (the \&{let}
+syntax); therefore it takes a |raw_let_list| as argument. Some other syntactic
+forms (operator definition, syntax using |':'|) can only handle one identifier
+at a time; these invoke the |global_set_identifier| function. The latter case
+sometimes forbids or requires a definition to the overload table; the argument
+|overload| specifies the options permitted ($0$ means no overloading, $2$
+requires overloading, and $1$ allows both).
+
+The local function |do_global_set| (to be defined below) does most of the work
+for the ``global set'' twins, for all the syntactic variations allowed. The
+first argument of |do_global_set| is passed by rvalue reference, and we pass
+ownership of the identifier pattern to it in the call. All that happens here is
+preparing an |id_pat| and an |expr|, either by wrapping the given arguments in
+non-raw types, or by calling |zip_decls| (defined in the module \.{parsetree.w})
+to split a list of declarations into a pattern part and an expression part, the
+same work that it does for \&{let} expressions.
+
+@< Global function definitions @>=
+void global_set_identifier(const raw_id_pat &raw_pat, expr_p raw,
+			   int overload, const source_location& loc)
+{@; do_global_set(id_pat(raw_pat),*expr_ptr(raw),overload,loc); }
+  // ensure clean-up
+@)
+void global_set_identifiers(raw_let_list d, const source_location& loc)
+{ std::pair<id_pat,expr> pat_expr = zip_decls(d);
+  do_global_set(std::move(pat_expr.first),pat_expr.second,1,loc);
+}
+
+@ The function |sequentially_set_identifiers| does not perform |zip_decls|, but
+instead passes each pair in the list |d| in order to |do_global_set|, so that
+previous definitions can be used in successive ones. As the list was constructed
+in the parser in reverse order (which |zip_decls| reverses back on the fly when
+doing its zipping), we must here reverse manually.
+
+
+@< Global function definitions @>=
+void sequentially_set_identifiers(raw_let_list d, const source_location& loc)
+{ let_list decls(d);
+  decls.reverse();
+  for (auto it=decls.wbegin(); not decls.at_end(it); ++it)
+    do_global_set(std::move(it->pattern),it->val,1,loc);
+}
+
+
+@*2 Grouping identifiers for simultaneous definition.
+%
+While local identifier definitions proceed in nested lexical groupings that are
+implemented using the |layer| class defined in the \.{axis.w} module, global
+definitions do not occur in a nested fashion. Nevertheless there can be
+definitions of multiple identifiers in the same command, which we want to treat
+as a whole (for instance rejecting the whole command if any of the definitions
+it contains was going to cause a problem). It used to be the case that the
+|layer| class was used to group definitions in some cases, but while it worked,
+this was contrary to the spirit of that class, whose main purpose remained
+unused, namely temporarily altering the context in which |convert_expr| takes
+place. We shall now define an alternative class |definition_group| to use in its
+place, geared directly to the situation of global definitions.
+
+Contrary to |layer|, the class |definition_group| does not have a
+constructor-destructor pair with special side effects, and there is no reason
+that instances should necessarily reside in the runtime stack (we can store
+them in dynamic containers). Writing this separate class also allows us to
+address specific issues, like forbidding definitions in certain cases when their
+effect on the global state would be undesirable.
+
+@< Type def... @>=
+class definition_group
+{ using association = std::vector<std::pair<id_type,type> >;
+  association bindings;
+  BitMap constness;
+public:
+  definition_group(unsigned int n_ids);
+@) // manipulators
+  void add(id_type id,type&& t, unsigned char flags);
+  void thread_bindings (const id_pat& pat,const type_expr& tp);
+  association::iterator begin() @+{@; return bindings.begin(); }
+  association::iterator end() @+{@; return bindings.end(); }
+@) // accessors
+  bool is_const (association::const_iterator it) const
+  {@; return constness.isMember(it-bindings.cbegin()); }
+};
+
+@ The methods of |definition_group| are closely related those of |layer|, but
+simplified because they do not need to maintain |lexical_context| in any way (in
+particular there is no need for a user-defined destructor). We also include
+|thread_bindings| now as a method rather than a free function as it was in the
+\.{axis.w} module; compared to that function we can dispense of the destination
+argument in (recursive) calls, and it also lacks the constness-overriding
+argument for which there is no use in global definitions. The |lvl| parameter is
+also omitted, as the global definition groups do not occur within the scope of
+any locally introduced type variables, so the level is always~|0|.
+
+@< Global function definitions @>=
+definition_group::definition_group(unsigned int n_ids)
+: bindings(), constness(n_ids)
+{@; bindings.reserve(n_ids); }
+@)
+void definition_group::thread_bindings(const id_pat& pat,const type_expr& te)
+{ if ((pat.kind & 0x1)!=0)
+  {
+    type tp = type::wrap(te,0); // no fixed type variables at outer level
+    unsigned char flags = pat.kind;
+    if (tp.is_polymorphic())
+      flags |= 0x4; // polymorphic type implies constant
+    add(pat.name,std::move(tp),flags);
+  }
+  if ((pat.kind & 0x2)!=0)
+    // recursively traverse sub-list for a tuple of identifiers
+  { auto tex = te.expanded(); // ensure substitution into any argument types
+    assert(tex.raw_kind()==tuple_type);
+    wtl_const_iterator t_it(tex.tuple());
+    for (auto p_it=pat.sublist.begin(); not pat.sublist.at_end(p_it);
+         ++p_it,++t_it)
+      thread_bindings(*p_it,*t_it);
+  }
+}
+
+@ For the method |add| we do have some actions absent from or different than in
+|layer::add|, since we have somewhat different conditions to check for validity
+of the definitions.
+
+@< Global function definitions @>=
+
+void definition_group::add(id_type id,type&& tp, unsigned char flags)
+{ @< Check that this identifier is not already bound in the same group @>
+  @< Check that we are not setting an operator to a non-function value @>
+  @< When |tp| is a function type, test for conflicts in the overload table @>
+  constness.set_to(bindings.size(),(flags&0x4)!=0);
+@/bindings.emplace_back(id,std::move(tp));
+}
+
+@ Although there might be cases where several overloads for the same identifiers
+could be validly added in a single group, this is forbidden here. Making this
+test allow precisely valid cases of multiple definitions of the same name inside
+a group would complicate matters considerably for little practical gain.
+
+@< Check that this identifier is not already bound in the same group @>=
+{
+ for (auto it=bindings.cbegin(); it!=bindings.cend(); ++it)
+   // check repeated identifiers
+     if (it->first==id)
+     { std::ostringstream o;
+       o << "Multiple occurrences of '"
+         << main_hash_table->name_of(id) @|
+         << "' cannot be defined in same definition";
+       throw program_error(o.str());
+     }
+}
+
+@ Operator symbols can syntactically only be used in function calls and operator
+specialisations, so it makes no sense to bind them to a value of non-function
+type: any attempted use would result in a type error. Therefore we flag attempts
+to do so as errors. The parser has set bit 3 of the |kind| field in an |id_pat|
+when the |name| came from a token scanned as an operator symbol (rather than as
+an identifier), which makes it possible to perform the test here.
+
+@< Check that we are not setting an operator to a non-function value @>=
+{
+  if ((flags&0x8)!=0 and tp.top_kind()!=function_type)
+    { std::ostringstream o;
+      o << "Cannot set operator '" << main_hash_table->name_of(id) @|
+        << "' to a value of non-function type " << tp;
+      throw program_error(o.str());
+    }
+}
+
+@ Here we check that each identifier of function type can be validly added to
+the overload table without producing conflicts with existing entries for the
+same identifier. The call to |locate_overload| does this test and may throw,
+which is all that we need from it here.
+
+@< When |tp| is a function type, test for conflicts in the overload table @>=
+{
+  if (tp.top_kind()==function_type)
+    // then test for conflicts with existing entries
+  { if (@[auto* var=global_overload_table->variants(id)@;@])
+    { bool dummy;
+      locate_overload(id,*var,tp.arg_type(), dummy);
+      // ignore result
+    }
+  }
+}
+
+
+@*2 Defining global identifiers or overloads.
+%
+The function |do_global_set| is called when a user issues a \&{set} command to
+add one or more identifier or operator definitions to the tables (or possibly
+override an existing definition). The arguments indicate identifier name(s) in
+|pat|, defining expression(s) in |rhs|, the nature of the defining command in
+|overload|, and a location |loc| used for error reporting.
+
+In a change from our initial implementation, the parameter |overload| (which
+is set by the parser) can allow overloading without forcing it. Allowing the
+parameter to be cleared here actually serves to allow more cases to be handled
+using the overload table, as the parser will now set |overload>0| more freely.
+Indeed the parser currently passes |overload==0| only when the
+``\\{identifier}\.:\\{value}'' syntax is used to introduce a new identifier.
+
+The code below allows, when |overload==1|, mixing definitions of identifiers
+that go to the overload table and to the identifier table, depending on the
+type of the value they get bound to (but operator definitions are excluded
+from such mixing for syntactic reasons). There is an implicit restriction
+though, that any identifier gets at most one binding per call of
+|do_global_set| (in other words, per \&{set} command), because the call to
+|thread_bindings| cannot put multiple bindings of the same identifier into its
+|definition_group|. This restriction should not cause much inconvenience to
+users.
+
+We follow the logic for type-analysis of a let-expression, and for evaluation
+we follow the logic of binding identifiers in a user-defined function (these
+are defined in \.{axis.w}). However we use |analyse_types| here (which
+catches and reports errors) rather than calling |convert_expr| directly. To
+provide some feedback to the user we report any types assigned, but not the
+values.
+
+The function |do_global_set| takes |id_pat| by rvalue reference just to be
+able to clobber the value prepared by the caller without taking a copy; we do
+not intend to actually move from the argument.
+
+@< Local function definitions @>=
+@< Define auxiliary functions for |do_global_set| @>
+void do_global_set(id_pat&& pat, const expr& rhs, int overload,
+                  const source_location& loc)
+{ auto n_id=count_identifiers(pat);
+  definition_group b(n_id);
+  int phase; // needs to be declared outside the |try|, is used in |catch|
+  try
+  { phase=0; // type check
+    expression_ptr e;
+    {
+      type tp=analyse_types(rhs,e,0);
+      if (not tp.bake().can_specialise(pattern_type(pat)))
+        @< Report that type |tp| of |rhs| does not have required structure,
+           and |throw| @>
+      b.thread_bindings(pat,tp.unwrap());
+      // match identifiers and their future types
+    }
+@)
+    phase=1; // evaluation of right hand side
+@/  e->eval();
+@)
+    phase=2; // actual definition of identifiers
+    std::vector<shared_value> v;
+    v.reserve(n_id);
+    thread_components(pat,pop_value(),std::back_inserter(v));
+     // associate values with identifiers
+    auto v_it = v.begin();
+    for (auto it = b.begin(); it!=b.end(); ++it,++v_it)
+    { assert(v_it!=v.end());
+      @< Emit indentation corresponding to the input level to
+         |*output_stream| @>
+      if (overload==0 or it->second.top_kind()!=function_type)
+      @< Add instance of identifier |it->first| with value |*v_it| and
+         type |it->second| to |global_id_table| @>
+      else
+      @< Add instance of identifier |it->first| with function value |*v_it|
+         to |global_overload_table| @>
+    }
+  }
+  @< Catch block for errors thrown during a global identifier definition @>
+}
+
+@ For identifier definitions we print their name and type, one line for each
+identifier. Doing this before calling |global_id_table->add|, the latter call
+can pilfer the type |it->second|, which points to a component of the local
+|definition_group| variable~|b|.
+
+@< Add instance of identifier |it->first| with value... @>=
+{ *output_stream << (b.is_const(it) ? "Constant " : "Variable ") @|
+                 << main_hash_table->name_of(it->first)
+                 << ": " << it->second;
+  if (global_id_table->present(it->first))
+  { bool is_const;
+    *output_stream << " (overriding previous instance, which had type "
+             @| << *global_id_table->type_of(it->first,is_const);
+    if (is_const)
+      *output_stream << " (constant)";
+    *output_stream << ')';
+  }
+  *output_stream << std::endl;
+  global_id_table->add
+    (it->first,std::move(*v_it),std::move(it->second),b.is_const(it),loc);
+}
+
+@ For installing overloaded definitions, the main difference with the code above
+is that we shall call the |add| method of |global_overload_table| instead of
+that of |global_id_table|, and the different wording of the report to the user.
+Another difference is that here the |add| method may throw because of a conflict
+of a new definition with an existing one; we therefore do not print anything
+before the |add| method has successfully completed.
+
+While the code below is to executed by |do_global_set|, we wrap it in a function
+so that the same actions can be performed while processing type definitions,
+which do not pass through |do_global_set|. Rather exceptionally this utility
+function produces output, namely reporting the changes made to the user, as this
+needs to be done in all cases.
+
+
+@< Define auxiliary functions for |do_global_set| @>=
+void add_overload(id_type id, shared_function&& f, type&& tp,
+                 const source_location& loc)
+{
+  auto p = global_overload_table->variants(id);
+  auto old_n= p==nullptr ? 0 : p->size();
+@/std::ostringstream type_string;
+  type_string << tp; // save type |tp| as string before moving from it
+  global_overload_table->add(id,std::move(f),tp,loc);
+    // insert or replace table entry
+  if (p==nullptr)
+    p = global_overload_table->variants(id);
+  assert(p!=nullptr);
+  if (p->size()==old_n)
+    *output_stream << "Redefined ";
+  else if (p->size()==1)
+    *output_stream << "Defined ";
+  else
+    *output_stream << "Added definition [" << p->size() << "] of ";
+  *output_stream << main_hash_table->name_of(id) << ": "
+            << type_string.str();
+  *output_stream << std::endl;
+}
+
+@ Since |*v_it| being a function type is a condition for coming to this code,
+the dynamic cast below should always succeed, if our type system is correct.
+
+@< Add instance of identifier |it->first| with function value |*v_it| to
+   |global_overload_table| @>=
+{ shared_function f = std::dynamic_pointer_cast<const function_base>(*v_it);
+  if (f.get()==nullptr)
+    throw logic_error("Non-function value found with function type");
+  add_overload(it->first,std::move(f),std::move(it->second),loc);
+}
+
+@ For readability of the output produced during input from auxiliary files, we
+emit two spaces for every current input level. The required information is
+available from the |main_input_buffer|.
+
+@< Emit indentation corresponding to the input level to |*output_stream| @>=
+{ unsigned int input_level = main_input_buffer->include_depth();
+  *output_stream << std::setw(2*input_level) << "";
+}
+
+@ When the right hand side type does not match the requested pattern, we throw
+a |program_error| signalling this fact; we have to re-generate the required
+pattern using |pattern_type| to do this.
+
+@< Report that type |tp| of |rhs| does not have required structure,
+   and |throw| @>=
+{ std::ostringstream o;
+  o << "Type " << tp @|
+    << " of right hand side does not match required pattern "
+    << pattern_type(pat);
+  throw program_error(o.str());
+}
+
+
+@ We shall use the following static variable to signal that errors were
+encountered; it serves to set the exit status from |main| so that tools
+calling our interpreter with specific input can tell whether that input was
+cleanly processed.
+
+@< Declarations of global variables @>=
+extern bool clean;
+
+@~We start out cleanly of course; this is the only point where |clean| is
+made~|true|.
+
+@< Global variable definitions @>=
+bool clean=true;
+
+@ A |program_error| may be thrown during type check or matching with the
+identifier pattern (when |phase==0|), and also when a conflicting overload
+situation is detected (|phase==2|), while a |runtime_error| can be thrown during
+evaluation (|phase==1|); we catch all those cases here. It is convenient to
+centralise actual error reporting in an auxiliary function |handle| defined
+below. That function uses the value of the variable |phase| that |do_global_set|
+maintains, but in most cases its values should correspond to the type of error
+thrown, as indicated in the |assert| statements. The final |catch| clause will
+catch any |std::runtime_error| thrown from the library (rather than by our
+wrapper functions), although it hardly seems possible they could get through to
+here without being relabelled as (our) |runtime_error| by the back-trace
+producing code. This clause is in fact defined to catch any |std::exception| so
+that we really should not be letting any unexpected error through here. We do
+want |handle| to get a reference to an |error_base| value, not to its base class
+|std::exception|, so when catching the latter we construct an |error_base| value
+with the message from |std::exception::what| to pass to |handle|; since it will
+have an empty |back_trace| this will give the desired behaviour in this case.
+
+Whether or not an error is caught, the pattern |pat| and the expression |rhs|
+should not be destroyed here, since the parser which aborts after calling this
+function should do that while clearing its parsing stack.
+
+@< Catch block for errors thrown during a global identifier definition @>=
+catch (const program_error& err)
+{@; assert(phase!=1); handle(err,pat,phase,overload,loc); }
+catch (const runtime_error& err)
+{@; assert(phase==1); handle(err,pat,phase,overload,loc); }
+catch (const logic_error& err)
+@/{@; std::cerr << "Unexpected error: ";
+  handle(err,pat,phase,overload,loc);
+}
+catch (const std::exception& err)
+{@; handle(error_base(err.what()),pat,phase,overload,loc); }
+
+@ Here is the common part for various |catch| clauses. We report to the user the
+context in which the error arose to help locate the source of the problem, as
+well as the immediate error message |err.what()| that was provided at the point
+where the error was signalled. More detail is contained in the |back_trace|
+field of the error object which we copy to a ``magic'' user variable of that
+name using a function |set_back_trace| that will also be called (in |main|)
+when a runtime error happens during expression evaluation.
+
+@h "parsetree.h" // for output of |id_pat| value
+
+@< Define auxiliary functions for |do_global_set| @>=
+void handle
+  (const error_base& err,const id_pat& pat, int phase, int overload,
+   const source_location& loc)
+{ static const char* message[3] = {"not executed","interrupted","failed"};
+  std::cerr << "Error in 'set' command " << loc << ":\n" @|
+            << err.what() << "\n  Command 'set " << pat << "' "
+            << message[phase];
+  if (phase<2)
+    std::cerr << ", nothing " << (overload<=1 ? "defin" : "overload") << "ed";
+  std::cerr << ".\n";
+@/set_back_trace(err.back_trace);
+@/clean=false;
+  reset_evaluator(); main_input_buffer->close_includes();
+}
+
+@ The function |set_back_trace| converts the |simple_list| into an axis array.
+
+@< Global function definitions @>=
+void set_back_trace(const simple_list<std::string>& back_trace)
+{
+  if (not back_trace.empty())
+  {
+    std::shared_ptr<row_value> new_trace = std::make_shared<row_value>(0);
+    *back_trace_pointer=new_trace;
+    std::vector<shared_value>& trace = new_trace->val;
+    trace.reserve(length(back_trace));
+      // order inwards towards point of failure
+    for (auto it=back_trace.begin(); not back_trace.at_end(it); ++it)
+      trace.push_back(std::make_shared<string_value>(std::move(*it)));
+      // back trace element
+  }
+}
+
+@*2 Declaring and forgetting global identifiers.
+%
+The following function is called when an identifier is declared with type
+but undefined value. Note that we output a message \emph{before} actually
+entering the identifier into the table, since the latter moves the type value
+out of |tp|, so it would be a bit more effort if we wanted to print the
+message afterwards.
+
+@< Global function definitions @>=
+void global_declare_identifier(id_type id, type_p t, const source_location& loc)
+{ type_ptr saf(t); // ensure clean-up
+  type_expr tp=global_id_table->swallow(*t);
+  @< Emit indentation corresponding to the input level to |*output_stream| @>
+  *output_stream << "Declaring identifier '" << main_hash_table->name_of(id) @|
+            << "': " << tp << std::endl;
+  static const shared_value undefined_value; // holds a null pointer
+  global_id_table->add(id,undefined_value,type::wrap(tp,0),false,loc);
+}
+
+@ Here is a utility function called whenever a type identifier is forgotten or
+redefined. It removes any bindings in |global_overload_table| of field names
+that were introduced together with the type name, if they are still present
+(they could have been overridden or forgotten in the mean time). Then it
+removes the entry |id| from |type_expr::type_map|.
+
+@< Global function definitions @>=
+void clean_out_type_identifier(id_type id)
+{
+  const type* defined_type = global_id_table->type_of(id);
+  if (defined_type->kind()!=tabled)
+    return; // we cannot clear out the pro/in/jector functions, not recorded
+  auto type_number = defined_type->tabled_nr();
+  const auto& fields = type_expr::fields(type_number);
+  if (not fields.empty())
+  { if (defined_type->kind()==tuple_type)
+      @< Remove projector functions listed in |fields| for tuple type
+         |*defined_type| @>
+    else if(defined_type->kind()==union_type)
+      @< Remove injector functions listed in |fields| for union type
+         |*defined_type| @>
+  }
+}
+
+@ Removing projector functions is done by looking up the field identifiers in
+the overload table with the tuple type as argument, and removing the entry if
+one is found there, but only if it exactly matches the projector function
+which the definition put there. Since the argument type already matches, the
+latter needs to check the |id| and |position| members of the projector
+function.
+
+Side remark: the braces enclosing this block of code are essential: without
+them the |else| in the parent module above would actually be captured by the
+|if| below, with catastrophic consequences.
+
+@< Remove projector functions... @>=
+{ for (unsigned i=0; i<fields.size(); ++i)
+    if (fields[i]!=type_binding::no_id)
+    { const auto* entry =
+        global_overload_table->entry(fields[i],defined_type->bake());
+      if (entry!=nullptr)
+      { auto p = dynamic_cast<const projector_value*>(entry->value().get());
+        if (p!=nullptr and p->id==fields[i] and p->position==i)
+          global_overload_table->remove(fields[i],defined_type->bake());
+      }
+    }
+}
+
+@ Removing injector functions for a union type is similar, but the argument
+type to be used in the overload table look-up is a component type of the union
+rather than the union type itself. We therefore need to set up a second
+iterator |comp_it| to loop over those components.
+
+@< Remove injector functions... @>=
+{ wtl_const_iterator comp_it (defined_type->tuple());
+  for (unsigned i=0; i<fields.size(); ++i,++comp_it)
+    if (fields[i]!=type_binding::no_id)
+    { const auto* entry =
+        global_overload_table->entry(fields[i],*comp_it);
+      if (entry!=nullptr)
+      { auto p = dynamic_cast<const injector_value*>(entry->value().get());
+        if (p!=nullptr and p->id==fields[i] and p->position==i)
+          global_overload_table->remove(fields[i],*comp_it);
+      }
+    }
+}
+
+@ The user may wish to forget the value of an identifier, which calls the
+following function. The parser calls this both for ordinary and type
+identifiers; in the latter case we make a call to |clean_out_type_identifier|.
+
+@< Global function definitions @>=
+void global_forget_identifier(id_type id)
+{ if (global_id_table->is_defined_type(id))
+    clean_out_type_identifier(id);
+  bool was_known = global_id_table->remove(id);
+  *output_stream << "Identifier '" << main_hash_table->name_of(id)
+       @|   << (was_known ? "' forgotten" : "' not known")
+            << std::endl;
+}
+
+@ Forgetting the binding of an overloaded identifier at a given type is
+straightforward.
+
+@< Global function definitions @>=
+void global_forget_overload(id_type id, type_p t)
+{ type_ptr saf(t); // ensure clean-up
+  const type_expr tp=global_id_table->swallow(*t);
+  const bool removed = global_overload_table->remove(id,tp);
+  *output_stream << "Definition of '" << main_hash_table->name_of(id)
+            << '@@' << tp @|
+            << ( removed ? "' forgotten" : "' not known") << std::endl;
+}
+
+@*2 Defining type identifiers.
+%
+There are two types of type definitions: simple ones that simply equate a new
+type name to an existing type expression, and grouped type definitions that may
+introduce recursive and mutually recursive types. Syntactically, the distinction
+is marked by square brackets around the list of definition clauses in the latter
+case, and the placement of formal type parameters of the definition in case of a
+type constructor definition. In simple type constructor definitions the
+parameter list is postfixed to the constructor name in pointy brackets to
+resemble an application of the constructor, whereas in a grouped type
+constructor definition the formal type parameter list, which is common to every
+member of the group, is inserted before the opening square bracket.
+
+We start with the simple type definitions, which are handled by the function
+|type_define_identifier|. Its argument |id| is a new type identifier that is
+defined to stand for the type expression~|t|, or for a type constructor with
+|deg| type arguments is |deg>0|. A fourth argument~|ip| may provide a list of
+``field names'' (which will be set to certain functions related to the type)
+that can be useful in the case of a tuple or union type. Even though |ip| stands
+for ``identifier pattern'', the grammar restricts it to be a simple list of
+identifiers (some or all of which may be absent).
+
+Eventually the type is stored in its original form in |global_id_table|. We
+actually |move| the type there, we make sure that other actions, notably
+reporting the type definition and its field names are done while |type|
+has not yet been moved from.
+
+The somewhat mysterious cast in the constructor call for |names| avoids
+passing the |constexpr no_id@;| by reference (by building a temporary
+instead), which in turn avoids needing to allocate an actual static variable
+for this constant.
+
+@< Global function definitions @>=
+void type_define_identifier
+  (id_type id, type_p t, unsigned int deg, raw_id_pat ip,
+  const source_location& loc)
+{ type_ptr saf(t); id_pat field_pat(ip); // ensure clean-up
+  type tp= type::constructor(global_id_table->swallow(*t),deg);
+  auto& fields = field_pat.sublist;
+  const auto n=length(fields);
+  // |n==0| means no tuple/union, or no names were specified
+@)
+  definition_group group(n);
+  std::vector<shared_function> jectors; jectors.reserve(n);
+  std::vector<id_type> names(n,id_type(type_binding::no_id));
+  try
+  {
+    @< Test for conflicts for adding |id| as type identifier to
+       |global_id_table|, in which case |throw| a |program_error|,
+       also report the type definition proper @>
+@)
+    type_nr_type k = type_expr::add_simple_typedef(id,tp.bake(),deg);
+    type_expr tabled_tp = type_expr::local_ref(k,deg);
+    // tabled type with |deg| arguments
+    global_id_table->add_type_def(id,type::constructor(tabled_tp.copy(),deg),loc);
+@)
+    if (not fields.empty())
+    {
+      @< Bind in |group| any field identifiers in |fields| to the types of
+         their projector or injector functions, store the identifiers themselves
+         in |names|, and store the corresponding function values in |jectors| @>
+      @< Add to |global_overload_table| the projector or injector function
+         values from |jectors| @>
+      type_expr::set_fields(k,std::move(names));
+    }
+  }
+  catch (program_error& err)
+  { std::ostringstream o;
+    o << "Error in type definition " << loc << ":\n" @| << err.message
+      << "\n  Type definition aborted";
+    err.message = o.str(); // replace message by extended one
+    throw; // then re-throw
+  }
+}
+
+@ A type definition introducing a structure or union type may introduce field
+names for their components, which names will then be associated to projector
+respectively injector functions for the type; these also have uses beyond that
+of mere functions. All field names must be distinct, and it must be possible
+to add the corresponding functions to the overload table, which is what the
+code below tests by passing declaration of each field and its function type
+through |definition_group::add|. Meanwhile we construct the function values
+themselves and store them in |jectors|.
+
+@< Bind in |group| any field identifiers in |fields| to the types of
+   their projector or injector functions... @>=
+{ assert(tp.kind()==tuple_type or tp.kind()==union_type);
+    // ensured by the grammar
+  auto tp_it =wtl_const_iterator(tp.tuple());
+  auto id_it=fields.wcbegin();
+  if (tp.kind()==tuple_type)
+  { for (unsigned i=0; i<n; ++i,id_it++,tp_it++)
+      if (id_it->kind==0x1) // field name present
+      { names[i]=id_it->name;
+        jectors.push_back
+          (std::make_shared<projector_value>(tabled_tp.copy(),i,names[i],loc));
+        type_expr fte = type_expr::function(tabled_tp.copy(),tp_it->copy());
+        group.add(names[i],type::wrap(std::move(fte),0),id_it->kind);
+          // projector type
+      }
+  }
+  else
+  { for (unsigned i=0; i<n; ++i,id_it++,tp_it++)
+      if (id_it->kind==0x1) // variant name present
+      { names[i]=id_it->name;
+        jectors.push_back
+          (std::make_shared<injector_value>(tabled_tp.copy(),i,names[i],loc));
+        type_expr fte = type_expr::function(tp_it->copy(),tabled_tp.copy());
+        group.add(names[i],type::wrap(std::move(fte),0),id_it->kind);
+          // injector type
+      }
+  }
+}
+
+@ We start checking if the user deviously hid \emph{another} definition of the
+same identifier in the field list. Then we emit an error if any previous
+definition is found. The test for this can be skipped if the same identifier was
+already defined as a type, but in that case the old definition will be
+overwritten, so we call |clean_out_type_identifier| in order to remove any
+traces of the old definition in static members of |type_expr| (this clearing out
+is needed even if the new definition is for the same type as the previous one,
+since the field names might differ). Finally we report the new definition, which
+output may be completed by the list of field names printed in
+section@#field name printing @>.
+
+
+@< Test for conflicts for adding |id| as type identifier to |global_id_table|,
+   ... @>=
+{ for (auto it=group.begin(); it!=group.end(); ++it)
+    if (it->first==id)
+    { std::ostringstream o;
+      o << "Type definition of '" << main_hash_table->name_of(id) @|
+        << "' cannot contain a field of the same name";
+      throw program_error(o.str());
+    }
+@)
+  @< Protest if |id| is currently used as ordinary identifier @>
+  bool redefine=global_id_table->is_defined_type(id);
+  if (redefine)
+    clean_out_type_identifier(id);
+  @< Emit indentation corresponding to the input level to |*output_stream| @>
+  *output_stream << "Type name '" << main_hash_table->name_of(id) @|
+            << (redefine ? "' redefined as " : "' defined as ") << tp
+            << std::endl;
+}
+
+@ When tests have been passed successfully, we run the code below to copy the
+projector or injector functions from |jectors| to the global overload table.
+
+@:field name printing @>
+@< Add to |global_overload_table| the projector or injector ...@>=
+{ @< Emit indentation corresponding to the input level to |*output_stream| @>
+@/*output_stream << "  with " << (tp.kind()==tuple_type ? "pro" : "in");
+  for (auto it=group.begin(); it!=group.end(); ++it)
+  { global_overload_table->add
+      (it->first,std::move(jectors[it-group.begin()]),std::move(it->second),loc);
+    *output_stream << (it==group.begin() ? "jectors: " : ", ")
+                @| << main_hash_table->name_of(it->first);
+  }
+  *output_stream << '.' << std::endl;
+}
+
+@ We now come to grouped type definitions, invoked using a \&{set\_type} command
+with brackets around the list of definition clauses (which might be just a
+single definition). Such a command is handled by calling
+|process_type_definitions| with the list of type definition clauses as argument.
+Due to the potential recursion in the definitions, these must be treated with
+more care than simple type definitions. Notably we must collect the list of type
+identifiers to be defined, and after some sanity checks, associate new type
+numbers with each of them, and then make sure that references that were made to
+these identifiers are made to refer to the correct type numbers. Once this
+pre-processing is done, |type_expr::add_typedefs| will do the real work of
+installing the definitions, and afterwards we emit a report summarising the
+definitions that were processed.
+
+@< Global function definitions @>=
+void process_type_definitions
+  (raw_typedef_list l, unsigned int deg, const source_location& loc)
+{ typedef_list defs(l);
+  defs.reverse(); // since the parser collects by prepending new nodes
+  const auto old_size = type_expr::table_size(); // for roll back
+  try
+  {
+    const type_nr_type n_defs = length(defs);
+
+    std::map<id_type,type_nr_type> position;
+  @/@< For each equation |i| in |defs| set |position[id]=i| for the
+       identifier |id| defined by the equation; |throw| a |program_error|
+       if any identifiers in the equation are problematic @>
+  @/@< Replace, for any type with |kind==tabled| occurring in |defs|,
+       the stored identifier code |id| by |position[id]| if that is set,
+       or else by the|tabled_nr()| obtained from its type in |global_id_table| @>
+@)
+@/  std::vector<std::pair<id_type,const_type_p> > b; b.reserve(n_defs);
+    for (auto it=defs.wcbegin(); not defs.at_end(it); ++it)
+      b.emplace_back(it->id,it->tp);
+    auto type_nrs = type_expr::add_typedefs(b,deg);
+@)
+    @< Update |global_id_table| with types and values (injector and  projector
+       functions, if any) corresponding to the type definitions in |defs|, or
+       |throw| a |program_error| without making any changes in case of
+       conflicts @>
+  }
+  catch (program_error& err)
+  { type_expr::reset_table_size(old_size); // roll back any extension made
+    std::ostringstream o;
+    o << "Error in 'set_type' command " << loc << ":\n" @| << err.message
+      << "\n  Type definition aborted";
+    err.message = o.str(); // replace message by extended one
+    throw; // then re-throw
+  }
+}
+
+@ The main purpose of this module is to record the mapping from identifiers
+being defined to their position in the definition; this is done using |std::map
+position@;|. This makes it easy to detect collisions, identifiers that are being
+defined more than once. We also refuse it when any of the identifiers being
+defined was used as a non-type identifier before, since their new status of type
+identifier would make those variables or functions inaccessible.
+
+Once the set of defined type names is recorded, we can easily test for any
+collision between a field name and a type name in our set of type definitions,
+which would cause the same kind of trouble as mentioned above, because its
+status as a type identifier would make the field name unusable.
+
+@< For each equation |i| in |defs|... @>=
+{
+  auto it=defs.begin();
+  for (type_nr_type i=0; i<n_defs; ++i,++it)
+  { id_type id = it->id; // grammar does not allow |id==type_binding::no_id|
+    @< Protest if |id| is currently used as ordinary identifier @>
+    auto its = position.equal_range(id);
+    if (its.first==its.second) // not found, this is the normal case
+      position.emplace_hint(its.first,id,i);
+    else
+    { std::ostringstream o;
+      o << "Repeated definition of '" @| << main_hash_table->name_of(id)
+      @|<< " in grouped type definition";
+      throw program_error(o.str());
+    }
+  }
+  for (auto it=defs.begin(); not defs.at_end(it); ++it)
+    for (auto jt=it->fields.wcbegin(); not it->fields.at_end(jt); ++jt)
+      if ((jt->kind&0x1)!=0 and position.count(jt->name)>0)
+      { std::ostringstream o;
+        o << "Used '" << main_hash_table->name_of(jt->name) @|
+          << "' as defined type AND as field name";
+        throw program_error(o.str());
+      }
+}
+
+@ The code below serves to prohibit introducing the name of an existing (global)
+variable or function as a type name, which would make the former inaccessible.
+We call the method |global_id_table.is_ordinary| to test for this. To make it
+possible to reload a script a second time without error, we do allow redefining
+a previous type identifier again as a type identifier.
+
+@< Protest if |id| is currently used as ordinary identifier @>=
+{ bool is_fun = global_overload_table->variants(id)!=nullptr,
+       is_ord = global_id_table->is_ordinary(id);
+  if (is_fun or is_ord)
+  { std::ostringstream o;
+    o  << "Cannot define '" << main_hash_table->name_of(id) @|
+       << "' as a type; it is in use as " @|
+       << (is_fun ? is_ord ? "both global variable and function" @| : "function"
+                  : "global variable");
+    throw program_error(o.str());
+  }
+}
+
+@ In order to be able to process a set of recursive type definitions where a
+defined type can be referenced before its defining equation is even scanned, the
+scanner and parser play together as follows. Within a \&{set\_type} command
+followed by a bracketed list of definitions (the kind processed by
+|process_type_definitions|), the scanner tags identifiers as type identifiers,
+even when |global_id_table->is_defined_type| does not hold; this is so that the
+ones to be defined here will be parsed as types even before they are seen as a
+left hand side. The scanner does inspect |global_id_table->is_type_constructor|,
+and in case it holds (meaning this is a previously defined type constructor) the
+identifier scans as a type constructor. It can then combine with an argument
+type list, as is usual for type constructors; however the grammar also allows a
+use without argument list to cater for the possibility that the type constructor
+is being redefined in the current definition group. Once the list of identifiers
+being defined is collected (which is the case when the code below executed) we
+can tell whether the latter is the case and check that the type constructor is
+used properly.
+
+Having the parser store an identifier code in a place that normally holds a
+tabled number (an index into |type_expr::type_map|) used to be a trick used only
+for the purpose of representing types in the right hand side of grouped type
+definitions. It is however now the case throughout, and all type expressions
+built in the parser must be either transformed by calling
+|global_id_table->swallow|, or else be given some other special treatment, as
+will be the case here.
+
+The code in the current module performs a recursive traversal of a right hand
+side type expression, with the actual replacement detailed in a later module.
+Traversing type expressions is naturally done recursively, but we are getting a
+bit bored by defining a recursive function for every little task, so we do this
+one iteratively instead, with the aid of a manually maintained queue |work| of
+pointers to types remaining to be visited (a stack would have done equally
+well).
+
+@< Replace, for any type with |kind==tabled| occurring in |defs|... @>=
+{ containers::queue<type_p> work;
+  for (auto it=defs.begin(); not defs.at_end(it); ++it)
+  {
+    work.push(it->tp);
+    while (not work.empty())
+    { type_expr& t = *work.front();
+      work.pop(); // copy pointer as non-owned reference, then pop pointer
+      switch(t.raw_kind())
+      { default: break;
+      case function_type:
+      @/{@; auto f=t.func();
+          work.push(&f->result_type);
+          work.push(&f->arg_type);
+        }
+      break;
+      case row_type: work.push(&t.component_type());
+      break;
+      case tuple_type: case union_type:
+        for (wtl_iterator it(t.tuple()); not it.at_end(); ++it)
+          work.push(&*it);
+      break;
+      case tabled:
+        for (wtl_iterator it(t.tabled_args()); not it.at_end(); ++it)
+          work.push(&*it);
+        @< Replace |t.tabled_nr()| by the number that either |position| or the
+           |global_id_table| associates to it; if there is none
+           |throw| a |program_error| @>
+      break;
+      }
+    }
+  }
+}
+
+@ We come here for any type subexpression of a right hand side that is given as
+a type identifier or as an application of an already defined type constructor.
+In case this is a previously defined type (constructor) we must replace the
+identifier code that parser temporarily stored as |tabled_nr()| of a |tabled|
+type, by the actual tabled number stored in |global_id_table| for that
+identifier; however for identifiers recorded in |position| (which identifiers
+|global_id_table| probably does not know about yet at all), we use the value
+associated there instead. The replacement in the former case is like the one
+that |global_id_table->swallow| performs, but we cannot use that method since it
+does not make the exception for the latter case (and it applies itself
+recursively to type constructor arguments, which application we cannot control
+or suppress). So instead we make the replacement explicitly using the
+|type_expr::replace_tabled_nr| method specifically created for this occasion.
+In-place replacement is possible since we own the type expressions in |defs|.
+
+Here we explicitly use that the |global_it_table| entry for a user defined type
+(constructor) is always a direct reference to a tabled type, so that we can
+modify the type structure prepared by the parser in-place by inserting the
+number of the tabled type into the type node. In the case of types to be defined
+in the current group, we actually insert a reference to a tabled entry that has
+yet to be created (so currently out of bounds for |type_expr::type_map|),
+knowing that |type_expr::add_typedefs| is designed to handle such references.
+For calls of existing type constructors, the in-place operation allows us to not
+worry about the fact that any type arguments will be visited by the current
+code \emph{after} the type constructor itself. On the other hand we do need to
+explicitly check the number of type arguments against the degree of the
+constructor, a test that is usually left to |global_id_table->swallow|. Finally,
+since the scanner marks all identifiers as types during grouped type
+definitions, we must be prepared to see identifiers that are not known as type
+identifiers at all, and to throw a |program_error| in such cases.
+
+@<  Replace |t.tabled_nr()| by the number that either |position| or the
+    |global_id_table| associates to it... @>=
+{ id_type id = t.tabled_nr();
+  if (position.count(id)>0)
+    // then type is defined in our group: replace by future tabled reference
+  {
+    if (t.tabled_args()!=nullptr)
+    { std::ostringstream o;
+      o << "Type '" << main_hash_table->name_of(id) @|
+        << "' being defined cannot be given type arguments";
+      throw program_error(o.str());
+    }
+    auto it = position.find(id);
+    assert(it!=position.end());
+    t.replace_tabled_nr(type_expr::table_size()+it->second);
+  }
+  else if (global_id_table->is_defined_type(id))
+  {
+    const type& defined_type = *global_id_table->type_of(id);
+    assert(defined_type.kind()==tabled); // defined types are stored this way
+    unsigned int len=length(t.tabled_args()), degree = defined_type.degree();
+    if (len!=degree)
+       @< Throw a |program_error| signalling an incorrectly applied type symbol
+          or type constructor @>
+    t.replace_tabled_nr(defined_type.tabled_nr());
+  }
+  else
+  { std::ostringstream o;
+    o << "Identifier '" << main_hash_table->name_of(id) @|
+      << "' does not refer to any type";
+    throw program_error(o.str());
+  }
+}
+
+@ When we come here, the newly defined types from |defs| have been tested for
+equivalence with previous types and with each other, and added to the static
+class member of |type_expr|, so that their (new) type numbers available in the
+|type_nrs| array can be used with for instance the |type_expr::expanded| method.
+
+Three kinds of actions remain to be done. For each definition, its left hand
+side identifier has to be bound to a type expression in |global_id_table|, which
+will be of the |tabled| kind, referring to the internal definition just added at
+a position found in |type_nrs|. The other two actions only apply when the right
+hand side is a tuple or union type with specified field names: if so, projector
+respectively injector functions have to be bound to these field names in the
+|global_overload_table|, and the list of field names has to be added to the
+|type_expr| static data. The new overloads for field names might conflict with
+existing overloads, and to be certain that we don't leave matters in a partially
+updated state upon an error, we must make two passes over |defs|: one to test
+for problems (which might end up throwing an error), and if there are none, a
+second pass to actually make the changes.
+
+Since testing the overloads for the field names involves constructing the types
+that will be bound to them, we stash them away in a list |store| of
+|definition_group| objects, from which they can be recovered in the second pass.
+Each pass needs to traverse the linked list~|defs| and in parallel the
+vector~|type_nrs|, for which we maintain an iterator~|it| into the list and an
+index~|i| into the vector.
+
+@< Update |global_id_table| with types and values... @>=
+{ unsigned int i = 0; // position within |defs|
+  containers::sl_list<definition_group> store;
+  for (auto it=defs.wcbegin(); not defs.at_end(it); ++it,++i)
+    if (not it->fields.empty())
+    { type_expr tabled_tp = type_expr::local_ref(type_nrs[i],deg);
+      const auto& tp = tabled_tp.tabled_eq(); // a |type_map| entry
+      const auto& fields = it->fields;
+      @/@< Append to |store| bindings for the identifiers in |fields| as
+         injector or projector function for |tabled_tp|, the component types
+         being taken from |tp| @>
+    }
+@)
+  auto store_it = store.wbegin(); // rewind the list of field lists
+  for (auto it=(i=0,defs.wcbegin()); not defs.at_end(it); ++it,++i)
+  {
+    const auto& fields = it->fields;
+    const auto type_nr = type_nrs[i];
+    type tabled_tp =
+      type::constructor(type_expr::local_ref(type_nr,deg),deg);
+    const type_expr& tp = tabled_tp.unwrap().tabled_eq();
+    if (it->id!=type_binding::no_id)
+    {
+      if (global_id_table->is_defined_type(it->id))
+        clean_out_type_identifier(it->id);
+      global_id_table->add_type_def(it->id,std::move(tabled_tp),loc);
+    }
+    @< Emit... @>
+    if (it->id==type_binding::no_id)
+      *output_stream << "Anonymous type "
+                     << tp << std::endl;
+    else
+      *output_stream << "Type name '" << main_hash_table->name_of(it->id) @|
+        << "' defined as " << tp.expanded() << std::endl;
+    if (not fields.empty())
+    { auto& group = *store_it;
+      @< Add to |global_overload_table| functions for |fields| with types taken
+         from |group|, and associate those fields to type |type_nr|;
+         also print project/injector names @>
+    @/ ++store_it; // |store_it| only advances when fields were present
+    }
+  }
+}
+
+@ A type definition introducing a structure or union type may introduce field
+names for their components, which names will then be associated to projector
+respectively injector functions for the type, just like in
+|type_define_identifier|. When associated to a |tabled| type, these fields names
+also have uses beyond that of mere function symbols: for tuple fields they can
+be used in component assignments, and for union fields in discrimination
+clauses. All field names for a given type must be distinct, and it must be
+possible to add the corresponding functions to the overload table; the code
+below tests both conditions by passing declaration of each field and its
+function type through |definition_group::add|.
+
+@< Append to |store| bindings for the identifiers in |fields|... @>=
+{ assert(tp.raw_kind()==tuple_type or tp.raw_kind()==union_type);
+  auto& record = store.emplace_back(definition_group(length(fields)));
+@/
+  auto tp_it =wtl_const_iterator(tp.tuple());
+  if (tp.raw_kind()==tuple_type)
+  {
+    for (auto id_it=fields.wcbegin(); not fields.at_end(id_it);
+         ++id_it,++tp_it)
+      if (id_it->kind==0x1)
+      // field selector present (|*id_it| is an |id_pat|)
+      {
+        type_expr fte = type_expr::function(tabled_tp.copy(),tp_it->copy());
+        record.add(id_it->name,type::wrap(std::move(fte),0),id_it->kind);
+          // projector type
+      }
+  }
+  else // |tp.raw_kind()==union_type|
+  { for (auto id_it=fields.wcbegin(); not fields.at_end(id_it);
+         ++id_it,++tp_it)
+      if (id_it->kind==0x1) // injector name present
+      {
+        type_expr fte = type_expr::function(tp_it->copy(),tabled_tp.copy());
+        record.add(id_it->name,type::wrap(std::move(fte),0),id_it->kind);
+          // injector type
+      }
+  }
+}
+
+@ When tests have been passed successfully, the code recovers from |group| the
+pairing of field identifier to (function) type, and constructs the corresponding
+projector or injector function~|tor|, adding it to the global overload table.
+(The main reason for the variable~|tor| is that assigning to it unifies the
+projector and injector types as a |shared_function|, which would have required
+static casts if a conditional expression were used.)
+
+Meanwhile we assemble a list |names| of field names that is finally passed to
+|type_expr::set_fields|. The list could have holes, which have no counterpart in
+|group|, which is why the loop below iterates over |fields| rather than over
+|group|. The mysterious cast in the constructor call for |names| avoids
+passing the |constexpr no_id@;| by reference (it builds a temporary
+instead); this avoids needing to allocate an actual static variable.
+
+@< Add to |global_overload_table| functions for |fields| with types
+   taken from |group|,... @>=
+
+{ assert(tp.raw_kind()==tuple_type or tp.raw_kind()==union_type);
+  bool is_tup = tp.raw_kind()==tuple_type;
+  @< Emit indentation corresponding to the input level to |*output_stream| @>
+@/*output_stream << "  with " @|
+   << (is_tup ? "pro" : "in");
+  auto group_it = group.begin(); unsigned int j=0;
+  std::vector<id_type> names(length(it->fields),id_type(type_binding::no_id));
+  for (auto id_it=fields.wcbegin(); not fields.at_end(id_it); ++id_it,++j)
+  {
+    *output_stream << (j==0 ? "jectors: " : ", ");
+    if (id_it->kind==0x1) // field selector present
+    { auto name = names[j] = id_it->name; assert(name==group_it->first);
+      shared_function tor; // function object to store
+      if (is_tup)
+        tor = std::make_shared<projector_value>(tp,j,name,loc);
+      else
+        tor = std::make_shared<injector_value>(tp,j,name,loc);
+      global_overload_table->add @|
+        (name,std::move(tor),std::move(group_it->second),loc);
+      *output_stream << main_hash_table->name_of(name);
+      ++group_it; // advance only here
+    }
+  }
+  *output_stream << '.' << std::endl;
+@/
+  type_expr::set_fields(type_nrs[i],std::move(names));
+
+}
+
+
+@*1 Printing information from internal tables.
+%
+It is useful to print type information, either for a single expression or
+for all identifiers in the table. The function |type_of_expr| prints the type
+of a single expression, without evaluating it. Since we allow arbitrary
+expressions, we must cater for the possibility of failing type analysis, in
+which case |analyse_types|, after catching it, will re-throw a
+|runtime_error|. By in fact catching and reporting any |std::exception|
+that may be thrown, we also ensure ourselves against unlikely events like
+|bad_alloc|.
+
+We can test easily if the expression is a single identifier; when this is the
+case we choose to give more complete information.
+
+@< Global function definitions @>=
+void type_of_expr(expr_p raw)
+{ expr_ptr saf(raw); const expr& e=*raw;
+  if (e.kind==applied_identifier)
+    @< Provide information about |e| as variable or function name, if any @>
+  else
+  { try
+    {@; expression_ptr p;
+      *output_stream << "Type: " << analyse_types(e,p,0) << std::endl;
+    }
+    catch (std::exception& err) {@; std::cerr<<err.what()<<std::endl; }
+  }
+}
+
+@ A name can be defined both as variable and as function, and we report either
+one of these whenever it is the case. If neither is the case we print an error
+message (but this does affect the variable |clean| in the |main| function that
+tracks whether any errors were encountered).
+
+@< Provide information about |e| as variable or function name, if any @>=
+{ const id_type id=e.identifier_variant;
+  auto* p = global_id_table->type_of(id);
+  auto* variants = global_overload_table->variants(id);
+  if (p==nullptr and variants==nullptr)
+    std::cerr << "No such variable or function: "
+              << main_hash_table->name_of(id) << '\n';
+  else
+  { if (p!=nullptr)
+      @< Report about the variable |id| whose type is |*p| @>
+    if (variants!=nullptr)
+      @< Report about the function definitions of |id| in |*variants| @>
+  }
+}
+
+@ When in use as a variable name, we report this for an identifier, calling it a
+constant instead if it cannot be assigned to, and reporting the location where
+this instance of the identifier was introduced.
+
+@< Report about the variable |id| whose type is |*p| @>=
+{ bool is_const;
+  const type& tp = *global_id_table->type_of(id,is_const);
+  *output_stream
+     << "Identifier '" << main_hash_table->name_of(id) << "': " @|
+     << (is_const ? "Constant" : "Variable")
+     << " of type " << tp @|
+     << " introduced " << *global_id_table->location_of(id) << '\n';
+}
+
+@ When present in the overload table, we report this use of an identifier,
+in a one line format in case of a unique definition, or with a format of one
+line for every instance when the name is actually overloaded. In all cases we
+list the location where this binding was introduced (which is usually the same as
+the location stored in the function value held in the table for this binding,
+but no always).
+
+@< Report about the function definitions of |id| in |*variants| @>=
+{
+  *output_stream
+     << "Identifier '" << main_hash_table->name_of(id)
+     << "' can be used as function, having type"
+     << (variants->size()==1 ? ":" : "s:\n");
+   for (auto it = variants->begin(); it!=variants->end(); ++it)
+     *output_stream
+        << "  "
+        << it->f_tp().arg_type << "->" << it->f_tp().result_type @|
+        << ", as defined " << it->location()
+        << '\n';
+}
+
+@ The function |type_of_type_name| identifies the place of definition, and
+prints the type bound to a given type identifier. As an extra service, field
+names are printed when they are associated to the defined type, in which case we
+choose a vertical layout for the type expression.
+
+@< Global function definitions @>=
+void type_of_type_name(id_type id)
+{ assert(global_id_table->type_of(id)!=nullptr);
+  // since unknown identifiers don't scan as type name
+  const type& tp = *global_id_table->type_of(id);
+  *output_stream << "Type" << (tp.degree()>0 ? " constructor" : "") @|
+                 << " defined " << *global_id_table->location_of(id) @|
+                 << ":\n  " << main_hash_table->name_of(id);
+  if (tp.degree()>0)
+  { *output_stream << "<A";
+    for (unsigned int i=1; i<tp.degree(); ++i)
+      *output_stream << ',' << static_cast<char>('A'+i);
+     *output_stream << '>';
+  }
+  *output_stream << " = ";
+@)
+  type_expr expansion = tp.top_expr().expanded();
+  if (tp.kind()!=tabled or type_expr::fields(tp.tabled_nr()).empty())
+  @/{@; *output_stream << expansion << '\n';
+      return;
+    }
+  const auto& fields = type_expr::fields(tp.tabled_nr());
+  auto f_it = fields.begin();
+  char sep = expansion.raw_kind()==tuple_type ? ',' : '|';
+  for (wtl_const_iterator it(expansion.tuple()); not it.at_end(); ++it,++f_it)
+    *output_stream << "\n  " << (f_it==fields.begin() ? '(' : sep)
+     << ' ' << *it << ' ' @|
+     << (*f_it == type_binding::no_id ? "." : main_hash_table->name_of(*f_it));
+  *output_stream << "\n  )\n";
+}
+
+@ The function |show_overloads| has a similar purpose to |type_of_expr|,
+namely to find out the types of overloaded symbols. It does not however need
+to call |analyse_types|, as it just has to look into the overload table and
+extract the types stored there.
+
+@< Global function definitions @>=
+void show_overloads(id_type id,std::ostream& out)
+{ const overload_table::variant_list* variants =
+   global_overload_table->variants(id);
+   out
+   << (variants==nullptr ? "No overloads for '" : "Overloaded instances of '")
+@| << main_hash_table->name_of(id) << '\'' << std::endl;
+  if (variants!=nullptr)
+    for (auto it = variants->begin(); it!=variants->end(); ++it)
+      out << "  "
+          << it->f_tp().arg_type << "->" << it->f_tp().result_type @|
+          << std::endl;
+}
+
+@ The function |show_ids| prints a table of all known identifiers, their
+types, and the stored values; it does this both for overloaded symbols and for
+global identifiers.
+
+@< Global function definitions @>=
+void show_ids(std::ostream& out)
+{ out << "Overloaded operators and functions:\n"
+      << *global_overload_table @|
+      << "Global variables:\n" << *global_id_table;
+}
+
+@ Here is a tiny bit of global state that can be set from the main program and
+inspected by any module that cares to (and that reads \.{global.h}).
+
+@< Declarations of global variables @>=
+extern int verbosity;
+
+@~By raising the value of |verbosity|, some trace of internal operations can
+be activated.
+
+@< Global variable definitions @>=
+int verbosity=0;
+
+@ We shall define a small template function |str| to help giving sensible
+error messages, by converting integers into strings that can be incorporated
+into thrown values. The reason for using a template is that without them it is
+hard to do a decent job for both signed and unsigned types.
+
+@< Includes needed in the header file @>=
+#include <string>
+#include <sstream>
+
+@~Using string streams, the definition of~|str| is trivial; in fact the
+overloads of the output operator ``|<<|'' determine the exact conversion. As a
+consequence of this implementation, the template function will in fact turn
+anything printable into a string. We do however provide an inline overload
+(which in general is better then a template specialisation) for the case of
+unsigned characters, since these need to be interpreted as (small) unsigned
+integers when |str| is called for them, rather than as themselves (the latter
+is never intended as it would be a silly use, which in addition would for
+instance interpret the value $0$ as a string-terminating null character).
+
+@< Template and inline function definitions @>=
+template <typename T>
+  std::string str(T n) @+{@; std::ostringstream s; s<<n; return s.str(); }
+inline std::string str(unsigned char c)
+  @+{@; return str(static_cast<unsigned int>(c)); }
+
+@* Basic types.
+%
+This section is devoted to primitive types that are not not very
+Atlas-specific, ranging from integers to matrices, and which often have some
+related functionality in the programming language (like conditional clauses
+for Boolean values), which functionality is defined in \.{axis.w}. There
+are also implicit conversions related to these types, and these will be
+defined in the current module.
+
+This section can be seen as in introduction to the large
+module \.{atlas-types.w}, in which many more types and functions are
+defined that provide Atlas-specific functionality. In fact the type for
+rational numbers defined here is based on the |RatWeight| class defined in the
+Atlas library, so we must include a header file (which defines the necessary
+class template) into ours.
+
+@<Includes needed in the header file @>=
+#include "arithmetic.h"
+#include "bigint.h"
+
+@*1 First primitive types: integer, rational, string and Boolean values.
+%
+We derive the first ``primitive'' value types. For integers and rational
+numbers we used to have implementation types |int| respectively |Rational|,
+but this was changed to |big_int| respectively |big_rat| so that at least
+using these fundamental types the user of the \axis. language will not be
+exposed to the phenomenon of integer overflow. Untypically for value types,
+the type |int_value| has many constructors, which are mostly from plain
+integral types. The reason is that wrapper functions must frequently convert
+plain integral values to |big_int| when constructing an |int_value| (often
+through many levels of forwarding from |std::make_shared<int_value>|), and it
+is vital that no implicit conversion between signed and unsigned types be
+inserted, as this could lead to erroneous |big_int| values; however the only
+way \Cpp\ provides to avoid such conversions is to provide an exact match for
+each type that is ever presented. Each of these constructors then either
+called the |big_int| constructor for |int|, or one of the factory functions
+|from_signed| or |from_unsigned| for wide integer types.
+
+Values are generally accessed through shared pointers to constant values, so for
+each type we give a |typedef| for a corresponding |const| instance of the
+|shared_ptr| template, using the \&{shared\_} prefix. In some cases we use a
+|shared_ptr| that is know to be unique (either because we just created it or
+because we made a test), so that we can safely modify the destination. For those
+occasions we also |typedef| a non-|const| instance of the |shared_ptr| template,
+using the \&{own\_} prefix.
+
+@< Type definitions @>=
+
+struct int_value : public value_base
+{ arithmetic::big_int val;
+@)
+  explicit int_value(int v) : val(v) @+ {}
+  explicit int_value(unsigned int v)
+    : val(big_int::from_unsigned(v)) @+ {}
+  explicit int_value(unsigned long v)
+    : val(big_int::from_unsigned(v)) @+ {}
+  explicit int_value(long long v)
+  : val(big_int::from_signed(v)) @+ {}
+  explicit int_value(unsigned long long v)
+    : val(big_int::from_unsigned(v)) @+ {}
+  explicit int_value(arithmetic::big_int&& v) : val(std::move(v)) @+ {}
+  void print(std::ostream& out) const @+{@; out << val; }
+  static const char* name() @+{@; return "integer"; }
+  int_value (const int_value& ) = default; // we use |get_own<int_value>|
+@)
+  int int_val () const @+{@; return val.int_val(); }
+  unsigned int uint_val () const @+{@; return val.uint_val(); }
+  std::int64_t long_val () const @+{@; return val.long_val(); }
+  std::uint64_t ulong_val () const @+{@; return val.ulong_val(); }
+};
+@)
+using shared_int = std::shared_ptr<const int_value>;
+using own_int = std::shared_ptr<int_value>;
+
+@  For |big_rat| there no multitude of constructors, as there is only one
+|RatNum| type (even though it is a template instance; no other instances are in
+use).
+
+@s Numer_t int
+@s RatNum int
+
+@< Type definitions @>=
+
+struct rat_value : public value_base
+{ big_rat val;
+@)
+  explicit rat_value(RatNum v) : val(v) @+ {}
+  explicit rat_value(big_rat&& r) : val(std::move(r)) @+{}
+@)
+  void print(std::ostream& out) const @+{@; out << val; }
+  static const char* name() @+{@; return "rational"; }
+  rat_value (const rat_value& ) = default; // we use |get_own<rat_value>|
+@)
+  big_int numerator() const & @+{@; return val.numerator(); }
+  big_int denominator() const & @+{@; return val.denominator(); }
+  big_int&& numerator() && @+{@; return std::move(val).numerator(); }
+  big_int&& denominator() && @+{@; return std::move(val).denominator(); }
+  RatNum rat_val() const @+{@; return val.rat_val(); }
+};
+@)
+using shared_rat = std::shared_ptr<const rat_value>;
+using own_rat = std::shared_ptr<rat_value>;
+
+@ Here are two more; this is quite repetitive.
+
+@< Type definitions @>=
+
+struct string_value : public value_base
+{ std::string val;
+@)
+  explicit string_value(const std::string& s) : val(s) @+ {}
+  explicit string_value(std::string&& s) : val(std::move(s)) @+ {}
+  template <typename I> string_value(I begin, I end) : val(begin,end) @+ {}
+  ~string_value()@+ {}
+  void print(std::ostream& out) const @+{@; out << '"' << val << '"'; }
+  static const char* name() @+{@; return "string"; }
+  string_value (const string_value& ) = default;
+    // we use |get_own<string_value>|
+};
+@)
+using shared_string = std::shared_ptr<const string_value>;
+using own_string = std::shared_ptr<string_value>;
+ @)
+
+struct bool_value : public value_base
+{ bool val;
+@)
+  explicit bool_value(bool v) : val(v) @+ {}
+  ~bool_value()@+ {}
+  void print(std::ostream& out) const @+{@; out << std::boolalpha << val; }
+  static const char* name() @+{@; return "Boolean"; }
+  bool_value (const bool_value& ) = delete;
+};
+@)
+using shared_bool = std::shared_ptr<const bool_value>;
+
+@ Since there are only two possible Boolean values, we can save storage
+allocation and deallocation by pre-allocating two constant objects, one of
+which will be shared every time a Boolean value is produced.
+
+@< Declarations of global variables @>=
+extern const shared_bool global_false, global_true;
+
+@~These shared pointers are of course initialised at their definition.
+@< Global variable definitions @>=
+const shared_bool global_false = std::make_shared<bool_value>(false);
+const shared_bool global_true  = std::make_shared<bool_value>(true);
+
+@~To get a copy of one of these two shared pointers one usually calls the
+following inline function.
+@< Template and inline function definitions @>=
+inline shared_bool whether(bool b)@+{@; return b ? global_true : global_false; }
+
+@*1 Primitive types for vectors and matrices.
+%
+The interpreter distinguishes its own types like \.{[int]} ``row of integer''
+from similar built-in types of the library, like \.{vec} ``vector'', which it
+will consider to be primitive types. In fact a value of type ``vector''
+represents an object of the Atlas type |int_Vector|, and similarly other
+primitive types will stand for other Atlas types. We prefer using a basic type
+name rather than something resembling the more mathematically charged
+equivalents like |Weight| for |int_Vector|, as that might be more confusing
+that helpful to users. In any case, the interpretation of the values is not at
+all fixed (vectors are used for coweights and (co)roots as well as for
+weights, and matrices could denote either a basis or an automorphism of a
+lattice). The header \.{Atlas.h} makes sure all types are pre-declared,
+but we need to see the actual type definitions in order to incorporated these
+values in ours.
+
+@< Includes needed in the header file @>=
+#include "Atlas.h" // type declarations that are ``common knowledge''
+#include "matrix.h" // to make |int_Vector| and |int_Matrix| complete types
+#include "ratvec.h" // to make |RatWeight| a complete type
+
+@ The definition of |vector_value| is much like the preceding ones. In its
+constructor, the argument is a reference to |std::vector<int>|, from which
+|int_Vector| is derived (without adding data members); since a constructor for
+the latter from the former is defined, we can do with constructors for
+|vector_value| from |std::vector<int>| references (|const| lvalue or rvalue). We
+also add a templated constructor from iterators, for the case where some kind of
+conversion (a different container type and/or integer width) is necessary.
+
+@< Type definitions @>=
+
+struct vector_value : public value_base
+{ int_Vector val;
+@)
+  explicit vector_value(const std::vector<int>& v) : val(v) @+ {}
+  explicit vector_value(std::vector<int>&& v) : val(std::move(v)) @+ {}
+  template <typename I> @+ vector_value(I begin, I end) : val(begin,end) @+ {}
+@)
+  virtual void print(std::ostream& out) const;
+  static const char* name() @+{@; return "vector"; }
+  vector_value (const vector_value& ) = default;
+    // we use |get_own<vector_value>|
+};
+@)
+using shared_vector = std::shared_ptr<const vector_value>;
+using own_vector = std::shared_ptr<vector_value>;
+
+@ Matrices follow the same pattern, but in this case there is no need for
+constructors that will accept a base type like |matrix::Matrix_base<int>|, so we
+specify |int_Matrix| for simplicity.
+
+@< Type definitions @>=
+struct matrix_value : public value_base
+{ int_Matrix val;
+@)
+  explicit matrix_value(const int_Matrix& v) : val(v) @+ {}
+  explicit matrix_value(int_Matrix&& v) : val(std::move(v)) @+ {}
+  template <typename I> @+ matrix_value(I begin, I end,unsigned int n_rows)
+    : val(begin,end,n_rows,tags::IteratorTag()) @+ {} // fill matrix by columns
+@)
+  virtual void print(std::ostream& out) const;
+  static const char* name() @+{@; return "matrix"; }
+  matrix_value (const matrix_value& ) = default;
+    // we use |get_own<matrix_value>|
+};
+@)
+using shared_matrix = std::shared_ptr<const matrix_value>;
+using own_matrix = std::shared_ptr<matrix_value>;
+
+@ Rational vectors are anther variation on the same theme. Note that the
+constructors ensure that rational vectors are always normalised.
+
+@s Denom_t int
+
+@< Type definitions @>=
+
+struct rational_vector_value : public value_base
+{ rat_Vector val;
+@)
+  explicit rational_vector_value(const rat_Vector& v)
+   : val(v) @+{@; val.normalize();}
+  explicit rational_vector_value(rat_Vector&& v)
+   : val(std::move(v)) @+{@; val.normalize();}
+  rational_vector_value(const int_Vector& v,arithmetic::Denom_t d)
+   : val(v,d) @+ {@; val.normalize(); }
+  rational_vector_value(matrix::Vector<arithmetic::Numer_t>&& v,
+                       arithmetic::Denom_t d)
+   : val(std::move(v),d) @+ {@; val.normalize(); }
+  template <typename I> @+
+     rational_vector_value(I begin, I end, arithmetic::Denom_t d)
+    : val(matrix::Vector<arithmetic::Numer_t>(begin,end),d)
+    @+ {@; val.normalize(); }
+@)
+  virtual void print(std::ostream& out) const;
+  static const char* name() @+{@; return "rational vector"; }
+  rational_vector_value (const rational_vector_value& ) = default;
+    // we use |get_own<rational_vector_value>|
+};
+@)
+using shared_rational_vector = std::shared_ptr<const rational_vector_value>;
+using own_rational_vector = std::shared_ptr<rational_vector_value>;
+@)
+
+@ To make a small but visible difference in printing between vectors and lists
+of integers, weights will be printed in equal width fields one longer than the
+minimum necessary. Rational vectors are a small veriation.
+
+@h<sstream>
+@h<iomanip>
+
+@< Global function def... @>=
+void vector_value::print(std::ostream& out) const
+{ auto l=val.size(); std::size_t w=0; std::vector<std::string> tmp(l);
+  for (std::size_t i=0; i<l; ++i)
+  { std::ostringstream s; s<<val[i]; tmp[i]=s.str();
+    if (tmp[i].length()>w) w=tmp[i].length();
+  }
+  if (l==0) out << "[ ]";
+  else
+  { w+=1; out << std::right << '[';
+    for (std::size_t i=0; i<l; ++i)
+      out << std::setw(w) << tmp[i] << (i<l-1 ? "," : " ]");
+  }
+}
+@)
+void rational_vector_value::print(std::ostream& out) const
+{ auto l=val.size(); std::size_t w=0; std::vector<std::string> tmp(l);
+  for (std::size_t i=0; i<l; ++i)
+  { std::ostringstream s; s<<val.numerator()[i]; tmp[i]=s.str();
+    if (tmp[i].length()>w) w=tmp[i].length();
+  }
+  if (l==0) out << "[ ]";
+  else
+  { w+=1; out << std::right << '[';
+    for (std::size_t i=0; i<l; ++i)
+      out << std::setw(w) << tmp[i] << (i<l-1 ? "," : " ]");
+  }
+  out << '/' << val.denominator();
+}
+
+@ For matrices we align columns, and print vertical bars along the sides.
+However if there are no entries, we print the dimensions of the matrix.
+
+@< Global function def... @>=
+void matrix_value::print(std::ostream& out) const
+{ auto k=val.n_rows(),l=val.n_columns();
+  if (k==0 or l==0)
+  {@;  out << "The " << k << 'x' << l << " matrix"; return; }
+  std::vector<std::size_t> w(l,0);
+  for (std::size_t i=0; i<k; ++i)
+    for (std::size_t j=0; j<l; ++j)
+    { std::ostringstream s; s<<val(i,j); auto len=s.str().length();
+      if (len>w[j]) w[j]=len;
+    }
+  out << std::endl << std::right;
+  for (std::size_t i=0; i<k; ++i)
+  { out << '|';
+    for (std::size_t j=0; j<l; ++j)
+      out << std::setw(w[j]+1) << val(i,j) << (j<l-1 ? ',' : ' ');
+    out << '|' << std::endl;
+  }
+}
+
+@*1 Implementing some conversion functions.
+%
+Here we define the set of implicit conversions that apply to types in the base
+language; there will also be implicit conversions added that concern
+Atlas-specific types, such as the conversion from (certain) strings to Lie
+types. The conversions defined here are from integers to rationals,
+from lists of rationals to rational vectors and back, from vectors to rational
+vectors, and from (nested) lists of integers to vectors and matrices and back.
+
+@ Here is the first conversion, from integers to rational numbers. It is not
+essential, as users could easily provide the denominator~$1$ explicitly, but
+it comes in quite handy, and illustrates a typical one-way implicit
+conversion. The implementation is easy, since |big_rat| has a constructor
+(marked |explicit|) from |big_int|.
+
+@< Local function def... @>=
+void rational_convert() // convert integer to rational (with denominator~1)
+{ own_int i = get_own<int_value>();
+  push_value(std::make_shared<rat_value>(big_rat(std::move(i->val))));
+}
+
+@ Let us try to proceed in an orderly fashion in presenting the numerous
+conversions related to the packed Atlas types \.{vec}, \.{mat} and \.{ratvec}
+(there is no packed \.{ratmat} type since no built-in function requires it to
+date; if some day it were to be added, it would require the addition of
+several more implicit conversions). We shall first present the ``internalising
+conversions'' that build such values from \axis. lists (these are the most
+essential ones), then ``externalising ones that do the inverse, and finally
+the ``rationalising conversions'' that in analogy to |rational_convert|
+introduce implicit denominators~$1$ for user convenience.
+
+We start with an auxiliary function |row_to_vector|, which constructs a new
+|int_Vector| from a |row_value| whose elements are integers. It will also be
+useful in other compilation units, so we declare it for export. We later also
+need a similar function |vector_to_row| that does the inverse; since the value
+it returns is usually destined to be handled as a |shared_value|, it already
+constructs a shared pointer to it, but in the form of an |own_row| that allows
+the caller to make modifications to it before releasing it to the world.
+
+@< Declarations of exported functions @>=
+int_Vector row_to_vector(const row_value& r);
+own_row vector_to_row(const int_Vector& v);
+
+@ The |row_to_vector| conversion uses the |int_val| method to force the
+|big_int| entries in a list of |int_value| objects into the limited |int| size
+of |int_Vector| entries; if too large values are found, the conversion will fail
+and a |runtime_error| thrown. Of course |vector_to_row| knows no such potential
+difficulties.
+
+There used to be a long commentary here to the effect that |row_to_vector|
+returns its result by value rather than by assignment to a reference parameter
+as Fokko used to do systematically, but that this is fine due to what is
+called return value optimisation that all modern compilers apply. This
+nowadays seems so obvious, and returning by (large) value ubiquitous in the
+Atlas software, that the comment appeared dated and out of places, so it was
+removed. Nonetheless we mark the fact that this is the place where the change
+of idiom was first applied within the Atlas software.
+
+@< Global function def... @>=
+int_Vector row_to_vector(const row_value& r)
+{ int_Vector result(r.val.size());
+  for(std::size_t i=0; i<r.val.size(); ++i)
+    result[i]=force<int_value>(r.val[i].get())->int_val();
+  return result;
+}
+@)
+own_row vector_to_row(const int_Vector& v)
+{ own_row result = std::make_shared<row_value>(v.size());
+  for(std::size_t i=0; i<v.size(); ++i)
+    result->val[i]=std::make_shared<int_value>(v[i]);
+  return result;
+}
+
+@ Now we get to the actual conversion from rows of integers to vectors.
+
+@< Local function def... @>=
+void intlist_vector_convert()
+{ shared_row r = get<row_value>();
+  push_value(std::make_shared<vector_value>(row_to_vector(*r)));
+}
+
+@ Another internalising conversion is that of rows of rationals to rational
+vectors. Here there is more work to do, as one needs to find a common
+denominator~|d|, and then re-scale each numerator to express the fraction on
+this denominator.
+
+@< Local function def... @>=
+
+void ratlist_ratvec_convert() // convert list of rationals to rational vector
+{ shared_row r = get<row_value>();
+  big_int d(1);
+  Ratvec_Numer_t numer(r->val.size());
+    // type |Ratvec_Numer_t| is needed near end
+  std::vector<arithmetic::Denom_t> denom(r->val.size());
+  for (std::size_t i=0; i<r->val.size(); ++i)
+  // collect numerators and denominators separately
+  { const auto* frac = force<rat_value>(r->val[i].get());
+    numer[i]=frac->numerator().long_val();
+    denom[i]=frac->denominator().ulong_val();
+    d=lcm(d,frac->denominator()); // compute least common denominator safely
+  }
+  for (std::size_t i=0; i<r->val.size(); ++i)
+  { big_int n =
+      big_int::from_signed(numer[i])*(d/big_int::from_unsigned(denom[i]));
+    numer[i] = n.long_val();
+    // adjust numerators to common denominator, if it fits
+  }
+
+  push_value(std::make_shared<rational_vector_value>
+     (std::move(numer),d.ulong_val()));
+}
+
+@ As first externalising conversion involving vectors, we define the function
+|vector_intlist_convert| using |vector_to_row| to do the hard work.
+
+@< Local function def... @>=
+void vector_intlist_convert()
+{@; shared_vector v = get<vector_value>();
+  push_value(vector_to_row(v->val));
+}
+
+@ A final purely externalising function at the vector level is
+|ratvec_ratlist_convert|, which is inverse to |ratlist_ratvec_convert|.
+Although the rational numbers we construct are likely to not be normalised, we
+need not worry about it since the |big_rat| constructor from |RatNum| will
+call |normalize| before building and storing its numerator and denominator.
+
+@< Local function def... @>=
+
+void ratvec_ratlist_convert() // convert rational vector to list of rationals
+{ shared_rational_vector rv = get<rational_vector_value>();
+  own_row result = std::make_shared<row_value>(rv->val.size());
+  for (std::size_t i=0; i<rv->val.size(); ++i)
+    result->val[i] = std::make_shared<rat_value>@|
+      (RatNum(rv->val.numerator()[i],rv->val.denominator()));
+  push_value(std::move(result));
+}
+
+@ We now come to the rationalising conversions at the vector level. We have
+two ``integral'' types \.{vec} and \.{[int]}, and two ``rational''
+types  \.{ratvec} and \.{[rat]}, which gives us $2\times2=4$ such conversions.
+
+@< Local function def... @>=
+rat_Vector introw_to_ratvec(const row_value& r)
+{ Ratvec_Numer_t numer(r.val.size());
+  for(std::size_t i=0; i<r.val.size(); ++i)
+    numer[i]=force<int_value>(r.val[i].get())->val.long_val();
+  return rat_Vector(numer,1);
+}
+own_row vector_to_ratrow(const int_Vector& v)
+{ own_row result = std::make_shared<row_value>(v.size());
+  for(std::size_t i=0; i<v.size(); ++i)
+    result->val[i]=std::make_shared<rat_value>(big_rat(big_int(v[i])));
+  return result;
+}
+own_row introw_to_ratrow(own_row r)
+{ for (auto it=r->val.begin(); it!=r->val.end(); ++it)
+    *it=std::make_shared<rat_value>@|
+       (big_rat(std::move(force<int_value>(it->get())->val)));
+  return r;
+}
+@)
+void vector_ratvec_convert() // convert vector to rational vector
+{ shared_vector v = get<vector_value>();
+  push_value(std::make_shared<rational_vector_value> (rat_Vector(v->val,1)));
+}
+
+void intlist_ratvec_convert()
+{ shared_row r = get<row_value>();
+  push_value(std::make_shared<rational_vector_value>
+    (introw_to_ratvec(*r)));
+}
+
+void vector_ratlist_convert()
+{@; shared_vector v = get<vector_value>();
+  push_value(vector_to_ratrow(v->val));
+}
+
+void intlist_ratlist_convert()
+{@; push_value(introw_to_ratrow(get_own<row_value>()));
+}
+
+@ We now come to the conversions that involve matrices. Among these, the main
+internalising conversion is |veclist_matrix_convert|, which interprets a list
+of vectors as the columns of a matrix which it returns.
+
+While initially this function was written in a tolerant style that would
+accept varying column lengths, zero-filling the shorter ones to the maximal
+column size present, this attitude proved to induce subtle programming errors.
+Notably when an empty list of vectors was implicitly converted to a matrix,
+the result had column length of~$0$, while in the context that number was
+probably intended to be the size of vectors that were candidate for being in
+the list. One cannot blame the language for not guessing this number in the
+absence of any vectors, but it was deemed safer to simply forbid this
+particular case as an \emph{implicit} conversion, and instead provide the user
+with a means to be explicit about the number of rows desired (even in the
+absence of columns). Therefore the code below will signal an error when no
+vectors at all are present. The old functionality of automatically adapting
+the size to largest vector present is more or less retained in the function
+|stack_rows| to be defined later (but combines the vectors as rows rather than
+as columns).
+
+@< Local function def... @>=
+void veclist_matrix_convert()
+{ shared_row r = get<row_value>();
+  if (r->val.size()==0)
+    throw runtime_error
+      ("Implicit conversion to matrix for an empty set of vectors");
+@.Implicit conversion to matrix...@>
+  auto n = force<vector_value>(r->val[0].get())->val.size();
+  own_matrix m = std::make_shared<matrix_value>(int_Matrix(n,r->val.size()));
+  for(std::size_t j=0; j<r->val.size(); ++j)
+  { const int_Vector& col = force<vector_value>(r->val[j].get())->val;
+    if (col.size()!=n)
+      throw runtime_error("Vector sizes differ in conversion to matrix");
+@.Vector sizes differ in conversion@>
+    m->val.set_column(j,col);
+  }
+  push_value(std::move(m));
+}
+
+@ Another internalising conversion to matrix is | intlistlist_matrix_convert|,
+which will directly convert a row of rows of integers. It is much less
+frequently used then the previous one, but occasionally can be handy. Again we
+give it prudent characteristics.
+
+@< Local function def... @>=
+void intlistlist_matrix_convert()
+{ shared_row r = get<row_value>();
+  if (r->val.size()==0)
+    throw runtime_error("Cannot convert empty list of lists to matrix");
+@.Cannot convert empty list of lists@>
+  auto n = force<row_value>(r->val[0].get())->val.size();
+  own_matrix m = std::make_shared<matrix_value>(int_Matrix(n,r->val.size()));
+  for(std::size_t j=0; j<r->val.size(); ++j)
+  { int_Vector col = row_to_vector(*force<row_value>(r->val[j].get()));
+    if (col.size()!=n)
+      throw runtime_error("List sizes differ in conversion to matrix");
+@.List sizes differ in conversion@>
+    m->val.set_column(j,col);
+  }
+  push_value(std::move(m));
+}
+
+@ To complete the internalising conversions, we allow a row of rows of
+integers to be converted to a row of vectors, without forming an intermediate
+matrix. It is not a very essential conversion, and we do not pretend that
+whenever a type conversion is implicitly possible the same will hold for the
+corresponding row-of types, but it does seem reasonable to have the set of
+implicit conversion closed under composition (here \.{[[int]]} to \.{mat}
+to \.{[vec]}). As for the implementation, we can reuse the same |row_value|
+provided we get unique access to it as our |own_row|.
+
+@< Local function def... @>=
+
+void intlistlist_veclist_convert()
+{ own_row r = get_own<row_value>();
+  for (auto it=r->val.begin(); it!=r->val.end(); ++it)
+    *it = std::make_shared<vector_value> @|
+      (row_to_vector(*force<row_value>(it->get())));
+  push_value(std::move(r));
+}
+
+@ There are two corresponding externalising conversions for matrices, and also a
+conversion applying |vector_to_row| on each element of a list of vectors. Since
+they are very similar to the conversion of a matrix into a list of vectors, we
+also define wrappers for built-in functions |rows| and |columns| here; the
+second in fact does the same as the implicit conversion and is indeed called by
+it.
+
+@< Local function def... @>=
+
+void rows_wrapper(eval_level l)
+{ shared_matrix m=get<matrix_value>();
+  if (l==eval_level::no_value)
+    return;
+  own_row result = std::make_shared<row_value>(m->val.n_rows());
+  for(unsigned int i=0; i<m->val.n_rows(); ++i)
+    result->val[i]=std::make_shared<vector_value>(m->val.row(i));
+  push_value(std::move(result));
+}
+void columns_wrapper(eval_level l)
+{ shared_matrix m=get<matrix_value>();
+  if (l==eval_level::no_value)
+    return;
+  own_row result = std::make_shared<row_value>(m->val.n_columns());
+  for(unsigned int j=0; j<m->val.n_columns(); ++j)
+    result->val[j]=std::make_shared<vector_value>(m->val.column(j));
+  push_value(std::move(result));
+}
+void matrix_veclist_convert()
+{ columns_wrapper(eval_level::single_value); }
+@)
+void matrix_intlistlist_convert()
+{ shared_matrix m=get<matrix_value>();
+  own_row result = std::make_shared<row_value>(m->val.n_columns());
+  for(unsigned int j=0; j<m->val.n_columns(); ++j)
+    result->val[j]= vector_to_row(m->val.column(j));
+  push_value(std::move(result));
+}
+@)
+void veclist_intlistlist_convert()
+{ own_row r=get_own<row_value>();
+  for (auto it=r->val.begin(); it!=r->val.end(); ++it)
+    *it = vector_to_row(force<vector_value>(it->get())->val);
+  push_value(std::move(r));
+}
+
+@ We now come to the rationalising conversions at the matrix level. We have
+three ``integral'' types \.{mat}, \.{[vec]}, and \.{[[int]]} and two
+``rational'' types \.{[ratvec]} and \.{[[rat]]}, which gives us $3\times2=6$
+such conversions.
+
+@< Local function def... @>=
+
+void matrix_ratveclist_convert()
+{ shared_matrix m=get<matrix_value>();
+  own_row result = std::make_shared<row_value>(m->val.n_columns());
+  for(unsigned int j=0; j<m->val.n_columns(); ++j)
+    result->val[j]=std::make_shared<rational_vector_value> @|
+      (rat_Vector(m->val.column(j),1));
+  push_value(std::move(result));
+}
+
+void matrix_ratlistlist_convert()
+{ shared_matrix m=get<matrix_value>();
+  own_row result = std::make_shared<row_value>(m->val.n_columns());
+  for(unsigned int j=0; j<m->val.n_columns(); ++j)
+  result->val[j]= vector_to_ratrow(m->val.column(j));
+  push_value(std::move(result));
+}
+@)
+void veclist_ratveclist_convert()
+{ own_row r=get_own<row_value>();
+  for (auto it=r->val.begin(); it!=r->val.end(); ++it)
+    *it=std::make_shared<rational_vector_value> @|
+      (rat_Vector(force<vector_value>(it->get())->val,1));
+  push_value(std::move(r));
+}
+
+void veclist_ratlistlist_convert()
+{ own_row r=get_own<row_value>();
+  for (auto it=r->val.begin(); it!=r->val.end(); ++it)
+    *it = vector_to_ratrow(force<vector_value>(it->get())->val);
+  push_value(std::move(r));
+}
+
+@)
+void intlistlist_ratveclist_convert()
+{ own_row r=get_own<row_value>();
+  for (auto it=r->val.begin(); it!=r->val.end(); ++it)
+    *it=std::make_shared<rational_vector_value> @|
+       (introw_to_ratvec(*force<row_value>(it->get())));
+  push_value(std::move(r));
+}
+
+void intlistlist_ratlistlist_convert()
+{ own_row r=get_own<row_value>();
+  for (auto it=r->val.begin(); it!=r->val.end(); ++it)
+    *it=introw_to_ratrow(force_own<row_value>(std::move(*it)));
+  push_value(std::move(r));
+}
+
+
+@ All that remains is to initialise the |coerce_table|.
+@< Initialise evaluator @>=
+coercion(int_type,rat_type, "QI", rational_convert); @/
+coercion(row_of_int_type, vec_type, "V[I]", intlist_vector_convert); @/
+coercion(row_of_rat_type,ratvec_type, "Qv[Q]", ratlist_ratvec_convert); @/
+coercion(vec_type,row_of_int_type, "[I]V", vector_intlist_convert); @/
+coercion(ratvec_type,row_of_rat_type, "[Q]Qv", ratvec_ratlist_convert); @/
+coercion(vec_type,ratvec_type,"QvV", vector_ratvec_convert); @/
+coercion(row_of_int_type,ratvec_type,"Qv[I]", intlist_ratvec_convert); @/
+coercion(vec_type,row_of_rat_type,"[Q]V", vector_ratlist_convert); @/
+coercion(row_of_int_type,row_of_rat_type,"[Q][I]", intlist_ratlist_convert);
+@)
+coercion(row_of_vec_type,mat_type, "M[V]", veclist_matrix_convert); @/
+coercion(row_row_of_int_type,mat_type, "M[[I]]", intlistlist_matrix_convert); @/
+coercion(row_row_of_int_type,row_of_vec_type, "[V][[I]]",
+  intlistlist_veclist_convert); @/
+coercion(mat_type,row_of_vec_type, "[V]M", matrix_veclist_convert); @/
+coercion(mat_type,row_row_of_int_type, "[[I]]M", matrix_intlistlist_convert); @/
+coercion(row_of_vec_type,row_row_of_int_type, "[[I]][V]",
+  veclist_intlistlist_convert); @/
+coercion(mat_type,row_of_ratvec_type, "[Qv]M", matrix_ratveclist_convert); @/
+coercion(mat_type,row_row_of_rat_type, "[[Q]]M", matrix_ratlistlist_convert); @/
+coercion(row_of_vec_type,row_of_ratvec_type, "[Qv][V]",
+   veclist_ratveclist_convert); @/
+coercion(row_of_vec_type,row_row_of_rat_type, "[[Q]][V]",
+   veclist_ratlistlist_convert); @/
+coercion(row_row_of_int_type,row_of_ratvec_type, "[Qv][[I]]",
+   intlistlist_ratveclist_convert); @/
+coercion(row_row_of_int_type,row_row_of_rat_type, "[[Q]][[I]]",
+    intlistlist_ratlistlist_convert);
+
+@* Wrapper functions.
+%
+We now come to defining handling of wrapper functions, the functions that
+provide the interface between the user programming language (which can invoke
+calls to them) and the library of \Cpp\ functions that provide their basic
+functionality; they adapt the calling convention (transfer of values) and
+perform checks to ensure the preconditions of the library functions are met.
+
+Handling of wrapper functions themselves, which are accessed through a table, is
+done through values of the function pointer type |wrapper_function| defined
+in \.{axis-types.w}. Arguments and results of wrapper functions are passed as
+|shared_value| on the runtime stack, and are not mentioned in the type
+|wrapper_function|. Functions accessed through these pointers do however take a
+|eval_level| parameter, which serves the same function as for the |evaluate|
+method of (classes derived from |expression_base|, as described in \.{axis.w},
+namely to inform the wrapper whether in the run time situation a result value is
+needed at all, and if so whether it should be expanded on the |execution_stack|
+in case it is a tuple.
+
+The following functions will greatly facilitate the later repetitive task of
+installing wrapper functions into the |global_overload_table|. The basic form
+|install_function| returns a shared pointer to constant |builtin| after
+installing it; while usually ignored, this return value can be used by the
+caller to associate this built-in to other ones; a typical example of this is
+the successor function that can be called in certain cases where the function
+found in the |global_overload_table| is actually integer addition. The form
+|install_special_function| does give non-|const| access to the object just
+created, which allows subsequently associating one or more other built-in
+functions in this manner. The function |install_folding_function| is a variation
+of |install_special_function| that already installs a constant-folding compile
+time adaptation.
+
+@< Declarations of exported functions @>=
+shared_builtin install_function
+ (wrapper_function f,@|const char*name, const char* type_string,
+  unsigned char hunger=0);
+std::shared_ptr<special_builtin> install_special_function
+ (wrapper_function f,@|const char*name, const char* type_string,
+  unsigned char hunger=0);
+std::shared_ptr<special_builtin> install_folding_function
+ (wrapper_function f,@|const char*name, const char* type_string,
+  unsigned char hunger=0);
+
+@ We start by determining the specified type, and building a print-name for
+the function that appends the argument type (since there will potentially be
+many instances with the same name). Then we construct a |builtin_value| object
+and finally add it to |global_overload_table|. Although currently there are no
+built-in functions with void argument type, we make a provision for them in
+case they would be needed later; notably they should not be overloaded and are
+added to |global_id_table| instead.
+
+@< Global function def... @>=
+shared_builtin install_function
+ (wrapper_function f,const char*name, const char* type_string,
+  unsigned char hunger)
+{ unsigned int var_count;
+  type_expr te = mk_type_expr(type_string,var_count);
+  type tp = type::wrap(te,0); // no fixed type variables at outer scope
+  assert(tp.degree()==var_count);
+  std::ostringstream print_name; print_name<<name;
+  if (tp.top_kind()!=function_type)
+    throw logic_error
+     ("Built-in with non-function type: "+print_name.str());
+  print_name << '@@' << tp.arg_type();
+@/
+  @< If the function type |tp| matches arguments of any type,
+     install a |shared_variadic_builtin| and return a null pointer @>
+  auto val = std::make_shared<builtin>(f,print_name.str(),hunger);
+  global_overload_table->add
+    (main_hash_table->match_literal(name),val,std::move(tp),source_location());
+  return val;
+}
+
+@ A few functions like |print| take arguments of any type (whence they are
+called variadic), and therefore are stored in values of type
+|builtin_value<true>|, which is distinct from |builtin| which abbreviates
+|builtin_value<false>|; the difference in type leads to slightly different
+evaluation methods when calls of these function values are built. Both types
+derive from |function_base| so that (shared) pointers to them can be stored in
+|overload_data| inside an |overload_table|. We can recognise these few functions
+by the fact that in their type the argument part is just a type variable.
+
+However |install_function| returns |shared_builtin|, not the corresponding type
+|shared_variadic_builtin|, so that we cannot handle the variadic functions in
+the same way as the ordinary ones. But we take advantage of the fact that the
+return value of |install_function| is only rarely needed, and never for variadic
+functions: we simply return a null pointer of the required type in case of
+variadic functions. The code below therefore tests the mentioned condition, and
+in case of variadic functions, installs a pointer of type
+|variadic_builtin_call| in the overload table, followed by then returning such a
+null pointer.
+
+@< If the function type |tp| matches arguments of any type... @>=
+if (tp.func()->arg_type.top_kind()==variable_type)
+{
+  shared_variadic_builtin val =
+    std::make_shared<builtin_value<true> >(f,print_name.str(),hunger);
+  global_overload_table->add
+    (main_hash_table->match_literal(name),val,std::move(tp),source_location());
+  return { nullptr };
+}
+
+@ Here is a variation that installs a function whose |builtin_value| stored is
+actually an object of derived class |special_builtin|, whose |build_call| can be
+tweaked to first start to try some optimisations. Since these involve other
+built-in functions that are not available at definition here, we just install
+the function without tweaks here, but return a shared pointer to the
+|special_builtin| object, for which the caller can then call
+|tests.emplace_back| to add a testing function that will modify the compile
+time behaviour of the (already installed) built-in function.
+
+@< Global function def... @>=
+std::shared_ptr<special_builtin> install_special_function
+ (wrapper_function f,const char*name, const char* type_string,
+  unsigned char hunger)
+{ unsigned int var_count;
+  type_expr te = mk_type_expr(type_string,var_count);
+  type tp = type::wrap(te,0); // no fixed type variables at outer scope
+  assert(tp.degree()==var_count);
+  std::ostringstream print_name; print_name<<name;
+  if (tp.kind()!=function_type)
+    throw logic_error
+     ("Built-in with non-function type: "+print_name.str());
+  print_name << '@@' << tp.func()->arg_type;
+  auto val = std::make_shared<special_builtin>(f,print_name.str(),hunger);
+  global_overload_table->add
+    (main_hash_table->match_literal(name),val,std::move(tp),source_location());
+  return val;
+}
+
+@*1 Integer functions.
+%
+Our first built-in functions implement integer arithmetic. Arithmetic
+operators are implemented by wrapper functions with two integer arguments.
+Since arguments to built-in functions are evaluated with |level| parameter
+|multi_value|, two separate values will be present on the stack. These are
+pulled from the stack in reverse order, which is important for the
+non-commutative operations like~`|-|'.
+
+We try to avoid allocation of a new object for the result if the storage of an
+argument can be used for this. Our mechanism is to call |get_own|, which claims
+the storage without duplication if it can (namely if |unique| holds). We could
+do this for either argument, but don't wish to spend time in each addition
+trying to figure out which one is best (it would be preferable, if both options
+are available, to use the one with currently the larger storage), so instead we
+just place our bets on the first argument; this will cause repeated re-use of
+the same storage when repeatedly adding or subtraction of integers into the same
+variable if the most usual form $n:=n+a$, or its abbreviation $n\mathrel+:=a$,
+is used. This is due to the optimisation we put in place to make such variable
+detach from its value before the operation is called (and whose second argument
+was evaluated before its first, so before the detachment). For multiplication
+neither of the arguments can be clobbered into, so we don't even try to
+|get_own| here.
+
+@< Local function definitions @>=
+
+void plus_wrapper(eval_level l)
+{ shared_int j=get<int_value>();
+  own_int i=get_own<int_value>();
+  if (l==eval_level::no_value)
+    return;
+  i->val += j->val;
+  push_value(std::move(i));
+}
+@)
+void minus_wrapper(eval_level l)
+{ shared_int j=get<int_value>();
+  own_int i=get_own<int_value>();
+  if (l==eval_level::no_value)
+    return;
+  i->val -= j->val;
+  push_value(std::move(i));
+}
+@)
+void times_wrapper(eval_level l)
+{ shared_int j=get<int_value>();
+  shared_int i=get<int_value>();
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<int_value>(i->val*j->val));
+}
+
+@ Euclidean division operation will be bound to the operator ``$\backslash$'',
+because ``$/$'' is used to form rational numbers. Unlike the integer division
+|operator/| and modulo |operator%|
+%
+built into \Cpp, which are traditionally broken for negative dividends, these
+operations on |arithmetic::big_int| do the right thing (through the method
+|big_int::reduce_mod|), namely round the quotient systematically, independently
+of the sign of the dividend; the direction is always downwards for positive
+divisors. For handling negative divisors, it is not so obvious what is the best
+way to define the result; the way chosen is such that changing signs of both
+dividend and divisor results in the same quotient and the opposite remainder, so
+that rounding is upwards for negative divisors: for division by $-b<0$ the
+remainder~$r$ is in the range $-b<r\leq0$. This means that if one wants a
+version of Euclidean division by $b>0$ with systematic \emph{upwards} rounding
+of the quotient, one should divide by $-b$ and negate the quotient, keeping the
+(non-positive) remainder. (An alternative convention would have been to always
+use downwards rounding of the quotient, and therefore always give a non-negative
+remainder; in that case upwards rounding could be simulated by negating the
+divisor, and in the result negate both quotient and remainder.)
+
+Like for additive functions, we try to get unique ownership of the first
+argument (the dividend), which as its name suggests |/=| replaces by the
+quotient. It is not really an in-place operation, since the method
+|big_int::reduce_mod| it uses initially replaces the dividend by the remainder,
+which |/=| then discards by moving the quotient into the |big_int| object; that
+implementation detail however is if no concern to us here.
+
+@< Local function definitions @>=
+void divide_wrapper(eval_level l)
+{ shared_int j=get<int_value>();
+  own_int i=get_own<int_value>();
+  if (j->val.is_zero())
+    throw runtime_error("Division by zero");
+  if (l==eval_level::no_value)
+    return;
+  i->val /= j->val;
+  push_value(std::move(i));
+}
+
+@ We also define a remainder operation |modulo|, a combined
+quotient-and-remainder operation |divmod|. For these we can again re-use storage
+of the dividend. For the second case we directly use the non-|const| method
+|big_int::reduce_mod|. Note that that it untypically does not return the
+|big_int| object |i->val| that it was called for, originally holding the
+dividend and which it modified to become the remainder, but rather the quotient
+of the division operation.
+
+@< Local function definitions @>=
+void modulo_wrapper(eval_level l)
+{ shared_int j=get<int_value>();
+  own_int i=get_own<int_value>();
+  if (j->val.is_zero())
+    throw runtime_error("Modulo zero");
+  if (l==eval_level::no_value)
+    return;
+  i->val %= j->val;
+  push_value(std::move(i));
+}
+@)
+void divmod_wrapper(eval_level l)
+{ shared_int j=get<int_value>();
+  own_int i=get_own<int_value>();
+  if (j->val.is_zero())
+    throw runtime_error("DivMod by zero");
+  if (l==eval_level::no_value)
+    return;
+  push_value(std::make_shared<int_value>(i->val.reduce_mod(j->val)));
+  // quotient
+  push_value(std::move(i)); // remainder
+  if (l==eval_level::single_value)
+    wrap_tuple<2>();
+}
+@ Here are a few unary operations. We start with successor and predecessor,
+which are intended to be inserted mostly by rewriting during parsing, with $x+1$
+and $x-1$ respectively becoming |succ(x)| and |pred(x)|.
+
+@< Local function definitions @>=
+void successor_wrapper(eval_level l)
+{ own_int i=get_own<int_value>();
+  if (l!=eval_level::no_value)
+    ++i->val, push_value(std::move(i));
+}
+@)
+void predecessor_wrapper(eval_level l)
+{ own_int i=get_own<int_value>();
+  if (l!=eval_level::no_value)
+    --i->val, push_value(std::move(i));
+}
+@)
+void unary_minus_wrapper(eval_level l)
+{ own_int i=get_own<int_value>();
+  if (l!=eval_level::no_value)
+    i->val.negate(), push_value(std::move(i));
+}
+@)
+void bitwise_complement_wrapper(eval_level l)
+{ own_int i=get_own<int_value>();
+  if (l!=eval_level::no_value)
+    i->val.complement(), push_value(std::move(i));
+}
+
+@ Powers of integers are defined whenever the result is integer. They get a bit
+more attention than other arithmetic operations, since we want, in the cases
+where the base is $0$, $1$ or~$-1$, to avoid any error for exponents that are
+(otherwise) too large for |big_int::power| to handle.
+
+@< Local function definitions @>=
+
+void power_wrapper(eval_level l)
+{ static shared_int one = std::make_shared<int_value>(1);
+@)
+  shared_int exponent = get<int_value>();
+  shared_int b=get<int_value>();
+  bool unit_base = b->val.size()==1 and std::abs(b->int_val())==1;
+  if (not unit_base)
+  { if (exponent->val.is_negative())
+      throw runtime_error("Negative power of integer");
+    else if (not b->val.is_zero() and exponent->val.size()>1)
+      throw runtime_error("Exponent too large in power of integer");
+  }
+  if (l==eval_level::no_value)
+    return;
+@)
+  if (unit_base)
+    push_value (exponent->val.is_odd() ? b : one);
+  else if (b->val.is_zero())
+    push_value(exponent->val.is_zero() ? one : b);
+  else
+    push_value(std::make_shared<int_value>(b->val.power(exponent->uint_val())));
+}
+
+@ Here is the first of the bitwise operations on integers.
+@< Local function definitions @>=
+void and_wrapper(eval_level l)
+{ shared_int j=get<int_value>();
+  own_int i=get_own<int_value>();
+  if (l==eval_level::no_value)
+    return;
+  i->val &= j->val;
+  push_value(std::move(i));
+}
+void or_wrapper(eval_level l)
+{ shared_int j=get<int_value>();
+  own_int i=get_own<int_value>();
+  if (l==eval_level::no_value)
+    return;
+  i->val |= j->val;
+  push_value(std::move(i));
+}
+void xor_wrapper(eval_level l)
+{ shared_int j=get<int_value>();
+  own_int i=get_own<int_value>();
+  if (l==eval_level::no_value)
+    return;
+  i->val ^= j->val;
+  push_value(std::move(i));
+}
+void and_not_wrapper(eval_level l)
+{ shared_int j=get<int_value>();
+  own_int i=get_own<int_value>();
+  if (l==eval_level::no_value)
+    return;
+  i->val.bitwise_subtract(j->val);
+  push_value(std::move(i));
+}
+
+@ And here are some more bitwise operations on integers.
+@< Local function definitions @>=
+void bitwise_subset_wrapper(eval_level l)
+{ shared_int j=get<int_value>();
+  shared_int i=get<int_value>();
+  if (l==eval_level::no_value)
+    return;
+  push_value(whether(i->val.bitwise_subset(j->val)));
+}
+void nth_set_bit_wrapper(eval_level l)
+{ auto n=get<int_value>()->long_val();
+  shared_int i=get<int_value>();
+  if (l==eval_level::no_value)
+    return;
+  if (n>=0)
+    push_value(std::make_shared<int_value>(i->val.index_of_set_bit(n)));
+  else // complement |n| and look for |n|-th cleared bit
+  {
+    big_int v=i->val; v.complement();
+    push_value(std::make_shared<int_value>(v.index_of_set_bit(-1-n)));
+  }
+}
+void bit_length_wrapper(eval_level l)
+{ shared_int i=get<int_value>();
+  if (l==eval_level::no_value)
+    return;
+  push_value(std::make_shared<int_value>(i->val.bit_length()));
+}
+
+@ Although a set of natural numbers represented as a list could be converted
+to an integer representing it as a bitset using repeated use of exponentiation
+of the base~$2$ and the bitwise |OR| operations, it is more efficient to have a
+built-in function for this. Since numbers exceeding $2^{31}$ in the list would
+certainly cause trouble, the function below takes a |vector_value| as argument.
+
+@h "bitmap.h"
+@< Local function definitions @>=
+void vec_to_bitset_wrapper(eval_level l)
+{ shared_vector v=get<vector_value>();
+  unsigned cap=0;
+  for (const auto n : v->val)
+    if (n<0)
+      throw runtime_error("Negative entry in conversion to bitset");
+    else if (static_cast<unsigned>(n)>=cap)
+      cap = n+1; // ensure sufficient capacity to store |n| in bitset
+  if (l==eval_level::no_value)
+    return;
+@)
+  BitMap b(cap,v->val.begin(),v->val.end());
+  push_value(std::make_shared<int_value>(big_int(b)));
+}
+
+@ While installing the integer functions, we shall make some automatic rewriting
+be performed using the |special_builtin| magic. The data stored in those objects
+involve a pointer to a function that recognises and possibly rewrites converted
+argument expressions to these built-in functions, and a built-in function and
+source location that can be used in the rewriting process.
+
+While these functions are usually very specific to the built-in function whose
+call we are compiling, this is not so for our first such function,
+|fold_constant|, which can be used with almost any built-in function to ensure
+that it is evaluated at compile time in case the argument is a denotation; our
+first instance of thus will ensure that an expressions like |-7| is treated as
+the denotation of a negative number, rather than invoke the runtime negation of
+a positive number. In calling this function, the argument |f| should refer to
+the built-in whose call we are handling itself. The actual work is performed by
+|do_builtin| defined in \.{axis.w}.
+
+@< Local function definitions @>=
+expression_ptr fold_constant
+  (expression_ptr& args,const shared_builtin& f,const source_location& loc)
+{
+  if (do_builtin(args,f->val,loc))
+    return std::move(args); // |args| was modified by |do_builtin|
+  return nullptr;
+}
+
+@ Since the argument |f| of |fold_constant| should coincide with the special
+function into which this function is installed, we define a function that will
+make that call after invoking |install_special_function|.
+
+@< Global function def... @>=
+std::shared_ptr<special_builtin> install_folding_function
+ (wrapper_function f,const char*name, const char* type_string,
+  unsigned char hunger)
+{ std::shared_ptr<special_builtin> p =
+    install_special_function(f,name,type_string,hunger);
+  p->tests.emplace_back(fold_constant,p);
+  return p;
+}
+
+
+@ Here we define some more functions to be used for the installation of special
+integer functions. Using dynamic casts on |expression| pointer values to test
+for certain argument patterns, these help to turn |n+1| into |succ(n)| and |n-1|
+into |pred(n)|, respectively to turn |-1-n| into ${\sim}{n}$ (bitwise
+complement). In particular |f| will correspond to a different built-in function
+(e.g., |succ|) than mentioned in the original function call expression.
+
+@< Local function definitions @>=
+expression_ptr rhs_is_1
+  (expression_ptr& args,const shared_builtin& f,const source_location& loc)
+{ auto t = dynamic_cast<const tuple_expression*>(args.get());
+  if (t!=nullptr and t->component.size()==2)
+  { auto a = dynamic_cast<const denotation*>(t->component[1].get());
+    if (a!=nullptr)
+    { auto v = force<int_value>(a->denoted_value.get());
+      if (v->val==1)
+      { auto& arg0 = const_cast<expression_ptr&>(t->component[0]);
+        return f->build_call(f,f->print_name,std::move(arg0),loc);
+      }
+    }
+  }
+  return nullptr; // signal that we made no substitution
+}
+expression_ptr lhs_is_minus_1
+  (expression_ptr& args,const shared_builtin& f,const source_location& loc)
+{ auto t = dynamic_cast<const tuple_expression*>(args.get());
+  if (t!=nullptr and t->component.size()==2)
+  { auto a = dynamic_cast<const denotation*>(t->component[0].get());
+    if (a!=nullptr)
+    { auto v = force<int_value>(a->denoted_value.get());
+      if (v->val==-1)
+      { auto& arg1 = const_cast<expression_ptr&>(t->component[1]);
+        return f->build_call(f,f->print_name,std::move(arg1),loc);
+      }
+    }
+  }
+  return nullptr; // signal that we made no substitution
+}
+
+@ Here is some special install code. We install the successor and
+predecessor functions before addition, subtraction, and bitwise complement,
+so that special cases of the latter may revert to the uses of the
+former ones.
+
+@< Initialise... @>=
+install_folding_function(unary_minus_wrapper,"-","(int->int)",3);
+{ auto succ_val = install_function(successor_wrapper,"succ","(int->int)",3);
+  auto q = install_folding_function(plus_wrapper,"+","(int,int->int)",1);
+  q->tests.emplace_back(rhs_is_1,succ_val);
+}
+{ auto pred_val = install_function(predecessor_wrapper,"pred","(int->int)",3);
+  auto b = install_folding_function
+           (bitwise_complement_wrapper,"~","(int->int)",3);
+  auto q = install_folding_function(minus_wrapper,"-","(int,int->int)",1);
+  q->tests.emplace_back(rhs_is_1,pred_val);
+  q->tests.emplace_back(lhs_is_minus_1,b);
+}
+install_folding_function(times_wrapper,"*","(int,int->int)");
+install_folding_function(divide_wrapper,"\\","(int,int->int)",1);
+install_folding_function(modulo_wrapper,"%","(int,int->int)",1);
+install_folding_function(divmod_wrapper,"\\%","(int,int->int,int)",1);
+install_folding_function(power_wrapper,"^","(int,int->int)");
+install_folding_function(and_wrapper,"AND","(int,int->int)",1);
+install_folding_function(or_wrapper,"OR","(int,int->int)",1);
+install_folding_function(xor_wrapper,"XOR","(int,int->int)",1);
+install_folding_function(and_not_wrapper,"AND_NOT","(int,int->int)",1);
+install_function(bitwise_subset_wrapper,"bitwise_subset","(int,int->bool)");
+install_folding_function(nth_set_bit_wrapper,"nth_set_bit","(int,int->int)");
+install_folding_function(bit_length_wrapper,"bit_length","(int->int)");
+install_folding_function(vec_to_bitset_wrapper,"to_bitset","(vec->int)");
+
+@*1 Rationals.
+%
+As mentioned above the operator `/' applied to integers will not denote integer
+division, but rather formation of fractions (rational numbers). We need only to
+test for a zero denominator here, since the |big_rat::from_fraction| static
+method calls |big_rat::normalise| for the fraction it builds, which will
+simplify by common factors and ensure a positive denominator. The opposite
+operation of separating a rational number into numerator and denominator is also
+provided; this operation is essential in order to be able to get from rationals
+back into the world of integers.
+
+@< Local function definitions @>=
+
+void int_inverse_wrapper(eval_level l)
+{ shared_int i=get<int_value>();
+  if (i->val==0)
+    throw runtime_error("Inverse of zero");
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<rat_value>
+      (big_rat::from_fraction(big_int(1),i->val)));
+}
+@)
+void fraction_wrapper(eval_level l)
+{ shared_int d=get<int_value>();
+  shared_int n=get<int_value>();
+  if (d->val.is_zero())
+    throw runtime_error("fraction with zero denominator");
+  if (l==eval_level::no_value)
+    return;
+  push_value(std::make_shared<rat_value>
+     (big_rat::from_fraction(n->val,d->val)));
+}
+@)
+
+void unfraction_wrapper(eval_level l)
+{ own_rat q=get_own<rat_value>();
+  if (l!=eval_level::no_value)
+  { push_value(std::make_shared<int_value>(std::move(q->numerator())));
+    push_value(std::make_shared<int_value>(std::move(q->denominator())));
+    if (l==eval_level::single_value)
+      wrap_tuple<2>();
+  }
+}
+
+@ We define some arithmetic operations with a rational and integer operand,
+for efficiency.
+
+@< Local function definitions @>=
+void rat_plus_int_wrapper(eval_level l)
+{ shared_int i=get<int_value>();
+  own_rat q=get_own<rat_value>();
+  if (l!=eval_level::no_value)
+  {@;
+    q->val+=i->val;
+    push_value(std::move(q));
+  }
+}
+void rat_minus_int_wrapper(eval_level l)
+{ shared_int i=get<int_value>();
+  own_rat q=get_own<rat_value>();
+  if (l!=eval_level::no_value)
+  {@;
+    q->val-=i->val;
+    push_value(std::move(q));
+  }
+}
+void rat_times_int_wrapper(eval_level l)
+{ shared_int i=get<int_value>();
+  own_rat q=get_own<rat_value>();
+  if (l!=eval_level::no_value)
+  {@;
+    q->val*=i->val;
+    push_value(std::move(q));
+  }
+}
+void rat_divide_int_wrapper(eval_level l)
+{ shared_int i=get<int_value>();
+  own_rat q=get_own<rat_value>();
+  if (i==0)
+    throw runtime_error("Rational division by zero");
+  if (l!=eval_level::no_value)
+  {@;
+    q->val/=i->val;
+    push_value(std::move(q));
+  }
+}
+
+void rat_quotient_int_wrapper(eval_level l)
+{ shared_int i=get<int_value>();
+  shared_rat q=get<rat_value>();
+  if (i->val.is_zero())
+    throw runtime_error("Rational quotient by zero");
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<int_value>(q->val.quotient(i->val)));
+}
+
+void rat_modulo_int_wrapper(eval_level l)
+{ shared_int i=get<int_value>();
+  own_rat q=get_own<rat_value>();
+  if (i==0)
+    throw runtime_error("Rational modulo zero");
+  if (l!=eval_level::no_value)
+  {@;
+    q->val%=i->val;
+    push_value(std::move(q));
+  }
+}
+
+@ We define arithmetic operations for rational numbers, made possible thanks to
+operator overloading.
+
+@< Local function definitions @>=
+
+void rat_plus_wrapper(eval_level l)
+{ shared_rat j=get<rat_value>();
+  shared_rat i=get<rat_value>();
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<rat_value>(i->val+j->val));
+}
+void rat_minus_wrapper(eval_level l)
+{ shared_rat j=get<rat_value>();
+  shared_rat i=get<rat_value>();
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<rat_value>(i->val-j->val));
+}
+void rat_times_wrapper(eval_level l)
+{ shared_rat j=get<rat_value>();
+  own_rat i=get_own<rat_value>();
+  if (l!=eval_level::no_value)
+  {@;
+    i->val*=j->val;
+    push_value(std::move(i));
+  }
+}
+void rat_divide_wrapper(eval_level l)
+{ shared_rat j=get<rat_value>();
+  own_rat i=get_own<rat_value>();
+  if (l!=eval_level::no_value)
+  {@;
+    i->val/=j->val;
+    push_value(std::move(i));
+  }
+}
+void rat_modulo_wrapper(eval_level l)
+{ shared_rat j=get<rat_value>();
+  shared_rat i=get<rat_value>();
+  if (j->val.numerator()==0)
+    throw runtime_error("Rational modulo zero");
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<rat_value>(i->val%j->val));
+}
+@)
+void rat_unary_minus_wrapper(eval_level l)
+{ own_rat i=get_own<rat_value>();
+
+  if (l==eval_level::no_value)
+    return;
+  i->val.negate();
+  push_value(std::move(i));
+}
+
+void rat_inverse_wrapper(eval_level l)
+{ own_rat i=get_own<rat_value>();
+  if (i->val.numerator()==0)
+    throw runtime_error("Inverse of zero");
+
+  if (l==eval_level::no_value)
+    return;
+  i->val.invert();
+  push_value(std::move(i));
+}
+
+@)
+void rat_floor_wrapper(eval_level l)
+{ shared_rat i=get<rat_value>();
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<int_value>(i->val.floor()));
+}
+void rat_ceil_wrapper(eval_level l)
+{ shared_rat i=get<rat_value>();
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<int_value>(i->val.ceil()));
+}
+void rat_frac_wrapper(eval_level l)
+{ own_rat i=get_own<rat_value>();
+  if (l==eval_level::no_value)
+    return;
+  i->val.take_frac();
+  push_value(std::move(i));
+}
+
+@ Powers of rational numbers get a bit more attention than other arithmetic
+operations, since we want to avoid an error for exponents too large for
+|big_rat::power| to handle in the cases where the base is $0/1$, $1/1$
+or~$-1/1$.
+
+@< Local function definitions @>=
+
+void rat_power_wrapper(eval_level l)
+{ static shared_rat one = std::make_shared<rat_value>(RatNum(1));
+  shared_int exponent = get<int_value>();
+  shared_rat b=get<rat_value>();
+  bool unit_base = b->val == 1 or b->val == -1;
+  if (b->val.is_zero())
+  { if (exponent->val.is_negative())
+      throw runtime_error("Negative power of rational zero");
+  }
+  else if (not unit_base and exponent->val.size()>1)
+    throw runtime_error("Exponent too large in power of rational number");
+  if (l==eval_level::no_value)
+    return;
+@)
+  if (unit_base)
+    push_value (exponent->val.is_odd() ? b : one );
+  else if (b->val.is_zero())
+    push_value (exponent->val.is_zero() ? one : b);
+  else push_value
+      (std::make_shared<rat_value>(b->val.power(exponent->val.uint_val())));
+}
+
+@ We want to transform user expressions of the for $1/d$ into $/d$ (the rational
+inverse of the integer $d$); while the user can perfectly well write that
+directly, it goes sufficiently against common habits to allow the longer form
+and convert it silently (but we don't bother to similarly convert the additive
+equivalent |0-n| that nobody writes). For this we need a function testing for a
+left hand side equal to $1$, a trivial variation of the one testing for $-1$
+used earlier.
+
+@< Local function definitions @>=
+expression_ptr lhs_is_1
+  (expression_ptr& args,const shared_builtin& f,const source_location& loc)
+{ auto t = dynamic_cast<const tuple_expression*>(args.get());
+  if (t!=nullptr and t->component.size()==2)
+  { auto a = dynamic_cast<const denotation*>(t->component[0].get());
+    if (a!=nullptr)
+    { auto v = force<int_value>(a->denoted_value.get());
+      if (v->val==1)
+      { auto& arg1 = const_cast<expression_ptr&>(t->component[1]);
+        return f->build_call(f,f->print_name,std::move(arg1),loc);
+      }
+    }
+  }
+  return nullptr; // signal that we made no substitution
+}
+
+@ As said we rewrite expressions $1/n$ as $/n$. We could also do some constant
+folding here, introducing ``rational number denotations''. The denotation
+expression type can already handle this, and can indeed handle constant values
+of any type as it already does for the ``previous value computed'' expression.
+
+@< Initialise... @>=
+{ auto p = install_folding_function(int_inverse_wrapper,"/","(int->rat)");
+  auto q = install_folding_function(fraction_wrapper,"/","(int,int->rat)");
+  q->tests.emplace_back(lhs_is_1,p);
+@)
+install_folding_function(unfraction_wrapper,"%","(rat->int,int)");
+   // ``break open''
+install_folding_function(rat_plus_int_wrapper,"+","(rat,int->rat)",1);
+install_folding_function(rat_minus_int_wrapper,"-","(rat,int->rat)",1);
+install_folding_function(rat_times_int_wrapper,"*","(rat,int->rat)",1);
+install_folding_function(rat_divide_int_wrapper,"/","(rat,int->rat)",1);
+install_folding_function(rat_quotient_int_wrapper,"\\","(rat,int->int)");
+install_folding_function(rat_modulo_int_wrapper,"%","(rat,int->rat)",1);
+install_folding_function(rat_plus_wrapper,"+","(rat,rat->rat)");
+install_folding_function(rat_minus_wrapper,"-","(rat,rat->rat)");
+install_folding_function(rat_times_wrapper,"*","(rat,rat->rat)",1);
+install_folding_function(rat_divide_wrapper,"/","(rat,rat->rat)",1);
+install_folding_function(rat_modulo_wrapper,"%","(rat,rat->rat)");
+install_folding_function(rat_unary_minus_wrapper,"-","(rat->rat)",3);
+install_folding_function(rat_inverse_wrapper,"/","(rat->rat)",3);
+install_folding_function(rat_floor_wrapper,"floor","(rat->int)");
+install_folding_function(rat_ceil_wrapper,"ceil","(rat->int)");
+install_folding_function(rat_frac_wrapper,"frac","(rat->rat)",3);
+install_folding_function(rat_power_wrapper,"^","(rat,int->rat)");
+}
+
+@*1 Booleans.
+%
+Relational operators are of the same flavour. In addition to the classical
+relations, we shall define unary versions, testing against appropriate zero
+values. For integers this is just $0$, but for vectors matrices it
+avoids having to laboriously construct a null value of the correct dimension.
+
+@< Local function definitions @>=
+
+void int_unary_eq_wrapper(eval_level l)
+{ shared_int i=get<int_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(i->val.is_zero()));
+}
+void int_unary_neq_wrapper(eval_level l)
+{ shared_int i=get<int_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(not i->val.is_zero()));
+}
+void int_non_negative_wrapper(eval_level l)
+{ shared_int i=get<int_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(not i->val.is_negative()));
+}
+void int_positive_wrapper(eval_level l)
+{ shared_int i=get<int_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(not(i->val.is_negative() or i->val.is_zero())));
+}
+void int_non_positive_wrapper(eval_level l)
+{ shared_int i=get<int_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(i->val.is_negative() or i->val.is_zero()));
+}
+void int_negative_wrapper(eval_level l)
+{ shared_int i=get<int_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(i->val.is_negative()));
+}
+
+@ Here are the traditional, binary, versions of the relations.
+
+@< Local function definitions @>=
+
+void int_eq_wrapper(eval_level l)
+{ shared_int j=get<int_value>();
+  shared_int i=get<int_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(i->val==j->val));
+}
+@)
+void int_neq_wrapper(eval_level l)
+{ shared_int j=get<int_value>();
+  shared_int i=get<int_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(i->val!=j->val));
+}
+@)
+void int_less_wrapper(eval_level l)
+{ shared_int j=get<int_value>();
+  shared_int i=get<int_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(i->val<j->val));
+}
+@)
+void int_lesseq_wrapper(eval_level l)
+{ shared_int j=get<int_value>();
+  shared_int i=get<int_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(i->val<=j->val));
+}
+@)
+void int_greater_wrapper(eval_level l)
+{ shared_int j=get<int_value>();
+  shared_int i=get<int_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(i->val>j->val));
+}
+@)
+void int_greatereq_wrapper(eval_level l)
+{ shared_int j=get<int_value>();
+  shared_int i=get<int_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(i->val>=j->val));
+}
+
+@ For the rational numbers as well we define unary relations.
+
+@< Local function definitions @>=
+
+void rat_unary_eq_wrapper(eval_level l)
+{ shared_rat i=get<rat_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(i->val.is_zero()));
+}
+void rat_unary_neq_wrapper(eval_level l)
+{ shared_rat i=get<rat_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(not i->val.is_zero()));
+}
+void rat_non_negative_wrapper(eval_level l)
+{ shared_rat i=get<rat_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(not i->val.is_negative()));
+}
+void rat_positive_wrapper(eval_level l)
+{ shared_rat i=get<rat_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(not (i->val.is_negative() or i->val.is_zero())));
+}
+void rat_non_positive_wrapper(eval_level l)
+{ shared_rat i=get<rat_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(i->val.is_negative() or i->val.is_zero()));
+}
+void rat_negative_wrapper(eval_level l)
+{ shared_rat i=get<rat_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(i->val.is_negative()));
+}
+
+@ Here are the traditional, binary, versions of the relations for the
+rational numbers.
+
+@< Local function definitions @>=
+
+void rat_eq_wrapper(eval_level l)
+{ shared_rat j=get<rat_value>(); shared_rat i=get<rat_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(i->val==j->val));
+}
+@)
+void rat_neq_wrapper(eval_level l)
+{ shared_rat j=get<rat_value>(); shared_rat i=get<rat_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(i->val!=j->val));
+}
+@)
+void rat_less_wrapper(eval_level l)
+{ shared_rat j=get<rat_value>(); shared_rat i=get<rat_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(i->val<j->val));
+}
+@)
+void rat_lesseq_wrapper(eval_level l)
+{ shared_rat j=get<rat_value>(); shared_rat i=get<rat_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(i->val<=j->val));
+}
+@)
+void rat_greater_wrapper(eval_level l)
+{ shared_rat j=get<rat_value>(); shared_rat i=get<rat_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(i->val>j->val));
+}
+@)
+void rat_greatereq_wrapper(eval_level l)
+{ shared_rat j=get<rat_value>(); shared_rat i=get<rat_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(i->val>=j->val));
+}
+
+@ For booleans we also have equality and inequality.
+@< Local function definitions @>=
+
+void equiv_wrapper(eval_level l)
+{ bool a=get<bool_value>()->val; bool b=get<bool_value>()->val;
+  if (l!=eval_level::no_value)
+    push_value(whether(a==b));
+}
+@)
+void inequiv_wrapper(eval_level l)
+{ bool a=get<bool_value>()->val; bool b=get<bool_value>()->val;
+  if (l!=eval_level::no_value)
+    push_value(whether(a!=b));
+}
+
+@ The unary operator version will automatically be applied when a binary one has
+right hand side $0$.
+
+@< Local function definitions @>=
+expression_ptr rhs_is_0
+  (expression_ptr& args,const shared_builtin& f,const source_location& loc)
+{ auto t = dynamic_cast<const tuple_expression*>(args.get());
+  if (t!=nullptr and t->component.size()==2)
+  { auto a = dynamic_cast<const denotation*>(t->component[1].get());
+    if (a!=nullptr)
+    { auto v = force<int_value>(a->denoted_value.get());
+      if (v->val.is_zero())
+      { auto& arg0 = const_cast<expression_ptr&>(t->component[0]);
+        return f->build_call(f,f->print_name,std::move(arg0),loc);
+      }
+    }
+  }
+  return nullptr; // signal that we made no substitution
+}
+
+@ We must not forget to install what we have defined properly, making all those
+|special_function|s.
+
+@< Initialise... @>=
+{ auto p = install_function(int_unary_eq_wrapper,"=","(int->bool)");
+  auto q = install_special_function(int_eq_wrapper,"=","(int,int->bool)");
+  q->tests.emplace_back(rhs_is_0,p);
+@/p = install_function(int_unary_neq_wrapper,"!=","(int->bool)");
+  q = install_special_function(int_neq_wrapper,"!=","(int,int->bool)");
+  q->tests.emplace_back(rhs_is_0,p);
+@/p = install_function(int_non_negative_wrapper,">=","(int->bool)");
+  q = install_special_function(int_greatereq_wrapper,">=","(int,int->bool)");
+  q->tests.emplace_back(rhs_is_0,p);
+@/p = install_function(int_positive_wrapper,">","(int->bool)");
+  q = install_special_function(int_greater_wrapper,">","(int,int->bool)");
+  q->tests.emplace_back(rhs_is_0,p);
+@/p = install_function(int_non_positive_wrapper,"<=","(int->bool)");
+  q = install_special_function(int_lesseq_wrapper,"<=","(int,int->bool)");
+  q->tests.emplace_back(rhs_is_0,p);
+@/p = install_function(int_negative_wrapper,"<","(int->bool)");
+  q = install_special_function(int_less_wrapper,"<","(int,int->bool)");
+  q->tests.emplace_back(rhs_is_0,p);
+}
+
+@ We take a breath, and then do the same stuff for the rationals. Our test for a
+zero right hand side must be ``rationalised'' first. But the code also depends
+on the fact that such a right hand side ``0'' appears as a denotation with a
+rational value stored in it, rather than an integer denotation wrapped in a
+conversion to rational (which would necessitate more elaborate testing here),
+due to constant folding. Indeed the present optimisation was what motivated
+implementing constant folding for implicit conversions, which was done even
+before many arithmetic operations that we have already seen above would
+implement constant folding.
+
+@< Local function definitions @>=
+expression_ptr rhs_is_rat0
+  (expression_ptr& args,const shared_builtin& f,const source_location& loc)
+{ auto t = dynamic_cast<const tuple_expression*>(args.get());
+  if (t!=nullptr and t->component.size()==2)
+  { auto a = dynamic_cast<const denotation*>(t->component[1].get());
+    if (a!=nullptr)
+    { auto v = force<rat_value>(a->denoted_value.get());
+      if (v->val.is_zero())
+      { auto& arg0 = const_cast<expression_ptr&>(t->component[0]);
+        return f->build_call(f,f->print_name,std::move(arg0),loc);
+      }
+    }
+  }
+  return nullptr; // signal that we made no substitution
+}
+
+@ So with what was said above, this becomes very similar to installation of the
+integer comparisons.
+@< Initialise... @>=
+{ auto p = install_function(rat_unary_eq_wrapper,"=","(rat->bool)");
+  auto q = install_special_function(rat_eq_wrapper,"=","(rat,rat->bool)");
+  q->tests.emplace_back(rhs_is_rat0,p);
+@/p = install_function(rat_unary_neq_wrapper,"!=","(rat->bool)");
+  q = install_special_function(rat_neq_wrapper,"!=","(rat,rat->bool)");
+  q->tests.emplace_back(rhs_is_rat0,p);
+@/p = install_function(rat_non_negative_wrapper,">=","(rat->bool)");
+  q = install_special_function(rat_greatereq_wrapper,">=","(rat,rat->bool)");
+  q->tests.emplace_back(rhs_is_rat0,p);
+@/p = install_function(rat_positive_wrapper,">","(rat->bool)");
+  q = install_special_function(rat_greater_wrapper,">","(rat,rat->bool)");
+  q->tests.emplace_back(rhs_is_rat0,p);
+@/p = install_function(rat_non_positive_wrapper,"<=","(rat->bool)");
+  q = install_special_function(rat_lesseq_wrapper,"<=","(rat,rat->bool)");
+  q->tests.emplace_back(rhs_is_rat0,p);
+@/p = install_function(rat_negative_wrapper,"<","(rat->bool)");
+  q = install_special_function(rat_less_wrapper,"<","(rat,rat->bool)");
+  q->tests.emplace_back(rhs_is_rat0,p);
+}
+install_function(equiv_wrapper,"=","(bool,bool->bool)");
+install_function(inequiv_wrapper,"!=","(bool,bool->bool)");
+
+@*1 Strings.
+%
+The string type is intended mostly for preparing output to be printed. We
+define a full set of comparison operators, an operator for concatenating them,
+and one for converting integers to their string representation.
+
+@< Local function definitions @>=
+
+void string_unary_eq_wrapper(eval_level l)
+{ shared_string i=get<string_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(i->val.empty()));
+}
+void string_unary_neq_wrapper(eval_level l)
+{ shared_string i=get<string_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(i->val.size()>0));
+}
+void string_eq_wrapper(eval_level l)
+{ shared_string j=get<string_value>(); shared_string i=get<string_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(i->val==j->val));
+}
+void string_neq_wrapper(eval_level l)
+{ shared_string j=get<string_value>(); shared_string i=get<string_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(i->val!=j->val));
+}
+@)
+void string_less_wrapper(eval_level l)
+{ shared_string j=get<string_value>(); shared_string i=get<string_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(i->val<j->val));
+}
+void string_leq_wrapper(eval_level l)
+{ shared_string j=get<string_value>(); shared_string i=get<string_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(i->val<=j->val));
+}
+void string_greater_wrapper(eval_level l)
+{ shared_string j=get<string_value>(); shared_string i=get<string_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(i->val>j->val));
+}
+void string_geq_wrapper(eval_level l)
+{ shared_string j=get<string_value>(); shared_string i=get<string_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(i->val>=j->val));
+}
+
+@ Here are the functions for concatenating two or more strings.
+
+@h <string>
+
+@< Local function definitions @>=
+void string_concatenate_wrapper(eval_level l)
+{ shared_string b=get<string_value>();
+  own_string a=get_own<string_value>();
+  if (l==eval_level::no_value)
+    return;
+  a->val.append(b->val);
+  push_value(std::move(a));
+}
+@)
+void concatenate_strings_wrapper(eval_level l)
+{ shared_row arg=get<row_value>();
+  if (l==eval_level::no_value)
+    return;
+  const std::vector<shared_value>& x=arg->val;
+  std::vector<const std::string*> p; p.reserve(x.size());
+  for (auto it=x.cbegin(); it!=x.cend(); ++it)
+    p.push_back(&force<string_value>(it->get())->val);
+  std::size_t s=0;
+  for (auto it=p.cbegin(); it!=p.cend(); ++it)
+    s+=(*it)->size();
+  std::string result(s,char()); auto dst=result.begin();
+  for (auto it=p.cbegin(); it!=p.cend(); ++it)
+    dst=std::copy((*it)->begin(),(*it)->end(),dst);
+  assert(dst==result.end());
+  push_value(std::make_shared<string_value>(std::move(result)));
+}
+
+@ To give a rudimentary capability of analysing strings, we provide, in
+addition to the subscripting operation, a function to convert the first
+character of a string into a numeric value.
+
+@< Local function definitions @>=
+
+void string_to_ASCII_wrapper(eval_level l)
+{ shared_string c=get<string_value>();
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<int_value>
+      (c->val.size()==0 ? -1 : (unsigned char)c->val[0]));
+}
+@)
+void ASCII_char_wrapper(eval_level l)
+{ int c=get<int_value>()->int_val();
+  if ((c<' ' and c!='\n') or c>'~')
+  { std::ostringstream o;
+    o << "Value " << c << " out of printable ASCII range";
+    throw runtime_error(o.str());
+  }
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<string_value>(std::string(1,c)));
+}
+
+@ A rather strange function is |readline_completions|, which maps a (prefix)
+string to the list of its possible completions. One of its strange features is
+that it is built-in, but its operation is variable among sessions and even
+within a single session. Its main purpose is to allow non-human users of the
+\.{atlas} executable (i.e., programs that run \.{atlas} behind the scenes) to
+interrogate what the |readline| interface would propose as completions to human
+users; with this information such programs can propose a similar interface to
+their own users. The functionality itself is provided by the |completions|
+function defined in \.{buffer.w}.
+
+@h "buffer.h"
+@< Local function definitions @>=
+void readline_completions_wrapper(eval_level l)
+{ shared_string c=get<string_value>();
+  if (l==eval_level::no_value)
+    return;
+@)
+  sl_list<const char*> comps = completions(c->val.c_str());
+@/own_row result = std::make_shared<row_value>(0);
+  result->val.reserve(comps.size());
+  for (const auto* s : comps)
+    result->val.push_back(std::make_shared<string_value>(s));
+  push_value(std::move(result));
+}
+
+@ We shall make some optimisations for testing explicitly against an empty
+string.
+@< Local function definitions @>=
+expression_ptr rhs_is_empty
+  (expression_ptr& args,const shared_builtin& f,const source_location& loc)
+{ auto t = dynamic_cast<const tuple_expression*>(args.get());
+  if (t!=nullptr and t->component.size()==2)
+  { auto a = dynamic_cast<const denotation*>(t->component[1].get());
+    if (a!=nullptr)
+    { auto v = force<string_value>(a->denoted_value.get());
+      if (v->val.empty())
+      { auto& arg0 = const_cast<expression_ptr&>(t->component[0]);
+        return f->build_call(f,f->print_name,std::move(arg0),loc);
+      }
+    }
+  }
+  return nullptr; // signal that we made no substitution
+}
+
+
+@ We must not forget to install what we have defined for strings.
+
+@< Initialise... @>=
+{ auto p = install_function(string_unary_eq_wrapper,"=","(string->bool)");
+  auto q =
+    install_special_function(string_eq_wrapper,"=","(string,string->bool)");
+  q->tests.emplace_back(rhs_is_empty,p);
+@/p = install_function(string_unary_neq_wrapper,"!=","(string->bool)");
+  q = install_special_function(string_neq_wrapper,"!=","(string,string->bool)");
+  q->tests.emplace_back(rhs_is_empty,p);
+}
+install_function(string_less_wrapper,"<","(string,string->bool)");
+install_function(string_leq_wrapper,"<=","(string,string->bool)");
+install_function(string_greater_wrapper,">","(string,string->bool)");
+install_function(string_geq_wrapper,">=","(string,string->bool)");
+@)
+install_folding_function(string_concatenate_wrapper,@|"##",
+  "(string,string->string)",1);
+install_folding_function(concatenate_strings_wrapper,"##","([string]->string)");
+install_folding_function (string_to_ASCII_wrapper,"ASCII","(string->int)");
+install_folding_function(ASCII_char_wrapper,"ASCII","(int->string)");
+install_function(readline_completions_wrapper,@|"readline_completions",
+   "(string->[string])");
+
+@*1 Generic operators and functions, and analogous ordinary ones.
+%
+Here we shall define various forms of size and concatenation functions, denoted
+by the operators `\#' and `\#\#', the main forms of which are generic (they have
+polymorphic types), but which also have special bindings for strings, rational
+vectors, vectors, matrices and virtual modules, with a similar effect.
+
+@ We start with printing and size functions. These functions are also used for
+implementing certain loops over the corresponding types of values, so they are
+defined as exported functions (not local to our \.{global.w} module).
+
+@< Declarations of exported functions @>=
+void print_wrapper(eval_level l);
+void prints_wrapper(eval_level l);
+void to_string_wrapper(eval_level l);
+void error_wrapper(eval_level l);
+void sizeof_wrapper(eval_level l);
+void sizeof_vector_wrapper(eval_level l);
+void sizeof_ratvec_wrapper(eval_level l);
+void sizeof_string_wrapper(eval_level l);
+void matrix_ncols_wrapper(eval_level l);
+void K_type_pol_size_wrapper(eval_level l);
+void virtual_module_size_wrapper(eval_level l);
+
+@ Here is an auxiliary used for several generic functions; it basically reduces
+any argument value to a string by printing it, but suppressing some elements
+like quotes and parentheses at the outer level (which normal value output would
+produce) in order to give the user full control of the string produced.
+
+@< Local function definitions @>=
+std::ostream& to_string_aux(std::ostream& o, eval_level l)
+{ shared_value v=pop_value();
+@)
+  const string_value* s=dynamic_cast<const string_value*>(v.get());
+  if (s!=nullptr)
+    o << s->val; // single string without quotes
+  else
+  { const tuple_value* t=dynamic_cast<const tuple_value*>(v.get());
+    if (t!=nullptr)
+    { for (auto it=t->val.begin(); it!=t->val.end(); ++it)
+      { s=dynamic_cast<const string_value*>(it->get());
+        if (s!=nullptr)
+	  o << s->val; // string components without quotes
+        else
+           o << *it->get(); // treat non-string tuple components as |print|
+      }
+    }
+    else
+      o << *v; // output like |print| unless string or tuple
+  }
+  return o;
+}
+
+@ The function |print| outputs any value in the format used by the interpreter
+itself. This function has an argument of unknown type; we just pass the popped
+value to the |operator<<|. The function returns its argument unchanged as
+result, which facilitates inserting |print| statements for debugging purposes.
+
+This is the first place in this file where we produce user output to a file.
+In general, rather than writing directly to |std::cout|, we shall pass via a
+pointer whose |output_stream| value is maintained in the main program, so that
+redirecting output to a different stream can be easily implemented. Since this
+is a wrapper function there is no other way to convey the output stream to be
+used than via a dedicated global variable.
+
+Sometimes the user may want to use a stripped version of the |print| output:
+no quotes in case of a string value, or no parentheses or commas in case of a
+tuple value (so that a single statement can chain several texts on the same
+line). The |prints_wrapper| does this down to the level of omitting quotes in
+individual argument strings, using dynamic casts to determine the case that
+applies. The function |to_string| provides the same functionality, but produces
+its output as a string, while |error| does so as well but then throws this
+string as message in a |runtime_error|.
+
+
+@< Global function definitions @>=
+void print_wrapper(eval_level l)
+{
+  *output_stream << *execution_stack.back() << std::endl;
+  if (l!=eval_level::single_value) // in |single_value| case we are done
+    push_expanded(l,pop_value()); // otherwise remove and possibly expand value
+}
+@)
+void prints_wrapper(eval_level l)
+{ to_string_aux(*output_stream,l) << std::endl;
+  if (l==eval_level::single_value)
+    wrap_tuple<0>(); // don't forget to return a value if asked for
+}
+@)
+void to_string_wrapper(eval_level l)
+{ std::ostringstream o;
+  to_string_aux(o,l);
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<string_value>(o.str()));
+}
+@)
+void error_wrapper(eval_level l)
+@/{@; std::ostringstream o;
+  to_string_aux(o,l);
+  throw runtime_error(o.str());
+}
+
+
+@ The other definitions are equally straightforward. The generic size-of wrapper
+is used to find the length of any ``row-of'' value, and the others are adapted
+to types that are primitive but which contain a value of arbitrary size.
+
+@< Global function definitions @>=
+void sizeof_wrapper(eval_level l)
+{ size_t s=get<row_value>()->val.size();
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<int_value>(s));
+}
+@)
+void sizeof_string_wrapper(eval_level l)
+{ auto s=get<string_value>()->val.size();
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<int_value>(s));
+}
+@)
+void sizeof_vector_wrapper(eval_level l)
+{ auto s=get<vector_value>()->val.size();
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<int_value>(s));
+}
+@)
+void sizeof_ratvec_wrapper(eval_level l)
+{ auto s=get<rational_vector_value>()->val.size();
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<int_value>(s));
+}
+@)
+void matrix_ncols_wrapper(eval_level l)
+{ shared_matrix m=get<matrix_value>();
+  if (l==eval_level::no_value)
+    return;
+  push_value(std::make_shared<int_value>(m->val.n_columns()));
+}
+
+@ Giving both matrix bounds is what used to be bound in the overload table to
+`\#' for matrix arguments, but this has been changed to the function |shape|.
+For consistency with use of matrices in subscription, simple slicing, and in
+looping constructions, `\#' for matrix arguments should (and does) return the
+number of columns, invoking |matrix_ncols_wrapper| above.
+
+@< Local function definitions @>=
+void matrix_shape_wrapper(eval_level l)
+{ shared_matrix m=get<matrix_value>();
+  if (l==eval_level::no_value)
+    return;
+  push_value(std::make_shared<int_value>(m->val.n_rows()));
+  push_value(std::make_shared<int_value>(m->val.n_columns()));
+  if (l==eval_level::single_value)
+    wrap_tuple<2>();
+}
+
+@ We have a functions for selecting a single row from a matrix (The latter can
+be done using subscription syntax as well, so it could have been omitted, but we
+do not want to associate even a slight efficiency penalty on using a named
+function instead, which can be more readable in certain contexts.)
+
+@< Local function definitions @>=
+inline std::string range_mess (size_t i,size_t n,const char* what)
+{ std::ostringstream o;
+  o << what << " index " << i << " out of range (0<= . <" << n << ')';
+  return o.str();
+}
+@)
+void matrix_row_wrapper(eval_level l)
+{ auto i=get<int_value>()->ulong_val();
+  shared_matrix m=get<matrix_value>();
+  if (i >= m->val.n_rows())
+    throw runtime_error(range_mess(i,m->val.n_rows(),"row"));
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<vector_value>(m->val.row(i)));
+}
+@)
+void matrix_column_wrapper(eval_level l)
+{ auto j=get<int_value>()->ulong_val();
+  shared_matrix m=get<matrix_value>();
+  if (static_cast<unsigned int>(j) >= m->val.n_columns())
+    throw runtime_error(range_mess(j,m->val.n_columns(),"column"));
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<vector_value>(m->val.column(j)));
+}
+
+
+@ Now come functions for adding individual elements to a row value, and for
+joining two such values. Some of them are accessed directly in the \.{axis}
+module, so must be declared and defined globally.
+
+@< Declarations of exported functions @>=
+void suffix_element_wrapper(eval_level l);
+void prefix_element_wrapper(eval_level l);
+void join_rows_wrapper(eval_level l);
+void join_rows_row_wrapper(eval_level l);
+
+@ The function |suffix_element_wrapper| can run in amortised constant time if
+obtaining ownership of the argument can be done without copying (the |push_back|
+method of |std::vector| only needs to reallocate occasionally), which allows
+repeated extension of a row-value variable using the \.{\#:=} combined operator
+to be relatively efficient (this is true only because of the optimisation that
+now allows the variable to be emptied when its old value is fetched; it used to
+be that sharing of the pointer with that variable meant that obtaining ownership
+required copying. By contrast, while |prefix_element_wrapper| also modifies its
+argument (in this case the second) in-place, it still requires time linear in
+the size of that argument since the |insert| method of |std::vector| needs to
+move all old entries, so the gain in efficiency is limited here, if positive at
+all.
+
+@< Global function definitions @>=
+void suffix_element_wrapper(eval_level l)
+{ shared_value e=pop_value();
+  own_row r=get_own<row_value>();
+  if (l!=eval_level::no_value)
+  {@; r->val.push_back(std::move(e));
+    push_value(std::move(r));
+  }
+}
+@)
+void prefix_element_wrapper(eval_level l)
+{ own_row r=get_own<row_value>();
+  shared_value e=pop_value();
+  if (l!=eval_level::no_value)
+  {@; r->val.insert(r->val.begin(),e);
+    push_value(std::move(r));
+  }
+}
+
+@ The |join_rows_wrapper| function does not attempt to gain any ownership and
+just builds a fresh value.
+
+@< Global function definitions @>=
+
+void join_rows_wrapper(eval_level l)
+{ shared_row second=get<row_value>();
+  shared_row first=get<row_value>();
+  if (l==eval_level::no_value)
+    return;
+  const auto& x=first->val;
+  const auto& y=second->val;
+  own_row result = std::make_shared<row_value>(x.size()+y.size());
+@/std::copy(y.begin(),y.end(),
+      @+ std::copy(x.begin(),x.end(),result->val.begin()) @+ );
+@/push_value(std::move(result));
+}
+
+@)
+void join_rows_row_wrapper(eval_level l)
+{ shared_row arg=get<row_value>();
+  if (l==eval_level::no_value)
+    return;
+  const std::vector<shared_value>& x=arg->val;
+  std::vector< const std::vector<shared_value>*> p; p.reserve(x.size());
+  for (auto it=x.cbegin(); it!=x.cend(); ++it)
+    p.push_back(&force<row_value>(it->get())->val);
+  size_t s=0;
+  for (auto it=p.cbegin(); it!=p.cend(); ++it)
+    s+=(*it)->size();
+  own_row result = std::make_shared<row_value>(s);
+  auto dst=result->val.begin();
+  for (auto it=p.cbegin(); it!=p.cend(); ++it)
+    dst=std::copy((*it)->cbegin(),(*it)->cend(),dst);
+  assert(dst==result->val.end());
+@/push_value(std::move(result));
+}
+
+
+@ Here are functions for extending vectors one or many elements at a time. Like
+their generic counterparts for row values, the suffix and prefix wrappers get
+ownership of they argument, which they modify in place. The effect of this on
+efficiency is no doubt more obvious in the suffix case, due to the way
+|std::vector| functions.
+
+@< Local function definitions @>=
+void vector_suffix_wrapper(eval_level l)
+{ int e=get<int_value>()->int_val();
+  own_vector r=get_own<vector_value>();
+  if (l!=eval_level::no_value)
+  {@; r->val.push_back(e);
+    push_value(std::move(r));
+  }
+}
+@)
+void vector_prefix_wrapper(eval_level l)
+{ own_vector r=get_own<vector_value>();
+  int e=get<int_value>()->int_val();
+  if (l==eval_level::no_value)
+    return;
+  r->val.insert(r->val.begin(),e);
+  push_value(std::move(r));
+}
+@)
+void join_vectors_wrapper(eval_level l)
+{ shared_vector y=get<vector_value>();
+  own_vector x=get_own<vector_value>();
+  if (l!=eval_level::no_value)
+  { x->val.insert(x->val.end(),y->val.begin(),y->val.end());
+    push_value(std::move(x));
+  }
+
+}
+@)
+void join_vector_row_wrapper(eval_level l)
+{ shared_row arg=get<row_value>();
+  if (l==eval_level::no_value)
+    return;
+  const std::vector<shared_value>& x=arg->val;
+@/std::vector<const int_Vector*> ptrs; ptrs.reserve(x.size());
+    // row of pointers to payload
+  std::size_t s=0;
+  for (const shared_value& elem : x)
+  {
+    ptrs.push_back(&force<vector_value>(elem.get())->val); // set up pointers
+    s += ptrs.back()->size();
+  }
+  int_Vector result(s);
+  auto dst=result.begin();
+  for (const int_Vector* p : ptrs)
+    dst = std::copy(p->begin(),p->end(),dst);
+  assert(dst==result.end());
+  push_value(std::make_shared<vector_value>(std::move(result)));
+}
+
+@ We must not forget to install what we have defined.
+
+@< Initialise... @>=
+install_function(print_wrapper,"print","(T->T)");
+install_function(prints_wrapper,"prints","(T->)");
+install_function(to_string_wrapper,"to_string","(T->string)");
+install_function(error_wrapper,"error","(T->X)");
+install_function(sizeof_wrapper,"#","([T]->int)");
+install_function(sizeof_string_wrapper,"#","(string->int)");
+install_function(sizeof_vector_wrapper,"#","(vec->int)");
+install_function(sizeof_ratvec_wrapper,"#","(ratvec->int)");
+install_function(matrix_ncols_wrapper,"#","(mat->int)");
+install_function(suffix_element_wrapper,"#","([T],T->[T])",1);
+install_function(prefix_element_wrapper,"#","(T,[T]->[T])",2);
+install_function(vector_suffix_wrapper,"#","(vec,int->vec)",1);
+install_function(vector_prefix_wrapper,"#","(int,vec->vec)",2);
+
+install_function(join_rows_wrapper,"##","([T],[T]->[T])");
+install_function(join_rows_row_wrapper,"##","([[T]]->[T])");
+install_function(join_rows_row_wrapper,"## ","([[T]]->[T])");
+install_folding_function(join_vectors_wrapper,"##","(vec,vec->vec)",1);
+install_folding_function(join_vector_row_wrapper,"##","([vec]->vec)");
+install_function(matrix_shape_wrapper,"shape","(mat->int,int)");
+
+@*1 Vectors and matrices.
+%
+We now define a few functions, to really exercise something, even if it is
+modest, from the Atlas library. These wrapper function are not really to be
+considered part of the interpreter, but a first step to its interface with the
+Atlas library, which is developed in much more detail in the compilation
+unit \.{atlas-types}. In fact we shall make some of these wrapper functions
+externally callable, so they can be directly used from that compilation unit.
+
+@*2 Predicates and relations.
+We start with vector equality comparisons, which are quite similar
+to what we saw for rationals, for instance.
+
+@< Local function definitions @>=
+void vec_unary_eq_wrapper(eval_level l)
+{ shared_vector i=get<vector_value>();
+  if (l==eval_level::no_value)
+    return;
+  const auto end=i->val.end();
+  for (auto it=i->val.begin(); it!=end; ++it)
+    if (*it!=0)
+    {@; push_value(whether(false));
+      return; }
+  push_value(whether(true));
+}
+void vec_unary_neq_wrapper(eval_level l)
+{ shared_vector i=get<vector_value>();
+  if (l==eval_level::no_value)
+    return;
+  const auto end=i->val.end();
+  for (auto it=i->val.begin(); it!=end; ++it)
+    if (*it!=0)
+    {@; push_value(whether(true));
+      return; }
+  push_value(whether(false));
+}
+void vec_eq_wrapper(eval_level l)
+{ shared_vector j=get<vector_value>(); shared_vector i=get<vector_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(i->val==j->val));
+}
+void vec_neq_wrapper(eval_level l)
+{ shared_vector j=get<vector_value>(); shared_vector i=get<vector_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(i->val!=j->val));
+}
+
+@ The following vector predicates test whether all coefficient are non
+negative respectively positive; they are less often useful than testing for
+zero, but can be useful testing (strict) dominance of a vector (after
+computing a vector of evaluations on coroots by a matrix multiplication). We
+don't do their negative counterparts, which can easily be defined using
+vector negation.
+
+@< Local function def... @>=
+
+void vec_non_negative_wrapper(eval_level l)
+{ shared_vector v = get<vector_value>();
+  if (l==eval_level::no_value)
+    return;
+  bool OK=true;
+  for (auto it=v->val.begin(); it!=v->val.end(); ++it)
+    if (*it<0)
+    {@; OK=false; break; }
+  push_value(whether(OK));
+}
+void vec_positive_wrapper(eval_level l)
+{ shared_vector v = get<vector_value>();
+  if (l==eval_level::no_value)
+    return;
+  bool OK=true;
+  for (auto it=v->val.begin(); it!=v->val.end(); ++it)
+    if (*it<=0)
+    {@; OK=false; break; }
+  push_value(whether(OK));
+}
+
+@ We continue similarly with rational vector equality comparisons.
+
+@< Local function definitions @>=
+
+void ratvec_unary_eq_wrapper(eval_level l)
+{ shared_rational_vector v=get<rational_vector_value>();
+  if (l==eval_level::no_value)
+    return;
+  push_value(whether(v->val.is_zero()));
+}
+void ratvec_unary_neq_wrapper(eval_level l)
+{ shared_rational_vector v=get<rational_vector_value>();
+  if (l==eval_level::no_value)
+    return;
+  push_value(whether(not v->val.is_zero()));
+}
+void ratvec_eq_wrapper(eval_level l)
+{ shared_rational_vector w=get<rational_vector_value>();
+  shared_rational_vector v=get<rational_vector_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(v->val==w->val));
+}
+void ratvec_neq_wrapper(eval_level l)
+{ shared_rational_vector w=get<rational_vector_value>();
+  shared_rational_vector v=get<rational_vector_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(v->val!=w->val));
+}
+
+@ Like for vectors, we add dominance tests.
+
+@< Local function def... @>=
+
+void ratvec_non_negative_wrapper(eval_level l)
+{ shared_rational_vector v = get<rational_vector_value>();
+  if (l==eval_level::no_value)
+    return;
+  bool OK=true;
+  for (auto it=v->val.numerator().begin(); it!=v->val.numerator().end(); ++it)
+    if (*it<0)
+    {@; OK=false; break; }
+  push_value(whether(OK));
+}
+void ratvec_positive_wrapper(eval_level l)
+{ shared_rational_vector v = get<rational_vector_value>();
+  if (l==eval_level::no_value)
+    return;
+  bool OK=true;
+  for (auto it=v->val.numerator().begin(); it!=v->val.numerator().end(); ++it)
+    if (*it<=0)
+    {@; OK=false; break; }
+  push_value(whether(OK));
+}
+
+@ And here are matrix equality comparisons.
+
+@< Local function definitions @>=
+
+void mat_unary_eq_wrapper(eval_level l)
+{ shared_matrix i=get<matrix_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(i->val.is_zero()));
+}
+void mat_unary_neq_wrapper(eval_level l)
+{ shared_matrix i=get<matrix_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(not i->val.is_zero()));
+}
+void mat_eq_wrapper(eval_level l)
+{ shared_matrix j=get<matrix_value>(); shared_matrix i=get<matrix_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(i->val==j->val));
+}
+void mat_neq_wrapper(eval_level l)
+{ shared_matrix j=get<matrix_value>(); shared_matrix i=get<matrix_value>();
+  if (l!=eval_level::no_value)
+    push_value(whether(i->val!=j->val));
+}
+
+@*2 Vector arithmetic.
+%
+While vector arithmetic operations can easily be implemented in the \axis.
+language, and this was actually done (with the exception of scalar and matrix
+products) for a long time, they certainly profit in terms of efficiency from
+being built-in.
+
+@< Local function def... @>=
+void check_size (std::size_t a, std::size_t b)
+{ if (a!=b)
+  { std::ostringstream o;
+    o << "Size mismatch " << a << ":" << b;
+    throw runtime_error(o.str());
+  }
+}
+
+void vec_plus_wrapper(eval_level l)
+{ shared_vector v1= get<vector_value>();
+  own_vector v0= get_own<vector_value>();
+  check_size(v0->val.size(),v1->val.size());
+  if (l==eval_level::no_value)
+    return;
+  v0->val += v1->val;
+  push_value(std::move(v0));
+}
+void vec_minus_wrapper(eval_level l)
+{ shared_vector v1= get<vector_value>();
+  own_vector v0= get_own<vector_value>();
+  check_size(v0->val.size(),v1->val.size());
+  if (l==eval_level::no_value)
+    return;
+  v0->val -= v1->val;
+  push_value(std::move(v0));
+}
+
+void vec_unary_minus_wrapper(eval_level l)
+{ own_vector v = get_own<vector_value>();
+  if (l==eval_level::no_value)
+    return;
+  v->val.negate();
+  push_value(std::move(v));
+}
+@)
+void vec_times_int_wrapper(eval_level l)
+{ int m = get<int_value>()->int_val();
+  own_vector v= get_own<vector_value>();
+  if (l==eval_level::no_value)
+    return;
+  v->val *= m;
+  push_value(std::move(v));
+}
+void vec_divide_int_wrapper(eval_level l)
+{ int m = get<int_value>()->int_val();
+  own_vector v= get_own<vector_value>();
+  if (m==0)
+    throw runtime_error("Vector division by 0");
+  if (l==eval_level::no_value)
+    return;
+  divide(v->val,m);
+  push_value(std::move(v));
+}
+void vec_modulo_int_wrapper(eval_level l)
+{ int m = get<int_value>()->int_val();
+  own_vector v= get_own<vector_value>();
+  if (m==0)
+    throw runtime_error("Vector modulo 0");
+  if (l==eval_level::no_value)
+    return;
+  v->val %= m;
+  push_value(std::move(v));
+}
+@)
+void vv_prod_wrapper(eval_level l)
+{ shared_vector w=get<vector_value>();
+  shared_vector v=get<vector_value>();
+  check_size (v->val.size(),w->val.size());
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<int_value>(v->val.dot(w->val)));
+}
+
+@ Here is something slightly less boring. For implementing polynomial
+arithmetic, it is useful to have variants of vector addition and subtraction
+operations that do not require equal size arguments, but that adapt to the
+larger argument, assuming zero entries when they are absent. It is then also
+natural to remove trailing zeros. We used to want to actually acquire (unique)
+access to the larger argument, but that created may cases without it being
+obvious that the result was always the fastest possible. Also the processing of
+operation-assignments makes it more desirable to try to reuse the first
+argument, so that is what we now do through the usual |get_own| call. There are
+still a few cases to distinguish, but the situation remains quite simple.
+
+@< Local function def... @>=
+
+void flex_add_wrapper(eval_level l)
+{ shared_vector v1= get<vector_value>();
+  own_vector v0= get_own<vector_value>();
+
+  if (l==eval_level::no_value)
+    return;
+  int_Vector& V0=v0->val;
+  auto i0=V0.size();
+@/const int_Vector& V1=v1->val;
+  auto i1=V1.size();
+@)
+  // now drop leading zeros
+  while (i0>0 and V0[i0-1]==0)
+    --i0;
+  while (i1>0 and V1[i1-1]==0)
+    --i1;
+  if (i0==i1)// equal size case
+  { while (i0>0 and V0[i0-1]+V1[i0-1]==0)
+      --i0; // skip leading zeros in result
+    V0.resize(i0); // set size after dropping leading zeros
+  }
+  else // unequal size, final size will be |max(i0,i1)|
+  {
+    V0.resize(i0); // drop any zeros we skipped
+    if (i0>i1)
+      i0=i1; // descend through high part of |V0|
+    else
+      V0.insert(V0.end(),&V1[i0],&V1[i1]);
+        // copy high part of |V1|, may reallocate |V0|
+  }
+  while (i0-->0)
+    V0[i0]+=V1[i0]; // do addition by hand on common part
+  push_value(std::move(v0));
+}
+
+@ There is a subtraction counterpart. This used to be more complicated when we
+tried to reuse the memory of the larger vector if it was uniquely shared. Now
+that we decided to reuse the memory of the first argument always, there are just
+a few small changes with respect to the addition case.
+
+@< Local function def... @>=
+
+void flex_sub_wrapper(eval_level l)
+{ shared_vector v1= get<vector_value>();
+  own_vector v0= get_own<vector_value>();
+
+  if (l==eval_level::no_value)
+    return;
+  int_Vector& V0=v0->val;
+  auto i0=V0.size();
+@/const int_Vector& V1=v1->val;
+  auto i1=V1.size();
+@)
+  // now drop leading zeros
+  while (i0>0 and V0[i0-1]==0)
+    --i0;
+  while (i1>0 and V1[i1-1]==0)
+    --i1;
+  if (i0==i1)// equal size case
+  { while (i0>0 and V0[i0-1]==V1[i0-1])
+      --i0; // skip leading zeros in result
+    V0.resize(i0); // set size after dropping leading zeros
+  }
+  else // unequal size, final size will be |max(i0,i1)|
+  {
+    V0.resize(i0); // drop any zeros we skipped
+    if (i0>i1)
+      i0=i1; // descend through high part of |V0|
+    else
+    { V0.reserve(i1); // we must negate entries of |V1| while copying
+      std::for_each(&V1[i0],&V1[i1],
+                    @[[&V0](int val)@+ {@; V0.push_back(-val); }@]);
+    }
+  }
+  while (i0-->0)
+    V0[i0]-=V1[i0]; // do subtraction by hand on common part
+  push_value(std::move(v0));
+}
+
+@ While we are defining functions to help doing polynomial arithmetic, we
+might as well do multiplication too.
+
+@< Local function def... @>=
+
+void vector_convolve_wrapper(eval_level l)
+{ shared_vector v1= get<vector_value>();
+  shared_vector v0= get<vector_value>();
+  if (l==eval_level::no_value)
+    return;
+  const int_Vector& V0=v0->val;
+  auto i0=V0.size();
+@/const int_Vector& V1=v1->val;
+  auto i1=V1.size();
+  while (i0>0 and V0[i0-1]==0)
+    --i0;
+  while (i1>0 and V1[i1-1]==0)
+    --i1;
+  if (i0==0 or i1==0)
+@/{@; push_value(std::make_shared<vector_value>(int_Vector(0)));
+    return;
+  }
+  own_vector result = std::make_shared<vector_value>(int_Vector(i0+i1-1));
+  int_Vector& r = result->val;
+  auto i=i0; std::size_t j=0; int V1j=V1[0], V0l=V0[i0-1];
+  while (i-->0)
+    r[i] = V0[i]*V1j; // copy |V0|, multiplied by lowest (constant) term of |V1|
+  while (++j<i1)
+  { r[(i=i0-1)+j] = V0l*(V1j=V1[j]); // copy top term of |V0| times next of |V1|
+    while (i-->0)
+      r[i+j] += V0[i]*V1j; // add remainder of multiple of |V0|, shifted |j|
+  }
+  push_value(std::move(result));
+}
+
+@*2 Rational vector arithmetic.
+%
+The function |vector_div_wrapper| produces a rational vector, for which we
+also provide addition and subtraction of another rational vector.
+
+@< Local function def... @>=
+void vector_div_wrapper(eval_level l)
+{ auto n=get<int_value>()->long_val();
+  shared_vector v=get<vector_value>();
+  if (l!=eval_level::no_value)
+    push_value@|
+      (std::make_shared<rational_vector_value>(v->val,n)); // throws if |n==0|
+}
+@)
+void ratvec_unfraction_wrapper(eval_level l)
+{ shared_rational_vector v = get<rational_vector_value>();
+  if (l!=eval_level::no_value)
+  { Weight num(v->val.numerator().begin(),v->val.numerator().end()); // convert
+    push_value(std::make_shared<vector_value>(std::move(num)));
+    push_value(std::make_shared<int_value>(v->val.denominator()));
+    if (l==eval_level::single_value)
+      wrap_tuple<2>();
+  }
+}
+@)
+void ratvec_plus_wrapper(eval_level l)
+{ shared_rational_vector v1= get<rational_vector_value>();
+  own_rational_vector v0= get_own<rational_vector_value>();
+  check_size(v0->val.size(),v1->val.size());
+
+  if (l==eval_level::no_value)
+    return;
+  v0->val += v1->val;
+  push_value(std::move(v0));
+}
+void ratvec_minus_wrapper(eval_level l)
+{ shared_rational_vector v1= get<rational_vector_value>();
+  own_rational_vector v0= get_own<rational_vector_value>();
+  check_size(v0->val.size(),v1->val.size());
+
+  if (l==eval_level::no_value)
+    return;
+  v0->val -= v1->val;
+  push_value(std::move(v0));
+}
+void ratvec_unary_minus_wrapper(eval_level l)
+{ own_rational_vector v = get_own<rational_vector_value>();
+
+  if (l==eval_level::no_value)
+    return;
+  v->val.negate();
+  push_value(std::move(v));
+}
+
+@ Here are multiplication and division of rational vectors by integers, and by
+rational numbers. The modulo operation is only provided for the integer case.
+All operations must normalise the result, since the library operations do not
+do this automatically, with the exception of the modulo operation which cannot
+lead to a smaller denominator since it effectively subtracts an integer vector.
+
+@< Local function def... @>=
+void ratvec_times_int_wrapper(eval_level l)
+{ auto i= get<int_value>()->long_val();
+  own_rational_vector v= get_own<rational_vector_value>();
+  if (l==eval_level::no_value)
+    return;
+  (v->val *= i).normalize();
+  push_value(std::move(v));
+}
+void ratvec_divide_int_wrapper(eval_level l)
+{ auto i= get<int_value>()->long_val();
+  own_rational_vector v= get_own<rational_vector_value>();
+  if (i==0)
+    throw runtime_error("Rational vector division by 0");
+  if (l==eval_level::no_value)
+    return;
+  (v->val /= i).normalize();
+  push_value(std::move(v));
+}
+void ratvec_modulo_int_wrapper(eval_level l)
+{ auto i= get<int_value>()->long_val();
+  own_rational_vector v= get_own<rational_vector_value>();
+  if (i==0)
+    throw runtime_error("Rational vector modulo 0");
+  if (l==eval_level::no_value)
+    return;
+  v->val %= i; // this cannot change the denominator, no need for |normalize|
+  push_value(std::move(v));
+}
+@)
+
+void ratvec_times_rat_wrapper(eval_level l)
+{ shared_rat r= get<rat_value>();
+  own_rational_vector v= get_own<rational_vector_value>();
+  if (l==eval_level::no_value)
+    return;
+  (v->val *= r->rat_val()).normalize();
+  push_value(std::move(v));
+}
+void ratvec_divide_rat_wrapper(eval_level l)
+{ shared_rat r= get<rat_value>();
+  own_rational_vector v= get_own<rational_vector_value>();
+  if (r->val.is_zero())
+    throw runtime_error("Rational vector division by 0");
+  if (l==eval_level::no_value)
+    return;
+  (v->val /= r->rat_val()).normalize();
+  push_value(std::move(v));
+}
+
+@*2 Matrix arithmetic.
+%
+Adding a multiple (usually with factor $1$ or $-1$) of the identity to a
+(square) matrix is frequently useful, so we provide additive operators between
+matrices and integers.
+
+@< Local function definitions @>=
+void mat_plus_int_wrapper(eval_level l)
+{ int i = get<int_value>()->int_val();
+  own_matrix M = get_own<matrix_value>();
+  if (l==eval_level::no_value)
+    return;
+  M->val += i;
+  push_value(std::move(M));
+}
+void mat_minus_int_wrapper(eval_level l)
+{ int i = get<int_value>()->int_val();
+  own_matrix M = get_own<matrix_value>();
+  if (l==eval_level::no_value)
+    return;
+  M->val += -i;
+  push_value(std::move(M));
+}
+@)
+void int_plus_mat_wrapper(eval_level l)
+{ own_matrix M = get_own<matrix_value>();
+  int i = get<int_value>()->int_val();
+  if (l==eval_level::no_value)
+    return;
+  M->val += i;
+  push_value(std::move(M));
+}
+void int_minus_mat_wrapper(eval_level l)
+{ own_matrix M = get_own<matrix_value>();
+  int i = get<int_value>()->int_val();
+  if (l==eval_level::no_value)
+    return;
+  M->val.negate();
+  M->val += i;
+  push_value(std::move(M));
+}
+
+@ Matrix addition and subtraction were for a long time provided as a user
+defined function; they are relatively little used, but nevertheless deserve to
+be built into the interpreter.
+
+@< Local function definitions @>=
+
+void mat_plus_mat_wrapper(eval_level l)
+{ own_matrix b= get_own<matrix_value>();
+  shared_matrix a= get<matrix_value>();
+  check_size(a->val.n_rows(),b->val.n_rows());
+  check_size(a->val.n_columns(),b->val.n_columns());
+  if (l==eval_level::no_value)
+    return;
+  b->val += a->val;
+  push_value(std::move(b));
+}
+
+void mat_minus_mat_wrapper(eval_level l)
+{
+  shared_matrix b= get<matrix_value>();
+  own_matrix a= get_own<matrix_value>();
+  check_size(a->val.n_rows(),b->val.n_rows());
+  check_size(a->val.n_columns(),b->val.n_columns());
+  if (l==eval_level::no_value)
+    return;
+  a->val -= b->val;
+  push_value(std::move(a));
+}
+
+@ Now the products between vector and/or matrices. We make the wrapper
+|mm_prod_wrapper| around matrix multiplication callable from other compilation
+units; for the other wrappers this is not necessary and the will be kept
+local.
+@< Declarations of exported functions @>=
+void mm_prod_wrapper (eval_level);
+
+@ For wrapper functions with multiple arguments, we must always remember that
+they are to be popped from the stack in reverse order.
+
+@< Global function definitions @>=
+void mm_prod_wrapper(eval_level l)
+{ shared_matrix rf=get<matrix_value>(); // right factor
+  shared_matrix lf=get<matrix_value>(); // left factor
+  check_size(lf->val.n_columns(),rf->val.n_rows());
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<matrix_value>(lf->val*rf->val));
+}
+
+@ The other product operations are very similar. As a historic note, the
+function corresponding to |mv_prod_wrapper| was in fact our first function
+with more than one argument (arithmetic on integer constants was done inside
+the parser at that time).
+
+@< Local function definitions @>=
+void mv_prod_wrapper(eval_level l)
+{ shared_vector v=get<vector_value>();
+  shared_matrix m=get<matrix_value>();
+  if (m->val.n_columns()!=v->val.size())
+  { std::ostringstream o;
+    o << "Size mismatch " @| << m->val.n_columns() << ':' << v->val.size();
+    throw runtime_error(o.str());
+  }
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<vector_value>(m->val*v->val));
+}
+@)
+void mrv_prod_wrapper(eval_level l)
+{ shared_rational_vector v=get<rational_vector_value>();
+  shared_matrix m=get<matrix_value>();
+  if (m->val.n_columns()!=v->val.size())
+  { std::ostringstream o;
+    o << "Size mismatch " @| << m->val.n_columns() << ':' << v->val.size();
+    throw runtime_error(o.str());
+  }
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<rational_vector_value>(m->val*v->val));
+}
+@)
+void vm_prod_wrapper(eval_level l)
+{ shared_matrix m=get<matrix_value>(); // right factor
+  shared_vector v=get<vector_value>(); // left factor
+  if (v->val.size()!=m->val.n_rows())
+  { std::ostringstream o;
+    o << "Size mismatch " << v->val.size() << ":" << m->val.n_rows();
+    throw runtime_error(o.str());
+  }
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<vector_value>(m->val.right_prod(v->val)));
+}
+@)
+void rvm_prod_wrapper(eval_level l)
+{ shared_matrix m=get<matrix_value>();
+  shared_rational_vector v=get<rational_vector_value>();
+  if (v->val.size()!=m->val.n_rows())
+  { std::ostringstream o;
+    o << "Size mismatch " @|
+      << v->val.size() << ':' << m->val.n_rows();
+    throw runtime_error(o.str());
+  }
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<rational_vector_value>(v->val*m->val));
+}
+
+
+@ We must not forget to install what we have defined.
+
+@< Initialise... @>=
+install_function(matrix_row_wrapper,"row","(mat,int->vec)");
+install_function(matrix_column_wrapper,"column","(mat,int->vec)");
+install_function(rows_wrapper,"rows","(mat->[vec])");
+install_folding_function(columns_wrapper,"columns","(mat->[vec])");
+install_function(vec_unary_eq_wrapper,"=","(vec->bool)");
+install_function(vec_unary_neq_wrapper,"!=","(vec->bool)");
+install_function(vec_eq_wrapper,"=","(vec,vec->bool)");
+install_function(vec_neq_wrapper,"!=","(vec,vec->bool)");
+install_function(vec_non_negative_wrapper,">=","(vec->bool)");
+install_function(vec_positive_wrapper,">","(vec->bool)");
+install_function(ratvec_unary_eq_wrapper,"=","(ratvec->bool)");
+install_function(ratvec_unary_neq_wrapper,"!=","(ratvec->bool)");
+install_function(ratvec_non_negative_wrapper,">=","(ratvec->bool)");
+install_function(ratvec_positive_wrapper,">","(ratvec->bool)");
+install_function(ratvec_eq_wrapper,"=","(ratvec,ratvec->bool)");
+install_function(ratvec_neq_wrapper,"!=","(ratvec,ratvec->bool)");
+install_function(mat_unary_eq_wrapper,"=","(mat->bool)");
+install_function(mat_unary_neq_wrapper,"!=","(mat->bool)");
+install_function(mat_eq_wrapper,"=","(mat,mat->bool)");
+install_function(mat_neq_wrapper,"!=","(mat,mat->bool)");
+install_folding_function(vec_plus_wrapper,"+","(vec,vec->vec)",1);
+install_folding_function(vec_minus_wrapper,"-","(vec,vec->vec)",1);
+install_folding_function(vec_unary_minus_wrapper,"-","(vec->vec)",3);
+install_folding_function(vec_times_int_wrapper,"*","(vec,int->vec)",1);
+install_folding_function(vec_divide_int_wrapper,"\\","(vec,int->vec)",1);
+install_folding_function(vec_modulo_int_wrapper,"%","(vec,int->vec)",1);
+install_folding_function(vector_div_wrapper,"/","(vec,int->ratvec)");
+install_folding_function(ratvec_unfraction_wrapper,"%","(ratvec->vec,int)");
+install_folding_function(ratvec_plus_wrapper,"+","(ratvec,ratvec->ratvec)",1);
+install_folding_function(ratvec_minus_wrapper,"-","(ratvec,ratvec->ratvec)",1);
+install_folding_function(ratvec_unary_minus_wrapper,"-","(ratvec->ratvec)",3);
+install_folding_function(ratvec_times_int_wrapper,"*","(ratvec,int->ratvec)",1);
+install_folding_function(ratvec_divide_int_wrapper,"/","(ratvec,int->ratvec)",1);
+install_folding_function(ratvec_modulo_int_wrapper,"%","(ratvec,int->ratvec)",1);
+install_folding_function(ratvec_times_rat_wrapper,"*","(ratvec,rat->ratvec)",1);
+install_folding_function(ratvec_divide_rat_wrapper,"/","(ratvec,rat->ratvec)",1);
+install_folding_function(mat_plus_int_wrapper,"+","(mat,int->mat)",1);
+install_folding_function(mat_minus_int_wrapper,"-","(mat,int->mat)",1);
+install_folding_function(int_plus_mat_wrapper,"+","(int,mat->mat)",2);
+install_folding_function(int_minus_mat_wrapper,"-","(int,mat->mat)",2);
+install_function(vv_prod_wrapper,"*","(vec,vec->int)");
+install_folding_function(flex_add_wrapper,"flex_add","(vec,vec->vec)",1);
+install_folding_function(flex_sub_wrapper,"flex_sub","(vec,vec->vec)",1);
+install_folding_function(vector_convolve_wrapper,"convolve","(vec,vec->vec)",1);
+install_folding_function(mat_plus_mat_wrapper,"+","(mat,mat->mat)",1);
+install_folding_function(mat_minus_mat_wrapper,"-","(mat,mat->mat)",1);
+install_folding_function(mrv_prod_wrapper,"*","(mat,ratvec->ratvec)");
+install_folding_function(mv_prod_wrapper,"*","(mat,vec->vec)");
+install_folding_function(mm_prod_wrapper,"*","(mat,mat->mat)");
+install_folding_function(vm_prod_wrapper,"*","(vec,mat->vec)");
+install_folding_function(rvm_prod_wrapper,"*","(ratvec,mat->ratvec)");
+
+@*1 Other wrapper functions for vectors and matrices.
+%
+This section defines additional functions for vectors and matrices, often
+specifically aimed at working with lattices.
+
+Null vectors and matrices are particularly useful as starting values. In
+addition, the latter can produce empty matrices without any (null) entries,
+when either the number of rows or column is zero but the other is not; such
+matrices (which are hard to obtain by other means) are good starting points
+for iterations that consist of adding a number of rows or columns of equal
+size, and they determine this size even if none turn out to be contributed.
+Since vectors are treated as column vectors, their transpose is a one-line
+matrix; such matrices (like null matrices) cannot be obtained from the special
+matrix-building expressions.
+
+Since in general built-in functions may throw exceptions, we hold the pointers
+to local values in smart pointers; for values popped from the stack this would
+in fact be hard to avoid.
+
+@< Local function definitions @>=
+void null_vec_wrapper(eval_level l)
+{ auto n = get<int_value>()->ulong_val();
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<vector_value>(int_Vector(n,0)));
+}
+@) void null_mat_wrapper(eval_level l)
+{ auto n = get<int_value>()->ulong_val();
+  auto m = get<int_value>()->ulong_val();
+  if (m>matrix::index_max)
+  { std::ostringstream o;
+    o << "Number of rows " << m << " exceeds implementation limit";
+    throw runtime_error(o.str());
+  }
+  if (n>matrix::index_max)
+  { std::ostringstream o;
+    o << "Number of columns " << n << " exceeds implementation limit";
+    throw runtime_error(o.str());
+  }
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<matrix_value> (int_Matrix(m,n,0)));
+}
+void transpose_vec_wrapper(eval_level l)
+{ shared_vector v=get<vector_value>();
+  if (v->val.size()>matrix::index_max)
+  { std::ostringstream o;
+    o << "Vector size " << v->val.size()
+      << " exceeds matrix implementation limit";
+    throw runtime_error(o.str());
+  }
+  if (l==eval_level::no_value)
+    return;
+@)
+  own_matrix m = std::make_shared<matrix_value>(int_Matrix(1,v->val.size()));
+  m->val.set_row(0,v->val);
+  push_value(std::move(m));
+}
+
+@ The wrappers for matrix transposition and identity matrix are called
+from \.{atlas-types.w}.
+
+@< Declarations of exported functions @>=
+void transpose_mat_wrapper (eval_level);
+void id_mat_wrapper(eval_level l);
+
+@ Their definitions are particularly simple, as they just call a matrix method
+to do the work.
+
+@< Global function definitions @>=
+@) void transpose_mat_wrapper(eval_level l)
+{ shared_matrix m=get<matrix_value>();
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<matrix_value>(m->val.transposed()));
+}
+@)
+void id_mat_wrapper(eval_level l)
+{ auto i=get<int_value>()->ulong_val();
+  if (i>matrix::index_max)
+  { std::ostringstream o;
+    o << "Size " << i << " of identity matrix exceeds implementation limit";
+    throw runtime_error(o.str());
+  }
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<matrix_value>(int_Matrix(i))); // identity
+}
+
+@ We also define |diagonal_wrapper|, a slight generalisation of
+|id_mat_wrapper| that produces a diagonal matrix from a vector.
+
+@< Local function def... @>=
+void diagonal_wrapper(eval_level l)
+{ shared_vector d=get<vector_value>();
+  const auto n=d->val.size();
+  if (n>matrix::index_max)
+  { std::ostringstream o;
+    o << "Size " << n << " of diagonal matrix exceeds implementation limit";
+    throw runtime_error(o.str());
+  }
+  if (l==eval_level::no_value)
+    return;
+@)
+  own_matrix m = std::make_shared<matrix_value>(int_Matrix(n,n,0));
+  for (std::size_t i=0; i<n; ++i)
+    m->val(i,i)=d->val[i];
+  push_value(std::move(m));
+}
+
+@ The function |stack_rows_wrapper| interprets a row of vectors as a ragged
+tableau, and returns the result as a matrix. It inherits functionality that
+used to be (in a transposed form) applied when implicitly converting lists of
+vectors into matrices, namely to compute the maximum of the lengths of the
+vectors and zero-extending the other rows to that length. As a consequence
+an empty list of vectors gives a $0\times0$ matrix, something that turned out
+to be usually undesirable for an implicit conversion; however here is seems
+not very problematic.
+
+@< Local function def... @>=
+void stack_rows_wrapper(eval_level l)
+{ shared_row r = get<row_value>();
+  const auto n = r->val.size();
+  if (n>matrix::index_max)
+  { std::ostringstream o;
+    o << "Height " << n << " of stacked matrix exceeds implementation limit";
+    throw runtime_error(o.str());
+  }
+  std::vector<const int_Vector*> row(n);
+  std::size_t width=0; // maximal length of vectors
+  for(std::size_t i=0; i<n; ++i)
+  { row[i] = & force<vector_value>(r->val[i].get())->val;
+    if (row[i]->size()>width)
+      width=row[i]->size();
+  }
+  if (width>matrix::index_max)
+  { std::ostringstream o;
+    o << "Width " << width << " of stacked matrix exceeds implementation limit";
+    throw runtime_error(o.str());
+  }
+  if (l==eval_level::no_value)
+    return;
+@)
+  own_matrix m = std::make_shared<matrix_value>(int_Matrix(n,width,0));
+  for(std::size_t i=0; i<n; ++i)
+    for (std::size_t j=0; j<row[i]->size(); ++j)
+      m->val(i,j)=(*row[i])[j];
+  push_value(std::move(m));
+}
+
+@ Here is the preferred way to combine columns to a matrix, explicitly
+providing a desired number of rows.
+
+@< Local function def... @>=
+void combine_columns_wrapper(eval_level l)
+{ shared_row r = get<row_value>();
+  auto n = get<int_value>()->ulong_val();
+  if (n>matrix::index_max)
+  { std::ostringstream o;
+    o << "Number " << n <<" of rows requested exceeds implementation limit";
+    throw runtime_error(o.str());
+  }
+  if (r->val.size()>matrix::index_max)
+  { std::ostringstream o;
+    o << "Number " << r->val.size() <<" of columns exceeds implementation limit";
+    throw runtime_error(o.str());
+  }
+  own_matrix m = std::make_shared<matrix_value>(int_Matrix(n,r->val.size()));
+  for(std::size_t j=0; j<r->val.size(); ++j)
+  { const int_Vector& col = force<vector_value>(r->val[j].get())->val;
+    if (col.size()!=std::size_t(n))
+    { std::ostringstream o;
+      o << "Column " << j <<" size " << col.size() @|
+        << " does not match specified size " << n;
+    throw runtime_error(o.str());
+    }
+@.Column size does not match@>
+    m->val.set_column(j,col);
+  }
+  if (l!=eval_level::no_value)
+    push_value(std::move(m));
+}
+@)
+void combine_rows_wrapper(eval_level l)
+{ shared_row r =get<row_value>();
+  auto n = get<int_value>()->ulong_val();
+  if (n>matrix::index_max)
+  { std::ostringstream o;
+    o << "Number " << n <<" of columns requested exceeds implementation limit";
+    throw runtime_error(o.str());
+  }
+  if (r->val.size()>matrix::index_max)
+  { std::ostringstream o;
+    o << "Number " << r->val.size() <<" of rows exceeds implementation limit";
+    throw runtime_error(o.str());
+  }
+  own_matrix m = std::make_shared<matrix_value>(int_Matrix(r->val.size(),n));
+  for(std::size_t i=0; i<r->val.size(); ++i)
+  { const int_Vector& row = force<vector_value>(r->val[i].get())->val;
+    if (row.size()!=std::size_t(n))
+    { std::ostringstream o;
+      o << "Row " << i << " size " << row.size() @|
+        << " does not match specified size " << n;
+      throw runtime_error(o.str());
+    }
+@.Row size does not match@>
+    m->val.set_row(i,row);
+  }
+  if (l!=eval_level::no_value)
+    push_value(std::move(m));
+}
+
+@ We shall define a function to perform all kinds of operations at once on a
+matrix, selecting ranges of rows and columns, possibly reversing one or both,
+and also possibly applying transposition or negation on the fly. The workhorse
+will be the following function, templated over the transposition and
+negation options; in doing so we are effectively creating $4$ related functions
+that can be optimised separately in obvious ways, so that there is no runtime
+cost in testing the conditions |transpose| and |negate| inside the loops. The
+price to pay is that the correct version must be selected explicitly at the place
+of call (as template arguments must be compile time constants). Since the
+conditions for reversal are tested outside the loops, it is more convenient to
+pass these conditions in a true argument |flags|.
+
+@< Local function def... @>=
+
+template <bool transpose, bool negate>
+void transform_copy
+  (unsigned flags,
+   const int_Matrix& src, @|
+   matrix::index_t lwb_r, matrix::index_t upb_r,
+   matrix::index_t lwb_c, matrix::index_t upb_c,
+   int_Matrix& dst)
+{ if ((flags&0x1)==0) // no reversal of rows
+  { if ((flags&0x2)==0) // no reversal of rows or columns
+      for (matrix::index_t i=0, k=lwb_r; k<upb_r; ++i, ++k)
+	for (matrix::index_t j=0, l=lwb_c; l<upb_c; ++j, ++l)
+	  *(transpose ? &dst(j,i) : &dst(i,j)) = (negate ? -1 : 1) * src(k,l);
+    else // reversal of columns only
+      for (matrix::index_t i=0, k=lwb_r; k<upb_r; ++i, ++k)
+	for (matrix::index_t j=0, l=upb_c; l-->lwb_c; ++j)
+	  *(transpose ? &dst(j,i) : &dst(i,j)) = (negate ? -1 : 1) * src(k,l);
+  }
+  else // reversal of rows
+  { if ((flags&0x2)==0) // reversal of rows only
+      for (matrix::index_t i=0, k=upb_r; k-->lwb_r; ++i)
+	for (matrix::index_t j=0, l=lwb_c; l<upb_c; ++j, ++l)
+	  *(transpose ? &dst(j,i) : &dst(i,j)) = (negate ? -1 : 1) * src(k,l);
+    else // reversal of rows and columns
+      for (matrix::index_t i=0, k=upb_r; k-->lwb_r; ++i)
+	for (matrix::index_t j=0, l=upb_c; l-->lwb_c; ++j)
+	  *(transpose ? &dst(j,i) : &dst(i,j)) = (negate ? -1 : 1) * src(k,l);
+  }
+}
+
+@ And here is the outer function, whose name is inspired by Swiss army knives,
+that will call one of the four template instances. It takes as first parameter
+a |BitSet| of $8$ bits: bit~$0,1,2$ control the row indexing as in a slice:
+reversed, lower bound negated, upper bound negated, where negated means
+subtracted from the corresponding dimension (here the number of rows).
+Similarly bits~$3,4,5$ control the column indexing, bit~$6$ indicates
+transposition and bit~$7$ negation of the individual entries.
+
+@< Local function def... @>=
+
+void swiss_matrix_knife_wrapper(eval_level lev)
+{ size_t l = get<int_value>()->ulong_val();
+  size_t j = get<int_value>()->ulong_val();
+  size_t k = get<int_value>()->ulong_val();
+  size_t i = get<int_value>()->ulong_val();
+  shared_matrix src = get<matrix_value>();
+  const int_Matrix& M = src->val;
+  BitSet<8> flags (get<int_value>()->int_val());
+@)
+  auto m = M.n_rows(); auto n= M.n_columns();
+@< Test whether the range specified by $i:k$ and $j:l$ is compatible with the
+   shape $(m,n)$, and if not |throw| an appropriate error @>
+@)
+  if (lev==eval_level::no_value)
+    return;
+  size_t lwb_r = flags[1] ? m-i : i;
+  size_t upb_r = flags[2] ? m-k : k;
+  size_t lwb_c = flags[4] ? n-j : j;
+  size_t upb_c = flags[5] ? n-l : l;
+  @< Declare and compute the dimensions |r_size|, |c_size| of the result @>
+  own_matrix result(std::make_shared<matrix_value>(int_Matrix(r_size,c_size)));
+  unsigned rev_flags = static_cast<unsigned>(flags[0])*0x1
+                     ^ static_cast<unsigned>(flags[3])*0x2;
+  @< Call instance |transform_copy<@[flags[6],flags[7]@]>| with arguments
+  |rev_flags|, |M|, |lwb_r|, |upb_r|, |lwb_c|, |upb_c|, and |result->val| @>
+
+  push_value(std::move(result));
+}
+
+@ We try to be specific about which bounds were out of range.
+
+@< Test whether the range specified by $i:k$ and $j:l$ is compatible with the
+   shape $(m,n)$, and if not |throw| an appropriate error @>=
+{ bool r=m<std::max(i,k), c=n<std::max(j,l);
+  if (r or c)
+  { std::ostringstream o;
+    o << "Range exceeds bounds: ";
+    if (r)
+      if (m<k)
+        if (m<i)
+          o << "both row bounds " << i << ',' << k;
+        else
+          o << "upper row bound " << k;
+      else
+        o << "lower row bound " << i;
+    if (r and c)
+      o << " and ";
+    if (c)
+      if (n<l)
+        if (n<j)
+          o << "both column bounds " << j << ',' << l;
+        else
+          o << "upper column bound " << l;
+      else
+        o << "lower column bound " << j;
+    o << " out of range, actual limits are" << m << ", " << n;
+    throw runtime_error(o.str());
+  }
+}
+
+@ We ensure the dimensions of the result are non negative, and adapted to
+optional transposition.
+
+@< Declare and compute the dimensions |r_size|, |c_size| of the result @>=
+if (lwb_r>upb_r)
+  upb_r = lwb_r;
+if (lwb_c>upb_c)
+  upb_c = lwb_c;
+matrix::index_t r_size = upb_r - lwb_r;
+matrix::index_t c_size = upb_c - lwb_c;
+if (flags[6]) // transpose
+  std::swap(r_size,c_size);
+
+@ Here we must explicitly test |flags[6],flags[7]| to provide constant template
+arguments before calling an instance |transform_copy|. We could condition
+everything on having |r_size*c_size>0| so that |transform_copy| has something to
+do; however that is spending a bit of time in every case, only to shorten some
+rare cases that are already quite fast, so we omit such a test.
+
+@< Call instance |transform_copy<@[flags[6],flags[7]@]>|... @>=
+if (flags[6])
+{ if (flags[7])
+    transform_copy<@[true,true@]>
+      (rev_flags,M,lwb_r,upb_r,lwb_c,upb_c,result->val);
+  else
+    transform_copy<@[true,false@]>
+      (rev_flags,M,lwb_r,upb_r,lwb_c,upb_c,result->val);
+}
+else
+{ if (flags[7])
+    transform_copy<@[false,true@]>
+      (rev_flags,M,lwb_r,upb_r,lwb_c,upb_c,result->val);
+  else
+    transform_copy<@[false,false@]>
+      (rev_flags,M,lwb_r,upb_r,lwb_c,upb_c,result->val);
+}
+
+@ We continue with some more specialised mathematical functions. Here are
+functions to compute the greatest common divisor of the entries of a vector,
+and a version that also computes a matrix of ``B\'ezout coefficients'', a
+first column for the $\gcd$, and further columns for every entry~$0$ that was
+also produced by elementary operations among the entries of the vector.
+
+@h "matreduc.h"
+
+@<Local function definitions @>=
+void gcd_wrapper(eval_level l)
+{ own_vector v=get_own<vector_value>();
+  if (l==eval_level::no_value)
+    return;
+  bool flip=false;
+  int d =
+    matreduc::gcd(std::move(v->val),static_cast<int_Matrix*>(nullptr),flip);
+  push_value(std::make_shared<int_value>(d));
+}
+@)
+void Bezout_wrapper(eval_level l)
+{ own_vector v=get_own<vector_value>();
+  if (l==eval_level::no_value)
+    return;
+  own_matrix column = std::make_shared<matrix_value>(int_Matrix());
+  bool flip=false;
+  int d = matreduc::gcd(std::move(v->val),&column->val,flip);
+  push_value(std::make_shared<int_value>(d));
+  push_value(std::move(column));
+  if (l==eval_level::single_value)
+    wrap_tuple<2>();
+}
+
+@ Here is the column echelon function.
+
+@h "bitmap.h"
+
+@<Local function definitions @>=
+void echelon_wrapper(eval_level l)
+{ own_matrix M=get_own<matrix_value>();
+  if (l==eval_level::no_value)
+    return;
+  own_matrix column = std::make_shared<matrix_value>(int_Matrix());
+  bool flip;
+  BitMap pivots=matreduc::column_echelon(M->val,column->val,flip);
+  push_value(std::move(M));
+  push_value(std::move(column));
+  own_row p_list = std::make_shared<row_value>(0);
+  p_list->val.reserve(pivots.size());
+  for (BitMap::iterator it=pivots.begin(); it(); ++it)
+    p_list->val.push_back(std::make_shared<int_value>(*it));
+  push_value(std::move(p_list));
+  push_value(std::make_shared<int_value>(flip ? -1 : 1));
+  if (l==eval_level::single_value)
+    wrap_tuple<4>();
+}
+
+@ The column echelon form can be used to solve linear systems fairly easily.
+In contrast with the row echelon form often taught in linear algebra courses,
+the column operations used to arrive at the echelon form must be recorded to
+transform the solution of the reduced system to a solution of the original
+system, but on the other hand one uses an un-transformed right hand side while
+solving. Thus if the system is inconsistent, this becomes evident only after
+the reduction phase, in the form of non-pivot equations that need to be
+satisfied at the point where they are encountered. Since we are working with
+integer coefficients, pivot equations can also pose a divisibility problem,
+but in that case we can get an integer solution by scaling up the right hand
+side by a necessary factor, and this will also give a rational solution in
+lowest terms. The function |linear_solve| will provide such solving
+capability.
+
+The function is particular in that it is the first occasion where a built-in
+function involves a union type: our result will either be an indication of the
+non-existence of a solution, or data describing a solution. In the former case
+the library function |matreduc::echelon_solve| will throw a
+|std::runtime_error| so we make the distinction using a |catch|-|try| block.
+Also where a user defined function would need to use injector functions, we
+can make the union variants directly here, and supply tags as if there were
+injector functions of these names.
+
+@<Local function definitions @>=
+void linear_solve_wrapper(eval_level l)
+{ own_vector b=get_own<vector_value>();
+  own_matrix M=get_own<matrix_value>();
+  if (M->val.n_rows()!=b->val.size())
+  { std::ostringstream o;
+    o << "Linear system size mismatch "
+      << M->val.n_rows() << ':' << b->val.size();
+    throw runtime_error(o.str());
+  }
+  if (l==eval_level::no_value)
+    return;
+  own_matrix column = std::make_shared<matrix_value>(int_Matrix());
+  bool flip; // unused
+  const auto m = M->val.n_columns();
+  BitMap pivots=matreduc::column_echelon(M->val,column->val,flip);
+  try
+  { static id_type affine_name=main_hash_table->match_literal("solution");
+    const auto k = M->val.n_columns(); // number of pivots
+    arithmetic::big_int factor;
+    int_Vector ini_sol = matreduc::echelon_solve(M->val,pivots,b->val,factor);
+    push_value(std::make_shared<vector_value> @|
+      (column->val.block(0,0,m,k)*ini_sol));
+    push_value(std::make_shared<int_value>(std::move(factor)));
+    push_value(std::make_shared<matrix_value>(column->val.block(0,k,m,m)));
+    wrap_tuple<3>();
+    push_value(std::make_shared<union_value>(1,pop_value(),affine_name));
+  }
+  catch(const std::runtime_error& e)
+  { static id_type empty_name=main_hash_table->match_literal("empty_set");
+    auto empty = std::make_shared<tuple_value>(0);
+    push_value(std::make_shared<union_value>(0,std::move(empty),empty_name));
+  }
+}
+
+
+@ And here are general functions |diagonalize| and |adapted_basis|, rather
+similar to Smith normal form, but without divisibility guarantee on diagonal
+entries. While |diagonalize| provides the matrices applied on the left and right
+to obtain diagonal form, |adapted_basis| gives only the left factor (row
+operations applied) and gives it inverted, so that this matrix right-multiplied
+by the diagonal matrix has the same image as the original matrix.
+
+@<Local function definitions @>=
+void diagonalize_wrapper(eval_level l)
+{ shared_matrix M=get<matrix_value>();
+  if (l!=eval_level::no_value)
+  { own_matrix row = std::make_shared<matrix_value>(int_Matrix());
+    own_matrix column = std::make_shared<matrix_value>(int_Matrix());
+    own_vector diagonal = std::make_shared<vector_value>
+       (matreduc::diagonalise(M->val,row->val,column->val));
+    push_value(std::move(diagonal));
+    push_value(std::move(row));
+    push_value(std::move(column));
+    if (l==eval_level::single_value)
+      wrap_tuple<3>();
+  }
+}
+@)
+void adapted_basis_wrapper(eval_level l)
+{ shared_matrix M=get<matrix_value>();
+  if (l!=eval_level::no_value)
+  { own_vector diagonal = std::make_shared<vector_value>(std::vector<int>());
+    push_value(std::make_shared<matrix_value>
+      (matreduc::adapted_basis(M->val,diagonal->val)));
+    push_value(std::move(diagonal));
+    if (l==eval_level::single_value)
+      wrap_tuple<2>();
+  }
+}
+
+@ Here are three related functions, but which are implemented in the \.{lattice}
+compilation unit, and whose implementation avoids using the generality of
+|matreduc::diagonalise|. They are |kernel| which for any matrix~$M$ will find
+another whose image is precisely the kernel of~$M$, then |eigen_lattice| which
+is a special case for square matrices~$A$, where the kernel of $A-\lambda\id$ is
+computed, and finally |row_saturate| which replaces a matrix by one with the
+same row space, but made such that the rows span, over $\Zee$, the intersection
+of that space with~$\Zee^n$ (currently this function actually calls
+|matreduc::adapted_basis| internally, so it does not really belong in this
+group).
+
+@h "lattice.h"
+
+@<Local function definitions @>=
+void kernel_wrapper(eval_level l)
+{ shared_matrix M=get<matrix_value>();
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<matrix_value>(lattice::kernel(M->val)));
+}
+@)
+void eigen_lattice_wrapper(eval_level l)
+{ int eigen_value = get<int_value>()->int_val();
+  shared_matrix M=get<matrix_value>();
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<matrix_value>
+      (lattice::eigen_lattice(M->val,eigen_value)));
+}
+@)
+void row_saturate_wrapper(eval_level l)
+{ shared_matrix M=get<matrix_value>();
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<matrix_value>(lattice::row_saturate(M->val)));
+}
+
+@ As a last example, here is the Smith normal form algorithm. The function
+|Smith| provides both the invariant factors and the rewritten basis on which the
+normal for is assumed.
+
+@< Local function definitions @>=
+void Smith_wrapper(eval_level l)
+{ shared_matrix m=get<matrix_value>();
+  if (l==eval_level::no_value)
+    return;
+  own_vector inv_factors = std::make_shared<vector_value>(std::vector<int>());
+@/push_value(std::make_shared<matrix_value>
+    (matreduc::Smith_basis(m->val,inv_factors->val)));
+  push_value(std::move(inv_factors));
+  if (l==eval_level::single_value)
+    wrap_tuple<2>();
+}
+
+@ Here is one more wrapper function that uses the Smith normal form algorithm,
+but behind the scenes, namely to invert a matrix. Since this cannot be done in
+general over the integers, we return an integral matrix and a common
+denominator to be applied to all coefficients.
+@< Local function definitions @>=
+void invert_wrapper(eval_level l)
+{ shared_matrix m=get<matrix_value>();
+  if (m->val.n_rows()!=m->val.n_columns())
+  { std::ostringstream o;
+    o << "Cannot invert a " @|
+      << m->val.n_rows() << "x" << m->val.n_columns() << " matrix";
+    throw runtime_error(o.str());
+  }
+  if (l==eval_level::no_value)
+    return;
+  arithmetic::big_int denom;
+@/push_value(std::make_shared<matrix_value>(inverse(m->val,denom)));
+  push_value(std::make_shared<int_value>(std::move(denom)));
+  if (l==eval_level::single_value)
+    wrap_tuple<2>();
+}
+
+@ The following function is introduced to allow testing the
+|BinaryMap::section| method. It computes for a given binary matrix~$A$ another
+matrix $B$ of transpose shape and such that $ABA=A$ and $BAB=B$, which is a
+convenient generalisation of the notion of inverse matrix, and which never
+fails to exist (though it may fail to be unique).
+
+@h "bitvector.h"
+
+@< Local function def... @>=
+void section_wrapper(eval_level l)
+{
+  shared_matrix m=get<matrix_value>();
+  BinaryMap B = BinaryMap(m->val).section();
+  own_matrix res = std::make_shared<matrix_value>(
+    int_Matrix(B.n_rows(),B.n_columns()));
+  for (unsigned int j=B.n_columns(); j-->0;)
+    res->val.set_column(j,int_Vector(B.column(j)));
+  if (l!=eval_level::no_value)
+    push_value(std::move(res));
+}
+
+@ We define a function that makes available the normal form for basis of
+subspaces over the field $\Zee/2\Zee$. It is specifically intended to be
+usable with sets of generators that may not form a basis, and to provide
+feedback about expressions both for the normalised basis vectors returned, and
+relations that show the excluded vectors to be dependent on the retained ones.
+
+@< Local function definitions @>=
+void subspace_normal_wrapper(eval_level l)
+{
+  using bitvec = BitVector<64>;
+  shared_matrix generators=get<matrix_value>();
+  unsigned int n_gens = generators->val.n_columns();
+  unsigned int dim = generators->val.n_rows();
+  if (dim>64)
+  { std::ostringstream o;
+    o << "Dimension too large: " << dim << ">64";
+    throw runtime_error(o.str());
+  }
+  if (n_gens>64)
+  { std::ostringstream o;
+    o << "Too many generators: " << n_gens << ">64";
+    throw runtime_error(o.str());
+  }
+@)
+  std::vector<bitvec> basis, combination;
+    // |basis[j]| will be initialised from column $j$ of |generators|
+  std::vector<unsigned int> pivot; // |pivot[i]| is bit position for |basis[i]|
+  std::vector<unsigned int> pivoter;
+    // generator |pivoter[i]| led to |basis[i]|
+  { unsigned max_rank=std::min(n_gens,dim); // |basis| cannot exceed this size
+    basis.reserve(max_rank); pivot.reserve(max_rank); pivoter.reserve(max_rank);
+  }
+  bitvector::initBasis(combination,n_gens);
+    // express (still virtual) |basis| elements in |generators|
+@)
+  @< Transform columns from |generators| to reduced column echelon form in
+     |basis|, storing pivot rows in |pivot|, and recording indices of
+     generators that were found to be independent in |pivoter| @>
+
+  if (l==eval_level::no_value)
+    return;
+
+  @< Push as results the basis found, the corresponding combinations of
+     original generators, the relations produced by unused generators, and the
+     list of pivot positions @>
+  if (l==eval_level::single_value)
+    wrap_tuple<4>();
+}
+
+@ We maintain a |basis| constructed so far, in reduced column echelon form but
+for a not necessarily increasing sequence of |pivot| positions, and an
+increasing list |pivoter| telling for each basis element from which original
+generator it was obtained, and therefore which index into |combination| gives
+the expression of that basis element in the original generators. The entries
+of |combination| not indexed by |pivoter| hold independent expressions that
+give the zero vector.
+
+@< Transform columns from |generators| to reduced column echelon form... @>=
+for (unsigned int j=0; j<n_gens; ++j)
+{ bitvec v(generators->val.column(j)); // reduce modulo $2$
+  for (unsigned int l=0; l<basis.size(); ++l)
+    if (v[pivot[l]])
+    {@;
+       v -= basis[l];
+       combination[j] -= combination[pivoter[l]];
+    }
+  if (v.nonZero())
+  {
+    unsigned int piv = v.firstBit(); // new pivot
+    for (unsigned int l=0; l<basis.size(); ++l)
+      if (basis[l][piv])
+      {@;
+         basis[l] -= v;
+         combination[pivoter[l]] -= combination[j];
+      }
+    basis.push_back(v);
+    pivoter.push_back(j);
+    pivot.push_back(piv);
+  }
+}
+
+@ We return four values, namely three matrices and a list of integers
+(pivots). All of then are constructed in a single loop over the
+indices of the original generators. At index $j$ we either have a
+corresponding basis element, whose index in the basis will be currently $l$,
+but which will be moved to position $\pi(l)$ according to the relative size of
+|pivot[l]|, or it will not, in which case we collect the corresponding
+|combination[j]| that expresses a relation among the original generators.
+
+@h "permutations.h"
+
+@< Push as results the basis found, ... @>=
+{ Permutation pi = permutations::standardization(pivot,dim);
+    // relative positions of pivots
+  unsigned rank=basis.size(); // dimension of the subspace
+  int_Matrix basis_m(dim,rank,0);
+  int_Matrix combin_m(n_gens,rank,0);
+  int_Matrix relations_m(n_gens,n_gens-rank);
+  own_row pivot_r = std::make_shared<row_value>(rank);
+  unsigned int l=0; // number of basis vectors copied so far, current index
+  for (unsigned int j=0; j<n_gens; ++j)
+    if (l<rank and j==pivoter[l])
+    { unsigned d = pi[l]; // destination position
+      for (auto it=basis[l].data().begin(); it(); ++it)
+        basis_m(*it,d) = 1;
+      for (auto it= combination[j].data().begin(); it(); ++it)
+        combin_m(*it,d) = 1;
+      pivot_r->val[d] = std::make_shared<int_value>(pivot[l]);
+      ++l;
+    }
+    else
+    { unsigned d = j-l;
+      for (auto it= combination[j].data().begin(); it(); ++it)
+        relations_m(*it,d) = 1;
+    }
+  assert (l==rank);
+@/push_value(std::make_shared<matrix_value>(std::move(basis_m)));
+  push_value(std::make_shared<matrix_value>(std::move(combin_m)));
+  push_value(std::make_shared<matrix_value>(std::move(relations_m)));
+  push_value(std::move(pivot_r));
+}
+
+@ Once more we need to install what was defined. In two cases we install a
+wrapper function a second time under a name that will be directly accessed
+from the parser to implement certain syntax, but which the user cannot access,
+and therefore cannot redefine or forget.
+
+@< Initialise... @>=
+install_folding_function(null_vec_wrapper,"null","(int->vec)");
+install_folding_function(null_mat_wrapper,"null","(int,int->mat)");
+install_folding_function(transpose_vec_wrapper,"^","(vec->mat)");
+install_folding_function(transpose_mat_wrapper,"^","(mat->mat)",3);
+install_folding_function(transpose_mat_wrapper,@|"transpose ","(mat->mat)");
+  // use of space in the name makes this copy untouchable
+install_folding_function(id_mat_wrapper,"id_mat","(int->mat)");
+install_folding_function(diagonal_wrapper,"diagonal","(vec->mat)");
+install_folding_function(stack_rows_wrapper,"stack_rows","([vec]->mat)");
+install_folding_function(combine_columns_wrapper,"#","(int,[vec]->mat)");
+install_folding_function(combine_rows_wrapper,"^","(int,[vec]->mat)");
+install_folding_function(swiss_matrix_knife_wrapper,@|"swiss_matrix_knife"
+    ,"(int,mat,int,int,int,int->mat)");
+install_folding_function(swiss_matrix_knife_wrapper,@|"matrix slicer"
+    ,"(int,mat,int,int,int,int->mat)"); // space make an untouchable copy
+@)
+install_function(gcd_wrapper,"gcd","(vec->int)");
+install_function(Bezout_wrapper,"Bezout","(vec->int,mat)");
+install_function(echelon_wrapper,"echelon","(mat->mat,mat,[int],int)");
+install_function(linear_solve_wrapper,"linear_solve","(mat,vec->|vec,int,mat)");
+install_function(diagonalize_wrapper,"diagonalize","(mat->vec,mat,mat)");
+install_function(adapted_basis_wrapper,"adapted_basis","(mat->mat,vec)");
+install_function(kernel_wrapper,"kernel","(mat->mat)");
+install_function(eigen_lattice_wrapper,"eigen_lattice","(mat,int->mat)");
+install_function(row_saturate_wrapper,"row_saturate","(mat->mat)",3);
+install_function(Smith_wrapper,"Smith","(mat->mat,vec)");
+install_function(invert_wrapper,"invert","(mat->mat,int)");
+install_function(section_wrapper,"mod2_section","(mat->mat)");
+install_function(subspace_normal_wrapper,@|
+   "subspace_normal","(mat->mat,mat,mat,[int])");
+
+@*1 Real time and system interaction.
+
+We define here a few atypical functions that do not fit in any of the other
+categories. They are global functions in the sense that they do not relate to
+any particular aspect of the program, but rather provide interaction with the
+outside world of real time and other computational resources; this justifies
+their presence in this file.
+
+Apart from being user callable, the |elapsed_wrapper| function is also called
+from the |main| function, so it must be exported.
+
+@< Declarations of exported functions @>=
+void elapsed_wrapper(eval_level l);
+
+@ The function |elapsed_wrapper| provides a timer for the program execution,
+using a static variable of a type |Timer| defined in the utility
+file \.{timer.h}. Since a function-local static variable is initialised (which
+here implies the timer is started) the first time its declaration is executed,
+this function should be called once at program start-up, typically with
+|l==eval_level::no_value|, preferably after initial set up is done.
+
+@h "timer.h"
+
+@< Global function def... @>=
+void elapsed_wrapper(eval_level l)
+{
+  static time::Timer stopwatch;
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<int_value>(stopwatch.elapsed_ms()));
+}
+
+@ The function |query| provides a means to obtain an interactive response from
+the user.
+
+@< Local function def... @>=
+void query_wrapper(eval_level l)
+{
+  auto prompt=get<string_value>();
+  std::cout << prompt->val;
+  std::string line;
+  std::getline(std::cin,line);
+  if (not std::cin.good())
+  { std::cin.clear(); // give main command loop a chance to recover
+    throw runtime_error("Failed to read from standard input");
+  }
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<string_value>(std::move(line)));
+}
+
+@ The function |system| provides a means to call any command on the system
+(through the intermediary of a shell that interprets a string as a command),
+and to import the text that was written on standard output by this command into
+a string. We return in all cases both the exit code of the command (which might
+be the shell signalling its inability to run the command) and the output string
+(which might of course be empty).
+
+@h <unistd.h>
+
+@< Local function def... @>=
+void system_wrapper(eval_level l)
+{
+  auto command=get<string_value>();
+  auto result = std::make_shared<tuple_value>(0);
+  auto* pipe = popen(command->val.c_str(),"r");
+  // run |command| in a child process
+  if (pipe!=nullptr)
+    @< Extract all data from |pipe| and call |pclose(pipe)|, then if successful
+       push the exit status and the output string to |result->val| @>
+@)
+  if (l==eval_level::no_value)
+    return;
+  static id_type failure=main_hash_table->match_literal("fail");
+  static id_type success=main_hash_table->match_literal("succeed");
+
+  if (result->val.size()==0)
+    push_value(std::make_shared<union_value>(0,std::move(result),failure));
+  else
+    push_value(std::make_shared<union_value>(1,std::move(result),success));
+}
+
+@ The call to |popen| created a child process that may write to |pipe|; but it
+is only guaranteed to continue running if we read all the data out of |pipe|,
+which we do in a simple loop. Then we call |pclose| to ensure we wait until
+completion of the child process, to clean up that process as well as the pipe,
+and to obtain the exit status. Since |pclose| acts in part as a |wait|
+operation, the status returned combines information about how the child was
+stopped and the exit status it may have returned. We only return successfully it
+the child terminated normally (rather than by receiving a signal), and we use
+macros that come with the |wait| call to get relevant information from the
+|status| returned by |pclose|.
+
+@h <sys/wait.h>
+
+@< Extract all data from |pipe| and call |pclose(pipe)|, then if successful
+   push the exit status and the output string to |result->val| @>=
+{ char buf[4096];
+  std::ostringstream o;
+  while (fgets(buf,4096,pipe)!=nullptr)
+    o << buf;
+  int status = pclose(pipe);
+  if (WIFEXITED(status))
+  {
+    result->val.reserve(2);
+    result->val.push_back(std::make_shared<int_value>(WEXITSTATUS(status)));
+    result->val.push_back(std::make_shared<string_value>(o.str()));
+  }
+}
+
+@ And we must install the function
+@< Initialise... @>=
+install_function(elapsed_wrapper,"elapsed_ms","(->int)");
+install_function(query_wrapper,"query","(string->string)");
+install_function(system_wrapper,"system","(string->|int,string)");
+
+@* Index.
+
+% Local IspellDict: british
+
+% LocalWords:  introw

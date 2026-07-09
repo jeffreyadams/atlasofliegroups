@@ -1,0 +1,90 @@
+<basic.at { for |factors@LieType }
+<generics.at
+<sort.at
+
+set A1="A1"
+set A2="A2"
+set A3="A3"
+set A4="A4"
+set A5="A5"
+set A6="A6"
+set A7="A7"
+set A8="A8"
+set B2="B2"
+set B3="B3"
+set B4="B4"
+set B5="B5"
+set B6="B6"
+set B7="B7"
+set B8="B8"
+set C2="C2"
+set C3="C3"
+set C4="C4"
+set C5="C5"
+set C6="C6"
+set C7="C7"
+set C8="C8"
+set D2="D2"
+set D3="D3"
+set D4="D4"
+set D5="D5"
+set D6="D6"
+set D7="D7"
+set D8="D8"
+set E6="E6"
+set E7="E7"
+set E8="E8"
+set F4="F4"
+set G2="G2"
+
+{------commands related to having a canonical Lie_type------}
+
+set to_canonical (LieType lt) = LieType: { sort factors and map C2->B2 }
+   let leq((string t0, int rank0),(string t1,int rank1)) = bool:
+      if t0!=t1 then t0<=t1 else rank0<=rank1 fi
+   then semisimple_part = string:
+      for (t,r):sf in simple_factors(lt)
+      do if t="C" and r=2 then ("B",2) else sf fi
+      od.(sort(leq)).(map(+@(string,int))).##
+   in Lie_type(semisimple_part + ("T"+central_torus_rank(lt)))
+
+set standardize_Lie_type = to_canonical@LieType { backward compatibility }
+
+set is_isomorphic (LieType lt0, LieType lt1) = bool:
+   lt0.to_canonical=lt1.to_canonical
+
+{ two complex groups are locally isomorphic iff their Lie type are isomorphic }
+set is_locally_isomorphic (RootDatum rd0,RootDatum rd1) = bool:
+   is_isomorphic(Lie_type(rd0),Lie_type(rd1))
+
+
+
+set nice_format (LieType lt) = string:
+   if lt = "" then "e" {trivial group}
+   else
+      let leq((string t0, int rank0),(string t1,int rank1)) = bool:
+	 if t0!=t1 then t0<=t1 else rank0<=rank1 fi
+   ,  pick ([string,int]L) = string: let (t,r)=L[0] in t+r
+   , start=true
+   in for list in simple_factors(lt).(partition_by(I,leq))
+      do if start then start:=false; "" else "+" fi
+      ## if #list=1 then pick(list)
+         else int_format(#list) ## pick(list)
+	 fi
+      od.##
+   ## if central_torus_rank(lt)=0 then ""
+      else "+" + central_torus_rank(lt) + "T1"
+      fi
+  fi
+
+set nice_format (RootDatum rd) = string: nice_format(rd.Lie_type)
+
+
+set Cartan_matrix_type (RootDatum rd) = (LieType,[int]):
+   Cartan_matrix_type(rd.Cartan_matrix)
+
+{ when we must have a simple type, undo the plural in |simple_factors| }
+set simple_type (LieType lt) = (string,int):
+   assert(lt.is_simple,"LieType is not simple"); simple_factors(lt)[0]
+
+set simple_type (RootDatum rd) = (string,int) : simple_type(rd.Lie_type)
