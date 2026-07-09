@@ -5,3 +5,4 @@
 /atlas.save
 /Fokko
 sources/interpreter/*.tab.*
+.#*
