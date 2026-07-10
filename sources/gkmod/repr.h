@@ -226,9 +226,12 @@ class Rep_context
   const InvolutionTable& i_tab;
   const KGB& KGB_set;
   RealReductiveGroup& G; // we could have used just this field for |Rep_context|
+  RatWeight d_xi; // cover datum: |lambda| values lie in |rho+d_xi+X^*|; zero
+		  // unless describing genuine parameters for a 2-fold cover
 
  public:
   explicit Rep_context(RealReductiveGroup &G);
+  Rep_context(RealReductiveGroup &G, const RatWeight& xi); // cover |G_xi|
 
   // accessors
   unsigned int rank() const { return root_datum().rank(); }
@@ -243,6 +246,10 @@ class Rep_context
   RealReductiveGroup& real_group() const { return G; }
   const RatCoweight& g_rho_check() const { return G.g_rho_check(); }
   RatCoweight g() const { return G.g(); }
+
+  // cover datum |xi| and the basepoint |rho+xi| of the |lambda| coset
+  const RatWeight& xi() const { return d_xi; } // zero for the group itself
+  RatWeight rho_xi() const { return rho(root_datum())+d_xi; }
 
   const TwistedInvolution involution_of_Cartan(size_t cn) const;
 
@@ -615,6 +622,7 @@ class Rep_table : public Rep_context
 
  public:
   Rep_table(RealReductiveGroup &G);
+  Rep_table(RealReductiveGroup &G, const RatWeight& xi); // for a cover |G_xi|
   ~Rep_table();
   // both defined out of line because of implicit use |common_block| destructor
 

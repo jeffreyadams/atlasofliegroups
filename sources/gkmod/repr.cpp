@@ -157,7 +157,24 @@ Rep_context::Rep_context(RealReductiveGroup &G_R)
   , i_tab(ic.involution_table()) //  cast to |const|
   , KGB_set(G_R.kgb()) // cast to |const|
   , G(G_R) // keep as non |const|
+  , d_xi(G_R.root_datum().rank()) // zero: the group itself, not a cover
 {}
+
+Rep_context::Rep_context(RealReductiveGroup &G_R, const RatWeight& xi)
+  : rd(G_R.root_datum()) // cast to |const|
+  , ic(G_R.innerClass()) // keep as non |const|
+  , twisted_W(G_R.twistedWeylGroup()) // cast to |const|
+  , i_tab(ic.involution_table()) //  cast to |const|
+  , KGB_set(G_R.kgb()) // cast to |const|
+  , G(G_R) // keep as non |const|
+  , d_xi(xi)
+{
+  d_xi.normalize();
+  if (d_xi.size()!=rd.rank())
+    throw std::runtime_error("Cover datum xi has wrong rank");
+  if (2%d_xi.denominator()!=0) // require |2*xi| to lie in $X^*$
+    throw std::runtime_error("Cover datum xi is not half-integral");
+}
 
 const TwistedInvolution Rep_context::involution_of_Cartan(size_t cn) const
 { return inner_class().involution_of_Cartan(cn); }
@@ -1474,6 +1491,18 @@ Rep_table::Rep_table(RealReductiveGroup &G)
 , block_list(), place()
 , KTF_table()
 {}
+
+Rep_table::Rep_table(RealReductiveGroup &G, const RatWeight& xi)
+: Rep_context(G,xi)
+, pool(), alcove_hash(pool)
+, reduced_pool(), reduced_hash(reduced_pool)
+, K_type_pool(), K_type_hash(K_type_pool)
+, KL_poly_pool{KLPol(),KLPol(KLCoeff(1))}, KL_poly_hash(KL_poly_pool)
+, poly_pool{ext_kl::Pol(0),ext_kl::Pol(1)}, poly_hash(poly_pool)
+, block_list(), place()
+, KTF_table()
+{}
+
 Rep_table::~Rep_table() = default;
 
 unsigned short Rep_table::length(StandardRepr sr)
