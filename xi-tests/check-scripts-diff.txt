@@ -1,0 +1,6 @@
+1,2d0
+< ./check-scripts.sh: 8: cannot open .#unipotent_principal.at: No such file
+< Problem loading .#unipotent_principal.at
+5d2
+< exit=0
+diff exit=1

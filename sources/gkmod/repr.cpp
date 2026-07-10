@@ -1200,6 +1200,18 @@ StandardRepr Rep_context::twisted
   z.x_part = kgb().twisted(z.x_part,delta);
   const InvolutionNbr i_x1 =  kgb().inv_nr(z.x()); // destination involution
   z.y_bits = i_tab.y_act(i_x0,i_x1,z.y_bits,delta);
+  if (not d_xi.is_zero())
+  { // |y_act| has twisted data for |lambda-rho-xi|, representing
+    // |delta*lambda-rho-delta*xi|; correct to the coset basepoint |rho+xi|
+    // by the integral (constructor requirement) vector |kappa=xi-delta*xi|
+    RatWeight kappa = d_xi - delta*d_xi;
+    kappa.normalize();
+    assert(kappa.denominator()==1);
+    Weight kw(kappa.size());
+    for (unsigned i=0; i<kw.size(); ++i)
+      kw[i] = kappa.numerator()[i];
+    z.y_bits += i_tab.y_pack(i_x1,kw); // mod-2 correction, sign immaterial
+  }
   z.infinitesimal_char = delta*z.infinitesimal_char;
   return z;
 }

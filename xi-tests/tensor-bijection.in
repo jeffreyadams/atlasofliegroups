@@ -1,0 +1,38 @@
+set G=GL(2,R)
+set Gx=xi_cover(G,[1,1]/2)
+set lift (Param q) = Param:
+  let (,nx)=%(q.x) in param(KGB(Gx,nx),q.lambda_minus_rho,q.nu)
+set p=trivial(G)
+prints("### block of trivial(G) and its lift, side by side")
+set B=block_of(p)
+for q in B do prints(q) od
+prints("--")
+for q in B do prints(lift(q)) od
+prints("### block computed ON THE COVER from lift(p): must have same size")
+set Bx=block_of(lift(p))
+#B
+#Bx
+for q in Bx do prints(q) od
+prints("### KL_sum_at_s: G then cover")
+KL_sum_at_s(p)
+KL_sum_at_s(lift(p))
+prints("### hermitian forms: G then cover")
+prints("KNOWN LIMITATION: is_hermitian/hermitian_dual use normal(twist(p)),")
+prints("which is wrong on covers; correct h is (x,lambda,-bar(nu)) same-x.")
+hermitian_form_irreducible(p)
+hermitian_form_irreducible(lift(p))
+prints("### full deformation: G then cover")
+full_deform(p)
+full_deform(lift(p))
+prints("### unitarity: G then cover")
+is_unitary(p)
+is_unitary(lift(p))
+prints("### nonintegral continuous parameter: G then cover")
+set q1=parameter(KGB(G,1),[1,0],[2,-2]/3)
+q1
+is_unitary(q1)
+set q1x=lift(q1)
+q1x
+is_unitary(q1x)
+prints("### done")
+quit
