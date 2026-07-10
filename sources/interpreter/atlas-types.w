@@ -3638,15 +3638,25 @@ class real_form_value : public value_base
 public:
   shared_inner_class ic_ptr;
   mutable RealReductiveGroup val;
+  const RatWeight xi_val;
+    // cover datum: parameters use |lambda| in |rho+xi_val+X^*|; usually zero
 @)
   real_form_value (shared_inner_class icp,RealFormNbr f,token)
 @/: ic_ptr(icp), val(icp->val,f)
+  , xi_val(icp->val.rank())
   , rt_p(nullptr) @+{}
 @)
   real_form_value
     (shared_inner_class icp,RealFormNbr f
     ,const RatCoweight& coch, TorusPart tp) @/
   : ic_ptr(icp), val(icp->val,f,coch,tp)
+  , xi_val(icp->val.rank())
+  , rt_p(nullptr) @+{}
+@)
+  real_form_value (shared_inner_class icp,RealFormNbr f,RatWeight xi)
+    // constructor for a two-fold cover $G_\xi$ of the real form
+@/: ic_ptr(icp), val(icp->val,f)
+  , xi_val(std::move(xi))
   , rt_p(nullptr) @+{}
   virtual ~real_form_value ();
 @)
@@ -3719,9 +3729,12 @@ it will live as long as those parameter values do.
 
 @< Function def...@>=
   const Rep_context& real_form_value::rc() const
-    {@; return *(rt_p==nullptr ? rt_p=new Rep_table(val) : rt_p); }
+    {@; return rt(); }
   Rep_table& real_form_value::rt() const
-    {@; return *(rt_p==nullptr ? rt_p=new Rep_table(val) : rt_p); }
+  { if (rt_p==nullptr)
+      rt_p = xi_val.is_zero() ? new Rep_table(val) : new Rep_table(val,xi_val);
+    return *rt_p;
+  }
 @)
   real_form_value::~real_form_value () @+{@; delete rt_p; }
 
@@ -3740,6 +3753,8 @@ void real_form_value::print(std::ostream& out) const
       << ic_ptr->interface.type_name
           (ic_ptr->interface.out(val.realForm())) @|
       << '\'' ;
+  if (not xi_val.is_zero())
+    out << " [cover xi=" << xi_val << ']';
 }
 
 @ To make a real form is easy: one provides an |inner_class_value| and a valid
@@ -4093,6 +4108,39 @@ void central_fiber_wrapper(eval_level l)
   push_value(std::move(result));
 }
 
+@ A two-fold cover $G_\xi(\R)$ of a real form is represented by a
+|real_form_value| carrying a nonzero |xi_val|; its genuine parameters have
+|lambda| in the coset $\rho+\xi+X^*$. Covers compose additively (the cover of
+a cover for $\xi_1,\xi_2$ is the cover for $\xi_1+\xi_2$), so |cover| adds
+its argument to any cover datum already present, and returns the plain (shared)
+real form when the sum vanishes. The |Rep_table| is built eagerly so that
+invalid or (not yet) unsupported values of $\xi$ are reported immediately.
+
+@< Local function def...@>=
+void cover_wrapper(eval_level l)
+{ own_rational_vector xi = get_own<rational_vector_value>();
+  shared_real_form rf = get<real_form_value>();
+  if (xi->val.size()!=rf->val.rank())
+    throw runtime_error("Cover datum xi size mismatch");
+  (xi->val += rf->xi_val).normalize(); // covers compose additively
+  if (l==eval_level::no_value)
+    return;
+  if (xi->val.is_zero())
+  @/{@; push_value(real_form_value::build(rf->ic_ptr,rf->val.realForm()));
+    return; }
+  auto result = std::make_shared<real_form_value>
+    (rf->ic_ptr,rf->val.realForm(),xi->val);
+  result->rt(); // eagerly validate |xi|, and build the |Rep_table|
+  push_value(std::move(result));
+}
+@)
+void cover_xi_wrapper(eval_level l)
+{ shared_real_form rf = get<real_form_value>();
+  if (l==eval_level::no_value)
+    return;
+  push_value(std::make_shared<rational_vector_value>(rf->xi_val));
+}
+
 @ Finally we install everything related to real forms.
 @< Install wrapper functions @>=
 install_function(real_form_wrapper,@|"real_form","(InnerClass,int->RealForm)");
@@ -4118,6 +4166,8 @@ install_function(dual_quasisplit_form_wrapper,@|"dual_quasisplit_form"
 install_function(synthetic_real_form_wrapper,@|"real_form"
 		,"(InnerClass,mat,ratvec->RealForm)");
 install_function(central_fiber_wrapper,"central_fiber","(RealForm->[vec])");
+install_function(cover_wrapper,@|"xi_cover","(RealForm,ratvec->RealForm)");
+install_function(cover_xi_wrapper,@|"cover_xi","(RealForm->ratvec)");
 install_function(initial_torus_bits_wrapper,@|"initial_torus_bits"
                 ,"(RealForm->vec)");
 

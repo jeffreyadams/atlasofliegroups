@@ -2072,12 +2072,16 @@ set x (KType t) = KGBElt: let (x,)=%t in x
 set lambda_minus_rho (KType t) = vec: let (,lr)=%t in lr
 set lambda_rho = lambda_minus_rho@KType { shorter name allowed }
 set lambda (KType t) = ratvec: let (x,lr)=%t in rho(x.real_form)+lr
+{ basepoint of the lambda coset for parameters: rho(G)+xi where xi is the
+  cover datum of G (zero unless G was built by xi_cover@(RealForm,ratvec)) }
+set rho_xi (RealForm G) = ratvec: rho(G)+cover_xi(G)
+
 set theta_plus_1_lambda (KType t) = vec:
-    let (x,lr) =%t in (1+involution(x))*(x.real_form.rho+lr) \ 1
+    let (x,lr) =%t in (1+involution(x))*(x.real_form.rho_xi+lr) \ 1
 
 { this constructor could be called |K_type|, but that would be confusing }
 set K_type_lambda (KGBElt x, ratvec lambda) = KType:
-  K_type(x,ratvec_as_vec(lambda-rho(x.root_datum)))
+  K_type(x,ratvec_as_vec(lambda-rho_xi(x.real_form)))
 
 set Cartan_class (KType t) = CartanClass: Cartan_class(x(t))
 
@@ -2161,7 +2165,7 @@ set null_module (Param p) = ParamPol:
 
 set x (Param p) = KGBElt: let (x,,) =%p in x
 set lambda_minus_rho (Param p) = vec: let (,lambda_rho,) =%p in lambda_rho
-set lambda (Param p) = ratvec: lambda_minus_rho(p)+rho(real_form(p))
+set lambda (Param p) = ratvec: lambda_minus_rho(p)+rho_xi(real_form(p))
 set infinitesimal_character (Param p) = ratvec: let (,,gamma) =%p in gamma
 set theta_plus_1_lambda (Param p) = vec:
     let (x,,gamma) =%p in ratvec_as_vec((1+involution(x))*gamma)
@@ -2231,9 +2235,9 @@ set param_pol (KType t) = ParamPol: param(t)
   lambda without the rho shift; lambda may have denominator 2 or be a vec
 }
 set parameter (RealForm G,int x,ratvec lambda,ratvec nu) = Param:
-  param(KGB(G,x),ratvec_as_vec(lambda-G.rho),nu)
+  param(KGB(G,x),ratvec_as_vec(lambda-G.rho_xi),nu)
 set parameter (KGBElt x,ratvec lambda,ratvec nu) = Param:
-  param(x,ratvec_as_vec(lambda-x.real_form.rho),nu)
+  param(x,ratvec_as_vec(lambda-x.real_form.rho_xi),nu)
 
 { set parameter ensuring (upon success) that the infinitesimal char. is |gamma|;
   achieve this by ignoring |(1+theta)*lambda|, replace it by |(1+theta)*gamma| }

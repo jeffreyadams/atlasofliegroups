@@ -1,0 +1,42 @@
+### cover of split torus R^x, xi=1/2
+Variable T: RealForm
+Variable Tx: RealForm
+Value: disconnected split real group with Lie algebra 'gl(1,R)' [cover xi=[1]/2]
+Value: [ 1 ]/2
+Variable pt: Param
+Value: final parameter(x=0,lambda=[1]/2,nu=[1]/2)
+Value: [ 1 ]/2
+Value: [ 1 ]/2
+Value: [final parameter(x=0,lambda=[1]/2,nu=[1]/2)]
+### cover of compact torus S^1, xi=1/2
+Variable C: RealForm (overriding previous instance, which had type string (constant))
+Variable Cx: RealForm
+Variable pc: Param
+Value: final parameter(x=0,lambda=[7]/2,nu=[0]/1)
+Value: [ 7 ]/2
+### cover composition and cancellation
+Value: disconnected split real group with Lie algebra 'gl(1,R)' [cover xi=[1]/1]
+Value: [ 1 ]/1
+Value: disconnected split real group with Lie algebra 'gl(1,R)'
+### GL(2,R), det/2 cover
+Variable G: RealForm (overriding previous instance, which had type RealForm)
+Variable Gx: RealForm
+Value: disconnected split real group with Lie algebra 'sl(2,R).gl(1,R)' [cover xi=[1,1]/2]
+Value: [ 1, 1 ]/2
+Variable x_open: KGBElt
+Variable p: Param
+Value: final parameter(x=1,lambda=[1,0]/1,nu=[1,1]/2)
+Value: [ 1, 0 ]/1
+Value: [ 1, 1 ]/2
+Value: [final parameter(x=1,lambda=[1,0]/1,nu=[1,1]/2)]
+### xi=0 sanity: cover(G,[0,0]) is plain GL(2,R)
+Variable G0: RealForm
+Value: disconnected split real group with Lie algebra 'sl(2,R).gl(1,R)'
+Value: final parameter(x=1,lambda=[1,-1]/2,nu=[1,-1]/2)
+### invalid xi rejected (SL(2,R), xi=1/2 not coroot-orthogonal)
+Variable S: RealForm
+Runtime error:
+  Cover datum xi not orthogonal to the coroots (not yet implemented)
+Evaluation aborted.
+### done
+Bye.
