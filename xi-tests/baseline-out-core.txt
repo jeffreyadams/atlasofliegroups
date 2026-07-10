@@ -1,0 +1,112 @@
+### tori
+Variable Ts: RealForm
+Variable Tc: RealForm
+Variable pt: Param
+Value: final parameter(x=0,lambda=[0,0]/1,nu=[0,0]/1)
+Value: [final parameter(x=0,lambda=[0,0]/1,nu=[0,0]/1)]
+Variable pc: Param
+Value: final parameter(x=0,lambda=[0,0]/1,nu=[0,0]/1)
+### SL(2,R)
+Variable G: RealForm (overriding previous instance, which had type RealForm)
+Variable p: Param
+Value: final parameter(x=2,lambda=[1]/1,nu=[1]/1)
+Value: (KGB element #2,[ 0 ],[ 1 ]/1)
+Value: [ 1 ]/1
+Value: [ 1 ]/1
+Value: [final parameter(x=0,lambda=[1]/1,nu=[0]/1),final parameter(x=1,lambda=[1]/1,nu=[0]/1),final parameter(x=2,lambda=[1]/1,nu=[1]/1)]
+final parameter(x=0,lambda=[1]/1,nu=[0]/1)  herm: 
+1* K_type(x=0, lambda=[1]/1) [1]
+final parameter(x=1,lambda=[1]/1,nu=[0]/1)  herm: 
+1* K_type(x=1, lambda=[1]/1) [1]
+final parameter(x=2,lambda=[1]/1,nu=[1]/1)  herm: 
+1* K_type(x=2, lambda=[1]/1) [0]
+-1* K_type(x=0, lambda=[1]/1) [1]
+-1* K_type(x=1, lambda=[1]/1) [1]
+Value: [(),(),()]
+Value: 
+1*parameter(x=2,lambda=[1]/1,nu=[1]/1) [0]
+-1*parameter(x=1,lambda=[1]/1,nu=[0]/1) [1]
+-1*parameter(x=0,lambda=[1]/1,nu=[0]/1) [1]
+Value: 
+(1+0s)* K_type(x=2, lambda=[1]/1) [0]
+(1-1s)* K_type(x=0, lambda=[1]/1) [1]
+(1-1s)* K_type(x=1, lambda=[1]/1) [1]
+### SL(2,R) nonintegral
+Variable p6: Param
+Value: final parameter(x=2,lambda=[1]/1,nu=[2]/3)
+Value: 
+1* K_type(x=2, lambda=[1]/1) [0]
+Value: true
+### Sp(4,R)
+Variable G2: RealForm (overriding previous instance, which had type string)
+Variable p2: Param
+Value: [final parameter(x=0,lambda=[2,1]/1,nu=[0,0]/1),final parameter(x=1,lambda=[2,1]/1,nu=[0,0]/1),final parameter(x=2,lambda=[2,1]/1,nu=[0,0]/1),final parameter(x=3,lambda=[2,1]/1,nu=[0,0]/1),final parameter(x=4,lambda=[2,1]/1,nu=[1,-1]/2),final parameter(x=5,lambda=[2,1]/1,nu=[0,1]/1),final parameter(x=6,lambda=[2,1]/1,nu=[0,1]/1),final parameter(x=7,lambda=[2,1]/1,nu=[2,0]/1),final parameter(x=8,lambda=[2,1]/1,nu=[2,0]/1),final parameter(x=9,lambda=[2,1]/1,nu=[3,3]/2),final parameter(x=10,lambda=[2,1]/1,nu=[2,1]/1),final parameter(x=10,lambda=[3,2]/1,nu=[2,1]/1)]
+Value: 
+1*parameter(x=10,lambda=[2,1]/1,nu=[2,1]/1) [0]
+-1*parameter(x=9,lambda=[2,1]/1,nu=[3,3]/2) [2]
+-1*parameter(x=8,lambda=[2,1]/1,nu=[2,0]/1) [3]
+-1*parameter(x=7,lambda=[2,1]/1,nu=[2,0]/1) [3]
+1*parameter(x=6,lambda=[2,1]/1,nu=[0,1]/1) [6]
+1*parameter(x=5,lambda=[2,1]/1,nu=[0,1]/1) [6]
+1*parameter(x=4,lambda=[2,1]/1,nu=[1,-1]/2) [6]
+-1*parameter(x=3,lambda=[2,1]/1,nu=[0,0]/1) [7]
+-1*parameter(x=2,lambda=[2,1]/1,nu=[0,0]/1) [7]
+-1*parameter(x=1,lambda=[2,1]/1,nu=[0,0]/1) [7]
+-1*parameter(x=0,lambda=[2,1]/1,nu=[0,0]/1) [7]
+Value: 
+1* K_type(x=10, lambda=[2,1]/1) [0]
+-1* K_type(x=4, lambda=[1,0]/1) [2]
+-1* K_type(x=0, lambda=[1,0]/1) [3]
+-1* K_type(x=1, lambda=[1,0]/1) [3]
+-1* K_type(x=2, lambda=[1,0]/1) [3]
+-1* K_type(x=3, lambda=[1,0]/1) [3]
+1* K_type(x=4, lambda=[2,1]/1) [6]
+1* K_type(x=5, lambda=[2,1]/1) [6]
+1* K_type(x=6, lambda=[2,1]/1) [6]
+-1* K_type(x=0, lambda=[2,1]/1) [7]
+-1* K_type(x=1, lambda=[2,1]/1) [7]
+-1* K_type(x=2, lambda=[2,1]/1) [7]
+-1* K_type(x=3, lambda=[2,1]/1) [7]
+Value: 
+(1+0s)* K_type(x=10, lambda=[2,1]/1) [0]
+(2-2s)* K_type(x=0, lambda=[1,0]/1) [3]
+(2-2s)* K_type(x=1, lambda=[1,0]/1) [3]
+(3-3s)* K_type(x=4, lambda=[2,1]/1) [6]
+(2-2s)* K_type(x=5, lambda=[2,1]/1) [6]
+(2-2s)* K_type(x=6, lambda=[2,1]/1) [6]
+(4-4s)* K_type(x=0, lambda=[2,1]/1) [7]
+(4-4s)* K_type(x=1, lambda=[2,1]/1) [7]
+(2-2s)* K_type(x=2, lambda=[2,1]/1) [7]
+(2-2s)* K_type(x=3, lambda=[2,1]/1) [7]
+Value: true
+Value: 
+1* K_type(x=10, lambda=[2,1]/1) [0]
+1* K_type(x=4, lambda=[1,0]/1) [2]
+2* K_type(x=0, lambda=[1,0]/1) [3]
+2* K_type(x=1, lambda=[1,0]/1) [3]
+1* K_type(x=2, lambda=[1,0]/1) [3]
+1* K_type(x=3, lambda=[1,0]/1) [3]
+3* K_type(x=4, lambda=[2,1]/1) [6]
+1* K_type(x=5, lambda=[2,1]/1) [6]
+1* K_type(x=6, lambda=[2,1]/1) [6]
+2* K_type(x=0, lambda=[2,1]/1) [7]
+2* K_type(x=1, lambda=[2,1]/1) [7]
+### SU(2,1)
+Variable G3: RealForm
+Variable p3: Param
+Value: [final parameter(x=0,lambda=[2,1]/1,nu=[0,0]/1),final parameter(x=1,lambda=[2,1]/1,nu=[0,0]/1),final parameter(x=2,lambda=[2,1]/1,nu=[0,0]/1),final parameter(x=3,lambda=[2,1]/1,nu=[1,2]/2),final parameter(x=4,lambda=[2,1]/1,nu=[1,-1]/2),final parameter(x=5,lambda=[2,1]/1,nu=[2,1]/1)]
+Value: 
+1* K_type(x=0, lambda=[0,0]/1) [0]
+-1* K_type(x=3, lambda=[2,1]/1) [3]
+-1* K_type(x=4, lambda=[2,1]/1) [3]
+1* K_type(x=0, lambda=[2,1]/1) [4]
+1* K_type(x=1, lambda=[2,1]/1) [4]
+1* K_type(x=2, lambda=[2,1]/1) [4]
+### SL(3,R) with twist
+Variable G4: RealForm
+Variable p4: Param
+Value: [final parameter(x=0,lambda=[2,1]/1,nu=[0,0]/1),final parameter(x=1,lambda=[2,1]/1,nu=[3,3]/2),final parameter(x=2,lambda=[2,1]/1,nu=[3,0]/2),final parameter(x=3,lambda=[2,1]/1,nu=[2,1]/1),final parameter(x=3,lambda=[3,1]/1,nu=[2,1]/1),final parameter(x=3,lambda=[3,2]/1,nu=[2,1]/1)]
+Value: final parameter(x=3,lambda=[2,1]/1,nu=[2,1]/1)
+Value: true
+### done
+Bye.

@@ -159,7 +159,7 @@ std::ostream& print_K_type
   (std::ostream& out, const K_type& val, const Rep_context& rc)
 {
   return out << " K_type(x=" << val.x()
-	     << ", lambda=" << rho(rc.root_datum())+val.lambda_rho() << ')';
+	     << ", lambda=" << rc.rho_xi()+val.lambda_rho() << ')';
 }
 
 std::ostream& print_K_type_pol

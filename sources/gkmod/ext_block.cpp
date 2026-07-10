@@ -285,8 +285,8 @@ context::context
   for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
     twist[s] = rd.simpleRootIndex(delta_of(rd.simpleRootNbr(s)));
 
-  // the reflections for |E.lambda_rho| pivot around $\gamma-\rho$
-  const RatWeight gamma_rho = gamma - rho(rd);
+  // the reflections for |E.lambda_rho| pivot around $\gamma-\rho-\xi$
+  const RatWeight gamma_rho = gamma - rc.rho_xi();
   for (unsigned i=0; i<lambda_shifts.size(); ++i)
     lambda_shifts[i] = -gamma_rho.dot(integr_datum.simpleCoroot(i));
   // the reflections for |E.l| pivot around |g_rho_check()|
@@ -2397,7 +2397,7 @@ repr::StandardReprMod ext_param::restrict_mod() const
 // restrict from extended group to |G|, which requires providing inf. character
 repr::StandardRepr ext_param::restrict(RatWeight gamma) const
 {
-  const RatWeight gamma_rho = gamma-rho(rc().root_datum());
+  const RatWeight gamma_rho = gamma-rc().rho_xi();
   const auto lambda_rho = gamma_rho.integer_diff<int>(gamma_lambda);
   return rc().sr_gamma(x(),lambda_rho,std::move(gamma));
 } // |restrict|
@@ -2406,7 +2406,8 @@ repr::StandardRepr ext_param::restrict(RatWeight gamma) const
 K_repr::K_type ext_param::restrict_K(Weight&& theta_plus_1_lambda) const
 {
   theta_plus_1_lambda -= rc().root_datum().twoRho(); // now: $2*(\gamma-\rho)$
-  const RatWeight gamma_rho ( theta_plus_1_lambda, 2);
+  RatWeight gamma_rho ( theta_plus_1_lambda, 2);
+  gamma_rho -= rc().xi(); // now: $\gamma-\rho-\xi$
   return rc().sr_K(x(),gamma_rho.integer_diff<int>(gamma_lambda));
 } // |restrict|
 

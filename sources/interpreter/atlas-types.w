@@ -7651,7 +7651,7 @@ into a list of parameters and three tables in the form of matrices.
   int_Matrix links1(eb.size(),eb.rank());
 
   const auto& gamma=p->val.gamma();
-  const RatWeight gamma_rho = gamma-rho(block.root_datum());
+  const RatWeight gamma_rho = gamma-rc.rho_xi(); // basepoint |rho+xi|
   for (BlockElt n=0; n<eb.size(); ++n)
   { auto z = eb.z(n); // number of ordinary parameter in |block|
     const Weight lambda_rho=gamma_rho.integer_diff<int>(block.gamma_lambda(z));

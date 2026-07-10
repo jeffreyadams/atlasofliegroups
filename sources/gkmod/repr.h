@@ -250,6 +250,8 @@ class Rep_context
   // cover datum |xi| and the basepoint |rho+xi| of the |lambda| coset
   const RatWeight& xi() const { return d_xi; } // zero for the group itself
   RatWeight rho_xi() const { return rho(root_datum())+d_xi; }
+  // $(1+\theta_x)(\rho+\xi)$, integral by the constructor requirements on |xi|
+  Weight theta_plus_1_rho_xi(InvolutionNbr i_x) const;
 
   const TwistedInvolution involution_of_Cartan(size_t cn) const;
 
@@ -328,7 +330,7 @@ class Rep_context
 
   Weight lambda_rho(const StandardRepr& z) const;
   RatWeight lambda(const StandardRepr& z) const // half-integer
-  { return rho(root_datum())+lambda_rho(z); }
+  { return rho_xi()+lambda_rho(z); }
   RatWeight gamma_lambda
     (InvolutionNbr i_x, const TorusPart& y_bits, const RatWeight& gamma) const;
   RatWeight gamma_lambda(const StandardRepr& z) const
@@ -354,7 +356,7 @@ class Rep_context
   { shift(diff,srm); return srm; } // perform |shift| on a copy and return it
 
   RatWeight gamma_lambda_rho(const StandardReprMod& z) const
-  { return z.gamma_lambda()+rho(root_datum()); }
+  { return z.gamma_lambda()+rho_xi(); }
 
   bool is_standard  // whether $I(z)$ is non-virtual: gamma imaginary-dominant
     (const StandardRepr& z) const; // simply-imaginary witness

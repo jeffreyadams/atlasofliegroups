@@ -55,7 +55,7 @@ StandardReprMod StandardReprMod::mod_reduce
   (const Rep_context& rc, const StandardRepr& sr)
 {
   KGBElt x = sr.x();
-  auto gam_lam=sr.gamma()-rho(rc.root_datum())-rc.lambda_rho(sr);
+  auto gam_lam=sr.gamma()-rc.rho_xi()-rc.lambda_rho(sr);
   rc.involution_table().real_unique(rc.kgb().inv_nr(x),gam_lam);
   return StandardReprMod(x,std::move(gam_lam));
 }
@@ -174,10 +174,39 @@ Rep_context::Rep_context(RealReductiveGroup &G_R, const RatWeight& xi)
     throw std::runtime_error("Cover datum xi has wrong rank");
   if (2%d_xi.denominator()!=0) // require |2*xi| to lie in $X^*$
     throw std::runtime_error("Cover datum xi is not half-integral");
+  // current implementation restriction: |2*xi| must be the weight of a one
+  // dimensional representation, so that all root pairings, hence all parity,
+  // grading and (integral) dominance computations, are as for the group itself
+  for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
+    if (d_xi.dot_Q(rd.simpleCoroot(s)).numerator()!=0)
+      throw std::runtime_error
+	("Cover datum xi not orthogonal to the coroots (not yet implemented)");
+  { // also require the coset |rho+xi+X^*| to be stable under every |theta_x|,
+    // which given coroot-orthogonality of |xi| comes down to |(1-delta)xi|
+    // integral, |delta| the distinguished involution of the inner class
+    RatWeight test = d_xi - ic.distinguished()*d_xi;
+    if (test.normalize().denominator()!=1)
+      throw std::runtime_error
+	("Cover datum xi not fixed by the inner class (not yet implemented)");
+  }
 }
 
 const TwistedInvolution Rep_context::involution_of_Cartan(size_t cn) const
 { return inner_class().involution_of_Cartan(cn); }
+
+Weight Rep_context::theta_plus_1_rho_xi(InvolutionNbr i_x) const
+{
+  const Weight& base = i_tab.theta_plus_1_rho(i_x); // cached $(1+\theta)\rho$
+  if (d_xi.is_zero())
+    return base;
+  RatWeight tp1_xi = d_xi + i_tab.matrix(i_x)*d_xi; // $(1+\theta)\xi$
+  tp1_xi.normalize();
+  assert(tp1_xi.denominator()==1); // guaranteed by constructor checks
+  Weight result = base;
+  for (unsigned i=0; i<result.size(); ++i)
+    result[i] += tp1_xi.numerator()[i];
+  return result;
+}
 
 // Height is $\max_{w\in W} \< \rho^v*w , (\theta+1)\gamma >$
 unsigned int Rep_context::height(Weight theta_plus_1_gamma) const
@@ -192,7 +221,7 @@ RatWeight Rep_context::gamma
   (KGBElt x, const Weight& lambda_rho, const RatWeight& nu) const
 {
   const InvolutionTable& i_tab = involution_table();
-  const RatWeight lambda = rho(root_datum())+lambda_rho;
+  const RatWeight lambda = rho_xi()+lambda_rho;
   const RatWeight diff = lambda - nu;
   const RatWeight theta_diff(i_tab.matrix(kgb().inv_nr(x))*diff.numerator(),
 			     diff.denominator()); // theta(lambda-nu)
@@ -209,8 +238,8 @@ Weight Rep_context::lambda_rho(const StandardRepr& z) const
   const WeightInvolution& theta = i_tab.matrix(i_x);
 
 
-  // recover $\lambda-\rho$ from doubled projections on eigenspaces $\theta$
-  const RatWeight gam_rho = z.gamma() - rho(root_datum());
+  // recover $\lambda-\rho-\xi$ from doubled projections on eigenspaces $\theta$
+  const RatWeight gam_rho = z.gamma() - rho_xi();
   auto th1_gam_rho_num = // numerator of $(1+\theta)*(\gamma-\rho)$, 64 bits
     gam_rho.numerator() + theta*gam_rho.numerator();
 
@@ -232,14 +261,15 @@ RatWeight Rep_context::gamma_lambda
   const InvolutionTable& i_tab = involution_table();
   const WeightInvolution& theta = i_tab.matrix(i_x);
 
-  // |y_lift(i_x,y_bits==(1-theta)*(lambda-rho)|; get |(1-theta)(gamma-lambda)|
-  const RatWeight gamma_rho = gamma - rho(root_datum());
+  // |y_lift(i_x,y_bits)==(1-theta)*(lambda-rho-xi)|; get |(1-theta)(gamma-lambda)|
+  const RatWeight gamma_rho = gamma - rho_xi();
   return (gamma_rho-theta*gamma_rho - i_tab.y_lift(i_x,y_bits))
     /static_cast<arithmetic::Numer_t>(2);
 }
 
-// compute $\gamma-\lambda-\rho$ from same information; with respect to above,
-// change from subtracting |(1-theta)*rho| to adding |(1+theta)*rho|
+// compute $\gamma-\lambda+\rho+\xi$ from same information; with respect to
+// above, change from subtracting $(1-\theta)(\rho+\xi)$ to adding
+// $(1+\theta)(\rho+\xi)$
 RatWeight Rep_context::gamma_lambda_rho (const StandardRepr& sr) const
 {
   const InvolutionTable& i_tab = involution_table();
@@ -248,7 +278,7 @@ RatWeight Rep_context::gamma_lambda_rho (const StandardRepr& sr) const
   const RatWeight& gamma = sr.gamma();
 
   return (  gamma - theta*gamma
-	 + (i_tab.theta_plus_1_rho(i_x) - i_tab.y_lift(i_x,sr.y()))
+	 + (theta_plus_1_rho_xi(i_x) - i_tab.y_lift(i_x,sr.y()))
 	 ) /static_cast<arithmetic::Numer_t>(2);
 }
 
@@ -540,7 +570,7 @@ unsigned int Rep_context::orientation_number(StandardRepr z) const
   count/=2; // we just want to count the contrinuting quadruples
 
   auto gam_lam_rhoR = // $\gamma-\lambda+\rho_\R$
-    z.gamma()-rho(rd)+RatWeight(rd.twoRho(real),2)-lambda_rho(z);
+    z.gamma()-rho_xi()+RatWeight(rd.twoRho(real),2)-lambda_rho(z);
   for (RootNbr alpha : real & non_int_pos)
     if (gam_lam_rhoR.dot_Q(root_datum().coroot(alpha)).floor()%2==0)
       ++count;
@@ -805,8 +835,8 @@ StandardRepr Rep_context::sr_gamma
   }
 #ifndef NDEBUG // check that constructor below builds a valid |StandardRepr|
   {
-    Weight image = // $(\theta+1)(\gamma-\rho)$
-      th1_gamma-i_tab.theta_plus_1_rho(i_x);
+    Weight image = // $(\theta+1)(\gamma-\rho-\xi)$
+      th1_gamma-theta_plus_1_rho_xi(i_x);
     matreduc::find_solution(theta+1,image); // assert that a solution exists
   }
 #endif
@@ -937,7 +967,7 @@ StandardRepr Rep_context::cross(weyl::Generator s, StandardRepr z) const
   gamma_lambda -= root_sum(rd,pos_neg); // correction for $\rho_r$'s
   rd.reflect(subsys.parent_nr_simple(s),gamma_lambda.numerator());
 
-  const Weight lambda_rho = gamma.integer_diff<int>(gamma_lambda+rho(rd));
+  const Weight lambda_rho = gamma.integer_diff<int>(gamma_lambda+rho_xi());
   return sr_gamma(new_x,lambda_rho,gamma);
 } // |Rep_context::cross|
 
@@ -968,7 +998,7 @@ StandardRepr Rep_context::cross(const Weight& alpha, StandardRepr z) const
   // shift back by $\rho_\R$ at (now) destination |i_x|
   gam_lam_shifted -= RatWeight(rd.twoRho(i_tab.real_roots(i_x)),2);
 
-  const Weight lambda_rho = gamma.integer_diff<int>(gam_lam_shifted+rho(rd));
+  const Weight lambda_rho = gamma.integer_diff<int>(gam_lam_shifted+rho_xi());
   return sr_gamma(x,lambda_rho,gamma);
 } // |Rep_context::cross|
 
@@ -1023,11 +1053,11 @@ StandardRepr Rep_context::Cayley(weyl::Generator s, StandardRepr z) const
     const RootNbrSet real_flip = real_roots^i_tab.real_roots(kgb.inv_nr(new_x));
     pos_neg &= real_flip; // posroots that change real status and map to negative
     gamma_lambda += root_sum(rd,pos_neg); // correction of $\rho_r$'s
-    // now |gamma_lambda| is still in the $X^*$-coset of $\gamma-\rho$; it might
+    // now |gamma_lambda| is still in the $X^*$-coset of $\gamma-\rho-\xi$; it might
     // not be in the $-1$ eigenspace for |new_x|, but |sr_gamma| projects to it
   }
 
-  const Weight lambda_rho = gamma.integer_diff<int>(gamma_lambda+rho(rd));
+  const Weight lambda_rho = gamma.integer_diff<int>(gamma_lambda+rho_xi());
   return sr_gamma(new_x,lambda_rho,gamma);
 } // |Rep_context::Cayley|
 

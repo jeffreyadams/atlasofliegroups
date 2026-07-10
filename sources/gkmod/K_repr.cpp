@@ -21,7 +21,7 @@ Rep_context::theta_plus_1_lambda (const K_repr::K_type& t) const
   auto i_x = kgb().inv_nr(t.x());
   const auto& lr = t.lambda_rho();
   const auto& theta = i_tab.matrix(i_x);
-  return theta*lr + lr + i_tab.theta_plus_1_rho(i_x);
+  return theta*lr + lr + theta_plus_1_rho_xi(i_x);
 }
 
 K_repr::K_type Rep_context::sr_K(KGBElt x, Weight lambda_rho) const
@@ -30,7 +30,7 @@ K_repr::K_type Rep_context::sr_K(KGBElt x, Weight lambda_rho) const
   auto i_x = kgb().inv_nr(x);
   i_tab.lambda_unique(i_x,lambda_rho); // ensure unique representative
   const auto& theta = i_tab.matrix(i_x);
-  auto th1_lambda = lambda_rho+theta*lambda_rho+i_tab.theta_plus_1_rho(i_x);
+  auto th1_lambda = lambda_rho+theta*lambda_rho+theta_plus_1_rho_xi(i_x);
   return {x,std::move(lambda_rho),height(th1_lambda)};
 }
 
@@ -179,7 +179,7 @@ void Rep_context::make_dominant (K_repr::K_type& t) const
   { // set |im_wt|, and check dominance for imaginary subsystem
     const auto i_x = kgb().inv_nr(x);
     const auto& theta = i_tab.matrix(i_x);
-    im_wt = lr + theta*lr + i_tab.theta_plus_1_rho(i_x);
+    im_wt = lr + theta*lr + theta_plus_1_rho_xi(i_x);
     for (RootNbr alpha : i_tab.imaginary_basis(i_x))
       if (rd.coroot(alpha).dot(lr)+rd.colevel(alpha)<0)
 	throw std::runtime_error("Non standard K-type in make_dominant");
@@ -310,7 +310,7 @@ term_list Rep_context::finals_for(K_repr::K_type t) const
     { // set |im_wt|
       const auto i_x = kgb().inv_nr(x);
       const auto& theta = i_tab.matrix(i_x);
-      im_wt = lr + theta*lr + i_tab.theta_plus_1_rho(i_x);
+      im_wt = lr + theta*lr + theta_plus_1_rho_xi(i_x);
     }
 
   restart: // go here when |current| and |im_wt| have been modified
@@ -481,7 +481,7 @@ K_repr::KT_pol Rep_context::monomial_product (const K_repr::KT_pol& P, const Wei
     auto i_x = kgb().inv_nr(x);
     i_tab.lambda_unique(i_x,new_exp); // ensure unique representative
     const auto& theta = i_tab.matrix(i_x);
-    auto ht = height(new_exp+theta*new_exp+i_tab.theta_plus_1_rho(i_x));
+    auto ht = height(new_exp+theta*new_exp+theta_plus_1_rho_xi(i_x));
     result.emplace_back(K_repr::K_type{x,std::move(new_exp),ht},term.second);
   } // |for(term)|
   return // convert to |K_repr::KT_pol|, sorting the shifted terms again
@@ -546,7 +546,7 @@ K_repr::KT_pol Rep_context::K_type_formula
     KGBElt x = term.x(); const auto& lr = term.lambda_rho();
     const InvolutionNbr i_x = kgb().inv_nr(x);
     RatWeight lambda_0 // $(1+\theta)/2 * \lambda$
-      ( lr + i_tab.matrix(i_x)*lr + i_tab.theta_plus_1_rho(i_x), 2 );
+      ( lr + i_tab.matrix(i_x)*lr + theta_plus_1_rho_xi(i_x), 2 );
     if (height_bound(lambda_0)>max_level)
       continue;
 
@@ -572,7 +572,7 @@ K_repr::KT_pol Rep_context::K_type_formula
       {
 	const auto& lr = t.first.lambda_rho();
 	RatWeight lambda_0 // test weight for height of new term
-	  ( lr + i_tab.matrix(i_x)*lr + i_tab.theta_plus_1_rho(i_x), 2);
+	  ( lr + i_tab.matrix(i_x)*lr + theta_plus_1_rho_xi(i_x), 2);
 	if (height_bound(lambda_0)<=max_level)
 	  product.add_term(std::move(t.first),-t.second);
       }
