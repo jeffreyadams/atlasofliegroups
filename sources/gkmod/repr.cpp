@@ -184,10 +184,18 @@ Rep_context::Rep_context(RealReductiveGroup &G_R, const RatWeight& xi)
   { // also require the coset |rho+xi+X^*| to be stable under every |theta_x|,
     // which given coroot-orthogonality of |xi| comes down to |(1-delta)xi|
     // integral, |delta| the distinguished involution of the inner class
-    RatWeight test = d_xi - ic.distinguished()*d_xi;
-    if (test.normalize().denominator()!=1)
+    const WeightInvolution& delta = ic.distinguished();
+    RatWeight kappa = d_xi - delta*d_xi;
+    if (kappa.normalize().denominator()!=1)
       throw std::runtime_error
 	("Cover datum xi not fixed by the inner class (not yet implemented)");
+    /* N.B. one might hope to replace |xi| here by a |delta|-fixed
+       representative of its coset |xi+X^*| (making the twist of genuine
+       parameters honestly involutive), but such a representative can fail to
+       be orthogonal to the coroots, leaving the regime this implementation
+       supports: for the |det/2| cover of $GL(2,\R)$ no representative is both
+       |delta|-fixed and coroot-orthogonal. So |xi| is kept as given, and
+       |twisted| below applies a coset correction by |kappa| instead. */
   }
 }
 

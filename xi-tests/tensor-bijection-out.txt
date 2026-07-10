@@ -29,6 +29,8 @@ Value:
 1*parameter(x=1,lambda=[1,0]/1,nu=[1,-1]/2) [0]
 -1*parameter(x=0,lambda=[1,0]/1,nu=[0,0]/1) [1]
 ### hermitian forms: G then cover
+KNOWN LIMITATION: is_hermitian/hermitian_dual use normal(twist(p)),
+which is wrong on covers; correct h is (x,lambda,-bar(nu)) same-x.
 Value: 
 1* K_type(x=1, lambda=[1,-1]/2) [0]
 -1* K_type(x=0, lambda=[1,-1]/2) [1]
@@ -46,27 +48,27 @@ Value:
 Value: true
 Value: false
 ### nonintegral continuous parameter: G then cover
-Error in 'set' command at <standard input>:29:0-42:
-Inexistent KGB element: 2
+Error in 'set' command at <standard input>:31:0-42:
+Not an integer vector
   Command 'set q1' interrupted, nothing defined.
-Error in expression q1 at <standard input>:30:0-2
+Error in expression q1 at <standard input>:32:0-2
   Undefined identifier 'q1'
 Program error: Expression analysis failed
 Evaluation aborted.
-Error in expression q1 at <standard input>:31:11-13
+Error in expression q1 at <standard input>:33:11-13
   Undefined identifier 'q1'
 Program error: Expression analysis failed
 Evaluation aborted.
-Error in expression q1 at <standard input>:32:13-15
+Error in expression q1 at <standard input>:34:13-15
   Undefined identifier 'q1'
-Error in 'set' command at <standard input>:32:0-17:
+Error in 'set' command at <standard input>:34:0-17:
 Expression analysis failed
   Command 'set q1x' not executed, nothing defined.
-Error in expression q1x at <standard input>:33:0-3
+Error in expression q1x at <standard input>:35:0-3
   Undefined identifier 'q1x'
 Program error: Expression analysis failed
 Evaluation aborted.
-Error in expression q1x at <standard input>:34:11-14
+Error in expression q1x at <standard input>:36:11-14
   Undefined identifier 'q1x'
 Program error: Expression analysis failed
 Evaluation aborted.
