@@ -1,5 +1,7 @@
 <hodge_deform.at
 <TWOHEIGHTS.at {for HT}
+<FPP_faces_geom.at {for herm_center, non_herm_center}
+<K_types.at {for int_part(KTypePol), s_part(KTypePol)}
 
 set is_positive(KTypePol P) = bool:
     let vint = vec: for c@mu in P do int_part(c) od
@@ -437,6 +439,22 @@ set Hodge_extended_hash_0_irr(Param p) = KTypePol:
     let (,ans) = Hodge_extended_hash_0(p) in ans
 
 set Hodge_jeff_irr(Param p) = K_type_pol(hodge_grading_irreducible(p)[0])
+
+{ new_convert_cform_hermitian supplement: on origin/to_ht_branch_alt this lived
+  in convert_c_form.at; the fork convert_c_form.at has the four
+  convert_cform_hermitian overloads (identical to branch) but not this one, and
+  it is used just below.  Added verbatim from
+  origin/to_ht_branch_alt:convert_c_form.at (no math change). }
+set new_convert_cform_hermitian(KTypePol P) = KTypePol:
+    if =#P then P
+    else let tau0 = first_K_type(P)
+    	 then z = tau0.real_form.square, lambdar0 = tau0.lambda_rho
+	 then shift = -z*lambdar0
+    	 in sum(P.real_form,for c@tau in P
+    		    	    do {let z = tau.real_form.square, lambdar = tau.lambda_rho
+    	      	               in} c*((mu(tau) {-z*lambdar} +shift).rat_as_int.exp_s)*tau
+		    	    od)
+    fi
 
 set is_unitary_Hodge_0_new(Param p) = bool:
     if is_equal_rank(p.real_form)
