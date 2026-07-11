@@ -12,6 +12,7 @@
   basis_lambda_differential_0 live in the light FPP_support.at instead. }
 
 <FPP_support.at { light core supplements incl. all_lambda_differential_0(mat) }
+<FPP_faces_geom.at { for herm_center, non_herm_center (used below) }
 
 { ======================================================================== }
 { Branch-only additions to deform.at (recursive_deform_scr and to-height
