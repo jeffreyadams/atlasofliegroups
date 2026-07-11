@@ -1,0 +1,3139 @@
+{ FPP_support_ht.at
+
+  Heavy branch-only "to_ht" machinery for the FPP unitary-dual suite port
+  from branch origin/to_ht_branch_alt.  Split out of FPP_support.at because
+  it must load LATE (after hermitian.at) to avoid include cycles.  Contains:
+    - branch-only deform.at to_ht helpers (recursive_deform_scr, ...)
+    - branch-only hermitian.at to_ht unitarity engine (200+ functions)
+  All extracted VERBATIM by exact signature; none touch all.at behaviour.
+  Included from FPP_faces_herm.at after <hermitian.at.
+  NB: does NOT include bottom_layer.at (which cyclically includes
+  FPP_faces_herm.at); the mat overloads of all_lambda_differential_0 /
+  basis_lambda_differential_0 live in the light FPP_support.at instead. }
+
+<FPP_support.at { light core supplements incl. all_lambda_differential_0(mat) }
+
+{ ======================================================================== }
+{ Branch-only additions to deform.at (recursive_deform_scr and to-height
+  deformation helpers).  The fork deform.at is divergent (15 fork-only
+  functions used by non-FPP deform_plus.at / paramChamber.at), so it is
+  supplemented, not clobbered.  Extracted verbatim (comment-aware, by exact
+  signature) keeping only signatures absent from the fork deform.at.  Not
+  loaded by all.at. }
+{ ======================================================================== }
+
+<deform.at { fork base deform functions }
+<polynomial.at { for i_poly, eval }
+<red_points.at
+<hash.at
+
+set_type maybe_KTP = (void timed_out | KTypePol done)
+
+{ this function is now obsolete, as |partial_KL_block| now condenses internally }
+
+set deformation_terms_scr (Param p) = ParamPol:
+  let (B,KL_mat,length) = ([Param],mat,vec):
+    let (block,M,polys) = partial_KL_block(p:=normal(p))
+    then l = vec: for q in block do q.length od, n=#block
+    , p_1= for Q in polys do eval(Q,minus_1) od
+    in
+    ( block
+    , for col@j in M
+      do let lj=l[j] in
+	 for entry@i in col do minus_1^(lj-l[i])*p_1[entry] od
+      od
+    , l
+    )
+  then nB=#B in
+  if =nB or B~[0]!=p
+  then null_module(p) { if |p| itself is not among survivors, return 0 }
+  else { compute final column |acc| of |Q| matrix by solving linear system
+         $P'*acc=e_p$ with $P'$ a matrix of Split, columns from |KL_sum_at_s| }
+    let remainder = null(nB-1)#1 { start with standard basis vector for |p| }
+    , solution=null(nB)
+    , !opposite_parity=1-length~[0]%2 { opposite to that of |length(p)| }
+    , !on_p = orientation_nr(p)
+    in
+    for q_ind : nB
+    ~do let contrib=remainder[q_ind]*KL_mat[q_ind] in
+      remainder -:= contrib
+    ; if length[q_ind]%2=opposite_parity
+      then solution +:= contrib
+      fi
+    od
+  ; null_module(p)+
+    for c@i in solution
+    do { twist (1-s)*solution according to orientation numbers of its terms }
+      let x=B[i] then (q,r)=(on_p-orientation_nr(x))\%2 in
+      assert(@:r=0,"odd orientation");
+      (minus_1^q*c*one_minus_s,x) { we have |s^q*c*(1-s) = (-1)^q*c(1-s)| }
+      { for the same reason we replaced |s| by |-1| in computations giving |c| }
+    od
+  fi
+
+set deformation_terms_scr (Param p, int HT) = ParamPol:
+  let (B,KL_mat,length) = ([Param],mat,vec):
+    let (block,M,polys) = partial_KL_block(p:=normal(p))
+    then l = vec: for q in block do q.length od{, n=#block}
+    , p_1= for Q in polys do eval(Q,minus_1) od
+    then low_inds = for q@j in block do if height(q)<=HT do j fi od.##
+    in
+    block:= for j in low_inds do block[j] od;
+    M := for j in low_inds do for k in low_inds do M[j][k] od od;
+    l := for j in low_inds do l[j] od;
+    ( block
+    , for col@j in M
+      do let lj=l[j] in
+	 for entry@i in col do minus_1^(lj-l[i])*p_1[entry] od
+      od
+    , l
+    ) {replace entry P_{x,y}(q) in M by (-1)^{l(x)-l(y)} P_{x,y}(-1)}
+      {columns of KL_mat are irr chars}
+  then nB=#B in
+  if =nB or B~[0]!=p
+  then null_module(p) { if |p| itself is not among survivors, return 0 }
+  else { compute final column |acc| of |Q| matrix by solving linear system
+         $P'*acc=e_p$ with $P'$ a matrix of Split, columns from |KL_sum_at_s| }
+    let remainder = null(nB-1)#1 { start with standard basis vector for |p| }
+    , solution=null(nB)		      {sero vec of size nB}
+    , !opposite_parity=1-length~[0]%2 {0 or 1, parity opposite to that of |length(p)| }
+    , !on_p = orientation_nr(p)
+    in
+    for q_ind : nB
+    ~do let contrib=remainder[q_ind]*KL_mat[q_ind] in
+      remainder -:= contrib
+    ; if length[q_ind]%2=opposite_parity
+      then solution +:= contrib
+      fi
+    od {solution is odd levels of Jantzen(p), as sum of irrs???}
+  ; null_module(p)+
+    for c@i in solution
+    do { twist (1-s)*solution according to orientation numbers of its terms }
+      let x=B[i] then (q,r)=(on_p-orientation_nr(x))\%2 in
+      assert(@:r=0,"odd orientation");
+      (minus_1^q*c*one_minus_s,x) { we have |s^q*c*(1-s) = (-1)^q*c(1-s)| }
+      { for the same reason we replaced |s| by |-1| in computations giving |c| }
+    od
+  fi
+
+{
+set deformation_terms_zero_scr (Param p, int HT) = ParamPol:
+  let (B,KL_mat,length) = ([Param],mat,vec):
+    let (block,M,polys) = partial_KL_block(p:=normal(p))
+    then l = vec: for q in block do q.length od{, n=#block}
+    , p_1= for Q in polys do eval(Q,minus_1) od
+    then low_inds = for q@j in block do if height(q)<=HT do j fi od.##
+    in
+    block:= for j in low_inds do block[j] od;
+    M := for j in low_inds do for k in low_inds do M[j][k] od od;
+    l := for j in low_inds do l[j] od;
+    ( block
+    , for col@j in M
+      do let lj=l[j] in
+	 for entry@i in col do minus_1^(lj-l[i])*p_1[entry] od
+      od
+    , l
+    ) {replace entry P_{x,y}(q) in M by (-1)^{l(x)-l(y)} P_{x,y}(-1)}
+      {columns of KL_mat are irr chars}
+  then nB=#B in
+  if =nB or B~[0]!=p
+  then null_module(p) { if |p| itself is not among survivors, return 0 }
+  else { compute final column |acc| of |Q| matrix by solving linear system
+         $P'*acc=e_p$ with $P'$ a matrix of Split, columns from |KL_sum_at_s| }
+    let remainder = null(nB-1)#1 { start with standard basis vector for |p| }
+    , solution=null(nB)		      {sero vec of size nB}
+    , !opposite_parity=1-length~[0]%2 {0 or 1, parity opposite to that of |length(p)| }
+    , !on_p = orientation_nr(p)
+    in
+    for q_ind : nB
+    ~do let contrib=remainder[q_ind]*KL_mat[q_ind] in
+      remainder -:= contrib
+    ; if length[q_ind]%2=opposite_parity
+      then solution +:= contrib
+      fi
+    od {solution is odd levels of Jantzen(p), as sum of irrs???}
+  ; null_module(p)+
+    for c@i in solution
+    do { twist (1-s)*solution according to orientation numbers of its terms }
+      let x=B[i] then (q,r)=(on_p-orientation_nr(x))\%2 in
+      assert(@:r=0,"odd orientation");
+      (minus_1^q*c*one_minus_s,x) { we have |s^q*c*(1-s) = (-1)^q*c(1-s)| }
+      { for the same reason we replaced |s| by |-1| in computations giving |c| }
+    od
+  fi
+}
+
+set deformation_terms_by_dual_scr (Param p) = ParamPol:
+  assert(@:p.is_final,"deformation requires a final parameter");
+  let (block,KL_mat,P_polys) = partial_KL_block(p)
+  , (full_block,start,dual_KL_mat,dual_polys) = dual_KL_block(p)
+  {row j of dual_KL_mat gives multipliciticies of irr full_block[j]
+   in Jantzen filts of various standard}
+  then subset = [int]: {parameters above p}
+       let j0 = first(for q in full_block do height(q)>=height(p) od)
+       in for q@i in full_block[j0:] do if find(block,q) >=0 do i fi od.##
+   {want to cut down to rows and columns in subset...}
+  then pol_eval =  for P in P_polys do eval(P,minus_1) od, Q_col = vec:[]
+  , dual_pol_eval = for P in dual_polys do eval(P,minus_1) od
+  , l_sg = for q in block do minus_1^length(q) od
+  , to_full = (int->int):
+    let map = p.null_module + for q@i in full_block do (Split:(i,1),q) od
+    in (int i) int: let c=map[block[i]] in assert(@:c!=0,"absent"); c.int_part
+  then P_mat = mat:
+    for col@j in KL_mat do for e@i in col do l_sg[i]*l_sg[j]*pol_eval[e] od od
+  , Q_mat = mat:
+    for col in ^dual_KL_mat do for e in col do dual_pol_eval[e] od od
+  , opposite_parity=1-length(p)%2 { opposite to that of |length(p)| }
+  then solution = sum
+    ( #block { size of vectors being summed (after conversion to matrix) }
+    # for q@i in block
+         if length(q)%2=opposite_parity do Q_mat[i.to_full,start]*P_mat[i] fi
+      od
+    )
+  , !on_p = orientation_nr(p)
+in null_module(p) +
+   for q@i in block
+   do { twist (1-s)*solution according to orientation numbers of its terms }
+     ( orientation_nr_term(on_p,q)*solution[i]*one_minus_s , q )
+   od
+
+{to hold partial block}
+
+set partial_param_hash = make_Param_hash()
+{using this causes failure in FPP_unitary_hash_one_level(Spin(4,4))}
+
+set deformation_terms_by_dual_scr (Param p,int HT) = ParamPol:
+(  assert(@:p.is_final,"deformation requires a final parameter")
+;  if HT < 0 then return deformation_terms_by_dual_scr(p) fi
+;  assert(@:p.height<=HT,"height bound kills term to deform")
+;  let (full_block,start,dual_KL_mat,polys) = dual_KL_block(p), h0 = height(p)
+   then (partial_block,partial_KL_mat,partial_polys) = partial_KL_block(p)
+   then partial_subset = [int]:
+ 	for q@i in partial_block if (q.height<=HT) do i fi od {taken from the END of partial_block}
+   then partial_block_ht = for i in partial_subset do partial_block[i] od
+   then partial_ev = for P in partial_polys do eval(P,minus_1) od
+   then partial_KL_mat_ht = mat: (for j in partial_subset
+   			    	  do for i in partial_subset do partial_ev[partial_KL_mat[j][i]] od
+				  od)
+   then partial_param_hash = make_Param_hash(partial_block_ht)
+   then subset = [int]:
+     for q@i in full_block if partial_param_hash.lookup(q) >= 0 do i fi od
+     {(q.height<=HT) and (q.height)>=h0 do i fi od}
+     {should only select i in partial_block(p)}
+   , ev = for P in polys do eval(P,minus_1) od
+   , Q_col = vec:[] { vector variable to be assigned below }
+   {then () = prints("for p = ",p,", HT = ",HT,", FB = ",
+   	for i in subset do partial_param_hash.lookup(full_block[i]) od)}
+   {then () = prints("PB = ",for q in partial_block_ht do partial_param_hash.lookup(q) od)}
+   then Q_mat = mat: { transpose dual_KL_mat, select rows/cols from |subset|, set $q:=-1$ }
+     for i in subset {columns}
+     do let col = vec: for j in subset do ev[dual_KL_mat[i,j]] od
+     in if i=start then Q_col:=col else col fi { store the column for |p| }
+     od
+   , block = [Param]: for i in subset do full_block[i] od
+   then () = assert(@: all(for q@j in block do q = partial_block_ht[j] od),"orders don't match")
+   {then () = prints("Qm = ",Q_mat)}
+   then signer = diagonal(for q in partial_block_ht do (-1)^(length(q)) od)
+   then signed_P_mat = signer*partial_KL_mat_ht*signer
+   {then () = prints("sPm = ",signed_P_mat); prints("sPm*Qm = ",signed_P_mat*Q_mat);}
+   then () = assert(@:Q_mat*signed_P_mat-id_mat(#subset) = 0,"mats are not inv")
+   { $(-1)^{l(x,y)}P_{x,y}[q:=-1]$ for $x,y$ in |block| }
+   , lp_parity=p.length%2 { parity of length that is excluded below }
+   then solution = vec:
+      { compute more efficiently: |signed_P_mat*diagonal(odd_levels)*Q_col|,
+        where |odd_levels=vec: for q@i in block do #q.length%2!=lp_parity| }
+        subset := { reuse local variable, now for selecting odd levels }
+           for q@i in block if q.length%2!=lp_parity do i fi od
+      ; (mat: signed_P_mat.n_rows # for j in subset do signed_P_mat[j] od)
+       *(vec: for i in subset do Q_col[i] od)
+  , !on_p = orientation_nr(p)
+in null_module(p) +
+   for q@i in block
+   do { twist (1-s)*solution according to orientation numbers of its terms }
+     ( orientation_nr_term(on_p,q)*solution[i]*one_minus_s , q )
+   od {will be nonzero only for q in partial_block(p)}
+)
+
+{time in milliseconds to invert an N x N upper triangular matrix is about inverse_rate * N^3}
+
+set upper_ex(int N) = mat:
+    let M = id_mat(N)
+    in for j:N-1  do for i:j+1 do M[i,j+1]:=i+1 od od;
+       M
+
+set inverse_rate = rat:
+    let N = 100
+    then M = upper_ex(N), start = elapsed_ms()
+    then inv = M.inverse
+    in (elapsed_ms() - start)/N^3
+
+set upper_ones(int N) = mat:
+    let M = id_mat(N)
+    in for j:N-1  do for i:j+1 do M[i,j+1]:=1 od od;
+       M
+{estimated time in milliseconds for original: partial_KL and dual full_KL}
+
+set guessA(Param p) = int: KL_predictor_full(p) + KL_predictor(p)
+
+{estimated time in millseconds for B: partial_KL + inversion}
+
+set guessB(Param p) = int: KL_predictor(p) + floor(inverse_rate*(#partial_block(p))^3)
+
+{inverting an n x n (upper tri?) matrix takes time proportional n^3; on my laptop, (1/(4*10^4))*n^3
+milliseconds. Computing KL for a block of size N takes time roughly proportion to N^2: laptop it's
+(1/2.5*10^4)*N^2. SO should prefer original if .6 * (#partial_block_ht)^3 > (#full_block)^2  }
+{I suspect there will be overflow as soon as #partial_block_ht is more than 20 or so}
+{SO THIS FUNCTION IS UNRELIABLE!}
+
+set deformation_terms_by_dualB_scr (Param p,int HT) = ParamPol:
+(  assert(@:p.is_final,"deformation requires a final parameter")
+;  if HT < 0 then return deformation_terms_by_dual_scr(p) fi
+;  assert(@:p.height<=HT,"height bound kills term to deform")
+;  let (partial_block,partial_KL_mat,partial_polys) = partial_KL_block(p)
+   then partial_subset = [int]:
+ 	for q@i in partial_block if (q.height<=HT) do i fi od {taken from the END of partial_block}
+   then partial_block_ht = for i in partial_subset do partial_block[i] od
+   then partial_ev = for P in partial_polys do eval(P,minus_1) od
+   then partial_KL_mat_ht = mat: (for j in partial_subset
+   			    	  do for i in partial_subset do partial_ev[partial_KL_mat[j][i]] od
+				  od)
+   {then partial_param_hash = make_Param_hash(partial_block_ht)}
+   then signer = diagonal(for q in partial_block_ht do (-1)^(length(q)) od)
+   then signed_P_mat = signer*partial_KL_mat_ht*signer
+   then Q_mat = inverse(signed_P_mat) {GREAT danger of overflow!}
+   then Q_col = Q_mat~[0], lp_parity=p.length%2 { parity of length that is excluded below }
+   then solution = vec:
+      { compute more efficiently: |signed_P_mat*diagonal(odd_levels)*Q_col|,
+        where |odd_levels=vec: for q@i in block do #q.length%2!=lp_parity| }
+        let odd_subset = { reuse local variable, now for selecting odd levels }
+           for q@i in partial_block_ht if q.length%2!=lp_parity do i fi od
+       in (mat: signed_P_mat.n_rows # for j in odd_subset do signed_P_mat[j] od)
+       *(vec: for i in odd_subset do Q_col[i] od)
+  , !on_p = orientation_nr(p)
+in null_module(p) +
+   for q@i in partial_block_ht
+   do { twist (1-s)*solution according to orientation numbers of its terms }
+     ( orientation_nr_term(on_p,q)*solution[i]*one_minus_s , q )
+   od {will be nonzero only for q in partial_block_ht(p)}
+)
+
+{ go to next reducibility point (move even if at reducibility point) }
+
+set reduction_at_to_ht (Param p,int HT) = Maybe<Param>:
+   let rp=(0/1)#reducibility_points_rp(p,HT)
+in if rp~[0]=1 then none() else some(p*rp~[0]) fi
+
+set next_down (Param p,int HT) = Param:
+   let rp=(0/1)#reducibility_points_rp(p,HT)
+in assert(@:rp~[0]=1,"Not a reducibility: "+p.to_string); p*rp~[1]
+
+{ go to next reducibility point (move even if at reducibility point) }
+
+set reduction_at_to_ht_old (Param p,int HT) = Maybe<Param>:
+   let rp=(0/1)#reducibility_points(p)
+in if rp~[0]=1 then none() else some(p*rp~[0]) fi
+
+set next_down_old (Param p,int HT) = Param:
+   let rp=(0/1)#reducibility_points(p)
+in assert(@:rp~[0]=1,"Not a reducibility: "+p.to_string); p*rp~[1]
+
+{ use |deformation_terms_by dual| for a full deformation, in which we try to
+  group all successive deformations involving a same block together }
+
+set deform_to_height_scr (Param p,int HT) = KTypePol: {same as full_deform_to_ht...}
+(  assert(@:p.height<=HT,"height bound kills term to deform")
+;  let G=real_form(p)
+   then !K_empty=null_K_module(G), !empty=null_module(G)
+in { first ensure there is a potential deformation at |p| }
+   case reduction_at_to_ht(p,HT) | some(q): p:=q | none(): () { keep p } esac
+;  let queue = ParamPol: p, result = KTypePol: K_empty, lower = ParamPol:empty
+in while >#queue or
+       if >#lower else false
+       then set (queue,lower) := height_split(lower,height(first_param(lower)))
+       ; true
+       fi
+   do { invariant of the loop: all terms in |queue| have potential deformation }
+      let (c0,q):term = first_term(queue)
+   in queue:= (queue next queue:=empty) - term
+   ;  if =nu(q) then result := (result next result:=K_empty) + (c0,q.K_type)
+      else lower:= (lower next lower:=empty) + (c0,next_down(q,HT))
+      fi
+   ;  let terms = deformation_terms_by_dual_scr(q,HT)
+   in for c@r in terms
+      do case reduction_at_to_ht(r,HT)
+         | none():
+	    queue:= (queue next queue:=empty) + (c0*c,r)
+         | some(qq): { element of initial block, but no further deformation }
+	    lower:= (lower next lower:=empty) + (c0*c,qq)
+         esac
+      od
+   od
+;  result
+)
+
+{ use |deformation_terms_by dual| for a full deformation, in which we try to
+  group all successive deformations involving a same block together }
+
+set deform_to_height_old (Param p,int HT) = KTypePol: {same as full_deform_to_ht...}
+(  assert(@:p.height<=HT,"height bound kills term to deform")
+;  let G=real_form(p)
+   then !K_empty=null_K_module(G), !empty=null_module(G)
+in { first ensure there is a potential deformation at |p| }
+   case reduction_at_to_ht_old(p,HT) | some(q): p:=q | none(): () { keep p } esac
+;  let queue = ParamPol: p, result = KTypePol: K_empty, lower = ParamPol:empty
+in while >#queue or
+       if >#lower else false
+       then set (queue,lower) := height_split(lower,height(first_param(lower)))
+       ; true
+       fi
+   do { invariant of the loop: all terms in |queue| have potential deformation }
+      let (c0,q):term = first_term(queue)
+   in queue:= (queue next queue:=empty) - term
+   ;  if =nu(q) then result := (result next result:=K_empty) + (c0,q.K_type)
+      else lower:= (lower next lower:=empty) + (c0,next_down_old(q,HT))
+      fi
+   ;  let terms = deformation_terms_by_dual_scr(q,HT)
+   in for c@r in terms
+      do case reduction_at_to_ht_old(r,HT)
+         | none():
+	    queue:= (queue next queue:=empty) + (c0*c,r)
+         | some(qq): { element of initial block, but no further deformation }
+	    lower:= (lower next lower:=empty) + (c0*c,qq)
+         esac
+      od
+   od
+;  result
+)
+
+{ the original version of this file started here }
+
+set weak_lower_scr (Param p,int HT) = Param:
+  let (x,lambda,gamma)=%p, rp=reducibility_points_rp(p,HT)
+  then lim = #rp
+  in param(x,lambda,gamma*if lim=0 then 0 else rp[lim-1] fi)
+
+{ go to next reducibility point (move even if at reducibility point) }
+
+set lower_scr (Param p,int HT) = Param:
+  let (x,lambda,gamma)=%p, rp=reducibility_points_rp(p,HT)
+  then lim = let nrp=#rp in if nrp>0 and rp[nrp-1]=1/1 then nrp-1 else nrp fi
+  in  param(x,lambda,gamma*if lim=0 then 0 else rp[lim-1] fi)
+
+set deformation_scr (Param p, int HT) = (Param,ParamPol): { deformed Param and new terms }
+  (lower_scr(p,HT), deformation_terms_by_dual_scr(p,HT))
+ { deform(p))} { here |deform| may be replaced by |deformation_terms| }
+
+{whether to use deformation_terms_by_dual in recursive_deform}
+
+set by_dual_flag = false
+
+{same as full_deform}
+
+set recursive_deform_scr (Param p, int HT) = KTypePol:
+  if d_verbose then prints("recursive_deform to height with:", p) fi;
+  if not is_final(p) then error("improper parameter") fi;
+  let empty=null_module(real_form(p)) in
+  if d_verbose { choose verbose or non-verbose version of the function }
+  then rec_fun full_def_scr (Split sc,Param p, int HT) KTypePol:
+	 { |sc| will simply scale the coefficients of resulting KTypePol }
+    begin
+      p := alcove_center(p);
+      prints("full_def_scr with: sc=", sc, ", p=", p, p.infinitesimal_character);
+      assert(@:is_standard(p)
+	    ,"non standard parameter encountered in deformation");
+      let acc=empty, at_nu0=KTypePol: sc*(p.K_type) { fully deformed |p| } in
+      for factor in reducibility_points_rp(p,HT)
+      ~do
+	let p_def=Finalize(p*factor) { next deformation of |p| }
+	then def= {deform(p_def)} { bypass built-in |deform| here }
+	     	  if by_dual_flag
+		  then deformation_terms_by_dual_scr(p_def,HT)
+		  else deformation_terms_scr(p_def,HT)
+		  fi
+        in
+	  prints("adding deformation term: p=", p_def, new_line,"adding:", def)
+      ; acc+:=def
+      od
+    ; for k@q in acc { traverse the sum of the deformation terms spun off }
+      do { apply |full_def_scr| recursively to all those terms }
+        at_nu0 +:= full_def_scr(sc*k,q,HT) { gather harvest from those deformations }
+      od
+    ; prints("full_def_scr complete, result:",at_nu0)
+    ; at_nu0
+    end
+  else rec_fun full_def_scr (Split sc,Param p, int HT) KTypePol:
+	 { |sc| will simply scale the coefficients of resulting KTypePol }
+    begin
+      p := alcove_center(p);
+      assert(@:is_standard(p),"non standard parameter in deformation");
+      let acc=empty, at_nu0=KTypePol: sc*(p.K_type) { fully deformed |p| } in
+      for factor in reducibility_points_rp(p,HT)
+      ~ { direction of deformation is down, towards 0; this is not essential }
+      do acc+:={deform(p*factor)}
+      	 if by_dual_flag
+	 then deformation_terms_by_dual_scr(Finalize(p*factor),HT)
+	 else deformation_terms_scr(Finalize(p*factor),HT)
+	 fi
+      od
+    ; for k@q in acc { traverse the sum of the deformation terms spun off }
+      do at_nu0 +:= full_def_scr(sc*k,q,HT) od
+    ; at_nu0
+    end
+  fi { apply that recursive function to the initial argument: } (1,p,HT)
+
+{same as full_deform interruptible}
+
+set recursive_deform_scr (Param p, int HT, int TIME) = maybe_KTP:
+  {if d_verbose then prints("recursive_deform to height with:", p) fi;}
+  if not is_final(p) then error("improper parameter") fi;
+  let empty=null_module(real_form(p)), expiration = elapsed_ms() + TIME
+  {if d_verbose} { choose verbose or non-verbose version of the function }
+  in (rec_fun full_def_scr (Split sc,Param p, int HT, int expiration) maybe_KTP:
+	 { |sc| will simply scale the coefficients of resulting KTypePol }
+    begin
+      p := alcove_center(p);
+      assert(@:is_standard(p),"non standard parameter in deformation");
+      let acc=empty, at_nu0=KTypePol: sc*(p.K_type) { fully deformed |p| } in
+      for factor in reducibility_points_rp(p,HT)
+      ~ { direction of deformation is down, towards 0; this is not essential }
+      do acc+:={deform(p*factor)}
+      	 if by_dual_flag
+	 then deformation_terms_by_dual_scr(Finalize(p*factor),HT)
+	 else deformation_terms_scr(Finalize(p*factor),HT)
+	 fi
+      od
+    ; for k@q in acc { traverse the sum of the deformation terms spun off }
+      do at_nu0 +:= case full_def_scr(sc*k,q,HT,expiration)
+      	 	    	 | timed_out: 0*at_nu0
+			 | done(P): P
+		    esac
+      od
+    ; if expiration < elapsed_ms()  then timed_out()
+      else (at_nu0).done
+      fi
+    end)(1,p,HT,elapsed_ms() + TIME)
+  { apply that recursive function to the initial argument: }
+
+{same as built-in full_deform}
+
+set recursive_deform_old (Param p, int HT) = KTypePol:
+  if d_verbose then prints("recursive_deform to height with:", p) fi;
+  if not is_final(p) then error("improper parameter") fi;
+   let empty=null_module(real_form(p))
+   in (rec_fun full_def_old (Split sc,Param p, int HT) KTypePol:
+	 { |sc| will simply scale the coefficients of resulting KTypePol }
+    begin
+      p := alcove_center(p);
+      assert(@:is_standard(p),"non standard parameter in deformation");
+      let acc=empty, at_nu0=KTypePol: sc*(p.K_type) { fully deformed |p| } in
+      for factor in reducibility_points_rp(p,-1)
+      ~ { direction of deformation is down, towards 0; this is not essential }
+      do acc+:={deform(p*factor)}
+      	 deformation_terms_by_dual_scr(Finalize(p*factor),HT)
+      od
+    ; for k@q in acc { traverse the sum of the deformation terms spun off }
+      do at_nu0 +:= full_def_old(sc*k,q,HT) od
+    ; at_nu0
+    end) (1,p,HT)
+  { apply that recursive function to the initial argument: }
+
+{ code that follows is adapted from hermitian.at to do unitarity computation
+  in terms of the above functions rather than built-ins
+}
+
+set c_form_irreducible_scr (Param p) = KTypePol:
+  let P=oriented_KL_sum(p), count=0 then nP=#P
+  then
+    f(Param p) = if count<11 or count%10=0 or nP-count<=10
+                 then prints("Term ",count,": ",p)
+		 fi; count+:=1; recursive_deform_scr(p,-1)
+  in prints("Fully deforming ",nP," terms"); map(f, P)
+
+{ utility: compute fixed and unfixed contributions to c-form on irreducible(p)
+  no deformation is done, but orientation numbers are included;
+  fixed contributions are already halved; for unfixed ones this needs to wait
+}
+
+set twisted_c_form_irreducible_contributions_scr (Param p) =
+    (ParamPol,ParamPol): { (fixed part, 2*unfixed part) }
+  let G=p.real_form, ori_nr_p = orientation_nr(p)
+  then fixed_terms=G.null_module, unfixed_terms=G.null_module
+  in
+  for c@q in (1+s)*KL_sum_at_s(p) + (1-s)*twisted_KL_sum_at_s(p)
+  do if twist(q)=q
+     then fixed_terms+:=(half(c)*orientation_nr_term(ori_nr_p,q),q)
+     else unfixed_terms+:=(c*orientation_nr_term(ori_nr_p,q),q)
+     fi
+  od; (fixed_terms,unfixed_terms)
+
+{ for now we do not have any script for the twisted deformation; use built-in }
+
+set twisted_c_form_irreducible_scr (Param p) = KTypePol:
+( let (fixed,unfixed)=twisted_c_form_irreducible_contributions_scr(p)
+{ |1+s| divides |unfixed|, no need for |scale_extended|; take half at |nu=0| }
+  , count=0
+  then nf=#fixed
+  then
+    f(Param p) = if count<11 or count%10=0 or nf-count<=10
+                 then prints("Term ",count,": ",p)
+		 fi; count+:=1; twisted_full_deform(p)
+  in prints("Fully twisted deforming ",nf," terms (",#unfixed," unfixed).")
+; map(f,fixed)+half(unfixed.K_type_pol)
+)
+
+{.whether J(p) admits an invariant Hermitian form.}
+
+set is_hermitian_scr (Param p) = bool: equivalent(twist(p),p)
+
+set check_hermitian_scr (Param p) = void:
+  assert(@:p.is_hermitian_scr
+        ,"Irreducible module does not admit any invariant Hermitian form"
+	)
+
+set hermitian_form_irreducible_scr (Param p) = KTypePol:
+  if is_equal_rank(real_form(p))
+  then c_form_irreducible_scr(p) { not twisted, in equal rank case this is faster }
+  else check_hermitian_scr(p); twisted_c_form_irreducible_scr(p)
+  fi.convert_cform_hermitian
+
+{ compute Hermitian form on p, and report if it is unitary }
+
+set is_unitary_scr (Param p) = bool:
+  p.is_hermitian_scr and hermitian_form_irreducible_scr(p).is_pure
+
+
+{ ======================================================================== }
+{ Branch-only additions to hermitian.at (the "to_ht" unitarity engine).
+  hermitian.at is loaded by all.at AND covering-group-modified in this fork
+  (2 fork-only functions plus covering edits to ~16 shared functions), so it
+  MUST NOT be clobbered.  The 200+ branch-only definitions below (the whole
+  is_unitary_to_ht / full_deform_to_ht / u_predictor / stats-hashing machinery
+  the FPP suite depends on) are extracted VERBATIM (comment-aware, by exact
+  signature) from origin/to_ht_branch_alt:atlas-scripts/hermitian.at, keeping
+  only signatures absent from the fork hermitian.at.  Loaded only by FPP
+  scripts, so redefinitions here cannot affect all.at. }
+{ ======================================================================== }
+
+<hermitian.at { fork base: check_hermitian(Param,bool), is_unitary, c_form_* }
+<hash.at
+<count.at
+<time.at
+<convert_c_form.at
+<cohom_reductionND.at
+
+set deformLookupCounter = make_counter()
+
+set deformCalcCounter = make_counter()
+
+set twistedDeformLookupCounter = make_counter()
+
+set twistedDeformCalcCounter = make_counter()
+
+set test_interrupt_verbose = false
+
+{whether to compute forms starting with small x (true) or large x (false)}
+
+set back_form_flag = false {x_open(E7_s suggests TRUE doesn't help or hurt}
+
+{whether to compute forms_to_ht starting with small x (true) or large x (false)}
+
+set back_form_ht_flag = false {weak evidence from x_open(E7_s) TRUE is faster, maybe smaller}
+{true is a problem for u_predictor}
+
+{typewise_pure(c_form) is a necessary condition for purity of hermitian form, and rules out a lot}
+
+set is_typewise_pure(KTypePol P) = bool:
+    all(for c@tau in P do is_pure(c) od)
+
+{let p = pmax(x,lambda,nu) be the FPP parameter of biggest infl char gamma;
+and write LAM = height(pmax), GAM = height(gamma), R = height(rho).}
+
+{when bottom_layer is used at (x,lambda), more_shift is set to shift_frac*(GAM - LAM)}
+{DECREASING means less deep bottom layer, which is faster but catches less non-unitarity}
+{a little experimentation suggested that shift_frac about 1 would capture almost all the
+non-unitarity that it's possible to capture with bottom layer; but that is expensive in time.}
+
+set shift_frac = rat: 1/3
+
+{the integer more_shift, controlling shifts for non-minimal
+parabolics, is bounded by min_ht_mult times the shift for the minimal
+(classification) parabolic.}
+
+set min_ht_mult = rat: 2/1
+
+{bottom layer is used only when LAM/GAM  < LAGAmax...}
+{should be in [0,1]}
+
+set LAGAmax = rat: 3/4
+
+{... and GAM/R + LAM/GAM > GARLAGmin}
+{should be in [0,2]}
+
+set GARLAGmin = 1/1
+
+{more_shift invoked when when GAM/R > GARmin}
+
+set GARmin = rat: 3/5
+
+set LARmax = rat: 4/5
+
+set LAGAmin = 1/1
+
+set LARmin = rat: 1/2
+
+{count total (vertices,edges) considered}
+
+set FDcount = vec:[0,0]
+
+{count cases of changing form_to_ht to form because low(p,HT) is false}
+
+set HF_false_low_count = int:0
+
+set status_time = int: 0
+
+set status_count = int: 0
+
+set status_ucount = int: 0
+
+set status_nucount = int: 0
+
+set statusW_time = int: 0
+
+set statusW_count = int: 0
+
+set statusW_ucount = int: 0
+
+set statusW_nucount = int: 0
+
+{next three global variables concern function is_unitary_test_big_SIMPLE_interrupt in FPP_faces_herm.at}
+
+set up_mu_time = int:0
+
+set mu_time_mult = rat: 1/1 {1/1}
+
+{it "true" use up_mu_hash to calculate heights for is_unitary_to_ht}
+{set up_mu_flag = false {true}}
+
+{multiple of G.rank to use as jump in step size}
+
+set mu_rank_mult = rat: 1/2 {1/4}
+
+{how far above LKT to start is_unitary_to_ht tests}
+
+set edge_offset = int: 1
+
+{when the non-minimal parabolics are used at the end, how much above
+height(p) to look at K-types.  A larger number finds more nonunitary,
+takes longer}
+
+set more_shift_level = int: 0
+
+set test_bl_time = int: 0
+
+set test_no_unitary_time = int: 0
+
+set test_no_Dirac_time = int: 0
+
+{how often deforming location succeeds in proving unitary}
+
+set hash_def_true_count = int: 0
+
+{how often deforming location succeeds in proving nonunitary}
+
+set hash_def_false_count = int: 0
+
+set def_thruples_time = int:0
+
+{if true, try to raise mu in few steps to minimize number of to_ht calculations}
+
+set max_loc_flag = true
+
+{records how many pairs (x,lambda) are skipped because all Params are
+indefinite on LKTs.}
+
+set none_count = int:0
+
+set hash_real_dumbCounter = make_counter()
+
+set hash_dumbCounter = make_counter()
+
+set hash_def_dumbCounter = make_counter()
+
+set hashCounter = make_counter()
+
+set hash2Counter = make_counter()
+
+set hash_one_levelCounter = make_counter()
+
+set hash_bottom_layerCounter = make_counter()
+
+set hash_steveCounter = make_counter()
+
+{initial time to give interruptible command}
+
+set interrupt_base_time = int: {150}
+let start = elapsed_ms()
+then CF = KL_sum_at_s(E6_q.trivial)
+in 2*(elapsed_ms() - start)
+{changed from 100 to 150 5/5/26}
+{was 200 before 7/24/25; sometimes 500...}
+
+{to record time spent in is_unitary, is_unitary_to_ht, etc.}
+
+set unitaryTime = int: 0
+
+set predictor_verbose =false
+
+set predictor_time = int:0
+
+set predictor_count = int:0
+
+set predictor_u_time = int:0
+
+set predictor_u_count = int:0
+
+set predictor_h_time = int:0
+
+set predictor_h_times = [(int,int)]:[]
+
+set predictor_h_count = int:0
+{take a KTypePol _apparently_ attached to G and make it _actually_ attached
+to G. Need this to use looked-up deformations.}
+
+set regroup(RealForm G, KTypePol P) = KTypePol:
+    sum(G, for c@q in P do let (,m) = %q.x
+    	   in c*K_type(KGB(G,m), q.lambda_minus_rho) od)
+
+set regroup(RealForm G, maybe_KTP P) = maybe_KTP:
+    case P
+    |timed_out(): timed_out()
+    |done(Q): regroup(Q.real_form,Q).done
+    esac
+
+set regroup(RealForm G, Param p) = Param:
+    parameter(G, p.x.number, p.lambda, p.nu)
+
+set low_height(KTypePol P) = int:
+    if P.= then -1 else height(last_K_type(P)) fi
+
+set low_height(ParamPol P) = int:
+    if P.= then -1 else height(last_param(P)) fi
+
+set impure_height(KTypePol P) = int:
+    if is_pure(P) then -1
+    else let (a, mu) = first_term(P)
+    	 then () = if not is_pure(a) then return height(mu) fi
+	 then () = for c@tau in a*P
+	    	   do if not s_part(c).=
+		      then return height(tau)
+		      fi
+		   od
+	 in -1
+     fi
+
+set full_deform_library(Param p) = full_deform(p)
+
+{repeating this is useful: library remembers partial info}
+
+set full_deform_library(Param p, int time) = full_deform(p, time)
+
+set twisted_full_deform_library(Param p) = twisted_full_deform(p)
+
+set twisted_full_deform_library(Param p, int time) = twisted_full_deform(p, time)
+
+{whether to use the script full_deform}
+
+set deform_script_flag = false
+
+{whether to use reducibility_points_rp}
+
+set deform_rp_flag = false
+
+{use reducibility_points_rp if #reducibility_points > rp_cutoff}
+
+set some_deform_rp_flag = false
+
+set rp_cutoff = int:20
+
+{whether to use old (always to_ht) version}
+
+set full_deform_old_flag = false
+
+set full_deform_to_height_MvL_old(Param p, int height) = KTypePol:
+  if height < 0 then return full_deform(p) fi;
+  let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p)
+  then output = empty_K, def = empty, time = interrupt_base_time
+  then P = empty +
+       	 { snap p down to a reducibility point, or tempered parameter }
+     	 (let rp = reducibility_points(p)
+      	  in if =#rp
+      	     then output +:= p.K_type; []
+	     else [p*rp~[0]]
+	     fi)
+      then () = while >#P
+       	    do set (def,P) :=
+               (let q=first_param(P) in block_deform(q,P next P:=empty,height))
+  	       ;  let kt = for c@m in def if  =nu(m) do (c,m.K_type) fi od
+     	       	  ,   pp = for c@m in def if !=nu(m) do (c,m) fi od
+  	      in output := (output next output:=empty_K) + kt; P := (P next P:=empty) + pp
+  	    od
+  in output
+
+set full_deform_to_height_MvL_old(Param p, int height,int TIME) = maybe_KTP:
+  if height < 0 then return full_deform_library(p,TIME) fi;
+  let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p)
+  then output = empty_K, def = empty{ , time = max(TIME\32,interrupt_base_time)}
+  then P = empty +
+       	 { snap p down to a reducibility point, or tempered parameter }
+     	 (let rp = reducibility_points(p)
+      	  in if =#rp
+      	     then output +:= p.K_type; []
+	     else [p*rp~[0]]
+	     fi)
+      then () = while >#P
+       	    do set (def,P) :=
+               (let q=first_param(P) in block_deform(q,P next P:=empty,height))
+	       ; if elapsed_ms() - start > TIME
+	       	 then return timed_out()
+		 fi
+  	       ;  let kt = for c@m in def if  =nu(m) do (c,m.K_type) fi od
+     	       	  ,   pp = for c@m in def if !=nu(m) do (c,m) fi od
+  	      in output := (output next output:=empty_K) + kt; P := (P next P:=empty) + pp
+  	    od
+  in done(output)
+
+set FDH_count = int:0
+
+set FDH_time = int:0
+
+{repeating this is NOT useful: library seems NOT to remember partial info}
+{worst cases for block_deform appear to be low(p) = (N,n,N+m) where n and m are relatively small and N big.}
+
+set full_deform_to_height_MvL_base(Param p, int height) = KTypePol:
+if height < 0 then return full_deform_library(p) fi;
+if full_deform_old_flag then return full_deform_to_height_MvL_old(p,height) fi;
+if deform_script_flag then return recursive_deform_scr(p,height) fi;
+FDH_count+:=1;
+(    let !empty_K=null_K_module(p.real_form), !empty=null_module(p), start = elapsed_ms()
+     then output = empty_K, def = empty
+     then P = empty +
+     { snap p down to a reducibility point, or tempered parameter }
+     (let rp =  if deform_rp_flag
+	      	then reducibility_points_rp(p,height)
+		else let maybe = reducibility_points(p)
+		     in if #maybe < rp_cutoff or not some_deform_rp_flag
+		     	then maybe
+			else reducibility_points_rp(p,height)
+			fi
+		fi
+       in if =#rp then output +:= p.K_type; [] else [p*rp~[0]] fi)
+       	  then () = while >#P
+       	    do {prints("At A, q = ",first_param(P), ", height = ",height,", #P = ",#P);}
+
+	       set (def,P) :=
+               (let q= {first_param(P)} last_param(P) in block_deform(q,P next P:=empty,height))
+  	       ; let kt = for c@m in def if  =nu(m) do (c,m.K_type) fi od
+     	       	  ,   pp = for c@m in def if !=nu(m) do (c,m) fi od
+  	      in output := (output next output:=empty_K) + kt; P := (P next P:=empty) + pp
+  	    od
+       in output next FDH_time+:=elapsed_ms() - start
+      {esac}
+      )
+{whether to use script_deform in interrupted u_predictor_to_ht}
+
+set secret_pred_flag = false
+
+{make possible additional interruptions of full_deform_to_ht(p,HT,time)}
+
+set force_interrupt_flag = false
+
+{alternative is recursive_deform_scr(p) or (p,HT) or (p,HT,time)}
+
+set full_deform_to_height_MvL_base(Param p, int height, int time) = maybe_KTP:
+if height < 0 then return full_deform_library(p,time) fi;
+if full_deform_old_flag then return full_deform_to_height_MvL_old(p,height,time) fi;
+if deform_script_flag {or secret_pred_flag} then return recursive_deform_scr(p,height,time) fi;
+FDH_count+:=1;
+( let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p)
+  then output = empty_K, def = empty, expiration = start + time, count = 2
+  then P = empty +
+  { snap p down to a reducibility point, or tempered parameter }
+  (let rp = if deform_rp_flag
+	    then reducibility_points_rp(p,height)
+	    else let maybe = reducibility_points(p)
+		 in if #maybe < rp_cutoff or not some_deform_rp_flag
+		    then maybe
+		    else reducibility_points_rp(p,height)
+		    fi
+	    fi
+  {then () = prints("after rp, used ",print_time_string(elapsed_ms() - start))}
+  in if =#rp then output +:= p.K_type; [] else [p*rp~[0]] fi)
+     then () = while >#P
+       do {prints("entering while, used ",print_time_string(elapsed_ms() - start));
+          prints("At B, q = ",first_param(P), ", height = ",height,", #P = ",#P);}
+
+	  set (def,P) :=
+          (let q={first_param(P)} last_param(P)
+	   in if force_interrupt_flag and count > 0 and
+	      	 KL_predictor_full(q) > 10*(expiration - elapsed_ms())
+	      then return timed_out() next FDH_time+:= start-elapsed_ms()
+	      else count-:= 1 fi;
+	   block_deform(q,P next P:=empty,height))
+	  {; prints("after block_deform, used ",print_time_string(elapsed_ms() - start))}
+  	  ; if elapsed_ms() > expiration then return timed_out() fi
+  	  ;  let kt = for c@m in def if  =nu(m) do (c,m.K_type) fi od
+     	       	  ,   pp = for c@m in def if !=nu(m) do (c,m) fi od
+  	  in output := (output next output:=empty_K) + kt; P := (P next P:=empty) + pp
+       od
+     in return done(output) next FDH_time+:= start-elapsed_ms()
+)
+
+
+{just for full_deform}
+
+set_type
+[ deformation_hash_time =
+( ( -> int) size {number of parameters stored}
+  , ( -> ) clear
+  , (Param -> int) time_record {time taken for full deform of p. answer < -2 means we've tried for
+    -answer-2 and not succeeded. answer -2 means we haven't tried.}
+  , ((Param,int) -> int) time_record_bounded {time taken for full deform of p, to max of bound}
+  , (Param -> int) time_lookup {time taken for full deform of p if known,
+    	      	   	       	else -1 if known but no time will ever be available,
+				else -2 if completely unknown
+				else -T-3 if failed with time T}
+  , (Param -> int) param_lookup {index of p in list}
+  , (Param -> KTypePol) full_deform
+  , ((Param,int) -> maybe_KTP) maybe_full_deform
+  , (Param -> bool) is_full_deformed
+  , (int -> Param) param_index {parameter #j}
+  , (int -> int) time_index {time to compute full_deform of parameter #j}
+  , ( -> Param_hash) ParamHash {parameters considered}
+  , ( -> vec) timeList {list of times for ParamHash}
+  )
+]
+
+set make_deformation_hash_time () = deformation_hash_time:
+( let param_hash = make_Param_hash()
+  then time_list = vec:[]
+  then dummy = maybe_KTP: (1*LKT(U(0,0).trivial)).done
+  then FD = 1*LKT(GL(1,R).trivial)
+  then mFD = FD.done
+  then clearDHT() = void:
+       param_hash.clear();
+       time_list :=[]
+  then add_param(Param p) = (KTypePol,int):
+       let I = param_hash.size()
+       then i = param_hash.match(p), start = elapsed_ms()
+       in if i=I {haven't considered p} or time_list[i] <= -3
+       	  then let rp = reducibility_points(p)
+	       in if #rp = 0
+	       	  then FD := if is_equal_rank(p.real_form)
+		       	     then full_deform_library(p)
+			     else twisted_full_deform_library(p) {These are NOT K_type_pol(p)!}
+			     fi;
+		       start:= -2
+		  else if rp~[0] < 1 then p:= herm_center(Finalize(p*rp~[0])) fi;
+		       mFD := if is_equal_rank(p.real_form)
+	       	       	      then stored_full_deform(p)
+		      	      else stored_twisted_full_deform(p)
+		      	      fi;
+	       	       FD:= case mFD
+		       	    | done(FD): start:=-1;
+			      FD
+		      	    | timed_out: start:=elapsed_ms();
+	       		         	 if is_equal_rank(p.real_form)
+		      	 	 	 then full_deform_library(p)
+			 	 	 else twisted_full_deform_library(p)
+			 	 	 fi
+		     	    esac
+		   fi; {#rp = 0}
+	      	   if i = I
+	      	   then time_list #:= if start = -2
+		   		      then 0
+				      elif start = -1
+	       	       		      then 0
+		  		      else elapsed_ms() - start
+				      fi
+	      	   else {time_list[i] <= -3}
+	      	   	time_list[i]:= if start = -2
+				       then 0
+				       elif start = -1
+		   		       then 0
+				       else (elapsed_ms()- start) - (time_list[i] + 3)
+				       fi
+		   fi {i=I}
+	  else {i < I and time_list[i].>= -2; -2 should be impossible, FD already computed}
+	       FD := if is_equal_rank(p.real_form)
+	       	     then full_deform_library(p)
+	       	     else twisted_full_deform_library(p) {these ought to be instant}
+	       	     fi
+	  fi; {end of i=I or time_list[i] <= -3}
+	  (FD,i)
+  then maybe_add_param(Param p, int time) = (maybe_KTP,int): {full_deform, loc of p in param_hash}
+       let I = param_hash.size()
+       then i = param_hash.match(p), start = elapsed_ms()
+       in  if i=I or time_list[i] <= -3
+       	   then let rp = reducibility_points(p)
+	        in if #rp = 0
+	       	   then mFD := if is_equal_rank(p.real_form)
+		       	       then full_deform_library(p).done
+			       else twisted_full_deform_library(p).done {These are NOT K_type_pol(p)!}
+			       fi;K_type_pol(p).done;
+		        start:= -2
+		   else if rp~[0] < 1 then p:= herm_center(Finalize(p*rp~[0])) fi;
+	   	       mFD := if is_equal_rank(p.real_form)
+	   	       	      then stored_full_deform(p)
+	   	       	      else stored_twisted_full_deform(p)
+		       	      fi;
+       	   	       mFD := case mFD
+	   	       	      |done(FD): start :=-1;
+			    	  	 mFD
+		       	      |timed_out: start := elapsed_ms();
+	   		    	   	  if is_equal_rank(p.real_form)
+		       	    	   	  then full_deform_library(p,time)
+		       	    	   	  else twisted_full_deform_library(p,time)
+		       	    	   	  fi
+		       	      esac
+		   fi; {#rp = 0}
+	  	   if i = I
+	  	   then time_list #:= if start = -2
+		   		      then 0
+				      elif start = -1
+	       	       	       	      then 0
+		  	     	      else case mFD
+			     	   	   |done(FD): elapsed_ms() - start
+				  	   |timed_out: (start - elapsed_ms()) - 3
+				  	   esac
+			     	      fi
+	  	   else {time_list[i] <= -3; we prevously tried full_deform, timed out}
+	       	    	 time_list[i] := if start = -2
+			 	      	 then 0
+					 elif start = -1
+	       	       	       	     	 then 0
+		  	       	     	 else case mFD
+			     	     	      |done(FD): elapsed_ms() - start - (time_list[i] + 3)
+				    	      |timed_out(): time_list[i] - (elapsed_ms() - start)
+				    	      esac
+				         fi
+		   fi {i=I}
+	  else {i < I and time_list[i] >= -1}
+	       mFD := if is_equal_rank(p.real_form)
+	       	      then full_deform_library(p).done
+	       	      else twisted_full_deform_library(p).done
+	       	      fi
+
+	  fi;
+	  (mFD,i)
+   in
+  ( ( -> int): {size} @int: param_hash.size()
+  , ( -> ): {clear} clearDHT
+  , (Param -> int): {time_record} (Param p):
+    let (,i) = add_param(p) in time_list[i]
+  , ((Param,int) -> int): {time_record_bounded} (Param p, int time):
+    let (,j) = maybe_add_param(p,time)
+    in time_list[j]
+  , (Param -> int): {time_lookup}  (Param p):
+    let j = param_hash.lookup(p)
+    in if j<0 then -2 else time_list[j] fi
+  , (Param -> int): {param_lookup} (Param p): param_hash.lookup(p)
+  , (Param -> KTypePol): {full_deform} (Param p):
+    let (FD,) = add_param(p) in FD
+  , ((Param,int) -> maybe_KTP): {maybe_full_deform} (Param p, int time):
+    let (mFD,) = maybe_add_param(p,time) in mFD
+  , (Param -> bool): {is_full_deformed} (Param p):
+    let j = param_hash.lookup(p) in j>=0 and time_list[j] >= -1
+  , (int -> Param): {param_index} (int j): param_hash.index(j)
+  , (int -> int): {time_index} (int j): time_list[j]
+  , ( -> Param_hash): {ParamHash} @Param_hash: param_hash
+  , ( -> vec): {timeList} @vec: time_list
+  )
+  )
+
+set defHashTime = make_deformation_hash_time()
+
+set_type
+[ deformation_hash_height_time =
+( ( -> int) size {number of parameters stored}
+  , ( -> ) clear
+  , ((Param,int) -> int) time_record_to_ht {find time taken for full deform to ht of p. -1 means we'll
+    		    	 		   never know. <= -2 not a possible response.}
+  , ((Param,int,int) -> int) time_record_to_ht_bounded {find time taken for full deform to ht of p,
+    		   	     			       to max of bound. -1 means we'll never know. -2 not
+						       a possible response.  <= -3
+    		    	 		   means we tried for (minus) this time+3 but did not complete.}
+  , ((Param,int) -> int) time_lookup_to_ht {time taken for full deform to ht of p if known with time,
+    		    	 		    else 0 if stored,
+					    else -2 if completely unknown,
+					    else -T-3 if we failed with time T}
+  , (Param -> int) param_lookup {index of p in list}
+  , ((Param,int) -> KTypePol) full_deform_to_ht
+  , ((Param,int,int) -> maybe_KTP) maybe_full_deform_to_ht
+  , ((Param,int) -> bool) is_deformed_to_height
+  , (int -> Param) param_index {parameter #j}
+  , (int -> vec) heights_index {heights to which param j has been full_deformed}
+  , (int -> int) trial_height {a height > height_index~[0] where we've tried unsucc to deform}
+  , (int -> vec) times_index {times to compute full_deform to heights of parameter #j; -2 if no
+    	    	 	      time will ever be available}
+  , (int -> int) trial_time {max time tried trial_height}
+  , ( -> Param_hash) ParamHash {parameters considered}
+  , ( -> [vec]) heightsList {list of max hts for ParamHash}
+  , ( -> [vec]) timesList {list of times for ParamHash}
+  , ( -> vec) polList {locations in PolHash of deformations to max height}
+  , ( -> KTypePol_hash) PolHash {holding full_deform_to_ht's}
+  )
+]
+
+set full_deform_to_ht_new_flag = false
+
+{meant to count occasions when a desired full_deform_to_ht is obtained from a known full_deform}
+
+set FD_new_count = int:0
+
+set FD_false_low_count = int:0
+
+{ALWAYS HT >= 0}
+
+set make_deformation_hash_height_time () = deformation_hash_height_time:
+( let param_hash = make_Param_hash()
+  then pol_hash = make_KTypePol_hash() {to store full_deform_to_ht, which library does not}
+  then pol_list = vec:[] {jth entry is location in pol_hash of full_deform to max height of Param #j}
+  then times_list = [vec]:[] {one for each Param in Param_hash. -1 means val known, not time.}
+  then heights_list = [vec]:[] {one for each Param in Param_hash}
+  then trial_time_list = vec:[] {one for each Param in Param_hash: time for unsuccessful. (-1 means not tried)}
+  then trial_height_list = vec:[] {one for each Param in Param_hash: height for unsuccessful}
+  then dummy = maybe_KTP: (1*LKT(U(0,0).trivial)).done
+  then FDH = 1*LKT(GL(1,R).trivial)
+  then mFDH = FDH.done
+  {then badrat = 0/1
+  then badp = parameter(E7_s,20912,[3,3,0,2,0,1,2]/1,[1,1,0,2,0,1,1]/2)}
+  then clearDHT() = void:
+       param_hash.clear();
+       pol_hash.clear();
+       pol_list := [];
+       times_list :=[];
+       heights_list := [];
+       trial_time_list := [];
+       trial_height_list:= []
+  then add_param(Param p, int HT) = (KTypePol,int):
+       let I = param_hash.size()
+       then i = param_hash.match(p), start = elapsed_ms()
+       in if i=I or (#heights_list[i] = 0 or heights_list[i]~[0] < HT)
+       	  {haven't finished p to HT}
+       	  then let rp = reducibility_points(p)
+	       in if #rp = 0
+	       	  then FDH := if is_equal_rank(p.real_form)
+		       	      then full_deform_library(p)
+			      else twisted_full_deform_library(p){These are NOT K_type_pol(p)!}
+			      fi;
+		       start:= -2
+		  else if rp~[0] < 1 then p:= herm_center(Finalize(p*rp~[0])) fi;
+	  	       FDH := (mFDH := if is_equal_rank(p.real_form)
+	       	     	      	      then stored_full_deform(p)
+		     	      	      else stored_twisted_full_deform(p)
+		     	      	      fi;
+	       		       case mFDH
+	       	  	       | done(FD): FD_new_count+:=1;
+			       		   start:=-1;
+		    	       		   to_ht(HT)(FD)
+			       | timed_out: start:=elapsed_ms();
+					    if is_equal_rank(p.real_form)
+		      	       	      	    then full_deform_to_height_MvL_base(p,HT)
+			       		    else to_ht(twisted_full_deform_library(p),HT)
+			       		    fi
+			       esac)
+		   fi; {#rp = 0}
+	       	   if i = I {new Param}
+	       	   then times_list #:= (vec: if start = -2
+		   		       	     then [0]
+					     elif start = -1
+		       		      	     then [0]
+					     else [elapsed_ms() - start]
+					     fi);
+	       	       pol_list #:=pol_hash.match(FDH);
+	       	       heights_list #:= (vec: [HT]); {henceforth heights_list[i]~[0] < HT}
+		       trial_time_list #:= -1;
+		       trial_height_list #:= -1
+		  else times_list[i]#:= elapsed_ms() - start; {known Param, prev unfinished at HT}
+		       pol_list[i]:=pol_hash.match(FDH);
+		       heights_list[i]#:=HT
+		  fi;
+		  {badrat:= if p = badp
+		  	   then 1/0
+		  	   else 1/1
+		  	   fi;}
+		  (FDH, i)
+	  else (to_ht(pol_hash.index(pol_list[i]),HT),i)
+	       {we already deformed to a greater height}
+	  fi
+  then maybe_add_param(Param p, int HT, int time) = (maybe_KTP,int):
+       let I = param_hash.size()  {always HT >= 0}
+       then i = param_hash.match(p), start = elapsed_ms()
+       in  if i=I or (#heights_list[i] = 0 or heights_list[i]~[0] < HT)
+       	   {haven't finished p to HT}
+       	   then let rp = reducibility_points(p)
+	       	in if #rp = 0
+	       	   then mFDH := if is_equal_rank(p.real_form)
+		       	       	then full_deform_library(p).done
+			       	else twisted_full_deform_library(p).done {These are NOT K_type_pol(p)!}
+			       	fi;
+		       	start:= -2
+		   else (if rp~[0] < 1 then p:= herm_center(Finalize(p*rp~[0])) fi;
+	   	   	mFDH := if is_equal_rank(p.real_form) {this is maybe_KTP}
+	       	     	      	then stored_full_deform(p)
+		     	      	else stored_twisted_full_deform(p)
+		     	      	fi;
+		        mFDH:= case mFDH
+	       	  	       | done(FD): FD_new_count+:=1;
+			       	    	   start :=-1;
+		    	       	    	   to_ht(mFDH,HT)
+			       | timed_out: start := elapsed_ms();
+			       	     	    if is_equal_rank(p.real_form)
+		      	       	     	    then full_deform_to_height_MvL_base(p,HT,time)
+			       	     	    else to_ht(twisted_full_deform_library(p,time),HT)
+			       	     	    fi
+			 	esac)
+			 {prints("time offered = ",time,", taken = ", elapsed_ms() - start);
+			 prints("result = ",mFDH)}
+		    fi; {#rp = 0}
+	       	    if i = I
+	       	    then case mFDH
+		    	 | done(FDH): times_list#:= (vec: if start = -2
+			   	      		    	  then [0]
+							  elif start = -1 {means stored full deform worked}
+			   	      		    	  then [0]
+							  else [elapsed_ms() - start]
+							  fi);
+			      	      pol_list #:= pol_hash.match(FDH);
+	       	       	 	      heights_list #:= (vec: [HT]);
+				      trial_time_list #:= -1;
+		       		      trial_height_list #:= -1
+			 | timed_out: times_list#:= (vec:[]);
+			   	      pol_list #:= -1;
+				      heights_list#:=(vec:[]);
+				      trial_height_list#:=HT;
+				      trial_time_list#:=elapsed_ms() - start
+			 esac
+		    else case mFDH {known p, HT not prev finished}
+		    	 | done(FDH): times_list[i]#:= if start = -2
+			   	      		       then 0
+						       elif start = -1
+			   	      		       then 0
+						       else (elapsed_ms() - start)
+						       fi;
+			   	      pol_list[i] := pol_hash.match(FDH);
+		       	 	      heights_list[i]#:=HT
+			 | timed_out: trial_height_list[i]:=HT;
+			   	      trial_time_list[i]:=elapsed_ms() - start
+			 esac
+		    fi;
+		    {badrat:= if p = badp
+		  	     then 1/0
+		  	     else 1/1
+		  	     fi;}
+		    (mFDH, i)
+	    else (to_ht(pol_hash.index(pol_list[i]), HT).done, i)
+	    fi {i=I or #heights...}
+   in
+  ( ( -> int): {size} @int: param_hash.size()
+  , ( -> ): {clear} clearDHT
+  , ((Param,int) -> int): {time_record_to_ht} (Param p, int HT):
+    if HT < 0 then return defHashTime.time_record(p) fi;
+    let (,j) = add_param(p,HT)
+    in let k = first(for ht in heights_list[j] do ht >= HT od)
+       in times_list[j][k]
+  , ((Param,int,int) -> int): {time_record_to_ht_bounded} (Param p, int HT, int time):
+    if HT < 0 then return defHashTime.time_record_bounded(p,time) fi;
+    let (,j) = maybe_add_param(p,HT,time)
+    in if #heights_list[j] > 0 and heights_list[j]~[0] >= HT
+       then let k = first(for ht in heights_list[j] do ht >= HT od)
+       	    in times_list[j][k]
+       else -trial_time_list[j]-3
+       fi
+  , ((Param,int) -> int): {time_lookup_to_ht} (Param p, int HT):
+    {this is T>=0 if that was the time for full_deform_to_ht, -2 if p is unknown,
+     -1 if full_deform_to_ht is known, but not time, and -3 -T if we tried for time T
+     without success}
+    if HT < 0 then return defHashTime.time_lookup(p) fi;
+    let j = param_hash.lookup(p)
+    in if j<0
+       then -2 {p not known to defHashTime}
+       elif #heights_list[j] = 0 or heights_list[j]~[0] < HT
+       then if trial_height_list[j] >= HT then -trial_time_list[j]-3 else -2 fi {changed -3 to -2 4/20}
+       	    {we've tried but not yet succeeded}
+        else let k = first(for ht in heights_list[j] do ht >= HT od)
+       	    in times_list[j][k]
+	    {we know the full_deform; this is -1 if can't know time}
+       fi
+  , (Param -> int): {param_lookup} (Param p): param_hash.lookup(p)
+  , ((Param,int) -> KTypePol): {full_deform_to_ht} (Param p, int HT):
+    if HT < 0 then return defHashTime.full_deform(p) fi;
+    let (FD,) = add_param(p,HT) in FD
+  , ((Param,int,int) -> maybe_KTP): {maybe_full_deform_to_ht} (Param p, int HT, int time):
+    if HT < 0 then return defHashTime.maybe_full_deform(p,time) fi;
+    let (mFD,) = maybe_add_param(p,HT,time) in mFD
+  , ((Param,int) -> bool): {is_deformed_to_height} (Param p, int HT):
+    if HT < 0 then return defHashTime.is_full_deformed(p) fi;
+    let j = param_hash.lookup(p)
+    in j >= 0 and #heights_list[j] > 0 and heights_list[j]~[0] >= HT
+  , (int -> Param): {param_index} (int j): param_hash.index(j)
+  , (int -> vec): {heights_index} (int j): heights_list[j]
+  , (int -> int): {trial_height} (int j): trial_height_list[j]
+  , (int -> vec): {times_index} (int j): times_list[j]
+  , (int -> int): {trial_time} (int j): trial_time_list[j]
+  , ( -> Param_hash): {ParamHash} @Param_hash: param_hash
+  , ( -> [vec]): {heightsList} @[vec]: heights_list
+  , ( -> [vec]): {timesList} @[vec]: times_list
+  , ( -> vec): {polList} @vec: pol_list
+  , ( -> KTypePol_hash): {PolHash} @KTypePol_hash: pol_hash
+  )
+  )
+
+set defHashHtTime = make_deformation_hash_height_time()
+
+set full_deform(Param p) = KTypePol:
+    if is_simple(p.root_datum) or #simple_factorsRF(p.real_form) = 1
+    then regroup(p.real_form,defHashTime.full_deform(p))
+    else let mu0 = LKTs(p)[0]
+    	 in glue_sigs(for dpL in derived_factor_params0(p)
+	    	      do regroup(dpL.real_form,defHashTime.full_deform(dpL))
+		      od, mu0)
+    fi
+
+set full_deform(Param p, int time) = maybe_KTP:
+    if is_simple(p.root_datum) or #simple_factorsRF(p.real_form) = 1
+    then regroup(p.real_form,defHashTime.maybe_full_deform(p,time))
+    else full_deform_library(p,time)
+    fi
+
+set twisted_full_deform(Param p) = KTypePol:
+    {if is_simple(p.root_datum) or #simple_factorsRF(p.real_form) = 1
+    then} regroup(p.real_form,defHashTime.full_deform(p))
+    {else twisted_full_deform_library(p)
+    fi}
+
+set twisted_full_deform(Param p, int time) = maybe_KTP:
+    {if is_simple(p.root_datum) or #simple_factorsRF(p.real_form) = 1
+    then} regroup(p.real_form,defHashTime.maybe_full_deform(p,time))
+    {else twisted_full_deform_library(p,time)
+    fi}
+
+set full_deform_to_ht(Param p, int HT) = KTypePol:
+    if is_simple(p.root_datum) or #simple_factorsRF(p.real_form) = 1
+    then regroup(p.real_form,defHashHtTime.full_deform_to_ht(p,HT))
+    else full_deform_to_height_MvL_base(p,HT)
+    fi
+
+set full_deform_to_ht(Param p, int HT, int time) = maybe_KTP:
+    if is_simple(p.root_datum) or #simple_factorsRF(p.real_form) = 1
+    then regroup(p.real_form,defHashHtTime.maybe_full_deform_to_ht(p, HT, time))
+    else full_deform_to_height_MvL_base(p,HT,time)
+    fi
+
+set twisted_full_deform_to_ht(Param p, int HT) = KTypePol:
+    regroup(p.real_form,defHashHtTime.full_deform_to_ht(p,HT))
+
+set twisted_full_deform_to_ht(Param p, int HT, int time) = maybe_KTP:
+    regroup(p.real_form,defHashHtTime.maybe_full_deform_to_ht(p,HT,time))
+
+{should require number of -alphav*theta >= number of alphav}
+
+set red_coroots(KGBElt x) = [vec]:
+    let G = x.real_form,  theta = x.involution
+    then rho = G.rho, pos_co = G.poscoroots
+    in for alphav@j in pos_co
+       do if (alphav*theta*rho).< and poscoroot_index(G, -alphav*theta) >= j
+       	  then [alphav]
+	  else []
+	  fi
+       od.##
+
+{this version guarantees that the range function in steve.at produces NONNEGATIVE integers, allowing
+the value to be stored as a bitset}
+
+set red_coroots_DV(KGBElt x, ratvec lambda) = [vec]:
+   let rd = x.root_datum
+in for alpha_v@j in rd.poscoroots
+   {retain real poscoroots and complex descents nonneg on d_lambda}
+      if coroot_index(rd,alpha_v*x.involution).< and (alpha_v*((1+x.involution)*lambda)).>=
+      do alpha_v
+      fi
+   od
+
+{like is_pure, but in case of false, second value is the lowest K-type where
+the KTypePol changes sign. Better to put the guilty K-type in a hash table.}
+
+set is_pure_cert(KTypePol P) = [KType]:
+    if is_pure(P) then [KType]: []
+    else let terms = for c@p in P
+    	     	     do let (a,b) = %c
+    	     	     	in (a,b,p)
+		     od
+    	 then (a0,b0,p0) = terms[0]
+	 then j=int:0
+	 then () = if a0*b0 != 0
+	           then let ()= j:=0
+		   	in ()
+	           elif b0 = 0
+	      	   then let ()= j:= first(for (,b,)@j in terms
+	      	      	     	      	   do b!=0
+				      	   od)
+			in ()
+	      	   else {now b0!=0 and a0=0}
+		   	let () = j:= first(for (a,,)@j in terms
+	      	      	     	      do a!=0
+				      od)
+			in ()
+		   fi
+	  then (,,pj) = terms[j]
+	  in [pj]
+    fi
+
+{like is_pure_cert, but in case of false, writing the guilty K-types in a
+hash table.}
+
+set is_pure_cert_hash_old(KTypePol P, KTypePol_hash cert_hash) = bool:
+    if not is_pure(P)
+    then let terms = for c@p in P
+    	     	     do let (a,b) = %c
+    	     	     	in (a,b,p)
+		     od
+    	 then (a0,b0,p0) = terms[0]
+	 then j=int:0
+	 then () = if a0*b0 != 0
+	           then let ()= j:=0
+		   	in ()
+	           elif b0 = 0
+	      	   then let ()= j:= first(for (,b,)@j in terms
+	      	      	     	      	   do b!=0
+				      	   od)
+			in ()
+	      	   else {now b0!=0 and a0=0}
+		   	let () = j:= first(for (a,,)@j in terms
+	      	      	     	      do a!=0
+				      od)
+			in ()
+		   fi
+	  then (,,pj) = terms[j]
+	  then x = cert_hash.match(1*pj)
+	  in false
+    else true
+    fi
+
+{like is_pure_cert, but in case of false, writing the guilty K-types in a
+hash table.}
+{ want this version to record SUM of lowest impurity }
+
+set is_pure_cert_hash(KTypePol P, KTypePol_hash cert_hash) = bool:
+    if not is_pure(P)
+    then let terms = for c@p in P
+    	     	     do let (a,b) = %c
+    	     	     	in (a,b,p)
+		     od
+    	 then (a0,b0,p0) = terms[0]
+	 then j=int:0 {next line is the lowest negative terms}
+	 then B = if a0*b0 != 0
+	          then to_ht(P,height(p0))
+	          elif b0 = 0
+	      	  then let N = sum(P.real_form, for (a,b,p) in terms
+		   	      			do if b!=0 then [1*p] else [] fi od.##)
+		   	in to_ht(N,height(first_K_type(N)))
+	      	  else  {now b0!=0 and a0=0}
+		       let N = sum(P.real_form, for (a,b,p) in terms
+		   	      			do if a!=0 then [1*p] else [] fi od.##)
+		       in to_ht(N,height(first_K_type(N)))
+		  fi
+	  then x = cert_hash.match(B)
+	  in false
+    else true
+    fi
+
+{meant to hold number of NEGATIVE Dirac inequality tests}
+
+set DTcount = int: 0
+
+{meant to hold number of NEGATIVE Dirac_best inequality tests}
+
+set DBTcount = int: 0
+
+set next_heightC_time = int: 0
+
+{will be modified to name of local test being run}
+
+set test_string = string: ""
+
+{whether to report on slow is_unitary and is_unitary_to_ht}
+
+set drain_plug_flag = bool: false
+
+{report on tests requiring more than this time; default is 100000 = 10 seconds}
+
+set drain_plug_time = int: 100000
+
+set tested_pos_hash = make_Param_hash() {all Param's that have had a positive is_unitary test}
+
+set tested_pos_times = [int]: [] {one for each tested_pos_hash.list() entry; TOTAL time
+    		       	 	    for all positive is_unitary tests of entry}
+
+set tested_pos_strings = [string]: []
+
+set tested_pos_counts = [int]: [] {hope this is 0 or 1!}
+
+set tested_neg_hash = make_Param_hash() {all Param's that have had a negative is_unitary test}
+
+set tested_neg_times = [int]: [] {one for each tested_list entry; TOTAL time
+    		       	 	    for all negative is_unitary tests of entry}
+
+set tested_neg_strings = [string]: []
+
+set tested_neg_counts = [int]: [] {hope this is 0 or 1!}
+
+set tested_inter_hash = make_Param_hash() {all Param's that have had an interrupted is_unitary test}
+
+set tested_inter_times = [int]: [] {one for each tested_inter_hash.list() entry; TOTAL time
+    		       	 	    for all interrupt is_unitary tests of entry}
+
+set tested_inter_counts = [int]: []
+
+set tested_inter_strings = [string]: []
+
+set tested_pos_to_ht_hashes = [Param_hash]: [] {jth is all Param's that had a positive is_unitary
+    			      		       	to height(p)+j test}
+
+set tested_pos_to_ht_times = [[int]]: []
+
+set tested_pos_to_ht_strings = [[string]]: []
+
+set tested_pos_to_ht_counts = [[int]]: []
+
+set tested_neg_to_ht_hashes = [Param_hash]: [] {jth is all Param's that had a negative is_unitary
+    			      		       	to height(p)+j test}
+
+set tested_neg_to_ht_times = [[int]]: []
+
+set tested_neg_to_ht_strings = [[string]]: []
+
+set tested_neg_to_ht_counts = [[int]]: []
+
+set tested_inter_to_ht_hashes = [Param_hash]: [] {jth is all Param's that had an interrupted is_unitary
+    			      		       	to height(p)+j test}
+
+set tested_inter_to_ht_times = [[int]]: []
+
+set tested_inter_to_ht_strings = [[string]]: []
+
+set tested_inter_to_ht_counts = [[int]]: []
+
+set OT_hash = make_Param_hash() {used to record interrupted tests that ran too long; maybe not used now?}
+
+set OT_times = [int]: [] {cumulative time for each OT_hash.list() entry}
+
+set OT_counts = [int]: [] {number of occurrences for each OT_hash.list() entry}
+
+{set cSp = int:0}
+
+set was_tested(Param p, int T, bool ans) = void:
+    {let () = if p = parameter(Sp(6,R),8,[2,1,1],[1,-1,0]/2)
+    	     then cSp+:=1; 1/(cSp-4)
+	     else 1/1
+	     fi}
+    {if p = parameter(F4_s,101,[1,1,1,-1]/1,[0,1,0,-2]/1)
+    then assert(@:false); prints("testing p0")
+    fi;}
+    {if p = parameter(F4_s,102,[2,2,1,-4]/1,[1,4,0,-9]/4)
+    then assert(@:false); prints("testing p1")
+    fi;}
+    if drain_plug_flag and T > drain_plug_time
+    then prints(p," took ",print_time_string(T)," to test is_unitary = ", ans)
+    fi;
+    unitary_test_counter.use();
+    let i = tested_inter_hash.lookup(p)
+    in if i >= 0
+       then T+:=tested_inter_times[i]
+       fi;
+    if ans
+    then let M = tested_pos_hash.size()
+       	 then m = tested_pos_hash.match(p)
+       	 {then prints("M = ",M,", m = ",m)}
+	 in if m = M
+	    then tested_pos_times#:=T;
+	    	 tested_pos_strings #:= test_string;
+		 tested_pos_counts #:=1
+	    else tested_pos_times[m] +:= T;
+	    	 tested_pos_counts[m] +:= 1
+	    fi
+    else let M = tested_neg_hash.size()
+       	 then m = tested_neg_hash.match(p)
+	 {then prints("M = ",M,", m = ",m)}
+	 in if m = M
+	    then tested_neg_times#:=T;
+	    	 tested_neg_strings #:= test_string;
+		 tested_neg_counts #:=1
+	    else tested_neg_times[m] +:= T;
+	    	 tested_neg_counts[m] +:= 1
+	    fi
+    fi
+
+set was_tested_inter(Param p, int T) = void:
+    if drain_plug_flag and T > drain_plug_time
+    then prints(p," took ",print_time_string(T)," for interrupted is_unitary")
+    fi;
+    unitary_test_counter.use();
+    let M = tested_inter_hash.size()
+    then m = tested_inter_hash.match(p)
+    in if m=M
+       then tested_inter_times #:= T;
+	    tested_inter_strings #:= test_string;
+       	    tested_inter_counts #:=1
+       else tested_inter_times[m] +:= T;
+       	    tested_inter_counts[m] +:=1
+       fi
+
+{keep track of whether interruption ran too long}
+
+set was_tested_inter(Param p, int T, int T_target) = void:
+    if drain_plug_flag and T > drain_plug_time
+    then prints(p," took ",print_time_string(T)," for interrupted is_unitary")
+    fi;
+    if T>(5/4)*T_target
+    then let OTM = OT_hash.size()
+    	 then OTm = OT_hash.match(p)
+	 in if OTm=OTM
+	    then OT_times #:= T - T_target;
+	    	 OT_counts #:= 1
+	    else OT_times[OTm] +:= T - T_target;
+	    	 OT_counts[OTm] +:= 1
+	    fi
+    fi;
+    unitary_test_counter.use();
+    let M = tested_inter_hash.size()
+    then m = tested_inter_hash.match(p)
+    in if m=M
+       then tested_inter_times #:= T;
+       	    tested_inter_counts #:=1
+       else tested_inter_times[m] +:= T;
+       	    tested_inter_counts[m] +:=1
+       fi
+
+set was_tested_to_ht(Param p,int N, int T, bool ans) = void:
+    if drain_plug_flag and T > drain_plug_time
+    then prints(p," took ",print_time_string(T)," to test is_unitary_to_ht ", N,
+    	 	 " = ",ans)
+    fi;
+    unitary_test_counter.use();
+    let h = N - height(p)
+    then add = h+1 - #tested_pos_to_ht_hashes
+    in if add>0
+        then {if N = 17 and T > 8000 then 0/0 fi;}
+	     tested_pos_to_ht_hashes ##:= for j:add do make_Param_hash() od;
+	     tested_neg_to_ht_hashes ##:= for j:add do make_Param_hash() od;
+	     tested_inter_to_ht_hashes ##:= for j:add do make_Param_hash() od;
+	     tested_pos_to_ht_times ##:= for j:add do [int]: [] od;
+	     tested_neg_to_ht_times ##:= for j:add do [int]: [] od;
+	     tested_inter_to_ht_times ##:= for j:add do [int]: [] od;
+	     tested_pos_to_ht_strings ##:= for j:add do [string]: [] od;
+	     tested_neg_to_ht_strings ##:= for j:add do [string]: [] od;
+	     tested_inter_to_ht_strings ##:= for j:add do [string]: [] od;
+	     tested_pos_to_ht_counts ##:= for j:add do [int]: [] od;
+	     tested_neg_to_ht_counts ##:= for j:add do [int]: [] od;
+	     tested_inter_to_ht_counts ##:= for j:add do [int]: [] od
+       fi;
+       let i = tested_inter_to_ht_hashes[h].lookup(p)
+       in if i >= 0 then T+:= tested_inter_to_ht_times[h][i] fi;
+       if ans
+       then let M = tested_pos_to_ht_hashes[h].size()
+    	    then m = tested_pos_to_ht_hashes[h].match(p)
+       	    in if m = M
+	       then tested_pos_to_ht_times[h]#:=T;
+	    	    tested_pos_to_ht_strings[h] #:= test_string;
+		    tested_pos_to_ht_counts[h] #:=1
+	       else let tpthh = tested_pos_to_ht_times[h], tpthc = tested_pos_to_ht_counts[h]
+		    in tpthh[m] +:= T;
+		       tested_pos_to_ht_times[h] := tpthh;
+		       tpthc[m] +:= 1;
+		       tested_pos_to_ht_counts[h] := tpthc
+	       fi
+        else let M = tested_neg_to_ht_hashes[h].size()
+    	     then m = tested_neg_to_ht_hashes[h].match(p)
+	     in	if m = M
+	       	then tested_neg_to_ht_times[h] #:=T;
+	    	    tested_neg_to_ht_strings[h] #:= test_string;
+		    tested_neg_to_ht_counts[h] #:=1
+	       else let tnthh = tested_neg_to_ht_times[h], tnthc = tested_neg_to_ht_counts[h]
+	    	    in tnthh[m] +:= T;
+		       tnthc[m] +:= 1;
+		       tested_neg_to_ht_times[h] := tnthh;
+		       tested_neg_to_ht_counts[h] := tnthc
+	       fi
+        fi
+
+set was_tested_inter_to_ht(Param p,int HT, int T) = void:
+    if drain_plug_flag and T > drain_plug_time
+    then prints(p," took ",print_time_string(T)," for interrupted is_unitary_to_ht ", HT)
+    fi;
+    unitary_test_counter.use();
+    let h = HT - height(p)
+    then add = h+1 - #tested_pos_to_ht_hashes
+    then () = if add>0
+    	      then tested_pos_to_ht_hashes ##:= for j:add do make_Param_hash() od;
+	      	   tested_neg_to_ht_hashes ##:= for j:add do make_Param_hash() od;
+	      	   tested_inter_to_ht_hashes ##:= for j:add do make_Param_hash() od;
+		   tested_pos_to_ht_times ##:= for j:add do [int]: [] od;
+		   tested_neg_to_ht_times ##:= for j:add do [int]: [] od;
+		   tested_inter_to_ht_times ##:= for j:add do [int]: [] od;
+		   tested_pos_to_ht_strings ##:= for j:add do [string]: [] od;
+		   tested_neg_to_ht_strings ##:= for j:add do [string]: [] od;
+		   tested_inter_to_ht_strings ##:= for j:add do [string]: [] od;
+		   tested_pos_to_ht_counts ##:= for j:add do [int]: [] od;
+		   tested_neg_to_ht_counts ##:= for j:add do [int]: [] od;
+		   tested_inter_to_ht_counts ##:= for j:add do [int]: [] od
+	      fi
+    in let M = tested_inter_to_ht_hashes[h].size()
+       then m = tested_inter_to_ht_hashes[h].match(p)
+       in if m = M
+	  then tested_inter_to_ht_times[h]#:=T;
+	       tested_inter_to_ht_strings[h] #:= test_string;
+	       tested_inter_to_ht_counts[h] #:=1
+	  else let tithh = tested_inter_to_ht_times[h], tithc = tested_inter_to_ht_counts[h]
+	       in tithh[m] +:= T;
+	       	  tested_inter_to_ht_times[h] := tithh;
+	    	  tithc[m] +:= 1;
+		  tested_inter_to_ht_counts[h] := tithc
+	  fi
+
+{keep track of whether interruption failed}
+{set was_tested_inter_to_ht(Param p, int HT, int T, int T_target) = void:
+    if drain_plug_flag and T > drain_plug_time
+    then prints(p," took ",print_time_string(T)," for interrupted is_unitary_to_ht", HT)
+    fi;
+    if T>(5/4)*T_target
+    then let OTM = OT_hash.size()
+    	 then OTm = OT_hash.match(p)
+	 in if OTm=OTM
+	    then OT_times #:= T - T_target;
+	    	 OT_counts #:= 1
+	    else OT_times[OTm] +:= T - T_target;
+	    	 OT_counts[OTm] +:= 1
+	    fi
+    fi;
+    unitary_test_counter.use();
+    let M = tested_inter_hash.size()
+    then m = tested_inter_hash.match(p)
+    in if m=M
+       then tested_inter_times #:= T;
+       	    tested_inter_counts #:=1
+       else tested_inter_times[m] +:= T;
+       	    tested_inter_counts[m] +:=1
+       fi}
+
+{
+{will be modified to name of local test being run}
+set test_string = string: ""
+
+{whether to report on slow is_unitary and is_unitary_to_ht}
+set drain_plug_flag = bool: false
+
+{report on tests requiring more than this time; default is 100000 = 10 seconds}
+set drain_plug_time = int: 100000
+
+set tested_hash = make_Param_hash() {all Param's that have had an is_unitary* test}
+set tested_pos_times = [[int]]: [] {one for each tested_pos_hash.list() entry; TOTAL time
+    		       	 	    for all positive is_unitary tests of entry}
+set tested_pos_heights = [[int]]: [] {one ordered list of all heights to which entry tested pos}
+set tested_pos_strings = [string]: []
+set tested_pos_counts = [int]: [] {hope this is 0 or 1!}
+
+set tested_neg_times = [int]: [] {one for each tested_list entry; TOTAL time
+    		       	 	    for all negative is_unitary tests of entry}
+set tested_neg_heights = [[int]]: [] {one ordered list of all heights to which entry tested neg}
+set tested_neg_strings = [string]: []
+set tested_neg_counts = [int]: [] {hope this is 0 or 1!}
+
+set tested_inter_times = [int]: [] {one for each tested_inter_hash.list() entry; TOTAL time
+    		       	 	    for all interrupt is_unitary tests of entry}
+set tested_inter_heights = [[int]]: [] {one ordered list of all heights to which entry tested inter}
+set tested_inter_counts = [int]: []
+set tested_inter_strings = [string]: []
+
+{
+set tested_pos_to_ht_times = [[int]]: []
+set tested_pos_to_ht_strings = [[string]]: []
+set tested_pos_to_ht_counts = [[int]]: []
+
+set tested_neg_to_ht_times = [[int]]: []
+set tested_neg_to_ht_strings = [[string]]: []
+set tested_neg_to_ht_counts = [[int]]: []
+
+set tested_inter_to_ht_times = [[int]]: []
+set tested_inter_to_ht_strings = [[string]]: []
+set tested_inter_to_ht_counts = [[int]]: []
+}
+
+set OT_hash = make_Param_hash() {used to record interrupted tests that ran too long; maybe not used now?}
+set OT_times = [int]: [] {cumulative time for each OT_hash.list() entry}
+set OT_counts = [int]: [] {number of occurrences for each OT_hash.list() entry}
+
+{ans 1 means pos, -1 neg, 0 interrupted}
+set was_tested(Param p, int T, int HT, int ans) = void:
+    if drain_plug_flag and T > drain_plug_time
+    then prints(p," took ",print_time_string(T)," to test is_unitary = ", ans)
+    fi;
+    unitary_test_counter.use();
+    let M = tested_hash.size()
+    then m = tested_hash.match(p)
+    in if m=M
+       then if ans>0
+       	    then tested_pos_times #:T;
+	    	 tested_pos_strings #:= test_string;
+		 tested_pos_counts #:=1
+    let i = tested_inter_hash.lookup(p)
+    in if i >= 0
+       then T+:=tested_inter_times[i]
+       fi;
+    if ans
+    then let M = tested_pos_hash.size()
+       	 then m = tested_pos_hash.match(p)
+       	 {then prints("M = ",M,", m = ",m)}
+	 in if m = M
+	    then tested_pos_times#:=T;
+	    	 tested_pos_strings #:= test_string;
+		 tested_pos_counts #:=1
+	    else tested_pos_times[m] +:= T;
+	    	 tested_pos_counts[m] +:= 1
+	    fi
+    else let M = tested_neg_hash.size()
+       	 then m = tested_neg_hash.match(p)
+	 {then prints("M = ",M,", m = ",m)}
+	 in if m = M
+	    then tested_neg_times#:=T;
+	    	 tested_neg_strings #:= test_string;
+		 tested_neg_counts #:=1
+	    else tested_neg_times[m] +:= T;
+	    	 tested_neg_counts[m] +:= 1
+	    fi
+    fi
+
+set was_tested_inter(Param p, int T) = void:
+    if drain_plug_flag and T > drain_plug_time
+    then prints(p," took ",print_time_string(T)," for interrupted is_unitary")
+    fi;
+    unitary_test_counter.use();
+    let M = tested_inter_hash.size()
+    then m = tested_inter_hash.match(p)
+    in if m=M
+       then tested_inter_times #:= T;
+	    tested_inter_strings #:= test_string;
+       	    tested_inter_counts #:=1
+       else tested_inter_times[m] +:= T;
+       	    tested_inter_counts[m] +:=1
+       fi
+
+{keep track of whether interruption ran too long}
+set was_tested_inter(Param p, int T, int T_target) = void:
+    if drain_plug_flag and T > drain_plug_time
+    then prints(p," took ",print_time_string(T)," for interrupted is_unitary")
+    fi;
+    if T>(5/4)*T_target
+    then let OTM = OT_hash.size()
+    	 then OTm = OT_hash.match(p)
+	 in if OTm=OTM
+	    then OT_times #:= T - T_target;
+	    	 OT_counts #:= 1
+	    else OT_times[OTm] +:= T - T_target;
+	    	 OT_counts[OTm] +:= 1
+	    fi
+    fi;
+    unitary_test_counter.use();
+    let M = tested_inter_hash.size()
+    then m = tested_inter_hash.match(p)
+    in if m=M
+       then tested_inter_times #:= T;
+       	    tested_inter_counts #:=1
+       else tested_inter_times[m] +:= T;
+       	    tested_inter_counts[m] +:=1
+       fi
+
+set was_tested_to_ht(Param p,int N, int T, bool ans) = void:
+    if drain_plug_flag and T > drain_plug_time
+    then prints(p," took ",print_time_string(T)," to test is_unitary_to_ht ", N,
+    	 	 " = ",ans)
+    fi;
+    unitary_test_counter.use();
+    let h = N - height(p)
+    then add = h+1 - #tested_pos_to_ht_hashes
+    in if add>0
+        then tested_pos_to_ht_hashes ##:= for j:add do make_Param_hash() od;
+	     tested_neg_to_ht_hashes ##:= for j:add do make_Param_hash() od;
+	     tested_inter_to_ht_hashes ##:= for j:add do make_Param_hash() od;
+	     tested_pos_to_ht_times ##:= for j:add do [int]: [] od;
+	     tested_neg_to_ht_times ##:= for j:add do [int]: [] od;
+	     tested_inter_to_ht_times ##:= for j:add do [int]: [] od;
+	     tested_pos_to_ht_strings ##:= for j:add do [string]: [] od;
+	     tested_neg_to_ht_strings ##:= for j:add do [string]: [] od;
+	     tested_inter_to_ht_strings ##:= for j:add do [string]: [] od;
+	     tested_pos_to_ht_counts ##:= for j:add do [int]: [] od;
+	     tested_neg_to_ht_counts ##:= for j:add do [int]: [] od;
+	     tested_inter_to_ht_counts ##:= for j:add do [int]: [] od
+       fi;
+       let i = tested_inter_to_ht_hashes[h].lookup(p)
+       in if i >= 0 then T+:= tested_inter_to_ht_times[h][i] fi;
+       if ans
+       then let M = tested_pos_to_ht_hashes[h].size()
+    	    then m = tested_pos_to_ht_hashes[h].match(p)
+       	    in if m = M
+	       then tested_pos_to_ht_times[h]#:=T;
+	    	    tested_pos_to_ht_strings[h] #:= test_string;
+		    tested_pos_to_ht_counts[h] #:=1
+	       else let tpthh = tested_pos_to_ht_times[h], tpthc = tested_pos_to_ht_counts[h]
+		    in tpthh[m] +:= T;
+		       tested_pos_to_ht_times[h] := tpthh;
+		       tpthc[m] +:= 1;
+		       tested_pos_to_ht_counts[h] := tpthc
+	       fi
+        else let M = tested_neg_to_ht_hashes[h].size()
+    	     then m = tested_neg_to_ht_hashes[h].match(p)
+	     in	if m = M
+	       	then tested_neg_to_ht_times[h] #:=T;
+	    	    tested_neg_to_ht_strings[h] #:= test_string;
+		    tested_neg_to_ht_counts[h] #:=1
+	       else let tnthh = tested_neg_to_ht_times[h], tnthc = tested_neg_to_ht_counts[h]
+	    	    in tnthh[m] +:= T;
+		       tnthc[m] +:= 1;
+		       tested_neg_to_ht_times[h] := tnthh;
+		       tested_neg_to_ht_counts[h] := tnthc
+	       fi
+        fi
+
+set was_tested_inter_to_ht(Param p,int HT, int T) = void:
+    if drain_plug_flag and T > drain_plug_time
+    then prints(p," took ",print_time_string(T)," for interrupted is_unitary_to_ht ", HT)
+    fi;
+    unitary_test_counter.use();
+    let h = HT - height(p)
+    then add = h+1 - #tested_pos_to_ht_hashes
+    then () = if add>0
+    	      then tested_pos_to_ht_hashes ##:= for j:add do make_Param_hash() od;
+	      	   tested_neg_to_ht_hashes ##:= for j:add do make_Param_hash() od;
+	      	   tested_inter_to_ht_hashes ##:= for j:add do make_Param_hash() od;
+		   tested_pos_to_ht_times ##:= for j:add do [int]: [] od;
+		   tested_neg_to_ht_times ##:= for j:add do [int]: [] od;
+		   tested_inter_to_ht_times ##:= for j:add do [int]: [] od;
+		   tested_pos_to_ht_strings ##:= for j:add do [string]: [] od;
+		   tested_neg_to_ht_strings ##:= for j:add do [string]: [] od;
+		   tested_inter_to_ht_strings ##:= for j:add do [string]: [] od;
+		   tested_pos_to_ht_counts ##:= for j:add do [int]: [] od;
+		   tested_neg_to_ht_counts ##:= for j:add do [int]: [] od;
+		   tested_inter_to_ht_counts ##:= for j:add do [int]: [] od
+	      fi
+    in let M = tested_inter_to_ht_hashes[h].size()
+       then m = tested_inter_to_ht_hashes[h].match(p)
+       in if m = M
+	  then tested_inter_to_ht_times[h]#:=T;
+	       tested_inter_to_ht_strings[h] #:= test_string;
+	       tested_inter_to_ht_counts[h] #:=1
+	  else let tithh = tested_inter_to_ht_times[h], tithc = tested_inter_to_ht_counts[h]
+	       in tithh[m] +:= T;
+	       	  tested_inter_to_ht_times[h] := tithh;
+	    	  tithc[m] +:= 1;
+		  tested_inter_to_ht_counts[h] := tithc
+	  fi
+}
+
+set report_tested(string label) = void:
+{    prints("...",label,"...",DTcount," Dirac elim, ",DBTcount," best-Dirac elim; predictor_time = ",
+    	  print_time_string(predictor_time));}
+    prints("...",label,"...",DTcount + DBTcount," Dirac elim; status_time = ",
+    	   print_time_string(status_time), " for ", status_count," reports");
+   prints("FPP_def_time = ",print_time_string(FPP_def_time), " for ",
+   FPP_use_count, " tests, ",FPP_def_count, " eliminations; FDcount = ", FDcount);
+   	   {predictor_time = ", print_time_string(predictor_time));}
+    {edge_offset = ",edge_offset);}
+    {next_heightC_time = ",}
+           {print_time_string(next_heightC_time));}
+    prints(new_line,tested_pos_hash.size()," pos is_unitary tests, in time = ",
+    	print_time_string(sum(tested_pos_times)),"; ",tested_neg_hash.size()," neg is_unitary tests, in time = ",
+    	print_time_string(sum(tested_neg_times)));
+    prints(sum(tested_inter_counts), " interrupted is_unitary tests, of ",
+    	   tested_inter_hash.size(), " different parameters, in time ",
+	print_time_string(sum(tested_inter_times)));
+    prints(new_line,sum(for hash in tested_pos_to_ht_hashes do hash.size() od)," pos tests to_ht, in time = ",
+ 	 	   print_time_string(sum(for list in tested_pos_to_ht_times do sum(list) od)),"; ",
+	   sum(for hash in tested_neg_to_ht_hashes do hash.size() od)," neg tests to_ht, in time = ",
+ 	   	   print_time_string(sum(for list in tested_neg_to_ht_times do sum(list) od)));
+    prints(sum(for list in tested_inter_to_ht_counts do sum(list) od), " interrupted tests to ht of ",
+    		   sum(for hash in tested_inter_to_ht_hashes
+    	do hash.size() od)," different parameters, in time = ",
+ 	 	   print_time_string(sum(for list in tested_inter_to_ht_times do sum(list) od)));
+    if OT_hash.size() > 0
+    then prints(OT_hash.size()," params had ", sum(OT_counts), " interrupted tests go too long by ",
+    	 print_time_string(sum(OT_times)))
+    fi;
+    prints("pred_flag = ",predictor_flag,", pred u-time = ",print_time_string(predictor_u_time),
+    	   ", pred u-count = ", predictor_u_count, ", pred h-time = ",print_time_string(predictor_h_time),
+    	   ", pred h-count = ", predictor_h_count);
+    prints("#bottom_layer = ",hash_bottom_layerCounter.use_count(), ", #one_level = ",
+    	   hash_one_levelCounter.use_count(), {", #real_dumb = "} ", #dumb = ",
+	   hash_real_dumbCounter.use_count() +
+    	   hash_dumbCounter.use_count() +
+   	    hash_def_dumbCounter.use_count(), ", #hash = ",
+    	    hashCounter.use_count(), ", #hash2 = ",
+    	    hash2Counter.use_count(), ", #steve = ",hash_steveCounter.use_count());
+    prints(print_time_string(unitaryTime)," for ",unitary_test_counter.use_count()," utests; ",
+    print_time_string(charTime), " for ",char_counter.use_count(), " char calcs; ",
+    print_time_string(charTimeToHt), " for ",char_counter_to_ht.use_count(), " char_to_ht calcs.");
+    prints(HF_false_low_count," form_to_ht -> form because of low(p,HT); ",FD_new_count," full_deform_to_ht DISAPPEAR because of stored_full_deform");
+    if KL_sum_to_ht_new_flag then prints(KL_new_count," KL_sum_at_s_to_ht calcs -> known KL_sum_at_s, ",
+       KL_false_low_count," KL_sum_at_s_to_ht calcs -> new KL_sum_at_s because of low_char") fi;
+    {prints("time for up_mu = ",print_time_string(up_mu_time), ", mu_time_mult = ",mu_time_mult,
+    	   ", shift_frac = ",shift_frac, ", min_ht_mult = ", min_ht_mult);}
+    {prints({"LAGAmax = ",LAGAmax,", GARLAGmin = ",GARLAGmin, ", GARmin = ", GARmin,}
+    	   "Dirac elims = ",DTcount,", Dirac_best elims = ",DBTcount, ", ",print_time_string(def_thruples_time),
+	   " to find deformed thruple candidates.");
+    prints("Found ",hash_def_true_count," deformations proving unitarity (to height), ",
+    	   hash_def_false_count," deformations proving nonunitarity (to height).")
+    prints("no_unitary_time = ", print_time_string(test_no_unitary_time), ", no_Dirac_time = ",
+    	   print_time_string(test_no_Dirac_time)," , #(x,lambda) eliminated by LKTs = ",none_count);}
+    prints("  ----------------")
+
+set report_tested() = void: report_tested("")
+
+{doesn't work with report_tested_cum}
+
+set clear_report_tested() = void:
+    tested_pos_hash.clear(); tested_pos_times:=[]; tested_pos_strings:=[]; tested_pos_counts:=[];
+    tested_neg_hash.clear(); tested_neg_times:=[]; tested_neg_strings:=[]; tested_neg_counts:=[];
+    tested_inter_hash.clear(); tested_inter_times:=[]; tested_inter_counts:=[];
+    OT_hash.clear(); OT_times:=[]; OT_counts:=[]
+    for h:#tested_pos_to_ht_hashes
+    do tested_pos_to_ht_hashes[h].clear(); tested_pos_to_ht_times[h]:=[]; tested_pos_to_ht_strings[h]:=[];
+       tested_pos_to_ht_counts[h]:=[]; tested_neg_to_ht_counts[h]:=[];
+       tested_neg_to_ht_hashes[h].clear(); tested_neg_to_ht_times[h]:=[]; tested_neg_to_ht_strings[h]:=[];
+       tested_inter_to_ht_hashes[h].clear(); tested_inter_to_ht_times[h]:=[]; tested_inter_to_ht_strings[h]:=[];
+       tested_inter_to_ht_counts[h]:=[]
+    od
+
+set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(void->void)):
+    let tph = int: 0, tpt = int:0, tnh = int: 0, tnt = int:0, oth = int:0, otc = int:0, ott = int:0
+    then tic = int: 0, tih = int: 0, tit = int:0, tphh = int: 0, tpht = int:0, tnhh = int: 0, tnht = int: 0,
+    	 tihc = int: 0, tihh = int:0, tiht = int:0,
+    	 utc = int: 0, utt = int: 0, ct = int:0, ctth = int: 0, cu = int: 0, cuth = int:0, DTc = int:0, DBTc = int: 0, nhtC_time = int:0
+    in (((string,string)->void): (string local_label, string running_label) void:
+    prints("  ----------------");
+    prints("...",local_label,"...",DTcount - DTc," Dirac elim, ",DBTcount - DBTc,
+    " best-Dirac elim, more_shift_level = ",more_shift_level, ", edge_offset = ",edge_offset);
+    	DTc :=DTcount; DBTc := DBTcount; nhtC_time:=next_heightC_time;
+    prints(new_line,tested_pos_hash.size() - tph, " pos is_unitary tests, in time = ",
+    	print_time_string(sum(tested_pos_times) - tpt),"; ",tested_neg_hash.size() - tnh,
+	" neg is_unitary tests, in time = ",print_time_string(sum(tested_neg_times) - tnt));
+	tph:=tested_pos_hash.size();
+	tpt := sum(tested_pos_times);
+	tnh:=tested_neg_hash.size();
+	tnt := sum(tested_neg_times);
+    prints(sum(tested_inter_counts) - tic, " interrupted is_unitary tests, of ",
+    	   tested_inter_hash.size() - tih, " different parameters, in time ",
+	print_time_string(sum(tested_inter_times) - tit));
+	tic:= sum(tested_inter_counts);
+	tih:= tested_inter_hash.size();
+	tit:=sum(tested_inter_times);
+    prints(new_line,sum(for hash in tested_pos_to_ht_hashes do hash.size() od) -tphh," pos tests to_ht, in time = ",
+    	print_time_string(sum(for list in tested_pos_to_ht_times do sum(list) od) - tpht),"; ",
+	   sum(for hash in tested_neg_to_ht_hashes do hash.size() od) - tnhh," neg tests to_ht, in time = ",
+ 	   	   print_time_string(sum(for list in tested_neg_to_ht_times do sum(list) od) - tnht));
+        tphh:= sum(for hash in tested_pos_to_ht_hashes do hash.size() od);
+	tpht:=sum(for list in tested_pos_to_ht_times do sum(list) od);
+        tnhh:= sum(for hash in tested_neg_to_ht_hashes do hash.size() od);
+	tnht:=sum(for list in tested_neg_to_ht_times do sum(list) od);
+    prints(sum(for list in tested_inter_to_ht_counts do sum(list) od) - tihc,
+    	" interrupted tests to_ht, of ",sum(for hash
+       in tested_inter_to_ht_hashes do hash.size() od) - tihh," different parameters, in time = ",
+       print_time_string(sum(for list in tested_inter_to_ht_times do sum(list) od) - tiht),new_line);
+       	tihc:=sum(for list in tested_inter_to_ht_counts do sum(list) od);
+ 	tihh:=sum(for hash in tested_inter_to_ht_hashes do hash.size() od);
+	tiht:=sum(for list in tested_inter_to_ht_times do sum(list) od);
+    if OT_hash.size() - oth > 0
+    then prints(OT_hash.size()-oth," params had ", sum(OT_counts)-otc, " interrupted tests go too long by ",
+    	 print_time_string(sum(OT_times) -ott));
+	 oth:=OT_hash.size();
+	 otc := sum(OT_counts);
+	 ott := sum(OT_times)
+    fi;
+    prints("#bottom_layer = ",hash_bottom_layerCounter.use_count(), ", #one_level = ",
+    	   hash_one_levelCounter.use_count(), {", #real_dumb = "} ", #dumb = ",
+	   hash_real_dumbCounter.use_count() +
+    	   hash_dumbCounter.use_count() +
+   	    hash_def_dumbCounter.use_count(), ", #hash = ",
+    	    hashCounter.use_count(), ", #hash2 = ",
+    	    hash2Counter.use_count(), ", #steve = ",hash_steveCounter.use_count());
+    prints(print_time_string(unitaryTime - utt)," for ",unitary_test_counter.use_count() -utc,
+    					 " utests; ",
+    			     print_time_string(charTime - ct), " for ",char_counter.use_count() -cu,
+			     " char calcs, ",
+			     print_time_string(charTimeToHt - ctth), " for ",char_counter_to_ht.use_count() -cuth,
+			     " char to ht calcs");
+	 utt:= unitaryTime;
+	 utc:=unitary_test_counter.use_count();
+	 ct:=charTime; ctth:=charTimeToHt;
+	 cu:= char_counter.use_count(); cuth:=char_counter_to_ht.use_count();
+    prints("...",running_label,"...",DTcount + DBTcount," Dirac elim; status_time = ",
+    	   print_time_string(status_time), " for ", status_count," reports");
+    prints("FPP_def_time = ",print_time_string(FPP_def_time)," for ",
+    	    FPP_use_count, " tests, ",FPP_def_count, " eliminations; FDcount = ", FDcount);
+	   		{predictor_time = ", print_time_string(predictor_time));}
+    prints(new_line,tph," pos is_unitary tests, in time = ", print_time_string(tpt),"; ",tnh,
+	" neg is_unitary tests, in time = ",print_time_string(tnt));
+    prints(tic, " interrupted is_unitary tests, of ",tih, " different parameters, in time ",
+	print_time_string(tit));
+    prints(new_line,tphh," pos tests to_ht, in time = ",print_time_string(tpht),"; ",tnhh," neg tests to_ht, in time = ",
+ 	print_time_string(tnht));
+    prints(sum(for list in tested_inter_to_ht_counts do sum(list) od)," interrupted tests to_ht, of ",sum(for hash
+       in tested_inter_to_ht_hashes do hash.size() od)," different parameters, in time = ",
+ 	 	   print_time_string(sum(for list in tested_inter_to_ht_times do sum(list) od)), new_line);
+    if oth.>
+    then prints(OT_hash.size()," params had ", sum(OT_counts), " interrupted tests go too long by ",
+    	 print_time_string(sum(OT_times)))
+    fi;
+   prints("pred_flag = ",predictor_flag,", pred u-time = ",print_time_string(predictor_u_time),
+    	   ", pred u-count = ", predictor_u_count, ", pred h-time = ",print_time_string(predictor_h_time),
+    	   ", pred h-count = ", predictor_h_count);
+    prints("#bottom_layer = ",hash_bottom_layerCounter.use_count(), ", #one_level = ",
+    	   hash_one_levelCounter.use_count(), {", #real_dumb = "} ", #dumb = ",
+	   hash_real_dumbCounter.use_count() +
+    	   hash_dumbCounter.use_count() +
+   	    hash_def_dumbCounter.use_count(), ", #hash = ",
+    	    hashCounter.use_count(), ", #hash2 = ",
+    	    hash2Counter.use_count(), ", #steve = ",hash_steveCounter.use_count());
+    prints(print_time_string(unitaryTime)," for ",unitary_test_counter.use_count()," utests; ",
+    print_time_string(charTime), " for ",char_counter.use_count(), " char calcs; ",
+    print_time_string(charTimeToHt), " for ",char_counter_to_ht.use_count(), " char_to_ht calcs");
+    prints(HF_false_low_count," form_to_ht calcs -> form because of low(p,HT); ",FD_new_count," full_deform_to_ht DISAPPEAR because of stored_full_deform");
+    if KL_sum_to_ht_new_flag then prints(KL_new_count," KL_sum_at_s_to_ht calcs -> known KL_sum_at_s, ",
+       KL_false_low_count," KL_sum_at_s_to_ht calcs -> new KL_sum_at_s because of low_char") fi;
+    prints("  ----------------")
+    , @: {clear_report_tested_cum}
+     tph := 0; tpt := 0; tnh := 0; tnt :=0; oth :=0; otc :=0; ott :=0;
+     tic := 0; tih := 0; tit :=0; tphh := 0; tpht :=0; tnhh := 0; tnht := 0;
+     tihc:=0; tihh:=0; tiht:=0;
+     utc := 0; utt := 0; ct :=0; cu := 0; ctth := 0; cuth :=0; DTc:=0; DBTc:=0; nhtC_time:=0)
+
+set report_tested_cum() = report_tested_cum("","")
+
+{how many pos, interrupted, neg, pos_to_ht, interrupted_to_ht, neg_to_ht tests}
+
+set u_counts() = vec:
+    [tested_pos_hash.size(), tested_inter_hash.size(), tested_neg_hash.size(),
+    sum(for hash in tested_pos_to_ht_hashes do hash.size() od),
+    sum(for hash in tested_inter_to_ht_hashes do hash.size() od),
+    sum(for hash in tested_neg_to_ht_hashes do hash.size() od)]
+
+{execute this behind ">>badps.at" or something similar}
+
+set list_to_ht_bad(int minTime) = void:
+    let badps = [Param]: [], badTs = [int]:[], badHs = [int]:[]
+    in for hash@j in tested_inter_to_ht_hashes
+       do for p@k in hash.list()
+       	  do let T = tested_inter_to_ht_times[j][k]
+	     in if T>= minTime
+	     	then badps#:=p;
+		     badTs#:=T;
+		     badHs #:=j+height(p)
+		fi
+	  od
+       od;
+       prints("predictor_flag:=true; predictor_verbose:=true");
+       prints("{|badps| is a list of ",#badps," Param's.  is_unitary_to_ht(badps[j],badHs[j]) ran for time badTs[j] >= ",minTime,"}");
+       write_param_list(badps,"badps");
+       prints("set badHs = ",badHs);
+       prints("set badTs = ",badTs)
+
+set list_bad(int minTime) = void:
+    let badps = [Param]: [], badTs = [int]:[]
+    in for p@k in tested_inter_hash.list()
+       do let T = tested_inter_times[k]
+	  in if T>= minTime
+	     then badps#:=p;
+		  badTs#:=T
+	     fi
+       od;
+       prints("predictor_flag:=true; predictor_verbose:=true");
+       prints("{|badps| is a list of ",#badps," Param's.  is_unitary(badps[j]) ran for time badTs[j] >= ",
+       			minTime,"}");
+       write_param_list(badps,"badps");
+       prints("set badTs = ",badTs)
+
+set wsf_time = int:0
+
+{SHOULD ONLY USE FOR TO HT >= ht(p)}
+
+set worst_so_far_ht(Param p, int H) = int:
+    let start_wsf = elapsed_ms()
+    then TH = #tested_pos_to_ht_times
+    then top_j = min(TH, H-height(p)+1)
+    in let I_s = for j:top_j {can't be negative tests below H, or we wouldn't be asking}
+      	    	      do vec: [tested_pos_to_ht_hashes[j].lookup(p),
+			       tested_inter_to_ht_hashes[j].lookup(p)]
+	    	      od {where p shows up in each of these test lists}
+       then j_last = last(for j:top_j do I_s[j] != [-1,-1] od) {greatest height where it appears}
+       then index = int: -1
+       in wsf_time +:= elapsed_ms() - start_wsf;
+	  if j_last >= 0 {well, if it DOES appear}
+     	  then if (index:= I_s[j_last][0])>=0
+     	       then 2*tested_pos_to_ht_times[j_last][index]
+	       else 5*tested_inter_to_ht_times[j_last][I_s[j_last][1]]
+	       fi
+     	   else {if p hasn't been tested at all, take worst of all q's tested to H}
+		max( (tested_inter_to_ht_times[:top_j] ##  tested_neg_to_ht_times[:top_j]
+	    	     	  ## tested_pos_to_ht_times[:top_j] ##[[0]]).##)
+     	   fi {j_last >=0}
+
+set worst_so_far_u(Param p) = int:
+    let start_wsf = elapsed_ms(), wsfh = worst_so_far_ht(p, GAM(p))
+    then index = tested_inter_hash.lookup(p) {where p shows up in interrupted list}
+    in wsf_time +:= elapsed_ms() - start_wsf;
+       if index >= 0 {IF it shows up}
+       then max(5*tested_inter_times[index], wsfh)
+       else {if p hasn't been tested at all, take worst of all q's tested}
+	    max(tested_neg_times##tested_pos_times##tested_inter_times##[wsfh])
+       fi {index >=0}
+
+set worst_so_far(Param p, int H) = int:
+    if H >= height(p)
+    then worst_so_far_ht(p,H)
+    else worst_so_far_u(p)
+    fi
+
+set didnt_finish_u_count = int: 0
+
+{predicted time in milliseconds to complete is_unitary(p)}
+
+set u_predictor_old(Param p, int time) = int:
+    if not predictor_flag
+    then return max(worst_so_far(p,-1),interrupt_base_time\5) {change \10 to \5 4/5/26}
+    fi;
+    let delta = p.real_form.distinguished_involution, start_pred = elapsed_ms()
+    then list = for q in {partial_block(p)} monomials(KL_sum_at_s(p))
+    if is_fixed(delta,q) do q fi od, rk = #delta
+    {will do full_deform on each term in list}
+    then times = [int]: for q in list do defHashTime.time_lookup(q) od
+    {have we computed full_deform? time needed if yes, -1 if no}
+    then unknown_indices = [int]: for T@j in times if T < 0 do j fi od
+    then num_filled_unknown = int: 0
+    then () = if #unknown_indices > 0 {there are unknown full_deforms; work on one}
+    	      then let j = unknown_indices[(#unknown_indices)\3] {this is a tough one}
+		   then q = list[j]
+	      	   then RT = defHashTime.time_record_bounded(q,(2*time)\3 + interrupt_base_time)
+		   in if RT >= 0 then num_filled_unknown+:=1 else didnt_finish_u_count +:= 1 fi;
+		      times[j] := RT
+	      fi
+    then () = if #unknown_indices > 1 {there are unknown full_deforms; work on one}
+    	      then let j = unknown_indices[(2*#unknown_indices)\3] {this is an easier one}
+		   then q = list[j]
+	      	   then RT = defHashTime.time_record_bounded(q,time\3 + interrupt_base_time)
+		   in if RT >= 0 then num_filled_unknown+:=1 else didnt_finish_u_count +:= 1 fi;
+		      times[j] := RT
+	      fi
+    then est_times = for T in times if T != -1 do if T<0 then -5*T else T+1 fi fi od
+    	 {(abs(t+1)) -1 truer, but avoid 0}
+    then N = #list, ne = #est_times, un = #unknown_indices - num_filled_unknown
+    in if predictor_verbose
+	     	then prints(new_line,"Start predicting to height -1 param ",p);
+		     prints("(#terms,#unknown,#estimated) = (N,un,ne) = (",N,",",un,",",ne,
+		     	    "), estimated times = ",est_times)
+       fi; {DANGER: IBT/40 insuff to do lookups! Need to get something at runtime.}
+       let ans = un*max(est_times) + ((N-un)*interrupt_base_time)\10
+       	   {change \10 to \2 4/7/26}
+       	   {un full deforms to compute} {tried dividing un*max by 1, 10}
+       	   in if predictor_verbose
+       	      then prints("prediction = ", print_time_string(ans))
+       	      fi;
+	    {would be good to see WHICH terms are known, and weight their times accordingly. If a term
+	     near x_open is known, then the predecessors are often nearly known}
+	     predictor_time+:= elapsed_ms() - start_pred;
+	     predictor_count+:=1;
+	     predictor_u_time+:= elapsed_ms() - start_pred;
+	     predictor_u_count+:=1;
+       	     ans
+
+{record (GAM, height, #partial_block, #reducibility_points)}
+
+set stats = (Param -> (int,int,int,int)):
+    let phash = Param_hash: make_Param_hash()
+    then stats = [(int,int,int,int)]: [] {one for each Param: (GAM,height, #partial_block, #reducibility_points)}
+    then add_param(Param q) = int:
+    	 let I = phash.size()
+	 then i = phash.match(q)
+	 in if i = I
+	    then stats #:=(GAM(q),height(q), #partial_block(q), #reducibility_points(q))
+	    fi;
+	    i
+     in
+     (Param -> (int,int,int,int)): (Param q): stats[add_param(q)]
+
+{idea is to estimate TIMES for full_deform_to_ht(q,HT) for q@j in monomials(KL_sum_at_s_to_ht(q,HT)
+ by a monomial...}
+
+set GAM_HT_EXP = int: 0{1}{power of GAM(q) - height(q) in monomial}
+
+set PB_EXP = int: 0   	  {power of #partial_block(q) in monomial}
+
+set RP_EXP = int: 0	  {power of #reducibility_points(q) in monomial}
+
+set HTht_EXP = int: 0{1}  {power of (HT - height(q) + 1) in monomial}
+
+set BL_EXP = int: 0	  {power of (bit_length(#monomials) - bit_length(j)+1)  in monomial}
+
+set J_SHIFT = int: 5	  {must be >=1; maybe (length(trivial) - length(p) + 1??}
+
+set INVJ_EXP = int: 2     {power of (j + J_SHIFT)^{-1}) in monomial}
+
+set PRED_END = rat: 1/4	  {value at N-1 of linear monomial. Should be in (0,1)} {1/10??}
+
+set LIN_EXP = int: 1      {power of 1 + (PRED_END-1)*j/(N-1) in monomial}
+
+set LIN_EXP_HT = int: 2   {was 2}
+
+{try a factor length(q)+1 for q in qlist. This function decreases, usually toward 1.}
+
+set LGTH_EXP = int:2
+
+set LGTH_flag = false
+
+{assume all terms in qlist same inf char}
+
+set GAM_HTs_easy(int N) = [rat]:
+    {let blq = bit_length(N) in}
+    let pred_end = 1/N in
+    for j:N do (1 + (pred_end-1)*j/N)^LIN_EXP {* (blq - bit_length(j) +1)^BL_EXP}/(j+J_SHIFT)^INVJ_EXP od
+
+set GAM_HTs_easy(int N, int HT) = [rat]:
+    let pred_end = 1/N in
+    for j:N do (1 + (pred_end-1)*(j/N))^LIN_EXP_HT od
+
+set GAM_HTs_LGTH([Param] qlist) = [rat]:
+    let GHE = GAM_HTs_easy(#qlist)
+    in for q@j in qlist do (length(q)+1)^LGTH_EXP *GHE[j] od
+
+set GAM_HTs([Param] qlist) = [rat]:
+    if LGTH_flag then return GAM_HTs_LGTH(qlist) fi;
+    if GAM_HT_EXP + PB_EXP + RP_EXP = 0 then return GAM_HTs_easy(#qlist) fi;
+    let GHE = GAM_HTs_easy(#qlist)
+    in for q@j in qlist do let (g,h,p,r) = stats(q) in (g-h)^GAM_HT_EXP * p^PB_EXP *r^RP_EXP*GHE[j]  od
+
+{in to_ht case, default to C*(linear decrease from 1 to PRED_END)}
+
+set lin_flag = false {true}
+
+set GAM_HTs([Param] qlist, int HT) = [rat]:
+    if lin_flag then return GAM_HTs_easy(#qlist,HT) fi;
+    if GAM_HT_EXP + PB_EXP + RP_EXP + HTht_EXP = 0 then return GAM_HTs_easy(#qlist) fi;
+    let GHE = GAM_HTs_easy(#qlist) in
+    for q@j in qlist do let (g,h,p,r) = stats(q) in (g-h)^GAM_HT_EXP * p^PB_EXP * r^RP_EXP * (HT-h+1)^HTht_EXP *
+    	       	     	GHE[j]  od
+
+{Number of K-types in branch_std(q) to ht H}
+{would need to load K_types.at}
+{set NUMK(Param q, int HT) = int:
+    sum(for c@tau in branch_std(1*q,HT) do c.int_part od)}
+
+{predict times for full_deform on qlist based on some data, at locations data_inds in qlist}
+{some_times is a list of times of size #data_inds}
+{result is full list of predicted times}
+
+{this is when we use only position in qlist; N is #qlist}
+
+set pred_easy(int N,[int] some_times, [int] data_inds) = [int]:
+    let unnorm_preds = [rat]: GAM_HTs_easy(N)
+    	{first coord is from GAM_HT, second from some_times}
+    then sums1 = sum(some_times), S0 =  sum(for j in data_inds do unnorm_preds[j] od)
+    then sums0 = (S0.numer + 1)/S0.denom
+    in for j:N do ceil((unnorm_preds[j]*sums1)/sums0) od
+
+set pred_easy(int N,[int] some_times, [int] data_inds, int HT) = [int]:
+    let unnorm_preds = [rat]: GAM_HTs_easy(N,HT)
+    	{first coord is from GAM_HT, second from some_times}
+    then sums1 = sum(some_times), S0 = sum(for j in data_inds do unnorm_preds[j] od)
+    then  sums0 = (S0.numer + 1)/S0.denom
+    in for j:N do ceil((unnorm_preds[j]*sums1)/sums0) od
+
+set pred([Param] qlist,[int] some_times, [int] data_inds) = [int]:
+    if GAM_HT_EXP + PB_EXP + RP_EXP = 0
+    then return(pred_easy(#qlist, some_times, data_inds)) fi;
+    let GAM_HTs = GAM_HTs(qlist)
+    then sums1 = sum(data_inds), S0 = sum(for j in data_inds do GAM_HTs[j] od)
+    then  sums0 = (S0.numer + 1)/S0.denom
+    in for n in GAM_HTs do ceil((n*sums1)/sums0) od
+
+set pred([Param] qlist,[int] some_times, [int] data_inds, int HT) = [int]:
+    if GAM_HT_EXP + PB_EXP + RP_EXP + HTht_EXP = 0
+    then return pred_easy(#qlist, some_times, data_inds, HT)
+    fi;
+    let unnorm_preds = [rat]: GAM_HTs(qlist,HT)
+    then sums1 = sum(data_inds), S0 = sum(for j in data_inds do unnorm_preds[j] od)
+    then  sums0 = (S0.numer + 1)/S0.denom
+    in for n in unnorm_preds do ceil((n*sums1)/sums0) od
+
+set u_predictor_old(Param p) = int:
+    u_predictor_old(p,20*interrupt_base_time) {change 5 to 10 4/7/26; 20 4/9}
+
+set u_predictor_old_flag = false
+
+set from_scratch_flag = false
+
+{what mult of interrupt_base_time to use for u_predictor}
+
+set uIBT_factor = rat: 1/2
+
+{what mult of interrupt_base_time to use for u_predictor_to_ht}
+
+set uIBT_HT_factor = rat: 1/8
+
+{what mult of IBT for use in data lookups for u_predictor; was 5 before 5/23/26}
+
+set u_test_factor = rat: 1/4
+
+{what mult of IBT for use in data lookups for u_to_ht_predictor; was 1/10 before 5/23/26}
+
+set uht_test_factor = rat: 1/16
+
+{how many full_deforms to look at to estimate time}
+
+set num_trials = int: 2
+
+set min_trials = int: 1
+{set upred_time_factor = int: 10}
+
+{whether to put a little wiggle in prediction}
+
+set no_margin_flag = false
+
+set uGAM_flag = false {was true; changed 5/21/26}
+
+{predicted time in milliseconds to complete is_unitary(p)}
+
+set u_predictor(Param p, int time) = int:
+    if u_predictor_old_flag then return u_predictor_old(p,time) fi;
+    if not predictor_flag
+    then return max(worst_so_far_u(p),interrupt_base_time\4) {change \10 to \5 4/5/26 remove 4/17/26}
+    fi;
+    let delta = p.real_form.distinguished_involution, start_pred = elapsed_ms(),
+    	expiration = elapsed_ms() + time
+    then list = for q in monomials(KL_sum_at_s(p))
+    if is_fixed(delta,q) do q fi od, rk = #delta
+    then times = [int]: for q in list do defHashTime.time_lookup(q) od
+    {have we computed full_deform? time needed if yes, -if no}
+    then unknown_indices = [int]: for T@j in times if T <= -2 do j fi od
+    {then () = time:= max(time, (#unknown_indices*interrupt_base_time)\upred_time_factor)
+    then expiration = elapsed_ms() + time}
+    then do_one_flag = (#unknown_indices >= 0)
+    	 {if all(for T in times ~do @bool: T<=-2 od) then true else false fi}
+    then () = num_trials:= max(2*bit_length(#unknown_indices),min_trials) {\2, *2 added 15:45 4/18/26:
+    84.0 for Spin(5,6). So try 2* 16:00: 90.3}
+    then found_time = int:0
+    then () = while num_trials > 0 and #unknown_indices > 0 and found_time < interrupt_base_time\2
+    	      do let ind = #unknown_indices - 1
+	      	 then j = unknown_indices[ind] {these get harder as k increases}
+		 then q = list[j]
+		 then time_test =  if do_one_flag
+		      		   then ceil(u_test_factor*interrupt_base_time)
+				   else interrupt_base_time - 2*times[j]
+				   fi
+		 in if elapsed_ms() > expiration and not do_one_flag
+		    then break
+		    fi;
+		    let RT = defHashTime.time_record_bounded(q,time_test)
+		    in if RT >= 0
+		       then unknown_indices:=delete(unknown_indices,ind);
+		       	    found_time+:=RT
+		       else didnt_finish_u_count +:= 1
+		       fi;
+		       times[j] := RT;
+		       {if RT > 0
+		       then} num_trials -:= 1;
+		       	    do_one_flag:=false
+		       {fi} {if this was free and gave no time data, keep trying}
+	      od
+     then data_inds = [int]:[]
+     then data_times = [int]: for T@j in times
+    	 	       	      do if T <= -3 then data_inds#:=j; [-5*(T+3)]
+			      	 elif T >=0 then data_inds#:=j; [T]
+			  	 else []
+			  	 fi
+		       	      od.##
+    then N = #list, data_n = #data_inds, un = #unknown_indices
+    then () = J_SHIFT:=length(p.real_form.trivial) - length(p)+1
+    then pred_list = {if uGAM_flag
+    	 	     then pred(list, data_times, data_inds, GAM(p)) {try adding GAM(p) arg 5/5/26}
+		     {no longer understand why this could help}
+		     else} pred(list, data_times, data_inds)
+		     {fi}
+    then pred = if from_scratch_flag
+       	      	then sum(pred_list){+interrupt_base_time}
+		elif no_margin_flag
+		then sum(for j in unknown_indices do pred_list[j] od)
+		else sum(for j in unknown_indices do pred_list[j] od) +
+		   		((N-un+10)*interrupt_base_time)\10
+		fi
+    then {data_times = for j in data_inds do data_times_long[j] od,}
+    	 pred_data_times = for j in data_inds do pred_list[j] od
+    in if predictor_verbose
+       then prints(new_line,"Start predicting to height -1 param ",p);
+	    prints("(#terms,#unknown,#data_times) = (N,un,data_n) = (",N,",",un,",",data_n,")");
+	    prints("data_inds = ",data_inds);
+	    prints("  actual data times = ",data_times);
+	    if from_scratch_flag
+	    then prints("predicted data times = ", pred_data_times);
+	    prints("full predicted times = ", pred_list)
+	    fi;
+            prints(if from_scratch_flag then "from scratch " else "" fi,
+	       		"prediction = ", print_time_string(pred), " in time ",
+		       print_time_string(elapsed_ms() - start_pred))
+        fi;
+	predictor_time+:= elapsed_ms() - start_pred;
+	predictor_count+:=1;
+	predictor_u_time+:= elapsed_ms() - start_pred;
+	predictor_u_count+:=1;
+       	pred
+
+set u_predictor(Param p) = int:
+    u_predictor(p,ceil(uIBT_factor*interrupt_base_time)) {change 5 to 10 4/7/26; 20 4/9; 2 4/18}
+
+set didnt_finish_ht_count = int: 0
+
+{predicted time in milliseconds to complete is_unitary{to_ht}(p,{HT}); time is how long to spend working}
+
+set u_predictor_to_ht_old(Param p, int HT, int time) = int:
+    if HT < 0 then return u_predictor(p) fi;
+    let WSF = max(interrupt_base_time\5, worst_so_far(p,HT)), {change \10 to \5 4/5/26}
+    	start_pred = elapsed_ms()
+    in if not predictor_flag
+       then WSF
+       else let delta = p.real_form.distinguished_involution, est_start = 0
+       	    {if we can finish computing zeroth full_deform, rest are
+	     better estimated from 1}
+	    then list = {is_unitary runs over terms in KL_sum_to_ht(p,HT)}
+		       for q in monomials(KL_sum_at_s_to_ht(HT)(p))
+		       if is_fixed(delta,q) do q fi od, rk = delta.n_rows
+	    then times =  [int]: for q in list do defHashHtTime.time_lookup_to_ht(q,HT) od
+    	    then unknown_indices = [int]: for T@j in times if T < 0 do j fi od
+    	    then num_filled_unknown = int: 0, un = #unknown_indices
+    	    then () = if un > 0 {there are unknown full_deforms; work on one}
+    	      	      then let j = unknown_indices[0]
+		      	   {for low HT, zeroth term can be only non-trivial one}
+	      	      	   then q = list[j]
+	      	      	   then RT = defHashHtTime.time_record_to_ht_bounded(q,HT,time{(2*time)\3 +1})
+		      	    in if RT >= 0
+			       then num_filled_unknown+:=1; if j=0 then est_start:=1 fi
+			       else didnt_finish_ht_count +:= 1
+			       fi;
+			       times[j] := RT
+	      	      fi
+    	    then () = if un > 1 {there are more unknown full_deforms; work on next}
+    	      	      then let j = unknown_indices[1]
+	      	      	   then q = list[j]
+	      	      	   then RT = defHashHtTime.time_record_to_ht_bounded(q,HT,time\3 +1)
+		      	    in if RT >= 0 then num_filled_unknown+:=1
+			       else didnt_finish_ht_count +:= 1
+			       fi;
+			       times[j] := RT
+	      	      fi;
+		      un -:= num_filled_unknown
+	    then est_times = for T@j in times if T!=-1 do if T < 0 then -5*T else (T+1) fi fi od
+	    then N = #times, ne = #est_times
+    	    in if predictor_verbose
+	       then prints(new_line,"Start predicting to height ", HT, " param ",p);
+		    prints("(#terms,#unknown,#estimated) = (N,un,ne) = (",N,",",un,",",ne,
+		     	    "), est times = ",est_times)
+	       fi;
+	       {figure term 0 is the worst.}
+       	       let ans =  if est_start = 1 {means j WAS unknown but we finished it}
+	       	       	  then un*max(est_times[1:]#0) + ((N-un)*interrupt_base_time)\10
+			       {N-un lookups} {un deforms to compute, estimated time}
+			  elif #est_times > 1
+			  then (un-1)*max(est_times[1:]) + est_times[0] +
+			       ((N-un)*interrupt_base_time)\10
+			  else un*max(est_times) + ((N-un)*interrupt_base_time)\10
+			  fi
+	       in if predictor_verbose
+		  then prints("prediction ",print_time_string(ans), " in time ",
+		       print_time_string(elapsed_ms() - start_pred))
+		  fi;
+		  predictor_time+:= elapsed_ms() - start_pred;
+		  predictor_count+:=1;
+		  ans
+	  fi
+
+{predicted time in milliseconds to complete is_unitary{to_ht}(p,{HT})}
+
+set u_predictor_to_ht_old(Param p, int HT) = int:
+u_predictor_to_ht_old(p, HT, 10*interrupt_base_time)
+
+set min_ht_trials = 1
+
+set u_predictor_to_ht(Param p, int HT, int time) = int:
+    if u_predictor_old_flag then return u_predictor_to_ht_old(p,HT,time) fi;
+    if HT < 0 then return u_predictor(p) fi;
+    if not predictor_flag
+    then return max(interrupt_base_time\4, worst_so_far(p,HT)) {back to \10 4/17}
+    fi;
+    let delta = p.real_form.distinguished_involution, expiration = elapsed_ms() + time, start_pred = elapsed_ms()
+       	    {if we can finish computing zeroth full_deform, rest are
+	     better estimated from 1}
+    then list = {is_unitary runs over terms in KL_sum_at_s_to_ht(p,HT)}
+		for q in monomials(KL_sum_at_s_to_ht(HT)(p))
+		    if is_fixed(delta,q) do q fi od, rk = delta.n_rows
+    then times =  [int]: for q in list do defHashHtTime.time_lookup_to_ht(q,HT) od
+    {-2 means unknown. <= -3 means trying to -T-3 failed}
+    then unknown_indices = [int]: for T@j in times if T <= -2 do j fi od
+    then INFO = sum(for T in times if T> 0 do T fi od) {how much good info we have}
+    then do_one_flag = {all(for T in times do T +  2 = 0 od)} (#unknown_indices > 0)
+    then () = num_trials:= max(bit_length(#unknown_indices),min_ht_trials)
+    then () = while num_trials > 0 and  #unknown_indices > 0 and (do_one_flag or
+    	      (elapsed_ms() < expiration)) and (INFO < time/4)
+    	      do let ind = #unknown_indices - 1
+	      	 then j = unknown_indices[ind] {these get easier as j increases}
+		 then q = list[j]
+		 then time_test =  if do_one_flag
+		      		   then ceil(uht_test_factor*interrupt_base_time) - 2*(times[j])
+				   else expiration - elapsed_ms()
+				   {interrupt_base_time - 2*times[j]}
+				   fi
+		 in if elapsed_ms() < expiration or do_one_flag
+		    then let RT = defHashHtTime.time_record_to_ht_bounded(q,HT, time_test)
+		    	 in if RT >= 0
+		       	    then unknown_indices:=delete(unknown_indices,ind);
+			    	 INFO +:= RT
+		       	    else didnt_finish_ht_count +:= 1
+		       	    fi;
+			    do_one_flag:=false;
+		       	    times[j] := RT;
+			    num_trials-:=1
+			 {else start_look+:=1 {can't help last unknown index, so go to previous}}
+		    fi
+	       od
+     then data_inds = [int]:[]
+     then data_times = for T@j in times
+    	 	       do if T <= -3 then data_inds#:=j; [-2*(T+3)]
+			  elif T>=0 then data_inds#:=j; [T]
+			  {elif T=-1 then data_inds#:=j; [0]}{should be impossible}
+			  else []
+			  fi
+		       od.##
+     then N = #list, data_n = #data_inds, un = #unknown_indices
+     then pred_list = pred(list, data_times,data_inds,HT)
+     then pred = if from_scratch_flag
+       	    	    then sum(pred_list) {+ interrupt_base_time}
+		    elif no_margin_flag
+		    then sum(for j in unknown_indices do pred_list[j] od)
+		    else sum(for j in unknown_indices do pred_list[j] od) +
+		    	 	 ((N-un+10)*interrupt_base_time)\10
+		    fi
+     then pred_data_times = for j in data_inds do pred_list[j] od
+     in if predictor_verbose
+	then prints(new_line,"Start predicting to height ", HT, " param ",p);
+	     prints("(#terms,#unknown,#data_times) = (N,un,ne) = (",N,",",un,",",data_n,")");
+	     prints("data_times = ",data_times);
+	     prints("data_inds = ",data_inds);
+	     prints("  actual data times = ",data_times);
+	     if from_scratch_flag
+	     then prints("predicted data times = ", pred_data_times);
+	     	  prints("full predicted times = ", pred_list)
+	     fi;
+             prints(if from_scratch_flag then "from scratch " else "" fi,
+	       		"prediction = ", print_time_string(pred), " in time ",
+		       print_time_string(elapsed_ms() - start_pred))
+	 fi;
+	 predictor_time+:= elapsed_ms() - start_pred;
+	 predictor_count+:=1;
+	 predictor_h_time+:= elapsed_ms() - start_pred;
+	 predictor_h_times#:=(elapsed_ms() - start_pred, time);
+	 predictor_h_count+:=1;
+	 pred
+
+{predicted time in milliseconds to complete is_unitary{to_ht}(p,{HT})}
+
+set u_predictor_to_ht(Param p, int HT) = int:
+u_predictor_to_ht(p, HT, ceil(uIBT_HT_factor*interrupt_base_time))
+
+{set adjust_factor = int: 5}
+
+{return predicted (u_time, to_ht_time)}
+
+set adjust_to_ht_over_u(Param p,int HT) = (int,int):
+    let th = u_predictor_to_ht(p, HT)
+    in (u_predictor(p),th)
+
+{return predicted (u_time, to_ht_time)}
+
+set adjust_to_ht_over_uB(Param p,int HT) = (int,int):
+    let th = u_predictor_to_ht(p,HT)
+    then ut = u_predictor(p, min(th+10,interrupt_base_time))
+    in (ut, u_predictor_to_ht(p,HT,min(ut+10,interrupt_base_time)))
+
+{return predicted (u_time, to_ht_time)}
+
+set adjust_to_ht_over_uC(Param p,int HT) = (int,int):
+    let ut = u_predictor(p){,2*interrupt_base_time)}
+    then th = u_predictor_to_ht(p, HT){, min(ut+10, {2*}interrupt_base_time))}
+    in (ut, th)
+
+
+{.write c-invariant form on standard module as a KTypePol }
+{ never involves |twisted_full_deform| }
+
+set c_form_std(Param p) = KTypePol:
+    let pc = alcove_center(p)
+    in full_deform(pc)
+
+{if deformed_hash_flag
+       then deformedHash.entry(pc,-1)
+       else full_deform(pc)
+       fi}
+
+{.write c-invariant form on standard module as a KTypePol }
+{ never involves |twisted_full_deform| }
+
+set c_form_std_cut(int HT) = (Param p) KTypePol:
+    let pc = alcove_center(p)
+    in full_deform_to_ht(pc,HT) {deformedHash.entry(pc,HT)}
+
+{if deformed_hash_flag
+       then deformedHash.entry(pc,HT)
+       else full_deform_to_height_MvL_base(pc,HT)
+       {to_ht(full_deform(pc),HT)}
+       fi}
+
+{p must be fixed by standard involution!}
+
+set twisted_c_form_std(Param p) = KTypePol: { c-form on extended group}
+    let pc = alcove_center(p)
+    in twisted_full_deform(pc)
+
+{if deformed_hash_flag
+       then deformedHash.entry(pc,-1)
+       else twisted_full_deform(pc)
+       fi}
+
+{    c_form on irreducible representations   }
+
+{ untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
+{.c-invariant form on irreducible module of p as KTypePol }
+
+set c_form_irreducible_cut (Param p,int HT) = KTypePol:
+   let ori_nr_p = orientation_nr(p)
+   then oriented_KL_sum = ParamPol: null_module(p) +
+      for c@q in KL_sum_at_s_to_ht(HT)(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
+   then cfsc = (Param -> KTypePol): (Param p) KTypePol: c_form_std_cut(HT)(p)
+in to_ht(if back_form_ht_flag then back_map(cfsc, oriented_KL_sum)
+   	 else map(cfsc, oriented_KL_sum)
+	 fi ,HT)
+
+{    twisted_c_form_irreducible   }
+
+{ utility: compute fixed and unfixed contributions to c-form on irreducible(p)
+  no deformation is done, but orientation numbers are included;
+  fixed contributions are already halved; for unfixed ones this needs to wait
+}
+
+{p must be fixed by standard involution!}
+
+set twisted_c_form_irreducible_contributions_cut (Param p, int HT) =
+    (ParamPol,ParamPol): { (fixed part, 2*unfixed part) }
+  let G=p.real_form, ori_nr_p = orientation_nr(p)
+  then formula = (1+s)*KL_sum_at_s_to_ht(HT)(p) + (1-s)*twisted_KL_sum_at_s_to_ht(HT)(p)
+  in { two value-producing loops can be a lot more efficient than one: }
+     let (first,second) = ( (
+      	 G.null_module +
+      	 for c@q in formula
+         if twist(q)=q do (half(c)*orientation_nr_term(ori_nr_p,q),q) fi
+      	    	       od)
+   , (G.null_module +
+      for c@q in formula
+         if twist(q)!=q do (c*orientation_nr_term(ori_nr_p,q),q) fi
+      od))
+      in if HT<0 then (first,second)
+      	 else let (first_low,) = height_split(first,HT)
+	      then (second_low,) = height_split(second,HT)
+	      in (first_low,second_low)
+	 fi
+    {if HT < 0 then return twisted_KL_sum_at_s(p)
+    else let (below,) = height_split(twisted_KL_sum_at_s(p),HT)
+    	 in below
+    fi}
+
+{ The following function implements algorithm from Vogan in email 9/22/16:
+  * for each delta-fixed term q add c_form_std(q) (fully twisted-deformed)
+  * for each pair {q,delta(q)} add q*0 (deformation to nu=0 of q).
+  For second kind it it convenient to add q*0 and delta(q)*0
+  separately and at the end divide the sum of such contributions by 2.
+}
+{.twisted c-invariant form on an irreducible in terms of standardrepKs.}
+{p must be fixed by standard involution!}
+
+set show_unitary_time() = void: prints("Time so far for is_unitary = ",
+    		      print_time_string(unitaryTime))
+
+{.Hermitian form on a irreducible module, normalization from its initial term.}
+
+set hermitian_form_irreducible_cut(Param p, int HT) = KTypePol:
+  {unitary_test_counter.use();}
+  let start_time = elapsed_ms()
+  then answer = if is_equal_rank(real_form(p))
+       	      	then c_form_irreducible_cut(p,HT) { not twisted, in equal rank case this is faster }
+ 		else check_hermitian(p,true); to_ht(twisted_c_form_irreducible(p),HT)
+  		fi.convert_cform_hermitian
+  in unitaryTime+:=elapsed_ms() - start_time;
+     was_tested_to_ht(p,HT, elapsed_ms() - start_time, is_pure(answer));
+     answer
+
+{ compute Hermitian form on p, and report if it is unitary }
+
+set is_unitary_depth(Param p) = int:
+    if not p.is_hermitian
+    then -2
+    else hermitian_form_irreducible(p).impure_height
+    fi
+
+{ compute Hermitian form on p, and report if it is unitary }
+
+set is_unitaryB (Param p) = bool:
+  {unitary_test_counter.use();}
+  let start_time = elapsed_ms()
+  in if is_equal_rank(p.real_form)
+  then let CF = c_form_irreducible(p)
+       in if not is_typewise_pure(CF)
+       	  then unitaryTime+:=elapsed_ms() - start_time;
+	       was_tested(p, elapsed_ms() - start_time, false);
+	       false
+     	  else let answer = CF.convert_cform_hermitian.is_pure
+	       then () = unitaryTime+:=elapsed_ms() - start_time
+	       then () = was_tested(p, elapsed_ms() - start_time, answer)
+	       in answer
+     	  fi
+   else check_hermitian(p,true);
+   	let TCF = twisted_c_form_irreducible(p)
+	in if not is_typewise_pure(TCF)
+	   then unitaryTime+:=elapsed_ms() - start_time;
+	        was_tested(p, elapsed_ms() - start_time, false);
+	       	false
+	   else let answer = TCF.convert_cform_hermitian.is_pure
+	       then () = unitaryTime+:=elapsed_ms() - start_time
+	       then () = was_tested(p, elapsed_ms() - start_time, answer)
+	       in answer
+	   fi
+   fi
+
+{ compute Hermitian form on p, and report
+certificate; unitary means empty certificate }
+
+set is_unitary_cert (Param p) = [KType]:
+  hermitian_form_irreducible(p).is_pure_cert
+
+{ compute Hermitian form on p, report if it is unitary, and otherwise record certificate }
+
+set is_unitary(Param p,KTypePol_hash cert_hash) = bool:
+  p.is_hermitian and is_pure_cert_hash(hermitian_form_irreducible(p),cert_hash)
+
+
+{ some time-limited functions, using new built-in |full_deform@(Param,int)| }
+
+{ the next type is the same as |Maybe<KTypePol>|, but injector names differ }
+{set_type maybe_KTP = (void timed_out | KTypePol done)}
+
+{1 means pure, 0 means timed out, -1 means impure}
+
+set is_pure(maybe_KTP P) = int:
+    case P
+    | timed_out: 0
+    | done(r): if is_pure(r)
+      	       then 1
+	       else -1
+	       fi
+    esac
+
+set back_map ((Param->maybe_KTP)f, ParamPol P) = maybe_KTP:
+  sum(P.real_form
+     ,for c@p in P
+     do case f(p) | timed_out: return timed_out() | done(r): c*r esac
+      od
+     ).done
+
+{ guaranteed to deform at least one term}
+{finishes without interruption if all terms already deformed}
+
+set c_form_irreducible_cut (Param p,int HT, int time) = maybe_KTP:
+   let ori_nr_p = orientation_nr(p), expiration = elapsed_ms() + time, dummy = K_type_pol(p).done
+   then oriented_KL_sum = ParamPol: null_module(p) +
+      for c@q in KL_sum_at_s_to_ht(HT)(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
+   then list = monomials(oriented_KL_sum)
+   then unknown_indices = for q@j in list if defHashHtTime.time_lookup_to_ht(q,HT) < 0 do j fi od
+   in if #unknown_indices > 0
+      then dummy := full_deform_to_ht(list[unknown_indices~[0]],HT, time);
+	   if #unknown_indices > 2 then dummy := full_deform_to_ht(list[unknown_indices[#unknown_indices\2]],HT, time) fi
+      fi;
+      if back_form_ht_flag then back_map( (Param q) maybe_KTP:
+      	 if expiration - elapsed_ms() < 0
+      	 then timed_out()
+      	 else {deformedHash.maybe_entry}full_deform_to_ht(q,HT,expiration - elapsed_ms())
+      	 fi
+      	 , oriented_KL_sum
+      	 )
+      else map( (Param q) maybe_KTP:
+      	 if expiration - elapsed_ms() < 0
+      	 then timed_out()
+      	 else {deformedHash.maybe_entry}full_deform_to_ht(q,HT,expiration - elapsed_ms())
+      	 fi
+      	 , oriented_KL_sum
+      	 )
+      fi
+
+{guaranteed to deform at least one term}
+
+set twisted_c_form_irreducible_unnormalized (Param p,int time) = maybe_KTP:
+( let (fixed,unfixed)=twisted_c_form_irreducible_contributions(p)
+  , expiration = elapsed_ms() + time, dummy = K_type_pol(p).done
+  then list = monomials(fixed)
+  then unknown_indices = for q@j in list if defHashTime.time_lookup(q) < 0 do j fi od
+  in if #unknown_indices > 0
+     then dummy:= twisted_full_deform(list[unknown_indices~[0]],time)
+     {
+     if #unknown_indices > 2 then dummy:= twisted_full_deform(list[unknown_indices[#unknown_indices\2]], time) fi
+     }
+     fi;
+     case if back_form_flag then back_map( (Param q) maybe_KTP:
+     	     if expiration - elapsed_ms() < 0
+      	     then timed_out()
+     	     else twisted_full_deform(q, expiration - elapsed_ms())
+     	     fi
+	     , fixed
+	     )
+	  else map( (Param q) maybe_KTP:
+     	     if expiration - elapsed_ms() < 0
+      	     then timed_out()
+     	     else twisted_full_deform(q, expiration - elapsed_ms())
+     	     fi
+	     , fixed
+	     )
+	  fi
+     | timed_out: timed_out()
+     | done(r): done(r + half(unfixed.K_type_pol))
+     esac
+)
+
+set hermitian_form_irreducible_cut (Param p, int HT, int time) = maybe_KTP:
+   {unitary_test_counter.use();}
+   let start_time = elapsed_ms()
+   then answer = case if is_equal_rank(real_form(p))
+               	      then c_form_irreducible_cut(p,HT,time)
+	 	      else check_hermitian(p,true);
+		      	   twisted_c_form_irreducible(p,time)
+	 	      fi
+   		 | timed_out: was_tested_inter_to_ht(p, HT, elapsed_ms() - start_time);
+		   	      timed_out()
+   		 | done(r): let ans = to_ht(r.convert_cform_hermitian,HT)
+		   	    then total_time=elapsed_ms() - start_time, boo = is_pure(ans)
+			    in was_tested_to_ht(p, HT, total_time, boo);
+			       ans.done
+   		 esac
+  in unitaryTime+:=elapsed_ms() - start_time;
+     answer
+
+set is_unitary_depth (Param p, int time) = int: 
+    if p.is_hermitian
+    else -1
+    then case hermitian_form_irreducible(p,time)
+       	 | timed_out: 0
+       	 | done(result): let D = result.impure_height
+	   		 in if D<0 then 1
+			    else -2*(D+1)
+			    fi
+       	 esac
+    fi
+
+
+{ end of core unitarity functionality, remaining variations for user comfort }
+
+{ same as |c_form_irreducible|, but also return a second component that
+  exposes the linear combination of contributions from standard representations
+  that produced the result (parameter, coefficient, c_form on this standard)
+
+  formulas: write
+    J(y)  =sum_x               (-1)^{ell(x)-ell(y)}P(x,y)(q=1)I(x)
+  then
+    J(y)_c=sum_x (-1)^{on(x,y)}(-1)^{ell(x)-ell(y)}P(x,y)(q=s)I(x)_c
+  where
+    P(x,y) is a cumulated KL polynomial
+    (-1)^{ell(x)-ell(y)}P(x,y) is given by signed_KL_col(y)[i] with
+    indices[i]=x on(x,y)=orientation number given by orientation_nr_term()
+    I(x)_c given as combination of standards x' with nu(x')=0 by c_form_std(x)
+  algorithm: compute the sum for J(y)_c, using signed_KL_col and c_form_std
+}
+{.c-form on an irreducible, with extra output.}
+
+set good_Q(Param p) = (KGPElt, Param):
+    let G = p.real_form, x = p.x, gamma = p.infinitesimal_character
+    then theta = x.involution, suppS = support(x), SCR = G.simple_coroots
+    then goodS = ((for j in complement(G.semisimple_rank,suppS)
+		     do if (gamma*SCR[j]).=
+		        then [j]
+		       	else []
+		       	fi
+		     od.##)##suppS).sort_u
+    then goodQ = KGPElt:(goodS, x)
+    then goodL = goodQ.Levi
+    then xL = inverse_embed_KGB(x,goodL)
+    then goodpL = parameter(xL, p.lambda_minus_rho+goodL.rho, p.nu)
+    in (goodQ,goodpL)
+
+set good_L(Param p) = RealForm:
+    let G = p.real_form, x = p.x, gamma = p.infinitesimal_character
+    then theta = x.involution, suppS = support(x), SCR = G.simple_coroots
+    then goodS = ((for j in complement(G.semisimple_rank,suppS)
+		     do if (gamma*SCR[j]).=
+		        then [j]
+		       	else []
+		       	fi
+		     od.##)##suppS).sort_u
+    in (goodS,x).Levi
+
+{smallest easy theta-stable Q from which p is weakly good range cohomologically
+induced, and the inducing parameter}
+
+set wkgood_Q(Param p) = (KGPElt, Param):
+    let G = p.real_form, x = p.x, gamma = p.infinitesimal_character
+    then theta = x.involution, suppS = support(x) {, SCR = G.simple_coroots}
+    then wkgoodQ = KGPElt:(suppS, x)
+    then wkgoodL = wkgoodQ.Levi
+    then xL = inverse_embed_KGB(x,wkgoodL)
+    then wkgoodpL = parameter(xL, p.lambda_minus_rho+wkgoodL.rho, p.nu)
+    in (wkgoodQ,wkgoodpL)
+
+{these functions are not used; subsumed by big_unitary_hash}
+{
+set unitarity_hash = make_unitarity_bool_hash()
+
+set is_unitary_hash(Param p) = bool:
+    if not is_hermitian(p) then return false fi;
+    let (,pL) = wkgood_Q(p), G=p.real_form
+    then derpLs = derived_factor_params0(pL)
+    then answer = all([(->bool)] : for derpL in derpLs do @bool:
+       			unitarity_hash.entry(derpL) od)
+    {then formL = hermitian_form_irreducible(pL)}
+    {then answer = is_pure(formL)}
+    in if answer or pL = p
+       then answer
+       else {answer is false, and pL is on proper Levi}
+       	    let goodL = good_L(p)
+       	    in is_pure(sum(G, for c@qL in hermitian_form_irreducible(pL)
+			      do c*theta_induce_standard(param(qL),
+			           goodL)
+			      od))
+       fi
+    {unitarity_hash.entry(p)}
+
+set do_you_know_is_unitary(Param p) = bool:
+    unitarity_hash.do_you_know(p)
+
+set attest_is_unitary(Param p, bool answer) = void:
+    unitarity_hash.attest(p,answer)
+}
+
+
