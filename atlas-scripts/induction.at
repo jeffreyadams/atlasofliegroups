@@ -370,7 +370,11 @@ set goodness (Param p_L,RealForm G) = string:
    must apply standardize. .}
 set theta_induce_standard (Param p_L,RealForm G) = ParamPol:
   let L=real_form(x(p_L)), x_G=embed_KGB(x(p_L),G)
-  then shift=rho(G)-rho(L)
+  then shift=rho_xi(G)-rho_xi(L)
+  { basepoint pair: rho(u) between linear groups; between covers this maps
+    the coset rho(L)+xi_L+X^* onto rho(G)+xi_G+X^* whenever the cover data
+    are compatible (xi_G = xi_L - rho(u) mod X^*), and |parameter| below
+    checks exactly that }
   in assert(@:parabolic_is_theta_stable(make_parabolic(L,G)),
   "L is not Levi of theta_stable parabolic");
     if ind_verbose
@@ -654,6 +658,38 @@ set Aq_reducible (KGBElt x,ratvec lambda, ratvec lambda_q) = ParamPol:
   in
   assert(@:dimension(pi_L)=1,"pi_L is not one-dimensional");
   theta_induce_irreducible(pi_L,G)
+
+{. the rho(u)-cover of the Levi L of a theta-stable parabolic with target
+   G: the natural domain of theta-stable induction (its genuine parameters
+   have lambda in rho(L)+rho(u)+X^* = rho(G)+X^*, so they induce to honest
+   parameters of G with NO shift) .}
+set rho_u_cover (RealForm L,RealForm G) = RealForm: xi_cover(L,rho(G)-rho(L))
+
+{. A_q(lambda) with the integrality REQUIRE relaxed to 2(lambda-rho(u)) in
+   X^*: pi_L becomes a genuine character of a cover of L, and the result a
+   genuine parameter for xi_cover(G,lambda-rho(u)) (an honest G-parameter
+   when lambda-rho(u) is integral, in which case this is Aq_reducible) .}
+set Aq_genuine_reducible (KGBElt x,ratvec lambda, ratvec lambda_q) = ParamPol:
+  let G=real_form(x)
+  then (w,lambda_q_new)=from_dominant(G,lambda_q)
+  then w1=/w
+  then P_new=parabolic_by_wt(lambda_q_new,cross(w1,x))
+  then shift = w1*lambda-rho_u(P_new)
+  in
+  assert(@:parabolic_is_theta_stable(P_new),"q is not theta-stable");
+  let L_tilde = xi_cover(Levi(P_new),shift)
+  then t_L=trivial(Levi(P_new))
+  then (,nx_L)=%x(t_L)
+  then pi_L= parameter( KGB(L_tilde,nx_L), lambda(t_L)+shift, nu(t_L)+shift )
+  in
+  theta_induce_irreducible(pi_L,xi_cover(G,cover_xi(L_tilde)))
+
+set Aq_genuine (KGBElt x_in,ratvec lambda, ratvec lambda_q) = Param:
+  let P = ParamPol: Aq_genuine_reducible(x_in,lambda,lambda_q)
+  in assert(@:#P<=1,"Aq_genuine is not irreducible");
+  let (c,p) = first_term(P)
+  in assert(@:c=1,"Aq_genuine has multiplicity");
+  p
 
 {. A_q(lambda) module defined as above, but as a parameter, assuming it is
   irreducible. .}

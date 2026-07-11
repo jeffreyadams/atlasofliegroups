@@ -1,0 +1,46 @@
+### classic induction regression (compare against stock binary)
+Variable G: RealForm (overriding previous instance, which had type RealForm)
+Variable x0: KGBElt
+Variable P: Parabolic
+Variable L: RealForm
+Value: connected quasisplit real group with Lie algebra 'sl(2,R).u(1)'
+Variable tL: Param
+Value: 
+1*parameter(x=4,lambda=[2,1]/1,nu=[1,-1]/2) [6]
+Value: final parameter(x=4,lambda=[3,2]/1,nu=[1,-1]/2)
+### rho_u_cover: induction from the rho(u)-cover, ZERO shift
+Variable Lt: RealForm
+Value: connected quasisplit real group with Lie algebra 'sl(2,R).u(1)' [cover xi=[3,3]/2]
+Value: [ 3, 3 ]/2
+Variable nxL: int
+Variable tLt: Param
+lambda on cover vs lambda+rho_u classic: [ 2, 1 ]/1 [ 2, 1 ]/1
+Variable ind_classic: ParamPol
+Variable ind_cover: ParamPol
+cover-route minus classic route, number of terms: 0   [expect 0]
+### Aq_genuine = Aq on integral shift
+Variable a1: ParamPol
+Variable a2: ParamPol
+difference terms: 0   [expect 0]
+### NEW: half-integral Aq on GL(2,R): genuine DS of the det/2 cover
+Variable G2: RealForm (overriding previous instance, which had type string)
+Variable y0: KGBElt
+Variable aq_gen: Param
+Value: final parameter(x=0,lambda=[1,0]/1,nu=[1,1]/2)
+real form: disconnected split real group with Lie algebra 'sl(2,R).gl(1,R)' [cover xi=[1,1]/2]  xi: [ 1, 1 ]/2
+infchar: [ 1, 0 ]/1
+is_final: true  is_hermitian: false
+### dictionary check: Aq_genuine([1,0]) = lift of Aq([1,-1]/2)
+Variable aq_cl: Param
+Value: final parameter(x=0,lambda=[1,-1]/2,nu=[0,0]/1)
+Variable ng: int
+Variable nc: int
+storage match: true  x match: true
+nu shift (expect [1,1]/2 = (1-theta)xi/2): [ 1, 1 ]/2
+infchar shift (expect xi=[1,1]/2): [ 1, 1 ]/2
+### unitary-twist variant (nu=0 on the cover): hermitian genuine DS
+Variable p_u: Param
+Value: final parameter(x=0,lambda=[1,0]/1,nu=[0,0]/1)
+is_hermitian: true   [expect true]
+### done
+Bye.

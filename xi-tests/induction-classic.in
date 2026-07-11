@@ -1,0 +1,9 @@
+set G=Sp(4,R)
+set P=parabolic_by_wt([1,1],KGB(G,0))
+set L=Levi(P)
+theta_induce_standard(trivial(L),G)
+Aq(G,[5,5]/2,[1,1])
+set G2=GL(2,R)
+Aq(KGB(G2,0),[1,-1]/2,[1,-1])
+theta_stable_data(parameter(KGB(G,10),[2,1],[2,1]))
+quit

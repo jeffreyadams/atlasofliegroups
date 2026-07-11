@@ -4125,9 +4125,9 @@ void cover_wrapper(eval_level l)
   (xi->val += rf->xi_val).normalize(); // covers compose additively
   if (l==eval_level::no_value)
     return;
-  if (xi->val.is_zero())
+  if (xi->val.denominator()==1) // integral |xi|: the cover is trivial, since
   @/{@; push_value(real_form_value::build(rf->ic_ptr,rf->val.realForm()));
-    return; }
+    return; } // the coset |rho+xi+X^*| is just |rho+X^*|
   auto result = std::make_shared<real_form_value>
     (rf->ic_ptr,rf->val.realForm(),xi->val);
   result->rt(); // eagerly validate |xi|, and build the |Rep_table|

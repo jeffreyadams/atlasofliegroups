@@ -1,0 +1,49 @@
+prints("### classic induction regression (compare against stock binary)")
+set G=Sp(4,R)
+set x0=KGB(G,0)
+set P=parabolic_by_wt([1,1],x0)
+set L=Levi(P)
+L
+set tL=trivial(L)
+theta_induce_standard(tL,G)
+Aq(G,[5,5]/2,[1,1])
+prints("### rho_u_cover: induction from the rho(u)-cover, ZERO shift")
+set Lt=rho_u_cover(L,G)
+Lt
+cover_xi(Lt)
+set (,nxL)=%x(tL)
+set tLt=param(KGB(Lt,nxL),tL.lambda_minus_rho,tL.nu)
+prints("lambda on cover vs lambda+rho_u classic: ", tLt.lambda, " ",
+       tL.lambda+rho(G)-rho(L))
+set ind_classic=theta_induce_standard(tL,G)
+set ind_cover=theta_induce_standard(tLt,G)
+prints("cover-route minus classic route, number of terms: ",
+       #(ind_cover-ind_classic), "   [expect 0]")
+prints("### Aq_genuine = Aq on integral shift")
+set a1=Aq_reducible(x0,[5,5]/2,[1,1])
+set a2=Aq_genuine_reducible(x0,[5,5]/2,[1,1])
+prints("difference terms: ", #(a1-a2), "   [expect 0]")
+prints("### NEW: half-integral Aq on GL(2,R): genuine DS of the det/2 cover")
+set G2=GL(2,R)
+set y0=KGB(G2,0)
+set aq_gen=Aq_genuine(y0,[1,0],[1,-1])
+aq_gen
+prints("real form: ", aq_gen.real_form, "  xi: ", cover_xi(aq_gen.real_form))
+prints("infchar: ", aq_gen.infinitesimal_character)
+prints("is_final: ", is_final(aq_gen), "  is_hermitian: ", is_hermitian(aq_gen))
+prints("### dictionary check: Aq_genuine([1,0]) = lift of Aq([1,-1]/2)")
+set aq_cl=Aq(y0,[1,-1]/2,[1,-1])
+aq_cl
+set (,ng)=%(aq_gen.x)
+set (,nc)=%(aq_cl.x)
+prints("storage match: ", aq_gen.lambda_minus_rho=aq_cl.lambda_minus_rho,
+       "  x match: ", ng=nc)
+prints("nu shift (expect [1,1]/2 = (1-theta)xi/2): ", aq_gen.nu-aq_cl.nu)
+prints("infchar shift (expect xi=[1,1]/2): ",
+       aq_gen.infinitesimal_character-aq_cl.infinitesimal_character)
+prints("### unitary-twist variant (nu=0 on the cover): hermitian genuine DS")
+set p_u=param(KGB(aq_gen.real_form,ng),aq_gen.lambda_minus_rho,[0,0]/1)
+p_u
+prints("is_hermitian: ", is_hermitian(p_u), "   [expect true]")
+prints("### done")
+quit
