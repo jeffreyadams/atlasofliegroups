@@ -1,4 +1,10 @@
 <basic.at { for |s_to_1| and many others }
+<count.at { for |char_counter| }
+<parameters.at { for |dual_inner_class| }
+<hash.at {for hashed low function}
+<polynomial.at {for eval}
+<dualB.at {for dualB, low_dual}
+<translate.at {for translate_param_by}
 
 { KL stuff, including character formulas and composition series
   This implementation seeks to avoid using KL_block, and instead uses
@@ -6,6 +12,10 @@
   Also (compared to old implementation) no regular/singular case distinction
 }
 
+{convention: "to_height" always computes with a to height algorithm. "to_ht" may
+choose whether "to height" or "to infinity" algorithm is faster.}
+
+{<time.at {for print_time_string}}
 {
   Basic object: column of KL matrix (P-matrix), of polynomials evaluated as s,
   which by setting s=1 gives formula for irreducible as sum of standards
@@ -23,22 +33,797 @@
 }
 
 { ------------------------------------------------------------------- }
+{seat_belt_on:=false}
 
-set character_formula (Param p) = ParamPol: s_to_1(KL_sum_at_s(p))
+{whether to turn on u_predictor and u_predictor_to_ht in hermitian.at}
+set predictor_flag = false {evening 12/21/25; was false until 12/19, when something went wrong}
+
+{whether to use to_ht instead of truncating full_deform}
+set to_ht_over_u_flag = true
+
+{set CF_flag = false}
+set charTime = int:0
+
+set charTimeToHt = int:0
+
+{ the next type is the same as |Maybe<KTypePol>|, but injector names differ }
+set_type maybe_KTP = (void timed_out | KTypePol done)
+
+set_type maybe_PP =  (void timed_out_PP | ParamPol done_PP)
+
+set is_done(maybe_KTP P) = bool:
+    case P
+    | timed_out: false
+    | done: true
+    esac
+
+set is_done(maybe_PP P) = bool:
+    case P
+    | none: false
+    | some: true
+    esac
+
+set KL_sum_at_s(Param p) = ParamPol:
+    let start = elapsed_ms()
+    in KL_sum_at_s(p) next charTime +:= elapsed_ms() - start; char_counter.use()
+
+set character_formula (Param p) = ParamPol:
+    let start = elapsed_ms()
+    in s_to_1(KL_sum_at_s(p))
+    {then () = if CF_flag then prints("CF(",p.x.number,",",p.lambda,",",
+       p.nu,"), charTime = ",print_time_string(CharFormTime)) fi}
+
 set character_formula (ParamPol P) = ParamPol: map(character_formula@Param,P)
+
+{height of a Param of infl char gamma and KGBElt x}
+set height(KGBElt x, ratvec gamma) = int:
+    let gamthgam = (1+x.involution)*gamma, rd = x.root_datum
+    then q = dominant(rd,gamthgam)*rd.rho_check
+    in q.numer\q.denom
+
+{ Block of p, including zero parameters. Relevant because that's where
+KL calculations need to happen }
+set full_block(Param p) = [Param]:
+    let tworho = two_rho(p.real_form)
+    then q0 = parameter(p.x,p.lambda +tworho, p.nu+tworho)
+    in for q in block_of(q0)
+       do parameter(q.x,q.lambda-tworho, q.nu-tworho)
+       od
+
+set easy_full_size_flag = true
+
+{in is_unitary_to_ht(HT), KL calculations live in this subset of
+full_block}
+set full_block_to_ht(Param p, int HT) = [Param]:
+    for q in full_block(p)
+    ~do if height(q) <= HT
+       then q
+       else break
+       fi
+    od
+
+{arena for KL_sum_at_s_to_height(p,HT)}
+{set full_block_to_ht_size(Param p, int HT) = int:
+    let tworho = two_rho(p.real_form)
+    in if easy_block_size_flag
+       then let gamma = p.infinitesimal_character + tworho
+    	    then H0 = height(p.x,gamma)+(HT-height(p)
+    	    then x_up_num = first(for x in KGB(p.real_form)[:p.x.number]) {elts closer to 0 than x}
+    	     	      	      	  ~do height(x,gamma)>H0
+
+    let tworho = two_rho(p.real_form)
+    then q0 = parameter(p.x,p.lambda +tworho, p.nu+tworho)}
+
+set full_block_down_size(Param p) = int:
+    if easy_full_size_flag
+    then p.x.number
+    else let tworho = two_rho(p.real_form)
+    	 then q0 = parameter(p.x,p.lambda +tworho, p.nu+tworho)
+    	 in #partial_block(q0)
+    fi
+
+{need to compute on loading; if it's repeated,
+the second invocation will be too fast}
+{Divide by 4 as unexplained heuristic to improve guess}
+set KL_rate = rat:
+    let start = elapsed_ms()
+    then m = #KL_sum_at_s(E6_s.trivial)
+    {then  (,m,,) = KL_block(E6_s.trivial)} {size of E6_s block above trivial}
+    in (elapsed_ms() - start)*2^(13-2)/(m^2*3^6)
+
+set KL_rate(RealForm G) = rat:
+    let start = elapsed_ms()
+    then m = #KL_sum_at_s(G.trivial)
+    {then  (,m,,) = KL_block(G.trivial)} {size of G block above trivial}
+    in (elapsed_ms() - start)*2^(2*G.semisimple_rank+1)/(m^2*3^(G.semisimple_rank))
+
+{predicted time in milliseconds to compute KL in block of p}
+set KL_predictor_full(Param p) = int:
+    let rk = semisimple_rank(integrality_datum(p))
+    in floor((#full_block(p))^2*3^rk* KL_rate/2^(2*rk+1))
+    {next prints("we're in KL_pred_full at ",p)}
+{number of extremal pairs in full block is ROUGHLY: (x,y) so tau(y)\cap tau(x) is empty.
+Number of pairs of [bool] with ANSWER IS 3^rank.}
+
+{this one is relevant to KL_sum_at_s_to_height, I think?}
+{predicted time in milliseconds to compute KL to height HT in block of p}
+{typically applied near principal series, where all tau invts large; so (3/4)^rk factor is not justified}
+{Extra factof of 4 is unexplained heuristic; undo rate heuristic}
+set KL_predictor_to_ht(Param p, int HT) = int:
+    let rk = semisimple_rank(integrality_datum(p))
+    in floor((#full_block_to_ht(p,HT))^2 * {3^rk*}KL_rate/2{/2^({2*rk+}1)})
+{next prints("we're in KL_pred_up at ",p)}
+
+{relevant to KL_sum_at_s for p}
+set KL_predictor(Param p) = int:
+    let rk = semisimple_rank(integrality_datum(p))
+    in floor((full_block_down_size(p))^2*3^rk*KL_rate/2^(2*rk + 1))
+{next prints("we're in KL_pred at ",p)}
+
+set low_count= int:0
+set low_time = int:0
+{for predicting whether to_ht or is_unitary is faster}
+set low(Param p) = (int,int,int):
+    let start = elapsed_ms(), ic = p.inner_class, theta = p.x.involution, gamma = p.infinitesimal_character
+    then LAM = (dominant(ic,(1+theta)*gamma)*ic.two_rho_check)\2 {this is
+    height(p); size of lambda}
+    then NU = (dominant(ic, (1-theta)*gamma) *ic.two_rho_check)\2 {size of nu}
+    then GAM = (p.infinitesimal_character* ic.two_rho_check)\1 {this is max height at infl char}
+    	 {is_unitary_to_ht(p,GAM) means unitary}
+    in (LAM,NU,GAM) next low_count+:=1; low_time +:= elapsed_ms() - start
+
+set GAM(Param p) = int: (p.infinitesimal_character*p.inner_class.two_rho_check)\1
+
+{gamma meant to be dominant. count reducibility hyperplanes (gamma0,alphav) >0 int,
+(gamma0,theta*alphav) <0 int) crossed in deforming gamma to local zero
+(gamma+theta*gamma)/2. Estimates cost of is_unitary(x,gamma)}
+set red_walls(KGBElt x, ratvec gamma) = int:
+    let theta = x.involution, rd = x.root_datum, answer = int:0
+    in for av in rd.poscoroots
+       do let pos = floor(av*gamma), neg = ceil(av*theta*gamma)
+       	  in if pos >=1 and neg <= -1
+       	     then answer+:= if (av+av*theta).=
+	     	  	    then min(pos,-neg)\2
+			    else min(pos,-neg)
+			    fi
+	     fi
+       od;
+       answer
+
+set next_x(KGBElt x, ratvec gamma, int HT) = KGBElt:
+let nx = x.number, G= x.real_form
+then ans = first(for j:nx do @bool: (height(KGB(G,nx-j),gamma) > HT) od)
+in if ans < 0
+   then KGB(G,0)
+   else KGB(G,nx-ans)
+   fi
+
+{opposite to red_walls: in dual KGB algorithm, start more or less on x_open and work up (to next_x).
+This counts walls crossed in the process, so estimates cost of is_unitary_to_ht(x,gamma,HT)}
+set red_walls_to_ht(KGBElt x, ratvec gamma, int HT) = int:
+    let xH = next_x(x,gamma,HT)
+    in red_walls(x_open(x.real_form),gamma) - red_walls(xH,gamma)
+
+{could refine these to count only parity walls (smaller better answer}
+set red_walls(Param p) = red_walls(p.x,p.infinitesimal_character)
+set red_walls_to_ht(Param p, int HT) = red_walls_to_ht(p.x,p.infinitesimal_character,HT)
+
+{gamma meant to be dominant. count reducibility hyperplanes (gamma0,alphav) >0 int,
+(gamma0,theta*alphav) <0 int) crossed in deforming gamma to local zero
+(gamma+theta*gamma)/2. Estimates cost of KL_sum_at_s(x,gamma)}
+set red_walls_int(KGBElt x, ratvec gamma) = int:
+    let theta = x.involution, rd = x.root_datum, answer = int:0
+    then gamma_reg = gamma+rd.rho
+    in for av in rd.poscoroots
+       do if is_integer(av*gamma) and av*theta*gamma_reg < 0
+       	     {could also check parity}
+       	  then answer+:= 1
+	  fi
+       od;
+       answer
+
+set red_walls_to_ht_int(KGBElt x, ratvec gamma, int HT) = int:
+    let xH = next_x(x,gamma,HT)
+    in red_walls_int(x_open(x.real_form),gamma) - red_walls_int(xH,gamma)
+
+
+{could refine these to count only parity walls (smaller better answer}
+set red_walls_int(Param p) = red_walls_int(p.x,p.infinitesimal_character)
+set red_walls_to_ht_int(Param p, int HT) = red_walls_to_ht_int(p.x,p.infinitesimal_character,HT)
+
+{If NU (nu part) > LAM (lambda part) *nu_frac, then figure to_ht could work better}
+set nu_frac = 1/1
+
+{if target height < GAMMA*gamma_frac, then figure to_ht could be faster. So largest
+reasonable target height is GAMMA*gamma_frac. INCREASE to use to_ht
+more often}
+{In E7_s, gamma_frac = 1/3 and test25 = params of infl char rho so low(p, ht(p)+25)
+let to character_formula MUCH faster than character_formulas_to_ht: 178 secs vs 978 secs}
+set gamma_frac = 1/4
+
+{part of condition that u_to_ht might be faster is GAM > lam_mult*LAM}
+
+{if diff_mult*rank*(HT - LAM) >= GAM then don't try is_unitary_to_ht.
+So largest reasonable target height is (1/(diff_mult*rank))*GAM + LAM.
+DECREASE to use to_ht more often, range is (0,infty)}
+set diff_mult = rat: 1/1
+
+{if target height < GAM*diff_char_frac, then figure
+{formerly (GAM - LAM)*diff_frac}
+is_unitary_to_ht could be faster. So largest reasonable target height
+is (GAM-LAM)*diff_frac. INCREASE to use to_ht more often}
+{3/4 best for Spin(6,6) after 3/31/26 MvL improvements}
+set diff_char_frac = rat: 1/9 {1/10}{1/6, 1/4 much worse for E7 4/2/26}
+    		   {1/8 and 1/12 used a bit more memory and time in
+    		     	       spherical E7_s}
+		{2/5/26: for Spin(6,6), .20 was faster than .15 or .25}
+		{2/12/26: 1/3 was better than 1/5 or 1/2 for E7_s (20925,[ 1, 2, 2, 1, 1, 2, 2 ]/1)}
+		{2/14/26: 1/4 better than 1/3 for E7_s[20000:20025]}
+		{2/15/26: 1/8 much better than 1/4 20800-20810}
+		{4/2/26: 1/4 best for Spin(6,6), with diff_KGB_char_frac 1/2?}
+
+{if diff_char_mult*rank*(HT - LAM) >= GAM then don't try char_to_ht.
+So largest reasonable target height is (1/(diff_char_mult*rank))*GAM + LAM.
+DECREASE to use char_to_ht more often, range is (0,infty)}
+set diff_char_mult = rat: 2/1
+
+set diff_KGB_char_frac = rat: 1/2 {9/10} {switch 4/2/26 based on Spin(6,6), E7_s near 17000}
+
+{if lam_mult*LAM >= GAM (big lambda), don't try to_ht
+In range [1/1,infty). DECREASE to use to_ht more often.}
+set lam_mult = rat: 2/1
+
+{whether to use to_height in computing to height N}
+{true means large nu/small ht, so is_unitary_to_ht could be better}
+set low_nu(Param p, int HT) = bool:
+    if HT < 0 then return  false fi;
+    let (,NU,) = low(p)
+    in NU > HT*nu_frac
+
+{set strict_low_nu(Param p, int HT) = bool:
+    if HT < 0 then return  false fi;
+    let (,NU,) = low(p)
+    in (strict_factor*NU > HT*nu_frac)}
+
+{true means GAM big compared to HT, so is_unitary_to_ht could be better}
+{If N>= GAM, then to_ht gives answer to unitarity.}
+set low_gamma(Param p, int HT) = bool:
+    if HT < 0 then return  false fi;
+    {let (,,GAM) = low(p)
+    in} (GAM(p)*gamma_frac) > HT
+
+
+{NOT USED now 6/1/26} 
+set low_rank_mult = rat: 2/1
+
+{true means to_ht should REALLY be better; LESS true than low_diff}
+set low_diff_def_ht_old(Param p, int HT) = bool:
+    if (HT < 0) then return  false fi;
+    let LAM = p.height, GAM = GAM(p), rk = p.real_form.rank
+    in lam_mult*LAM < GAM and
+       (5/4)*diff_mult*(HT - LAM)*rk < GAM
+       {(5/4)*(p.real_form.rank)*(HT - LAM) < GAM} {rm LAM 5/27/26}
+
+{false means is_u should REALLY be better; more true than low diff}
+set low_diff_def_u_old(Param p, int HT) = bool:
+    if (HT < 0) then return  false fi;
+    let LAM = p.height, GAM = GAM(p), rk = p.real_form.rank
+    in lam_mult*LAM < GAM and
+       (4/5)*diff_mult*rk*(HT - LAM) < GAM {6/1 revert to mid-april}
+       {(4/5)*(p.real_form.rank)*(HT - LAM) < GAM} {rm LAM 5/27/26}
+
+{Note HT must be in [LAM,GAM) True says it's near the bottom of that range: small HT, to_ht better}
+{to get more to_ht, DECREASE lam_mult and diff_mult}
+set low_diff_old(Param p, int HT) = bool:
+    if (HT < 0) then return  false fi;
+    let LAM = p.height, GAM = GAM(p), rk = p.real_form.rank
+    in lam_mult*LAM < GAM and
+       diff_mult*rk*(HT - LAM) < GAM
+       {(p.real_form.rank)*(HT - LAM) < GAM} {rm LAM 5/27/26; bad idea??}
+    {more or less trying diff_frac = 1/G.rank}
+    {(LAM < lam_frac*GAM) and} {(HT < diff_frac*GAM)}
+    {(LAM < lam_frac*GAM) and ((GAM - LAM)*diff_frac) > HT {(HT-LAM)}}
+
+set low_diff_old_flag = true
+set low_diff_mult = rat:6/1
+
+{true means to_ht should REALLY be better; LESS true than low_diff}
+set low_diff_def_ht(Param p, int HT) = bool:
+    if low_diff_old_flag then return low_diff_def_ht_old(p,HT) fi;
+    if (HT < 0) then return  false fi;
+    2*low_diff_mult*red_walls_to_ht(p,HT) < red_walls(p)
+
+{false means is_u should REALLY be better; more true than low diff}
+set low_diff_def_u(Param p, int HT) = bool:
+    if low_diff_old_flag then return low_diff_def_u_old(p,HT) fi;
+    if (HT < 0) then return  false fi;
+    (1/2)*low_diff_mult*red_walls_to_ht(p,HT) < red_walls(p)
+
+{Note HT must be in [LAM,GAM) True says it's near the bottom of that range: small HT, to_ht better}
+set low_diff(Param p, int HT) = bool:
+    if low_diff_old_flag then return low_diff_old(p,HT) fi;
+    if (HT < 0) then return  false fi;
+    low_diff_mult*red_walls_to_ht(p,HT) < red_walls(p)
+
+set low_diff_char_mult = low_diff_mult
+set low_diff_char_old_flag = true
+set low_diff_char_time = int:0
+
+{true if we're SURE KL_sum_at_s_to_ht is faster}
+set low_diff_char_def_ht(Param p, int HT) = bool:
+    if (HT < 0) then return  false fi;
+    let start = elapsed_ms()
+    then ans = p.x.number > diff_KGB_char_frac*KGB_size(p.real_form)
+	       and (HT < (1/2)*diff_char_frac*GAM(p)) {forces LAM < diff_char_frac*GAM}
+    in ans {next low_diff_char_time +:= (elapsed_ms() - start)}
+
+{false if we're SURE KL_sum_at_s is faster}
+set low_diff_char_def_inf(Param p, int HT) = bool:
+    if (HT < 0) then return  false fi;
+    let start = elapsed_ms()
+    then ans = p.x.number > diff_KGB_char_frac*KGB_size(p.real_form)
+	       and (HT < 2*diff_char_frac*GAM(p)) {forces LAM < diff_char_frac*GAM}
+    in ans {next low_diff_char_time +:= (elapsed_ms() - start)}
+
+
+{if true, allow KL_sum_at_s_to_height}
+set low_diff_char_old(Param p, int HT) = bool: {false {ALWAYS use KL_sum_at_s}}
+    if (HT < 0) then return  false fi;
+    let start = elapsed_ms(), rk = p.real_form.rank
+    then ans = p.x.number > diff_KGB_char_frac*KGB_size(p.real_form)
+	       and diff_char_mult*rk*(HT-height(p)) < GAM(p)
+    in ans next low_diff_char_time +:= (elapsed_ms() - start)
+
+{if true, allow KL_sum_at_s_to_height}
+set low_diff_char(Param p, int HT) = bool: {false {ALWAYS use KL_sum_at_s}}
+    if low_diff_char_old_flag then return low_diff_char_old(p,HT) fi;
+    if (HT < 0) then return  false fi;
+    if low_diff_char_def_ht(p,HT) then return true fi;
+    if not low_diff_char_def_inf(p,HT) then return false fi;
+    let start = elapsed_ms()
+    in low_diff_char_mult*red_walls_to_ht_int(p,HT) < red_walls_int(p)\
+       next low_diff_char_time +:= (elapsed_ms() - start)
+
+set low_KL_char(Param p, int HT) = bool:
+    {prints("we're in low_KL_char at ",p);}
+    p.x.number > diff_KGB_char_frac*KGB_size(p.real_form) and
+    KL_predictor_to_ht(p,HT) < KL_predictor(p)
+
+set quick_frac = rat: 1/5
+set TRUELIST = [(Param,int)]: []
+
+{meant to predict ratio (to_ht time)/u time)}
+set low_quick_frac(Param p,int HT) = rat:
+    if p.nu.= then return 1/1 fi;
+    let preg = translate_param_by(p,p.real_form.two_rho)
+    then (LAMreg,,GAMreg) = low(preg)
+    in (LAMreg+HT)/(GAMreg - LAMreg)
+
+{true means allow to_ht, so DECREASING quick_frac means less to_ht}
+set low_quick(Param p, int HT) = bool:
+    if predictor_flag then 0/0 fi;
+    let ans = low_quick_frac(p, HT) < quick_frac
+    in if ans then TRUELIST #:= (p,HT) fi;
+       ans
+
+{    let preg = translate_param_by(p,p.real_form.two_rho)
+    then (LAMreg,,GAMreg) = low(preg)
+    then ans = (LAMreg+HT) < quick_frac*(GAMreg - LAMreg)
+    in if ans then TRUELIST #:= (p,HT) fi;
+       ans}
+
+{How small the to_ht block should be vs orig block for to_ht to be faster}
+set quick_char_frac = rat: 1/9
+
+{KL for p works in block fraction [GAMreg LAMreg]. For dual (to_ht), range is [LAMreg+HT,0].
+So to_ht fast means GAMreg-LAMreg much bigger than LAMreg+HT.}
+set low_quick_char(Param p, int HT) = bool:
+    let (LAM,,GAM) = low(p)
+    in (LAM+HT) < quick_char_frac*(GAM - LAM)
+{    let preg = translate_param_by(p,p.real_form.two_rho) {dropped this 17:00 4.27.26}
+    then (LAMreg,,GAMreg) = low(preg)
+    in (LAMreg+HT) < quick_char_frac*(GAMreg - LAMreg)}
+
+{Switching to HT -LAM 1/26 didn't work well; adding the small LAM condition is meant to alleviate??}
+
+{bad experiences Jan 26 suggested this version}
+set low_lam(Param p, int HT) = bool:
+    if HT < 0 then return  false fi;
+    {let (LAM, , GAM) = low(p)
+    in}  (lam_mult*p.height < GAM(p))
+
+set prefer_quick_flag = false {true; changed 6/5/26 evening}
+
+set prefer_quick_char_flag = false {terrible luck with true on x_open(E7_s)}
+
+set prefer_dual_flag = false {try true again with short_dual_diffs}
+
+set prefer_KL_flag = false
+
+set prefer_diff_flag = true {true used to give true for parameter(E7_s,773,[0,1,1,1,1,1,0]/1,
+    [-3,0,0,0,6,-6,0]/2) and HT 327, leading to a very slow is_unitary_to_ht}
+
+set prefer_gamma_flag = false
+
+set prefer_lam_flag = false
+
+{whether to apply test to switcb from is_unitary_to_ht to is_unitary}
+set low_flag = true
+
+{whether to apply test to switcb from KL_sum_to_ht to KL_sum}
+set low_char_flag = true
+
+{if true, allow hermitian_form_irreducible_to_ht; if false, truncate hermitian_form_irreducible}
+set low(Param p, int HT) = bool:
+    if HT < 0 then return false
+    {elif predictor_flag then return true {decided elsewhere to try to_ht}}
+    elif not low_flag
+    then return true
+    elif prefer_quick_flag 
+    then low_quick(p,HT)
+    elif prefer_diff_flag 
+    then {strict_}low_diff(p,HT)
+    elif prefer_gamma_flag
+    then {strict_}low_gamma(p,HT)
+    elif prefer_lam_flag
+    then low_lam(p,HT) and low_diff(p,HT)
+    else {strict_}low_nu(p,HT)
+    fi
+
+set low_char_time = int: 0
+
+{whether to consider replacing KL_sum_to_ht with KL_sum}
+set low_char(Param p, int HT) = bool:
+    let start=elapsed_ms() in
+    if HT < 0 then return false
+    elif not low_char_flag
+    then return true {ALWAYS do to_height}
+    elif prefer_quick_char_flag {true 4/29/26}
+    then low_quick_char(p,HT)
+    elif prefer_dual_flag {default false 4/29/26}
+    then low_dual(p,HT)
+    elif prefer_diff_flag
+    then low_diff_char(p,HT)
+    {elif prefer_strict_KL_flag
+    then strict_low_KL_char(p,HT)}
+    elif prefer_KL_flag
+    then low_KL_char(p,HT)
+    else false{ALWAYS switch to KL_sum}
+    fi next low_char_time +:= elapsed_ms() - start
+
+set to_ht (KTypePol P,int N) = KTypePol:
+  if N<0 then return P fi;
+  let (below,)=height_split(P,N) in below
+
+set to_ht(maybe_KTP P,int N) = maybe_KTP:
+    if N < 0 then return P fi;
+    case P
+    | timed_out: timed_out()
+    | done(r): done(to_ht(r,N))
+    esac
+
+set to_ht_PP (int N) = (ParamPol->ParamPol): (ParamPol P):
+  if N < 0 then P
+  else let (below,)=height_split(P,N) in below
+  fi
+
+set to_ht (int N) = (KTypePol->KTypePol): (KTypePol P):
+  if N < 0 then P
+  else let (below,)=height_split(P,N) in below
+  fi
+
+set KL_new_count = int:0
+set KL_false_low_count = int:0
+
+set stored_count = int:0
+set unstored_count = int:0
+
+set KL_sum_at_s_to_ht_new(int HT) = (Param p) ParamPol: {should check whether library knows KL_sum_at_s, use that}
+    let start = elapsed_ms()
+    in if HT < 0
+       then KL_sum_at_s(p)
+       else let mKLS = stored_KL_sum_at_s(p)
+       	    in case mKLS
+	       | none: unstored_count+:=1;
+	       	 	       if low_char(p,HT)
+       	       	 	       then let ans = KL_sum_at_s_to_height(p,HT)
+			    	    in charTimeToHt +:= elapsed_ms() - start;
+				       char_counter_to_ht.use();
+			    	       ans
+       			       else let (below,) = height_split(KL_sum_at_s(p),HT)
+    	    		    	 in KL_false_low_count+:=1; below
+			    fi
+	       | some(KLS): stored_count+:=1;
+	       	 	       let (below,) = height_split(KLS,HT)
+    	       	 	       in KL_new_count +:= 1;
+			       	  charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use();
+			          below
+	       esac
+       fi
+
+{switch back to true after making invocation depend on low_char}
+set KL_sum_to_ht_new_flag = true {false}
+
+{should test that x is pretty big??}
+set KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol: {should check
+    whether library knows KL_sum_at_s, use that}
+    {if KL_sum_to_ht_new_flag then return  KL_sum_at_s_to_ht_new(HT)(p) fi;}
+    let start = elapsed_ms()
+    in if HT < 0
+       then KL_sum_at_s(p)
+       elif low_char(p,HT) and KL_sum_to_ht_new_flag
+       then let ans = KL_sum_at_s_to_ht_new(HT)(p)
+       	    in charTimeToHt +:= elapsed_ms() - start;
+	       char_counter_to_ht.use();
+	       ans
+       else let (below,) = height_split(KL_sum_at_s(p),HT), middle = elapsed_ms()
+    	    in KL_false_low_count+:=1; below
+       fi
+
+set KL_sum_at_s_to_ht_new_inter(int HT) = (Param p,int time) maybe_PP:
+    let start = elapsed_ms()
+    in if  HT < 0
+       then KL_sum_at_s_to_height(p, -1, time)
+       else let mKLS = stored_KL_sum_at_s(p)
+       	    in case mKLS
+	       | none: unstored_count+:=1;
+	       	 	       if low_char(p,HT)
+       	       	 	       then let ans = KL_sum_at_s_to_height(p,HT,time)
+			    	    in charTimeToHt +:= elapsed_ms() - start;
+				       char_counter_to_ht.use();
+			    	       ans
+       			       else let ans = KL_sum_at_s_to_height(p,-1,time)
+			       	    in charTimeToHt +:= elapsed_ms() - start;
+				       char_counter_to_ht.use();
+				       KL_false_low_count+:=1;
+    	    		    	       case ans
+				       | none: ans
+				       | some(KLS): let (below,) = height_split(KLS, HT)
+				       	 	    in below.some
+				       esac
+			       fi
+	       | some(KLS): stored_count+:=1;
+	       	 	       let (below,) = height_split(KLS,HT)
+    	       	 	       in KL_new_count +:= 1;
+			       	  charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use();
+			          below.some
+	       esac
+        fi
+
+{should test that x is pretty big??}
+set KL_sum_at_s_to_ht_inter(int HT) = (Param p,int time) maybe_PP:
+    {if KL_sum_to_ht_new_flag then return KL_sum_at_s_to_ht_new_inter(HT)(p, time) fi;}
+    let start = elapsed_ms()
+    in if  HT < 0
+       then KL_sum_at_s(p).some
+       elif low_char(p,HT) and KL_sum_to_ht_new_flag
+       then KL_sum_at_s_to_ht_new_inter(HT)(p,time)
+       {next charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use()}
+       else let (below,) = height_split(KL_sum_at_s(p),HT)
+    	    in below.some
+       fi
+
+set twisted_KL_sum_at_s(Param p) = ParamPol:
+    let start = elapsed_ms()
+    in twisted_KL_sum_at_s(p) next charTime +:= elapsed_ms() - start; char_counter.use()
+
+
+set twisted_KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol:
+    if HT < 0 then return twisted_KL_sum_at_s(p)
+    elif low_char(p,HT)
+    then let start = elapsed_ms()
+    	 then (below,) = height_split(twisted_KL_sum_at_s(p),HT)
+    	 in below next charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use()
+    else let (below,) = height_split(twisted_KL_sum_at_s(p),HT)
+    	 in below
+    fi
+
+{next two never try not to_ht}
+set character_formula_to_height(Param p, int HT) = ParamPol:
+    s_to_1(KL_sum_at_s_to_height(p,HT))
+
+set character_formula_to_height (ParamPol P, int HT) = ParamPol:
+    map(((Param->ParamPol): (Param p): character_formula_to_height(p, HT)), P)
+
+set character_formula_to_ht(Param p, int HT) = ParamPol:
+    s_to_1(KL_sum_at_s_to_ht(HT)(p))
+
+set character_formula_to_ht (ParamPol P, int HT) = ParamPol:
+    map(((Param->ParamPol): (Param p): character_formula_to_ht(p, HT)), P)
 
 { ------------------------------------------------------------------- }
 
 { composition series }
 
-set composition_series(ParamPol P) = ParamPol:
+set composition_series_old(ParamPol P) = ParamPol:
   null_module(P)+
   while !=P { non null module }
   do let (coef,p):term=first_term(P) in P -:= coef*character_formula(p); term
   od
 
-set composition_series (Param p) = ParamPol: composition_series(ParamPol: p)
+set composition_series_old (Param p) = ParamPol: composition_series_old(ParamPol: p)
 
+set composition_series_to_height_old(ParamPol P, int HT) = ParamPol:
+  if HT.< then return composition_series_old(P) fi;
+  let (PHT,) = height_split(P,HT)
+  in null_module(P)+
+  while !=PHT { non null module }
+  do let (coef,p):term=first_term(PHT)
+     in PHT -:= coef*character_formula_to_ht(p,HT)
+     ; term
+  od
+
+set composition_series_to_height_old (Param p,int HT) = ParamPol:
+    composition_series_to_height_old(ParamPol: p, HT)
+
+set composition_series(Param p) = ParamPol:
+    let (B,m,M,polys) = dual_KL_block(p) {lower triangular; jth col is mult in stds of B[j]}
+    in sum(p.real_form,for q@j in B[:m+1] do eval(polys[M[m,j]],1)*q od)
+
+set composition_series(ParamPol P) = ParamPol:
+    sum(P.real_form, for c@q in P do c*composition_series(q) od)
+
+set composition_series_to_height(Param p, int HT) = ParamPol:
+    if HT < 0 then return composition_series(p) fi;
+    let (B,m,M,polys) = dual_KL_block(p) {lower triangular; jth col is mult in stds of B[j]}
+    in sum(p.real_form, for q@j in B[:m+1] do if height(q) <= HT then eval(polys[M[m,j]],1)*q else 0*q fi od)
+
+set composition_series_to_height (ParamPol P,int HT) = ParamPol:
+    sum(P.real_form, for c@q in P do composition_series_to_height(q, HT) od)
+
+set CSB_KGB_char_frac = 9/10
+set CSB_frac = 1/8
+set lowCSB_time = int:0
+set CS_time = int:0
+
+set lowCSB(Param p, int HT) = bool:
+    if (HT < 0) then return  false fi;
+    let start = elapsed_ms()
+    then ans = p.x.number > CSB_KGB_char_frac*KGB_size(p.real_form)
+	       and (HT < CSB_frac*GAM(p)) {forces LAM < CSB_frac*GAM}
+    in lowCSB_time +:= (elapsed_ms() - start);
+       ans
+
+set composition_series_to_ht(ParamPol P, int HT) = ParamPol:
+  if HT.< then return composition_series(P) fi;
+  P:=to_ht_PP(HT)(P);
+  if #P = 0 then return P fi;
+  let p0 = first_param(P), start = elapsed_ms()
+  in if not lowCSB(p0,HT)
+     then to_ht_PP(HT)(composition_series(P))
+     else null_module(P) +
+     	  while !=P { non null module }
+  	  do let (coef,p):term=first_term(P)
+     	  in P -:= coef*character_formula_to_ht(p,HT)
+     	  ; term
+  	  od next CS_time +:= elapsed_ms() - start
+     fi
+set composition_series_to_ht (Param p,int H) = ParamPol: composition_series_to_ht(ParamPol: p, H)
+
+{---------------------------}
+{same using dual}
+
+set pos_part(Split s) = int:
+    let (a,b) = %s in abs(a+b)
+
+set endo_ic(Param p) = inner_class(integrality_datum(p),p.x.involution)
+
+{one root from each non-real, non-imag pos pair (alpha, theta*alpha)}
+{well-defined up to (1-theta)alpha}
+set rho_C(RootDatum rd, mat theta) = vec:
+    let zero = null(rd.rank)
+    in sum(rd.rank, for alpha@j in rd.posroots
+    		    do let k = root_index(rd,theta*alpha)
+		        in if k > j {k=j is imag; k = -j-1 is real}
+		       	   then alpha
+		       	   else zero
+			   fi
+		    od)
+
+{one root from each non-real, non-imag pos pair (alpha, -theta*alpha)}
+{well-defined up to (1+theta)alpha}
+set rho_minus_C(RootDatum rd, mat theta) = vec:
+    let zero = null(rd.rank)
+    in sum(rd.rank, for alpha@j in rd.posroots
+    		    do let k = root_index(rd,theta*alpha)
+		        in if -k-1 > j {k=j is imag; k = -j-1 is real}
+		       	   then alpha
+		       	   else zero
+			   fi
+		    od)
+
+set rho_check_C(RootDatum rd, mat theta) = vec:
+    let zero = null(rd.rank)
+    in sum(rd.rank, for alpha@j in rd.posroots
+    		    do let k = root_index(rd,theta*alpha)
+		        in if k > j {k=j is imag; k = -j-1 is real}
+		       	   then rd.poscoroots[j]
+		       	   else zero
+			   fi
+		    od)
+
+set rho_check_minus_C(RootDatum rd, mat theta) = vec:
+    let zero = null(rd.rank)
+    in sum(rd.rank, for alpha@j in rd.posroots
+    		    do let k = root_index(rd,theta*alpha)
+		        in if -k-1 > j {k=j is imag; k = -j-1 is real}
+		       	   then rd.poscoroots[j]
+		       	   else zero
+			   fi
+		    od)
+
+set endo(Param p) = Param:
+    let endoic = endo_ic(p), x = p.x, rd = p.root_datum
+    then theta = x.involution
+    then rho_shift =  rd.rho  - endoic.rho
+    then lambda_shift =  rho_i(x)  - rho_i(endoic,theta) + rho_C(rd,theta) - rho_C(endoic,theta)
+    then nu_shift = p.x.rho_r  - rho_r(endoic,theta) + rho_minus_C(rd,theta) - rho_minus_C(endoic,theta)
+    then corho_shift = rho_check_minus_C(rd,theta) - rho_check_minus_C(endoic,theta)
+    {then endgamma = p.infinitesimal_character+rho_shift_r}
+    then endox = KGB_elt(endoic, x.involution, x.torus_factor - corho_shift)
+    in parameter(endox, p.lambda + lambda_shift, p.nu + nu_shift)
+
+
+{this appears to work even if p is not final, although I'm not sure why}
+{mult of irr q in std p <-> coeff of std pd in char of irr qd}
+{low_diff_char(p,H) is a terrible way to decide whether to use this}
+set composition_series_to_heightB(Param p, int H) = ParamPol:
+    if H.< then return composition_series(p) fi;
+    let start = elapsed_ms()
+    then answer = if lowCSB(p,H)
+    	 	  then let Bp = partial_block(p), H0 = height(p)
+    		       then BpH_js = for q@j in Bp do if q.height <= H
+				     	     	      then [j]
+				     		      else [] fi
+						      od.##
+    		       then BpH = for j in BpH_js do Bp[j] od, dp = dualB(p)
+    		       then dBpH = for q in BpH do dualB(q)
+    	      	       	    	   od {these qd are lower ht than pd}
+    		       then dKLs = for dq in dBpH do KL_sum_at_s(dq) od
+    		       in sum(p.real_form, for dQ@i in dKLs do pos_part(dQ[dp])*BpH[i] od)
+    		  else let (below,) = height_split(composition_series(p),H)
+       	 	       in s_to_1(below)
+    		  fi
+     {then () = charTime+:= elapsed_ms() - start}
+     {then () = char_counter.use()}
+     in CS_time +:= elapsed_ms() - start;
+     	answer
+
+set composition_series_to_heightB(ParamPol P, int H) = ParamPol:
+    map(((Param->ParamPol): (Param p): composition_series_to_heightB(p, H)), P)
+
+{WARNING: HAVE NOT MADE THIS WORK FOR NEGATIVE H!}
+{i,j entry is mult of irr i in (partial block) in standard j; so always i <= j, mat is upper triang}
+{column j is comp series of std #j <-> coeffs of std dj in irrs di}
+set composition_series_mat_to_heightB(Param p, int H) = mat:
+    let Bp = partial_block(p) {block elts q of greater ht (closer to discrete series) than p;
+    	     		      things that may occur}
+    then BpH_js = for q@j in Bp do if q.height <= H then [j] else [] fi od.##
+    then BpH = for j in BpH_js do Bp[j] od, pd = dualB(p)
+    then dBpH = for q in BpH do {regroup(pd.real_form,}dualB(q){)} od {these qd are lower ht than pd}
+    then dKLs = for dq in dBpH do KL_sum_at_s(dq) od
+    then () = for dQi in dKLs do prints( dQi{for dqj in dBpH do pos_part(dQi[dqj]) od}) od {this is row i}
+    then f(int i, int j) = pos_part(dKLs[i][dBpH[j]])
+    in matrix((#dBpH,#dBpH),f)
+
+set character_formula_to_heightB(Param p, int H) = ParamPol:
+   if H.< then return character_formula(p) fi;
+   let Bp = partial_block(p) {block elts q of greater ht (closer to discrete series) than p;
+    	     		      things that may occur}
+   then BpH_js = for q@j in Bp do if q.height <= H then [j] else [] fi od.##
+   then BpH = for j in BpH_js do Bp[j] od, dp = dualB(p)
+   then dBpH = for q in BpH do {regroup(dp.real_form,}dualB(q){)} od {these dq are lower ht than dp}
+   then dKLs = for dq in dBpH do KL_sum_at_s(dq) od {qd plus earlier q'd}
+   then f(int i, int j) = pos_part(dKLs[i][dBpH[j]])
+   then M = matrix((#dBpH,#dBpH),f), ppol = 1*p
+   then pvec = vec: for q in BpH do int_part(ppol[q]) od {e(#BpH, #BpH-1)}
+   then ansvec = solve(M,pvec).requisition
+   in sum(p.real_form, for q@j in BpH do ansvec[j]*q od)
+
+set character_formula_to_heightB(ParamPol P, int H) = ParamPol:
+    map(((Param->ParamPol): (Param p): character_formula_to_heightB(p, H)), P)
+
+{-----------------------------}
 set tabulate_at_1 ([Param] block, (Param->ParamPol) f) = mat:
   for y in block { y determines a column of the result }
   do let fy=f(y) in for x in block do fy[x].s_to_1 od
