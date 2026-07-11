@@ -10,7 +10,7 @@ Variable mus: Param
 is_hermitian(mus): false   group analogue: false
 ### form computation on projective-twist cover is gated
 Runtime error:
-  Hermitian/c-form computation is not yet implemented for covers with projective twist (cover_kappa nonzero)
+  Hermitian/c-form computation on covers is only implemented in the equal rank case so far
 Evaluation aborted.
 ### GL(2,R) det/2 cover: lift of trivial is hermitian
 Variable G: RealForm (overriding previous instance, which had type RealForm)

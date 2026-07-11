@@ -197,7 +197,7 @@ void Rep_context::make_dominant (K_repr::K_type& t) const
 	  assert(i_tab.is_complex_simple(kgb().inv_nr(x),s));
 	  x = kgb().cross(s,x);
 	  rd.simple_reflect(s,im_wt);
-	  rd.simple_reflect(s,lr,1); // $-\rho$-based reflection
+	  rd.simple_reflect(s,lr,1+xi_level(rd.simpleCoroot(s))); // $-\rho-\xi$-based
 	  break; // out of the loop |for(s)|
 	} // |if(v<0)| and |for(s)|
     while (s<rd.semisimple_rank()); // wait until inner loop runs to completion
@@ -219,7 +219,7 @@ void Rep_context::make_theta_stable (K_repr::K_type& t) const
 	if (kgb().isComplexDescent(s,x))
 	{
 	  x = kgb().cross(s,x);
-	  rd.simple_reflect(s,lr,1); // $-\rho$-based reflection
+	  rd.simple_reflect(s,lr,1+xi_level(rd.simpleCoroot(s))); // $-\rho-\xi$-based
 	  break; // out of the loop |for(s)|
 	} // |if(v<0)| and |for(s)|
     while (s<rd.semisimple_rank()); // wait until inner loop runs to completion
@@ -241,7 +241,7 @@ void Rep_context::to_canonical_involution
   {
     assert(i_tab.is_complex_simple(kgb().inv_nr(x),s));
     x = kgb().cross(s,x);
-    rd.simple_reflect(s,lr,1); // $-\rho$-based reflection
+    rd.simple_reflect(s,lr,1+xi_level(rd.simpleCoroot(s))); // $-\rho-\xi$-based
   }
   i_tab.lambda_unique(kgb().inv_nr(x),lr); // to preferred coset representative
 } // |to_canonical_involution|
@@ -263,7 +263,7 @@ void Rep_context::normalise(K_repr::K_type& z) const
 	    (eval<0 or (eval==0 and kgb().isDescent(s,x))))
 	{
 	  x = kgb().cross(s,x);
-	  rd.simple_reflect(s,lr,1); // $-\rho$-based reflection
+	  rd.simple_reflect(s,lr,1+xi_level(rd.simpleCoroot(s))); // $-\rho-\xi$-based
 	  break; // out of the loop |for(s)|
 	} // |if(v<0)| and |for(s)|
       }
@@ -327,7 +327,7 @@ term_list Rep_context::finals_for(K_repr::K_type t) const
 	  if (eval<0) // then reflect |lambda| and negate sign
 	  {
 	    rd.simple_reflect(s,im_wt);
-	    rd.simple_reflect(s,lr,1); // $-\rho$-based reflection
+	    rd.simple_reflect(s,lr,1+xi_level(rd.simpleCoroot(s))); // $-\rho-\xi$-based
 	    coef = -coef;
 	    goto restart;
 	  }
@@ -348,7 +348,7 @@ term_list Rep_context::finals_for(K_repr::K_type t) const
 	    }
 	    x = sx; // after testing we can update |x| for nci cross action
 	    rd.simple_reflect(s,im_wt);
-	    rd.simple_reflect(s,lr,1); // $-\rho$-based reflection
+	    rd.simple_reflect(s,lr,1+xi_level(rd.simpleCoroot(s))); // $-\rho-\xi$-based
 	    coef = -coef; // reflect, negate, and continue with |current|
 	    goto restart;
 	  }
@@ -359,7 +359,7 @@ term_list Rep_context::finals_for(K_repr::K_type t) const
 	  { // do cross action to make |im_wt| more dominant or |x| shorter
 	    x = kgb().cross(s,x);
 	    rd.simple_reflect(s,im_wt);
-	    rd.simple_reflect(s,lr,1); // $-\rho$-based reflection
+	    rd.simple_reflect(s,lr,1+xi_level(rd.simpleCoroot(s))); // $-\rho-\xi$-based
 	    // keep |coef| unchanged
 	    goto restart;
 	  }
@@ -462,7 +462,8 @@ sl_list<K_repr::K_type> Rep_context::KGP_set (K_repr::K_type& t) const
 	  if (not present.isMember(sx)) // this also excludes complex ascents
 	  {
 	    present.insert(sx);
-	    Weight new_lr = rd.simple_reflection(s,lam_rho);
+	    Weight new_lr = lam_rho; // real cross action: offset class |xl|
+	    rd.simple_reflect(s,new_lr,xi_level(rd.simpleCoroot(s)));
 	    result.push_back(sr_K(sx,new_lr));
 	    Q.push(std::make_pair(sx,std::move(new_lr)));
 	  }

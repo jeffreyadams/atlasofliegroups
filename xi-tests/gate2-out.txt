@@ -1,0 +1,54 @@
+### GL(2,R): two presentations of the det/2 cover
+Variable G: RealForm (overriding previous instance, which had type RealForm)
+Variable Gx: RealForm
+Variable Gy: RealForm
+kappa(Gx)=[ 1, 1 ]/1   kappa(Gy)=[ 0, 0 ]/1
+### same genuine rep lambda=(1,0): storage (0,0) in Gx, (1,0) in Gy
+Variable px: Param
+Variable py: Param
+lambdas: [ 1, 0 ]/1  [ 1, 0 ]/1   [must agree]
+### blocks in both presentations [same size, same lambdas]
+Variable Bx: [Param]
+Variable By: [Param]
+3 3
+KGB element #0 [ 1, 0 ]/1 [ 0, 0 ]/1
+KGB element #1 [ 1, 0 ]/1 [  1, -1 ]/2
+KGB element #1 [ 2, 1 ]/1 [  1, -1 ]/2
+Value: [(),(),()]
+--
+KGB element #0 [ 1, 0 ]/1 [ 0, 0 ]/1
+KGB element #1 [ 1, 0 ]/1 [  1, -1 ]/2
+KGB element #1 [ 0, 1 ]/1 [  1, -1 ]/2
+Value: [(),(),()]
+### KL in both presentations [same coefficients]
+Value: 
+1*parameter(x=1,lambda=[1,0]/1,nu=[1,-1]/2) [0]
+-1*parameter(x=0,lambda=[1,0]/1,nu=[0,0]/1) [1]
+Value: 
+1*parameter(x=1,lambda=[1,0]/1,nu=[1,-1]/2) [0]
+-1*parameter(x=0,lambda=[1,0]/1,nu=[0,0]/1) [1]
+### deformation in both presentations
+Value: 
+(1+0s)* K_type(x=1, lambda=[1,0]/1) [0]
+(1-1s)* K_type(x=0, lambda=[1,0]/1) [1]
+Value: 
+(1+0s)* K_type(x=1, lambda=[1,0]/1) [0]
+(1-1s)* K_type(x=0, lambda=[1,0]/1) [1]
+### hermitian: same-x dual (Gx) vs honest twist (Gy) [both true]
+is_hermitian px: true   py: true
+twist fixed py? false
+### forms on non-equal-rank covers are gated (h != normal*twist
+### on shifted cosets even at kappa=0; ext-parameter work pending)
+Runtime error:
+  Hermitian/c-form computation on covers is only implemented in the equal rank case so far
+Evaluation aborted.
+### parity consistency at singular gamma=0 (regression of the
+### pre-gate2 inconsistency: block membership vs finality)
+Variable q0: Param
+Value: final parameter(x=1,lambda=[1,0]/1,nu=[0,0]/1)
+Value: [final parameter(x=1,lambda=[1,0]/1,nu=[0,0]/1)]
+Variable q0y: Param
+Value: final parameter(x=1,lambda=[1,0]/1,nu=[0,0]/1)
+Value: [final parameter(x=1,lambda=[1,0]/1,nu=[0,0]/1)]
+### done
+Bye.

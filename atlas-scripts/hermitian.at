@@ -66,14 +66,18 @@ in if c=1 then unnormalized
   same-x parameter (x,lambda,-nu), not the delta-twist }
 set same_x_hermitian_dual (Param p) = Param:
   normal(param(p.x,p.lambda_minus_rho,-p.nu))
+{ the identity hermitian_dual = normal*twist is specific to the coset
+  rho+X^*: its equivalence chain has parity calibrated to half-integral
+  lambda, and fails on shifted cosets even when kappa=0 makes the twist
+  honestly involutive (see xi-tests/gate2.in). So on ANY cover use same-x }
 set is_hermitian (Param p) = bool:
-  if =cover_kappa(p.real_form) then equivalent(twist(p),p)
+  if =cover_xi(p.real_form) then equivalent(twist(p),p)
   else equivalent(same_x_hermitian_dual(p),p)
   fi
 set check_cover_form_supported (Param p) = void:
-  if not =cover_kappa(p.real_form)
-  then error("Hermitian/c-form computation is not yet implemented for covers"
-            +" with projective twist (cover_kappa nonzero)")
+  if not =cover_xi(p.real_form) and not is_equal_rank(p.real_form)
+  then error("Hermitian/c-form computation on covers is only implemented"
+            +" in the equal rank case so far")
   fi
 
 set check_hermitian (Param p, bool irreducible) = void:
@@ -255,7 +259,7 @@ set analyse (ParamPol P) = void:
 
 {.Hermitian dual.}
 set hermitian_dual (Param p) = Param:
-  if =cover_kappa(p.real_form) then normal(twist(p))
+  if =cover_xi(p.real_form) then normal(twist(p))
   else same_x_hermitian_dual(p)
   fi
 

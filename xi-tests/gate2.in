@@ -1,0 +1,38 @@
+prints("### GL(2,R): two presentations of the det/2 cover")
+set G=GL(2,R)
+set Gx=xi_cover(G,[1,1]/2)    { kappa=(1,1)!=0: projective twist }
+set Gy=xi_cover(G,[-1,1]/2)   { delta-fixed: kappa=0, honest twist }
+prints("kappa(Gx)=", cover_kappa(Gx), "   kappa(Gy)=", cover_kappa(Gy))
+prints("### same genuine rep lambda=(1,0): storage (0,0) in Gx, (1,0) in Gy")
+set px=param(KGB(Gx,1),[0,0],[1,-1]/2)
+set py=param(KGB(Gy,1),[1,0],[1,-1]/2)
+prints("lambdas: ", px.lambda, "  ", py.lambda, "   [must agree]")
+prints("### blocks in both presentations [same size, same lambdas]")
+set Bx=block_of(px)
+set By=block_of(py)
+prints(#Bx, " ", #By)
+for q in Bx do prints(q.x, " ", q.lambda, " ", q.nu) od
+prints("--")
+for q in By do prints(q.x, " ", q.lambda, " ", q.nu) od
+prints("### KL in both presentations [same coefficients]")
+KL_sum_at_s(px)
+KL_sum_at_s(py)
+prints("### deformation in both presentations")
+full_deform(px)
+full_deform(py)
+prints("### hermitian: same-x dual (Gx) vs honest twist (Gy) [both true]")
+prints("is_hermitian px: ", is_hermitian(px), "   py: ", is_hermitian(py))
+prints("twist fixed py? ", twist(py)=py)
+prints("### forms on non-equal-rank covers are gated (h != normal*twist")
+prints("### on shifted cosets even at kappa=0; ext-parameter work pending)")
+hermitian_form_irreducible(py)
+prints("### parity consistency at singular gamma=0 (regression of the")
+prints("### pre-gate2 inconsistency: block membership vs finality)")
+set q0=param(KGB(Gx,1),[0,0],[0,0]/1)
+q0
+block_of(q0)
+set q0y=param(KGB(Gy,1),[1,0],[0,0]/1)
+q0y
+block_of(q0y)
+prints("### done")
+quit

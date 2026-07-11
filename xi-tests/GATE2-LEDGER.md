@@ -39,3 +39,19 @@ offset 1+⟨ξ,α_s^∨⟩; pivots anchored at ρ_r/γ (basepoint-free) unchange
   K_repr theta_plus_1_eval (alpha and beta terms), is_standard, is_nonzero.
   All batteries pass (only intended error-message diffs; SL(2,R) xi=1/2 still
   rejected: pairing 1/2 non-integral).
+
+- [x] B: parity sites (commit 754b5f2).
+- [x] C: affine pivots: make_dominant offsets complex 1+xl / real xl (class
+  mod 2 suffices, y_pack renormalises); all 12 simple_reflect(s,lr,1) sites
+  -> 1+xl; K_repr KGP real cross offset xl; integral make_dominant: xi term
+  of V=2(lambda-xi)-2rho_r stays unreflected (correction after rd.reflect).
+- [x] D: height evenness assert weakened on covers (floor division).
+- [x] E: gate2.in. RESULTS: presentation-independence of blocks/KL/deform
+  EXACT (xi=(1/2,1/2) vs delta-fixed (-1/2,1/2)); singular-gamma finality/
+  block-membership consistency restored in both presentations.
+  FINDING: h = normal*twist fails on ANY shifted coset (even kappa=0):
+  the absorption move's parity is controlled by half-integrality of lambda
+  (2(b,a)+(-1,1) parity computation), i.e. the identity is calibrated to
+  rho+X^* specifically. Therefore: same-x h for ALL covers; forms allowed
+  on equal-rank covers only (twist=id there), else gated pending
+  extended-parameter theory on covers.

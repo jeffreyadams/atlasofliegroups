@@ -223,8 +223,9 @@ unsigned int Rep_context::height(Weight theta_plus_1_gamma) const
 {
   const auto& rd=root_datum();
   int result = rd.dual_twoRho().dot(rd.make_dominant(theta_plus_1_gamma));
-  assert(result>=0); assert(result%2==0);
-  return static_cast<unsigned int>(result/2);
+  assert(result>=0);
+  assert(result%2==0 or not d_xi.is_zero()); // evenness can fail on covers
+  return static_cast<unsigned int>(result/2); // floor division on covers
 }
 
 RatWeight Rep_context::gamma
@@ -636,11 +637,14 @@ void Rep_context::make_dominant(StandardRepr& z) const
       for (s=0; s<rd.semisimple_rank(); ++s)
 	if (rd.simpleCoroot(s).dot(numer)<0)
 	{
-	  int offset; // used to pivot |lr| around $\rho_r-\rho$
+	  // pivot |lr| around $\rho_r-\rho-\xi$; only the offset class mod 2
+	  // matters for the |Real| case (|y_pack| at the end renormalises)
+	  const int xl = xi_level(rd.simpleCoroot(s));
+	  int offset;
 	  switch (kgb().status(s,x))
 	  {
-	  case gradings::Status::Complex: offset = 1; break;
-	  case gradings::Status::Real:    offset = 0; break;
+	  case gradings::Status::Complex: offset = 1+xl; break;
+	  case gradings::Status::Real:    offset = xl; break;
 	  default: // |s| is an imaginary root; we will not cope with that here
 	    throw std::runtime_error("Non standard parameter in make_dominant");
 	  }
@@ -670,7 +674,7 @@ void Rep_context::complex_crosses (StandardRepr& z, const WeylElt& w) const
     assert(rd.simpleCoroot(s).dot(z.gamma().numerator())==0);
     assert(i_tab.is_complex_simple(kgb().inv_nr(x),s));
     x = kgb().cross(s,x);
-    rd.simple_reflect(s, lr, 1);
+    rd.simple_reflect(s, lr, 1+xi_level(rd.simpleCoroot(s)));
   }
 
   // reinsert $y$ bits component
@@ -711,13 +715,13 @@ void Rep_context::deform_readjust(StandardRepr& z) const
 	  if (eval<0)
 	  {
 	    rd.simple_reflect(s,numer); // complex reflection of |gamma|
-	    rd.simple_reflect(s,lr,1);
+	    rd.simple_reflect(s,lr,1+xi_level(rd.simpleCoroot(s)));
 	    x = kgb().cross(s,x);
 	    break; // out of the loop |for(s)|
 	  }
 	  else if (eval==0 and kgb().isDescent(s,x))
 	  { // here |numer| will be unchanged
-	    rd.simple_reflect(s,lr,1);
+	    rd.simple_reflect(s,lr,1+xi_level(rd.simpleCoroot(s)));
 	    x = kgb().cross(s,x);
 	    break; // out of the loop |for(s)|: other complex descents possible
 	  }
@@ -1128,6 +1132,8 @@ Rep_context::make_dominant(StandardRepr& z,const SubSystem& subsys) const
 	  gamma_num.subtract(rd.root(alpha).begin(),v);
 	  i_x = kgb().inv_nr( x = kgb().cross(rd.reflection_word(alpha),x) );
 	  rd.reflect(alpha,lambda2_shifted);
+	  lambda2_shifted -= // correct: |xi| term of |V=2(lambda-xi)-2rho_r|
+	    rd.root(alpha)*(2*xi_level(rd.coroot(alpha))); // stays unreflected
 	  break; // out of the loop |for(s)|
 	} // |if(v<0)|
       } // |for(s)|
@@ -1305,7 +1311,7 @@ sr_term_list Rep_context::finals_for(StandardRepr z) const
       case gradings::Status::ImaginaryCompact:
 	if (eval==0)
 	  goto drop; // singular imaginary compact |s|, parameter is zero
-	rd.simple_reflect(s,lr,1); // $-\rho$-based reflection
+	rd.simple_reflect(s,lr,1+xi_level(rd.simpleCoroot(s))); // $-\rho$-based reflection
 	rd.simple_reflect(s,gamma.numerator());
 	coef = -coef;
 	goto restart;
@@ -1325,7 +1331,7 @@ sr_term_list Rep_context::finals_for(StandardRepr z) const
 	    to_do.emplace(std::move(t2),coef);
 	  }
 	  x = sx; // after testing we can update |x| for nci cross action
-	  rd.simple_reflect(s,lr,1); // $-\rho$-based reflection
+	  rd.simple_reflect(s,lr,1+xi_level(rd.simpleCoroot(s))); // $-\rho$-based reflection
 	  rd.simple_reflect(s,gamma.numerator());
 	  coef = -coef; // reflect, negate, and continue with modified values
 	  goto restart;
@@ -1335,7 +1341,7 @@ sr_term_list Rep_context::finals_for(StandardRepr z) const
 	  continue; // nothing to do for singular complex ascent
 	// now we are either not dominant for |s|, or a complex ascent
 	x = kgb().cross(s,x);
-	rd.simple_reflect(s,lr,1); // $-\rho$-based reflection
+	rd.simple_reflect(s,lr,1+xi_level(rd.simpleCoroot(s))); // $-\rho$-based reflection
 	rd.simple_reflect(s,gamma.numerator());
 	// keep |coef| unchanged here
 	goto restart;

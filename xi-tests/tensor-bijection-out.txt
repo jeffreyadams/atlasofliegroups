@@ -35,7 +35,7 @@ Value:
 1* K_type(x=1, lambda=[1,-1]/2) [0]
 -1* K_type(x=0, lambda=[1,-1]/2) [1]
 Runtime error:
-  Hermitian/c-form computation is not yet implemented for covers with projective twist (cover_kappa nonzero)
+  Hermitian/c-form computation on covers is only implemented in the equal rank case so far
 Evaluation aborted.
 ### full deformation: G then cover
 Value: 
@@ -47,7 +47,7 @@ Value:
 ### unitarity: G then cover
 Value: true
 Runtime error:
-  Hermitian/c-form computation is not yet implemented for covers with projective twist (cover_kappa nonzero)
+  Hermitian/c-form computation on covers is only implemented in the equal rank case so far
 Evaluation aborted.
 ### nonintegral continuous parameter: G then cover
 Error in 'set' command at <standard input>:31:0-42:
