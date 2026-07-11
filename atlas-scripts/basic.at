@@ -2076,6 +2076,12 @@ set lambda (KType t) = ratvec: let (x,lr)=%t in rho(x.real_form)+lr
   cover datum of G (zero unless G was built by xi_cover@(RealForm,ratvec)) }
 set rho_xi (RealForm G) = ratvec: rho(G)+cover_xi(G)
 
+{ the twist-incoherence datum of a cover: kappa = (1-delta)xi, integral by
+  construction; when nonzero the delta-twist of genuine parameters is
+  projective (av3, Example 5.12) and Hermitian duality is NOT given by twist }
+set cover_kappa (RealForm G) = ratvec:
+  let xi=cover_xi(G) in xi - distinguished_involution(inner_class(G))*xi
+
 set theta_plus_1_lambda (KType t) = vec:
     let (x,lr) =%t in (1+involution(x))*(x.real_form.rho_xi+lr) \ 1
 

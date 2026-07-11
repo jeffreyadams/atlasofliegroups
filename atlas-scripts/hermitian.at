@@ -62,7 +62,19 @@ in if c=1 then unnormalized
    fi
 
 {.whether J(p) admits an invariant Hermitian form.}
-set is_hermitian (Param p) = bool: equivalent(twist(p),p)
+{ on a cover with projective twist (cover_kappa!=0) the Hermitian dual is the
+  same-x parameter (x,lambda,-nu), not the delta-twist }
+set same_x_hermitian_dual (Param p) = Param:
+  normal(param(p.x,p.lambda_minus_rho,-p.nu))
+set is_hermitian (Param p) = bool:
+  if =cover_kappa(p.real_form) then equivalent(twist(p),p)
+  else equivalent(same_x_hermitian_dual(p),p)
+  fi
+set check_cover_form_supported (Param p) = void:
+  if not =cover_kappa(p.real_form)
+  then error("Hermitian/c-form computation is not yet implemented for covers"
+            +" with projective twist (cover_kappa nonzero)")
+  fi
 
 set check_hermitian (Param p, bool irreducible) = void:
   if not p.is_hermitian
@@ -72,6 +84,7 @@ set check_hermitian (Param p, bool irreducible) = void:
 
 {.Hermitian form on a irreducible module, normalization from its initial term.}
 set hermitian_form_irreducible (Param p) = KTypePol:
+  check_cover_form_supported(p);
   if is_equal_rank(real_form(p))
   then c_form_irreducible(p) { not twisted, in equal rank case this is faster }
   else check_hermitian(p,true); twisted_c_form_irreducible(p)
@@ -116,6 +129,7 @@ set twisted_c_form_irreducible (Param p,int time) = maybe_KTP:
 )
 
 set hermitian_form_irreducible (Param p, int time) = maybe_KTP:
+   check_cover_form_supported(p);
    case if is_equal_rank(real_form(p))
          then c_form_irreducible(p,time)
 	 else check_hermitian(p,true); twisted_c_form_irreducible(p,time)
@@ -240,7 +254,10 @@ set analyse (ParamPol P) = void:
 {  Hermitian forms  }
 
 {.Hermitian dual.}
-set hermitian_dual (Param p) = Param: normal(twist(p))
+set hermitian_dual (Param p) = Param:
+  if =cover_kappa(p.real_form) then normal(twist(p))
+  else same_x_hermitian_dual(p)
+  fi
 
 {.Hermitian form on a standard module, canonical normalization.}
 set hermitian_form_std (Param p) = KTypePol:
@@ -251,6 +268,7 @@ set hermitian_form_std (Param p) = KTypePol:
 
 {.Hermitian form on a irreducible module, normalization from p0.}
 set hermitian_form_irreducible (Param p,KType t0) = KTypePol:
+  check_cover_form_supported(p);
   let c_invariant_form =
     if is_equal_rank(real_form(p)) { then avoid twisted version, for speed }
     then c_form_irreducible(p)
@@ -262,7 +280,7 @@ set hermitian_form_irreducible (Param p,KType t0) = KTypePol:
 set hermitian_form_irreducible_long (Param p) =
     (ParamPol,[(Param,Split,KTypePol)],[(Param,Split,KType)],KTypePol):
   { here we just use |twisted_c_form_irreducible| in all cases }
-  check_hermitian(p,true);
+  check_cover_form_supported(p); check_hermitian(p,true);
   let (formula,terms0,terms1,cform) = twisted_c_form_irreducible_long(p)
   in (formula,terms0,terms1, convert_cform_hermitian(cform))
 
