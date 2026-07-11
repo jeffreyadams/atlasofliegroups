@@ -1,0 +1,34 @@
+<structure_constants.at
+
+{ Additions to structure_constants.at required by structure_constants2.at
+  (the endoscopy L-homomorphism machinery), ported from the endoscopy_side
+  branch's structure_constants.at. Master's structure_constants.at evolved a
+  different (StructureConstantTable) abstraction and lacks these; but its
+  |orientation_function|, |m_plus(rd,vec,vec)|, |m_minus(rd,vec,vec)| agree
+  with the branch's (same Geck/root_string definitions, same 2-colouring),
+  so these are pure additions layered on top, kept separate to avoid
+  disturbing master's version used by other scripts. }
+
+set_type orientation = (int->int)
+
+set -(orientation epsilon) = orientation: (int j): -epsilon(j)
+
+{ m_pm(rd,i,beta) = m_pm(rd,alpha_i,beta), extended by m_pm(rd,i,+-alpha_i)=1 }
+set m_plus (RootDatum rd,int i,vec beta) = int:
+  let alpha=rd.simple_roots[i] in
+  if alpha=beta or alpha=-beta then 1 else m_plus(rd,alpha,beta) fi
+set m_minus (RootDatum rd,int i,vec beta) = int:
+  let alpha=rd.simple_roots[i] in
+  if alpha=beta or alpha=-beta then 1 else m_minus(rd,alpha,beta) fi
+
+{ vector form of master's |orientation_function| (which agrees with it) }
+set orientation_function_vector (RootDatum G) = vec:
+  let n=ss_rank(G) then R=G.simple_roots then Rd=G.simple_coroots
+  then values=null(n) in
+  values[0]:=1;
+  while =product(values) do
+    let j=first(for i:n do values[i]=0 od) then root_j=R[j]
+    then k=first(for value@i in values do value*root_j*Rd[i] !=0 od) in
+    if k!=-1 then values[j]:=-values[k] else values[j]:=1 fi
+  od;
+  values

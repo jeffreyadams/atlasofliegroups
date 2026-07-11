@@ -67,3 +67,20 @@ real_induce on matching-xi covers (expected to work verbatim — untested);
 goodness classification on covers (intrinsic rho_u, likely fine — untested);
 Aq_genuine cases where lambda-rho(u) has half-integral G-pairings are
 correctly rejected (general-xi regime, v2).
+
+## Endoscopy lifting port (E0 cont.) — 2026-07-11, scope map
+Structure file DONE+verified (476b2a2). Lifting (endoscopic_lifting.at, the
+L-homomorphism ε* transfer) sits on a substrate master & branch evolved
+DIFFERENTLY. Reconciliation status:
+- structure_constants.at: DONE. endoscopy_sc_support.at adds branch-only
+  pieces (orientation type, m_pm int-overloads, orientation_function_vector);
+  master's orientation_function/m_pm(vec,vec) VERIFIED to agree (same Geck /
+  2-colouring), so signs are safe.
+- tits.at: 161 diff-lines vs branch (tits_simple_reflection + more branch-only
+  Tits fns; master's tits.at diverged, used by other scripts -> must
+  supplement not clobber). THE BIG remaining piece; Tits sign conventions
+  delicate.
+- character_table_reps.at: 16 diff-lines. weak_packets.at: 32.
+- copied branch files (homomorphism/L_hom/embed/param_pair_hash) carry
+  branch-vs-master SYNTAX drift to fix (param_pair_hash.at:96 type error).
+Copied-but-unwired; all.at unaffected.
