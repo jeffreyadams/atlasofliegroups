@@ -101,3 +101,19 @@ Cascade remaining (converging; each = a small branch-only helper/file):
 RECOMMENDATION to finish efficiently: stop error-at-a-time; compute the FULL
 transitive closure of branch-new/modified files the epstar lifting needs and
 batch-port, rather than reactive one-by-one. Mechanical, low math-risk.
+
+## Endoscopy lifting port — COMPLETE + VERIFIED (2026-07-11)
+endoscopic_lifting.at loads clean; all.at ALLOK; xi=0 baseline IDENTICAL
+(no regression). epstar_std verified byte-identical to endoscopy_side branch
+(SL2 -> x=2,lambda=[1],nu=[1]; GL2 -> x=1,lambda=[1,-1]/2,nu=[1,-1]/2).
+Supplements added by completion agent: endoscopy_L_packet_support.at
+(L_packets(RealForm/InnerClass,ratvec), pure_L_packets), left/right_solve +
+tits_delta(InnerClass) in existing supports, m(RootDatum,vec,vec) inline in
+homomorphism.at, <hodgeParamPol.at include in endoscopic_lifting.at (supplies
+*(Split,[ParamPol]) via hodgeParamPol=[ParamPol]; branch relies on same).
+FIBER CAVEAT (NOT a regression, NOT covers): certain non-quasisplit examples
+(test_epstar_std(Sp(6,R),[1,1,1]/2)) hit "KGB element not present" from the
+|fiber| builtin. PROVEN unrelated to xi-covers: my C++ diff touches 0 lines in
+cartanclass/kgb/fiber (only repr/K_repr/ext_block/atlas-types/basic_io). It is
+a pre-existing master-C++ vs endoscopy-branch-C++ (159-commit) difference in
+fiber; out of scope for a scripts-only port. Quasisplit-target lifts work.
