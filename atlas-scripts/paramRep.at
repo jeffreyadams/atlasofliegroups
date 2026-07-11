@@ -1,0 +1,59 @@
+< coherent {for Cayley_sum}
+< extended_misc {for cross}
+< translate {for translate_param_by}
+< hash {for hash tables}
+
+{Goal is to compute the special representation sigma(p) of the
+integral Weyl group W_int(p) attached to a Param p}
+
+{Move the param out where W_int(p)  can act}
+set regularize(Param p) = translate_param_by (p, p.root_datum.two_rho)
+
+{all these guys have the SAME sigma}
+set Talphabetas(Param p) = ParamPol:
+    let q = regularize(p), G = p.real_form
+    then gamma = q.infinitesimal_character, empty = null_module(G)
+    then R = integrality_datum(G, gamma)
+    then S = R.simple_roots
+    then P1 = sum(G, for j:#S do Cayley_sum(j,p) od)
+    	    + sum(G, for j:#S do cross(j,p) od)
+    then T1 = sum(G, for @t in P1 do if is_subset(tau(t), tau(p)) or
+    	      	      	       	     is_subset(tau(p), tau(t))
+				  then empty
+				  else t
+				  fi od)
+    in sum(G, for @t in T1 do t od)
+
+{gives all Param's accessible from p by T_{alpha,beta}}
+{for each q in this list, sigma(p) contains sign of W_{tau(q)}, AND
+sigma contains trivial of W_(complement of tau(q)). Want to list all
+special sigma with those two properties.}
+{This function ran in a few minutes on my laptop for a
+discrete series of E8_s}
+set TalphabetaRepeat(Param p) = [Param]:
+    let q = regularize(p), G = p.real_form
+    then nullmod = null_module(G)
+    then ParamHash = make_Param_hash() {will hold all our q's}
+    then gamma = q.infinitesimal_character, toDo = Talphabetas(q)
+    then () = while #toDo > 0
+    	      do toDo := sum(G, for @r in toDo
+	      	  	    	do sum(G, for @t in Talphabetas(r)
+				      	  do let size = ParamHash.size()
+				      	     then j = ParamHash.match(t)
+				      	     in if j = size
+						then 1*t
+						else nullmod
+						fi
+					  od)
+				 od)
+
+              od
+    in for j:ParamHash.size()
+       do ParamHash.index(j)
+       od
+
+{ set proj(Param p, int m) = ParamPol:
+    let q regularize(p)
+    then gamma = q.infinitesimal_character
+    then R = integrality_datum(p.root_datum,gamma) }
+    

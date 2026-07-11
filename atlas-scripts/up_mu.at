@@ -1,0 +1,154 @@
+< Dirac.at {for shifters}
+< goodroots.at {for antifinalize}
+
+set_type
+[up_mu_hash_table =
+(  ( -> int) real_form_size {number of real forms considered}
+   , ( -> vec) K_type_sizes {number of K_types for each real form}
+   , ( -> ) clear
+   , ((KType,int) -> [KType]) up_types {list of up K-types of length at most int}
+   , ((KType,int) -> [int]) up_heights {heights from previous}
+   , (KType -> (int,bool)) completion {how many steps up for best_Dirac are computed, and whether that's all}
+)
+]
+
+{Maybe the K-hash is just the zero element of each L-packet of K-types: the LKTs of anti_finalize?}
+set make_up_mu_hash() = up_mu_hash_table:
+begin
+   let real_form_hash = make_RealForm_hash()
+   then G_data = [RealForm,mat,ratmat,KType_hash,[[int]],[bool]]: []
+   { ( id comp K0 of maximal compact
+     , projection to K matrix M
+     , right_inverse Mrt of M
+     , list of mus muhash
+     , list of indices mus into muhash
+     , parallel list saying whether the mus are as long as possible
+     ) }
+   then muhashes = [KType_hash]:[] {for each G, list of mu's}
+   then muss = [[[int]]]:[] {for each G and mu, list of indices into muhash for up_mus}
+   then muDones = [[bool]]: [] {for each G, one bool for each mu, saying whether muss[i][j] is
+			    as long as possible}
+   then clear() = void:	real_form_hash.clear(); G_data := []
+   then add_real_form(RealForm rf) = int:
+   (   let I = real_form_hash.size()
+       then i = real_form_hash.match(rf)
+    in if i = I {haven't seen this real form before}
+       then G_data #:=
+       ( let M = projection_to_K_matrix(rf) in
+	 ( K_0(rf)
+	 , M
+	 , ((1+rf.distinguished_involution)*right_inverse(M))/2
+	 , make_KType_hash()
+	 , []
+	 , []
+	 )
+       )
+       fi
+    ; i
+   ) { end of |add_real_form| }
+   then add_K_type(KType mu) = (int, int): {real form index, K type index}
+   (  let rfnum = add_real_form(mu.real_form)
+      then (K0,M,Mrt,muhash,mus,muDone) = G_data[rfnum]
+      then ktypenum = muhash.size()
+   in if muhash.match(monomials(1*mu)[0])=ktypenum
+      then G_data[rfnum] := (K0,M,Mrt,muhash,mus#[ktypenum],muDone#false)
+      fi
+   ;  (rfnum, ktypenum)
+   )
+   then add_muss(KType mu, int bd) = (int,int): {real form index, K type index}
+   (  let (rfnum,ktypenum) = add_K_type(mu), start_time = elapsed_ms()
+      then (K0,M,Mrt,muhash,mus,muDone) = G_data[rfnum]
+   in if not muDone[ktypenum] and #mus[ktypenum] < bd
+      then
+	 let G = mu.real_form
+	 then newmunums = [int]: mus[ktypenum]
+	 , finished_up = false
+	 , j0 = int: -1
+	 , wtlast = null(G.rank)
+	 , alphaup = null(G.rank)
+	 , x0G = KGB(G,0)
+      in while #newmunums < bd and not finished_up
+	 do let taulast = muhash.index(newmunums~[0])
+	 in let uptaus = [KType]:
+	    if short_mu_flag
+	    then
+	       let qlast = anti_finalize(parameter(taulast))
+	       then aftaulast = K_type(qlast.x, qlast.lambda_minus_rho)
+	    in short_shifts(aftaulast)
+	    else
+	       let (shifters,newx) = shifters(taulast)
+	       then () = x0G:=newx
+	       then KG = K_0(x0G), rhoc = rho_c(x0G)
+	       then () = wtlast := highest_weight(taulast,x0G).mu
+	       then testers =
+		  for alpha in shifters do Mrt*M*coroot(G,alpha) od
+	    in for alpha in shifters
+	       do let wt = M*(wtlast + alpha)
+		  in if is_dominant(KG, wt)
+		     then let upcand =
+			  K_type(K_highest_weight_from_K0_weight(x0G,wt))
+			  in if height(upcand) > height(taulast)
+			     do upcand
+			     fi {height(upcand)}
+		      else []
+		      fi {is_dominant}
+	       od.##
+	    fi { |short_mu_flag|; end of initialisation of |uptaus| }
+	 in if #uptaus > 0
+	    then j0 := for uptau in uptaus do height(uptau) od
+		       . {now apply one of two functions: }
+		       if max_loc_flag then max_loc@[int] else min_loc@[int] fi
+		 {then () = prints("adding at ",taulast)}
+	    ;  let (,newmunum) = add_K_type(uptaus[j0])
+	    in newmunums ##:= mus[newmunum]
+	    ;  if muDone[newmunums~[0]]
+	       then  finished_up :=true
+	       ; let muDonesrf = muDone
+	       in for j@i in newmunums do muDonesrf[j] :=true od
+	       ; muDone := muDonesrf
+	       fi {muDones}
+	    ;  let mussrf = mus
+	    in mussrf[ktypenum] := newmunums
+	    ;  for j@i in newmunums
+	       do if #mussrf[j] < #newmunums[i:]
+		  then mussrf[j] := newmunums[i:]
+		  fi
+	       od
+	    ;  mus:=mussrf
+	    else { |#uptaus=0| }
+	       finished_up :=true
+	    ;  let muDonesrf = muDone
+	    in for j@i in newmunums do muDonesrf[j] :=true od
+	    ; muDone := muDonesrf
+	    fi { |#uptaus > 0| }
+	 od { while #newmunums < bd etc. }
+      ;  for j@i in newmunums
+	 do if #mus[j] < #newmunums[i:] then mus[j] := newmunums[i:] fi
+	 od
+      ;  assert(#mus= muhash.size() and #mus = #muDone
+	       , "mu_up_hash damaged in am")
+      ;  G_data[rfnum] := (K0,M,Mrt,muhash,mus,muDone)
+      fi {|not muDone[ktypenum] and #mus[ktypenum] < bd|}
+   ;  up_mu_time +:= elapsed_ms() - start_time
+   ; (rfnum,ktypenum)
+   ) { end of definition |add_mus| }
+   then up_types(KType mu,int m) = [KType]:
+      let (rfnum, ktypenum) = add_K_type(mu)
+      then (K0,M,Mrt,muhash,mus,muDone) = G_data[rfnum]
+      in while #mus[ktypenum] < m and not muDone[ktypenum] do add_muss(mu, m) od
+      ;  { result of |up_types|: }
+	 for j in mus[ktypenum][:min(#mus[ktypenum],m)] do muhash.index(j) od
+in (  ( -> int): {real_form_size} @int: real_form_hash.size()
+      , ( -> vec): {K_type_sizes} @vec: for muh in muhashes do muh.size() od
+      , ( -> ): {clear} clear
+      , ((KType,int) -> [KType]): {up_types} up_types
+      , ((KType,int) -> [int]): {up_heights}
+	(KType mu, int m) [int]: for tau in up_types(mu,m) do height(tau) od
+      , (KType -> (int,bool)): {completion}
+	(KType mu) (int,bool):
+	let (num, ktypenum) = add_K_type(mu) then (,,,,mus,muDone) = G_data[num]
+	in (#mus[ktypenum],muDone[ktypenum])
+   )
+end
+
+set up_mu_hash = make_up_mu_hash()

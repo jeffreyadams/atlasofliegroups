@@ -1,0 +1,263 @@
+< induction.at {for theta_induce_irreducible}
+< parabolics.at {for theta_stable_parabolics}
+< K_highest_weights.at {for all_parameters_gamma}
+
+{This script is designed to investigate reducibility of
+cohomologically induced reps in the weakly fair range. Key function
+onesList takes a theta-stable q = l + u with rho(u) integral, and
+creates the family of one-dimensional reps of L
+
+	trivial of L translated by -r*rho(u), r rational, 0 \le r \le 1, and
+	r*rho(u) integral.
+
+Then cohomologically induces to G, to see how reducible this is.
+}
+{List of the maximal theta-stable parabolics with rho(u) integral}
+set TSPmaxInts(RealForm G) = [KGPElt]:
+    for P in theta_stable_parabolics(G)
+    do if semisimple_rank(P.Levi) = semisimple_rank (G) -1
+       	  and P.rho_u.denom = 1
+       then [P]
+       else []
+       fi
+    od.##
+
+set TSPmax(RealForm G) = [KGPElt]:
+    for P in theta_stable_parabolics(G)
+    do if semisimple_rank(P.Levi) = semisimple_rank (G) -1
+       then [P]
+       else []
+       fi
+    od.##
+
+{List of all proper theta-stable parabolics with rho(u) integral}
+set TSPInts(RealForm G) = [KGPElt]:
+    for P in theta_stable_parabolics(G)
+    do if 0 < semisimple_rank(P.Levi) and P.Levi != G
+       	  and P.rho_u.denom = 1
+       then [P]
+       else []
+       fi
+    od.##
+
+set TSP(RealForm G) = [KGPElt]:
+    for P in theta_stable_parabolics(G)
+    do if 0 < semisimple_rank(P.Levi) and P.Levi != G
+       then [P]
+       else []
+       fi
+    od.##
+
+{assuming rho(u) is integral, lists the one-diml parameters on L from
+trivial to the end of the weakly fair range.}
+{this should be generalized: start with any weakly unipotent on L in
+good range, translate down by all q*rho(u) that are integral vectors
+(0 \le q rational) to end of weakly fair}
+{set onesList(KGPElt P) = [Param]:
+    let d = gcd(ratvec_as_vec(P.rho_u)), L = P.Levi
+    in for j:d+1
+       do parameter(x_open(L),rho(L) - ratvec_as_vec(P.rho_u/d)*j,
+       	  rho(L))
+       od}
+
+set onesList(KGPElt P) = [Param]:
+    let d = gcd(two_rho_u(P)), L = P.Levi
+    in for j:floor(d/2)+1
+       do parameter(x_open(L),rho(L) - ratvec_as_vec(two_rho_u(P)/d)*j,
+       	  rho(L))
+       od
+
+set onesListsMax(RealForm G) = [[Param]]:
+    for P in TSPmaxInts(G)
+    do onesList(P)
+    od
+
+set onesLists(RealForm G) = [[Param]]:
+    for P in TSPInts(G)
+    do onesList(P)
+    od
+
+{a theta-stable q is "interesting" if cohomological induction from
+onesList(q) doesn't end with an irreducible at the end of the weakly
+fair range, and doesn't just consist of an irreducible and zero. This
+command creates a file of what happens for all the interesting maximal
+q.}
+set outputMax(RealForm G) = [(int,RealForm,[int])]:
+    for list@j in onesListsMax(G)
+    do let result =
+       	   for p in list
+       	   do #theta_induce_irreducible(p,G)
+       	   od
+       in if max(result)!=1
+       	  then [(j,list[0].real_form,result)]
+ 	  else [] fi od.##
+
+{same including non-maximal q}
+set output(RealForm G) = [(int,RealForm,[int])]:
+    for list@j in onesLists(G)
+    do let result =
+       	   for p in list
+       	   do #theta_induce_irreducible(p,G)
+       	   od
+       in if max(result)!=1
+       	  then [(j,list[0].real_form,result)]
+	  else [] fi od.##
+{just print the results, as they are computed, for maximal q}
+set outputMaxPrint(RealForm G) = void:
+    for list@j in onesListsMax(G)
+    do let result =
+       	   for p in list
+	   do #theta_induce_irreducible(p,G)
+	   od
+       in if max(result)!=1
+       	  then prints(j,"  ",list[0].real_form,"  ",result)
+	  fi od
+
+{just print the results, as they are computed, for all q}
+set outputPrint(RealForm G) = void:
+    for list@j in onesLists(G)
+    do let result =
+       	   for p in list
+	   do #theta_induce_irreducible(p,G)
+	   od
+       in if max(result) !=1
+       	  then prints(j,"  ",list[0].real_form,"  ",result)
+	  fi od
+
+set gammaSS(KGPElt P, ratvec gammaL) = ratvec:
+    let (list,x) = P, L=P.Levi
+    then out = for j:x.real_form.semisimple_rank
+    	       do if not is_member(list)(j)
+	       	  then [j]
+	    	  else []
+		  fi
+	       od.##
+    in sum(#gammaL, for xi@j in L.fundamental_weights
+    	 	  	       do (gammaL*L.simple_coroots[j])*xi
+		  	       od)
+
+{simple imaginary root numbers NOT in P.Levi}
+set outsideRoots(KGPElt P) = [int]:
+    let (list,x) = P
+    in for j:x.real_form.semisimple_rank
+       do if not is_member(list)(j)
+	  then [j]
+	  else []
+	  fi
+       od.##
+
+{simple imaginary root numbers NOT in P.Levi}
+set outsideImagRoots(KGPElt P) = [int]:
+    let (list,x) = P
+    then G=x.real_form
+    then delta = G.distinguished_involution, simples = G.simple_roots
+    in for j:G.semisimple_rank
+       do if not is_member(list)(j) and delta*simples[j] = simples[j]
+	  then [j]
+	  else []
+	  fi
+       od.##
+
+{complex simple root numbers pairs NOT in P.Levi}
+set outsideCplxRoots(KGPElt P) = [(int,int)]:
+    let (list,x) = P
+    then G=x.real_form
+    then delta = G.distinguished_involution, simples = G.simple_roots
+    in for j:G.semisimple_rank
+       do let k = find(simples,delta*simples[j])
+       	  in if not is_member(list)(j) and k>j
+	  then [(j,k)]
+	  else []
+	  fi
+       od.##
+
+{one member of each alpha, delta*alpha NOT in P.Levi}
+set outsidePairRepRoots(KGPElt P) = [int]:
+    outsideImagRoots(P)##for (j,) in outsideCplxRoots(P) do j od
+
+{this function assumes pL is a unipotent rep of L, and that all the
+fundamental weights for simple roots not in L are integral. The idea is that the weakly fair range is
+gammaL - (elements of box)*(fundamental weights outside L)
+}
+set weaklyFairBox(KGPElt P, Param pL) = ([int],[int]):
+    let (list,x) = P, gammaL = pL.infinitesimal_character, L=pL.real_form
+    then outI = outsideImagRoots(P), outC = outsideCplxRoots(P),
+    	 out = outsideRoots(P)
+    then outReps = outsidePairRepRoots(P)
+    then gammau = gammaSS(P, gammaL)
+    then gammaG = gammaL + P.rho_u {this is G infl char}
+    then gammaz = gammaG - gammau {this is cent(L) part of G inf char}
+    then small = for j in outReps
+       	       	 do let alphavee = P.real_form.simple_coroots[j]
+		    in floor(gammaG*alphavee)-1
+		 od
+    then big = for j in outReps
+    	       do floor(gammaz*P.real_form.simple_coroots[j]) + 1
+	       od
+    in (small,big)
+
+{these are the weights to subtract from pL to stay in weakly fair range}
+set weaklyFairTranslators(KGPElt P, Param pL) = ([vec]):
+    let out = outsideRoots(P)
+    then fundwts = mat: for i in outsideImagRoots(P)
+    	 	   	do ratvec_as_vec(P.real_form.fundamental_weights[i])
+			od
+			##
+			for (j,k) in outsideCplxRoots(P)
+			do ratvec_as_vec(P.real_form.fundamental_weights[j] +
+			   P.real_form.fundamental_weights[k])
+			od
+    then (small,big) = weaklyFairBox(P,pL)
+    then baseBox = box(big-small)
+    in for v in baseBox do fundwts*(v+small) od
+
+set weaklyFairTranslates(KGPElt P, Param pL) = [Param]:
+    for bdown in weaklyFairTranslators(P,pL)
+    do translate_param_by(pL,-bdown) od
+
+set weaklyFairInds(KGPElt P, Param pL) = [ParamPol]:
+    for qL in weaklyFairTranslates(P,pL)
+    do theta_induce_irreducible(qL,P.real_form)
+    od
+
+set showMults(KGPElt P,Param pL) = void:
+    let (small,big) = weaklyFairBox(P, pL)
+    then Qs = weaklyFairInds(P,pL)
+    then wfmults = [int]: for Q in Qs
+    	 	 	  do sum(for m in monomials(Q) do int_part(Q[m])  od)
+			  od
+    then wfterms = [int]: for Q in Qs do #Q od
+    in prints(wfterms=wfmults,"  ",big-small,"  ",wfmults)
+
+set showShortMults(KGPElt P,Param pL) = bool:
+    let (small,big) = weaklyFairBox(P, pL)
+    then Qs = weaklyFairInds(P,pL)
+    then wfmults = [int]: for Q in Qs
+    	 	 	  do sum(for m in monomials(Q) do int_part(Q[m])  od)
+			  od
+    then wfterms = [int]: for Q in Qs do #Q od
+    in if max(wfmults) > 2 or wfterms!=wfmults
+       then prints(wfterms=wfmults,"  ",big-small,"  ",wfmults); true
+       else false
+       fi
+
+{set Ps=theta_stable_parabolics(G)
+ set Ps = Ps[:#Ps-1]
+ void:for P@j in Ps do if showShortMults (P,P.Levi.trivial) then prints(j,"  ",
+ P.Levi, new_line) fi od
+
+Can write Ps~ to reverse order}
+
+{GL(p) x Sp(2q) Levi in Sp(2(p+q))}
+
+set P(int p, int q) = KGPElt:
+    ((for j:p-1 do j od) ## (for j:q from p do j od) ##
+     (for j:p-1 from p+q do j od) ## (for j:q from 2*p+q do j od),
+     KGB(Sp(2*(p+q),C),0))
+
+set L(int p, int q) = P(p,q).Levi
+
+set met(int p, int q) = Param:
+    let shiftq = (for j:q do 1 od)/2
+    then shift = null(p)##shiftq##null(p)##shiftq
+    in all_parameters_gamma(L(p,q), L(p,q).rho - shift)[0]
