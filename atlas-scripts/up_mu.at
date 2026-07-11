@@ -1,5 +1,6 @@
 < Dirac.at {for shifters}
 < goodroots.at {for antifinalize}
+<FPP_support_ht.at {for max_loc_flag (branch had it in hermitian.at)}
 
 set_type
 [up_mu_hash_table =

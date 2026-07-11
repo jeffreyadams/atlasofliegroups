@@ -1,5 +1,6 @@
 <basic {for root_datum@Param...}
 <K_highest_weights {for LKTs}
+<FPP_support.at {for delta_on_simple}
 
 set to_no_Cminus_small(Param p) = Param:
     let rd=p.root_datum then {w=id_W(rd),} pnew = p, xnew = p.x, r=rd.semisimple_rank
