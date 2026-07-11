@@ -1,0 +1,52 @@
+<endoscopy_support.at
+<endoscopic_groups.at
+
+prints("### xi_H = (v+rho_G)|_M - rho_H : numeric checks of the E1 formula")
+
+prints("--- check 1: ordinary endoscopy, G=SL(2,R), s=diag(1,-1), v=[1/2]")
+set G=SL(2,R)
+set (H,M,H_vee)=endoscopic_group(G,id_mat(1),[1/2])
+prints("H=",H)
+prints("M=",M)
+set v=ratvec:[1/2]
+set u=(v+rho(G))  { M=identity 1x1 here, restriction trivial }
+set xiH=u-rho(H)
+prints("xi'_H=v+rho_G=",u,"  rho_H=",rho(H),"  xi_H=",xiH)
+prints("2*xi_H integral: ", is_integer(2*xiH), "   xi_H integral (trivial cover?): ", is_integer(xiH))
+
+prints("--- check 2: trivial datum s=0 => H=G, xi_H=0")
+set (H0,M0,)=endoscopic_group(G,id_mat(1),[0/1])
+prints("H0=",H0)
+prints("xi_H = v+rho_G-rho_H = ", rho(G)-rho(H0), "  integral: ", is_integer(rho(G)-rho(H0)))
+
+prints("--- check 3: twisted GL(4), delta_vee=flip, s=1 (v=0)")
+set G_vee=GL(4,R)
+set delta_vee=G_vee.distinguished_involution
+set (H4,M4,H4_vee)=complex_endoscopic_group(root_datum(dual(inner_class(G_vee))),delta_vee,[0,0,0,0]/1)
+prints("H=",H4)
+prints("H_vee=",H4_vee)
+prints("M=",M4)
+{ rho_G in X^*(T_G)=X_*(T_Gvee): half sum of positive roots of G = coroots of G_vee }
+set rhoG=rho_check(G_vee)
+prints("rho_G (as vector in X_*(T_G_vee)) = ", rhoG)
+{ solve M*u = rho_G exactly (v=0); 2*rhoG is integral so solve on 2*rhoG }
+set sol=solve(M4,ratvec_as_vec(2*rhoG))
+prints("solve exists: ", any(sol))
+set u4=requisition(sol)/2
+prints("u = (v+rho_G)|_M = ", u4)
+prints("rho_H = ", rho(H4))
+set xiH4=u4-rho(H4)
+prints("xi_H = ", xiH4)
+prints("2*xi_H integral: ", is_integer(2*xiH4), "   xi_H integral (trivial cover?): ", is_integer(xiH4))
+prints("pairings with H-coroots (gate-2 check): ", for a in H4.simple_coroots do xiH4*a od)
+
+prints("--- check 4: ordinary endoscopy in Sp(4,R), s=e(v), v=[1,1]/2")
+set G2=Sp(4,R)
+set (Hsp,Msp,Hsp_vee)=endoscopic_group(G2,id_mat(2),[1,1]/2)
+prints("H=",Hsp)
+prints("M=",Msp)
+set usp=([1,1]/2+rho(G2))  { M should be identity for ordinary endoscopy }
+set xiHsp=usp-rho(Hsp)
+prints("xi'_H=",usp,"  rho_H=",rho(Hsp),"  xi_H=",xiHsp)
+prints("2*xi_H integral: ", is_integer(2*xiHsp), "   xi_H integral: ", is_integer(xiHsp))
+prints("pairings with H-coroots: ", for a in Hsp.simple_coroots do xiHsp*a od)

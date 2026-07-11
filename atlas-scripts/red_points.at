@@ -2,6 +2,7 @@
 < hash.at {for hash tables}
 <kl.at {for rho_C}
 <K.at {for parameter@KType}
+<FPP_support.at {for make_vec_hash([vec]) (branch had it in hash.at)}
 {should require number of -alphav*theta >= number of alphav}
 {set red_coroots_scr(KGBElt x) = [vec]:
     let G = x.real_form,  theta = x.involution
