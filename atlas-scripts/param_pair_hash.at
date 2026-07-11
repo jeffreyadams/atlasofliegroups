@@ -93,5 +93,11 @@ set pr(Param_pair_hash hash)=void:
 if =hash.size() then () else
 tabulate(for (p_H,p_G) in params(hash) do [p_H.to_string,p_G.to_string] od) fi
 
+{ pr([Param]) supplement: on the endoscopy branch this convenience printer
+  came from misc.at (loaded earlier in that suite); the fork misc.at lacks it
+  and param_pair_hash.at does not include misc.at, so supply it here for the
+  standalone load below (verbatim from origin/endoscopy_side:misc.at). }
+set pr([Param] B)=void:for p@i in B do prints(i, " ", p) od
+
 set pr(Param_hash hash)=void:
 pr(params(hash))
