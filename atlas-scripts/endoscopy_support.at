@@ -1,4 +1,6 @@
 <basic.at
+<parameters.at { square@RealForm for is_pure }
+<misc.at { simple_root_index }
 <torus.at
 <restricted_roots.at { remove_duplicates([vec]) }
 
@@ -32,3 +34,16 @@ set to_dominant (RootDatum rd, ratvec wt) = (WeylElt,ratvec):
   let (n,d)=%wt then (w,v)=to_dominant(rd,n) in (w,v/d)
 set to_dominant (ratvec cowt,RootDatum rd) = (ratvec,WeylElt):
   let (n,d)=%cowt then (v,w)=to_dominant(n,rd) in (v/d,w)
+
+{ branch-only helpers from the endoscopy_side basic.at (master's basic.at
+  lacks these; |fac| omitted -- master already has it) }
+set in_weight_lattice (RootDatum rd,ratvec v) = bool: is_integer(v*rd.simple_coroots)
+set in_coweight_lattice (RootDatum rd,ratvec v) = bool: is_integer(v*rd.simple_roots)
+{ remove_zeros/prune/left_solve/right_solve omitted: not needed by the
+  closure, and [vec] collides with mat under current axis }
+
+{ branch-only strong-real-form purity (different notion from master's
+  is_pure@Split): a real form is pure iff its central-cocharacter datum
+  matches the quasisplit form's. Needs square@(RealForm/KGBElt) (parameters.at) }
+set is_pure (KGBElt x) = bool: square(x)=square(quasisplit_form(x.real_form))
+set is_pure (RealForm G) = bool: square(G)=square(quasisplit_form(G))

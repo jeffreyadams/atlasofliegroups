@@ -1,3 +1,4 @@
+<endoscopy_support.at
 <basic.at
 
 set maybe_KGB_for_inner_class (InnerClass ic,mat delta,ratvec v)=
