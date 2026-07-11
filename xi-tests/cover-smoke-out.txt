@@ -15,8 +15,8 @@ Variable pc: Param
 Value: final parameter(x=0,lambda=[7]/2,nu=[0]/1)
 Value: [ 7 ]/2
 ### cover composition and cancellation
-Value: disconnected split real group with Lie algebra 'gl(1,R)' [cover xi=[1]/1]
-Value: [ 1 ]/1
+Value: disconnected split real group with Lie algebra 'gl(1,R)'
+Value: [ 0 ]/1
 Value: disconnected split real group with Lie algebra 'gl(1,R)'
 ### GL(2,R), det/2 cover
 Variable G: RealForm (overriding previous instance, which had type RealForm)

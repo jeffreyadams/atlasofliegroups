@@ -55,3 +55,15 @@ offset 1+⟨ξ,α_s^∨⟩; pivots anchored at ρ_r/γ (basepoint-free) unchange
   rho+X^* specifically. Therefore: same-x h for ALL covers; forms allowed
   on equal-rank covers only (twist=id there), else gated pending
   extended-parameter theory on covers.
+
+## induction.at (2026-07-11, commit dc2f514)
+Forward direction cover-aware: theta_induce shift = rho_xi(G)-rho_xi(L);
+rho_u_cover(L,G); Aq_genuine relaxing the integrality REQUIRE. Verified:
+classic battery identical to stock binary; zero-shift consistency; integral
+collapse; half-integral GL(2,R) Aq with exact tensoring dictionary.
+DEFERRED: inverse maps (theta_stable_data, theta_stable_quasi_data, line-892
+inverse) for cover-of-G inputs — need covered-Levi construction inside;
+real_induce on matching-xi covers (expected to work verbatim — untested);
+goodness classification on covers (intrinsic rho_u, likely fine — untested);
+Aq_genuine cases where lambda-rho(u) has half-integral G-pairings are
+correctly rejected (general-xi regime, v2).
