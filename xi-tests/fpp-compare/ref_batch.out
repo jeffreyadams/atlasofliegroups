@@ -1,0 +1,10 @@
+[REF] SL3 (SL(3,R)): rc=0 nparams=9 elapsed_ms=195 wall_s=4
+[REF] SL4 (SL(4,R)): rc=0 nparams=47 elapsed_ms=441 wall_s=3
+[REF] SL5 (SL(5,R)): rc=0 nparams=66 elapsed_ms=5156 wall_s=8
+[REF] Sp4 (Sp(4,R)): rc=0 nparams=46 elapsed_ms=748 wall_s=5
+[REF] Sp6 (Sp(6,R)): rc=0 nparams=319 elapsed_ms=3792 wall_s=7
+[REF] G2s (G2_s): rc=0 nparams=60 elapsed_ms=548 wall_s=2
+[REF] Sp8 (Sp(8,R)): rc=0 nparams=2043 elapsed_ms=63436 wall_s=66
+[REF] F4s (F4_s): rc=0 nparams=1864 elapsed_ms=95252 wall_s=97
+[REF] E6s (E6_s): rc=0 nparams=2217 elapsed_ms=550636 wall_s=554
+[REF] BATCH_DONE

@@ -1,0 +1,10 @@
+[COVER] SL3 (SL(3,R)): rc=0 nparams=9 elapsed_ms=149 wall_s=4
+[COVER] SL4 (SL(4,R)): rc=0 nparams=47 elapsed_ms=442 wall_s=3
+[COVER] SL5 (SL(5,R)): rc=0 nparams=66 elapsed_ms=4753 wall_s=8
+[COVER] Sp4 (Sp(4,R)): rc=0 nparams=46 elapsed_ms=874 wall_s=4
+[COVER] Sp6 (Sp(6,R)): rc=0 nparams=319 elapsed_ms=4296 wall_s=8
+[COVER] G2s (G2_s): rc=0 nparams=60 elapsed_ms=605 wall_s=2
+[COVER] Sp8 (Sp(8,R)): rc=0 nparams=2043 elapsed_ms=76048 wall_s=79
+[COVER] F4s (F4_s): rc=0 nparams=1864 elapsed_ms=232012 wall_s=235
+[COVER] E6s (E6_s): rc=0 nparams=2217 elapsed_ms=495700 wall_s=498
+[COVER] BATCH_DONE
