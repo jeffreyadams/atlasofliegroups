@@ -1,0 +1,114 @@
+{ FPP_support_wp.at
+
+  Branch-only additions to weak_packets.at for the FPP unitary-dual suite port
+  from branch origin/to_ht_branch_alt.  weak_packets.at is loaded directly by
+  all.at (core), so it MUST NOT be clobbered; these five branch-only
+  definitions are reproduced VERBATIM from
+  origin/to_ht_branch_alt:atlas-scripts/weak_packets.at .
+
+  These depend on big_unitary_hash / make_big_unitary_hash (defined in
+  FPP_faces_herm.at) and glue_params / derived_simple_factorsRF
+  (cohom_reductionND.at), so this file must be included AFTER those.  It is
+  included from cohIndUnip.at (which loads FPP_faces_herm.at first).  Used by
+  cohIndUnip.at (my_unitary_hash_flag, factor_my_representations,
+  factor_unipotent_representations). }
+
+<weak_packets.at { fork base: unipotent_representations, etc. }
+<FPP_faces_herm.at { for big_unitary_hash, make_big_unitary_hash }
+<cohom_reductionND.at { for glue_params, derived_simple_factorsRF }
+<inductionGR.at { for theta_induce_irreducible }
+<FPP_support.at { for delta_on_simple }
+
+{if big_unitary_hash has trivial(G), assume it has all unipotents of G}
+set big_unitary_hash_flag = true
+
+{calculate one derived simple factor at a time}
+set factor_unipotent_representations(RealForm G) = [Param]:
+    let dLs = derived_simple_factorsRF(G)
+    then unip_lists = for dL in dLs
+    	 	      do let dL_hash = big_unitary_hash.uhash(dL)
+		      	 in if big_unitary_hash_flag and dL_hash.lookup(dL.trivial).>=
+			    then dL_hash.list()
+			    else let list_dL = unipotent_representations(dL)
+			      	 then () = for p_dL in list_dL do dL_hash.match(p_dL) od
+    				 in list_dL
+			    fi
+		      od
+    in glue_params(G,unip_lists)
+
+set factor_unipotent_representations(RealForm G, ratvec v) = [Param]:
+    let dLs = derived_simple_factorsRF(G)
+    then unip_lists = for dL in dLs
+    	 	      do if big_unitary_hash_flag and big_unitary_hash.uhash(dL).lookup(dL.trivial).>=
+		      	 then big_unitary_hash.uhash(dL).list()
+			 else unipotent_representations(dL)
+			 fi
+		      od
+    in glue_params(G,unip_lists,v)
+
+{whether my_unitary_hash is filled?}
+set my_unitary_hash_flag = false
+
+{Meant to hold weakly unipotent unitary reps found by hook or by
+crook. Fill before calling factor_my.}
+set my_unitary_hash = make_big_unitary_hash()
+
+set factor_my_representations(RealForm G) = [Param]:
+    let dLs = derived_simple_factorsRF(G)
+    then my_unip_lists = for dL in dLs
+    	 	      do let dL_hash = my_unitary_hash.uhash(dL)
+		      	 in if my_unitary_hash_flag and dL_hash.size().>
+			    then dL_hash.list()
+			    else let list_dL = unipotent_representations(dL)
+			      	 then () = for p_dL in list_dL do dL_hash.match(p_dL) od
+    				 in list_dL
+			    fi
+		      od
+    in glue_params(G,my_unip_lists)
+
+set factor_my_representations(RealForm G, ratvec v) = [Param]:
+    let dLs = derived_simple_factorsRF(G)
+    then my_unip_lists = for dL in dLs
+    	 	      do let dL_hash = my_unitary_hash.uhash(dL)
+		         in if my_unitary_hash_flag and my_unitary_hash.uhash(dL).size().>
+		      	    then dL_hash.list()
+			    else let list_dL = unipotent_representations(dL)
+			    	 then () = for p_dL in list_dL do dL_hash.match(p_dL) od
+    			    	 in list_dL
+			    fi
+		      od
+    in glue_params(G,my_unip_lists,v)
+
+{ theta_induce_irreducible2: branch-only addition to induction.at.  Enlarge Q
+  until it is weakly good, then use the difficult induction from Q to Qgood
+  followed by the easy one from Qgood to Q.  Verbatim from
+  origin/to_ht_branch_alt:atlas-scripts/induction.at .  Used by cohIndUnip.at.
+  (Kept here rather than in the light FPP_support.at because it needs the
+  heavier theta_induce_irreducible from inductionGR.at.) }
+set theta_induce_irreducible2(ParamPol P, RealForm G) = ParamPol:
+    let result = null_module(G)
+    then () = if P.= then return result fi
+    then L = P.real_form, gammaL = P.infinitesimal_character
+        then rhou = G.rho - L.rho, scr = G.simple_coroots
+    then S = for avee@j in G.simple_coroots
+    	     do if (avee*rhou).= then [j] else [] fi
+	     od.##
+    then x0_from_L = inverse_embed_KGB(KGB(L,0),G)
+    then dos = delta_on_simple(G)
+    then Q = KGPElt:(S,x0_from_L)
+    then gamma = gammaL + rhou
+    then Sgood = S, Lgood = L, gammagood = gamma, Qgood = Q
+    then T = for avee@j in scr
+    	     do if (avee*gamma).< then [j] else [] fi
+	     od.## {always excludes S}
+    then () = while #T > 0
+    	      do let ()= Sgood := (Sgood##T##for t in T do dos[t] od).sort_u
+	      	 then () = Qgood := (Sgood,x0_from_L)
+		 then () = Lgood := Qgood.Levi
+		 then () = gammagood :=dominant(Lgood,gammagood) {now nonneg on Sgood}
+	      	 in T := for avee@j in scr
+    	     	      	 do if (avee*gammagood).< then [j] else [] fi
+	     		 od.## {excludes Sgood}
+	      od {now induction from Qgood is weakly good}
+    then Pgood = theta_induce_irreducible(P,Lgood)
+    in theta_induce_parampol(Pgood,G)

@@ -3,6 +3,7 @@
 < weak_packets.at {for unipotent_representations}
 < time.at {for print_time_string}
 < FPP_faces_herm.at {for big_unitary_hash}
+< FPP_support_wp.at {branch-only weak_packets supplements (port)}
 {enumerate weakly fair cohomologically induced from unipotent reps in
 the FPP}
 {MAYBE MISSES E8 rep wkly fair ind from min of E6_q??}
