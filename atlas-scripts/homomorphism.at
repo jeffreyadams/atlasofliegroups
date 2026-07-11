@@ -3,6 +3,13 @@
 <test_braid.at
 <L_hom.at
 
+{ branch-only additive overload: master's test_braid.at kept only m@(RootDatum,int,int)
+  but dropped m@(RootDatum,vec,vec). test_braid.at is shared (included by all.at) so we
+  do not touch it; add the missing overload here (used by test_tits_braid below).
+  Source: git show origin/endoscopy_side:atlas-scripts/test_braid.at }
+set m(RootDatum rd,vec alpha,vec beta)=int:
+alpha*coroot(rd,beta)*beta*coroot(rd,alpha)
+
 set hom_verbose=false
 
 {we are off by a transpose here?}

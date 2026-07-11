@@ -39,8 +39,12 @@ set to_dominant (ratvec cowt,RootDatum rd) = (ratvec,WeylElt):
   lacks these; |fac| omitted -- master already has it) }
 set in_weight_lattice (RootDatum rd,ratvec v) = bool: is_integer(v*rd.simple_coroots)
 set in_coweight_lattice (RootDatum rd,ratvec v) = bool: is_integer(v*rd.simple_roots)
-{ remove_zeros/prune/left_solve/right_solve omitted: not needed by the
-  closure, and [vec] collides with mat under current axis }
+{ remove_zeros/prune omitted: not needed by the closure, and [vec] collides
+  with mat under current axis. left_solve/right_solve ARE needed by
+  homomorphism.at (root_map/coroot_map); they wrap master's solve@(mat,mat). }
+set right_solve (mat A,mat B) = Maybe<mat>: solve(A,B)  { solve AX=B }
+set left_solve (mat A,mat B) = Maybe<mat>:              { solve XA=B }
+   case solve(^A,^B) | none: none() | some(sol): (^sol).some esac
 
 { branch-only strong-real-form purity (different notion from master's
   is_pure@Split): a real form is pure iff its central-cocharacter datum

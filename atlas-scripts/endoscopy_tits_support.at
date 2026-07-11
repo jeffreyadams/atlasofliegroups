@@ -71,6 +71,13 @@ set simple_expression (Tits_elt sigma) = [Tits_elt]:
 
 set square (Tits_elt (rd,tf,theta)) = ratvec: tf+rho_check(rd)
 
+{ branch-only additive overload: master's tits.at has tits_delta@(RootDatum,mat)
+  and tits_delta@(RealForm) but not tits_delta@(InnerClass). Used by
+  homomorphism.at (map_tits_element_twisted). Source:
+  git show origin/endoscopy_side:atlas-scripts/tits.at }
+set tits_delta (InnerClass ic) = Tits_elt:
+  tits_delta(ic.root_datum,distinguished_involution(ic))
+
 set show (Tits_elt sigma) = void:
   prints(sigma.root_datum);
   prints("theta=",sigma.theta);

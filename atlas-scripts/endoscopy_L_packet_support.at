@@ -1,0 +1,18 @@
+{ Endoscopy port supplement: L_packet.at additions that live on origin/endoscopy_side
+  but were never merged to master. These are additive overloads (master's L_packet.at
+  has only L_packets([Param])). Deps all present in master:
+    all_parameters_gamma  -> K_highest_weights.at (via strong_real_forms.at)
+    strong_real_forms / pure_strong_real_forms -> strong_real_forms.at
+  Source: git show origin/endoscopy_side:atlas-scripts/L_packet.at (lines ~82-89). }
+
+<L_packet.at
+<strong_real_forms.at
+
+set L_packets(RealForm G,ratvec gamma)=[[Param]]:
+L_packets(all_parameters_gamma(G,gamma))
+
+set L_packets(InnerClass ic,ratvec gamma)=[[Param]]:
+##for G in strong_real_forms(ic) do L_packets(G,gamma)  od
+
+set pure_L_packets(InnerClass ic,ratvec gamma)=[[Param]]:
+##for G in pure_strong_real_forms(ic) do L_packets(G,gamma)  od
