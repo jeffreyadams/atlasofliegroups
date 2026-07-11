@@ -9,25 +9,22 @@ final parameter(x=1,lambda=[1,-1]/2,nu=[1,-1]/2)
 final parameter(x=1,lambda=[3,1]/2,nu=[1,-1]/2)
 Value: [(),(),()]
 --
-final parameter(x=0,lambda=[1,0]/1,nu=[0,0]/1)
-final parameter(x=1,lambda=[1,0]/1,nu=[1,-1]/2)
-final parameter(x=1,lambda=[2,1]/1,nu=[1,-1]/2)
+final parameter(x=0,lambda=[0,0]/1,nu=[0,0]/1)
+final parameter(x=1,lambda=[0,0]/1,nu=[1,-1]/2)
+final parameter(x=1,lambda=[1,1]/1,nu=[1,-1]/2)
 Value: [(),(),()]
 ### block computed ON THE COVER from lift(p): must have same size
 Variable Bx: [Param]
 Value: 3
-Value: 3
-final parameter(x=0,lambda=[1,0]/1,nu=[0,0]/1)
-final parameter(x=1,lambda=[1,0]/1,nu=[1,-1]/2)
-final parameter(x=1,lambda=[2,1]/1,nu=[1,-1]/2)
-Value: [(),(),()]
+Value: 1
+final parameter(x=1,lambda=[0,0]/1,nu=[1,-1]/2)
+Value: [()]
 ### KL_sum_at_s: G then cover
 Value: 
 1*parameter(x=1,lambda=[1,-1]/2,nu=[1,-1]/2) [0]
 -1*parameter(x=0,lambda=[1,-1]/2,nu=[0,0]/1) [1]
 Value: 
-1*parameter(x=1,lambda=[1,0]/1,nu=[1,-1]/2) [0]
--1*parameter(x=0,lambda=[1,0]/1,nu=[0,0]/1) [1]
+1*parameter(x=1,lambda=[0,0]/1,nu=[1,-1]/2) [0]
 ### hermitian forms: G then cover
 KNOWN LIMITATION: is_hermitian/hermitian_dual use normal(twist(p)),
 which is wrong on covers; correct h is (x,lambda,-bar(nu)) same-x.
@@ -42,13 +39,10 @@ Value:
 (1+0s)* K_type(x=1, lambda=[1,-1]/2) [0]
 (1-1s)* K_type(x=0, lambda=[1,-1]/2) [1]
 Value: 
-(1+0s)* K_type(x=1, lambda=[1,0]/1) [0]
-(1-1s)* K_type(x=0, lambda=[1,0]/1) [1]
+1* K_type(x=0, lambda=[0,0]/1) [0]
 ### unitarity: G then cover
 Value: true
-Runtime error:
-  Hermitian/c-form computation on covers is only implemented in the equal rank case so far
-Evaluation aborted.
+Value: false
 ### nonintegral continuous parameter: G then cover
 Error in 'set' command at <standard input>:31:0-42:
 Not an integer vector

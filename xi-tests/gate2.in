@@ -1,10 +1,11 @@
 prints("### GL(2,R): two presentations of the det/2 cover")
 set G=GL(2,R)
-set Gx=xi_cover(G,[1,1]/2)    { kappa=(1,1)!=0: projective twist }
-set Gy=xi_cover(G,[-1,1]/2)   { delta-fixed: kappa=0, honest twist }
-prints("kappa(Gx)=", cover_kappa(Gx), "   kappa(Gy)=", cover_kappa(Gy))
-prints("### same genuine rep lambda=(1,0): storage (0,0) in Gx, (1,0) in Gy")
-set px=param(KGB(Gx,1),[0,0],[1,-1]/2)
+set Gx=xi_cover(G,[1,1]/2)    { canonicalised to the delta-fixed datum }
+set Gy=xi_cover(G,[-1,1]/2)   { the delta-fixed datum itself }
+prints("canonical data agree: ", cover_xi(Gx)=cover_xi(Gy),
+       "   kappa: ", cover_kappa(Gx))
+prints("### same genuine rep lambda=(1,0) through both constructions")
+set px=param(KGB(Gx,1),[1,0],[1,-1]/2)
 set py=param(KGB(Gy,1),[1,0],[1,-1]/2)
 prints("lambdas: ", px.lambda, "  ", py.lambda, "   [must agree]")
 prints("### blocks in both presentations [same size, same lambdas]")

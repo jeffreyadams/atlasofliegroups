@@ -2,8 +2,8 @@
 Variable G: RealForm (overriding previous instance, which had type RealForm)
 Variable Gx: RealForm
 Variable Gy: RealForm
-kappa(Gx)=[ 1, 1 ]/1   kappa(Gy)=[ 0, 0 ]/1
-### same genuine rep lambda=(1,0): storage (0,0) in Gx, (1,0) in Gy
+canonical data agree: true   kappa: [ 0, 0 ]/1
+### same genuine rep lambda=(1,0) through both constructions
 Variable px: Param
 Variable py: Param
 lambdas: [ 1, 0 ]/1  [ 1, 0 ]/1   [must agree]
@@ -13,7 +13,7 @@ Variable By: [Param]
 3 3
 KGB element #0 [ 1, 0 ]/1 [ 0, 0 ]/1
 KGB element #1 [ 1, 0 ]/1 [  1, -1 ]/2
-KGB element #1 [ 2, 1 ]/1 [  1, -1 ]/2
+KGB element #1 [ 0, 1 ]/1 [  1, -1 ]/2
 Value: [(),(),()]
 --
 KGB element #0 [ 1, 0 ]/1 [ 0, 0 ]/1
@@ -45,8 +45,8 @@ Evaluation aborted.
 ### parity consistency at singular gamma=0 (regression of the
 ### pre-gate2 inconsistency: block membership vs finality)
 Variable q0: Param
-Value: final parameter(x=1,lambda=[1,0]/1,nu=[0,0]/1)
-Value: [final parameter(x=1,lambda=[1,0]/1,nu=[0,0]/1)]
+Value: non-final parameter(x=1,lambda=[0,0]/1,nu=[0,0]/1)
+Value: [final parameter(x=0,lambda=[0,0]/1,nu=[0,0]/1)]
 Variable q0y: Param
 Value: final parameter(x=1,lambda=[1,0]/1,nu=[0,0]/1)
 Value: [final parameter(x=1,lambda=[1,0]/1,nu=[0,0]/1)]

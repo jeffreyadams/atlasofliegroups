@@ -36,8 +36,8 @@ set aq_cl=Aq(y0,[1,-1]/2,[1,-1])
 aq_cl
 set (,ng)=%(aq_gen.x)
 set (,nc)=%(aq_cl.x)
-prints("storage match: ", aq_gen.lambda_minus_rho=aq_cl.lambda_minus_rho,
-       "  x match: ", ng=nc)
+prints("storage diff (expect [1,0] = raw xi minus canonical xi): ",
+       aq_gen.lambda_minus_rho-aq_cl.lambda_minus_rho, "  x match: ", ng=nc)
 prints("nu shift (expect [1,1]/2 = (1-theta)xi/2): ", aq_gen.nu-aq_cl.nu)
 prints("infchar shift (expect xi=[1,1]/2): ",
        aq_gen.infinitesimal_character-aq_cl.infinitesimal_character)

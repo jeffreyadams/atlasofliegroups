@@ -678,11 +678,22 @@ set Aq_genuine_reducible (KGBElt x,ratvec lambda, ratvec lambda_q) = ParamPol:
   in
   assert(@:parabolic_is_theta_stable(P_new),"q is not theta-stable");
   let L_tilde = xi_cover(Levi(P_new),shift)
+  then G_tilde = xi_cover(G,shift)
+  { the delta-fixed representatives chosen by L and G may differ by an
+    element of X^*; theta_induce implements untwist-then-induce across that
+    difference, so compensate pi_L by the (necessarily one-dimensional on a
+    torus Levi; asserted in general) character comp }
+  then comp=ratvec_as_vec(cover_xi(L_tilde)-cover_xi(G_tilde))
+  then ()=for av in simple_coroots(root_datum(Levi(P_new)))
+      do assert(comp*av=0,
+         "incompatible cover representatives: comp is not an L-character")
+      od
   then t_L=trivial(Levi(P_new))
   then (,nx_L)=%x(t_L)
-  then pi_L= parameter( KGB(L_tilde,nx_L), lambda(t_L)+shift, nu(t_L)+shift )
+  then pi_L= parameter( KGB(L_tilde,nx_L)
+                      , lambda(t_L)+shift+comp, nu(t_L)+shift+comp )
   in
-  theta_induce_irreducible(pi_L,xi_cover(G,cover_xi(L_tilde)))
+  theta_induce_irreducible(pi_L,G_tilde)
 
 set Aq_genuine (KGBElt x_in,ratvec lambda, ratvec lambda_q) = Param:
   let P = ParamPol: Aq_genuine_reducible(x_in,lambda,lambda_q)

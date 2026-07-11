@@ -1,39 +1,34 @@
-prints("### cover of split torus R^x, xi=1/2")
+prints("### split torus R^x, xi=1/2: type z!=1 E-group, REJECTED in v1")
 set T=split_torus(1)
-set Tx=xi_cover(T,[1/2])
-Tx
-cover_xi(Tx)
-set pt=param(KGB(Tx,0),[0],[1/2])
-pt
-pt.lambda
-pt.nu
-block_of(pt)
-prints("### cover of compact torus S^1, xi=1/2")
+xi_cover(T,[1/2])
+prints("### cover of compact torus S^1, xi=1/2 (delta=1: allowed)")
 set C=compact_torus(1)
 set Cx=xi_cover(C,[1/2])
 set pc=param(KGB(Cx,0),[3],[0/1])
 pc
 pc.lambda
-prints("### cover composition and cancellation")
-xi_cover(Tx,[1/2])
-cover_xi(xi_cover(Tx,[1/2]))
-xi_cover(Tx,[-1/2])
-prints("### GL(2,R), det/2 cover")
+prints("### cover composition and cancellation (compact torus)")
+xi_cover(Cx,[1/2])
+cover_xi(xi_cover(Cx,[1/2]))
+xi_cover(Cx,[-1/2])
+prints("### GL(2,R), det/2 cover: canonicalised to the delta-fixed datum")
 set G=GL(2,R)
 set Gx=xi_cover(G,[1,1]/2)
 Gx
 cover_xi(Gx)
+prints("same cover from the delta-fixed presentation: ",
+       cover_xi(xi_cover(G,[-1,1]/2))=cover_xi(Gx))
 set x_open=KGB(Gx,KGB_size(Gx)-1)
-set p=param(x_open,[0,0],[1,1]/2)
+set p=param(x_open,[1,0],[1,1]/2)
 p
 p.lambda
 p.nu
 block_of(p)
-prints("### xi=0 sanity: cover(G,[0,0]) is plain GL(2,R)")
+prints("### xi=0 sanity: xi_cover(G,[0,0]) is plain GL(2,R)")
 set G0=xi_cover(G,[0,0])
 G0
 trivial(G0)
-prints("### invalid xi rejected (SL(2,R), xi=1/2 not coroot-orthogonal)")
+prints("### invalid xi rejected (SL(2,R), xi=1/2: non-integral pairing)")
 set S=SL(2,R)
 xi_cover(S,[1/2])
 prints("### done")

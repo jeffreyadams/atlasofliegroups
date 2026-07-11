@@ -1,27 +1,23 @@
-### R^x cover: unitary genuine character mu (lambda=1/2)
+### R^x cover: no delta-fixed xi exists; rejected in v1
 Variable T: RealForm
-Variable Tx: RealForm
-Variable mu: Param
-Value: final parameter(x=0,lambda=[1]/2,nu=[0]/1)
-is_hermitian(mu): true   [expect true: mu unitary]
-hermitian_dual(mu)=mu: true
-### R^x cover: |.|^s twist, s=1: not hermitian (matches group analogue)
-Variable mus: Param
-is_hermitian(mus): false   group analogue: false
-### form computation on projective-twist cover is gated
 Runtime error:
-  Hermitian/c-form computation on covers is only implemented in the equal rank case so far
+  Cover datum xi has no delta-fixed representative (type z!=1 E-group, not implemented)
 Evaluation aborted.
-### GL(2,R) det/2 cover: lift of trivial is hermitian
+### GL(2,R) det/2 cover: same-x hermitian dual
 Variable G: RealForm (overriding previous instance, which had type RealForm)
 Variable Gx: RealForm
 Variable lp: Param
-is_hermitian(lift): true   [expect true]
-### kappa=0 cover (compact torus): old twist path intact
+is_hermitian(lift of trivial): true   [expect true]
+Variable lps: Param
+is_hermitian(asymmetric nu): false
+### form computation gated on non-equal-rank covers
+Runtime error:
+  Hermitian/c-form computation on covers is only implemented in the equal rank case so far
+Evaluation aborted.
+### kappa=0 cover (compact torus): forms computable (equal rank)
 Variable Cx: RealForm
 Variable pc: Param
 is_hermitian(pc): true
-hermitian_form_irreducible(pc): 
 Value: 
 1* K_type(x=0, lambda=[7]/2) [0]
 ### done

@@ -188,16 +188,33 @@ Rep_context::Rep_context(RealReductiveGroup &G_R, const RatWeight& xi)
     // integral, |delta| the distinguished involution of the inner class
     const WeightInvolution& delta = ic.distinguished();
     RatWeight kappa = d_xi - delta*d_xi;
-    if (kappa.normalize().denominator()!=1)
-      throw std::runtime_error
-	("Cover datum xi not fixed by the inner class (not yet implemented)");
-    /* N.B. one might hope to replace |xi| here by a |delta|-fixed
-       representative of its coset |xi+X^*| (making the twist of genuine
-       parameters honestly involutive), but such a representative can fail to
-       be orthogonal to the coroots, leaving the regime this implementation
-       supports: for the |det/2| cover of $GL(2,\R)$ no representative is both
-       |delta|-fixed and coroot-orthogonal. So |xi| is kept as given, and
-       |twisted| below applies a coset correction by |kappa| instead. */
+    kappa.normalize();
+    if (not kappa.is_zero())
+    { /* try to replace |xi| by a |delta|-fixed representative of |xi+X^*|;
+	 under the integral-pairings gate above this is safe (the shift by an
+	 element of |X^*| preserves integrality of all coroot pairings) */
+      if (kappa.denominator()!=1)
+	throw std::runtime_error
+	  ("Cover datum xi is not delta-fixed modulo X^* (not implemented)");
+      Weight kv(kappa.size());
+      for (unsigned i=0; i<kv.size(); ++i)
+	kv[i] = kappa.numerator()[i];
+      try
+      { d_xi -= matreduc::find_solution(delta-1,-kv); d_xi.normalize(); }
+      catch (const std::runtime_error&)
+      { throw std::runtime_error // e.g. the |xi=1/2| cover of the split torus:
+	  ("Cover datum xi has no delta-fixed representative (type z!=1 "
+	   "E-group, not implemented)"); // Adams-Vogan L-groups Ex 5.12
+      }
+    }
+    /* This version assumes |delta*xi==xi| on the nose. Weaker regimes are
+       mathematically meaningful (e.g. |(1-delta)xi| integral, or merely
+       |2xi| in |X^*|: the |xi=1/2| cover of the split torus admits no
+       delta-fixed representative at all, and is a type $z\neq1$ E-group,
+       Adams-Vogan L-groups paper Ex 5.12), and some machinery below (the
+       |kappa| correction in |twisted|, the same-x Hermitian dual) was
+       written to be correct there as well; but their block/form theory is
+       not settled, so construction is refused here. */
   }
 }
 

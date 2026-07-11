@@ -3754,7 +3754,7 @@ void real_form_value::print(std::ostream& out) const
           (ic_ptr->interface.out(val.realForm())) @|
       << '\'' ;
   if (not xi_val.is_zero())
-    out << " [cover xi=" << xi_val << ']';
+    out << " [cover xi=" << rc().xi() << ']';
 }
 
 @ To make a real form is easy: one provides an |inner_class_value| and a valid
@@ -4122,7 +4122,9 @@ void cover_wrapper(eval_level l)
   shared_real_form rf = get<real_form_value>();
   if (xi->val.size()!=rf->val.rank())
     throw runtime_error("Cover datum xi size mismatch");
-  (xi->val += rf->xi_val).normalize(); // covers compose additively
+  if (not rf->xi_val.is_zero())
+    xi->val += rf->rc().xi(); // compose with the canonical datum
+  xi->val.normalize(); // covers compose additively
   if (l==eval_level::no_value)
     return;
   if (xi->val.denominator()==1) // integral |xi|: the cover is trivial, since
@@ -4138,7 +4140,9 @@ void cover_xi_wrapper(eval_level l)
 { shared_real_form rf = get<real_form_value>();
   if (l==eval_level::no_value)
     return;
-  push_value(std::make_shared<rational_vector_value>(rf->xi_val));
+  push_value(std::make_shared<rational_vector_value>(rf->rc().xi()));
+    // NOT |rf->xi_val|: the |Rep_context| canonicalises (delta-fixes) the
+    // cover datum, and all parameter arithmetic must use that representative
 }
 
 @ Finally we install everything related to real forms.
