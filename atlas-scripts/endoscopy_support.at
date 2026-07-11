@@ -21,3 +21,14 @@ set roots_restricting_to_multiple (RootDatum rd,SubTorus T,vec alpha) = [vec]:
      do let res=T.restrict(beta) in
         if res=alpha or res=2*alpha or alpha=2*res then [beta] else [] fi
      od
+
+{ to_dominant: inverse-direction wrapper of from_dominant, used across the
+  endoscopy files (also defined identically in endoscopic_groups.at) }
+set to_dominant (RootDatum rd, vec wt) = (WeylElt,vec):
+  let (w,wt_dom)=from_dominant(rd,wt) in (inverse(w),wt_dom)
+set to_dominant (vec cowt,RootDatum rd) = (vec,WeylElt):
+  let (cowt_dom,w)=from_dominant(cowt,rd) in (cowt_dom,inverse(w))
+set to_dominant (RootDatum rd, ratvec wt) = (WeylElt,ratvec):
+  let (n,d)=%wt then (w,v)=to_dominant(rd,n) in (w,v/d)
+set to_dominant (ratvec cowt,RootDatum rd) = (ratvec,WeylElt):
+  let (n,d)=%cowt then (v,w)=to_dominant(n,rd) in (v/d,w)

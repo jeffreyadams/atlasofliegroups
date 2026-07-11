@@ -1,7 +1,7 @@
 <endoscopy_sc_support.at
 <structure_constants.at
 <W_orbit.at
-<tits.at
+<endoscopy_tits_support.at
 <character_table_reps.at
 
 set st_verbose=false

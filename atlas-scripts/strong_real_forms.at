@@ -1,0 +1,87 @@
+<basic.at
+<maybe_KGB.at
+<K_highest_weights.at
+
+
+
+{same as initial_torus_factor}
+set torus_factor(RealForm G)=torus_factor(KGB(G,0))
+
+{utility functions}
+set find([RealForm] real_forms,RealForm G)=int:first(for H in real_forms do G=H od)
+set pr([RealForm] real_forms)=void:for G in real_forms do prints(G, " ", torus_factor(G)) od
+
+{for each H in real_forms(G) create real_form(H,delta,torus_factor(H)+v)
+where v runs over all_lambda_differential_0(x_open(dual quasisplit form))
+these are all of the strong real forms of H, with repetitions
+e.g. if G is split this contains 2^rank groups (G,delta,torus_factor(G)+v)
+these are all equivalent (as strong real forms) to (G,delta,torus_factor(G))
+at the opposite extreme:
+G=compact_torus(n) -> 2^n distinct strong real forms}
+set strong_real_forms_with_duplicates(RealForm G)=[RealForm]:
+let x=x_open(dual_quasisplit_form(G)) then
+shifts = all_lambda_differential_0(x) then
+delta=G.distinguished_involution in
+for H in real_forms(G) do 
+ for v in shifts do real_form(H,delta,torus_factor(H)+v) od od.##
+
+{remove duplicates from list of real forms, based on real_forms[i]=real_forms[j]}
+set remove_duplicates([RealForm] real_forms)=
+let rv=[RealForm]:[] in
+for H in real_forms do
+ let j=find(rv,H) in
+ if j=-1 then rv#:=H fi
+ od;
+ rv
+
+{strong real forms(G): remove duplicates from strong_real_forms_with_duplicates(G)}
+set strong_real_forms(RealForm G)=[RealForm]:remove_duplicates(strong_real_forms_with_duplicates(G))
+
+{this next function redefines the one defined in galois.at, which has been renamed}
+set strong_real_forms(InnerClass ic)=[RealForm]:strong_real_forms(quasisplit_form(ic))
+
+set pure_strong_real_forms(RealForm G )=[RealForm]:##for G in strong_real_forms(G) do if is_pure(G) then [G] else [] fi od
+set pure_strong_real_forms(InnerClass ic)=[RealForm]:##for G in strong_real_forms(ic) do if is_pure(G) then [G] else [] fi od
+
+{ square_classes(ic) =
+  list of all square classes of inner class, each a list of real form numbers
+  square_classes(G) = list of all square classes of inner class of G
+}
+set square_classes (InnerClass ic) = [[int]]:
+  square_classes(Cartan_class(ic,0)) { the most compact Cartan }
+{ for a RealForm just convert it to its InnerClass, Cartan(0) is the same }
+
+{the number of strong_real_forms produced by strong_real_forms(G) should
+be the same as the sum of the sizes of the arrays in square_classes(G)
+These arrays are parametrized by RealForms of G, and the size of the vector is
+the number of strong real forms mapping to the given RealForm.}
+set test_strong_real_forms(RealForm  G)=void:
+let srf=strong_real_forms(G) in
+tabulate(for G in srf do  [G.to_string,  torus_factor(G).to_string] od);
+prints("number of computed strong real forms: ", #srf, new_line,
+"number computed by square_classes: ", #(##(square_classes(G))));
+prints("square_classes: ", square_classes(G))
+
+{transfer parameter between two real forms mapping to the same strong real form}
+set transfer(Param p,RealForm H)=ParamPol:  {ParamPol to allow for null module}
+let G=real_form(p) in
+assert(G.simple_roots=H.simple_roots and
+G.distinguished_involution=H.distinguished_involution);
+let n_x=number(p.x) in
+if n_x<KGB_size(H) then parameter(KGB(H,number(p.x)),p.lambda,p.nu)
+else null_module(H) fi
+
+set transfer([Param] parameters,RealForm H)=[ParamPol]:
+for p in parameters do transfer(p,H) od
+
+set transfer(ParamPol P,RealForm H)=ParamPol:
+sum(H,for (c,p) in %P do c*transfer(p,H) od)
+
+{
+set transfer_KGB(KGBElt x, RealForm H)=
+let G=x.real_form in
+assert(quasisplit_form(H)=G,"x is not a KGB element for the quasisplit form of H");
+let theta=involution(x)
+}
+
+

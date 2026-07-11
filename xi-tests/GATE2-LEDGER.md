@@ -84,3 +84,20 @@ DIFFERENTLY. Reconciliation status:
 - copied branch files (homomorphism/L_hom/embed/param_pair_hash) carry
   branch-vs-master SYNTAX drift to fix (param_pair_hash.at:96 type error).
 Copied-but-unwired; all.at unaffected.
+
+## Endoscopy lifting port — tits.at RE-ASSESSED + cascade status (2026-07-11)
+KEY CORRECTION: the "161 delicate diff-lines" in tits.at were a FALSE ALARM.
+Reality: master defines NOTHING the branch lacks; branch tits.at = master's +
+13 additive Tits-element fns; shared fns (multiply, inverse, left/right,
+conjugate) FUNCTIONALLY IDENTICAL (only whitespace/comments/assert-syntax
+differ; master is actually newer on @: asserts). No sign-convention risk.
+=> clean additive supplement, like structure_constants.
+Layers DONE (all clean additive supplements, verified no math divergence):
+  structure_constants (endoscopy_sc_support.at), tits (endoscopy_tits_support.at
+  - 13 fns + left/right ratvec overloads), synthetic2.at, to_dominant.
+Cascade remaining (converging; each = a small branch-only helper/file):
+  in_coweight_lattice (maybe_KGB.at dep) -> strong_real_forms -> ... then
+  param_pair_hash.at:96 type-drift (embed.at), weak_packets (32-line diff).
+RECOMMENDATION to finish efficiently: stop error-at-a-time; compute the FULL
+transitive closure of branch-new/modified files the epstar lifting needs and
+batch-port, rather than reactive one-by-one. Mechanical, low math-risk.

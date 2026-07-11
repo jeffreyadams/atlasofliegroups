@@ -1,0 +1,78 @@
+<parameters.at
+<tits.at
+
+{ The 13 Tits-element functions the endoscopy L-homomorphism machinery needs,
+  ported from the endoscopy_side branch's tits.at. Master's tits.at is master's
+  plus exactly these (verified: master defines nothing the branch lacks;
+  |multiply|, |inverse|, |left/right_multiply|, |conjugate| are functionally
+  identical -- only whitespace differs -- so no sign-convention divergence).
+  Kept separate so master's tits.at (used by other scripts) is untouched.
+  |unnormalized_torus_factor(KGBElt)| is deliberately omitted: master already
+  has it (parameters.at). }
+
+set w (Tits_elt (rd,t,theta)) = WeylElt: W_elt(rd,theta)
+set w (Tits_elt (rd,t,theta), mat delta) = WeylElt: W_elt(rd,theta*delta)
+
+set tits_element (RootDatum G,ratvec torus_part, mat theta) = Tits_elt:
+  (G,torus_part,theta)
+set tits_element (RootDatum G,ratvec torus_part, WeylElt w) = Tits_elt:
+  assert(G=w.root_datum,"root data don't match");
+  tits_element(G,torus_part,w.matrix)
+set tits_element (RootDatum G,WeylElt w) = Tits_elt:
+  tits_element(G,null(rank(G)),w)
+set tits_element (RootDatum G,mat theta) = Tits_elt:
+  tits_element(G,null(rank(G)),theta)
+set tits_element (KGBElt x) = Tits_elt:
+  (x.root_datum,x.unnormalized_torus_factor,x.involution)
+
+set torus_factor (Tits_elt t) = ratvec: torus_part(t)
+set unnormalized_torus_factor (Tits_elt t) = ratvec:
+  (torus_factor(t)+rho_check(root_datum(t)))/2
+
+set KGB_elt (Tits_elt t) = KGB_elt(t.root_datum,t.theta,
+  (2*t.torus_part-t.root_datum.rho_check)*(1+t.theta)/2)
+
+set sigma (RootDatum G,ratvec torus_part, mat theta) = Tits_elt:
+  tits_element(G,torus_part,theta)
+set sigma (RootDatum G,ratvec torus_part, WeylElt w) = Tits_elt:
+  tits_element(G,torus_part,w)
+set sigma (RootDatum G,WeylElt w) = Tits_elt: tits_element(G,w)
+
+set tits_simple_reflection (RootDatum G, ratvec torus_part,int i) = Tits_elt:
+  assert(0<=i and i<rank(G),"i must be index of a simple reflection");
+  (G,torus_part,reflection(G,i))
+set sigma (RootDatum G, ratvec torus_part,int i) = Tits_elt:
+  tits_simple_reflection(G,torus_part,i)
+set tits_simple_reflection (RootDatum G, int i) = Tits_elt:
+  tits_simple_reflection(G,null(rank(G)),i)
+set sigma (RootDatum G,int i) = Tits_elt:
+  tits_simple_reflection(G,null(rank(G)),i)
+set tits_simple_reflection (RootDatum G,vec alpha) = Tits_elt:
+  let i=root_index(G,alpha) in tits_simple_reflection(G,i)
+
+{ pure torus-part left/right multiply (master has all other left/right
+  overloads, but not these ratvec ones) }
+set left (ratvec v, Tits_elt xi) = Tits_elt:
+  (xi.root_datum,xi.torus_part+v,xi.theta)
+set right (Tits_elt xi, ratvec v) = Tits_elt:
+  (xi.root_datum,xi.torus_part+v*xi.theta.inverse,xi.theta)
+
+set product (RootDatum rd, [Tits_elt] L) = Tits_elt:
+  let p = tits_identity(rd) in for w in L do p *:= w od; p
+
+set simple_expression (Tits_elt sigma) = [Tits_elt]:
+  let (G,v,theta)=sigma then rv=[Tits_elt]:[] then w=W_elt(G,theta) in
+  if length(w)=0 then rv:=[left(sigma.torus_part,tits_identity(G))]
+  else for i@j in word(w)
+       do rv#:= if j=0 then tits_simple_reflection(G,v,i)
+                       else tits_simple_reflection(G,i) fi
+       od
+  fi; rv
+
+set square (Tits_elt (rd,tf,theta)) = ratvec: tf+rho_check(rd)
+
+set show (Tits_elt sigma) = void:
+  prints(sigma.root_datum);
+  prints("theta=",sigma.theta);
+  prints("mu=",sigma.torus_factor);
+  prints("rho_check=", rho_check(sigma.root_datum))
