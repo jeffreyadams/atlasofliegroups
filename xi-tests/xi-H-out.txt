@@ -1,0 +1,139 @@
+Completely read file 'atlas-scripts/basic.at'.
+Completely read file 'atlas-scripts/sort.at'.
+Completely read file 'atlas-scripts/matrix.at'.
+Completely read file 'atlas-scripts/ratmat.at'.
+Completely read file 'atlas-scripts/lattice.at'.
+Completely read file 'atlas-scripts/group_operations.at'.
+Completely read file 'atlas-scripts/misc.at'.
+Completely read file 'atlas-scripts/groups.at'.
+Completely read file 'atlas-scripts/combinatorics.at'.
+Completely read file 'atlas-scripts/simple_factors.at'.
+Completely read file 'atlas-scripts/Weylgroup.at'.
+Completely read file 'atlas-scripts/generics.at'.
+Completely read file 'atlas-scripts/hash.at'.
+Completely read file 'atlas-scripts/W_orbit.at'.
+Completely read file 'atlas-scripts/tits.at'.
+Completely read file 'atlas-scripts/parameters.at'.
+Completely read file 'atlas-scripts/torus.at'.
+Completely read file 'atlas-scripts/restricted_roots.at'.
+Completely read file 'atlas-scripts/endoscopy_support.at'.
+Completely read file 'atlas-scripts/lazy_lists.at'.
+Definition of '+@(vec,vec)' forgotten
+Definition of '-@(vec,vec)' forgotten
+Definition of '*@(vec,vec)' forgotten
+Definition of '+@(vec,vec)' forgotten
+Definition of '-@(vec,vec)' forgotten
+Definition of '*@(vec,vec)' forgotten
+Completely read file 'atlas-scripts/polynomial.at'.
+Completely read file 'atlas-scripts/number_theory.at'.
+Completely read file 'atlas-scripts/Gaussian_elim.at'.
+Completely read file 'atlas-scripts/cyclotomic.at'.
+Completely read file 'atlas-scripts/cross_W_orbit.at'.
+Completely read file 'atlas-scripts/Levi_subgroups.at'.
+Completely read file 'atlas-scripts/parabolics.at'.
+Completely read file 'atlas-scripts/elliptic.at'.
+Completely read file 'atlas-scripts/tabulate.at'.
+            Declaring identifier 'Levi_reducer': (RootDatum->StdLeviReducer)
+Value: Function defined at atlas-scripts/W_classes.at:81:4--82:64
+(rd): conjugate_from_elected_Levi@StdLeviFinder(Levi_lookup@(RootDatum,[[rho_data]])(rd,orbits_table@RootDatum(rd)))
+Completely read file 'atlas-scripts/W_classes.at'.
+Completely read file 'atlas-scripts/K.at'.
+Completely read file 'atlas-scripts/count.at'.
+Completely read file 'atlas-scripts/translate.at'.
+Completely read file 'atlas-scripts/dualB.at'.
+Completely read file 'atlas-scripts/kl.at'.
+Completely read file 'atlas-scripts/coherent.at'.
+Completely read file 'atlas-scripts/synthetic.at'.
+Completely read file 'atlas-scripts/W_K.at'.
+Completely read file 'atlas-scripts/finite_dimensional.at'.
+Completely read file 'atlas-scripts/induction.at'.
+Completely read file 'atlas-scripts/center.at'.
+Completely read file 'atlas-scripts/lietypes.at'.
+Completely read file 'atlas-scripts/affine.at'.
+Completely read file 'atlas-scripts/all_finite_order.at'.
+Completely read file 'atlas-scripts/diagram.at'.
+Completely read file 'atlas-scripts/conjugate.at'.
+Completely read file 'atlas-scripts/poset.at'.
+Completely read file 'atlas-scripts/isomorphism.at'.
+Completely read file 'atlas-scripts/subgroups.at'.
+Completely read file 'atlas-scripts/twisted_root_datum.at'.
+Completely read file 'atlas-scripts/twisted_conjugacy.at'.
+Completely read file 'atlas-scripts/nilpotent_orbits.at'.
+Completely read file 'atlas-scripts/nilpotent_orbit_partitions.at'.
+Completely read file 'atlas-scripts/nilpotent_orbits_exceptional.at'.
+Completely read file 'atlas-scripts/representations.at'.
+Completely read file 'atlas-scripts/weyl_character_formula.at'.
+Completely read file 'atlas-scripts/endoscopic_groups.at'.
+### xi_H = (v+rho_G)|_M - rho_H : numeric checks of the E1 formula
+--- check 1: ordinary endoscopy, G=SL(2,R), s=diag(1,-1), v=[1/2]
+H=disconnected split real group with Lie algebra 'gl(1,R)'
+M=
+| 1 |
+
+xi'_H=v+rho_G=[ 3 ]/2  rho_H=[ 0 ]/1  xi_H=[ 3 ]/2
+2*xi_H integral: true   xi_H integral (trivial cover?): false
+--- check 2: trivial datum s=0 => H=G, xi_H=0
+H0=connected split real group with Lie algebra 'sl(2,R)'
+xi_H = v+rho_G-rho_H = [ 0 ]/1  integral: true
+--- check 3: twisted GL(4), delta_vee=flip, s=1 (v=0)
+H=adjoint root datum of Lie type 'B2'
+H_vee=simply connected root datum of Lie type 'C2'
+M=
+| -1,  0 |
+|  0, -1 |
+|  0,  1 |
+|  1,  0 |
+
+rho_G (as vector in X_*(T_G_vee)) = [  3,  1, -1, -3 ]/2
+Error in expression any(sol) at <standard input>:34:25-33
+  Failed to match 'any' with argument type Maybe<vec>
+Program error: Expression analysis failed
+Evaluation aborted.
+u = (v+rho_G)|_M = [ -3, -1 ]/2
+rho_H = [ -3, -1 ]/2
+xi_H = [ 0, 0 ]/1
+2*xi_H integral: true   xi_H integral (trivial cover?): true
+pairings with H-coroots (gate-2 check): [0/1,0/1]
+--- check 4: ordinary endoscopy in Sp(4,R), s=e(v), v=[1,1]/2
+H=disconnected split real group with Lie algebra 'sl(2,R).sl(2,R)'
+M=
+| 1, 0 |
+| 0, 1 |
+
+xi'_H=[ 5, 3 ]/2  rho_H=[ 1, 0 ]/1  xi_H=[ 3, 3 ]/2
+2*xi_H integral: true   xi_H integral: false
+pairings with H-coroots: [0/1,3/1]
+--- check 5: twisted GL(5), delta_vee=flip, s=1
+H=simply connected root datum of Lie type 'C2'  H_vee=adjoint root datum of Lie type 'B2'
+M=
+
+| -1,  0 |
+|  0, -1 |
+|  0,  0 |
+|  0,  1 |
+|  1,  0 |
+
+rho_G = [  2,  1,  0, -1, -2 ]/1
+u=[ -2, -1 ]/1  rho_H=[ -2, -1 ]/1  xi_H=[ 0, 0 ]/1
+2*xi_H integral: true   xi_H integral: true
+pairings with H-coroots: [0/1,0/1]
+--- print M for check 3 (GL(4) twisted)
+
+| -1,  0 |
+|  0, -1 |
+|  0,  1 |
+|  1,  0 |
+
+--- check 6: twisted GL(4), s=e(v), v=[1,0,0,-1]/2 (aiming for D2 datum)
+H=adjoint root datum of Lie type 'B2'  H_vee=simply connected root datum of Lie type 'C2'
+M=
+
+| -1,  0 |
+|  0, -1 |
+|  0,  1 |
+|  1,  0 |
+
+u=(v+rho_G)|_M=[ -4, -1 ]/2  rho_H=[ -3, -1 ]/2  xi_H=[ -1,  0 ]/2
+2*xi_H integral: true   xi_H integral: false
+pairings with H-coroots: [1/2,0/1]
+Bye.

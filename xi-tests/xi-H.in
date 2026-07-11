@@ -50,3 +50,30 @@ set xiHsp=usp-rho(Hsp)
 prints("xi'_H=",usp,"  rho_H=",rho(Hsp),"  xi_H=",xiHsp)
 prints("2*xi_H integral: ", is_integer(2*xiHsp), "   xi_H integral: ", is_integer(xiHsp))
 prints("pairings with H-coroots: ", for a in Hsp.simple_coroots do xiHsp*a od)
+
+prints("--- check 5: twisted GL(5), delta_vee=flip, s=1")
+set G5_vee=GL(5,R)
+set delta5=G5_vee.distinguished_involution
+set (H5,M5,H5_vee)=complex_endoscopic_group(root_datum(dual(inner_class(G5_vee))),delta5,[0,0,0,0,0]/1)
+prints("H=",H5, "  H_vee=",H5_vee)
+prints("M="); prints(M5)
+set rho5=rho_check(G5_vee)
+prints("rho_G = ", rho5)
+set u5=requisition(solve(M5,ratvec_as_vec(2*rho5)))/2
+prints("u=",u5,"  rho_H=",rho(H5),"  xi_H=",u5-rho(H5))
+prints("2*xi_H integral: ", is_integer(2*(u5-rho(H5))), "   xi_H integral: ", is_integer(u5-rho(H5)))
+prints("pairings with H-coroots: ", for a in H5.simple_coroots do (u5-rho(H5))*a od)
+
+prints("--- print M for check 3 (GL(4) twisted)")
+set (H4b,M4b,)=complex_endoscopic_group(root_datum(dual(inner_class(GL(4,R)))),GL(4,R).distinguished_involution,[0,0,0,0]/1)
+prints(M4b)
+
+prints("--- check 6: twisted GL(4), s=e(v), v=[1,0,0,-1]/2 (aiming for D2 datum)")
+set (H6,M6,H6_vee)=complex_endoscopic_group(root_datum(dual(inner_class(GL(4,R)))),GL(4,R).distinguished_involution,[1,0,0,-1]/2)
+prints("H=",H6, "  H_vee=",H6_vee)
+prints("M="); prints(M6)
+set rho6=rho_check(GL(4,R))
+set u6=requisition(solve(M6,ratvec_as_vec(2*([1,0,0,-1]/2+rho6))))/2
+prints("u=(v+rho_G)|_M=",u6,"  rho_H=",rho(H6),"  xi_H=",u6-rho(H6))
+prints("2*xi_H integral: ", is_integer(2*(u6-rho(H6))), "   xi_H integral: ", is_integer(u6-rho(H6)))
+prints("pairings with H-coroots: ", for a in H6.simple_coroots do (u6-rho(H6))*a od)
