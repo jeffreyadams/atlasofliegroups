@@ -244,14 +244,19 @@ set oriented_KL_sum (Param p) = ParamPol:
    let ori_nr_p = orientation_nr(p) in  null_module(real_form(p)) +
    for c@q in KL_sum_at_s(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
 
+{ term-by-term deformation progress printing, off by default; set
+  deform_verbose:=true to see the "Fully deforming N terms" / "Term k: ..."
+  diagnostic lines (they are purely informational and do not affect results) }
+set deform_verbose = bool: false
+
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
 set c_form_irreducible (Param p) = KTypePol:
   let P=oriented_KL_sum(p), count=0 then nP=#P
   then
-    f(Param p) = if count<11 or count%10=0 or nP-count<=10
+    f(Param p) = if deform_verbose and (count<11 or count%10=0 or nP-count<=10)
                  then prints("Term ",count,": ",p)
 		 fi; count+:=1; recursive_deform(p)
-  in prints("Fully deforming ",nP," terms"); map(f, P)
+  in if deform_verbose then prints("Fully deforming ",nP," terms") fi; map(f, P)
 
 { utility: compute fixed and unfixed contributions to c-form on irreducible(p)
   no deformation is done, but orientation numbers are included;
@@ -276,10 +281,12 @@ set twisted_c_form_irreducible (Param p) = KTypePol:
   , count=0
   then nf=#fixed
   then
-    f(Param p) = if count<11 or count%10=0 or nf-count<=10
+    f(Param p) = if deform_verbose and (count<11 or count%10=0 or nf-count<=10)
                  then prints("Term ",count,": ",p)
 		 fi; count+:=1; twisted_full_deform(p)
-  in prints("Fully twisted deforming ",nf," terms (",#unfixed," unfixed).")
+  in if deform_verbose
+     then prints("Fully twisted deforming ",nf," terms (",#unfixed," unfixed).")
+     fi
 ; map(f,fixed)+half(unfixed.K_type_pol)
 )
 

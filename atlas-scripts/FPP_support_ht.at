@@ -542,13 +542,15 @@ set recursive_deform_old (Param p, int HT) = KTypePol:
   in terms of the above functions rather than built-ins
 }
 
+{ diagnostic term-by-term progress printing gated by |deform_verbose|
+  (defined in deform.at, included above), off by default }
 set c_form_irreducible_scr (Param p) = KTypePol:
   let P=oriented_KL_sum(p), count=0 then nP=#P
   then
-    f(Param p) = if count<11 or count%10=0 or nP-count<=10
+    f(Param p) = if deform_verbose and (count<11 or count%10=0 or nP-count<=10)
                  then prints("Term ",count,": ",p)
 		 fi; count+:=1; recursive_deform_scr(p,-1)
-  in prints("Fully deforming ",nP," terms"); map(f, P)
+  in if deform_verbose then prints("Fully deforming ",nP," terms") fi; map(f, P)
 
 { utility: compute fixed and unfixed contributions to c-form on irreducible(p)
   no deformation is done, but orientation numbers are included;
@@ -575,10 +577,12 @@ set twisted_c_form_irreducible_scr (Param p) = KTypePol:
   , count=0
   then nf=#fixed
   then
-    f(Param p) = if count<11 or count%10=0 or nf-count<=10
+    f(Param p) = if deform_verbose and (count<11 or count%10=0 or nf-count<=10)
                  then prints("Term ",count,": ",p)
 		 fi; count+:=1; twisted_full_deform(p)
-  in prints("Fully twisted deforming ",nf," terms (",#unfixed," unfixed).")
+  in if deform_verbose
+     then prints("Fully twisted deforming ",nf," terms (",#unfixed," unfixed).")
+     fi
 ; map(f,fixed)+half(unfixed.K_type_pol)
 )
 

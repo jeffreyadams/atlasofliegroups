@@ -59,3 +59,6 @@
 <G2_unitary_dual.at
 <adams_johnson.at
 <speh.at
+<FPP_globalDirac.at { FPP unitary-dual engine: FPP_unitary_hash_bottom_layer et al.
+                      pulls in the whole FPP suite (faces_geom/herm, local/globalDirac,
+                      support, TWOHEIGHTS, cohIndUnip, derived_cover, R_packets, steve) }
