@@ -1,0 +1,23 @@
+<basic.at
+<torus.at
+<restricted_roots.at { remove_duplicates([vec]) }
+
+{ Folding / restricted-root helpers needed by endoscopic_groups.at, ported
+  from the endoscopy_side branch's twisted_root_datum.at. They are kept in
+  this separate support file so that master's twisted_root_datum.at (used by
+  other scripts, and carrying a divergent |folded|) is left untouched. }
+
+set orbit_size (mat delta, vec alpha) = int:
+  let j=first(for i:10 from 1 do (delta^i)*alpha=alpha od)+1
+  in assert(j!=0,"orbit_size failed"); j
+
+set orbit_of_simple_root (RootDatum G,mat delta, int j) = [int]: {indices}
+  let alpha=G.simple_roots[j] in
+  for j:orbit_size(delta,alpha) do simple_root_index(G,delta^j*alpha) od
+
+{ roots of |rd| whose restriction to |T| is |alpha|, |2*alpha| or |alpha/2| }
+set roots_restricting_to_multiple (RootDatum rd,SubTorus T,vec alpha) = [vec]:
+  ## for beta in rd.roots
+     do let res=T.restrict(beta) in
+        if res=alpha or res=2*alpha or alpha=2*res then [beta] else [] fi
+     od
