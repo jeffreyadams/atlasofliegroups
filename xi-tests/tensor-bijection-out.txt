@@ -35,7 +35,7 @@ Value:
 1* K_type(x=1, lambda=[1,-1]/2) [0]
 -1* K_type(x=0, lambda=[1,-1]/2) [1]
 Runtime error:
-  Irreducible module does not admit any invariant Hermitian form
+  Hermitian/c-form computation is not yet implemented for covers with projective twist (cover_kappa nonzero)
 Evaluation aborted.
 ### full deformation: G then cover
 Value: 
@@ -46,7 +46,9 @@ Value:
 (1-1s)* K_type(x=0, lambda=[1,0]/1) [1]
 ### unitarity: G then cover
 Value: true
-Value: false
+Runtime error:
+  Hermitian/c-form computation is not yet implemented for covers with projective twist (cover_kappa nonzero)
+Evaluation aborted.
 ### nonintegral continuous parameter: G then cover
 Error in 'set' command at <standard input>:31:0-42:
 Not an integer vector

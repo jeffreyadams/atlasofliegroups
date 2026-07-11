@@ -1,0 +1,28 @@
+### R^x cover: unitary genuine character mu (lambda=1/2)
+Variable T: RealForm
+Variable Tx: RealForm
+Variable mu: Param
+Value: final parameter(x=0,lambda=[1]/2,nu=[0]/1)
+is_hermitian(mu): true   [expect true: mu unitary]
+hermitian_dual(mu)=mu: true
+### R^x cover: |.|^s twist, s=1: not hermitian (matches group analogue)
+Variable mus: Param
+is_hermitian(mus): false   group analogue: false
+### form computation on projective-twist cover is gated
+Runtime error:
+  Hermitian/c-form computation is not yet implemented for covers with projective twist (cover_kappa nonzero)
+Evaluation aborted.
+### GL(2,R) det/2 cover: lift of trivial is hermitian
+Variable G: RealForm (overriding previous instance, which had type RealForm)
+Variable Gx: RealForm
+Variable lp: Param
+is_hermitian(lift): true   [expect true]
+### kappa=0 cover (compact torus): old twist path intact
+Variable Cx: RealForm
+Variable pc: Param
+is_hermitian(pc): true
+hermitian_form_irreducible(pc): 
+Value: 
+1* K_type(x=0, lambda=[7]/2) [0]
+### done
+Bye.

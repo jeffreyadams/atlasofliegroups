@@ -40,8 +40,8 @@ Rep_context::theta_plus_1_eval (const K_repr::K_type& t, RootNbr alpha) const
   const auto& rd = root_datum();
   RootNbr beta = involution_table().root_involution(kgb().inv_nr(t.x()),alpha);
   const auto& lr = t.lambda_rho();
-  return rd.coroot(alpha).dot(lr)+rd.colevel(alpha)
-	+rd.coroot(beta).dot(lr)+rd.colevel(beta);
+  return rd.coroot(alpha).dot(lr)+rd.colevel(alpha)+xi_level(rd.coroot(alpha))
+	+rd.coroot(beta).dot(lr)+rd.colevel(beta)+xi_level(rd.coroot(beta));
 }
 
 // |z| standard means $\lambda (weakly) dominant on the (simply-)imaginary roots
@@ -52,7 +52,8 @@ bool Rep_context::is_standard(const K_repr::K_type& z) const
   const InvolutionTable& i_tab = involution_table();
 
   for (RootNbr alpha : i_tab.imaginary_basis(i_x))
-    if (rd.coroot(alpha).dot(z.lambda_rho())+rd.colevel(alpha)<0)
+    if (rd.coroot(alpha).dot(z.lambda_rho())+rd.colevel(alpha)
+	+xi_level(rd.coroot(alpha))<0)
       return false;
   return true;
 }
@@ -78,7 +79,8 @@ bool Rep_context::is_nonzero(const K_repr::K_type& z) const
   const InvolutionTable& i_tab = involution_table();
 
   for (RootNbr alpha : i_tab.imaginary_basis(i_x)) // simple-imaginary
-    if (rd.coroot(alpha).dot(z.lambda_rho())+rd.colevel(alpha)==0 // singular
+    if (rd.coroot(alpha).dot(z.lambda_rho())+rd.colevel(alpha)
+	+xi_level(rd.coroot(alpha))==0 // singular
 	and not kgb().simple_imaginary_grading(z.x(),alpha)) // and compact
       return false;
   return true;

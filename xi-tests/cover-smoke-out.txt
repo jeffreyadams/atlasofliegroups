@@ -36,7 +36,7 @@ Value: final parameter(x=1,lambda=[1,-1]/2,nu=[1,-1]/2)
 ### invalid xi rejected (SL(2,R), xi=1/2 not coroot-orthogonal)
 Variable S: RealForm
 Runtime error:
-  Cover datum xi not orthogonal to the coroots (not yet implemented)
+  Cover datum xi has non-integral coroot pairings (not yet implemented)
 Evaluation aborted.
 ### done
 Bye.

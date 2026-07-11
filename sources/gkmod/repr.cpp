@@ -174,13 +174,15 @@ Rep_context::Rep_context(RealReductiveGroup &G_R, const RatWeight& xi)
     throw std::runtime_error("Cover datum xi has wrong rank");
   if (2%d_xi.denominator()!=0) // require |2*xi| to lie in $X^*$
     throw std::runtime_error("Cover datum xi is not half-integral");
-  // current implementation restriction: |2*xi| must be the weight of a one
-  // dimensional representation, so that all root pairings, hence all parity,
-  // grading and (integral) dominance computations, are as for the group itself
+  // current implementation restriction: |xi| must have integral pairings with
+  // the (simple, hence all) coroots, so that integer arithmetic on the storage
+  // vectors survives; the pairings enter parity tests and reflection pivots
+  // through |xi_level|. (Half-integral pairings, the truly new gradings, are
+  // not yet implemented.)
   for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
-    if (d_xi.dot_Q(rd.simpleCoroot(s)).numerator()!=0)
+    if (d_xi.dot_Q(rd.simpleCoroot(s)).denominator()!=1)
       throw std::runtime_error
-	("Cover datum xi not orthogonal to the coroots (not yet implemented)");
+	("Cover datum xi has non-integral coroot pairings (not yet implemented)");
   { // also require the coset |rho+xi+X^*| to be stable under every |theta_x|,
     // which given coroot-orthogonality of |xi| comes down to |(1-delta)xi|
     // integral, |delta| the distinguished involution of the inner class
@@ -920,7 +922,8 @@ RatNumList Rep_context::reducibility_points(const StandardRepr& z) const
       rd.coroot(*it).dot(numer); // now $\<\alpha^v,\nu>=num/d$ (real $\alpha$)
     if (num!=0)
     {
-      long lam_alpha = lam_rho.dot(rd.coroot(*it))+rd.colevel(*it);
+      long lam_alpha = lam_rho.dot(rd.coroot(*it))+rd.colevel(*it)
+	+xi_level(rd.coroot(*it));
       bool do_odd = (lam_alpha+two_rho_real.dot(rd.coroot(*it))/2)%2 ==0;
       (do_odd ? odds : evens).insert(std::make_pair(std::abs(num),0));
     }

@@ -252,6 +252,9 @@ class Rep_context
   RatWeight rho_xi() const { return rho(root_datum())+d_xi; }
   // $(1+\theta_x)(\rho+\xi)$, integral by the constructor requirements on |xi|
   Weight theta_plus_1_rho_xi(InvolutionNbr i_x) const;
+  // pairing $\langle\xi,\alpha^\vee\rangle$, integral by those requirements
+  int xi_level (const Coweight& alpha_hat) const
+  { return d_xi.is_zero() ? 0 : (int)d_xi.dot(alpha_hat); }
 
   const TwistedInvolution involution_of_Cartan(size_t cn) const;
 
