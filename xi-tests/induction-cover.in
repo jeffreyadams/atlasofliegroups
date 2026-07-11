@@ -45,5 +45,14 @@ prints("### unitary-twist variant (nu=0 on the cover): hermitian genuine DS")
 set p_u=param(KGB(aq_gen.real_form,ng),aq_gen.lambda_minus_rho,[0,0]/1)
 p_u
 prints("is_hermitian: ", is_hermitian(p_u), "   [expect true]")
+prints("### theta_stable_data round trip on the cover")
+set (Pq,pL)=theta_stable_data(aq_gen)
+pL
+prints("pL real form: ", pL.real_form)
+set back=theta_induce_standard(pL,aq_gen.real_form)
+prints("round trip minus original, terms: ", #(back-(ParamPol:aq_gen)),
+       "   [expect 0]")
+prints("### cuspidal_data on the cover: split-Cartan cover is type z!=1")
+cuspidal_data(param(KGB(aq_gen.real_form,1),[1,0],[2,-1]/1))
 prints("### done")
 quit

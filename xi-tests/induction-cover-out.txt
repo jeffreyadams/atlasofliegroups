@@ -42,5 +42,16 @@ infchar shift (expect xi=[1,1]/2): [ 1, 1 ]/2
 Variable p_u: Param
 Value: final parameter(x=0,lambda=[1,0]/1,nu=[0,0]/1)
 is_hermitian: true   [expect true]
+### theta_stable_data round trip on the cover
+Variable Pq: Parabolic
+Variable pL: Param
+Value: final parameter(x=0,lambda=[1,1]/2,nu=[1,1]/2)
+pL real form: connected quasisplit real group with Lie algebra 'gl(1,C)' [cover xi=[-1,1]/2]
+Variable back: ParamPol
+round trip minus original, terms: 0   [expect 0]
+### cuspidal_data on the cover: split-Cartan cover is type z!=1
+Runtime error:
+  Cover datum xi has no delta-fixed representative (type z!=1 E-group, not implemented)
+Evaluation aborted.
 ### done
 Bye.
