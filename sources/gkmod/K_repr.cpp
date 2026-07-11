@@ -98,7 +98,8 @@ bool Rep_context::is_semifinal(const K_repr::K_type& z) const
 	   + rd.twoRho()-rd.twoRho(pos_real); // replace $\rho$ by $\rho_R$
 
   for (RootNbr alpha : i_tab.real_basis(i_x))
-    if (rd.coroot(alpha).dot(test_wt)%4 !=0) // doubled odd: parity real root
+    if ((rd.coroot(alpha).dot(test_wt)+2*xi_level(rd.coroot(alpha)))%4 !=0)
+      // doubled odd: parity real root
       return false; // which invalidates the semi-final condition
   return true;
 }
@@ -144,7 +145,8 @@ bool Rep_context::is_final(const K_repr::K_type& z) const
     case gradings::Status::ImaginaryCompact:
       return false; // fails |is_nonzero|
     case gradings::Status::Real:
-      if (rd.simpleCoroot(s).dot(lr)%2 != 0) // then $\alpha_s$ is parity
+      if ((rd.simpleCoroot(s).dot(lr)+xi_level(rd.simpleCoroot(s)))%2 != 0)
+	// then $\alpha_s$ is parity
 	return false;
       break;
     case gradings::Status::Complex:
@@ -365,11 +367,12 @@ term_list Rep_context::finals_for(K_repr::K_type t) const
 	case gradings::Status::Real:
 	  assert(eval==0);
 	  // now evaluation on |lr| counts
-	  const auto eval_lr = rd.simpleCoroot(s).dot(lr);
+	  const int xl = xi_level(rd.simpleCoroot(s));
+	  const auto eval_lr = rd.simpleCoroot(s).dot(lr)+xl;
 	  if (eval_lr%2 != 0) // then $\alpha_s$ is a parity real root
 	  {
 	    lr -= rd.simpleRoot(s)*((eval_lr+1)/2);
-	    assert( rd.simpleCoroot(s).dot(lr) == -1 );
+	    assert( rd.simpleCoroot(s).dot(lr) == -1-xl );
 	    KGBEltPair Cxs = kgb().inverseCayley(s,x);
 	    if (Cxs.second!=UndefKGB)
 	    {
@@ -410,7 +413,8 @@ sl_list<K_repr::K_type> Rep_context::KGP_set (K_repr::K_type& t) const
   for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
     if (i_tab.is_real_simple(i_theta,s))
     {
-      assert(rd.simpleCoroot(s).dot(t.lambda_rho())%2==0); // |t| must be final
+      assert((rd.simpleCoroot(s).dot(t.lambda_rho())
+	      +xi_level(rd.simpleCoroot(s)))%2==0); // |t| must be final
       Levi_gens.push_back(s);
     }
 
@@ -433,7 +437,8 @@ sl_list<K_repr::K_type> Rep_context::KGP_set (K_repr::K_type& t) const
 	{
 	  auto pair = kgb.inverseCayley(s,x);
 	  KGBElt Csx; auto it = result.end();
-	  auto eval = rd.simpleCoroot(s).dot(lam_rho);
+	  auto eval = rd.simpleCoroot(s).dot(lam_rho)
+	    + xi_level(rd.simpleCoroot(s));
 	  assert(eval%2==0); // "non-parity"; from final condition
 	  Weight new_lr = lam_rho - rd.simpleRoot(s)*(eval/2);
 	  // with the first of |pair| more likely to be inserted, try it last

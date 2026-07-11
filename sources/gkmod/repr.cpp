@@ -320,7 +320,8 @@ bool Rep_context::is_parity_at_0(RootNbr i,const StandardRepr& z) const
 
   Weight theta_1_lamrho = i_tab.y_lift(i_x,z.y()); // |(1-theta)*lam_rho|
   int eval = // twice evaluation of |alpha_hat| on |\lambda-\rho_{rea]}|
-    alpha_hat.dot(theta_1_lamrho+rd.twoRho(non_real_roots));
+    alpha_hat.dot(theta_1_lamrho+rd.twoRho(non_real_roots))
+    + 2*xi_level(alpha_hat);
   assert (eval%2==0); // because |\lambda-\rho_{real}| is integral
   return eval%4!=0;
 }
@@ -479,7 +480,7 @@ bool Rep_context::is_semifinal(const StandardRepr& z) const
   {
     const Weight& av = root_datum().coroot(*it);
     if (av.dot(z.gamma().numerator())==0 and
-	av.dot(test_wt)%4 !=0) // singular yet odd on shifted lambda
+	(av.dot(test_wt)+2*xi_level(av))%4 !=0) // singular yet odd on shifted
       return false;
   }
   return true;
@@ -508,7 +509,8 @@ bool Rep_context::is_final(const StandardRepr& z) const
       case gradings::Status::ImaginaryCompact:
 	return false; // certainly fails |is_nonzero|
       case gradings::Status::Real:
-	if (rd.simpleCoroot(s).dot(i_tab.y_lift(i_x,z.y()))%4!=0)
+	if ((rd.simpleCoroot(s).dot(i_tab.y_lift(i_x,z.y()))
+	     +2*xi_level(rd.simpleCoroot(s)))%4!=0)
 	  return false;
       default: {} // ImaginaryNoncompact is fine
       } // tests on |v|
@@ -1175,7 +1177,7 @@ StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
   case gradings::Status::Real: // find out (at inv0) whether root is parity
     { Weight rho2_diff = rd.twoRho() - rd.twoRho(i_tab.real_roots(inv0));
       RatWeight parity_vector = // compute this at the \emph{original} x
-	infin_char - lr - RatWeight(std::move(rho2_diff),2);
+	infin_char - lr - RatWeight(std::move(rho2_diff),2) - xi();
       if (parity_vector.dot(rd.coroot(n_alpha))%2!=0)
       { // then |alpha| was parity
 	x = kgb.inverseCayley(s,x).first; // do inverse Cayley from |inv0|
@@ -1339,13 +1341,14 @@ sr_term_list Rep_context::finals_for(StandardRepr z) const
 	goto restart;
       case gradings::Status::Real:
 	if (eval==0) // singular real root
-	{ auto eval_lr = rd.simpleCoroot(s).dot(lr);
+	{ const int xl = xi_level(rd.simpleCoroot(s));
+	  auto eval_lr = rd.simpleCoroot(s).dot(lr)+xl;
 	  if (eval_lr%2 == 0) // whether non-parity
 	    continue; // nothing to do for a (singular) real nonparity root
 	  // now $\alpha_s$ is parity real root: replace by inverse Cayley(s)
 	  // |kgb()| can distinguish type 1 and type 2
 	  lr -= rd.simpleRoot(s)*((eval_lr+1)/2); // project to wall for |s|
-	  assert( rd.simpleCoroot(s).dot(lr) == -1 );
+	  assert( rd.simpleCoroot(s).dot(lr) == -1-xl );
 	  const KGBEltPair Cxs = kgb().inverseCayley(s,x);
 	  if (Cxs.second!=UndefKGB)
 	    to_do.emplace(sr_gamma(Cxs.second,lr,gamma),coef);
@@ -1452,7 +1455,8 @@ bool deformation_unit::operator!=(const deformation_unit& another) const
     for (auto it=real_posroots.begin(); it(); ++it)
     {
       const auto& alpha_v= rd.coroot(*it);
-      if (alpha_v.dot(lambda_rho_real2)%4!=0) // whether parity at |gamma==0|
+      if ((alpha_v.dot(lambda_rho_real2)+2*rc.xi_level(alpha_v))%4!=0)
+	// whether parity at |gamma==0|
       { // when parity at 0, compare integer quotients of evaluations by 2
 	if (arithmetic::divide(alpha_v.dot(num0),2*d0) !=
 	    arithmetic::divide(alpha_v.dot(num1),2*d1))
@@ -1496,7 +1500,8 @@ size_t deformation_unit::hashCode(size_t modulus) const
     for (auto it=real_posroots.begin(); it(); ++it)
     {
       const auto& alpha_v= rd.coroot(*it);
-      const auto shift = alpha_v.dot(lambda_rho_real2)%4==0 ? denom : 0;
+      const auto shift =
+	(alpha_v.dot(lambda_rho_real2)+2*rc.xi_level(alpha_v))%4==0 ? denom : 0;
       hash = 7*hash + arithmetic::divide(alpha_v.dot(num)+shift,2*denom);
     }
   }
