@@ -36,7 +36,7 @@ Value:
 (1-1s)* K_type(x=0, lambda=[1,0]/1) [1]
 ### hermitian: same-x dual (Gx) vs honest twist (Gy) [both true]
 is_hermitian px: true   py: true
-twist fixed py? false
+twist fixed py? false   [expect false: kappa!=0 cover, delta moves the coset]
 ### forms on non-equal-rank covers are gated (h != normal*twist
 ### on shifted cosets even at kappa=0; ext-parameter work pending)
 Runtime error:

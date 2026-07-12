@@ -7,7 +7,7 @@ Variable Gx: RealForm
 Variable lp: Param
 is_hermitian(lift of trivial): true   [expect true]
 Variable lps: Param
-is_hermitian(asymmetric nu): false
+is_hermitian(asymmetric nu): false   [expect false: nu built asymmetric]
 ### form computation gated on non-equal-rank covers
 Runtime error:
   Hermitian/c-form computation on covers is only implemented in the equal rank case so far

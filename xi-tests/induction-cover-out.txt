@@ -29,7 +29,7 @@ Variable aq_gen: Param
 Value: final parameter(x=0,lambda=[1,0]/1,nu=[1,1]/2)
 real form: disconnected split real group with Lie algebra 'sl(2,R).gl(1,R)' [cover xi=[-1,1]/2]  xi: [ -1,  1 ]/2
 infchar: [ 1, 0 ]/1
-is_final: true  is_hermitian: false
+is_final: true  is_hermitian: false   [expect true, false: nu!=0 genuine Aq not self-dual on this cover]
 ### dictionary check: Aq_genuine([1,0]) = lift of Aq([1,-1]/2)
 Variable aq_cl: Param
 Value: final parameter(x=0,lambda=[1,-1]/2,nu=[0,0]/1)

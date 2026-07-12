@@ -26,9 +26,11 @@ H0 = connected split real group with Lie algebra 'sl(2,R)'  plain: true
 Variable A: [Param]
 Variable B: [Param]
 counts 4=4  same sets: true
-### is_valid_xi at xi=0 = is_valid
+### is_valid_xi at xi=0 = is_valid (must agree on both branches)
 Variable y: KGBElt_gen
-false false
+invalid y: false false   [expect false false: agreement]
+Variable yv: KGBElt_gen
+valid y:   true true   [expect true true: agreement]
 ### real-parabolic descent from a cover now works (was blocked)
 Variable Gx: RealForm
 Variable pd: Param

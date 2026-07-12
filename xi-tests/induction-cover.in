@@ -30,7 +30,7 @@ set aq_gen=Aq_genuine(y0,[1,0],[1,-1])
 aq_gen
 prints("real form: ", aq_gen.real_form, "  xi: ", cover_xi(aq_gen.real_form))
 prints("infchar: ", aq_gen.infinitesimal_character)
-prints("is_final: ", is_final(aq_gen), "  is_hermitian: ", is_hermitian(aq_gen))
+prints("is_final: ", is_final(aq_gen), "  is_hermitian: ", is_hermitian(aq_gen), "   [expect true, false: nu!=0 genuine Aq not self-dual on this cover]")
 prints("### dictionary check: Aq_genuine([1,0]) = lift of Aq([1,-1]/2)")
 set aq_cl=Aq(y0,[1,-1]/2,[1,-1])
 aq_cl

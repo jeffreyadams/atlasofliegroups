@@ -12,7 +12,7 @@ set v=ratvec:[1/2]
 set u=(v+rho(G))  { M=identity 1x1 here, restriction trivial }
 set xiH=u-rho(H)
 prints("xi'_H=v+rho_G=",u,"  rho_H=",rho(H),"  xi_H=",xiH)
-prints("2*xi_H integral: ", is_integer(2*xiH), "   xi_H integral (trivial cover?): ", is_integer(xiH))
+prints("2*xi_H integral: ", is_integer(2*xiH), "   xi_H integral: ", is_integer(xiH), "   [false = genuinely a cover: the E1 finding]")
 
 prints("--- check 2: trivial datum s=0 => H=G, xi_H=0")
 set (H0,M0,)=endoscopic_group(G,id_mat(1),[0/1])
@@ -37,7 +37,7 @@ prints("u = (v+rho_G)|_M = ", u4)
 prints("rho_H = ", rho(H4))
 set xiH4=u4-rho(H4)
 prints("xi_H = ", xiH4)
-prints("2*xi_H integral: ", is_integer(2*xiH4), "   xi_H integral (trivial cover?): ", is_integer(xiH4))
+prints("2*xi_H integral: ", is_integer(2*xiH4), "   xi_H integral: ", is_integer(xiH4), "   [0 = honest Arthur correspondence]")
 prints("pairings with H-coroots (gate-2 check): ", for a in H4.simple_coroots do xiH4*a od)
 
 prints("--- check 4: ordinary endoscopy in Sp(4,R), s=e(v), v=[1,1]/2")
@@ -48,7 +48,7 @@ prints("M=",Msp)
 set usp=([1,1]/2+rho(G2))  { M should be identity for ordinary endoscopy }
 set xiHsp=usp-rho(Hsp)
 prints("xi'_H=",usp,"  rho_H=",rho(Hsp),"  xi_H=",xiHsp)
-prints("2*xi_H integral: ", is_integer(2*xiHsp), "   xi_H integral: ", is_integer(xiHsp))
+prints("2*xi_H integral: ", is_integer(2*xiHsp), "   xi_H integral: ", is_integer(xiHsp), "   [false = genuinely a cover: the E1 finding]")
 prints("pairings with H-coroots: ", for a in Hsp.simple_coroots do xiHsp*a od)
 
 prints("--- check 5: twisted GL(5), delta_vee=flip, s=1")
@@ -61,7 +61,7 @@ set rho5=rho_check(G5_vee)
 prints("rho_G = ", rho5)
 set u5=requisition(solve(M5,ratvec_as_vec(2*rho5)))/2
 prints("u=",u5,"  rho_H=",rho(H5),"  xi_H=",u5-rho(H5))
-prints("2*xi_H integral: ", is_integer(2*(u5-rho(H5))), "   xi_H integral: ", is_integer(u5-rho(H5)))
+prints("2*xi_H integral: ", is_integer(2*(u5-rho(H5))), "   xi_H integral: ", is_integer(u5-rho(H5)), "   [0 = honest Arthur correspondence]")
 prints("pairings with H-coroots: ", for a in H5.simple_coroots do (u5-rho(H5))*a od)
 
 prints("--- print M for check 3 (GL(4) twisted)")
@@ -75,5 +75,5 @@ prints("M="); prints(M6)
 set rho6=rho_check(GL(4,R))
 set u6=requisition(solve(M6,ratvec_as_vec(2*([1,0,0,-1]/2+rho6))))/2
 prints("u=(v+rho_G)|_M=",u6,"  rho_H=",rho(H6),"  xi_H=",u6-rho(H6))
-prints("2*xi_H integral: ", is_integer(2*(u6-rho(H6))), "   xi_H integral: ", is_integer(u6-rho(H6)))
+prints("2*xi_H integral: ", is_integer(2*(u6-rho(H6))), "   xi_H integral: ", is_integer(u6-rho(H6)), "   [raw half-integral: bad datum representative, reconciled mod Lambda_aut -- E1 sec 4.6]")
 prints("pairings with H-coroots: ", for a in H6.simple_coroots do (u6-rho(H6))*a od)
