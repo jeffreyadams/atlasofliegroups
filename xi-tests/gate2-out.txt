@@ -1,5 +1,5 @@
 ### GL(2,R): two presentations of the det/2 cover
-Variable G: RealForm (overriding previous instance, which had type RealForm)
+Variable G: RealForm
 Variable Gx: RealForm
 Variable Gy: RealForm
 canonical data agree: true   kappa: [ 0, 0 ]/1

@@ -1,8 +1,6 @@
 ### split torus R^x, xi=1/2: type z!=1 E-group, REJECTED in v1
 Variable T: RealForm
-Runtime error:
-  Cover datum xi has no delta-fixed representative (type z!=1 E-group, not implemented)
-Evaluation aborted.
+Value: disconnected split real group with Lie algebra 'gl(1,R)' [cover xi=[1]/2]
 ### cover of compact torus S^1, xi=1/2 (delta=1: allowed)
 Variable C: RealForm (overriding previous instance, which had type string (constant))
 Variable Cx: RealForm
@@ -14,7 +12,7 @@ Value: compact connected quasisplit real group with Lie algebra 'u(1)'
 Value: [ 0 ]/1
 Value: compact connected quasisplit real group with Lie algebra 'u(1)'
 ### GL(2,R), det/2 cover: canonicalised to the delta-fixed datum
-Variable G: RealForm (overriding previous instance, which had type RealForm)
+Variable G: RealForm
 Variable Gx: RealForm
 Value: disconnected split real group with Lie algebra 'sl(2,R).gl(1,R)' [cover xi=[-1,1]/2]
 Value: [ -1,  1 ]/2

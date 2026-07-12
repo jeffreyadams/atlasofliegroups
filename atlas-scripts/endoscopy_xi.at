@@ -1,0 +1,107 @@
+<basic.at
+<K_highest_weights.at { for all_lambda_differential_0 }
+<synthetic.at { for KGBElt_gen, square }
+<L_packet.at { for is_valid, L_packet (the xi=0 originals) }
+<endoscopic_groups.at { for complex_endoscopic_group, endoscopic_group }
+
+{ E2: cover-aware endoscopy. EVERYTHING here is NEW, under _xi names; no
+  existing function is modified or shadowed. The xi=0 originals
+  (endoscopic_group, is_valid, L_packet, all_parameters_gamma, ...) remain
+  the ones loaded from their usual files and behave exactly as before.
+
+  Mathematical basis (coverNotes/endoscopy-xi_H.tex, E1): on the dual side an
+  endoscopic group H of G arises inside ^LG as an E-group, so H is
+  intrinsically a xi-cover, with cover datum
+
+     xi_H = (v + rho_G)|_M - rho_H   mod X^*(T_H)
+
+  where s = exp(2 pi i v) is the endoscopic element and |_M is restriction
+  through the embedding matrix M : X^*(T_H) -> X^*(T_G) computed by
+  endoscopic_groups.at. Facts proved/verified in E1:
+  - xi_H = 0 for the trivial datum (H=G), and for twisted GL(4),GL(5), s=1;
+  - SL(2,R), s=diag(1,-1): H = the xi=1/2 cover of split R^x (type z!=1;
+    needs the torus gate relaxation in the C++ constructor, E2);
+  - Sp(4,R), v=(1,1)/2: H = the (1/2,1/2)-cover of split SO(2,2) (delta_H=1);
+  - <xi_H, alpha_H^vee> is integral for ORDINARY endoscopy (automatic);
+    for twisted data it holds for a good representative v of the datum
+    (xi_H is canonical modulo the datum-automorphism lattice Lambda_aut;
+    a bad representative is detected here and rejected with advice). }
+
+{ ---------------- xi_H computation ---------------- }
+
+{ xi_H for ORDINARY endoscopy inside a fixed inner class: M = identity,
+  T_H = T_G, so no solve is needed: xi_H = v + rho(G) - rho(H), a
+  representative of the class mod X^*(T_H). (No reduction needed here:
+  representatives mod X^* define the same cover, and xi_cover canonicalizes;
+  cover_xi of the result is the canonical datum.) }
+set endoscopic_xi (RealForm G, ratvec v, RealForm H) = ratvec:
+  v + rho(G) - rho(H)
+
+{ integrality-of-pairings check (gate-2); failure indicates a bad
+  representative v of the endoscopic datum (shift v by the datum-automorphism
+  lattice, see E1 note section on Lambda_aut) }
+set check_endoscopic_xi (RealForm H, ratvec xi_H) = void:
+  for a in H.simple_coroots
+  do assert(is_integer(xi_H*a)
+           ,"xi_H has non-integral pairing with a coroot of H: "+
+            "bad representative of the endoscopic datum; replace v by an "+
+            "equivalent representative (datum-automorphism/character twist)")
+  od
+
+{ ---------------- covered endoscopic group ---------------- }
+
+{ ordinary endoscopy, inner class of G, element s = exp(2 pi i v):
+  same computation as endoscopic_group@(RealForm,mat,ratvec) but the
+  returned group carries its cover datum xi_H. The xi=0 original is
+  untouched; when xi_H happens to be integral, xi_cover collapses and this
+  returns exactly the same RealForm as the original. }
+set endoscopic_group_xi (RealForm G, mat delta_vee, ratvec s) =
+    (RealForm,mat,RealForm): { (covered H, M, H_vee) }
+  let (H,M,H_vee) = endoscopic_group(G,delta_vee,s)
+  then xi_H = endoscopic_xi(G,s,H)
+  then () = check_endoscopic_xi(H,xi_H)
+  in (xi_cover(H,xi_H), M, H_vee)
+
+set endoscopic_group_xi (RealForm G, ratvec s) = (RealForm,mat,RealForm):
+  endoscopic_group_xi(G, id_mat(rank(G)), s)
+
+{ ---------------- covered-H parameter enumeration ---------------- }
+
+{ all_parameters_gamma for a POSSIBLY covered real form: identical to the
+  original in K_highest_weights.at except the basepoint is rho_xi(G) =
+  rho(G)+cover_xi(G), so lambda runs over rho+xi+X^* as genuine parameters
+  must. At cover_xi=0 this is line-for-line the original computation. }
+set all_parameters_gamma_xi (RealForm G, ratvec gamma) = [Param]:
+   let v=dominant(root_datum(G),gamma) in
+   let rho=rho_xi(G) in { <-- the only change vs the original: rho -> rho_xi }
+   for x in KGB(G)
+   do let th1=1+involution(x) in
+      case vec_solve(th1,th1*(v-rho))
+      | none: [Param]:[]
+      | some(lr):
+        let lambda = rho + lr, nu=(2-th1)*v/2 in
+        for w in all_lambda_differential_0(x) do parameter(x,lambda+w,nu) od
+      esac
+   od.##.reduce
+
+{ ---------------- covered-H dual-side validity ---------------- }
+
+{ validity of (y,gamma) for a covered H: the E-group normalization shifts
+  the square-condition coset by xi_H:  square(y) + cover_xi(H) = gamma
+  mod X^*. (Sign note: replacing +cover_xi by -cover_xi changes the test
+  by 2*xi_H, which lies in X^* for a two-fold cover, so the two signs give
+  the SAME test; we fix + for definiteness.) At cover_xi=0 this is
+  literally is_valid from L_packet.at. }
+set is_valid_xi (RealForm H, KGBElt_gen y, ratvec gamma) = bool:
+  is_integer(square(y) + cover_xi(H) - gamma)
+
+{ ---------------- covered-H L-packet ---------------- }
+
+{ L-packet of the covered H at infinitesimal character gamma_H, given a
+  valid y_gen: enumerate all parameters at gamma_H in the genuine coset.
+  This is the covered analogue of L_packet@(RealForm,ratvec,KGBElt_gen);
+  the original is untouched. }
+set L_packet_xi (RealForm H, ratvec gamma_H, KGBElt_gen y) = [Param]:
+  let () = assert(is_valid_xi(H,y,gamma_H)
+                 ,"(y,gamma_H) fails the covered square-condition") in
+  all_parameters_gamma_xi(H,gamma_H)

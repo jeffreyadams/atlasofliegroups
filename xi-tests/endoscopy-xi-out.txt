@@ -1,0 +1,36 @@
+### torus gate relaxation: xi=1/2 cover of split R^x (type z!=1)
+Variable T: RealForm
+Value: disconnected split real group with Lie algebra 'gl(1,R)' [cover xi=[1]/2]
+canonicalization mod X^*: [ 1 ]/2 [ 1 ]/2 equal forms: true
+Variable Tx: RealForm
+Variable p: Param
+genuine param: final parameter(x=0,lambda=[1]/2,nu=[3]/2) lambda=[ 1 ]/2
+### endoscopic_group_xi: SL(2,R), s=diag(1,-1)
+Variable H: RealForm (overriding previous instance, which had type string (constant))
+Variable M: mat
+Variable Hv: RealForm
+H = disconnected split real group with Lie algebra 'gl(1,R)' [cover xi=[1]/2]
+genuine packet of H at gamma=1/2:
+  final parameter(x=0,lambda=[1]/2,nu=[1]/2)
+  final parameter(x=0,lambda=[3]/2,nu=[1]/2)
+Value: [(),()]
+### endoscopic_group_xi: Sp(4,R), v=[1,1]/2
+Variable H2: RealForm
+Variable M2: mat
+Variable H2v: RealForm
+H2 = disconnected split real group with Lie algebra 'sl(2,R).sl(2,R)' [cover xi=[3,3]/2]
+### trivial datum collapses to plain G
+Variable H0: RealForm
+H0 = connected split real group with Lie algebra 'sl(2,R)'  plain: true
+### xi=0 agreement: all_parameters_gamma_xi vs original (SL(2,R), gamma=rho)
+Variable A: [Param]
+Variable B: [Param]
+counts 4=4  same sets: true
+### is_valid_xi at xi=0 = is_valid
+Variable y: KGBElt_gen
+false false
+### real-parabolic descent from a cover now works (was blocked)
+Variable Gx: RealForm
+Variable pd: Param
+Value: (([],KGB element #1),final parameter(x=0,lambda=[1,1]/2,nu=[3,-3]/2))
+Bye.

@@ -1,10 +1,8 @@
 ### R^x cover: no delta-fixed xi exists; rejected in v1
 Variable T: RealForm
-Runtime error:
-  Cover datum xi has no delta-fixed representative (type z!=1 E-group, not implemented)
-Evaluation aborted.
+Value: disconnected split real group with Lie algebra 'gl(1,R)' [cover xi=[1]/2]
 ### GL(2,R) det/2 cover: same-x hermitian dual
-Variable G: RealForm (overriding previous instance, which had type RealForm)
+Variable G: RealForm
 Variable Gx: RealForm
 Variable lp: Param
 is_hermitian(lift of trivial): true   [expect true]

@@ -202,19 +202,38 @@ Rep_context::Rep_context(RealReductiveGroup &G_R, const RatWeight& xi)
       try
       { d_xi -= matreduc::find_solution(delta-1,-kv); d_xi.normalize(); }
       catch (const std::runtime_error&)
-      { throw std::runtime_error // e.g. the |xi=1/2| cover of the split torus:
-	  ("Cover datum xi has no delta-fixed representative (type z!=1 "
-	   "E-group, not implemented)"); // Adams-Vogan L-groups Ex 5.12
+      { /* no |delta|-fixed representative exists: a type $z\neq1$ E-group
+	   (e.g. the |xi=1/2| cover of the split torus, Adams-Vogan L-groups
+	   Ex 5.12). For a TORUS (empty root system) this regime is safe and
+	   is accepted with the non-canonical |d_xi|: every mechanism that
+	   consumes |delta|-fixedness (parity tests, gradings, dominance
+	   pivots) is vacuous without roots, while the |kappa| correction in
+	   |twisted| and the same-x Hermitian dual are written for general
+	   |xi|. Note |kappa=(1-delta)xi| was already checked integral above,
+	   whence |(1+theta)xi = 2xi-kappa| is integral too, keeping
+	   |theta_plus_1_rho_xi| an integer vector. Needed for endoscopy:
+	   the endoscopic "torus" of SL(2,R) is exactly this cover of R^x. */
+	if (rd.semisimple_rank()>0)
+	  throw std::runtime_error
+	    ("Cover datum xi has no delta-fixed representative (type z!=1 "
+	     "E-group, not implemented for groups with roots)");
+	// else accept: torus, no delta-fixed representative exists; instead
+	// canonicalize modulo |X^*| (fractional part, entries in [0,1)) so
+	// that equal covers built from different representatives of the
+	// class |xi+X^*| compare equal
+	{ auto d = d_xi.denominator();
+	  auto& num = d_xi.numerator();
+	  for (unsigned i=0; i<num.size(); ++i)
+	    num[i] = arithmetic::remainder(num[i],decltype(num[i])(d));
+	  d_xi.normalize();
+	}
       }
     }
-    /* This version assumes |delta*xi==xi| on the nose. Weaker regimes are
-       mathematically meaningful (e.g. |(1-delta)xi| integral, or merely
-       |2xi| in |X^*|: the |xi=1/2| cover of the split torus admits no
-       delta-fixed representative at all, and is a type $z\neq1$ E-group,
-       Adams-Vogan L-groups paper Ex 5.12), and some machinery below (the
-       |kappa| correction in |twisted|, the same-x Hermitian dual) was
-       written to be correct there as well; but their block/form theory is
-       not settled, so construction is refused here. */
+    /* For groups WITH roots this version assumes |delta*xi==xi| on the nose
+       (after canonicalization above). The weaker regime |(1-delta)xi|
+       integral without a delta-fixed representative is accepted only for
+       tori (see above); its block/form theory for nonabelian groups is not
+       settled, so construction is refused there. */
   }
 }
 

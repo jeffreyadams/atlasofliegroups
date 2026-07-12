@@ -1,7 +1,3 @@
-Variable G: RealForm (overriding previous instance, which had type RealForm)
-Variable Gx: RealForm
-Added definition [7] of lift: (Param->Param)
-Variable p: Param
 ### block of trivial(G) and its lift, side by side
 Variable B: [Param]
 final parameter(x=0,lambda=[1,-1]/2,nu=[0,0]/1)
