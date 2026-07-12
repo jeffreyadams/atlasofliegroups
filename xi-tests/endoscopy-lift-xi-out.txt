@@ -1,0 +1,55 @@
+### SL(2,R): forward transfer from the covered endoscopic torus
+Variable G: RealForm
+Variable H: RealForm (overriding previous instance, which had type string (constant))
+Variable M: mat
+Variable Hv: RealForm
+H = disconnected split real group with Lie algebra 'gl(1,R)' [cover xi=[1]/2]  rho_xi(H) = [ 1 ]/2
+Variable pH1: Param
+Variable pH2: Param
+pH1 = final parameter(x=0,lambda=[1]/2,nu=[1]/1)   pH2 = final parameter(x=0,lambda=[3]/2,nu=[1]/1)
+lift of pH1 (expect the lambda-even PS standard):
+
+1*parameter(x=2,lambda=[2]/1,nu=[1]/1) [0]
+Value: [()]
+lift of pH2 (expect the trivial's standard, lambda=1):
+
+1*parameter(x=2,lambda=[1]/1,nu=[1]/1) [0]
+Value: [()]
+### inverse transfers and round trips
+inverse of trivial (the 2022-bug clean path):
+
+1*parameter(x=0,lambda=[3]/2,nu=[1]/1) [0]
+round trip pH2 -> lift -> inverse:
+
+1*parameter(x=0,lambda=[3]/2,nu=[1]/1) [0]
+Value: [[()]]
+round trip pH1 -> lift -> inverse:
+
+1*parameter(x=0,lambda=[1]/2,nu=[1]/1) [0]
+Value: [[()]]
+### Sp(4,R): forward + round trip on covered SO(2,2)-type H
+Variable G4: RealForm
+Variable H4: RealForm
+Variable M4: mat
+Variable H4v: RealForm
+H4 = disconnected split real group with Lie algebra 'sl(2,R).sl(2,R)' [cover xi=[3,3]/2]  rho_xi = [ 5, 3 ]/2
+Variable pH4: Param
+pH4 = final parameter(x=4,lambda=[5,3]/2,nu=[1,1]/1)  gamma = [ 1, 1 ]/1
+lift of pH4:
+
+1*parameter(x=10,lambda=[2,1]/1,nu=[1,1]/1) [0]
+Value: [()]
+round trip pH4 -> lift -> inverse (expect packet containing pH4):
+
+1*parameter(x=4,lambda=[5,3]/2,nu=[1,1]/1) [0]
+Value: [[()]]
+### xi=0 degeneration: trivial datum, lift is the identity transfer
+
+1*parameter(x=2,lambda=[1]/1,nu=[1]/1) [0]
+Value: [()]
+### expected failure: inverse of a discrete series (Cartan not shared; E3)
+Variable ds: Param
+Runtime error:
+  inverse lift: (y_H,gamma_H) fails the covered square-condition. Causes: wrong gamma_H; bad datum representative v; or the Cartan of p_G is not shared with H (e.g. discrete series on a compact Cartan vs a split H: KGB_elt_gen then projects away the v-shift). Cartan matching across stable conjugacy is E3; for such p_G invert via the forward map (search the covered packet whose lift_std_xi contains p_G).
+Evaluation aborted.
+Bye.

@@ -1,0 +1,33 @@
+prints("### SL(2,R): forward transfer from the covered endoscopic torus")
+set G=SL(2,R)
+set (H,M,Hv)=endoscopic_group_xi(G,[1/2])
+prints("H = ", H, "  rho_xi(H) = ", rho_xi(H))
+set pH1=param(KGB(H,0),[0],[1/1]) {genuine char lambda=1/2, gamma=1}
+set pH2=param(KGB(H,0),[1],[1/1]) {genuine char lambda=3/2, gamma=1}
+prints("pH1 = ", pH1, "   pH2 = ", pH2)
+prints("lift of pH1 (expect the lambda-even PS standard):")
+for P in lift_std_xi(pH1,G,[1/2]) do prints(P) od
+prints("lift of pH2 (expect the trivial's standard, lambda=1):")
+for P in lift_std_xi(pH2,G,[1/2]) do prints(P) od
+prints("### inverse transfers and round trips")
+prints("inverse of trivial (the 2022-bug clean path):")
+prints(inverse_lift_std_xi(trivial(G),H,[1/2]))
+prints("round trip pH2 -> lift -> inverse:")
+for P in lift_std_xi(pH2,G,[1/2]) do for c@q in P do prints(inverse_lift_std_xi(q,H,[1/2])) od od
+prints("round trip pH1 -> lift -> inverse:")
+for P in lift_std_xi(pH1,G,[1/2]) do for c@q in P do prints(inverse_lift_std_xi(q,H,[1/2])) od od
+prints("### Sp(4,R): forward + round trip on covered SO(2,2)-type H")
+set G4=Sp(4,R)
+set (H4,M4,H4v)=endoscopic_group_xi(G4,[1,1]/2)
+prints("H4 = ", H4, "  rho_xi = ", rho_xi(H4))
+set pH4=param(KGB(H4,KGB_size(H4)-1),[0,0],[1,1]/1)
+prints("pH4 = ", pH4, "  gamma = ", pH4.infinitesimal_character)
+prints("lift of pH4:")
+for P in lift_std_xi(pH4,G4,[1,1]/2) do prints(P) od
+prints("round trip pH4 -> lift -> inverse (expect packet containing pH4):")
+for P in lift_std_xi(pH4,G4,[1,1]/2) do for c@q in P do prints(inverse_lift_std_xi(q,H4,[1,1]/2)) od od
+prints("### xi=0 degeneration: trivial datum, lift is the identity transfer")
+for P in lift_std_xi(trivial(G),G,[0/1]) do prints(P) od
+prints("### expected failure: inverse of a discrete series (Cartan not shared; E3)")
+set ds=parameter(KGB(G,0),[1],[0/1])
+inverse_lift_std_xi(ds,H,[1/2])

@@ -2,6 +2,7 @@
 <K_highest_weights.at { for all_lambda_differential_0 }
 <synthetic.at { for KGBElt_gen, square }
 <L_packet.at { for is_valid, L_packet (the xi=0 originals) }
+<L_hom.at { for L_homomorphism, phi, make_dominant@(KGBElt,L_homomorphism) }
 <endoscopic_groups.at { for complex_endoscopic_group, endoscopic_group }
 
 { E2: cover-aware endoscopy. EVERYTHING here is NEW, under _xi names; no
@@ -98,10 +99,78 @@ set is_valid_xi (RealForm H, KGBElt_gen y, ratvec gamma) = bool:
 { ---------------- covered-H L-packet ---------------- }
 
 { L-packet of the covered H at infinitesimal character gamma_H, given a
-  valid y_gen: enumerate all parameters at gamma_H in the genuine coset.
-  This is the covered analogue of L_packet@(RealForm,ratvec,KGBElt_gen);
-  the original is untouched. }
+  valid y_gen: the covered analogue of L_packet@(RealForm,ratvec,KGBElt_gen)
+  from L_packet.at (which is untouched). Same fiber-based computation; the
+  synthetic builder parameter(x,y,gamma) = parameter(x,gamma-y.torus_factor,
+  gamma) already routes through the rho_xi-aware (x,lambda,nu) overload of
+  basic.at, so it enforces the genuine coset lambda in rho+xi+X^* by itself. }
 set L_packet_xi (RealForm H, ratvec gamma_H, KGBElt_gen y) = [Param]:
-  let () = assert(is_valid_xi(H,y,gamma_H)
-                 ,"(y,gamma_H) fails the covered square-condition") in
-  all_parameters_gamma_xi(H,gamma_H)
+  assert(is_valid_xi(H,y,gamma_H)
+        ,"(y,gamma_H) fails the covered square-condition");
+  let fib=fiber(H,-^y.involution) in
+  ##for x in fib do monomials(finalize(parameter(x,y,gamma_H))) od
+
+{ ---------------- E2b: transfer maps on the covered H ---------------- }
+
+{ y_gen for a parameter on a POSSIBLY covered real form: same tf = gamma -
+  lambda as y_gen@Param (L_hom.at, untouched), but validated by the covered
+  square-condition. At cover_xi=0 this IS y_gen. }
+set y_gen_xi (Param p) = KGBElt_gen:
+  let y=KGB_elt_gen(dual(p.inner_class),-^p.x.involution
+                   ,p.infinitesimal_character-p.lambda) in
+  assert(is_valid_xi(p.real_form,y,p.infinitesimal_character)
+        ,"y_gen_xi(p) is not valid"); y
+
+{ FORWARD transfer of a genuine standard on the covered H to G (ordinary
+  endoscopy inside inner_class(G): M=1, s=exp(2 pi i v)). The s-twist enters
+  as the +v shift of the dual-side torus factor (the coset element
+  e(v/2)*sigma_G of the E-group embedding ^EH < ^LG); the group side (x's)
+  carries no v. Consequences, using xi_H = v+rho_G-rho_H (E1):
+    tf_G = (gamma-lambda_H)+v, so the synthetic lambda_G = gamma-tf_G =
+    lambda_H - v lies in rho_G+X^*: genuine covered-H parameters lift to
+    honest G-parameters, with no silent flooring.
+  Returns one finalized ParamPol per x_G in the fiber over theta matching
+  x_H under torus-factor transport (mirrors epstar's component-group match;
+  epstar itself, for plain H, is untouched). }
+set lift_std_xi (Param p_H, RealForm G, ratvec v) = [ParamPol]:
+  let gamma=p_H.infinitesimal_character
+  then y_H=y_gen_xi(p_H)
+  then theta_vee=y_H.involution
+  then y_G=KGB_elt_gen(dual(inner_class(G)),theta_vee,y_H.torus_factor+v)
+  then ()=assert(is_valid(y_G,gamma)
+                ,"lifted (y_G,gamma) is not valid on G (bad v?)")
+  then theta=-^theta_vee
+  then ic_H=inner_class(p_H.real_form)
+  then matches=##for x_G in fiber(G,theta)
+       do if KGB_elt(ic_H,theta,x_G.torus_factor)=p_H.x
+          then [x_G] else [] fi od
+  in for x_G in matches
+     do let (x_dom,(y_dom,gamma_dom))=make_dominant(x_G,phi(y_G,gamma)) in
+        finalize(parameter(x_dom,y_dom,gamma_dom))
+     od
+
+{ INVERSE transfer: G-parameter -> genuine packet on the covered H
+  (ordinary endoscopy, M=1). Undo the s-twist on the dual side (tf-v), then
+  enumerate the covered packet. This is the covered analogue of
+  inverse_lift_std (twisted_endoscopy.at, untouched); the rho_H basepoint
+  correction that the 2022 code lacked is supplied by the covered validity
+  test and the rho_xi-aware parameter constructor. No Kottwitz/transfer-
+  factor signs yet (E3). }
+set inverse_lift_std_xi (Param p_G, RealForm H, ratvec v, ratvec gamma_H) =
+    ParamPol:
+  let y_G=y_gen(p_G)
+  then y_H=KGB_elt_gen(dual(inner_class(H)),y_G.involution
+                      ,y_G.torus_factor-v)
+  in assert(is_valid_xi(H,y_H,gamma_H)
+           ,"inverse lift: (y_H,gamma_H) fails the covered square-condition."
+           +" Causes: wrong gamma_H; bad datum representative v; or the"
+           +" Cartan of p_G is not shared with H (e.g. discrete series on a"
+           +" compact Cartan vs a split H: KGB_elt_gen then projects away"
+           +" the v-shift). Cartan matching across stable conjugacy is E3;"
+           +" for such p_G invert via the forward map (search the covered"
+           +" packet whose lift_std_xi contains p_G).");
+  param_pol(L_packet_xi(H,gamma_H,y_H))
+
+{ gamma_H = gamma_G (ordinary endoscopy: same torus, M=1) }
+set inverse_lift_std_xi (Param p_G, RealForm H, ratvec v) = ParamPol:
+  inverse_lift_std_xi(p_G,H,v,p_G.infinitesimal_character)

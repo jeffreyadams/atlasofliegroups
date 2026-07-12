@@ -14,6 +14,8 @@ for t in cover-smoke gate2 hermitian-cover tensor-bijection induction-cover; do
   ./atlas --path=atlas-scripts $PRELOAD < xi-tests/$t.in 2>&1 | sed -n '/^###/,$p' > xi-tests/$t-out.txt
   echo "regenerated $t-out.txt ($(wc -l < xi-tests/$t-out.txt) lines)"
 done
-# endoscopy battery has its own preload
+# endoscopy batteries have their own preload
 ./atlas --path=atlas-scripts atlas-scripts/endoscopy_xi.at atlas-scripts/groups.at < xi-tests/endoscopy-xi.in 2>&1 | sed -n '/^###/,$p' > xi-tests/endoscopy-xi-out.txt
 echo "regenerated endoscopy-xi-out.txt"
+./atlas --path=atlas-scripts atlas-scripts/endoscopy_xi.at atlas-scripts/groups.at < xi-tests/endoscopy-lift-xi.in 2>&1 | sed -n '/^###/,$p' > xi-tests/endoscopy-lift-xi-out.txt
+echo "regenerated endoscopy-lift-xi-out.txt"
