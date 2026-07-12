@@ -1,0 +1,65 @@
+prints("### SL(2,R): TWO endoscopic data with the same s = diag(1,-1)")
+set G=SL(2,R)
+set Gv=dual(inner_class(G))
+set w=W_elt(root_datum(Gv),[0])
+prints("--- principal (w=1): H = the xi=1/2 cover of split R^x (E2) ---")
+set (Hp,,)=endoscopic_group_xi(G,[1/2])
+prints("Hp = ", Hp)
+prints("--- elliptic (w=s_alpha): H = honest U(1) [expect NO cover: xi_H integral] ---")
+set (He,Me,Hev)=endoscopic_group_xi(G,[1/2],w)
+prints("He = ", He, "   cover_xi = ", cover_xi(He))
+prints("### DS transfer: lift the character z^1 of U(1) at gamma=1")
+set pH=param(KGB(He,0),[1],[0/1])  { the character z^1: lambda=1, gamma=1 }
+prints("pH = ", pH, "  lambda = ", pH.lambda, "  gamma = ", pH.infinitesimal_character)
+prints("unsigned lifts (expect the two discrete series):")
+for P in lift_std_xi(pH,G,[1/2]) do prints(P) od
+prints("kappa-SIGNED lift (expect DS+ MINUS DS-: the endoscopic character identity):")
+prints(lift_std_signed_xi(pH,G,[1/2]))
+prints("### ABV strong-form refinement: the OTHER pure form of U(1) picks the OTHER DS")
+set xH2=KGB_elt(inner_class(He),id_mat(1),[-1/1])
+prints("other strong form: ", xH2.real_form, "  form_number vs He: ",
+       form_number(xH2.real_form), " ", form_number(He))
+set pH_other=param(xH2,[1],[0/1])
+prints("strict lift from strong form 2 (expect the other DS):")
+for P in lift_std_xi(pH_other,G,[1/2]) do prints(P) od
+prints("### inverse transfer of each discrete series (was E2b-blocked; elliptic datum shares the Cartan)")
+set ds1=parameter(KGB(G,0),[1],[0/1])
+set ds2=parameter(KGB(G,1),[1],[0/1])
+prints("inverse of DS(x=0): ", inverse_lift_std_xi(ds1,He,[1/2]))
+prints("inverse of DS(x=1): ", inverse_lift_std_xi(ds2,He,[1/2]))
+prints("### round trip: char -> signed lift -> inverse of each term")
+for c@q in lift_std_signed_xi(pH,G,[1/2]) do prints(inverse_lift_std_xi(q,He,[1/2])) od
+prints("### principal-vs-elliptic at the same gamma: PS vs DS transfers coexist")
+set pHp=param(KGB(Hp,0),[0],[1/1])
+prints("principal lift (PS standard): ")
+for P in lift_std_xi(pHp,G,[1/2]) do prints(P) od
+prints("### Sp(4,R): elliptic-type datum with w = long Weyl element of G_vee")
+set G4=Sp(4,R)
+set G4v=dual(inner_class(G4))
+set w4=W_elt(root_datum(G4v),[0,1,0,1])  { long element of W(B2) }
+prints("w4 = ", w4, "  (order ", order(w4), ")")
+set (H4e,M4e,H4ev)=endoscopic_group_xi(G4,[1,1]/2,w4)
+prints("H4e = ", H4e, "   cover_xi = ", cover_xi(H4e))
+set pH4=param(KGB(H4e,0),[0,0],[0,0]/1)
+prints("pH4 = ", pH4, "  gamma = ", pH4.infinitesimal_character)
+prints("signed lift:")
+prints(lift_std_signed_xi(pH4,G4,[1,1]/2))
+prints("round trip (inverse of each term):")
+for c@q in lift_std_signed_xi(pH4,G4,[1,1]/2) do prints(inverse_lift_std_xi(q,H4e,[1,1]/2,pH4.infinitesimal_character)) od
+prints("### Sp(4,R) at G-REGULAR gamma=(2,1): kappa-pair of discrete series")
+set pH4r=param(KGB(H4e,0),[1,1],[0,0]/1)
+prints("pH4r = ", pH4r, "  gamma = ", pH4r.infinitesimal_character, "  [H-side DS]")
+prints("signed lift [expect a +/- pair of Sp(4,R) discrete series]:")
+prints(lift_std_signed_xi(pH4r,G4,[1,1]/2))
+prints("inverse round trip of each term:")
+for c@q in lift_std_signed_xi(pH4r,G4,[1,1]/2) do prints(inverse_lift_std_xi(q,H4e,[1,1]/2)) od
+prints("### Sp(4,R): sweep the WHOLE H-DS-packet with a common kappa-base")
+prints("[4 H-side DS -> 4 G-side DS, one each (4<->4 fibers); the kappa-signs")
+prints(" relative to a common base give the coefficients of the identity]")
+set Hpacket=L_packet(pH4r)
+prints("H-packet size: ", #Hpacket)
+set lifts=for p in Hpacket do first_param(lift_std_signed_xi(p,G4,[1,1]/2)) od
+set xbase=lifts[0].x
+for q@i in lifts
+do prints("H-DS ",i," (",Hpacket[i],") -> ", q, "   kappa-sign: ", endoscopic_sign_xi([1,1]/2,q.x,xbase))
+od

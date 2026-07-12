@@ -1,0 +1,91 @@
+### SL(2,R): TWO endoscopic data with the same s = diag(1,-1)
+Variable G: RealForm
+Variable Gv: InnerClass
+Variable w: WeylElt
+--- principal (w=1): H = the xi=1/2 cover of split R^x (E2) ---
+Variable Hp: RealForm
+Hp = disconnected split real group with Lie algebra 'gl(1,R)' [cover xi=[1]/2]
+--- elliptic (w=s_alpha): H = honest U(1) [expect NO cover: xi_H integral] ---
+Variable He: RealForm
+Variable Me: mat
+Variable Hev: RealForm
+He = compact connected quasisplit real group with Lie algebra 'u(1)'   cover_xi = [ 0 ]/1
+### DS transfer: lift the character z^1 of U(1) at gamma=1
+Variable pH: Param
+pH = final parameter(x=0,lambda=[1]/1,nu=[0]/1)  lambda = [ 1 ]/1  gamma = [ 1 ]/1
+unsigned lifts (expect the two discrete series):
+
+1*parameter(x=0,lambda=[1]/1,nu=[0]/1) [1]
+Value: [()]
+kappa-SIGNED lift (expect DS+ MINUS DS-: the endoscopic character identity):
+
+-1*parameter(x=1,lambda=[1]/1,nu=[0]/1) [1]
+1*parameter(x=0,lambda=[1]/1,nu=[0]/1) [1]
+### ABV strong-form refinement: the OTHER pure form of U(1) picks the OTHER DS
+Variable xH2: KGBElt
+other strong form: compact connected quasisplit real group with Lie algebra 'u(1)'  form_number vs He: 0 0
+Variable pH_other: Param
+strict lift from strong form 2 (expect the other DS):
+
+1*parameter(x=1,lambda=[1]/1,nu=[0]/1) [1]
+Value: [()]
+### inverse transfer of each discrete series (was E2b-blocked; elliptic datum shares the Cartan)
+Variable ds1: Param
+Variable ds2: Param
+inverse of DS(x=0): 
+1*parameter(x=0,lambda=[1]/1,nu=[0]/1) [0]
+inverse of DS(x=1): 
+1*parameter(x=0,lambda=[1]/1,nu=[0]/1) [0]
+### round trip: char -> signed lift -> inverse of each term
+
+1*parameter(x=0,lambda=[1]/1,nu=[0]/1) [0]
+
+1*parameter(x=0,lambda=[1]/1,nu=[0]/1) [0]
+Value: [(),()]
+### principal-vs-elliptic at the same gamma: PS vs DS transfers coexist
+Variable pHp: Param
+principal lift (PS standard): 
+
+1*parameter(x=2,lambda=[2]/1,nu=[1]/1) [0]
+Value: [()]
+### Sp(4,R): elliptic-type datum with w = long Weyl element of G_vee
+Variable G4: RealForm
+Variable G4v: InnerClass
+Variable w4: WeylElt
+w4 = <1.0.1.0>  (order 2)
+Variable H4e: RealForm
+Variable M4e: mat
+Variable H4ev: RealForm
+H4e = disconnected split real group with Lie algebra 'sl(2,R).sl(2,R)'   cover_xi = [ 0, 0 ]/1
+Variable pH4: Param
+pH4 = final parameter(x=0,lambda=[1,0]/1,nu=[0,0]/1)  gamma = [ 1, 0 ]/1
+signed lift:
+
+1*parameter(x=0,lambda=[1,0]/1,nu=[0,0]/1) [3]
+round trip (inverse of each term):
+
+1*parameter(x=1,lambda=[1,0]/1,nu=[0,0]/1) [2]
+1*parameter(x=0,lambda=[1,0]/1,nu=[0,0]/1) [2]
+Value: [()]
+### Sp(4,R) at G-REGULAR gamma=(2,1): kappa-pair of discrete series
+Variable pH4r: Param
+pH4r = final parameter(x=0,lambda=[2,1]/1,nu=[0,0]/1)  gamma = [ 2, 1 ]/1  [H-side DS]
+signed lift [expect a +/- pair of Sp(4,R) discrete series]:
+
+1*parameter(x=0,lambda=[2,1]/1,nu=[0,0]/1) [7]
+inverse round trip of each term:
+
+1*parameter(x=1,lambda=[2,1]/1,nu=[0,0]/1) [4]
+1*parameter(x=0,lambda=[2,1]/1,nu=[0,0]/1) [4]
+Value: [()]
+### Sp(4,R): sweep the WHOLE H-DS-packet with a common kappa-base
+[4 H-side DS -> 4 G-side DS, one each (4<->4 fibers); the kappa-signs
+ relative to a common base give the coefficients of the identity]
+Variable Hpacket: [Param]
+H-packet size: 2
+Variable lifts: [Param]
+Variable xbase: KGBElt
+H-DS 0 (final parameter(x=1,lambda=[2,1]/1,nu=[0,0]/1)) -> final parameter(x=1,lambda=[2,1]/1,nu=[0,0]/1)   kappa-sign: 1
+H-DS 1 (final parameter(x=0,lambda=[2,1]/1,nu=[0,0]/1)) -> final parameter(x=0,lambda=[2,1]/1,nu=[0,0]/1)   kappa-sign: 1
+Value: [(),()]
+Bye.

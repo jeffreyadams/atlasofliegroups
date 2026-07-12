@@ -19,3 +19,5 @@ done
 echo "regenerated endoscopy-xi-out.txt"
 ./atlas --path=atlas-scripts atlas-scripts/endoscopy_xi.at atlas-scripts/groups.at < xi-tests/endoscopy-lift-xi.in 2>&1 | sed -n '/^###/,$p' > xi-tests/endoscopy-lift-xi-out.txt
 echo "regenerated endoscopy-lift-xi-out.txt"
+./atlas --path=atlas-scripts atlas-scripts/endoscopy_xi.at atlas-scripts/groups.at < xi-tests/endoscopy-elliptic-xi.in 2>&1 | sed -n '/^###/,$p' > xi-tests/endoscopy-elliptic-xi-out.txt
+echo "regenerated endoscopy-elliptic-xi-out.txt"
