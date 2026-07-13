@@ -18,6 +18,7 @@ set KGB_elt_gen(InnerClass ic,mat involution, ratvec v)=KGBElt_gen:
  assert(v*involution=v,"v is not theta-fixed");
  (ic,involution,v)
 set KGB_elt_gen(KGBElt x)=KGB_elt_gen(x.inner_class,x.involution,x.torus_factor)
+
 set KGB_elt(KGBElt_gen x)=KGB_elt(x.inner_class,x.involution,x.torus_factor)
 
 set grading_coweight (KGBElt x) = ratvec: torus_factor(x) + rho_check_i(x)

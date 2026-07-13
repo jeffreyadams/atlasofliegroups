@@ -140,11 +140,17 @@ set predictor_u_count = int:0
 set predictor_h_time = int:0
 set predictor_h_times = [(int,int)]:[]
 set predictor_h_count = int:0
+
+set regroup_flag = true
+
 {take a KTypePol _apparently_ attached to G and make it _actually_ attached
 to G. Need this to use looked-up deformations.}
 set regroup(RealForm G, KTypePol P) = KTypePol:
-    sum(G, for c@q in P do let (,m) = %q.x
+    if regroup_flag
+    then sum(G, for c@q in P do let (,m) = %q.x
     	   in c*K_type(KGB(G,m), q.lambda_minus_rho) od)
+    else P
+    fi
 
 set regroup(RealForm G, maybe_KTP P) = maybe_KTP:
     case P
@@ -153,7 +159,10 @@ set regroup(RealForm G, maybe_KTP P) = maybe_KTP:
     esac
 
 set regroup(RealForm G, Param p) = Param:
-    parameter(G, p.x.number, p.lambda, p.nu)
+    if regroup_flag
+    then parameter(G, p.x.number, p.lambda, p.nu)
+    else p
+    fi
 
 set low_height(KTypePol P) = int:
     if P.= then -1 else height(last_K_type(P)) fi
