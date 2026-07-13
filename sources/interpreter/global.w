@@ -2073,26 +2073,26 @@ constructors introduced in the same definition have the same arity.
 
 @ The function |process_closed_type_definition| that will be called from the
 parser to process the definition of one or more closed types or type
-constructors has quite a few arguments to accommodate its many possibilities.
-These are: the list |idl| of type identifiers for the types or constructors
-being defined, their common |arity|, the combined type |iftp| of the interface
+constructors has quite a few arguments to accommodate its possibilities. These
+are: the list |idl| of type identifiers for the types or constructors being
+defined, their common |arity|, the combined type |iftp| of the interface
 identifiers, a list |iface| of interface identifiers, a list |reptps| of
-representation types for the new closed types, and finally a list |imp| of pairs
-of an identifier and an expression, which expressions provide the
-implementations of the interface identifiers. The types name(s) being defined
-can be used in the interface type~|iftp| (the whole point of interface
-identifiers being to have values whose types are in terms of the new closed
-type(s)). Although it seems attractive to represent them by type variables (for
-which either the closed types being defined or the representation types later
-can be substituted), they need to be able to take type arguments when |arity>0|,
-something that type variables cannot. They are therefore represented in the way
-these types will be after processing of the definition, namely as closed types
-or type constructors, numbering them from the current |closed_count()| upwards,
-with any type arguments explicitly provided. In |reptps|, the new type names
-should not occur, but the first |arity| type variables represent the formal type
-parameters of the definition, so that in fact each type in |reptps| specifies a
-type constructor of that |arity|. The same type variables can also be used in
-|iftp| to represent the parameter types of the closed type constructor.
+representation types for the new closed types, and finally a list |imp| of
+identifier-expression pairs, which provide implementations for the interface
+identifiers. The types name(s) being defined can be used in the interface
+type~|iftp|, and after the definition these bindings are the main thing the
+system remembers about the new closed type(s). Our initial idea was to represent
+them by type variables, for which the representation types can be substituted to
+obtain the type required for the interface implementation, but that does not
+work when |arity>0| since type variables cannot take type arguments. Instead we
+therefore represent them in the same way that they will be after processing of
+the definition, namely as closed types or type constructors, numbering them from
+the current |closed_count()| upwards, with any type arguments explicitly
+provided. In |reptps| these new type names should not occur, but the first
+|arity| type variables can, and represent the formal type parameters in terms of
+which each type in |reptps| specifies a type constructor of that |arity|. These
+type variables can also be used in |iftp| to represent the parameter types of
+the closed type constructor(s).
 
 The identifiers in |imp| could be considered redundant, since they repeat those
 given in~|iface|. However, having the user repeat the name of each
