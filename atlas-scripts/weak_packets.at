@@ -223,10 +223,10 @@ in if not twist(delta_check,O_check)=O_check
       let Gs = split_form(G.root_datum), gamma_final=O_check.H/2+shift
       then OL_flag = is_one_root_length(integrality_datum(G,gamma_final))
       then q = parameter(x_open(Gs),Gs.rho,gamma_final)
-      then Ns = TalphabetaTauss_bitset(q)
+      then Ns = TalphabetaTauss_bitset(q), tau0 = tau(q)
       then all = all_parameters_gamma(G,gamma_final)
       in for p in all
-      	 if FPP_def_test(p) and is_hermitian(p) and same_PI_step(p,Ns)
+      	 if tau(p)= tau0 and is_hermitian(p) and same_PI_step(p,Ns)
 	 do p
 	 fi
 	 od

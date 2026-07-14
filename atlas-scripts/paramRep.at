@@ -81,6 +81,40 @@ set local_Talphabeta([int] js, Param p) = [Param]:
        fi
        od
 
+set local_Talphabeta_hash = ((vec, Param) -> [Param]):
+    let jss = [vec]:[] {all sets js considered}
+    then phashes = [Param_hash]: [] {one for each set of js}
+    then TabHash = make_Param_hash()
+    then answers = [[vec]]: [] {answers[k][m] is list of entries in TabHash for Tab(entry m in pHashes[k])}
+    in ((vec, Param) -> [Param]): (vec js, Param p):
+       let k = first(for v in jss do v = js od)
+       in if k < 0
+	  then jss#:=js;
+	        phashes#:=make_Param_hash();
+		answers#:=([vec]:[]);
+		k:=#jss - 1
+	  fi;
+    	  let q = if is_regular(p.root_datum,p.infinitesimal_character)
+    	      	  then p
+	    	  else regularize(p)
+	    	  fi, G = p.real_form
+    	  then M = phashes[k].size(), m = phashes[k].match(q)
+    	  in if m=M
+       	     then let TLQ = tau_loc(js,q)
+    	     	  then P1 = sum(G, for j in js
+    	      	       do Cayley_cross_sum(j,q)
+		       od)
+   		  in answers[k]#:= (vec: for @t in P1
+       		     if not is_subset(tau_loc(js, t),TLQ) and
+       	  	     	not is_subset(TLQ,tau_loc(js, t))
+       		     do TabHash.match(t)
+		     fi
+		     od)
+       	     fi;
+	     for i in answers[k][m] do TabHash.index(i) od
+
+set old_TabR_flag = false
+
 set local_TalphabetaRepeat([int] js, Param p) = [Param]:
     let q = regularize(p), G = p.real_form
     then nullmod = null_module(G)
@@ -91,9 +125,16 @@ set local_TalphabetaRepeat([int] js, Param p) = [Param]:
 	      	 for @r in toDo
 	      	 do pHash.match(r)
 		 od; {next compute all their Talphabeta}
-	      	 toDo := sum(G, for @r in toDo
-	      	  	    	do sum(G, for t in local_Talphabeta(js,r) do 1*t od)
-				od); {next step eliminate already handled from toDo}
+	      	 toDo := if old_TabR_flag
+		      	 then sum(G, for @r in toDo
+	      	  	    	     do sum(G, for t in local_Talphabeta(js,r)
+				   	       do 1*t od)
+				     od)
+			 else sum(G, for @r in toDo
+	      	  	    	     do sum(G, for t in local_Talphabeta_hash(js,r)
+				   	       do 1*t od)
+				     od)
+			 fi; {next step eliminate already handled from toDo}
 		 toDo := sum(G, for @r in toDo
 		      	 	do let j = pHash.lookup(r)
 				   in if j < 0
@@ -211,7 +252,10 @@ set genTalphabetaRepeats_hash = (([int], Param) -> [Param]):
 
 set genTalphabetaStep ([int] js, Param p) = [Param]:
     if not is_cool_D4(js,p) then return ([Param]: []) fi;
-    let list = genTalphabetaRepeats_hash(js,p), tau_loc = tau_loc(js,p)
+    let list = if old_TabR_flag
+    	       then genTalphabetaRepeats(js,p)
+	       else genTalphabetaRepeats_hash(js,p)
+	       fi, tau_loc = tau_loc(js,p)
     then tau_locs = for q in list do tau_loc(js,q) od
     in if #tau_loc = 2 and not is_member(tau_loc)(js[0])
        then for taul@k in tau_locs if #taul = 3 do list[k] fi od
@@ -277,62 +321,68 @@ set Talphabeta = (Param -> [Param]):
         for j in answers[n] do regroup(p.real_form,TabHash.index(j))
 			    od
 
+{Incremental memoized BFS in the T_{alpha,beta} graph (edges from |Talphabeta|).
+For each starting point (up to regularize) we store the BFS levels computed so
+far -- level j = the params at distance exactly j from the start -- plus a flag
+recording whether the BFS has closed. The last stored level is the saved |toDo|
+frontier, so a repeated or deeper call continues the stored BFS instead of
+restarting it. Params are stored once, as indices in a registry hash shared by
+all starts, and re-anchored to the caller's real form by |regroup| on the way
+out. Call as (p,N) to ensure levels 0..N, or (p,-1) to run the BFS to closure.
+Returns (levels,closed): at most N+1 levels, and whether the BFS closed within
+the levels returned.}
+set (Talphabeta_levels, Talphabeta_levels_clear) =
+    let startHash = make_Param_hash() {regularized starting params}
+    then registry = make_Param_hash() {every param reached, shared by all starts}
+    then levelss = [[vec]]: [] {levelss[i][j] = registry indices at distance j from start i}
+    then dones = [bool]: [] {whether the BFS from start i has closed}
+    in ( ((Param,int) -> ([[Param]],bool)): (Param p, int N):
+	 let q = regularize(p), G = p.real_form
+	 then M = startHash.size()
+	 then i = startHash.match(q)
+	 in if i = M then levelss #:= [vec: [registry.match(q)]]; dones #:= false fi;
+	    if not dones[i] and (N < 0 or #levelss[i] <= N)
+	    then let seen = make_int_hash() {registry indices reached from start i}
+		 then () = for lev in levelss[i] do for k in lev do seen.match(k) od od
+		 in while not dones[i] and (N < 0 or #levelss[i] <= N)
+		    do let nbrs = (for k in levelss[i]~[0]
+				   do for t in Talphabeta(regroup(G,registry.index(k)))
+				      do registry.match(t)
+				      od
+				   od).##
+		       then fresh = vec: for m in nbrs if seen.could_add(m) do m fi od
+		       in if #fresh = 0
+			  then dones[i] := true
+			  else levelss[i] := levelss[i]#fresh
+			  fi
+		    od
+	    fi;
+	    let avail = if N < 0 then #levelss[i] else min(#levelss[i],N+1) fi
+	    in ( for lev in levelss[i][:avail]
+		 do for k in lev do regroup(G,registry.index(k)) od
+		 od
+	       , dones[i] and avail = #levelss[i]
+	       )
+       , @: (startHash.clear(); registry.clear(); levelss := []; dones := []; ())
+       )
+
 {jth term is all Param's accessible from p by <=j T_{alpha,beta}'s}
 {seek a result of size N + 1 >= 1}
 set TalphabetaRepeats(Param p, int N) = [[Param]]:
-    let q = regularize(p), G = p.real_form
-    then nullmod = null_module(G)
-    then gamma = q.infinitesimal_character, toDo = 1*q
-    then () = pHashOut.clear()
-    then answer = [[Param]]:[]
-    then size = int:0
-    in while #toDo > 0 and #answer < N
-       do for @r in toDo
-	  do pHashOut.match(r)
-	  od;
-	  size:= pHashOut.size();
-	  answer #:= pHashOut.list();
-	  toDo := sum(G, for @r in toDo
-	      	  	 do sum(G, for t in Talphabeta(r)
-				   do let j = pHashOut.match(t)
-				      in if j >=size
-					 then 1*t
-					 else nullmod
-					 fi
-				   od)
-			  od)
-
-	od;
-    	answer#pHashOut.list()
+    let (levels,closed) = Talphabeta_levels(p,N)
+    then ball = [Param]: []
+    then balls = [[Param]]: for level in levels do ball := ball##level od
+    in if closed and #levels <= N then balls#balls~[0] else balls fi
 
 set TalphabetaRepeat_time = int:0
 set TalphabetaRepeat_count = int:0
 
 {jth term is all Param's accessible from p by <=j T_{alpha,beta}'s}
 set TalphabetaRepeats(Param p) = [[Param]]:
-    let q = regularize(p), G = p.real_form
-    then nullmod = null_module(G)
-    then gamma = q.infinitesimal_character, toDo = 1*q
-    then () = pHashOut.clear()
-    then answer = [[Param]]:[]
-    then size = int:0
-    in while #toDo > 0
-       do for @r in toDo
-	  do pHashOut.match(r)
-	  od;
-	  size:= pHashOut.size();
-	  answer #:= pHashOut.list();
-	  toDo := sum(G, for @r in toDo
-	      	  	 do sum(G, for t in Talphabeta(r)
-				   do let j = pHashOut.match(t)
-				      in if j >=size
-					 then 1*t
-					 else nullmod
-					 fi
-				   od)
-			  od)
-        od;
-    	answer#pHashOut.list()
+    let (levels,) = Talphabeta_levels(p,minus_1)
+    then ball = [Param]: []
+    then balls = [[Param]]: for level in levels do ball := ball##level od
+    in balls#balls~[0]
 
 {jth term is all tau invariants found in <= j T_{alpha,beta}'s from p}
 set TalphabetaTauss(Param p,int N) = [[vec]]:
