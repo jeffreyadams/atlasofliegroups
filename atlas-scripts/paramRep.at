@@ -81,15 +81,6 @@ set local_Talphabeta([int] js, Param p) = [Param]:
        fi
        od
 
-
-{
-set local_TalphabetaTaus([int] js, Param p) = [[int]]:
-    for q in local_Talphabeta(js,p) do tau_loc(js,p) od
-
-set local_TalphabetaTaus_bitset([int] js, Param p) = int:
-    to_bitset(for tau in local_TalphabetaTaus(js, p) do to_bitset(tau) od)
-}
-
 set local_TalphabetaRepeat([int] js, Param p) = [Param]:
     let q = regularize(p), G = p.real_form
     then nullmod = null_module(G)
@@ -179,16 +170,16 @@ set genTalphabetaRepeats([int] js, Param p) = [Param]:
     let q = regularize(p), G = p.real_form
     then nullmod = null_module(G)
     then gamma = q.infinitesimal_character, toDo = 1*q
-    then () = pHashOut.clear()
+    then pHashD4 = make_Param_hash()
     then size = int:0
     in while #toDo > 0
        do for @r in toDo
-	  do pHashOut.match(r)
+	  do pHashD4.match(r)
 	  od;
-	  size:= pHashOut.size();
+	  size:= pHashD4.size();
 	  toDo := sum(G, for @r in toDo
 	      	  	 do sum(G, for t in genTalphabeta(js,r)
-				   do let j = pHashOut.match(t)
+				   do let j = pHashD4.match(t)
 				      in if j >=size
 					 then 1*t
 					 else nullmod
@@ -196,11 +187,31 @@ set genTalphabetaRepeats([int] js, Param p) = [Param]:
 				   od)
 			  od)
         od;
-    	pHashOut.list()
+    	pHashD4.list()
+
+{in case p is D4-cool, should be entire D4 cell of p}
+set genTalphabetaRepeats_hash = (([int], Param) -> [Param]):
+    let phash = make_Param_hash() {to hold D4-cool Params}
+    then cells = [vec]: [] {jth entry is indices of cell for Param #j in phash}
+    in (([int], Param) -> [Param]): ([int] js, Param p):
+    if not is_cool_D4(js, p) then return ([Param]: []) fi;
+    let q = regularize(p), G = p.real_form
+    then M = phash.size(), m = phash.match(q)
+    in if m = M {haven't seen q}
+       then let list = genTalphabetaRepeats(js,q)
+       	    then inds = (vec: for r in list do phash.match(r) od)
+       	    in assert(@:#list >= 10,"Too-small D4 cell");
+	       for j:#list
+	       do cells #:= inds
+	       od
+       fi;
+       for k in cells[m]
+       do regroup(G, phash.index(k))
+       od
 
 set genTalphabetaStep ([int] js, Param p) = [Param]:
     if not is_cool_D4(js,p) then return ([Param]: []) fi;
-    let list = genTalphabetaRepeats(js,p), tau_loc = tau_loc(js,p)
+    let list = genTalphabetaRepeats_hash(js,p), tau_loc = tau_loc(js,p)
     then tau_locs = for q in list do tau_loc(js,q) od
     in if #tau_loc = 2 and not is_member(tau_loc)(js[0])
        then for taul@k in tau_locs if #taul = 3 do list[k] fi od
@@ -242,31 +253,27 @@ set Talphabeta = (Param -> [Param]):
     	    then P1 = (sum(G, for j:#S
     	      	      	     do Cayley_cross_sum(j,q)
 		     	     od))
-{
-then D4s = if D4_gen_tau_flag
+	    then D4s = if D4_gen_tau_flag
     	       	       then ([vec]: find_D4s(integrality_datum(p.root_datum,gamma)))
 	       	       else []
 	       	       fi
 	    then qD4s = for v in D4s if is_cool_D4(v,q) do v fi od
-}
 	    in let list = ([Param]: for @t in P1
  	       	       	  if not is_subset(tau(t), tau(q)) and
        	  	     	     not is_subset(tau(q), tau(t))
        		       	  do t
 		       	  fi
 		       	  od)
-{
 			  ##
 		       	  ([Param]: for v in qD4s
 		       	  do genTalphabetaStep(v,q)
 		       	  od.##)
-}
 		in answers #:= (vec: for t in list
        		     	    	    do TabHash.match(t)
 				    od.sort_u)
 	fi;
         assert(@:pHash.size() = #answers,"Talphabetas is damaged");
-        assert(@:all(for j in answers[n] do test(regroup(p.real_form,TabHash.index(j)),q) od));
+        {assert(@:all(for j in answers[n] do test(regroup(p.real_form,TabHash.index(j)),q) od));}
         for j in answers[n] do regroup(p.real_form,TabHash.index(j))
 			    od
 
@@ -298,51 +305,14 @@ set TalphabetaRepeats(Param p, int N) = [[Param]]:
 	od;
     	answer#pHashOut.list()
 
-
 set TalphabetaRepeat_time = int:0
 set TalphabetaRepeat_count = int:0
-
-{
-{gives all Param's accessible from p by T_{alpha,beta}}
-{for each q in this list, sigma(p) contains sign of W_{tau(q)}, AND
-sigma contains trivial of W_(complement of tau(q)). Want to list all
-special sigma with those two properties.}
-{This function ran in a few minutes on my laptop for a
-discrete series of E8_s}
-set TalphabetaRepeat(Param p) = [Param]:
-    TalphabetaRepeat_count+:=1;
-    let start = elapsed_ms(), q = regularize(p), G = p.real_form
-    then nullmod = null_module(G)
-    then gamma = q.infinitesimal_character, toDo = ParamPol: 1*q
-    then pHash = make_Param_hash() {will hold answer}
-    then () = while #toDo > 0
-	      do {first record toDo's in pHash}
-	      	 for @r in toDo
-	      	 do pHash.match(r)
-		 od; {next compute all their Talphabeta}
-	      	 toDo := sum(G, for @r in toDo
-	      	  	    	do sum(G, for t in Talphabeta(r) do 1*t od)
-				od); {next step eliminate already handled from toDo}
-		 toDo := sum(G, for @r in toDo
-		      	 	do let j = pHash.lookup(r)
-				   in if j < 0
-				      then 1*r
-				      else nullmod
-				      fi
-				od)
-              od
-    in pHash.list() next TalphabetaRepeat_time+:=elapsed_ms() - start
-}
 
 {jth term is all Param's accessible from p by <=j T_{alpha,beta}'s}
 set TalphabetaRepeats(Param p) = [[Param]]:
     let q = regularize(p), G = p.real_form
     then nullmod = null_module(G)
     then gamma = q.infinitesimal_character, toDo = 1*q
-    {
-    then pHash = make_Param_hash() {will hold answer.##; always things where Talphabeta
-    	       	 		      already computed}
-    }
     then () = pHashOut.clear()
     then answer = [[Param]]:[]
     then size = int:0
@@ -364,19 +334,6 @@ set TalphabetaRepeats(Param p) = [[Param]]:
         od;
     	answer#pHashOut.list()
 
-{all distinct tau invariants reachable by T_{alpha,beta}'s from p}
-
-{
-set TalphabetaTaus(Param p) = [[vec]]:
-    for q in TalphabetaRepeats(p) do tau(q) od.sort_u_lex
-
-
-{previous made into a big_int bitset (largest possible size (2^(semisimple_rank(integrality_datum)))}
-
-set TalphabetaTaus_bitset(Param p) = [int]:
-    for tau in TalphabetaTaus(p) do to_bitset(tau) od
-}
-
 {jth term is all tau invariants found in <= j T_{alpha,beta}'s from p}
 set TalphabetaTauss(Param p,int N) = [[vec]]:
     for list in TalphabetaRepeats(p,N) do for q in list do tau(q) od.sort_u_lex od
@@ -392,8 +349,10 @@ set TalphabetaTauss_bitset(Param p,int N) = [int]:
 		    	      do to_bitset(tau)
 			      od)
 		 od
-    then len = first(for N in answer do N=answer~[0] od)
-    in answer[:len+1]
+    { then len = first(for N in answer do N=answer~[0] od)}
+    in answer{[:len+1]}
+{For p = parameter(E7_s,20925,[1,1,1,1,1,1,1]/1,[1,1,1,0,1,0,1]/1), TalphabetaTauss_bitset has
+cardinality 11; entries 6-9 are equal, so using len inappropriately truncates the answer if N = 8.}
 
 {Tauss made into a list of big_int bitsets}
 set TalphabetaTauss_bitset(Param p) = [int]:
@@ -404,14 +363,6 @@ set TalphabetaTauss_bitset(Param p) = [int]:
 		 od
     then len = first(for N in answer do N=answer~[0] od)
     in answer[:len+1]
-
-{If N is TalphabetaTaus_bitset(q), then this is a necessary condition for p and q to have
-the same primitive ideal}
-
-{
-set same_PI(Param p, [int] Taus_bitset) = bool:
-    TalphabetaTaus_bitset(p) = Taus_bitset
-}
 
 {If Ns is TalphabetaTauss_bitset(q), then this is a necessary condition for p and q to have
 the same primitive ideal; need N >= 1.}
@@ -557,10 +508,7 @@ set test_faster_packets(RootDatum rd) = bool:
 	  print_time_string(elapsed_ms() -start),"; so far ",ideal_intList_hash.size(),
 	       " out of ",PInum," different prim ideals")
 	  fi;
-	  if test_step_flag
-	  then ideal_intList_hash.match(TalphabetaTauss_bitset (p))
-	  else ideal_intList_hash.match(TalphabetaTauss_bitset(p))
-	  fi
+	  ideal_intList_hash.match(TalphabetaTauss_bitset(p))
        od;
        prints("Total time = ",print_time_string(elapsed_ms() -start),
        	      " to distinguish ",ideal_intList_hash.size(), " prim ideals.");
@@ -568,7 +516,7 @@ set test_faster_packets(RootDatum rd) = bool:
 
 {Since previous test gave false for Spin(6,6), test whether TalphabetaTauss_bitset distinguishes
 primitive ideals in case of distinguished nilpotent}
-{E7 tested positive!}
+{E7 tested positive with N = 8 in 1690 sec}
 
 {If preload isn't empty, should be all distinguished unipotent}
 
@@ -605,7 +553,7 @@ set test_faster_distinguished_packets(RootDatum rd, [Param] preload, int N) = bo
 	   	else [Param]:[]
 	   	fi
 	   in
-	   prints("At time ",print_time_string(elapsed_ms() - start),
+	   prints(new_line, "At time ",print_time_string(elapsed_ms() - start),
 	   	 " started testing distinguished orbit #",j);
 	   prints("need to test ",#allH," candidates");
 	   let candsH = for q@k in allH
@@ -621,10 +569,10 @@ set test_faster_distinguished_packets(RootDatum rd, [Param] preload, int N) = bo
 	   	else actualsH
 	   	fi
 	   in
-	   prints("candsH = ",candsH);
-	   prints("actualsH = ",actualsH);
+	   prints(new_line,"candsH = ",candsH);
+	   prints(new_line,"actualsH = ",actualsH);
 	   if #candsH > #actualsH
-	   then prints("for j = ",j," and H = ",distHs[j],", the ",#candsH - #actualsH,
+	   then prints(new_line,"for j = ",j," and H = ",distHs[j],", the ",#candsH - #actualsH,
 	   	" extra candidates are ",
 		       for q in candsH if first(for r in actualsH do q=r od) = -1
 		       do q fi od);
