@@ -2078,7 +2078,7 @@ are: the list |idl| of type identifiers for the types or constructors being
 defined, their common |arity|, the combined type |iftp| of the interface
 identifiers, a list |iface| of interface identifiers, a list |reptps| of
 representation types for the new closed types, and finally a list |imp| of
-identifier-expression pairs, which provide implementations for the interface
+identifier=expression pairs, which provide implementations for the interface
 identifiers. The types name(s) being defined can be used in the interface
 type~|iftp|, and after the definition these bindings are the main thing the
 system remembers about the new closed type(s). Our initial idea was to represent
@@ -2098,18 +2098,21 @@ The identifiers in |imp| could be considered redundant, since they repeat those
 given in~|iface|. However, having the user repeat the name of each
 implementation value helps avoiding errors; it also allows us to check the
 correspondence of the implementation with the specification part, and even
-allows the user to reorder the implementations and still get proper processing.
-That processing will in fact be introducing the implementation values
-sequentially, so that use can be made of previously defined implementation
-values, and at the end forming a tuple of them in specification order. Since the
-parser nowhere else passes a list of things that have to be identifiers
-(standing here for new type names), we use the more general possibility of a
-pattern list tot represent |idl|; the parser ensures that each pattern is just a
-single |name|. The same representation is used for |iface|, where again each
-|pattern| must have a |name|, which must match a definition in |imp| (we could
-allow it to have a sublist as well, which our processing handles without extra
-effort since we combine the list into a single |id_pat interface@;| anyway;
-however the utility of doing this seems limited).
+allows the user to reorder implementations, maybe add auxiliaries, and still get
+proper processing. The identifier bindings are processed sequentially as if
+separated by \&{then} in a \&{let} expression, and at the end a tuple of them in
+specification order is built.
+
+Since the parser nowhere else passes a list of things that have to be
+identifiers (here standing for new type names), we use the more general
+``pattern list'' tot represent |idl| and |iface|; in both cases the parser
+ensures that each pattern is just a single |name|. We do test that each name in
+|iface| has a definition in |imp|.
+
+The relative order of the last two module in the |try| block is important: the
+new types must be present in |type_expr::closed_info| in order for the proper
+types to be printed when the interface identifiers are being stored into the
+variable and overload tables.
 
 @< Global function definitions @>=
 void process_closed_type_definition
@@ -2145,7 +2148,7 @@ void process_closed_type_definition
       |converted_impl| @>
   @)
     @< Evaluate |converted_impl|, pushing the result on the evaluation stack @>
-    @< Update |type_expr::closed_type_table| with the new... @>
+    @< Update |type_expr::closed_type_table| with new... @>
     @< Pop the value from the evaluation stack, and distribute its components
        according to the identifiers of |interface| to variable and
        overload tables @>
@@ -2379,7 +2382,7 @@ we can in fact share some modules with that code.
 @ Finally, we must update the static member |type_expr::closed_info|, which can
 be done by calling |type_expr::add_closed_types|.
 
-@< Update |type_expr::closed_type_table| with the new |arity|
+@< Update |type_expr::closed_type_table| with new |arity|
    type constructors with names from |ids| @>=
 type_expr::add_closed_types(ids,arity);
 
