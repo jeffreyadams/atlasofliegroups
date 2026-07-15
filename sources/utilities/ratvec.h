@@ -76,6 +76,7 @@ class RationalVector
 // accessors
   // unsigned denominator requires care: plain % or / taboo; so export signed
   C denominator() const { return (C)d_denom; }
+  arithmetic::Denom_t true_denominator() const { return d_denom; }
   const V& numerator() const { return d_num; }
   size_t size() const { return d_num.size(); }
   bool is_zero() const { return d_num.is_zero(); }
