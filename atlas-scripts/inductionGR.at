@@ -385,7 +385,13 @@ set goodness (Param p_L,RealForm G) = string:
    must apply standardize. .}
 set theta_induce_standard (Param p_L,RealForm G) = ParamPol:
   let L=real_form(x(p_L)), x_G=embed_KGB(x(p_L),G)
-  then shift=rho(G)-rho(L)
+  then shift=rho_xi(G)-rho_xi(L) { cover-aware (mirrors induction.at); equals
+    rho(G)-rho(L) at xi=0, but on a cover maps rho(L)+xi_L+X^* onto
+    rho(G)+xi_G+X^* -- WITHOUT this, this stock copy (loaded after
+    induction.at via the FPP suite, FPP_support_wp.at) shadowed the
+    cover-aware version and broke theta-induction on covers under all.at
+    (e.g. the discrete series of PGL(2,R) from the rho(u)-cover of T:
+    "Not an integer vector"). }
   in assert(parabolic_is_theta_stable(make_parabolic(L,G)),
   "L is not Levi of theta_stable parabolic");
     if ind_verbose
