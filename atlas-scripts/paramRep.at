@@ -189,8 +189,7 @@ set genTalphabeta = (([int], Param) -> [Param]):
     	then N = pHash.size()
     	then n = pHash.match(q)
     	in if n = N
-       	   then let gamma = q.infinitesimal_character, empty = null_module(G)
-    	    	then P1 = (sum(G, for j in js
+       	   then	let P1 = (sum(G, for j in js
     	      	      	     do Cayley_cross_sum(j,q)
 		     	     od))
 		in answers #:= (vec: for @t in P1
@@ -199,55 +198,57 @@ set genTalphabeta = (([int], Param) -> [Param]):
 				     fi
 				     od)
 	   fi;
-	   assert(@:pHash.size() = #answers,"genTalphabetas is damaged");
+	   assert(@:pHash.size() = #answers,"genTalphabeta is damaged");
 	   ([Param]: for j in answers[n] do regroup(p.real_form,TabHash.index(j)) od)
-
-
-set pHashOut = make_Param_hash()
 
 {in case p is D4-cool, should be entire D4 cell of p}
 set genTalphabetaRepeats([int] js, Param p) = [Param]:
     if not is_cool_D4(js, p) then return ([Param]: []) fi;
     let q = regularize(p), G = p.real_form
-    then nullmod = null_module(G)
-    then gamma = q.infinitesimal_character, toDo = 1*q
+    then toDo = [q]
     then pHashD4 = make_Param_hash()
     then size = int:0
     in while #toDo > 0
-       do for @r in toDo
+       do for r in toDo
 	  do pHashD4.match(r)
 	  od;
 	  size:= pHashD4.size();
-	  toDo := sum(G, for @r in toDo
-	      	  	 do sum(G, for t in genTalphabeta(js,r)
-				   do let j = pHashD4.match(t)
-				      in if j >=size
-					 then 1*t
-					 else nullmod
-					 fi
-				   od)
-			  od)
+	  toDo := for r in toDo
+	      	  do for t in genTalphabeta(js,r)
+		     if pHashD4.match(t) >= size
+		     do t
+		     fi
+		     od
+		   od.##
         od;
     	pHashD4.list()
 
 {in case p is D4-cool, should be entire D4 cell of p}
-set genTalphabetaRepeats_hash = (([int], Param) -> [Param]):
-    let phash = make_Param_hash() {to hold D4-cool Params}
-    then cells = [vec]: [] {jth entry is indices of cell for Param #j in phash}
-    in (([int], Param) -> [Param]): ([int] js, Param p):
+set genTalphabetaRepeats_hash = ((vec, Param) -> [Param]):
+    let jss = [vec]:[] {all sets js considered}
+    then phashes = [Param_hash]:[] {to hold D4-cool Params for each js}
+    then cells = [[vec]]: [] {cells[k,m]  is indices of cell for Param #m in phashes[k]}
+    in ((vec, Param) -> [Param]): (vec js, Param p):
     if not is_cool_D4(js, p) then return ([Param]: []) fi;
+    let k = first(for v in jss do v = js od)
+    in if k < 0
+	  then jss#:=js;
+	        phashes#:=make_Param_hash();
+		cells#:=([vec]:[]);
+		k:=#jss - 1
+	  fi;
     let q = regularize(p), G = p.real_form
-    then M = phash.size(), m = phash.match(q)
+    then M = phashes[k].size(), m = phashes[k].match(q)
     in if m = M {haven't seen q}
        then let list = genTalphabetaRepeats(js,q)
-       	    then inds = (vec: for r in list do phash.match(r) od)
+       	    then inds = (vec: for r in list do phashes[k].match(r) od)
        	    in assert(@:#list >= 10,"Too-small D4 cell");
 	       for j:#list
-	       do cells #:= inds
+	       do cells[k] #:= inds
 	       od
        fi;
-       for k in cells[m]
-       do regroup(G, phash.index(k))
+       for i in cells[k][m]
+       do regroup(G, phashes[k].index(i))
        od
 
 set genTalphabetaStep ([int] js, Param p) = [Param]:
@@ -321,41 +322,63 @@ set Talphabeta = (Param -> [Param]):
         for j in answers[n] do regroup(p.real_form,TabHash.index(j))
 			    od
 
-{Incremental memoized BFS in the T_{alpha,beta} graph (edges from |Talphabeta|).
-For each starting point (up to regularize) we store the BFS levels computed so
-far -- level j = the params at distance exactly j from the start -- plus a flag
-recording whether the BFS has closed. The last stored level is the saved |toDo|
-frontier, so a repeated or deeper call continues the stored BFS instead of
-restarting it. Params are stored once, as indices in a registry hash shared by
-all starts, and re-anchored to the caller's real form by |regroup| on the way
-out. Call as (p,N) to ensure levels 0..N, or (p,-1) to run the BFS to closure.
-Returns (levels,closed): at most N+1 levels, and whether the BFS closed within
-the levels returned.}
+{Recursive memoized levels in the T_{alpha,beta} graph (edges from |Talphabeta|).
+Every param reached becomes a node i of the graph (an index in |registry|), and
+for every node we store the levels computed so far -- level j = the nodes at
+distance exactly j from i -- plus a flag recording whether all of i's component
+is already among its levels, and (once computed) its list of neighbours, so
+|Talphabeta| runs just once per node. Levels are computed by the recursion
+   level_j(i) = (union over neighbours k of i of level_{j-1}(k))
+   		minus (levels < j of i),
+so |ensure(i,N)| first recursively ensures each neighbour has N-1 levels; work
+done for any node is shared by every other node whose ball contains it. Params
+are re-anchored to the caller's real form by |regroup| on the way out. Call as
+(p,N) to ensure levels 0..N, or (p,-1) to compute all levels. Returns
+(levels,closed): at most N+1 levels, and whether the levels returned are all of
+them. Only used by TalphabetaRepeats when Talphabeta_cache_flag is set to true.}
 set (Talphabeta_levels, Talphabeta_levels_clear) =
-    let startHash = make_Param_hash() {regularized starting params}
-    then registry = make_Param_hash() {every param reached, shared by all starts}
-    then levelss = [[vec]]: [] {levelss[i][j] = registry indices at distance j from start i}
-    then dones = [bool]: [] {whether the BFS from start i has closed}
+    let registry = make_Param_hash() {node <-> param, shared by all nodes}
+    then levelss = [[vec]]: [] {levelss[i][j] = nodes at distance j from node i}
+    then dones = [bool]: [] {whether levelss[i] is complete}
+    then nbrss = [vec]: [] {nbrss[i] = neighbours of node i, once computed}
+    then have_nbrss = [bool]: [] {whether nbrss[i] has been computed}
+    then node = (Param -> int): (Param q):
+	 let M = registry.size() then i = registry.match(q)
+	 in if i = M
+	    then levelss #:= [vec:[i]]; dones #:= false;
+		 nbrss #:= (vec:[]); have_nbrss #:= false
+	    fi; i
+    then nbrs_of = (int -> vec): (int i):
+	 if have_nbrss[i] then nbrss[i]
+	 else have_nbrss[i] := true;
+	      nbrss[i] := (vec: for t in Talphabeta(registry.index(i)) do node(t) od)
+	 fi
+    then rec_fun ensure(int i, int N) = void:
+	 if not dones[i] and #levelss[i] <= N
+	 then let nbrs = nbrs_of(i)
+	      then () = for k in nbrs do ensure(k,N-1) od
+	      then seen = make_int_hash() {all levels of i so far}
+	      then () = for lev in levelss[i] do for m in lev do seen.match(m) od od
+	      in while not dones[i] and #levelss[i] <= N
+		 do let j = #levelss[i]
+		    then fresh = vec:
+			 (for k in nbrs
+			  do if j-1 < #levelss[k]
+			     then for m in levelss[k][j-1] if seen.could_add(m) do m fi od
+			     else [int]:[]
+			     fi
+			  od).##
+		    in if #fresh = 0
+		       then dones[i] := true
+		       else levelss[i] := levelss[i]#fresh
+		       fi
+		 od
+	 fi
     in ( ((Param,int) -> ([[Param]],bool)): (Param p, int N):
 	 let q = regularize(p), G = p.real_form
-	 then M = startHash.size()
-	 then i = startHash.match(q)
-	 in if i = M then levelss #:= [vec: [registry.match(q)]]; dones #:= false fi;
-	    if not dones[i] and (N < 0 or #levelss[i] <= N)
-	    then let seen = make_int_hash() {registry indices reached from start i}
-		 then () = for lev in levelss[i] do for k in lev do seen.match(k) od od
-		 in while not dones[i] and (N < 0 or #levelss[i] <= N)
-		    do let nbrs = (for k in levelss[i]~[0]
-				   do for t in Talphabeta(regroup(G,registry.index(k)))
-				      do registry.match(t)
-				      od
-				   od).##
-		       then fresh = vec: for m in nbrs if seen.could_add(m) do m fi od
-		       in if #fresh = 0
-			  then dones[i] := true
-			  else levelss[i] := levelss[i]#fresh
-			  fi
-		    od
+	 then i = node(q)
+	 in if N >= 0 then ensure(i,N)
+	    else while not dones[i] do ensure(i,#levelss[i]) od
 	    fi;
 	    let avail = if N < 0 then #levelss[i] else min(#levelss[i],N+1) fi
 	    in ( for lev in levelss[i][:avail]
@@ -363,26 +386,101 @@ set (Talphabeta_levels, Talphabeta_levels_clear) =
 		 od
 	       , dones[i] and avail = #levelss[i]
 	       )
-       , @: (startHash.clear(); registry.clear(); levelss := []; dones := []; ())
+       , @: ( registry.clear(); levelss := []; dones := []
+	    ; nbrss := []; have_nbrss := []; ())
        )
+
+{when true, TalphabetaRepeats uses the incremental Talphabeta_levels cache
+above; when false (the default) it redoes the BFS from scratch on every call}
+set Talphabeta_cache_flag = bool: true {tested in Spin(6,6) that cached version gives same size}
 
 {jth term is all Param's accessible from p by <=j T_{alpha,beta}'s}
 {seek a result of size N + 1 >= 1}
-set TalphabetaRepeats(Param p, int N) = [[Param]]:
+set TalphabetaRepeats_cached(Param p, int N) = [[Param]]:
     let (levels,closed) = Talphabeta_levels(p,N)
     then ball = [Param]: []
     then balls = [[Param]]: for level in levels do ball := ball##level od
     in if closed and #levels <= N then balls#balls~[0] else balls fi
 
-set TalphabetaRepeat_time = int:0
-set TalphabetaRepeat_count = int:0
-
 {jth term is all Param's accessible from p by <=j T_{alpha,beta}'s}
-set TalphabetaRepeats(Param p) = [[Param]]:
+set TalphabetaRepeats_cached(Param p) = [[Param]]:
     let (levels,) = Talphabeta_levels(p,minus_1)
     then ball = [Param]: []
     then balls = [[Param]]: for level in levels do ball := ball##level od
     in balls#balls~[0]
+
+{original implementation: a fresh BFS on every call, no state kept between
+calls (the visited-set hash is now local rather than the old shared pHashOut)}
+{jth term is all Param's accessible from p by <=j T_{alpha,beta}'s}
+{seek a result of size N + 1 >= 1}
+set TalphabetaRepeats_direct(Param p, int N) = [[Param]]:
+    let q = regularize(p), G = p.real_form
+    then nullmod = null_module(G)
+    then pOut = make_Param_hash()
+    then toDo = 1*q
+    then answer = [[Param]]:[]
+    then size = int:0
+    in while #toDo > 0 and #answer < N
+       do for @r in toDo
+	  do pOut.match(r)
+	  od;
+	  size:= pOut.size();
+	  answer #:= pOut.list();
+	  toDo := sum(G, for @r in toDo
+	      	  	 do sum(G, for t in Talphabeta(r)
+				   do let j = pOut.match(t)
+				      in if j >=size
+					 then 1*t
+					 else nullmod
+					 fi
+				   od)
+			  od)
+	od;
+    	answer#pOut.list()
+
+{jth term is all Param's accessible from p by <=j T_{alpha,beta}'s}
+set TalphabetaRepeats_direct(Param p) = [[Param]]:
+    let q = regularize(p), G = p.real_form
+    then nullmod = null_module(G)
+    then pOut = make_Param_hash()
+    then toDo = 1*q
+    then answer = [[Param]]:[]
+    then size = int:0
+    in while #toDo > 0
+       do for @r in toDo
+	  do pOut.match(r)
+	  od;
+	  size:= pOut.size();
+	  answer #:= pOut.list();
+	  toDo := sum(G, for @r in toDo
+	      	  	 do sum(G, for t in Talphabeta(r)
+				   do let j = pOut.match(t)
+				      in if j >=size
+					 then 1*t
+					 else nullmod
+					 fi
+				   od)
+			  od)
+        od;
+    	answer#pOut.list()
+
+set TalphabetaRepeat_time = int:0
+set TalphabetaRepeat_count = int:0
+
+{jth term is all Param's accessible from p by <=j T_{alpha,beta}'s}
+{seek a result of size N + 1 >= 1}
+set TalphabetaRepeats(Param p, int N) = [[Param]]:
+    if Talphabeta_cache_flag
+    then TalphabetaRepeats_cached(p,N)
+    else TalphabetaRepeats_direct(p,N)
+    fi
+
+{jth term is all Param's accessible from p by <=j T_{alpha,beta}'s}
+set TalphabetaRepeats(Param p) = [[Param]]:
+    if Talphabeta_cache_flag
+    then TalphabetaRepeats_cached(p)
+    else TalphabetaRepeats_direct(p)
+    fi
 
 {jth term is all tau invariants found in <= j T_{alpha,beta}'s from p}
 set TalphabetaTauss(Param p,int N) = [[vec]]:
