@@ -523,7 +523,7 @@ big_int::digit big_int::shift_modulo(digit base)
 
 // do output for the |number|, assumed non negative (recursive auxiliary)
 void print (std::ostream& out, big_int&& number, bool print_minus)
-{ if (number.size()==1) // then number $n$is less than $2^{31}$, print $\pm n$
+{ if (number.size()==1) // then number $n$ is less than $2^{31}$, print $\pm n$
     out << // use (up) |out.width()| here, and whatever fill character was set
       (print_minus ? -number.int_val() : number.int_val());
   else

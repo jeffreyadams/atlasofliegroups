@@ -1464,17 +1464,22 @@ void identifier::print(std::ostream& out) const
 
 @*1 Global identifiers.
 %
- When during type checking an identifiers binds to a value in the global
+When during type checking an identifier is bound to a value in the global
 identifier table, it will be converted into a |global_identifier| object.
-Since a value is already available at this time, we can record the location of
-the (pointer to the shared) value in the |global_identifier| object. Apart
-from avoiding look-up at evaluation time, this binding can remain intact in
-case the global identifier should be defined anew using the |add| method of
-the identifier table, and will continue to access the old value. This
-precaution is necessary because (in contrast to assignment) a new definition
-may change the type of the identifier, but the applied identifier expression
-has already been type-checked and should not be allowed to return a value of a
-different type than it did originally.
+It records the location of the (pointer to the shared) value in the object,
+form of a |shared_share| smart pointer defined in \.{global.h}.
+
+@< Includes needed in the header file @>=
+
+#include "global.h" // for |shared_share|
+
+@ Apart from avoiding look-up at evaluation time, this binding can remain intact
+in case the global identifier should be defined anew using the |add| method of
+the identifier table, and will continue to access the old value. This precaution
+is necessary because (in contrast to assignment) a new definition may change the
+type of the identifier, but the applied identifier expression has already been
+type-checked and should not be allowed to return a value of a different type
+than it did originally.
 
 We add a Boolean template parameter to this class, in order to have a variant
 where the evaluation empties the variable itself, which the compiler can employ
@@ -1607,10 +1612,13 @@ template<bool pilfer>
 @*1 Type-checking applied identifiers.
 %
 When type-checking an applied identifier, we first look in
-|layer::lexical_context| for a binding of the identifier; if found it will be
-a local identifier, and otherwise we look in |global_id_table|. If found in
-either way, the associated type must equal the expected type (if any), or be
-convertible to it using |coerce|.
+|layer::lexical_context| for a binding of the identifier; if found it will be a
+local identifier, and otherwise we look in |global_id_table|. If found in either
+way, the associated type must equal the expected type (if any), or be
+convertible to it using |coerce|. If found neither as local nor as global
+identifier but the identifier is known in the global overload table, we make an
+attempt to get a variant from there (without any operator cast as would usually
+be required) if a unique variant present could be validly used in the context.
 
 Our answer to the question what to do if the identifier has a type |*id_t| that
 is more general than the type~|tp| required by the context has changed over
@@ -1647,19 +1655,18 @@ case applied_identifier:
 @ When an identifier is encountered that can be found neither in the current
 |lexical_context| nor in the |global_id_table|, the interpreter (in version~1 of
 the \.{axis} language) used to simply flag an error. But as a service to the
-user, we now instead try to get a value from the |global_overload_table|,
-provided there is a unique instance of the identifier there that matches the
-type requirement |tp| from the context (which may be no requirement at all).
-We make a distinction between the case where just a single variant is known in
-the overload table, which we treat essentially as if that value had been held in
-a variable of function type instead, and cases where multiple variants of the
-same identifier are defined; in the latter case we only succeed if exactly one
-of the variants meets the requirements of |tp|. The distinction is mainly made
-so that we can give more meaningful error messages when our attempt fails.
-If |tp| does not accept any function type to begin with, we just skip the
-attempt to use the overload table, and if it does accept function types but none
-of the defined variants matches it, we also fall through this code; in either
-case that will result in a simple ``undefined identifier'' error message.
+user, we now instead try to get a value from the |global_overload_table| if this
+can be unambiguously done. We make a distinction between the case where just a
+single variant is known in the overload table, which we treat essentially as if
+that value had been held in a variable of function type instead, and cases where
+multiple variants of the same identifier are defined; in the latter case we only
+succeed if exactly one of the variants meets the requirements of |tp|. The
+distinction is mainly made so that we can give more meaningful error messages
+when our attempt fails. If |tp| does not accept any function type to begin with,
+we just skip the attempt to use the overload table, and if it does accept
+function types but none of the defined variants matches it, we also fall through
+this code; in either case that will result in a simple ``undefined identifier''
+error message.
 
 @< See if a unique member of |*vars| matches |tp|, and if so |return| a
    |capture_expression| holding the value of that variant @>=
@@ -1680,10 +1687,20 @@ case that will result in a simple ``undefined identifier'' error message.
 specialise |tp| to the function type of |variant|, which |functype_absorb|
 defined below does, returning whether it succeeded. In case of failure, we throw
 a |type_error|, just like we would for a variable used in a context requiring a
-different type.
+different type. When processing an applied identifier, we ignore any type aware
+built-in that might be bound to it in the overload table, since the cases where
+the context would allow for a single concrete instance of it are rare and hard
+to pin down (notably |tp.is_concrete()| is not sufficient), and using an
+operator cast is better suited to achieve this. Therefore if the unique variant
+present is such a function, we signal an error saying not to do that.
 
 @< If the unique element of |*vars| matches |tp|, |return| its value...@>=
 { const auto& variant = vars->front();
+  if (variant.is_type_aware())
+  { o << "Type aware function '" << main_hash_table->name_of(id) @|
+      << "' cannot be used (without argument type) as value";
+    throw expr_error(e,o.str());
+  }
   if (functype_absorb(tp,variant))
   { o << main_hash_table->name_of(id) << '@@' << tp.arg_type();
     return expression_ptr(new capture_expression(variant.value(),o.str()));
@@ -1702,9 +1719,9 @@ numbered from~$0$, while |tp| has a possibly nonzero |floor()| value that needs
 to be respected. This means that if we should use |unify_specialise| twice for
 this task, both argument and result type should be properly shifted first. It is
 a bit more straightforward to instead first construct a |type_expr| from the
-|func_type| with the proper shifts, and then use |unify| with that type. We so
-using a helper function |get_type|, which also will come in handy when reporting
-errors related to types in the overload table.
+|func_type| with the proper shifts, and then use |unify| with that type. We do
+so using a helper function |get_type|, which also will come in handy when
+reporting errors related to types in the overload table.
 
 @< Local function definitions @>=
 inline type_expr get_ftype(const func_type& ftp)
@@ -1717,17 +1734,18 @@ inline bool functype_absorb (type& tp, const overload_data& entry)
 }
 
 @ In the case where there is more than one variant to choose from, we filter
-them for one that makes |functype_absorb| succeed. In case of a failure, we must
-undo any type assignments that the failed attempt to match may have made. Since
-this must be done repeatedly, it is simplest to just initially apply any
-assignment that might be pending, by calling |tp.wring_out|, after which any
-type assignments produced by |functype_absorb| must be new, and can be undone by
-calling |tp.clear|. The fact that we call |tp.wring_out| does mean that callers
-to |convert_expr| cannot expect that changes to |tp| are limited to acquiring
-type assignments; we do not believe any caller makes that assumption, but if
-that should turn out to be the case, the code below must be more careful: it
-should instead record |tp.polymorphics()| initially, and then use
-|restore_polymorphics| instead of |clear|.
+them for one that makes |functype_absorb| succeed, ignoring completely any type
+aware variants. In case of a failure of |functype_absorb|, we must undo any type
+assignments that the failed attempt to match may have made. Since this must be
+done repeatedly, it is simplest to just initially apply any assignment that
+might be pending, by calling |tp.wring_out|, after which any type assignments
+produced by |functype_absorb| must be new, and can be undone by calling
+|tp.clear|. The fact that we call |tp.wring_out| does mean that callers to
+|convert_expr| cannot expect that changes to |tp| are limited to acquiring type
+assignments; we do not believe any caller makes that assumption, but if that
+should turn out to be the case, the code below must be more careful: it should
+instead record |tp.polymorphics()| initially, and then call
+|tp.restore_polymorphics| instead of |tp.clear|.
 
 @< If a unique variant among |*vars| unifies to the type |tp|... @>=
 { tp.wring_out(); // ensure no assignments are pending
@@ -1735,7 +1753,7 @@ should instead record |tp.polymorphics()| initially, and then use
   expression_ptr result;
   for (const auto& variant : *vars)
   {
-    if (functype_absorb(tp,variant))
+    if (not variant.is_type_aware() and functype_absorb(tp,variant))
     { if (result!=nullptr)
         @< Throw an error reporting ambiguous overloaded symbol usage @>
       o << main_hash_table->name_of(id) << '@@' << tp.arg_type();
@@ -1914,11 +1932,25 @@ we set the variable to |false| in that case.
 
 @ It may be that more than one variant can produce a match, in which case we
 always prefer an exact match if there is one. Also, an exact match should be the
-unique such match, which the code below detects and refuses at the second exact
-match. Before going on to look for a possible second match, we convert and set
-aside a call for the first match, and leave a pointer |prev_match| to the
-current variant, which will be used for error reporting in case an ambiguity is
-found.
+unique such match, which the code below detects and refuses when a second exact
+match is encountered. Before going on to look for a possible second match, we
+convert and set aside a call for the first match, and leave a pointer
+|prev_match| to the current variant, which will be used for error reporting in
+case an ambiguity is found.
+
+In a recent addition to the language, we allow built-in functions that can
+operate with arguments of any type but (unlike truly generic functions) need to
+be explicitly informed of that type at runtime. Variants that hold such a
+function satisfy the |is_type_aware| predicate. While they have a generic type
+that can be used for matching, they have an implicit restriction that the
+argument type must satisfy |is_concrete|, namely it must not contain any
+abstract type (not bound in a polymorphic type) variables. We reject the exact
+match in such cases, ignoring it completely. When type aware variants do match,
+they need some extra processing to create an instance of the built-in function
+value that records the argument type. The remaining cases of an exact match
+produce the call in much the same way as for inexact matches, so they share a
+module of common code; in order to be able to do so, the |a_priori_type| found
+is transferred to a |type_expr| variable |arg_type|.
 
 Whenever an argument matches, be it exact or inexact, |conform_types| will be
 called for the variant result type and the expected |tp|; this may throw an
@@ -1935,15 +1967,21 @@ error, also aborting the matching process.
     if (a_priori_type.matches
          (variant.f_tp().arg_type,variant.poly_degree(),shift_amount))
     { // exact match
+      if (variant.is_type_aware() and not a_priori_type.is_concrete())
+        continue;
       if (prev_match!=nullptr)
         @< Throw an error reporting an ambiguous exact match @>
       expression_ptr call;
       expression_ptr arg = n_args==1 ? std::move(arg_vector[0])
 			 : expression_ptr(std::move(tup_exp));
-      const type_expr& arg_type = a_priori_type.unwrap();
-        // actual argument type
-@/    @< Assign to |call| a converted call expression of the function value
-        |variant.value()| with argument |arg|, which is of type |arg_type| @>
+      if (variant.is_type_aware())
+        @< Assign a type aware call expression to |call| @>
+      else
+      { const type_expr& arg_type = a_priori_type.unwrap();
+          // actual argument type
+  @/    @< Assign to |call| a call of the function value |variant.value()|
+           with argument |arg|, which is of type |arg_type| @>
+      }
       const type res_type = type::wrap @|
         ( a_priori_type.assign().substitution
             (variant.f_tp().result_type ,shift_amount)
@@ -1954,7 +1992,7 @@ error, also aborting the matching process.
 @/ // |res_type| is recorded in |tp|, and |arg_type| has served and is forgotten
     }
     a_priori_type.clear(apt_deg);
-      // remove type variable introduced by |match|
+      // remove type variable introduced by |matches|
    }
 @)
    if (result!=nullptr) // then a unique match was found
@@ -1987,7 +2025,7 @@ id_type equals_name()
 @ Having found a match (exact or inexact; the code below is included twice), and
 having converted the argument expression to |arg|, we need to construct a
 function call object. The overload table contains an already evaluated function
-value~|variant.value()|, which is has type |shared_function|, more specific than
+value~|variant.value()|, which has type |shared_function|, more specific than
 |shared_value| as it points to a value that represents a function object. Such
 values can either hold a built-in function, or a user-defined function together
 with its evaluation context, and we shall add to the list of possibilities
@@ -2017,8 +2055,7 @@ the function call with an empty argument expression. In any case the
 test \emph{can} be made here, since we have the argument type in the variable
 |arg_type|, and the argument expression in |args|.
 
-@< Assign to |call| a converted call expression of the function value
-   |variant.value()|... @>=
+@< Assign to |call| a call of the function value |variant.value()|... @>=
 { if (tp.is_void() and
       id==equals_name() and
       variant.f_tp().result_type!=void_type)
@@ -2042,6 +2079,26 @@ test \emph{can} be made here, since we have the argument type in the variable
     make_row_denotation<false>(arg); // wrap tuple inside a denotation
   call = variant.value()->build_call
            (variant.value(),name.str(),std::move(arg),e.loc);
+}
+
+@ Matching a type aware variant consists of first spawning a
+|type_aware_instance| of the built-in function, for which we then call the
+|build_call| method to produce a call of this instance with the argument. The
+instance produces a name for the function that incorporates the argument type,
+and this is recorded in the call expression. This name is not taken from the
+identifier that is being matched for (as is done for normal overloaded calls),
+but since there currently is no mechanism allowing the user to bind type aware
+built-ins to a different identifier (while retaining its type aware character),
+this should make no difference.
+
+@< Assign a type aware call expression to |call| @>=
+{
+  const auto& b =
+    std::static_pointer_cast<const type_aware_builtin>(variant.value());
+  auto f =
+    std::make_shared<type_aware_instance>(b->spawn(a_priori_type.copy()));
+  std::ostringstream o; f->print(o);
+  call = f->build_call(f,o.str(),std::move(arg),e.loc);
 }
 
 @ Inexact matches are only considered for variants with a completely specific
@@ -2070,7 +2127,7 @@ for (const auto& variant : variants)
        |a_priori_type| differs from that required in |arg_type|, then assign
        converted expression to |arg| @>
     expression_ptr call;
-@/  @< Assign to |call| a converted call expression of the function value
+@/  @< Assign to |call| a call of the function value
        |variant.value()| with argument |arg|, which is of type |arg_type| @>
     const type res_type = type::wrap(variant.f_tp().result_type,tp.floor());
     return conform_types(res_type,tp,std::move(call),e);
@@ -2181,19 +2238,33 @@ definitions will be in the overload table even if just one definition is
 present; in the latter case the ``Failed to match'' error might seem
 unnecessarily vague, so we produce instead a more specific |type_error|, whose
 message will also mention that the type that was expected by the unique
-instance.
+instance. In the case where an identifier has a unique overload which is a type
+aware function, the |type_error| message that would thus be generated for
+(forbidden) abstract argument types would be confusing, even if strictly
+speaking correct, so in that case we replace the message by a more explicit one.
 
 @< Complain about failing overload resolution @>=
-if (variants.singleton())
-  throw type_error(args,a_priori_type.unwrap().copy(),
-                   variants.front().f_tp().arg_type.copy());
-else
 { std::ostringstream o;
-  o << "Failed to match '"
-    << main_hash_table->name_of(id) @|
-    << "' with argument type "
-    << a_priori_type;
-  throw expr_error(e,o.str());
+  if (variants.singleton())
+  {
+    if (variants.front().is_type_aware())
+    { o << "Type aware function '"
+        << main_hash_table->name_of(id) @|
+      << "' cannot be call with abstract argument type "
+      << a_priori_type;
+      throw expr_error(e,o.str());
+    }
+    else
+      throw type_error(args,a_priori_type.unwrap().copy(),
+                       variants.front().f_tp().arg_type.copy());
+  }
+  else
+  { o << "Failed to match '"
+      << main_hash_table->name_of(id) @|
+      << "' with argument type "
+      << a_priori_type;
+    throw expr_error(e,o.str());
+  }
 }
 
 @* Function calls.
@@ -2208,20 +2279,25 @@ built-in functions, while leaving the particulars of user defined functions
 (also known as $\lambda$-expressions) and other types aside until somewhat
 later. This corresponds more or less to the development history of the
 interpreter, in which initially only built-in functions were catered for;
-however many of the aspects that we deal with right away, notably function
-overloading, are in fact much more recent additions than user-defined
-functions were.
+however, many of the aspects that we deal with right away, notably function
+overloading, are in fact more recent additions than user-defined functions were.
 
-There will be several classes of expressions to represent function calls,
-differing in the degree to which the called function has been identified
-during type analysis. An intermediate class |call_base| between
-|expression_base| and these classes is derived, to group some functionality
-common to them. All call expressions take a general argument expression, and
-location information is stored to allow the calling expression to be
-identified during an error trace-back. Apart from the location information, an
-error trace will also provide a name of the called function (which is more
-readable than trying to reproduce the whole function call expression), which
-will be obtained from the virtual method |function_name|.
+The treatment of function calling involves two types of classes: those that
+represent executable expressions like function calls (which are derived from
+|expression_base|), and those that represent functions as runtime values, like
+those that are stored in the global overload table or passed around as function
+values (which are derived from |value_base|).
+
+There will be several classes of executable expressions representing function
+calls, differing in the degree to which the called function has been identified
+during type analysis. We define an intermediate class |call_base| between
+|expression_base| and these classes, to group some functionality common to them.
+All call expressions take a general argument expression, and location
+information is stored to allow the calling expression to be identified during an
+error trace-back. Apart from the location information, an error trace will also
+provide a name of the called function (which is more readable than trying to
+reproduce the whole function call expression), which will be obtained from the
+virtual method |function_name|.
 
 @< Type def... @>=
 struct call_base : public expression_base
@@ -2235,17 +2311,21 @@ struct call_base : public expression_base
 };
 @)
 
-@ We similarly define an intermediate class |function_base| between |value_base|
-and the concrete classes that will define function objects, like built-in
-functions. The main (virtual) methods introduced here are |apply|, which will
-serve in |call_expression::evaluate| below to implement a call of the function
-object once arguments have been evaluated to the stack, and |build_call| that is
-instead used to build a specialised call expression when a function value is
-identified at analysis time (in overloaded calls). In addition |argument_policy|
-tells how the function object wants its arguments prepared, |maybe_push| is a
-hook that does nothing except for recursive functions that use it for their
-implementation, and |report_origin| which serves in forming an back-trace in
-case of errors during execution of the function.
+@ Turning to runtime function values, we similarly define an intermediate class
+|function_base| between |value_base| and the concrete classes that will define
+function objects, such as built-in functions. The main (virtual) methods
+introduced here are |apply|, which will serve in |call_expression::evaluate|
+below to implement a call of the function object once arguments have been
+evaluated to the stack, and |build_call| that is instead used to build a
+specialised call expression when a function value is identified at analysis time
+(in overloaded calls). In addition there are |argument_policy|, which informs
+its user about how the function object wants its arguments prepared,
+and~|report_origin|, which serves in forming an back-trace in case of errors
+during execution of the function. Finally a virtual method |maybe_push| is
+provided that is designed to allow functionality for certain derived classes to
+be implemented and which does nothing for other ones: it is a hook used in the
+mechanism that allows recursive functions to access their own value for
+recursive calling.
 
 @s eval_level vector
 
@@ -2260,26 +2340,32 @@ struct function_base : public value_base
   static const char* name() @+{@; return "function value"; }
 @)
   virtual void apply(eval_level l) const=0;
-    // go; arg.\ values on |execution_stack|
-  virtual eval_level argument_policy() const=0;
-    // form to prepare arguments in
-  virtual void maybe_push(const std::shared_ptr<const function_base>& p) const
-    @+{}
-  virtual void report_origin(std::ostream& o) const=0;
-    // tell where we are from
+    // go; find arguments on |execution_stack|
   virtual expression_ptr build_call
     (const shared_function& master,const std::string& name,
      expression_ptr&& arg, const source_location& loc) const=0;
+  virtual void maybe_push(const std::shared_ptr<const function_base>& p) const
+    @+{}
+@)
+  virtual eval_level argument_policy() const=0;
+    // form to prepare arguments in
+  virtual void report_origin(std::ostream& o) const=0;
+    // tell where we are from
 };
 
 
-@ We start with introducing a type for representing general function calls
-after type checking. This is the general form where function can be given by
-any kind of expression, not necessarily an applied identifier; indeed most
-cases where a named function is called will handled by another kind of
-expression, the overloaded call. In contrast with that, this type of call will
-dynamically evaluate the function part (as opposed to argument) of the call,
-possibly resulting in different functions between evaluations.
+@ Returning to call expressions, we start with introducing a type for
+representing general function calls after type checking. In this form, the
+function can be given by any kind of expression, not necessarily an applied
+identifier; indeed it will rarely be, as most cases where a named function is
+called will handled by another kind of expression, the overloaded call. In
+contrast with that, this type of call will evaluate the function part of the
+call at runtime (whereas the argument part is evaluated at runtime in \emph{all}
+types of call), which evaluation can result in different functions between
+evaluations, even functions with different kinds of internal representations
+(built-in or user defined). This evaluation of the function part will precede
+that of the argument part, so that the actual function used can have a (slight)
+influence on the way the argument is evaluated (via its |argument_policy|).
 
 @< Type def... @>=
 struct call_expression : public call_base
@@ -2312,33 +2398,40 @@ void call_expression::print(std::ostream& out) const
   else out << '(' << *argument << ')';
 }
 
-@ When a call involves a built-in function, what is executed is a value of
-type |wrapper_function|, which is a |typedef| for a specific kind of function
-pointer, defined in \.{global.h}.
+@ We switch back to function values, starting with ones giving access to a
+built-in function. When a call involves a built-in function, what is executed is
+a value of type |wrapper_function|, or possibly a |type_aware_wrapper|, held
+inside the function value; these are |typedef|s, defined
+in \.{axis-types-fwd.h} to stand for for specific kinds of function pointer.
 
 @< Includes needed in the header file @>=
 
-#include "global.h" // for |wrapper_function|
+#include "axis-types-fwd.h" // for |wrapper_function|, |type_aware_wrapper|
 
-@ The class of dynamic values holding a wrapper function is called
-|builtin_value|. Besides the function pointer it also stores a print name,
-which is used when the wrapper function, rather than being called, gets
-printed as (part of) a value in its own right; it is also used when reporting
-an error during the execution of the built-in function. Most |builtin_value|
-instances are constructed at start-up time when functions are entered into the
-global overload table; their |print_name| will stick, even if the user binds
-it to a new name.
+@ A function value holding an ordinary wrapper function is called a
+|builtin_value|. Besides the function pointer it also stores a print name, which
+is used when the function value, rather than being called, gets printed as (part
+of) a value in its own right; it is also used when reporting an error during the
+execution of the built-in function. Most |builtin_value| instances are
+constructed at start-up time when functions are entered into the global overload
+table; their |print_name| will stick to the function value, even if the user
+should bind that value to a new name.
 
 Some built-in functions like |print| accept arguments of any types, and in
-particular tuples of any length. For such functions there is no use in
-adopting the approach used for other built-in functions of expanding argument
-tuples on the stack; instead the argument is always considered as one value.
-We cater for the distinction between the two variants at run-time by
-making this a class template with a Boolean template argument |variadic|. This
-is necessary because operator casts make it possible to use specialisations
-of variadic functions as function values (of the correspondingly specialised
-type), so they can occur not only in overloaded calls, but in any place that
-other built-in or user-defined functions can.
+particular tuples of any length. For such functions there is no use in adopting
+the approach used for other built-in functions of expanding argument tuples on
+the stack; instead their argument is always considered as one value. We cater
+for the distinction between the two variants at run-time by making this a class
+template with a Boolean template argument |variadic|. Representing this
+distinction in the function value rather than in the call expression is
+necessary because one can create specialisations of variadic functions without
+using a call expression, namely by specifying just the argument type(s) in an
+operator cast (which can even cast to a generic argument type so that no actual
+specialisation takes place). Such specialisation can be used not only in calls,
+but in any place that other built-in or user-defined functions can, and then
+eventually be used in a call where the argument policy of the function cannot be
+determined during type checking; instead it will be determined by calling the
+virtual method |argument_policy|.
 
 As another supplementary information, we store an indication of whether this
 built-in function wants to produce its result by modifying one of its arguments;
@@ -2379,16 +2472,102 @@ template <bool variadic>
   builtin_value(const builtin_value& v) = delete;
 };
 
-@ While syntactically more complicated than ordinary function calls, the call
-of overloaded functions is actually more direct at run time, because the
-function is necessarily referred to by an identifier (or operator) instead of
-by an arbitrary expression, and overloading resolution results in that
-identifier being replaced by a function \emph{value}, known at analysis time.
-Different kinds of function values, derived from |function_base|, can then
-give rise to different kind of overloaded calls. We introduce
-|overloaded_call| as another abstract class between |call_base| and those
-kinds of call; its main purpose is to store a name that reflects how
-overloading was resolved.
+@ Another kind of special function is the type aware built-in function.
+Instances of these functions will be provided with the |type| that the type
+checker has derived for their argument, so that their implementations can adapt
+their behaviour accordingly. This rather late addition to the repertoire of
+function values is intended to allow improved versions of functions like |print|
+to be defined, replacing the old behaviour that dynamically adapts to the actual
+runtime value by calling the (recursively defined) virtual method
+|value_base::print|. By having access to the type that was derived for the
+argument, the printing can be adapted in ways that are not otherwise possible.
+This possibility is important notably to enable introducing opaque types (and
+type constructors), that are primitive to the type checker although actual
+values will be of some existing implementation type; the virtual method based
+printing function bases its behaviour only on the underlying value, and cannot
+change it for values handled under a used defined opaque type.
+
+Two classes are involved with these functions: the function value stored in the
+|overload_table| will be of type |type_aware_builtin|, and once a concrete
+argument type is deduced, it can be used to spawn a |type_aware_instance| from
+it. Only the latter can be actually used in a function call.
+
+We start with |type_aware_instance|, which is very similar to that of the
+|builtin_value| class template. But the changes to the types of several members
+make it unattractive to try to extend that template to encompass this new class.
+
+@< Type definitions @>=
+struct type_aware_instance : public function_base
+{
+  type_aware_wrapper val;
+@+type arg_type;
+@+std::string print_name;
+@)
+  type_aware_instance(type_aware_wrapper f,std::string name,type tp)
+  : val(f), arg_type(std::move(tp)), print_name(std::move(name)) @+ {}
+  virtual void print(std::ostream& out) const@+
+  {@; out << '{' << print_name << "}@@" << arg_type; }
+  virtual void apply(eval_level l) const @+
+    {@; (*val)(l,arg_type); } // apply function pointer
+  virtual eval_level argument_policy() const
+   @+{@; return eval_level::single_value; }
+  virtual void report_origin(std::ostream& o) const @+
+  {@; o << "built-in instance"; }
+  virtual expression_ptr build_call
+    (const shared_function& master,const std::string& name,
+     expression_ptr&& arg, const source_location& loc) const;
+@)
+  static const char* name() @+
+    {@; return "type aware built-in function instance"; }
+  type_aware_instance(type_aware_instance&& v) = default;
+};
+
+@ We derive |type_aware_builtin| from |function_base| just to allow its values
+to be stored in the |overload_data| structure; the class does not implement
+directly applying it to argument values. Nonetheless in order to be a concrete
+class, the methods |apply| and |build_call| are given \foreign{pro forma}
+trivial implementations.
+
+@< Type definitions @>=
+struct type_aware_builtin : public function_base
+{
+  type_aware_wrapper val;
+@+std::string print_name;
+@)
+  type_aware_builtin(type_aware_wrapper f,std::string name)
+  : val(f), print_name(std::move(name)) @+ {}
+  virtual void print(std::ostream& out) const
+  @+{@; out << '{' << print_name << '}'; }
+  virtual void apply(eval_level l) const @+{} // cannot apply directly
+  virtual eval_level argument_policy() const
+   @+{@; return eval_level::single_value; }
+  virtual void report_origin(std::ostream& o) const @+
+  {@; o << "built-in"; }
+  virtual expression_ptr build_call
+    (const shared_function&,const std::string&,
+     expression_ptr&&, const source_location&) const
+     @+{@; return nullptr; }
+  static const char* name() @+
+    {@; return "type aware built-in function instance"; }
+@)
+  type_aware_instance spawn (type arg_type) const
+  {@; arg_type.wring_out();
+    return type_aware_instance(val,print_name,std::move(arg_type));
+  }
+};
+
+@ Back to executable expressions for function calls. The call of an overloaded
+function, while requiring more syntactic analysis than needed to produce a
+general |call_expression|, is actually more direct at run time. This is so
+because the function is necessarily referred to by an identifier (or operator)
+instead of by an arbitrary expression, and overloading resolution results in
+that identifier being replaced by a function \emph{value}, known at analysis
+time. Different kinds of function values, all derived from |function_base|, can
+then give rise to different kind of overloaded calls. We introduce
+|overloaded_call| as another abstract class between |call_base| and those kinds
+of call; its main purpose is to store a name that reflects how overloading was
+resolved.
+
 @< Type definitions @>=
 struct overloaded_call : public call_base
 { std::string name;
@@ -2427,17 +2606,17 @@ stored function pointer, which is needed every time the
 |overloaded_builtin_call| is executed, so we do copy this pointer into a member
 |f_ptr| of the latter, which avoid an extra indirection when using it.
 
-When accessed through overloading, the condition whether a built-in function
-is variadic or not is known at compile time, so we can make this a class
-template with a |variadic| template argument, just like |builtin_value|;
-indeed the template argument serves exclusively to adapt the type of the
-member~|f|. An additional constructor without |name| argument is provided for
-convenience to places where our interpreter directly produces calls to
-certain built-in functions, without going through the overload table; the
-function name is then deduced from the one stored in the |builtin_value|.
-The first constructor take the shared pointer |fun| is by value since it is most
-often, but not always, held in a local variable of the caller from which it can
-be moved; for the second constructor we pass by constant reference since the
+When accessed through overloading, the condition whether a built-in function is
+variadic or not is known at compile time, so we can make this a class template
+with a |variadic| template argument, just like |builtin_value|; indeed the
+template argument serves exclusively to adapt the type of the member~|f|. An
+additional constructor without |name| argument is provided for convenience, to
+be used in places where our interpreter directly produces calls to certain
+built-in functions, without going through the overload table; the function name
+is then deduced from the one stored in the |builtin_value|. The first
+constructor takes the shared pointer |fun| by value since it is most often,
+but not always, held in a local variable of the caller from which it can be
+moved; for the second constructor we pass by constant reference since the
 argument will not come from a local variable.
 
 @< Type definitions @>=
@@ -2466,8 +2645,38 @@ template <bool variadic>
   virtual void evaluate(level l) const;
 };
 @)
-typedef overloaded_builtin_call<false> builtin_call;
-typedef overloaded_builtin_call<true> variadic_builtin_call;
+using builtin_call = overloaded_builtin_call<false>;
+using variadic_builtin_call = overloaded_builtin_call<true>;
+
+@ There is a related class definition for calls of |type_aware_builtin| values;
+since including \&{overloaded} in the name, as would be natural, would make the
+name too unwieldy for practice, it is simply called |type_aware_builtin_call|.
+Its definition remains close to that of the |overloaded_builtin_call| template.
+
+@< Type definitions @>=
+struct type_aware_builtin_call : public overloaded_call
+{ typedef std::shared_ptr<const type_aware_instance> ptr_to_aware_builtin;
+@)
+  ptr_to_aware_builtin f;
+   // points to the full |type_aware_builtin|, for back-tracing
+  type_aware_wrapper f_ptr; // shortcut to implementing function
+@)
+  type_aware_builtin_call
+    (ptr_to_aware_builtin fun,
+     const std::string& name,
+     expression_ptr&& arg,
+     const source_location& loc)
+@/: overloaded_call(name,std::move(arg),loc)
+  , f(std::move(fun)), f_ptr(f->val) @+ {}
+  type_aware_builtin_call
+    (const ptr_to_aware_builtin& fun,
+     expression_ptr&& arg,
+     const source_location& loc)
+@/: overloaded_call(fun->print_name,std::move(arg),loc)
+  , f(fun), f_ptr(fun->val) @+ {}
+  virtual ~type_aware_builtin_call() = default;
+  virtual void evaluate(level l) const;
+};
 
 @ A |builtin_value| can turn itself into an |overloaded_builtin_call| when
 provided with a shared pointer |master| to itself, an argument expression, a
@@ -2487,14 +2696,27 @@ expression_ptr builtin_value<variadic>::build_call
     overloaded_builtin_call<variadic>(f,name,std::move(arg),loc));
 }
 
+@ The method |type_aware_instance::build_call| follows a very similar pattern.
+
+@< Function def... @>=
+expression_ptr type_aware_instance::build_call
+    (const shared_function& master,const std::string& name,
+     expression_ptr&& arg, const source_location& loc) const
+{ assert(master.get()==this);
+  auto f=std::static_pointer_cast<const type_aware_instance>(master);
+  return expression_ptr(new @|
+    type_aware_builtin_call(f,name,std::move(arg),loc));
+}
+
+
 @ Sometimes we want a builtin operator to have special behaviour at compile
 time, in the sense that when an application is formed with the global overload
 table matching the |builtin_value| for this operator, the virtual |build_call|
 method inspects the arguments and in some cases replaces the operator by another
 builtin function with a part of the arguments; the typical example is an
 application $E+1$ that transforms itself into |succ(E)|. To accommodate this we
-define a class derived from |builtin_value| that provides an alternative |apply|
-method that tries this substitution before reverting to
+define a class derived from |builtin_value| that provides an alternative
+|build_call| method, which tries this substitution before reverting to
 |builtin_value::build_call| if special argument values were not found.
 
 @< Type definitions @>=
@@ -2562,6 +2784,26 @@ void variadic_builtin_call::evaluate(level l) const
 @)
   try
   {@; (*f_ptr)(l); } // call the built-in function
+  @< Catch block for exceptions thrown within call of |f| with |arg_string| @>
+}
+
+@ For |type_aware_builtin_call::evaluate| the only difference is that a
+|type_aware_wrapper| takes a |type| as second argument (by constant reference);
+as that argument we pass the |arg_type| that was stored when the
+|type_aware_instance| pointed to by its member~|f| was created.
+
+@< Function definitions @>=
+void type_aware_builtin_call::evaluate(level l) const
+{ std::string arg_string;
+  argument->eval(); // always evaluate to single value
+  if (verbosity>0) // then record argument(s) as string
+  {@; std::ostringstream o;
+    o << *execution_stack.back();
+    arg_string = o.str();
+  }
+@)
+  try
+  {@; (*f_ptr)(l,f->arg_type); } // call the built-in function
   @< Catch block for exceptions thrown within call of |f| with |arg_string| @>
 }
 
@@ -2736,22 +2978,24 @@ We now discuss the treatment of function calls at the time of type analysis,
 and how the instances of classes derived from |call_base| come to be.
 
 When we type-check a function call, we must expect the function part to be any
-type of expression. But when it is a single identifier (possibly an operator
-symbol) for which one or more overloads are defined then we attempt overload
-resolution, unless the same identifier is locally bound with function type as
-such bindings take precedence (however we ignore a possible binding for the
-identifier in the global identifier table, even if it should have function
-type). In all other cases (including that of a local function identifier), the
-known type of the function expression gives the argument and result
-types, and can be used to help converting the argument expression and the call
-expression itself. Thus in such cases we first get the type of the expression
-in the function position, requiring only that it be a function type, then
-type-check and convert the argument expression using the obtained result type,
-and build a converted function call~|call|. Finally (and this is done by
-|conform_types|) we test if the required type matches the return type (in
-which case we simply return~|call|), or if the return type can be coerced to
-it (in which case we return |call| as transformed by |coerce|); if neither is
-possible |conform_types| will throw a~|type_error|.
+kind of expression. But if it is a single identifier (possibly an operator
+symbol) for which one or more overloads are defined, then we attempt overload
+resolution, unless the same identifier is locally bound with function type,
+since such bindings take precedence. Note that when at least one overload of an
+identifier is defined, a binding that the identifier might have in the global
+identifier table is ignored in calls using that identifier, even if the binding
+has a function type. In cases where no overload resolution is attempted
+(including that of a local function identifier), the known type of the function
+expression gives the argument and result types, and can be used to help
+converting the argument expression and the call expression itself. Thus in such
+cases we first get the type of the expression in the function position,
+requiring only that it be a function type, then type-check and convert the
+argument expression using the obtained result type, and build a converted
+function call~|call|. Finally (and this is done by |conform_types|) we test if
+the required type matches the return type (in which case we simply
+return~|call|), or if the return type can be coerced to it (in which case we
+return |call| as transformed by |coerce|); if neither is possible
+|conform_types| will throw a~|type_error|.
 
 @:type-check calls@>
 
@@ -2794,12 +3038,12 @@ possible to give a more specific error message, which we do here.
 @ When a call expression has an identifier in the place of the function (as is
 often the case; this also includes all operators applied in formulae), we
 prepare a call to the function |resolve_overload| defined above in
-section@#resolve_overload@>. Before doing that, we check if the identifier has
-a local binding with function type, in which we fall through the code below to
+section@#resolve_overload@>. Before doing that, we check if the identifier has a
+local binding with function type, in which we fall through the code below to
 make a |call_expression| as in the general case, without any overloading. The
 call is also omitted when the identifier is absent from the overload table
-altogether; in that case it might still be a global identifier with function
-type.
+altogether; in that case it might still be defined as a global identifier with
+function type.
 
 @< Convert and |return| an overloaded function call... @>=
 { const id_type id =call.fun.identifier_variant;
@@ -3076,7 +3320,7 @@ size_t count_identifiers(const id_pat& pat)
 void list_identifiers(const id_pat& pat, std::vector<id_type>& d)
 { if ((pat.kind & 0x1)!=0)
     d.push_back(pat.name);
-  if ((pat.kind & 0x2)!=0) // then a list of subpatterns is present
+  if ((pat.kind & 0x2)!=0) // then a list of sub-patterns is present
     for (auto it=pat.sublist.begin(); not pat.sublist.at_end(it); ++it)
       list_identifiers(*it,d);
 }
@@ -3597,56 +3841,54 @@ case rec_lambda_expr:
 
 @* Closures.
 %
-In first approximation $\lambda$-expression are like denotations of
+In first approximation, $\lambda$-expressions are like denotations of
 user-defined functions: their evaluation just returns the stored function
 body. However, this evaluation also captures the current execution context:
 the bindings of the local variables that may occur as free identifiers in the
 function body (any used global variables can be bound at compile time, so they
 do not need any special consideration). Therefore the evaluation of a
 $\lambda$~expressions actually yields an intermediate value that is
-traditionally called a closure. It contains a shared pointer~|p| to the
-|lambda_struct| holding the function body, as well as the execution context
-|context| that was current at the point in time the $\lambda$~expression was
-encountered.
+traditionally called a closure.
+
+Apart from $\lambda$~expressions whose evaluation results in a closure, we shall
+also see closures being incorporated into certain call expressions, giving
+another kind of value, whose evaluation leads to execution of the function in
+the closure. This happens only when the closure is formed and stored in the
+global overload table before the call is encountered (i.e., processed by the
+parser and type analyser), which consists of the overloaded symbol applied to an
+argument expression. For calls that are formed in another way however, a closure
+can be directly applied to an argument, without being bound in a call
+expression. Both cases are handled by virtual methods introduced in the
+|function_base| structure.
+
+@ A closure is represented by |struct| called a |closure_value|, or in some
+cases by another |struct| derived from it that just modifies some virtual
+methods. It contains a shared pointer~|p| to the |lambda_struct| holding the
+function body, as well as the execution context |context| that was current at
+the point in time the $\lambda$~expression was evaluated. It is possible to
+evaluate the same $\lambda$~expression multiple times, possibly in different
+contexts, giving rise to distinct closure values.
 
 Sharing the |lambda_struct| among different closures obtained from the same
 $\lambda$-expression is efficient in terms of space, but would require double
-dereference upon evaluation. Since the latter occurs frequently at run time, we
-speed up evaluation by also using a reference |body| directly to the function
-body. Note that closures are formed when the \emph{definition} of a user-defined
-function is processed, so this optimisation should make evaluation of globally
-defined functions a bit faster. For local functions, the closure is formed
-during the execution of the outer function, so the optimisation only helps if
-the closure formed will be called more than once; this is still probable, though
-there are usage patterns (for instance finding the first of a sequence of
-conditions that is satisfied, the conditions being produced as a list of
-parameterless functions in a loop) for which local closures are actually
-executed less than once on average; in such cases we are actually wasting effort
-here. It is however impossible to know here whether the closure will be globally
-of locally bound.
+dereference upon evaluation. Since the same closure can be called many times, we
+may speed up evaluation by also using a reference |body| directly to the
+function body. Note that closures are formed when the \emph{definition} of a
+user-defined function is processed, so this optimisation should make evaluation
+of globally defined functions a bit faster. For local functions it rather
+depends whether the same closure is evaluated many times, or even at all, so
+having a |body| field may sometimes actually be wasting effort. It is however
+impossible to know upon evaluation of a $\lambda$-expression here whether the
+closure will be globally or locally bound, or even not at all.
 
-Because of slight differences in evaluation that we do not want to implement
-using runtime tests, we define three types of closure. The case of non recursive
-$\lambda$-expressions being split into those that introduce no parameters at all
-(usually but not necessarily because the argument type is |void|), and those
-that introduce at least one name; this distinction reflects our implementation
-choice to omit empty layers on the stack of local bindings. For recursive
-$\lambda$-expressions there is (only) a third type of closures; calling them
-will always push at least the recursive identifier.
-
-We defined a virtual method |function_base::maybe_push| that will push a shared
-pointer (which in fact will be one to the closure itself) on the stack, as is
-needed for the implementation of recursive functions. Since the default
-implementation of this method is to do nothing, we need to implement it only for
-|kind==recursive_closure|, but it is most convenient to define it here
-regardless of |kind|, and in its implementation use a test of the
-template argument, which the compiler should hopefully optimise away.
+The class |closure_value| will be used for the most common case of functions
+that have at least one parameter but are not recursive, and its methods deal
+with that case. For the other cases, which require some methods to operate
+slightly differently, we shall define derived classes that override some of the
+default behaviour.
 
 @< Type def... @>=
 
-enum Closure_kind @+{ parameterless, with_parameters, recursive_closure };
-@)
-template<Closure_kind kind>
 struct closure_value : public function_base
 { shared_context context;
   shared_lambda p;
@@ -3654,53 +3896,88 @@ struct closure_value : public function_base
 @)
   closure_value@|(const shared_context& c, const shared_lambda& l)
   : function_base(), context(c), p(l), body(*p->body) @+{}
-  virtual ~closure_value() = default;
   virtual void print(std::ostream& out) const;
   virtual void apply(eval_level l) const;
-  virtual eval_level argument_policy() const
-  {@; return eval_level::single_value; }
-  virtual void maybe_push(const std::shared_ptr<const function_base>& p) const
-  {@; if (kind==recursive_closure)
-      push_value(p);
-  }
-  virtual void report_origin(std::ostream& o) const;
   virtual expression_ptr build_call
     (const shared_function& master,const std::string& name,
      expression_ptr&& arg, const source_location& loc) const;
 @)
-  static const char* name() @+
-   {@; return kind==recursive_closure ? "recursive closure" : "closure"; }
-  closure_value (const closure_value& ) = delete;
+  virtual eval_level argument_policy() const @+
+  {@; return eval_level::single_value; }
+  virtual void report_origin(std::ostream& o) const;
+  static const char* name() @+ {@; return "closure"; }
 };
 
-@ For readability, we define |shared_closure| as a type template.
+@ There are a few variations to closures, each of which provides alterations to
+a few virtual methods in order to adapt processing for special situations. A
+simple variation called |naked_closure| handles parameterless closures, those
+that introduce no identifiers at all in their body with respect to their lexical
+context (in particular, they are not recursive). We need to adapt such closures
+to our requirement that frames on the runtime stack (discussed below) should
+never be empty, which is done by overriding the |apply| and |build_call|
+methods.
 
-@s shared_closure vector
 @< Type def... @>=
-template<Closure_kind kind>
-using shared_closure = std::shared_ptr<const closure_value<kind> >;
+
+struct naked_closure : public closure_value
+{ naked_closure@|(const shared_context& c, const shared_lambda& l)
+  : closure_value(c,l) @+{}
+  virtual void apply(eval_level l) const;
+  virtual expression_ptr build_call
+    (const shared_function& master,const std::string& name,
+     expression_ptr&& arg, const source_location& loc) const;
+};
+
+@ Another variation is for closures with a recursive function body. Handling
+that will again require modification of the |apply| and |build_call| methods,
+and the handling of the recursive value is done using the
+|function_base::maybe_push| virtual method specially intended for this purpose,
+whose default definition (used everywhere else) is to do nothing. Finally, we
+also need to modify the |print| method.
+
+@< Type def... @>=
+
+struct recursive_closure : public closure_value
+{ recursive_closure@|(const shared_context& c, const shared_lambda& l)
+  : closure_value(c,l) @+{}
+  virtual void print(std::ostream& out) const;
+  virtual void apply(eval_level l) const;
+  virtual expression_ptr build_call
+    (const shared_function& master,const std::string& name,
+     expression_ptr&& arg, const source_location& loc) const;
+  virtual void maybe_push(const std::shared_ptr<const function_base>& p) const
+  {@; push_value(p); }
+@)
+  static const char* name() @+ {@; return "recursive closure"; }
+};
 
 @ A closure prints the |lambda_expression| from which it was obtained, but we
 also print an indication of where the function was defined (this was not
 useful for |lambda_expression|, since these never get printed directly, only
-as part of printing a |closure_value|). One could imagine printing after this
-body ``where'' followed by the bindings held in the |context| field. Even
-better only the bindings for relevant (because referenced) identifiers could
-be printed. But it's not done yet.
+as part of printing a |closure_value|). One could imagine printing, after this
+body, ``where'' followed by the relevant bindings held in the |context| field.
+But although that would help to distinguish between closures that only differ by
+the context they store, it would also risk making the already voluminous output
+for certain functions quite unwieldy; in any case this is not done yet.
 
 @< Function def... @>=
-template<>
-void closure_value<parameterless>::print(std::ostream& out) const
+void closure_value::print(std::ostream& out) const
 {@; print_lambda(out << "Function defined " << p->loc << std::endl,
                  p->param,p->body);
 }
-template<>
-void closure_value<with_parameters>::print(std::ostream& out) const
-{@; print_lambda(out << "Function defined " << p->loc << std::endl,
-                 p->param,p->body);
-}
-template<>
-void closure_value<recursive_closure>::print(std::ostream& out) const
+@)
+void closure_value::report_origin(std::ostream& o) const
+@+{@; o << "defined " << p->loc; }
+
+@ In a $\lambda$-expression for a recursive function, the identifier by which it
+will call itself is stored as the first item of the parameter list, while the
+list |param| of any actual parameters forms the next item. So
+|recursive_closure::print| explicitly pulls it out the name and prints an
+equation between that name and the function body, rendered by passing |param|
+and |p->body| to |print_lambda|.
+
+@< Function def... @>=
+void recursive_closure::print(std::ostream& out) const
 { auto it=p->param.sublist.begin();
   id_type self_id=it->name;
   const id_pat& param=*++it;
@@ -3708,46 +3985,44 @@ void closure_value<recursive_closure>::print(std::ostream& out) const
   print_lambda(out<< main_hash_table->name_of(self_id) << " = ",param,p->body);
 }
 
-template<Closure_kind kind>
-void closure_value<kind>::report_origin(std::ostream& o) const
-{@; o << "defined " << p->loc; }
-
 @ Evaluating a $\lambda$-expression just forms a closure using the current
-execution context, and returns that. Since the |recursive_lambda| already has
+execution context, and returns that. This is the place where we test for the
+absence of any introduced identifiers, in which case we construct an instance of
+the derived class |naked_closure| instead of a |closure_value|.
+Recursive functions are transformed into a different kind of executable
+expression |recursive_lambda|, whose construction already has
 done the work of wrapping the recursive identifier into a pattern with that of
-the arguments, the recursive case only differs from the ordinary one here by the
-setting of the template argument of the |closure_value| constructor. For non
-recursive $\lambda$-expression, this is the place where we test for the absence
-of any introduced identifiers. The actual difference in implementation between
-the three types of closure will be mostly evident in the
-|closure_value<kind>::apply| methods.
+the arguments. Evaluating the expression then proceeds in a way very similar to
+that of ordinary $\lambda$-expressions, except that here we construct an
+instance of the derived class |recursive_closure_value|.
 
-While this code looks rather innocent, note that the sharing of
-|frame::current| created here may survive after one or more frames on the list
-|frame::current| get removed after evaluation of the expression that returned
-the closure; these frames then get an extended lifetime through the closure
-formed here. This implies that the execution context cannot be embedded in any
-kind of stack, in particular it cannot be embedded in the \Cpp\ runtime stack
-(while the layers of the lexical context could).
+The actual differences in implementation between the three types of closure lies
+in their implementation of the |apply| and |call| virtual methods, which will be
+detailed later.
+
+While the code below looks quite innocent, note that the sharing of the
+|frame::current| value created here may survive after one or more frames of that
+list are popped off |frame::current| itself (after evaluation of the expression
+that returned the closure). These frames then get an extended lifetime through
+the closure formed here. This implies that the execution context cannot be
+embedded in any kind of stack, in particular it cannot be embedded in the \Cpp\
+runtime stack (while the layers of the lexical context could).
 
 @< Function def... @>=
 void lambda_expression::evaluate(level l) const
 { if (l!=level::no_value)
   { if (count_identifiers(p->param)==0)
-      push_value(std::make_shared<closure_value<parameterless> >
-       (frame::current,p));
+      push_value(std::make_shared<naked_closure> (frame::current,p));
     else
-      push_value(std::make_shared<closure_value<with_parameters> >
-       (frame::current,p));
+      push_value(std::make_shared<closure_value> (frame::current,p));
   }
 }
 void recursive_lambda::evaluate(level l) const
-{ if (l!=level::no_value)
-    push_value(std::make_shared<closure_value<recursive_closure> >
-      (frame::current,p));
+{@; if (l!=level::no_value)
+    push_value(std::make_shared<recursive_closure> (frame::current,p));
 }
 
-@*1 Calling user-defined functions.
+@*1 Runtime stack frames of local identifiers in user defined functions.
 %
 In order to implement calling of user-defined functions, we define a variation
 of the class |frame|. Again the purpose is to have a constructor-destructor pair
@@ -3762,15 +4037,15 @@ run time stack for local user variables by another that is partially or wholly
 disjoint from the previous stack. The new stack remains in effect until the end
 of the function containing the variable (when the destructor reinstates the old
 stack). The stack records themselves are in dynamic memory, not on the \Cpp\
-runtime stack, and will remain in existence as long as anybody might access
-them.
+runtime stack; they will remain in existence as long as any value in existence
+might access them, thanks to the |std::shared_ptr| magic.
 
 This context switching is a crucial and recurrent step in the evaluation
 process, so we take care to not uselessly change the reference count of
 |frame::current|. It is \emph{moved} into |saved| upon construction, and upon
 destruction moved back again to |frame::current|. We also use a template
-parameter to indicate whether we are called for a |parameterless| closure or
-not, which avoids any run time test for this condition. The distinction between
+parameter to indicate whether we are called for a parameterless closure or not,
+which avoids any run time test for this condition. The distinction between
 recursive and non recursive closures is not relevant here.
 
 It might seem that we could have derived this class from |frame|, which already
@@ -3797,9 +4072,9 @@ public:
 };
 
 @ In contrast to |frame|, the constructor here needs a try block for exception
-safety, as an exception may be thrown during construction (in the call to
+safety, since an exception may be thrown during construction (in the call to
 |std::make_shared<evaluation_context>|), after |frame::current| has been moved
-from, but before out constructor completes; since the destructor would in this
+from, but before our constructor completes; since the destructor would in this
 scenario \emph{not} be called, we then need to move the pointer back explicitly
 in the |catch| block.
 
@@ -3858,93 +4133,31 @@ std::vector<id_type> lambda_frame<false>::id_list () const
   return names;
 }
 
-@ In general a closure formed from a $\lambda$ expression can be handled in
-various ways (like being passed as argument, returned, stored) before being
-applied as a function, in which case the call is performed by
-|call_expression::evaluate| described above in
+@*1 Calling user-defined functions.
 %
-section@# general call evaluate @>; the actual code this executes (through the
-virtual method |apply|) is given in section@# lambda evaluation @> below.
-However, in many cases the path from definition to call is more direct: the
-closure from a user-defined function is bound to an identifier (or operator) in
-the global overload table, and located during type-checking of a call
-expression. As this special but frequent case can be handled more efficiently
-than by building a |call_expression|, we introduce a new |expression| type
-|closure_call| that is capable of directly storing a closure value, evaluating
-only its argument sub-expression at run time.
-
-Closures themselves are anonymous, so the name |n| that becomes the |name| field
-of the |overloaded_call| base object reflects the overloaded name that was used
-to identify this function; it can vary separately from the closure |f| if the
-latter is entered more than once in the the tables. This is in contrast to
-|builtin_call| where the name is taken from the stored |builtin_value|, and
-cannot be dissociated from the wrapper function.
-
-@< Type definitions @>=
-template<Closure_kind kind>
-class closure_call : public overloaded_call
-{ shared_closure<kind> f; // remaining fields are shortcuts into |f|
-  const id_pat& param;
-  const shared_context& context;
-  const expression_base& body;
-public:
-  closure_call @|
-   (shared_closure<kind >&& f_ref,const std::string& n,expression_ptr&& a
-   ,const source_location& loc)
-@/: overloaded_call(n,std::move(a),loc)
-  , f(std::move(f_ref))
-@/, param(f->p->param)
-  , context(f->context)
-  , body(f->body) @+ {}
-  virtual ~closure_call() = default;
-  virtual void evaluate(level l) const;
-};
-
-@ Here is how a |closure_value| can turn itself into a |closure_call| when
-provided with an argument expression, as well as a |name| to call itself and a
-|source_location| for the call. Every call of |build_call| will provide the
-shared pointer to the |functions_base| derived object it is called for as first
-argument |master|; for lack of covariance this pointer has been up-cast to
-|shared_function|. In order to provide the constructed |closure_call| with a
-shared pointer |f| to our |closure_value|, we perform a (static) down-cast of
-|master|. The provided argument(s) |arg|, and |name| are also passed into the
-|closure_call|.
-
-@< Function def... @>=
-template<Closure_kind kind>
-expression_ptr closure_value<kind>::build_call
-    (const shared_function& master,const std::string& name,
-     expression_ptr&& arg, const source_location& loc) const
-{ assert(master.get()==this);
-  auto p=std::static_pointer_cast<const closure_value<kind> >(master);
-@/return expression_ptr(new @| closure_call<kind>
-    (std::move(p),name,std::move(arg),loc));
-}
-
-
-@ When calling a function in a non overloading manner, we come to the code
-below if it turns out not to be a built-in function. This code basically
-implements a call-by-value $\lambda$-calculus evaluator, in concert with the
-|evaluation_context| data structure and the translation of applied local
-identifiers into references by relative layer number and offset. The names of
-the identifiers are not used at all at runtime (they are present in the
-|id_pat| structure for printing purposes, but ignored by the |bind| method
-used here); our implementation can be classified as one using ``nameless
-dummies'' (also known as ``de Bruijn indices'').
+The general case of applying a closure value to an argument value is
+implemented by the method |closure_value::apply|. It basically implements a
+call-by-value $\lambda$-calculus evaluator, in concert with the
+|evaluation_context| class defined in \.{axis-types.w}. Inside the function
+body, applied local identifiers are translated into references by relative layer
+number and offset. The names of the identifiers are not used at all at runtime
+(they are present in the |id_pat| structure for printing purposes, but ignored
+by the |bind| method used here); hence, our implementation can be classified as
+one using ``nameless dummies'' (also known as ``de Bruijn indices'').
 
 When we come here, the argument of our |closure_value| has already been
-evaluated, and is available as a single value on the |execution_stack|. The
-evaluation of the call temporarily replaces the current execution context
-|frame::current| by one composed of |f->context| stored in the closure and a new
-frame defined by the parameter list |f->param| and the argument obtained as
-|pop_value()|; the function body is evaluated in this extended context.
-Afterwards the original context is restored by the destructor of~|fr|, whether
-the call completes normally or is terminated by a runtime error. The most
-important advantage of this approach is in case of abnormal exits from loops and
-functions, which are implemented by throwing and catching an exception at
-run-time and will therefore unwind the \Cpp\ stack. (Actually, performing
-\&{break} from a loop should never lead to destructing any |lambda_frame|,
-though it might destruct some |frame|s.)
+evaluated, and is available as a single value on the |execution_stack|. Managing
+the |evaluation_context| is done implicitly by the constructor of the template
+instance |lambda_frame<false>| (whose execution replaces the current execution
+context |frame::current| by our |context|) and by its destructor. In the
+replaced context, the call of |fr.bind| adds a frame for our parameter list (the
+code below assumes this frame binds at least one identifier; for functions where
+this is not true we shall use a derived class that overrides this virtual
+method). The most important advantage of this implicit approach is that abnormal
+exits from loops and functions, which are implemented by throwing and catching
+an exception at run-time and will therefore unwind the \Cpp\ stack, are properly
+handled. (Actually, performing \&{break} from a loop should never lead to
+destructing any |lambda_frame|, though it might destruct some |frame|s.)
 
 By naming our frame |fr|, and because |lambda_frame| has a method |id_list|
 with the same signature as |frame::id_list|, we can textually reuse a |catch|
@@ -3953,23 +4166,32 @@ block, as was mentioned when that block was defined earlier.
 @: lambda evaluation @>
 
 @< Function def... @>=
-template<Closure_kind kind>
-void closure_value<kind>::apply(eval_level l) const
+void closure_value::apply(eval_level l) const
 {
-  static const bool no_names=kind==parameterless;
   try
-  { lambda_frame<no_names> fr(p->param,context);
+  { lambda_frame<false> fr(p->param,context);
       // save context, create new one for |*this|
-    if (no_names) // functions without named arguments are different
-    {@; execution_stack.pop_back();
-      body.evaluate(l);
-    } //  drop arg, evaluate avoiding |bind|
-    else
-    { fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
-      try {@; body.evaluate(l); }
+    fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
+    try {@; body.evaluate(l); }
         // call, passing evaluation level |l| to function body
-      @< Catch block for providing a trace-back of local variables @>
-    }
+    @< Catch block for providing a trace-back of local variables @>
+  } // restore context upon destruction of |fr|
+  @< Catch block for explicit \&{return} from functions @>
+}
+
+@ Here is the simplified |apply| method. There is no |catch| for a constructing
+a back-trace of stack variables upon an error stop, but there still is one to
+handle the execution of |return| during evaluation of the function body.
+
+@< Function def... @>=
+
+void naked_closure::apply(eval_level l) const
+{
+  try
+  { lambda_frame<true> fr(p->param,context);
+      // save context, create new one for |*this|
+     execution_stack.pop_back(); // simply drop argument
+     body.evaluate(l); // and evaluate while avoiding any call of |bind|
   } // restore context upon destruction of |fr|
   @< Catch block for explicit \&{return} from functions @>
 }
@@ -3979,11 +4201,11 @@ just binding the arguments popped from the stack, we build a pair consisting of
 our current (recursive) |closure_value| itself and the argument, and bind that
 to the pattern of the |lambda_struct| access from the closure. Since the
 recursive name is always present, we do not have to worry about the possibility
-of a |lambda_frame| without any identifiers.
+of a |lambda_frame| without any identifiers, so we always have a
+|lambda_frame<false>|.
 
 @< Function def... @>=
-template<>
-void closure_value<recursive_closure>::apply(eval_level l) const
+void recursive_closure::apply(eval_level l) const
 {
   try
   { lambda_frame<false> fr(p->param,context);
@@ -4008,6 +4230,141 @@ value on the stack, which is just what |push_expanded| does.
 catch (function_return& err) @+
 {@; push_expanded(l,std::move(err.val)); }
 
+@ In general a closure formed from a $\lambda$ expression can be handled in
+various ways (like being passed as argument, returned, stored) before being
+applied as a function, in which case the call is performed by
+|call_expression::evaluate| described above in
+%
+section@# general call evaluate @>; the actual code this executes is given by
+the various definitions of the virtual method |apply| given above. However, in
+many cases the path from definition to call is more direct: the closure from a
+user-defined function is bound to an identifier (or operator) in the global
+overload table, and located during type-checking of a call expression. As this
+special but frequent case can be handled more efficiently than by building a
+|call_expression|, we introduce a new |expression| type |closure_call| that is
+capable of directly storing a closure value. The evaluation of such a
+|closure_call| then only involves evaluating its argument sub-expression,
+and then the function body from the closure.
+
+Closures themselves are anonymous, so the name |n| that becomes the |name| field
+of the |overloaded_call| base object reflects the overloaded name that was used
+to identify this function; it can vary separately from the closure |f| if the
+latter is entered more than once in the the tables. This is in contrast to
+|builtin_call| where the name is taken from the stored |builtin_value|, and
+cannot be dissociated from the wrapper function.
+
+@< Type definitions @>=
+class closure_call : public overloaded_call
+{ std::shared_ptr<const closure_value> f;
+  // remaining fields are shortcuts into |f|
+  const id_pat& param;
+  const shared_context& context;
+  const expression_base& body;
+public:
+  closure_call @|
+   (std::shared_ptr<const closure_value>&& f_ref
+   ,const std::string& n
+   ,expression_ptr&& a
+   ,const source_location& loc)
+@/: overloaded_call(n,std::move(a),loc)
+  , f(std::move(f_ref))
+@/, param(f->p->param)
+  , context(f->context)
+  , body(f->body) @+ {}
+  virtual void evaluate(level l) const;
+};
+
+@ In case the closure value stored in the overload table is of one of the (naked
+or recursive) variants of |closure_value|, we need corresponding valiant classes
+of |closure call|. Their interfaces differs from that of |closure_call| only in
+the type of the pointer~|f| that accesses the closure, and that of the
+corresponding constructor argument. The implementation of the virtual method
+|evaluate| will differ as well, of course.
+
+@< Type definitions @>=
+class naked_closure_call : public overloaded_call
+{ std::shared_ptr<const naked_closure> f;
+  // remaining fields are shortcuts into |f|
+  const id_pat& param;
+  const shared_context& context;
+  const expression_base& body;
+public:
+  naked_closure_call @|
+   (std::shared_ptr<const naked_closure>&& f_ref
+   ,const std::string& n
+   ,expression_ptr&& a
+   ,const source_location& loc)
+@/: overloaded_call(n,std::move(a),loc)
+  , f(std::move(f_ref))
+@/, param(f->p->param)
+  , context(f->context)
+  , body(f->body) @+ {}
+  virtual void evaluate(level l) const;
+};
+@)
+class recursive_closure_call : public overloaded_call
+{ std::shared_ptr<const recursive_closure> f;
+  // remaining fields are shortcuts into |f|
+  const id_pat& param;
+  const shared_context& context;
+  const expression_base& body;
+public:
+  recursive_closure_call @|
+   (std::shared_ptr<const recursive_closure>&& f_ref
+   ,const std::string& n
+   ,expression_ptr&& a
+   ,const source_location& loc)
+@/: overloaded_call(n,std::move(a),loc)
+  , f(std::move(f_ref))
+@/, param(f->p->param)
+  , context(f->context)
+  , body(f->body) @+ {}
+  virtual void evaluate(level l) const;
+};
+
+@ Here is how a |closure_value| can turn itself into a |closure_call|, when
+provided with an argument expression, a |name| to call itself and a
+|source_location| for the call. Every call of |build_call| will provide the
+shared pointer to the |function_base| derived object it is called for as first
+argument |master|; for lack of covariance this pointer has been up-cast to
+|shared_function|. In order to provide the constructed |closure_call| with a
+shared pointer |f| to our |closure_value|, we perform a (static) down-cast of
+|master| to |std::shared_ptr<const closure_value>|. The provided argument(s)
+|arg|, and |name| are also passed into the |closure_call|.
+
+@< Function def... @>=
+expression_ptr closure_value::build_call
+    (const shared_function& master,const std::string& name,
+     expression_ptr&& arg, const source_location& loc) const
+{ assert(master.get()==this);
+  auto p=std::static_pointer_cast<const closure_value>(master);
+@/return expression_ptr(new @| closure_call
+    (std::move(p),name,std::move(arg),loc));
+}
+
+@ For naked or recursive closures, the difference in the |build_call| method
+with respect to the above implementation of |closure_value::build_call| is
+limited to changing types appropriately.
+
+@< Function def... @>=
+expression_ptr naked_closure::build_call
+    (const shared_function& master,const std::string& name,
+     expression_ptr&& arg, const source_location& loc) const
+{ assert(master.get()==this);
+  auto p=std::static_pointer_cast<const naked_closure>(master);
+@/return expression_ptr(new @| naked_closure_call
+    (std::move(p),name,std::move(arg),loc));
+}
+@)
+expression_ptr recursive_closure::build_call
+    (const shared_function& master,const std::string& name,
+     expression_ptr&& arg, const source_location& loc) const
+{ assert(master.get()==this);
+  auto p=std::static_pointer_cast<const recursive_closure>(master);
+@/return expression_ptr(new @| recursive_closure_call
+    (std::move(p),name,std::move(arg),loc));
+}
+
 @ Evaluation of an overloaded function call bound to a closure consists of a
 simplified version of the part of |call_expression::evaluate| dedicated to
 closures (including the temporary catching of errors as defined in
@@ -4023,11 +4380,55 @@ a fourth textual reuse of the |catch| block for function calls, as well as
 (|fr|) a third reuse of the |catch| block for local variables.
 
 @< Function definitions @>=
-template<Closure_kind kind>
-void closure_call<kind>::evaluate(level l) const
-{ static const bool no_names=kind==parameterless;
-  if (kind==recursive_closure)
-    push_value(f); // duplicate our closure to the execution stack
+void closure_call::evaluate(level l) const
+{ argument->eval(); // evaluate arguments as a single value
+  std::string arg_string;
+  if (verbosity!=0) // then record argument(s) as string
+  {@; std::ostringstream o;
+    o << *execution_stack.back();
+    arg_string = o.str();
+  }
+  try
+  { lambda_frame<false> fr(param,context);
+      // save context, create new one for |f|
+@)
+    fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
+    try {@; body.evaluate(l); }
+    // call, passing evaluation level |l| to function body
+    @< Catch block for providing a trace-back of local variables @>
+  } // restore context upon destruction of |fr|
+  @< Catch block for explicit \&{return} from functions @>
+  @< Catch block for exceptions thrown within call of |f|... @>
+}
+
+@ A |naked_closure_call| has a simpler |evaluate| method than |closure_value|.
+
+@< Function definitions @>=
+void naked_closure_call::evaluate(level l) const
+{ argument->eval(); // evaluate arguments as a single value
+  std::string arg_string;
+  if (verbosity!=0) // then record argument(s) as string
+  {@; std::ostringstream o;
+    o << *execution_stack.back();
+    arg_string = o.str();
+  }
+  try
+  { lambda_frame<true> fr(param,context);
+      // save context, create new one for |f|
+@)
+    execution_stack.pop_back(); // drop argument
+    body.evaluate(l); // evaluate without calling |bind|
+  } // restore context upon destruction of |fr|
+  @< Catch block for explicit \&{return} from functions @>
+  @< Catch block for exceptions thrown within call of |f|... @>
+}
+
+@ On the other hand, the evaluation of a |recursive_closure_call| adds a few
+action with respect to that of an ordinary |closure_call|.
+
+@< Function definitions @>=
+void recursive_closure_call::evaluate(level l) const
+{ push_value(f); // duplicate our closure to the execution stack
   argument->eval(); // evaluate arguments as a single value
   std::string arg_string;
   if (verbosity!=0) // then record argument(s) as string
@@ -4036,21 +4437,14 @@ void closure_call<kind>::evaluate(level l) const
     arg_string = o.str();
   }
   try
-  { lambda_frame<no_names> fr(param,context);
+  { lambda_frame<false> fr(param,context);
       // save context, create new one for |f|
 @)
-    if (no_names)
-       // we must test for functions without named arguments
-      {@; execution_stack.pop_back(); body.evaluate(l); }
-      //  avoid |bind|, evaluate
-    else
-    { if (kind==recursive_closure)
-        wrap_tuple<2>(); // combine our closure with actual arguments
-      fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
-      try {@; body.evaluate(l); }
-      // call, passing evaluation level |l| to function body
-      @< Catch block for providing a trace-back of local variables @>
-    }
+    wrap_tuple<2>(); // combine our closure with actual arguments
+    fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
+    try {@; body.evaluate(l); }
+    // call, passing evaluation level |l| to function body
+    @< Catch block for providing a trace-back of local variables @>
   } // restore context upon destruction of |fr|
   @< Catch block for explicit \&{return} from functions @>
   @< Catch block for exceptions thrown within call of |f|... @>
@@ -5776,10 +6170,10 @@ report the first tag that fails to match it as the offender.
   throw expr_error(e,o.str());
 }
 
-@ We already tested there were defined union types, or type constructors, with
-tags, that match the |subject_type| of the discrimination clause, so if we find
-there are none left, the error message should focus on the tags that failed to
-all match for one of the candidates.
+@ We already tested that there were defined union types, or type constructors,
+that match the |subject_type| of the discrimination clause, and that have tags;
+therefore if we find that there are none left, the error message should focus on
+the tags that failed to all match for one of the candidates.
 
 @< Report that the number of |candidates| accommodating all |tags| is not
    exactly one @>=
@@ -7333,32 +7727,40 @@ case cast_expr:
 @ Another kind of cast is the operator cast, which selects an operator or
 overloaded function instance as it would for arguments of specified types, but
 without giving actual arguments, so that the selected function itself can be
-handled as a value. In other words, and operator cast accesses a value in the
+handled as a value. In other words, an operator cast accesses a value in the
 global overload table by providing its name and argument types. Since in
 successful cases we find a bare |shared_function| in the table, we must (as we
 did for~`\.\$') use the |capture_expression| class to serve as wrapper that upon
 evaluation will return the value again.
 
 We do two attempts to match the specified type |c_type| to an entry in the
-|global_overload_table|. In the first we deduce from |c_type| a type as it would
-be specified in a table entry for an exact match. Then as a second try, we try
-to find a unique polymorphic overload that accepts |c_type| as it would in a
-function call, and if one is found we use that. Although an exact match would
-also be found in the second try, the first one allows specifying any overload,
-even if the exact type of that overload also matches another, more general,
-polymorphic overload. (In that case it is not possible to call the intended
-overload through ordinary overload resolution, since no match to it would ever
-be unique; we do want to be able to specify it in an operator cast, if only to
-be able to apply \.{forget}, and thereby get rid of the useless overload.)
+|global_overload_table|. In the first we deduce from |c_type| a type that might
+be recognised by |overload_table::entry| if a variant has precisely that type
+specification (which might be polymorphic). If nothing is found, then as a
+second possibility, we try to find a unique (polymorphic) overload that would
+accept |c_type| as ``exact match'' in a function call (meaning that unification
+succeeds), and if one is found we use that. Although a type that succeeds in the
+first try would also match in the second try, that second match might not be
+unique, which is why we need the first try as well. Indeed, if the exact type of
+some overload also matches another more polymorphic overload, it would be
+impossible to select the former overload. (In that case it is not possible to
+call that overload through ordinary overload resolution, since no match to it
+would ever be unique; we do want to be able to specify it in an operator cast,
+giving access to an otherwise unreachable stored value. We also want to be able
+to specify such an overload in order to forget it and thus remove the ambiguity;
+in fact, the \.{forget} command does not invoke the code below, and it calls
+|overload_table::remove| rather than |overload_table::entry|, but both of them
+need to pass the exact type stored in order to select a variant.)
 
 For the first try we use the method |overload_table::entry|, which in the call
 below finds an entry at symbol |c->oper|, if there exists one, whose argument
-type with any polymorphic variables shifted up by |fc| is |c_type|. That shift
-is what we want, because at the point where the operator cast is written, any
-polymorphic types introduced start at |fc|, while in the overload table there
-are no fixed type variables and they start at~$0$. When |overload_table::entry|
-returns a null pointer no exact match was found, and we pas to the second try,
-which uses |overload_table::variants|.
+type with any polymorphic variables shifted up by |fc| is equal to |c_type|.
+That shift is what we want, because at the point where the operator cast is
+written, any polymorphic types introduced start at |fc|, while in the overload
+table there are no fixed type variables and they start at~$0$. When
+|overload_table::entry| returns a null pointer, this means that no exact match
+was found; we then pass to the second try, which uses
+|overload_table::variants| rather than |entry|.
 
 @< Cases for type-checking and converting... @>=
 case op_cast_expr:
@@ -7370,9 +7772,11 @@ case op_cast_expr:
   type deduced_type = type::wrap(gen_func_type,fc);
   if (@[const auto* entry = global_overload_table->entry(c->oper,c_type,fc)@])
   {
-    result.reset(new capture_expression(entry->value(),o.str()));
-    bool success = functype_absorb(deduced_type,*entry);
-    assert(success); ndebug_use(success);
+    if (not entry->is_type_aware()) // type aware variant requires specific type
+    { result.reset(new capture_expression(entry->value(),o.str()));
+      bool success = functype_absorb(deduced_type,*entry);
+      assert(success); ndebug_use(success);
+    }
   }
   else
   {
@@ -7392,36 +7796,54 @@ case op_cast_expr:
 }
 break;
 
-@ Contrary to ordinary casts, operator casts can specify a polymorphic
-(argument) type, and this is indeed a natural way to select a polymorphic
-variant; of course overloaded entries can have a polymorphic type as well.
-Finding the right variant then resembles overloading resolution in function
-calls, and can be done using the |type::matches| method; here too we insist of
-having a unique variant match the specified parameter type. Our logic follows
-that overload resolution closely, including the fact that a match is stored away
-temporarily to see if a second matching variant exists, in which case we throw
-an error for ambiguity instead of returning the initial match. Here too the call
-of |matches| sets a possibly nonzero |shift_amount| by which the polymorphic
-type variables from the overloaded binding are to be shifted upwards to steer
-clear of any type variables (fixed or not) in |target|; the need to do so arises
-even when |target| is monomorphic but involves type variables fixed in the
-context. A difference is that here we need construct the entire function type
+@ When a variant does not match the specified type identically, we can still
+accept the operator case if unification succeeds. This can be either because the
+specified type is an instance of a more generic variant specification (in which
+case the function extracted will have a more specific type than the variant in
+the table), or because the specified type is more generic (as long as it selects
+a unique variant; this may simply be a terse way to select a variant without
+spelling out its type in full). Finding the right variant in the table then
+resembles overloading resolution in function calls, and can be done using the
+|type::matches| method; here too we insist of having a unique variant match the
+specified parameter type. Our logic follows that overload resolution closely,
+including the fact that a match is stored away temporarily to see if a second
+matching variant exists, in which case we throw an error for ambiguity instead
+of returning the initial match. Here too the call of |matches| sets a possibly
+nonzero |shift_amount| by which the polymorphic type variables from the
+overloaded binding are to be shifted upwards to steer clear of any type
+variables (fixed or not) in |target|; the need to do so arises even when
+|target| is monomorphic but involves type variables fixed in the context. A
+difference is that here we need construct the entire function type
 |deduced_type| obtained by unification, rather than just the return type. The
 factory function |type_expr::function| will move from its argument types, so we
 perform two separate substitutions to provide those. If nothing is found here,
 we fall through this code, leading to a ``no instance found'' error.
 
+A type aware variant may match here, but only if the specified type |target|
+contains neither polymorphic type variables, nor abstract types introduced in
+the context, so that we can form an instance of the type aware built-in that is
+fully informed about the argument type. If that condition is not met, we just
+ignore any type aware variant by invoking |continue|.
+
 @< See if |target| matches the argument type of a unique variant... @>=
 {
+  if (variant.is_type_aware() and (target_deg>0 or not target.is_concrete()))
+    continue;
   unsigned int op_deg = variant.poly_degree(), shift_amount;
   if (target.matches(variant.f_tp().arg_type,op_deg,shift_amount))
   {
     if (prev_match!=nullptr)
       @< Throw an error reporting an ambiguous match in operator cast @>
-    @< Write to |o| the name of operator |c->oper| with the argument type of
-       |variant|, to which the substitutions in |target.assign()| have been
-       applied @>
-    result.reset(new capture_expression(variant.value(),o.str()));
+    if (variant.is_type_aware())
+      @< Build an instance of the |variant| with argument type |target|,
+         and make |result| point to it @>
+    else
+    {
+      @< Write to |o| the name of operator |c->oper| with the argument type of
+         |variant|, to which the substitutions in |target.assign()| have been
+         applied @>
+      result.reset(new capture_expression(variant.value(),o.str()));
+    }
     auto te = type_expr::function @|
       (target.assign().substitution(variant.f_tp().arg_type,shift_amount)
       ,target.assign().substitution(variant.f_tp().result_type,shift_amount)
@@ -7467,6 +7889,24 @@ match the specified type.
     o << ']';
 }
 
+@ In the case of type aware functions, the |capture_expression| actually
+captures an instance spawned from the |variant.value()| found in the table,
+rather than that value itself. The code below is similar to what was saw for
+resolving an overloaded call of a type aware built-in, except that we capture
+the function value rather than build a call. The methods of the classes used,
+together with the unchanged type handling in processing of operator casts,
+ensure that things will behave properly when the captured function value later
+gets applied to arguments.
+
+@< Build an instance of the |variant| with argument type |target|,
+   and make |result| point to it @>=
+{ const auto& b =
+    std::static_pointer_cast<const type_aware_builtin>(variant.value());
+  auto f =
+    std::make_shared<type_aware_instance>(b->spawn(target.copy()));
+  f->print(o);
+  result.reset(new capture_expression(std::move(f),o.str()));
+}
 
 @* Assignments.
 %

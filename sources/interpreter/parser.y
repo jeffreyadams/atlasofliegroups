@@ -50,6 +50,10 @@
     atlas::interpreter::raw_patlist patl;
   } id_sp;
   atlas::interpreter::raw_patlist pl;
+  struct {
+    unsigned short arity;
+    atlas::interpreter::raw_patlist names;
+  } type_constrs;
   atlas::interpreter::type_p type_pt;
   atlas::interpreter::raw_type_list type_l;
   atlas::interpreter::raw_case_list case_l;
@@ -85,7 +89,7 @@
 %type <ini_form> formula_start
 %type <oper> operator symbol
 %type <id_code> id id_op id_eq type_or_constr
-%type <code> tilde_opt breaker typevar_list type_args settype_open
+%type <code> tilde_opt breaker typevar_list type_args setrectype_open
 %destructor { destroy_expr ($$); }
             expr expr_opt tertiary cast lettail or_expr and_expr not_expr
 	    formula operand secondary primary comprim unit selector
@@ -120,9 +124,9 @@
 	    type closed_type
 
 %type <type_l>
-            union_list_opt union_list union_list_2 type_list
+            union_list_opt union_list1 union_list2 type_list1 type_list2
 %destructor { destroy_type_list($$); }
-            union_list_opt union_list type_list union_list_2
+            union_list_opt union_list1 union_list2 type_list1 type_list2
 
 %type <id_sp1>
 	    id_spec type_spec typedef_type type_field typedef_type_field
@@ -130,10 +134,14 @@
 	    id_spec type_spec typedef_type type_field typedef_type_field
 
 %type <id_sp>
-	    param_list id_specs struct_specs union_specs
+	    param_list id_specs struct_specs union_specs type_specifications
             typedef_struct_specs typedef_union_specs
 %destructor { destroy_type_list($$.typel);destroy_pattern($$.patl); }
-	    param_list id_specs struct_specs union_specs
+	    param_list id_specs struct_specs union_specs type_specifications
+%type <type_constrs>
+	    setclosedtype_open
+%destructor { destroy_pattern($$.names); }
+	    setclosedtype_open
 
 %type <case_l>
 	    caselist tagged_caselist do_caselist tagged_do_caselist
@@ -151,9 +159,9 @@
 	    td_type td_closed_type
 
 %type <type_l>
-            td_union_list_opt td_union_list td_union_list_2 td_type_list
+            td_union_list_opt td_union_list1 td_union_list2 td_type_list2
 %destructor { destroy_type_list($$); }
-            td_union_list_opt td_union_list td_union_list_2 td_type_list
+            td_union_list_opt td_union_list1 td_union_list2 td_type_list2
 
 
 
@@ -187,9 +195,20 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	  // reducing |typevar_list| prepares type variables in |closed_type|
 	| SET_TYPE id_eq type_spec '\n'
 	  { type_define_identifier($2,$3.type_pt,0,$3.ip,@$); YYABORT; }
-	| settype_open '[' type_equations ']' '\n'
+	| setrectype_open '[' type_equations ']' '\n'
 	  { process_type_definitions($3,$1,@$); YYABORT; }
-
+	| setclosedtype_open type_specifications ')'
+	  { lex->mid_closed_def(); } // a mid-rule action
+	  '=' '(' type_list1 '|' declarations ')'
+	  { type_list impl_types($7); impl_types.reverse();
+	    let_list method_decls($9); method_decls.reverse();
+	    lex->pop_nest(); // terminate range of type variables
+	    process_closed_type_definition
+	      ($1.names,$1.arity,
+	       make_tuple_type($2.typel),reverse_patlist($2.patl),
+	       impl_types.release(), method_decls.release(), @$);
+	    YYABORT;
+	  }
 	| QUIT	'\n'		{ *verbosity =-1; } /* causes immediate exit */
 	| SET IDENT '\n' // set an option; option identifiers have lowest codes
 	  { unsigned n=$2-lex->first_identifier();
@@ -892,39 +911,42 @@ type	: PRIMTYPE	{ $$=make_prim_type($1); }
 	| TYPE_ID	{ $$ = make_tabled_type($1,nullptr); }
 	| TYPE_CONSTR '<' type '>'
 	  { $$=make_tabled_type($1,make_type_singleton($3)); }
-	| TYPE_CONSTR '<' type_list '>' { $$=make_tabled_type($1,$3); }
+	| TYPE_CONSTR '<' type_list2 '>' { $$=make_tabled_type($1,$3); }
 	| closed_type
 	| TYPE_VAR { $$=make_type_variable($1); }
 ;
 
-type_list // at least 2 comma-separated |type|s
-	: type ',' type  { $$=make_type_list(make_type_singleton($1),$3); }
-	| type_list ',' type { $$=make_type_list($1,$3); }
+type_list1
+	: type { $$ = make_type_singleton($1); }
+	| type_list2
+;
+type_list2 // at least 2 comma-separated |type|s
+	: type_list1 ',' type { $$=make_type_list($1,$3); }
 ;
 
 closed_type
-	: '(' union_list ')'	{ $$=make_union_type($2); }
+	: '(' union_list1 ')'	{ $$=make_union_type($2); }
 	| '(' union_list_opt ARROW union_list_opt ')'
 	  { $$=make_function_type(make_union_type($2),make_union_type($4)); }
-	| '[' union_list ']'	{ $$=make_row_type(make_union_type($2)); }
+	| '[' union_list1 ']'	{ $$=make_row_type(make_union_type($2)); }
 ;
 
 union_list_opt // 0 or more comma-or-bar-separated |type|s, as type list
 	:   { $$=make_type_singleton(make_tuple_type(nullptr)); }
-	| union_list
+	| union_list1
 ;
 
-union_list
+union_list1
 	: type { $$ = make_type_singleton($1); }
-	| union_list_2
+	| union_list2
 ;
 
-union_list_2
-	: type_list { $$ = make_type_singleton(make_tuple_type($1)); }
+union_list2
+	: type_list2 { $$ = make_type_singleton(make_tuple_type($1)); }
 	| union_list_opt '|'
 	  { $$ = make_type_list ($1, make_tuple_type(nullptr)); }
 	| union_list_opt '|' type { $$ = make_type_list($1,$3); }
-	| union_list_opt '|' type_list
+	| union_list_opt '|' type_list2
 	  { $$ = make_type_list($1,make_tuple_type($3)); }
 ;
 
@@ -957,9 +979,35 @@ id_list : IDENT
 	  }
 ;
 
-settype_open // before reducing this, the lexer must sense the following '['
+setrectype_open // before reducing this, the lexer must sense the following '['
 	: SET_TYPE { $$=0; lex->start_defining_types(); }
 	| SET_TYPE typevar_list { $$=$2; lex->start_defining_types(); }
+;
+
+setclosedtype_open
+	: SET_TYPE  '(' id_list '|'
+	  { $$.arity=0; $$.names=reverse_patlist($3);
+	    lex->start_closed_def(0,$3);
+	  }
+	| SET_TYPE typevar_list  '(' id_list '|'
+	  { $$.arity=$2; $$.names=reverse_patlist($4);
+	    lex->start_closed_def($2,$4);
+	  }
+;
+
+type_specifications
+	: type IDENT
+	  { $$.typel=make_type_singleton($1);
+	    atlas::interpreter::raw_id_pat ip;
+	    ip.kind=0x5; ip.name=$2;
+	    $$.patl=make_pattern_node(nullptr,ip);
+	  }
+	| type_specifications ',' type IDENT
+	  { $$.typel=make_type_list($1.typel,$3);
+	    atlas::interpreter::raw_id_pat ip;
+	    ip.kind=0x5; ip.name=$4;
+	    $$.patl=make_pattern_node($1.patl,ip);
+	  }
 ;
 
 type_equations : type_equation
@@ -972,9 +1020,9 @@ type_equation
 ;
 
 typedef_type
-	:'[' td_union_list ']'
+	:'[' td_union_list1 ']'
 	  { $$.type_pt=make_row_type(make_union_type($2)); $$.ip.kind=0x0; }
-	| '(' td_union_list_2 ')'
+	| '(' td_union_list2 ')'
 	  { $$.type_pt=make_union_type($2); $$.ip.kind=0x0; }
 	| '(' td_union_list_opt ARROW td_union_list_opt ')'
 	  { $$.type_pt=
@@ -994,7 +1042,7 @@ typedef_type
 	| TYPE_CONSTR '<' td_type '>'
 	  { $$.type_pt=make_tabled_type($1,make_type_singleton($3));
 	    $$.ip.kind=0x0; }
-	| TYPE_CONSTR '<' td_type_list '>'
+	| TYPE_CONSTR '<' td_type_list2 '>'
 	  { $$.type_pt=make_tabled_type($1,$3); $$.ip.kind=0x0; }
 ;
 
@@ -1005,39 +1053,39 @@ td_type	: PRIMTYPE	 { $$=make_prim_type($1); }
 	| type_or_constr { $$ = make_tabled_type($1,nullptr); }
 	| TYPE_CONSTR '<' td_type '>'
 	  { $$=make_tabled_type($1,make_type_singleton($3)); }
-	| TYPE_CONSTR '<' td_type_list '>' { $$=make_tabled_type($1,$3); }
+	| TYPE_CONSTR '<' td_type_list2 '>' { $$=make_tabled_type($1,$3); }
 	| td_closed_type
 	| TYPE_VAR { $$=make_type_variable($1); }
 ;
 
-td_type_list // at least 2 comma-separated |type|s
+td_type_list2 // at least 2 comma-separated |type|s
 	: td_type ',' td_type  { $$=make_type_list(make_type_singleton($1),$3); }
-	| td_type_list ',' td_type { $$=make_type_list($1,$3); }
+	| td_type_list2 ',' td_type { $$=make_type_list($1,$3); }
 ;
 
 td_closed_type
-	: '(' td_union_list ')'	{ $$=make_union_type($2); }
+	: '(' td_union_list1 ')'	{ $$=make_union_type($2); }
 	| '(' td_union_list_opt ARROW td_union_list_opt ')'
 	  { $$=make_function_type(make_union_type($2),make_union_type($4)); }
-	| '[' td_union_list ']'	{ $$=make_row_type(make_union_type($2)); }
+	| '[' td_union_list1 ']'	{ $$=make_row_type(make_union_type($2)); }
 ;
 
 td_union_list_opt // 0 or more comma-or-bar-separated |type|s, as type list
 	:   { $$=make_type_singleton(make_tuple_type(nullptr)); }
-	| td_union_list
+	| td_union_list1
 ;
 
-td_union_list
+td_union_list1
 	: td_type { $$ = make_type_singleton($1); }
-	| td_union_list_2
+	| td_union_list2
 ;
 
-td_union_list_2
-	: td_type_list { $$ = make_type_singleton(make_tuple_type($1)); }
+td_union_list2
+	: td_type_list2 { $$ = make_type_singleton(make_tuple_type($1)); }
 	| td_union_list_opt '|'
 	  { $$ = make_type_list ($1, make_tuple_type(nullptr)); }
 	| td_union_list_opt '|' td_type { $$ = make_type_list($1,$3); }
-	| td_union_list_opt '|' td_type_list
+	| td_union_list_opt '|' td_type_list2
 	  { $$ = make_type_list($1,make_tuple_type($3)); }
 ;
 

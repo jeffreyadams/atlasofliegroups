@@ -301,41 +301,30 @@ shared_share Id_table::address_of(id_type id)
 
 @ The method |Id_table::swallow| transforms a |type_expr| from an external form
 produced by the parser into one used internally, updating the representation of
-user-defined types and type constructors. The parser stores these as nodes with
-|raw_kind()==tabled|, but in it stores just the code for the type identifier; it
-is the task of |swallow| to replace it by the actual tabled number of the
-corresponding type (constructor). It used to be the case that for defined type
-identifiers |Id_table| could store any type rather than just one of the |tabled|
-kind. We then used |simple_subst| (with appropriate arguments), rather than
-|user_type| as we do below. This is no longer the case: even in the case of a
-type constructor, |Id_table| stores a |tabled| type with an empty argument list.
+user-defined types and type constructors. The parser stores these as |type_expr|
+values with |raw_kind()==tabled|, but the |tabled_nr| stored is just the code
+for the type identifier. It is the task of |swallow| to replace it by the actual
+tabled number of the corresponding type (constructor) found in our |Id_table|;
+it may also return a |closed_type| instead if that is what the table stores. The
+table stores no type arguments; |swallow| will generate these from what the
+parser produced.
 
-For any |type_expr| whose |raw_kind()| is not |tabled|, the recursive method
-|swallow| simply descends into its subexpressions. When a |tabled| case is
-encountered, we look up the type |defined_type| associated to the identifier,
-which must succeed since the scanner only produces nodes with
-|raw_kind()==tabled| for identifiers that our |Id_table| had reported to have
-the property |is_defined_type| (or the stronger |is_type_constructor|). Then we
-check the number of type arguments against its arity, and also recursively
-descend into those arguments. Finally we build a new |tabled| reference by
-calling |type_expr::user_type|, taking the transformed list of argument types,
-and using |defined_type.tabled_nr()| as new |tabled_nr()| value.
+For any |type_expr| whose |tag| is not |tabled|, the recursive method |swallow|
+simply descends into its subexpressions. When a |tabled| case is encountered, we
+look up the identifier; no value should be associated (the scanner only produces
+tokens with token type |TYPE_ID| or |TYPE_CONSTR| for identifiers for which
+|Id_table::is_defined_type| holds, and the parser then calls
+|make_tabled_type|), but a |defined_type| should be. This type should satisfy
+|is_symbolic|, and |swallow| will return a |type_expr| of the same kind. It
+checks the number of type arguments provided by the parser against the arity of
+the type found, and also recursively descends into those arguments; a call of
+|type_expr::user_type| combines the kind and |stored_nr()| of the |defined_type|
+with the transformed list of argument types.
 
 The above statement that |is_defined_type| always holds in the |tabled| case is
 not true when one is processing grouped type definitions, since an as yet unseen
 identifier will be scanned as type identifier there. For this reason, calling
 this |swallow| method should be avoided when processing such definitions.
-
-Since we are assuming that type definitions stored in |Id_table| directly refer
-to a |type_map| entry, the effect of |swallow| is to make a copy of the type in
-which only the |tabled_nr()| values have been changed. Rather than making a
-copy, this could have been achieved in-place using calls of the
-|type_expr::replace_tabled_nr| method, provided our method took~|tp| as a
-non-|const| reference argument (maybe also returning the same). This in turn
-would require making changes in calling functions to be able to pass such a
-reference, possibly involving making a copy of a |type_expr| value there; we
-decided that the very marginal gains in simplicity and efficiency of our current
-method that could so be achieved do not justify making such changes.
 
 @< Global function def... @>=
 type_expr Id_table::swallow(const type_expr& tp) const
@@ -351,20 +340,23 @@ type_expr Id_table::swallow(const type_expr& tp) const
         aux.push_back(swallow(*it));
       return type_expr::tuple_or_union(tp.raw_kind(),aux.undress());
     }
+    case closed_type: // should not happen, but treated together with |tabled|
     case tabled: // this is where something happens
-    { const id_type id = tp.tabled_nr();
+    { const id_type id = tp.stored_nr();
     @/const auto* p = type_of(id);
       assert(p!=nullptr); // the scanner ensures this
       const type& defined_type = *p;
-      assert(defined_type.kind()==tabled);
-      unsigned int len=length(tp.tabled_args()), degree = defined_type.degree();
+      assert(defined_type.is_symbolic());
+      unsigned int len=length(tp.ctor_args()), degree = defined_type.degree();
       if (len!=degree)
         @< Throw a |program_error| signalling an incorrectly applied type symbol
            or type constructor @>
       dressed_type_list arg_list;
-      for (wtl_const_iterator it(tp.tabled_args()); not it.at_end(); ++it)
+      for (wtl_const_iterator it(tp.ctor_args()); not it.at_end(); ++it)
         arg_list.push_back(swallow(*it));
-      return type_expr::user_type(defined_type.tabled_nr(),arg_list.undress());
+      return type_expr::user_type @|
+        (defined_type.stored_nr(),arg_list.undress(),
+         defined_type.kind()==closed_type);
     }
   default: return tp.copy(); // undetermined should not occur
   }
@@ -450,11 +442,13 @@ class overload_data
 { shared_function val;
 @+func_type tp;
 @+unsigned int degree;
+@+bool type_aware;
   source_location loc;
 public:
-  overload_data(shared_function&& val,func_type&& t, unsigned int deg,
+  overload_data(shared_function&& val,func_type&& t, unsigned int deg, bool ta,
                 const source_location& loc)
-  : val(std::move(val)), tp(std::move(t)), degree(deg), loc(loc) @+{}
+  : val(std::move(val)), tp(std::move(t)), degree(deg), type_aware(ta), loc(loc)
+  @+{}
   overload_data (overload_data&& x) = default;
   overload_data& operator=(overload_data&& x) = default;
    // no copy-and-swap needed
@@ -463,6 +457,7 @@ public:
   const func_type& f_tp() const @+{@; return tp; }
   unsigned int poly_degree() const@+{@; return degree; }
   bool is_polymorphic() const@+{@; return degree>0; }
+  bool is_type_aware() const@+{@; return type_aware; }
   const source_location& location() const@+{@; return loc; }
 };
 
@@ -490,8 +485,8 @@ public:
 private:
   map_type table;
 public:
-  overload_table (const Id_table&) =delete;
-  overload_table& operator=(const Id_table&) = delete;
+  overload_table (const overload_table&) =delete;
+  overload_table& operator=(const overload_table&) = delete;
   overload_table() : table() @+{} // the default and only constructor
 @) // accessors
   const variant_list* variants(id_type id) const
@@ -509,7 +504,7 @@ public:
     return p==table.end() ? nullptr : &p->second;
   }
   void add(id_type id, shared_function v, const type& t,
-          const source_location& loc); // insertion
+          const source_location& loc, bool type_aware=false); // insertion
   bool remove(id_type id, const type_expr& arg_t); //deletion
 };
 
@@ -637,18 +632,20 @@ overloaded instances.
 
 @< Global function def... @>=
 void overload_table::add
-  (id_type id, shared_function val, const type& tp, const source_location& loc)
+  (id_type id, shared_function val, const type& tp, const source_location& loc,
+   bool type_aware)
 { assert (tp.top_kind()==function_type);
   func_type ftype(tp.f_type());
   auto its = table.equal_range(id);
   if (its.first==its.second) // a fresh overloaded identifier
   {
     auto pos=table.emplace_hint(its.first,id,variant_list());
-    pos->second.emplace_back(std::move(val), std::move(ftype), tp.degree(),loc);
+    pos->second.emplace_back
+      (std::move(val), std::move(ftype), tp.degree(), type_aware, loc);
   }
   else
     @< Insert an overload for function |val| with function type |ftype| and
-       degree |deg| into the list of variants at |its->first.second|,
+       degree |tp.degree()| into the list of variants at |its->first.second|,
        or throw an error if there is an incompatibility with a
        previously existing variant @>
 }
@@ -664,9 +661,10 @@ case, the iterator returned points at the node to overwrite.
   bool overwrite;
   auto it=locate_overload(id,slot,ftype.arg_type,overwrite); // may |throw|
   if (overwrite)     // equality found
-    *it = overload_data(std::move(val),std::move(ftype),tp.degree(),loc);
+    *it = overload_data
+          (std::move(val),std::move(ftype),tp.degree(),type_aware,loc);
   else
-    slot.emplace(it,std::move(val),std::move(ftype),tp.degree(),loc);
+    slot.emplace(it,std::move(val),std::move(ftype),tp.degree(),type_aware,loc);
 }
 
 @ The |remove| method allows removing an entry from the overload table, for
@@ -759,23 +757,23 @@ done via |analyse_types|, which takes care of catching any exceptions thrown,
 and printing error messages.
 
 @< Declarations of exported functions @>=
-type analyse_types(const expr& e,expression_ptr& p, unsigned int fc);
+type analyse_types(const expr& e,type tp, expression_ptr& p);
 
-@~The function |analyse_types| switches the roles of the output parameter
-|type| of |convert_expr| and its return value: the former becomes the return
-value and the latter is assigned to the output parameter~|p|. The initial
-value of |type| passed to |convert_expr| is a completely unknown type. Since
-we cannot return any type from |analyse_types| in the presence of errors, we
-map these errors to |runtime_error| after printing their error message;
-that error is an exception for which the code that calls us will have to
-provide a handler anyway, and which handler will serve as a more practical
-point to really resume after an error.
+@~The function |analyse_types| switches the roles of the output parameter |type|
+of |convert_expr| and its return value: the former becomes the return value and
+the latter is assigned to the output parameter~|p|. The initial value of |type|
+is usually completely undetermined (|type::bottom(0)|), but since this is not
+always the case, we have made |tp| an argument of |analyse_types| for more
+flexibility. Since we cannot return any type from |analyse_types| in the
+presence of errors, we map these errors to |runtime_error| after printing their
+error message; that error is an exception for which the code that calls us will
+have to provide a handler anyway, and which handler will serve as a more
+practical point to really resume after an error.
 
 @< Global function definitions @>=
-type analyse_types(const expr& e,expression_ptr& p, unsigned int fc)
+type analyse_types(const expr& e, type tp, expression_ptr& p)
 { try
-  { type tp=type::bottom(0); // this starts out as an |undetermined_type|
-    p = convert_expr(e,tp);
+  { p = convert_expr(e,tp);
     tp.wring_out();
     return tp;
   }
@@ -851,6 +849,11 @@ void type_define_identifier
    const source_location& loc);
 void process_type_definitions
   (raw_typedef_list l, unsigned int deg, const source_location& loc);
+void process_closed_type_definition
+  (raw_patlist idl, unsigned int arity, @|
+   type_p iftp, raw_patlist iface, @|
+   raw_type_list reptps, raw_let_list imp, @|
+   const source_location& loc);
 void set_back_trace(const simple_list<std::string>& back_trace);
 void show_ids(std::ostream& out);
 void type_of_expr(expr_p e);
@@ -961,7 +964,7 @@ public:
   definition_group(unsigned int n_ids);
 @) // manipulators
   void add(id_type id,type&& t, unsigned char flags);
-  void thread_bindings (const id_pat& pat,const type_expr& tp);
+  void thread_bindings (const id_pat& pat,const type_expr& tp,bool is_const);
   association::iterator begin() @+{@; return bindings.begin(); }
   association::iterator end() @+{@; return bindings.end(); }
 @) // accessors
@@ -974,22 +977,26 @@ simplified because they do not need to maintain |lexical_context| in any way (in
 particular there is no need for a user-defined destructor). We also include
 |thread_bindings| now as a method rather than a free function as it was in the
 \.{axis.w} module; compared to that function we can dispense of the destination
-argument in (recursive) calls, and it also lacks the constness-overriding
-argument for which there is no use in global definitions. The |lvl| parameter is
+argument in (recursive) calls. The |lvl| parameter is
 also omitted, as the global definition groups do not occur within the scope of
-any locally introduced type variables, so the level is always~|0|.
+any locally introduced type variables, so the level is always~|0|. We maintain
+the |is_const| argument, but default it to |false|; it will be set to |true|
+when used for setting interface values for close types, as it is undesirable
+to allow destroying the interface by assignment to identifiers holding interface
+values.
 
 @< Global function definitions @>=
 definition_group::definition_group(unsigned int n_ids)
 : bindings(), constness(n_ids)
 {@; bindings.reserve(n_ids); }
 @)
-void definition_group::thread_bindings(const id_pat& pat,const type_expr& te)
+void definition_group::thread_bindings
+  (const id_pat& pat,const type_expr& te,bool is_const)
 { if ((pat.kind & 0x1)!=0)
   {
     type tp = type::wrap(te,0); // no fixed type variables at outer level
     unsigned char flags = pat.kind;
-    if (tp.is_polymorphic())
+    if (is_const or tp.is_polymorphic())
       flags |= 0x4; // polymorphic type implies constant
     add(pat.name,std::move(tp),flags);
   }
@@ -1000,7 +1007,7 @@ void definition_group::thread_bindings(const id_pat& pat,const type_expr& te)
     wtl_const_iterator t_it(tex.tuple());
     for (auto p_it=pat.sublist.begin(); not pat.sublist.at_end(p_it);
          ++p_it,++t_it)
-      thread_bindings(*p_it,*t_it);
+      thread_bindings(*p_it,*t_it,is_const);
   }
 }
 
@@ -1118,11 +1125,11 @@ void do_global_set(id_pat&& pat, const expr& rhs, int overload,
   { phase=0; // type check
     expression_ptr e;
     {
-      type tp=analyse_types(rhs,e,0);
+      type tp=analyse_types(rhs,type::bottom(0),e);
       if (not tp.bake().can_specialise(pattern_type(pat)))
         @< Report that type |tp| of |rhs| does not have required structure,
            and |throw| @>
-      b.thread_bindings(pat,tp.unwrap());
+      b.thread_bindings(pat,tp.unwrap(),false);
       // match identifiers and their future types
     }
 @)
@@ -1359,15 +1366,15 @@ void global_declare_identifier(id_type id, type_p t, const source_location& loc)
 redefined. It removes any bindings in |global_overload_table| of field names
 that were introduced together with the type name, if they are still present
 (they could have been overridden or forgotten in the mean time). Then it
-removes the entry |id| from |type_expr::type_map|.
+removes the entry |id| from |type_expr::open_type_table|.
 
 @< Global function definitions @>=
 void clean_out_type_identifier(id_type id)
 {
   const type* defined_type = global_id_table->type_of(id);
-  if (defined_type->kind()!=tabled)
+  if (not defined_type->is_symbolic())
     return; // we cannot clear out the pro/in/jector functions, not recorded
-  auto type_number = defined_type->tabled_nr();
+  auto type_number = defined_type->stored_nr();
   const auto& fields = type_expr::fields(type_number);
   if (not fields.empty())
   { if (defined_type->kind()==tuple_type)
@@ -1451,21 +1458,35 @@ void global_forget_overload(id_type id, type_p t)
 
 @*2 Defining type identifiers.
 %
-There are two types of type definitions: simple ones that simply equate a new
-type name to an existing type expression, and grouped type definitions that may
-introduce recursive and mutually recursive types. Syntactically, the distinction
-is marked by square brackets around the list of definition clauses in the latter
-case, and the placement of formal type parameters of the definition in case of a
-type constructor definition. In simple type constructor definitions the
-parameter list is postfixed to the constructor name in pointy brackets to
-resemble an instantiation of the constructor, whereas in a grouped type
-constructor definition the formal type parameter list, which is common to every
-member of the group, is inserted before the opening square bracket.
+There are three kinds of type definitions: first simple ones that simply equate
+a new type name to an existing type expression, second grouped type definitions
+that may introduce recursive and mutually recursive types, and third closed type
+definitions, which hide the representation and implementation of new types so
+that these henceforth behave like built-in types. All three forms allow taking
+one or more type parameters, so that they define type constructors rather than
+types.
 
+There are important syntactic differences between these three kinds of
+type definition, which is related to the different kinds of information they
+require to be specified, and that are somewhat uglified by the lexical necessity
+to have the range of temporary type identifiers (used to represent parameter
+types) to be delimited at a lexical level. For this reason, the second kind
+(grouped definitions) can introduce any type parameters by simply listing them
+before the group opens, but the first kind, which introduces parameter types in
+pointy brackets after the type name resembling the syntax of type constructor
+instantiation, needs an explicit symbol `\.!' to terminate their range. At the
+time of writing this no syntax for the third kind has yet been decided, but
+since closed type definitions will certainly have grouping symbols they might
+follow the idea of the second kind. In the end it might be best to at least
+allow a more uniform approach by letting these definitions be allowed inside a
+grouping introduced by the \&{any\_type} keyword.
+
+@*3 Defining new type names as abbreviations for existing types.
+%
 We start with the simple type definitions, which are handled by the function
 |type_define_identifier|. Its argument |id| is a new type identifier that is
 defined to stand for the type expression~|t|, or for a type constructor with
-|deg| type arguments is |deg>0|. A fourth argument~|ip| may provide a list of
+|deg| type arguments if |deg>0|. A fourth argument~|ip| may provide a list of
 ``field names'' (which will be set to certain functions related to the type)
 that can be useful in the case of a tuple or union type. Even though |ip| stands
 for ``identifier pattern'', the grammar restricts it to be a simple list of
@@ -1615,7 +1636,9 @@ projector or injector functions from |jectors| to the global overload table.
   *output_stream << '.' << std::endl;
 }
 
-@ We now come to grouped type definitions, invoked using a \&{set\_type} command
+@*3 Defining groups of possibly mutually recursive types.
+%
+We now come to grouped type definitions, invoked using a \&{set\_type} command
 with brackets around the list of definition clauses (which might be just a
 single definition). Such a command is handled by calling
 |process_type_definitions| with the list of type definition clauses as argument.
@@ -1642,9 +1665,9 @@ void process_type_definitions
   @/@< For each equation |i| in |defs| set |position[id]=i| for the
        identifier |id| defined by the equation; |throw| a |program_error|
        if any identifiers in the equation are problematic @>
-  @/@< Replace, for any type with |kind==tabled| occurring in |defs|,
-       the stored identifier code |id| by |position[id]| if that is set, or else
-       by the |tabled_nr()| obtained from its type in |global_id_table| @>
+  @/@< Replace, for any type occurring in |defs| satisfying |is_symbolic()|,
+       the stored code |id| by |global_id_table->type_of(id)->stored_nr()|,
+       or if |tag=tabled| and |position[id]| is defined, by |position[id]| @>
 @)
 @/  std::vector<std::pair<id_type,const_type_p> > b; b.reserve(n_defs);
     for (auto it=defs.wcbegin(); not defs.at_end(it); ++it)
@@ -1707,7 +1730,7 @@ status as a type identifier would make the field name unusable.
 
 @ The code below serves to prohibit introducing the name of an existing (global)
 variable or function as a type name, which would make the former inaccessible.
-We call the method |global_id_table.is_ordinary| to test for this. To make it
+We call the method |global_id_table->is_ordinary| to test for this. To make it
 possible to reload a script a second time without error, we do allow redefining
 a previous type identifier again as a type identifier.
 
@@ -1742,10 +1765,10 @@ can tell whether the latter is the case and check that the type constructor is
 used properly.
 
 Having the parser store an identifier code in a place that normally holds a
-tabled number (an index into |type_expr::type_map|) used to be a trick used only
-for the purpose of representing types in the right hand side of grouped type
-definitions. It is however now the case throughout, and all type expressions
-built in the parser must be either transformed by calling
+tabled number (an index into |type_expr::open_type_table|) used to be a trick
+used only for the purpose of representing types in the right hand side of
+grouped type definitions. It is however now the case throughout, and all type
+expressions built in the parser must be either transformed by calling
 |global_id_table->swallow|, or else be given some other special treatment, as
 will be the case here.
 
@@ -1754,41 +1777,71 @@ side type expression, with the actual replacement detailed in a later module.
 Traversing type expressions is naturally done recursively, but we are getting a
 bit bored by defining a recursive function for every little task, so we do this
 one iteratively instead, with the aid of a manually maintained queue |work| of
-pointers to types remaining to be visited (a stack would have done equally
-well).
+pointers to types remaining to be visited.
 
-@< Replace, for any type with |kind==tabled| occurring in |defs|... @>=
-{ queue<type_p> work;
+@< Replace, for any type occurring in |defs| satisfying |is_symbolic()|... @>=
+{ containers::queue<type_p> work;
   for (auto it=defs.begin(); not defs.at_end(it); ++it)
   {
-    work.push(it->tp);
-    while (not work.empty())
+    work.push(it->tp); // push a pointer, ownership remains in |defs|
+    do // |while (not work.empty())@;|
     { type_expr& t = *work.front();
-      work.pop(); // copy pointer as non-owned reference, then pop pointer
+      work.pop(); // now |t| is a non-owned reference
       switch(t.raw_kind())
-      { default: break;
-      case function_type:
+      { @+ default:
+      break; case function_type:
       @/{@; auto f=t.func();
           work.push(&f->result_type);
           work.push(&f->arg_type);
         }
-      break;
-      case row_type: work.push(&t.component_type());
-      break;
-      case tuple_type: case union_type:
+      break; case row_type: work.push(&t.component_type());
+      break; case tuple_type: case union_type:
         for (wtl_iterator it(t.tuple()); not it.at_end(); ++it)
           work.push(&*it);
-      break;
-      case tabled:
-        for (wtl_iterator it(t.tabled_args()); not it.at_end(); ++it)
+      break; case tabled:
+        for (wtl_iterator it(t.ctor_args()); not it.at_end(); ++it)
           work.push(&*it);
         @< Replace |t.tabled_nr()| by the number that either |position| or the
            |global_id_table| associates to it; if there is none
            |throw| a |program_error| @>
-      break;
-      }
-    }
-  }
+      break; case closed_type:
+        { for (wtl_iterator it(t.ctor_args()); not it.at_end(); ++it)
+            work.push(&*it);
+          id_type id = t.closed_nr();
+          @< Check that the type |tp| in |*global_id_table| stored for |id| is
+             a defined type or type constructor of degree matching the length
+             of |t.ctor_args()|... @>
+        }
+      } // |switch(t.raw_kind())|
+    } while (not work.empty());
+  } // |for(it)|
+}
+
+@ The following code is included twice, once for the case of a |closed_type|
+being used in the right hand side of a type definition, and a second time for
+the case of a |tabled| type reference that is not internal to the group being
+currently defined. The manipulation done here is necessary because the right
+hand sides of recursive type definitions have not been (and should not be)
+passed through |type_expr::swallow|.
+
+@< Check that the type |tp| in |*global_id_table| stored for |id| is a defined
+   type or type constructor of degree matching the length of |t.ctor_args()|,
+   and on success replace the type number stored in |t| by |tp.stored_nr()| @>=
+if (global_id_table->is_defined_type(id))
+{
+  const type& defined_type = *global_id_table->type_of(id);
+  assert(defined_type.is_symbolic());
+  unsigned int len=length(t.ctor_args()), degree = defined_type.degree();
+  if (len!=degree)
+     @< Throw a |program_error| signalling an incorrectly applied type symbol
+        or type constructor @>
+  t.replace_stored_nr(defined_type.stored_nr());
+}
+else
+{ std::ostringstream o;
+  o << "Identifier '" << main_hash_table->name_of(id) @|
+    << "' does not refer to any type";
+  throw program_error(o.str());
 }
 
 @ We come here for any type subexpression of a right hand side that is given as
@@ -1803,7 +1856,7 @@ that |global_id_table->swallow| performs, but we cannot use that method since it
 does not make the exception for the latter case (and it applies itself
 recursively to type constructor arguments, which application we cannot control
 or suppress). So instead we make the replacement explicitly using the
-|type_expr::replace_tabled_nr| method specifically created for this occasion.
+|type_expr::replace_stored_nr| method specifically created for this occasion.
 In-place replacement is possible since we own the type expressions in |defs|.
 
 Here we explicitly use that the |global_it_table| entry for a user defined type
@@ -1811,7 +1864,7 @@ Here we explicitly use that the |global_it_table| entry for a user defined type
 modify the type structure prepared by the parser in-place by inserting the
 number of the tabled type into the type node. In the case of types to be defined
 in the current group, we actually insert a reference to a tabled entry that has
-yet to be created (so currently out of bounds for |type_expr::type_map|),
+yet to be created (so currently out of bounds for |type_expr::open_type_table|),
 knowing that |type_expr::add_typedefs| is designed to handle such references.
 For calls of existing type constructors, the in-place operation allows us to not
 worry about the fact that any type arguments will be visited by the current
@@ -1822,13 +1875,13 @@ since the scanner marks all identifiers as types during grouped type
 definitions, we must be prepared to see identifiers that are not known as type
 identifiers at all, and to throw a |program_error| in such cases.
 
-@<  Replace |t.tabled_nr()| by the number that either |position| or the
-    |global_id_table| associates to it... @>=
+@< Replace |t.tabled_nr()| by the number that either |position| or the
+   |global_id_table| associates to it... @>=
 { id_type id = t.tabled_nr();
   if (position.count(id)>0)
     // then type is defined in our group: replace by future tabled reference
   {
-    if (t.tabled_args()!=nullptr)
+    if (t.ctor_args()!=nullptr)
     { std::ostringstream o;
       o << "Type '" << main_hash_table->name_of(id) @|
         << "' being defined cannot be given type arguments";
@@ -1836,24 +1889,12 @@ identifiers at all, and to throw a |program_error| in such cases.
     }
     auto it = position.find(id);
     assert(it!=position.end());
-    t.replace_tabled_nr(type_expr::table_size()+it->second);
-  }
-  else if (global_id_table->is_defined_type(id))
-  {
-    const type& defined_type = *global_id_table->type_of(id);
-    assert(defined_type.kind()==tabled); // defined types are stored this way
-    unsigned int len=length(t.tabled_args()), degree = defined_type.degree();
-    if (len!=degree)
-       @< Throw a |program_error| signalling an incorrectly applied type symbol
-          or type constructor @>
-    t.replace_tabled_nr(defined_type.tabled_nr());
+    t.replace_stored_nr(type_expr::table_size()+it->second);
   }
   else
-  { std::ostringstream o;
-    o << "Identifier '" << main_hash_table->name_of(id) @|
-      << "' does not refer to any type";
-    throw program_error(o.str());
-  }
+    @< Check that the type |tp| in |*global_id_table| stored for |id| is a
+       defined type or type constructor of degree matching the length of
+       |t.ctor_args()|... @>
 }
 
 @ When we come here, the newly defined types from |defs| have been tested for
@@ -2013,6 +2054,404 @@ instead); this avoids needing to allocate an actual static variable.
 
 }
 
+@*3 Defining new types that hide their representation and implementation.
+%
+When a user introduces a new closed type, they must provide several things: a
+name for the type, an interface for it (which consists of a number of
+identifiers that will represent the interface values, usually functions, and
+their types in terms of the new type name), and then a representation type that
+will give the under-the-hood structure of values of the new type, and finally an
+implementation of the interface (values whose types are those of the interface
+identifiers with the representation type substituted for the new type name. All
+this can still be complicated a bit by allowing more than one closed type to be
+defined simultaneously (since in some cases it would be awkward to for the user
+to split an interface that involves several new types into separate interfaces
+for each one), and by the fact that our definition might be parametric over one
+or more abstracted types, so that we are defining closed type constructors
+rather than types. We do insist, as is quite natural, that multiple closed types
+constructors introduced in the same definition have the same arity.
+
+@ The function |process_closed_type_definition| that will be called from the
+parser to process the definition of one or more closed types or type
+constructors has quite a few arguments to accommodate its possibilities. These
+are: the list |idl| of type identifiers for the types or constructors being
+defined, their common |arity|, the combined type |iftp| of the interface
+identifiers, a list |iface| of interface identifiers, a list |reptps| of
+representation types for the new closed types, and finally a list |imp| of
+identifier=expression pairs, which provide implementations for the interface
+identifiers. The types name(s) being defined can be used in the interface
+type~|iftp|, and after the definition these bindings are the main thing the
+system remembers about the new closed type(s). Our initial idea was to represent
+them by type variables, for which the representation types can be substituted to
+obtain the type required for the interface implementation, but that does not
+work when |arity>0| since type variables cannot take type arguments. Instead we
+therefore represent them in the same way that they will be after processing of
+the definition, namely as closed types or type constructors, numbering them from
+the current |closed_count()| upwards, with any type arguments explicitly
+provided. In |reptps| these new type names should not occur, but the first
+|arity| type variables can, and represent the formal type parameters in terms of
+which each type in |reptps| specifies a type constructor of that |arity|. These
+type variables can also be used in |iftp| to represent the parameter types of
+the closed type constructor(s).
+
+The identifiers in |imp| could be considered redundant, since they repeat those
+given in~|iface|. However, having the user repeat the name of each
+implementation value helps avoiding errors; it also allows us to check the
+correspondence of the implementation with the specification part, and even
+allows the user to reorder implementations, maybe add auxiliaries, and still get
+proper processing. The identifier bindings are processed sequentially as if
+separated by \&{then} in a \&{let} expression, and at the end a tuple of them in
+specification order is built.
+
+Since the parser nowhere else passes a list of things that have to be
+identifiers (here standing for new type names), we use the more general
+``pattern list'' tot represent |idl| and |iface|; in both cases the parser
+ensures that each pattern is just a single |name|. We do test that each name in
+|iface| has a definition in |imp|.
+
+The relative order of the last two module in the |try| block is important: the
+new types must be present in |type_expr::closed_info| in order for the proper
+types to be printed when the interface identifiers are being stored into the
+variable and overload tables.
+
+@< Global function definitions @>=
+void process_closed_type_definition
+  (raw_patlist idl, unsigned int arity, @|
+   type_p iftp, raw_patlist iface, @|
+   raw_type_list reptps, raw_let_list imp, @|
+   const source_location& loc)
+{ std::ostringstream o;
+  patlist id_list(idl);
+  type_ptr interface_tp_p(iftp);
+  patlist interface_list(iface);
+  type_list repr_types(reptps);
+  let_list impl(imp);
+  // ensure clean-up
+@)
+  try {
+    @< While ensuring appropriate |swallow| conversions, define a vector
+       |ids| of new type identifiers, the interface |id_pat interface@;|,
+       its |type_expr interface_te@;| and a |definition_group g@;| to hold
+       the interface specification @>@;
+  @)
+    expr implementation;
+    @< Check that all components named in |interface| are defined in |impl|,
+       and set |implementation| to be a chain of \&{let} expressions ending
+       with a tuple of those components in the order of |interface| @>
+    type_expr implementation_tp;
+    @< Set |implementation_tp| to the result of substituting,
+       into |interface_te|, each of the |repr_types| for the corresponding
+       |closed_type| being defined @>
+    expression_ptr converted_impl;
+    @< Type check and convert expression |implementation| in the strong type
+      context of |implementation_tp|, and store the converted expression as
+      |converted_impl| @>
+  @)
+    @< Evaluate |converted_impl|, pushing the result on the evaluation stack @>
+    @< Update |type_expr::closed_type_table| with new... @>
+    @< Pop the value from the evaluation stack, and distribute its components
+       according to the identifiers of |interface| to variable and
+       overload tables @>
+  }
+  @< Catch block for errors thrown while processing a closed type definition @>
+}
+
+@ This module cannot have braces because it introduces some variables that need
+to survive. The hard work of giving all interface identifiers their specified
+type (which represents a type constructor if |arity>0|) is done in the final
+statement, which is easy thanks to the fact that any instance of a type
+(constructor) being defined is already represented in |iftp| by the
+|closed_type| expression that will later denote it.
+
+We must however take care that every type is passed through an appropriate call
+of |Id_table::swallow| before being used, in order to properly interpret any
+tabled or closed type references it contains, since the parser has just stored
+type identifier codes. The types in |repr_types| are to be interpreted in the
+initial state of |*global_id_table| (we let |swallow| make the substitution in
+place), but the types in |*interface_tp_p| will contain uses of the closed
+type(s) being defined here, so appropriate entries must be created for them in
+|*global_id_table| first, before calling |global_id_table->swallow|. Such an
+entry is a |type| value representing a constructor of degree |arity|, with as
+|type_expr| a closed type |new_tp| without arguments. The stored number in
+|new_tp| is the value that in the future will represent the closed type being
+defined (the actual extension of |type_expr::closed_info| has not yet been done
+when we come here, but such an extension is not necessary for
+|global_id_table->swallow| to do its work); it is computed by
+|type_expr::new_abstract_type| from the position in |id_list|; this call
+internally takes into account the current size of |type_expr::closed_info|.
+
+@< While ensuring appropriate |swallow| conversions, define a vector |ids| of
+   new type identifiers, the interface... @>=
+for (auto it = repr_types.wbegin(); not repr_types.at_end(it); ++it)
+  *it = global_id_table->swallow(*it);
+std::vector<id_type> ids;
+ids.reserve(length(id_list));
+for (auto it=id_list.begin(); not id_list.at_end(it); ++it)
+{
+  auto new_tp = type_expr::new_abstract_type(ids.size(),type_list());
+    // a new |closed_type|
+  global_id_table->add_type_def
+      (it->name,type::constructor(std::move(new_tp),arity),loc);
+  ids.push_back(it->name);
+}
+if (ids.size()!=length(reptps))
+  @< Report a wrong number of type representations in |repts| for |ids| @>
+@) // prepare the effect of the definition for future type analysis
+id_pat interface(std::move(interface_list));
+type_expr interface_te = global_id_table->swallow(*interface_tp_p);
+auto n_id = count_identifiers(interface);
+definition_group g(n_id);
+#ifndef NDEBUG // syntax rules should ensure that the following always succeeds
+if (not interface_tp_p->can_specialise(pattern_type(interface)))
+  @< Report that the interface pattern is incompatible with its specified
+     type @>
+#endif
+g.thread_bindings(interface,interface_te,true);
+
+@ The liberty we provide of giving implementation values in any order means that
+we must do a bit of checking and expression rewriting. The latter involves doing
+some work that is usually done inside the compilation unit \.{parsetree}, so we
+use some details about structures introduced there, such as |let_expr_node|.
+
+@< Check that all components named in |interface| are defined in |impl|,
+   and set |implementation| to be a chain of \&{let} expressions ending
+   with a tuple of those components in the order of |interface| @>=
+{ BitMap idents(main_hash_table->nr_entries());
+  expr* link = &implementation;
+  for (auto it = impl.begin(); not impl.at_end(it); ++it)
+  { assert((it->pattern.kind&0x1)!=0); // syntax should ensure this
+    if (idents.isMember(it->pattern.name))
+      @< Complain that |it->pattern.name| is implemented more than once @>
+    idents.insert(it->pattern.name);
+    auto decl = std::make_unique<let_expr_node>
+      (std::move(it->pattern),std::move(it->val),expr());
+    auto next = &decl->body;
+    *link = expr(decl.release(),loc);
+    link = next;
+  }
+@)
+  @< Attach at |*link| a nested tuple expression for a pair, the first
+     component of which is a tuple expression giving the implementations,
+     and the second of which defines an extra value for each type being defined,
+     to be used in printing values of that type @>
+}
+
+@ We build tuple expression for the implementation, then move it into a pair
+of which for now the second component is an empty tuple. Since |expr_list| is
+|simple_list<expr>|, we don't have |push_back| available; we build the
+implementation tuple using |expr_list::insert| with an iterator |expr_it| that
+is always advanced to the final iterator for the current list |tup_expr|, but
+for the outer |pair_expr| we just |emplace_front| each of the inner tuple
+expressions in reverse order.
+
+@< Attach at |*link| a nested tuple expression for a pair... @>=
+{ expr_list tup_expr;
+  auto expr_it = tup_expr.begin();
+  for (auto it = interface.sublist.begin(); not it.at_end(); ++it)
+  { assert((it->kind&0x1)!=0); // syntax should ensure this
+    if (not idents.isMember(it->name))
+      @< Complain that |it->name| is not implemented @>
+    expr_it = tup_expr.insert(expr_it,expr(it->name,loc,expr::identifier_tag()));
+  }
+  expr_list pair_expr;
+  pair_expr.emplace_front(expr_list(),expr::tuple_display_tag(),loc);
+  pair_expr.emplace_front(std::move(tup_expr),expr::tuple_display_tag(),loc);
+  *link = expr(std::move(pair_expr),expr::tuple_display_tag(),loc);
+}
+
+@ The following two messages signal obvious problems that can arise with a
+closed type definition.
+
+@< Complain that |it->pattern.name| is implemented more than once @>=
+{ o << loc << "\nInterface value "
+    << main_hash_table->name_of(it->pattern.name) @|
+    << " is multiply defined.";
+  throw program_error(o.str());
+}
+
+@~We must neither give to many nor too few implementation definitions.
+@< Complain that |it->name| is not implemented @>=
+{ o << loc << "\nInterface value "
+    << main_hash_table->name_of(it->name) @|
+    << " is never defined.";
+  throw program_error(o.str());
+}
+
+@ Type checking is done by calling |analyse_types|, which usually does not
+impose a type on the expression, but here |implementation| is required to get
+type |implementation_tp|. We therefore changed the signature of |analyse_types|
+so that the required type is passed as argument; this is usually
+|type::bottom(0)|, but here we pass (by move construction) |implementation_tp|.
+Since the implementation type can (and usually will) involve the |arity| type
+variables that are abstracted in the whole closed type definition, we make sure
+these variables are treated as fixed types during the type analysis by passing
+|arity| to the |type::wrap| conversion.
+
+@< Type check and convert expression |implementation| in the strong type context
+   of |implementation_tp|, and store the converted expression
+   as |converted_impl| @>=
+analyse_types
+  (implementation, type::wrap(implementation_tp,arity),converted_impl);
+
+
+@ Calling the evaluator is easy; the method |expression::eval| calls
+|expression::evaluate|. Since this eventually leads to the evaluation of a tuple
+expression for a pair, whose second argument we wish to ignore for now, we pass
+|eval_level::multi_value| as second argument to |evaluate|, and then pop the
+unwanted value from the stack..
+
+@< Evaluate |converted_impl|, pushing the result on the evaluation stack @>=
+{ converted_impl->multi_eval();
+  execution_stack.pop_back();
+}
+
+@ Deriving the type required for the implementation from the interface
+specification and the concrete |repr_types| is a bit more difficult than we
+initially thought. When |arity==0| this amounts to a straightforward
+substitution of the |repr_types|, in the style of |simple_subst|, although given
+our representation one has to substitute for atomic |closed_type| expressions
+rather than for type variables. However when |arity>0|, each of these
+|closed_type| expressions has an argument list, and each of the |repr_types|
+represents a type constructor of that |arity| that must be substituted for the
+corresponding |closed_type| node. The arguments of the |closed_type| expression
+must be substituted for the type variables in |repr_types|, and although the
+remaining parts of the |repr_types| remain unchanged, the types of the argument
+lists must themselves undergo the our root substitution. This justifies writing
+(yet another) recursive |type_expr| transformer, modelled after |simple_subst|,
+but handling the instantiations of the |repr_types| as well.
+
+@< Local function definitions @>=
+type_expr closed_subst
+  (const type_expr& tp, const std::vector<type_expr>& ctors)
+{ switch (tp.raw_kind())
+  { case primitive_type: return type_expr::primitive(tp.prim());
+    case variable_type: return type_expr::variable(tp.typevar_count());
+    case function_type: return
+      type_expr::function(closed_subst(tp.func()->arg_type,ctors),
+                          closed_subst(tp.func()->result_type,ctors));
+    case row_type: return
+      type_expr::row(closed_subst(tp.component_type(),ctors));
+    case tuple_type:
+    case union_type:
+    { dressed_type_list aux;
+      for (wtl_const_iterator it(tp.tuple()); not it.at_end(); ++it)
+        aux.push_back(closed_subst(*it,ctors));
+      return type_expr::tuple_or_union(tp.raw_kind(),aux.undress());
+    }
+    case closed_type:
+    case tabled:
+    { auto nr = tp.stored_nr(); dressed_type_list aux;
+      for (wtl_const_iterator it(tp.ctor_args()); not it.at_end(); ++it)
+        aux.push_back(closed_subst(*it,ctors));
+      if (tp.raw_kind()==closed_type and nr>=type_expr::closed_count())
+      { BitMap nothing(type_expr::table_size());
+        // what needs attention from |simple_subst|
+        const type_expr& ctor = // the chosen one of the |ctors|
+          ctors[nr-type_expr::closed_count()];
+        return simple_subst(ctor,std::move(aux).to_vector(),nothing);
+      }
+      return type_expr::user_type(nr,aux.undress(),tp.raw_kind()==closed_type);
+    }
+    default: assert(false); return type_expr();
+    // there should be no undetermined type components
+  }
+}
+
+@ Having defined |closed_subst|, obtaining the actual implementation type is
+done using a simple call to that function. We must pair this type wit a second
+component that contains the type of the extra information per defined type
+(constructor) that will be provided, but which for now is void.
+
+@< Set |implementation_tp| to the result of substituting,
+   into |interface_te|, each of the |repr_types| for the corresponding
+   |closed_type| being defined @>=
+{ implementation_tp =
+    closed_subst(interface_te,std::move(repr_types).to_vector());
+  type_list pair_type;
+  pair_type.push_front(void_type.copy());
+  pair_type.push_front(std::move(implementation_tp));
+  implementation_tp = type_expr::tuple(std::move(pair_type));
+}
+
+@ This part is very similar to what happens in phase~2 of |do_global_set|, and
+we can in fact share some modules with that code.
+
+@< Pop the value from the evaluation stack, and distribute its components
+   according to the identifiers of |interface| to variable and
+   overload tables @>=
+{ std::vector<shared_value> v;
+  v.reserve(n_id);
+  thread_components(interface,pop_value(),std::back_inserter(v));
+   // bind values to identifiers
+  auto v_it = v.begin();
+  for (auto it = g.begin(); it!=g.end(); ++it,++v_it)
+  { assert(v_it!=v.end());
+    @< Emit indentation corresponding to the input level to
+       |*output_stream| @>
+    if (it->second.top_kind()!=function_type)
+    { *output_stream << "Constant " << main_hash_table->name_of(it->first)
+                     << ": " << it->second;
+      if (global_id_table->present(it->first))
+      { bool is_const;
+        *output_stream << " (overriding previous instance, which had type "
+                 @| << *global_id_table->type_of(it->first,is_const);
+        if (is_const)
+          *output_stream << " (constant)";
+        *output_stream << ')';
+      }
+      *output_stream << '\n';
+      global_id_table->add
+        (it->first,std::move(*v_it),std::move(it->second),g.is_const(it),loc);
+    }
+    else
+    @< Add instance of identifier |it->first| with function value |*v_it|
+       to |global_overload_table| @>
+  }
+}
+
+@ Finally, we must update the static member |type_expr::closed_info|, which can
+be done by calling |type_expr::add_closed_types|.
+
+@< Update |type_expr::closed_type_table| with new |arity|
+   type constructors with names from |ids| @>=
+type_expr::add_closed_types(ids,arity);
+
+@ And here are two more sections that explain things that can go wrong.
+
+@< Report a wrong number of type representations in |repts| for |ids| @>=
+{ o << "Wrong number " << length(reptps)
+  @|<< " of implementation types for type"
+  @|<< (arity>0 ? " constructor" : "")
+    << (ids.size()>1 ? "s" : "");
+  o << main_hash_table->name_of(ids[0]);
+  for (unsigned i=1; i<ids.size(); ++i)
+    o << ',' << main_hash_table->name_of(ids[i]);
+  throw program_error(o.str());
+}
+
+@~This is a fairly unlikely scenario, so we don't bother to try to zoom in on
+the problematic part of the pattern.
+
+@< Report that the interface pattern is incompatible with its specified
+   type @>=
+{ o << loc
+    << "\nIn closed type definition, interface pattern " << interface @|
+    << "\ndoes not match interface type " << *interface_tp_p;
+  throw program_error(o.str());
+}
+
+@ Errors are mostly |program_error|, |runtime_error| and |logic_error|. They
+should describe themselves, so we report them here in a uniform manner.
+
+@< Catch block for errors thrown while processing a closed type definition @>=
+catch (const error_base& err)
+{
+  std::cerr << "Error in closed 'set_type' command " << loc << ":\n" @|
+            << err.what() << "\nCommand aborted.\n";
+@/set_back_trace(err.back_trace);
+@/clean=false;
+  reset_evaluator(); main_input_buffer->close_includes();
+}
 
 @*1 Printing information from internal tables.
 %
@@ -2036,7 +2475,8 @@ void type_of_expr(expr_p raw)
   else
   { try
     {@; expression_ptr p;
-      *output_stream << "Type: " << analyse_types(e,p,0) << std::endl;
+      *output_stream
+      << "Type: " << analyse_types(e,type::bottom(0),p) << std::endl;
     }
     catch (std::exception& err) {@; std::cerr<<err.what()<<std::endl; }
   }
@@ -2923,28 +3363,32 @@ functionality; they adapt the calling convention (transfer of values) and
 perform checks to ensure the preconditions of the library functions are met.
 
 Handling of wrapper functions themselves, which are accessed through a table, is
-done through values of the function pointer type |wrapper_function| defined
-in \.{axis-types.w}. Arguments and results of wrapper functions are passed as
-|shared_value| on the runtime stack, and are not mentioned in the type
-|wrapper_function|. Functions accessed through these pointers do however take a
-|eval_level| parameter, which serves the same function as for the |evaluate|
-method of (classes derived from |expression_base|, as described in \.{axis.w},
-namely to inform the wrapper whether in the run time situation a result value is
-needed at all, and if so whether it should be expanded on the |execution_stack|
-in case it is a tuple.
+done through values of the function pointer types |wrapper_function| or
+|type_aware_wrapper|, which are defined in \.{axis-types.w}. Arguments and
+results of wrapper functions are passed as |shared_value| pointers on the
+runtime stack, and are not mentioned in these types. Functions accessed through
+these pointers do however take an |eval_level| argument; |type_aware_wrapper| in
+addition takes an explicit |type| argument (derived by the type checker). The
+|eval_level| argument serves the same function as for the
+|expressions_base::evaluate| method (as described in \.{axis.w}), namely to
+inform the wrapper whether in the run time situation a result value is needed at
+all, and if so whether it should be expanded on the |execution_stack| in case it
+is a tuple.
 
 The following functions will greatly facilitate the later repetitive task of
 installing wrapper functions into the |global_overload_table|. The basic form
-|install_function| returns a shared pointer to constant |builtin| after
-installing it; while usually ignored, this return value can be used by the
-caller to associate this built-in to other ones; a typical example of this is
-the successor function that can be called in certain cases where the function
-found in the |global_overload_table| is actually integer addition. The form
+|install_function| returns a |shared_builtin| pointing to the value installed;
+it while usually be ignored, but the caller can use this pointer to associate
+this built-in to other ones; a typical example of this is the built-in successor
+function, which can be implicitly called in certain cases where the function
+found in the |global_overload_table| was actually integer addition. While
+|shared_builtin| is a pointer to |const|, the pointer returned by
 |install_special_function| does give non-|const| access to the object just
 created, which allows subsequently associating one or more other built-in
 functions in this manner. The function |install_folding_function| is a variation
 of |install_special_function| that already installs a constant-folding compile
-time adaptation.
+time adaptation. Finally |install_type_aware_function| is a variation of
+|install_function| for type aware built-in functions.
 
 @< Declarations of exported functions @>=
 shared_builtin install_function
@@ -2956,14 +3400,13 @@ std::shared_ptr<special_builtin> install_special_function
 std::shared_ptr<special_builtin> install_folding_function
  (wrapper_function f,@|const char*name, const char* type_string,
   unsigned char hunger=0);
+std::shared_ptr<const type_aware_builtin> install_type_aware_function
+ (type_aware_wrapper f,@|const char*name, const char* type_string);
 
 @ We start by determining the specified type, and building a print-name for
 the function that appends the argument type (since there will potentially be
 many instances with the same name). Then we construct a |builtin_value| object
-and finally add it to |global_overload_table|. Although currently there are no
-built-in functions with void argument type, we make a provision for them in
-case they would be needed later; notably they should not be overloaded and are
-added to |global_id_table| instead.
+and finally add it to |global_overload_table|.
 
 @< Global function def... @>=
 shared_builtin install_function
@@ -3015,6 +3458,36 @@ if (tp.func()->arg_type.top_kind()==variable_type)
     (main_hash_table->match_literal(name),val,std::move(tp),source_location());
   return { nullptr };
 }
+
+@ While mentioning |print| and friends, there is a new form of these functions
+that differs from them in that the wrapper receives an explicit |type| argument
+that we found for the argument expression of the call, so that their behaviour
+can adapt to this information (rather than just use the structure of the
+argument value found on the runtime stack). These get installed by
+|install_type_aware_function|. Apart from using type aware versions of |wrapper|
+and |builtin|, this as actually a bit simpler than |install_function|, as we can
+appending an argument type to~|name| (instead a similar change will be made
+every time a |type_aware_instance| is created), and we don't need to deduce the
+|variadic| value (as we don't use the |builtin_value| class type, replacing it
+with |type_aware_builtin| that implicitly has the variadic property).
+
+@< Global function def... @>=
+std::shared_ptr<const type_aware_builtin> install_type_aware_function
+ (type_aware_wrapper f,@|const char*name, const char* type_string)
+{ unsigned int var_count;
+  type_expr te = mk_type_expr(type_string,var_count);
+  type tp = type::wrap(te,0); // no fixed type variables at outer scope
+  assert(tp.degree()==var_count);
+  if (tp.top_kind()!=function_type or
+      tp.func()->arg_type.raw_kind()!=variable_type)
+    throw logic_error ("Wrong type for type aware built-in: "+std::string(name));
+@/
+  auto val = std::make_shared<const type_aware_builtin>(f,name);
+@/global_overload_table->add @| (main_hash_table->match_literal(name),
+            val,std::move(tp),source_location(),true);
+@/return val;
+}
+
 
 @ Here is a variation that installs a function whose |builtin_value| stored is
 actually an object of derived class |special_builtin|, whose |build_call| can be
@@ -4149,6 +4622,828 @@ install_folding_function(ASCII_char_wrapper,"ASCII","(int->string)");
 install_function(readline_completions_wrapper,@|"readline_completions",
    "(string->[string])");
 
+@*1 Type aware textual representations of values.
+%
+In order for values manipulated by the evaluator to ultimately be visualised,
+there is a virtual method |value_base::print| that forces all types of values to
+provide some textual representation, even if it does not always reveal all
+information contained in the value. This functionality is accessed through some
+built-in functions like |print| and |to_string|, but also when the value of an
+expression given on the command line ends up being printed to the terminal.
+
+While extremely convenient, this functionality has its limitations. For one,
+there is no external control of the textual representation, since the value
+produces it all by itself; no adaptation for reason of layout or verbosity is
+possible. An even more fundamental point is that it is the internal
+representation of the value itself that is producing the output, making it
+impossible to share an internal representation between values of different types
+that should have different textual representations (and this is what forces a
+single representation in some cases, like empty lists different types, where
+this sharing of representation does happen). The last point will become vitally
+important when we want to allow the user to introduce opaque types, new data
+types that behave as primitive types (or type constructors) while being
+implemented by some existing type using user defined functionality: hiding the
+internal representation will not be possible when the generic printing
+functionality is used.
+
+For this reason we introduce an alternative approach to textual representation,
+that required adapting the type checking system to allow for a new kind of
+built-in function that gets passed not only the value it operates upon but also
+the type of that value, so-called type aware functions. Printing can now be done
+using an external type aware function that recursively traverses the type is was
+given and decomposes the value to be printed accordingly, ensuring that at any
+point the function is aware of the type of the value it is processing. We take
+the opportunity of this redefinition to also add some layout control, notably
+the available line width.
+
+@ We prepare for the formatting of values to an imposed |width|. We first
+introduce a type |ind_string| that represents a line with and indicated amount
+of indentation, a list of which will be the result type of our main recursive
+formatting function. In formatting, we sometimes have an unstructured string
+that needs to be chopped into lines, possibly with a hanging indentation after
+the first line, so we first define a short auxiliary function |chop| that
+achieves this, with the same return type.
+
+@< Local function definitions @>=
+
+struct ind_string
+{ unsigned indent; @+ std::string str;
+  ind_string (std::string&& str) : indent(0), str(std::move(str)) @+{}
+  ind_string (unsigned i, std::string&& str) : indent(i), str(std::move(str))
+  @+{}
+};
+@)
+sl_list<ind_string> chop
+  (const std::string& str, unsigned width, unsigned hang=0)
+{
+  sl_list<ind_string> res;
+  unsigned len = str.length();
+  auto pos = str.begin();
+  unsigned w = width;
+  while(len>w)
+  { res.emplace_back(width-w,std::string(pos,pos+w));
+    pos+=w; len-=w;
+  @/w = width-hang;
+  }
+  res.emplace_back(width-w,std::string(pos,str.end()));
+  return res;
+}
+
+@ Here is a function to print a union or tuple type with one variant/component
+type highlighted, and one that tells whether the output of values of a certain
+type will already be parenthesised, so that the caller can avoid adding
+redundant parentheses.
+
+@< Local function definitions @>=
+
+std::string highlight (const_raw_type_list tuple, bool is_union, unsigned pos)
+{ std::ostringstream o;
+  wtl_const_iterator p(tuple);
+  for (unsigned i=0; not p.at_end(); ++p,++i)
+  { o << (i==0 ? "(" : is_union ? "|" : ",");
+    if (i==pos)
+      o << " *" << *p << " ";
+    else o << *p;
+  }
+  o << ")";
+  return o.str();
+}
+@)
+bool has_parens (const type_expr& te)
+{ switch(te.top_kind())
+  { default: return false;
+  case row_type:
+  case tuple_type:
+  case union_type:
+    return true;
+  case primitive_type:
+    { const primitive_tag kind = te.expanded().prim();
+      return kind==integral_type
+          or kind==string_type
+          or kind==boolean_type
+          or kind==vector_type
+          or kind==matrix_type
+          or kind==Weyl_element_type;
+    }
+  }
+}
+
+@ Type aware printing will call the recursive function |format|. It takes as (by
+value) argument a |type_expr| for the type to be printed, which should be a
+concrete type (although we allow it to contain polymorphic function types), a
+value |v| to be printed, the number of columns |width| available for formatting
+its output to (which the caller has adjusted by subtracting any indentation
+imposed by the context); the result will be a list of lines represented as
+|ind_string| values.
+
+Generally speaking |format| functions in one of two regimes: if the entire output
+fits in |width| (or cannot be broken across lines, in which case we allow
+ourselves to exceed the |width|) it does that, returning a single line, and
+otherwise it break thou output into multiple lines using structural indentation.
+The caller (which is often |format| itself, recursively) does not know beforehand
+which case will prevail, and will often need to distinguish the cases where a
+single and where multiple lines are returned, and possibly combine output from a
+single line with previous output.
+
+@< Local function definitions @>=
+
+void print(std::ostream& o, type_expr&& te, const id_pat& pat);
+// declare recursive helper
+@)
+sl_list<ind_string> format (type_expr te, const value_base& v, unsigned width)
+{ sl_list<ind_string> result;
+  std::ostringstream o;
+  switch (te.top_kind())
+  {
+  case undetermined_type:
+  case variable_type:
+  assert(false);
+  break;
+  default:
+    v.print(o); result.emplace_back(o.str()); // standard printed output
+  break; case primitive_type:
+    @< Format primitive value |v| into |result| @>
+  break; case row_type:
+    @< Build bracketed list of entries of |v|, appending to |result| @>
+  break; case tuple_type:
+    @< Build parenthesised sequence of entries of |v|,
+       preceded by field names if associated to |te|,
+       appending to |result| @>
+  break; case union_type:
+     @< Append to |result| the value |v| of union type |te|,
+       (parenthesised if needed),
+       to which is applied either the name of an union injector,
+       or a type indication of such an injector function @>
+  break; case function_type:
+     @< Append to |result| a description of the value |v| of function type |te|,
+        specifying its argument and result types, and wrapping the text of its
+        body to lines of length at most |width| @>
+  break; case closed_type: // then call user-installed function
+    v.print(o); result.emplace_back(o.str()); // for now provide low-level format
+  }
+  return result;
+}
+
+@ For a list of values, we distinguish several cases. If the list is empty, we
+print empty brackets followed by an indication of the entry type. Otherwise we
+come to the meat of our work, where we sequentially produce individual list
+items in a bracketed notation, concatenating them on a single line as long as
+possible, but never sharing a line between two items at least one of which
+itself requires multiple lines.
+
+When outputting a with a partially filled current line |cur|, we recursively
+|format| each item as if it started on a fresh line, then if it fits on a single
+line we determine whether we can actually append the output to the current line;
+if it cannot, we contribute the current line as completed and append the item
+that was formatted to this, adding a |prefix| or indentation as appropriate.
+
+@< Build bracketed list of entries of |v|, appending to |result| @>=
+{ const auto* rv = static_cast<const row_value*>(&v);
+  const type_expr& comp = te.expand().component_type();
+  if (rv->length()==0)
+  {@; o << "[]<" << comp << '>';
+    result.emplace_back(o.str());
+  }
+  else
+  { std::string cur; // current line
+    const unsigned tab =  comp.top_kind()==primitive_type ? 1 : 2;
+    for (unsigned i=0; i<rv->length(); ++i)
+    { auto prefix = tab==1 ? i==0 ? "[" : "," : i==0 ? "[ " : ", ";
+      auto res = format(comp.copy(),*rv->val[i],width-tab);
+      if (res.singleton())
+      { if (width>=cur.length()+tab+res.front().str.length())
+          cur += prefix+res.front().str; // append a new item to |cur|
+        else
+        { if (cur.size()>0) // if there is any accumulated output
+            result.emplace_back(std::move(cur)); // make it to a line now
+          cur = prefix+res.front().str;
+        }
+      }
+      else
+        @< Add |cur| to |result|, then append |res| transformed by
+           inserting |prefix| before the first line and adding |tab|
+           to all other indents @>
+    }
+    if (result.empty() and width>=cur.length()+tab)
+    @/{@;
+      cur.append(tab==1 ? "]" : " ]");
+      result.emplace_front(std::move(cur));
+    }
+    else
+    { if (cur.length()>0)
+        result.emplace_back(std::move(cur));
+      result.emplace_back(std::string("]"));
+    }
+  }
+}
+
+@ When an item produces multi-line output, we terminate accumulation of text in
+|cur| and switch to appending those lines with extra indentation.
+
+@< Add |cur| to |result|, then append |res| transformed by
+   inserting |prefix| before the first line and adding |tab|
+   to all other indents @>=
+{
+  if (cur.length()>0) // if there is any accumulated output
+  @/{@; result.emplace_back(std::move(cur));
+    cur.clear();
+  } // emit that first
+  for (auto& item: res)
+    if (&item==&res.front())
+      item.str = prefix+item.str;
+    else
+      item.indent+=tab;
+  result.append(std::move(res));
+}
+
+@ For a tuple of values, we distinguish several cases. If the list is empty, we
+print the type and an empty list expression. Otherwise we come to the meat of
+our work, where we sequentially produce individual list items in a bracketed
+notation, concatenating them on a single line as long as possible, but never
+sharing a line between two items at least one of which itself requires multiple
+lines.
+
+@< Build parenthesised sequence of entries of |v|, preceded by field names...@>=
+{ const auto* tv = static_cast<const tuple_value*>(&v);
+  auto* names = te.raw_kind()==tabled ? &te.fields(te.tabled_nr()) : nullptr;
+  auto* tup = te.expand().tuple();
+  if (tup==nullptr)
+    result.emplace_back("()");
+  else
+  { std::string cur; // current line
+    wtl_iterator it (tup);
+    for (unsigned i=0; i<tv->length(); ++i,++it)
+    {
+      const bool is_prim = it->top_kind()==primitive_type;
+      auto prefix = std::string(is_prim ? i==0 ? "(" : "," : i==0 ? "( " : ", ");
+      if (names!=nullptr and (*names)[i]!=type_binding::no_id)
+      @/{@; prefix += main_hash_table->name_of((*names)[i]);
+          prefix += ": ";
+        }
+      const unsigned tab = prefix.length();
+      @< Format |prefix| followed by |*tv->val[i]|, which has type |*it|,
+         to |width| columns, using |cur| as text buffer for the next line @>
+    }
+    if (result.empty() and width>=cur.length()+1)
+    @/{@;
+      cur.append(")");
+      result.emplace_front(std::move(cur));
+    }
+    else
+    { if (cur.length()>0)
+        result.emplace_back(std::move(cur));
+      result.emplace_back(std::string(")"));
+    }
+  }
+}
+
+@ When outputting a with a partially filled current line |cur|, we recursively
+|format| each item as if it started on a fresh line, then if it fits on a single
+line we determine whether we can actually append the output to the current line;
+if it cannot, we contribute the current line as completed and append the item
+that was formatted to this, adding a |prefix| or indentation as appropriate.
+
+@< Format |prefix| followed by |*tv->val[i]|... @> =
+
+if (tab+25>width)
+  @< Append to |result| a compactly formatted form of |prefix| followed
+     by the value |*tv->val[i]|, to |width| columns and using |cur|
+     as line buffer @>
+else
+{ const auto ind_width = width-tab;
+  auto res = format(std::move(*it),*tv->val[i],ind_width);
+  if (res.singleton())
+  { if (cur.length()+tab+res.front().str.length()<=width)
+      cur += prefix+res.front().str; // append a new item to |cur|
+    else
+    { if (cur.size()>0) // if there is any accumulated output
+        result.emplace_back(std::move(cur)); // make it to a line now
+      cur = prefix+res.front().str;
+    }
+  }
+  else @< Add |cur| to |result|, then append |res| transformed... @>
+}
+
+@ Formatting nested tuples with field names can quickly reduce the number of
+columns effectively available, so before it is completely reduced to nothing we
+revert to more basic formatting. This is done by formatting to maximal width,
+and then breaking the (hopefully single) line that results into pieces of size
+|width|.
+
+@< Append to |result| a compactly formatted form of |prefix| followed...@>=
+{
+  auto res = format(std::move(*it),*tv->val[i],-1);
+  if (res.singleton() and cur.length()+tab+res.front().str.length()<=width)
+    cur += prefix+res.front().str;
+  else
+  { if (cur.length()>0) // if there is any accumulated output
+    @/{@; result.emplace_back(std::move(cur));
+      cur.clear();
+    } // emit that first
+    res.front().str = prefix+res.front().str;
+    for (const auto& item : res) // hopefully just once
+      result.append(chop(item.str,width,2));
+  }
+}
+
+@ For printing a value of union type, we need to dynamically determine its
+variant, and then after analysing the type |te| either indicate the name of the
+corresponding injector, or if there is none give an indication of the injection
+function anyway, which we do by printing out the union type and highlighting
+the applicable variant, by calling |highlight|.
+
+It is maybe a strange design decision to print |uv->stored_name()|, as a
+parenthesised addition, only when the type |te| records a \emph{different}
+variant identifier, and not when it does not record any variant identifiers. But
+we assume that if the user has transformed the union type to one that erases the
+injector name that was necessarily used to build the value, then this must be a
+deliberate act to hide that name, even though the runtime value still stores
+this information.
+
+@< Append to |result| the value |v| of union type... @>=
+
+{ const auto* uv = static_cast<const union_value*>(&v);
+  const auto* names =
+    te.raw_kind()==tabled ? &type_expr::fields(te.tabled_nr()) : nullptr;
+  id_type tag_id = names==nullptr ? type_binding::no_id : (*names)[uv->variant()];
+@)
+  auto* uni = te.expand().tuple();
+  std::string tag_str;
+  if (tag_id==type_binding::no_id)
+    tag_str = highlight(uni,true,uv->variant());
+  else if (tag_id==uv->stored_name())
+    tag_str = main_hash_table->name_of(tag_id);
+  else
+    tag_str = main_hash_table->name_of(tag_id) + std::string("(born ")
+    + main_hash_table->name_of(uv->stored_name()) + ")";
+  type_expr& inner_type =
+    *std::next(wtl_iterator(uni),uv->variant());
+  const bool need_parens = not(has_parens(inner_type));
+@)
+  auto inner =
+    format(std::move(inner_type),*uv->contents(),need_parens?width-1:width);
+  if (inner.singleton() and
+      inner.front().str.length()+(need_parens?3:1)+tag_str.length()<=width)
+    result.emplace_back @|
+      ((need_parens?"("+inner.front().str+").":inner.front().str+".")+tag_str);
+  else // modify |inner| by adding parentheses and |tag_str|
+  { if (need_parens)
+    // then format multi-line output using extra parens and indent
+    { for (auto& item: inner)
+        if (&item==&inner.front())
+          item.str = "("+item.str;
+        else
+          item.indent++;
+      result = std::move(inner);
+      result.emplace_back(")."+tag_str);
+    }
+    else // find last line and extend its string using |tag_str|
+    { result = std::move(inner);
+      auto it = std::next(result.begin(),result.size()-1);
+      it->str += "."+tag_str;
+    }
+  }
+}
+
+
+@ Printing functions is more complicated than printing data values because there
+are several different types of function values, so an initial inspection (by
+means of a dynamic cast) is necessary to find out what kind of output can be
+given.
+
+@< Append to |result| a description of the value |v| of function type... @>=
+{ const auto* fv = static_cast<const function_base*>(&v);
+@/const type_expr& at = te.expand().func()->arg_type;
+  const type_expr& rt = te.func()->result_type;
+@)
+  if (@[const auto* bv = dynamic_cast<const builtin_value<false>*>(fv)@])
+    result.emplace_back(std::string(bv->print_name)); // this includes the type
+  else if (@[const auto* vbv = dynamic_cast<const builtin_value<true>*>(fv)@])
+    result.emplace_back(std::string(vbv->print_name)); // this includes the type
+  else if (@[const auto* cv = dynamic_cast<const closure_value*>(fv)@])
+    @< Output closure |*cv| to |result|, using its type |te| @>
+  else if (@[const auto* tai = dynamic_cast<const type_aware_instance*>(fv)@])
+  { o << "Instance of type aware built-in '" << tai->print_name
+      << @| "' at argument type " << at << " returning " << rt;
+    result.emplace_back(o.str());
+  }
+  else if (@[const auto* pv = dynamic_cast<const projector_value*>(fv)@])
+    result.emplace_back("Projector"+
+      highlight(at.expanded().tuple(),false,pv->position));
+  else if (@[const auto* iv = dynamic_cast<const injector_value*>(fv)@])
+    result.emplace_back("Injector"+
+      highlight(rt.expanded().tuple(),true,iv->position));
+  else
+  {@; o << "{Unknown function value of type " << te << '}';
+    result.emplace_back(o.str());
+  }
+}
+
+@ For printing parameter lists, we shall need a recursive function that inserts
+parameter names from the argument pattern |pat| into the argument type
+expression~|te|, while descending into a (necessarily tuple) type in case a
+sublist is present in |pat| instead of a parameter name. In case both a name and
+a sublist are present, we do not descend but print the relevant part of the type
+followed by the relevant part of the pattern (which will print the sublist
+followed by the name, separated by a colon). This function omits the outer
+parentheses of the parameter list, which allows it to use itself recursively for
+each item in a parameter sublist.
+
+@< Local function definitions @>=
+
+void print(std::ostream& o, type_expr&& te, const id_pat& pat)
+{ if ((pat.kind & 0x1)!=0) // an identifier prevents breaking open |te|
+    o << te << ' ' << pat;
+  else if ((pat.kind & 0x2)==0) // no identifier or sublist
+    o << te << ' ' << '.';
+  else // no identifier but a sublist is present; break open
+  { assert(te.top_kind()==tuple_type);
+    wtl_iterator te_it(te.expand().tuple());
+    for (auto it=pat.sublist.begin(); not pat.sublist.at_end(it); ++te_it,++it)
+      print(o << (it==pat.sublist.begin()?'(':','),std::move(*te_it),*it);
+    o << ')';
+  }
+}
+
+@ Although there are three different classes that represent closures, all their
+data members are in |closure_value|, and can therefore be accessed through the
+pointer |cv| obtained from a dynamic cast. However, recursive functions use the
+|closure_value::param| both to store the recursive identifier and that actual
+parameter list (as two members of a $2$-tuple), so we do need to single out this
+case using another dynamic cast, and in doing so we also indicate the recursive
+character of the function in the output text.
+
+@< Output closure |*cv| to |result|, using its type |te| @>=
+{ const auto* param = &cv->p->param;
+  if (dynamic_cast<const recursive_closure*>(cv)!=nullptr)
+  { auto it = param->sublist.begin();
+    o << "rec_fun " << main_hash_table->name_of(it->name) << ' ';
+    param = &*++it;
+  }
+  o <<'('; print(o,std::move(te.func()->arg_type),*param);
+  o<<") " << te.func()->result_type << ':';
+  result.emplace_back(o.str());
+@/o.str(""); o << *cv->p->body;
+  auto extra = chop(o.str(),width-3);
+  if (extra.singleton() and @|
+      result.front().str.length()+1+extra.front().str.length() <= width)
+    result.front().str += " "+extra.front().str;
+  else
+    for(auto it = result.append(std::move(extra)); not result.at_end(it); ++it)
+      it->indent += 3;
+}
+
+@ While we may expect for certain primitive types that each value will fit on a
+line, this is not the case for composite primitive types like \.{vec}, \.{mat}
+and \.{ParamPol}. Therefore the code for printing values of primitive types is
+almost as varied as that of other kinds of types, although less recursive.
+
+@h "atlas-types.h" // for |split_int_value|
+@h "basic_io.h" // for |print_Split|
+
+@< Format primitive value |v| into |result| @>=
+{ switch(te.expand().prim())
+  { default: v.print(o); result.emplace_back(std::move(o.str()));
+@+break; case integral_type:
+  { const auto* p = static_cast<const int_value*>(&v);
+    o << p->val;
+    result = chop(o.str(),width,0);
+  }
+@+break; case string_type: // here we indent for the leading quote character
+  { const auto* p = static_cast<const string_value*>(&v);
+    p->print(o);
+    result = chop(o.str(),width,1);
+  }
+@+break; case split_integer_type:
+  { const auto* p = static_cast<const split_int_value*>(&v);
+    print_split(o,p->val);
+    std::string out = o.str();
+    result.emplace_back(out.substr(1,out.length()-2)); // remove parentheses
+  }
+@+break; case inner_class_type:
+    @< Format inner class value |v| into |result| @>
+@)
+@+break; case vector_type:
+    @< Format vector value |v| into |result| @>
+@+break; case rational_vector_type:
+    @< Format rational vector value |v| into |result| @>
+@+break; case matrix_type:
+    @< Format matrix value |v| into |result| @>
+@+break; case K_type_type:
+    @< Format $K$-type value |v| into |result| @>
+@+break; case K_type_pol_type:
+    @< Format $K$-type polynomial value |v| into |result| @>
+@+break; case module_parameter_type:
+    @< Format parameter value |v| into |result| @>
+@+break; case virtual_module_type:
+    @< Format virtual module value |v| into |result| @>
+  }
+}
+
+@ For inner classes, the usual output always occupies two lines. in type aware
+printing, we try to see if we can fit everything within the specified |width|,
+and if so we do that. For inner classes, we also take the occasion to reduce the
+output (mentioning the number of real forms and dual real forms is not of
+capital importance every time an inner class is printed).
+
+@< Format inner class value |v| into |result| @>=
+{ const auto* icp = static_cast<const inner_class_value*>(&v);
+  o << "Complex reductive group of type " << icp->rd_type << ",";
+  result.emplace_back(o.str());
+  o.str("");
+  o << "with involution defining inner class of type '" << icp->ic_type;
+  auto str2 = o.str();
+  if (result.front().str.length()+1+str2.length()<=width)
+    result.front().str.append(1,' ').append(str2);
+  else
+    result.emplace_back(std::move(str2));
+}
+
+@ For formatting values of type \.{vec}. We set up a section doing the main work
+that can be textually shared with formatting values of type \.{ratvec}; due to a
+difference between the two uses in the integer types involved, we cannot share
+compiled code. In the \.{ratvec} case we need access to the last line add the
+common denominator, which is why we set of to have a pointer |last| that is
+declared outside the common code.
+
+@< Format vector value |v| into |result| @>=
+{ const auto* vp = static_cast<const vector_value*>(&v);
+  const int_Vector& val = vp->val;
+  ind_string* last;
+  @< Add one or more lines to |result| with a bracketed list containing... @>
+}
+
+@ Formatting a vector is only slightly different from formatting the
+corresponding list of integers. We first compute the minimal width necessary for
+all entries, then format all entries right in the given space. This is almost
+how |vector_value::print| works, but we do not make the width any longer than
+the widest entry. Apart from this, we do the usual due diligence to try to break
+lines so as to not exceed |width|, although we will ignore |width| if it is too
+small to fit even a single vector entry.
+
+@< Add one or more lines to |result| with a bracketed list containing
+   the entries of |val| in equal size spaces, and point |last| to
+   the final line @>=
+{ const auto l=val.size();
+  std::size_t w=0; std::vector<std::string> tmp(l);
+  unsigned i=0;
+  for (auto& entry : tmp)
+  { entry=std::to_string(val[i++]);
+    if (entry.length()>w)
+      w=entry.length();
+  }
+  if (l==0)
+    last = &*result.emplace_back("[ ]");
+  else
+  { const bool flat = 1+l*(w+1)<=width; // whether all will fit on a line
+    const unsigned per_line = flat ? l : width<=w ? 1 : width/(w+1);
+    const unsigned char_w = flat ? 1+l*(w+1) : per_line*(w+1);
+@)
+    unsigned pos = per_line;
+    last = &*result.emplace_back("");
+    last->str.reserve(char_w);
+    for (std::size_t i=0; i<l; ++i)
+    { last->str.append(i==0?"[":",");
+      last->str.append(w-tmp[i].length(),' ');
+      last->str.append(tmp[i]);
+      if (not flat and --pos == 0) // wrap to a new line every |per_line| entries
+      {@; pos = per_line;
+        last = &*result.emplace_back("");
+        last->str.reserve(char_w);
+      }
+    }
+    if (flat or last->str.empty())
+      last->str.append("]");
+  @+else
+      last = &*result.emplace_back("]");
+  }
+}
+
+@ Now it is easy to use the same section used for vectors to implement printing
+of rational vectors. The use of the method |rat_Vector::true_denominator|
+(instantiated from the |RationalVector| template) allows us to get the actual
+unsigned denominator (whereas the |RationalVector::denominator| cast that value
+to a signed integer of hopefully the same precision). While using an unsigned
+quantity with arithmetic operations that might mix it with signed number is
+dangerous, as those other operands might get silently converted to unsigned even
+if they happen to be negative, it is actually safer here, for printing, to use
+the unsigned value without any changes applied to it.
+
+@< Format rational vector value |v| into |result| @>=
+{ const auto* rvp = static_cast<const rational_vector_value*>(&v);
+  const matrix::Vector<arithmetic::Numer_t>& val = rvp->val.numerator();
+  ind_string* last;
+@/@< Add one or more lines to |result| with a bracketed list containing
+     the entries of |val| in equal size spaces, and point |last| to
+     the final line @>
+@/last->str.append("/" + std::to_string(rvp->val.true_denominator()));
+}
+
+@ For a matrix we try a format a bit more compact that the default format, by
+omitting the commas that follow most entries in the latter. We do make all
+columns equally wide in order to simplify the computation of the line breaks
+that might be necessary for very wide matrices, which would otherwise need to be
+recorded as an increasing list of column numbers where breaks need to be
+inserted, rather than just as a number |per_line| of columns between line breaks.
+
+@< Format matrix value |v| into |result| @>=
+{ const auto* mp = static_cast<const matrix_value*>(&v);
+  const int_Matrix& val = mp->val;
+@)
+ auto k=val.n_rows(), l=val.n_columns();
+  if (k==0 or l==0)
+    result.emplace_back("null("+std::to_string(k)+","+std::to_string(l)+")");
+  else
+  { std::size_t w=0;
+    for (std::size_t i=0; i<k; ++i)
+      for (std::size_t j=0; j<l; ++j)
+      { auto len = std::to_string(val(i,j)).length();
+        if (len>w) w=len;
+      }
+    const bool flat = 3+l*(w+1)<=width;
+    const unsigned per_line = flat ? l : width<=w ? 1 : (width-3)/(w+1);
+    const unsigned char_w = 3+(flat ? l : per_line)*(w+1);
+@)
+    for (std::size_t i=0; i<k; ++i)
+    {
+      unsigned pos = per_line;
+      auto* p = &*result.emplace_back("");
+      p->str.reserve(char_w);
+      p->str.append("|");
+      for (std::size_t j=0; j<l; ++j)
+      { std::string tmp = std::to_string(val(i,j));
+        p->str.append(w+1-tmp.length(),' ');
+        p->str.append(tmp);
+        if (not flat and --pos == 0)
+        { pos = per_line;
+          p = &*result.emplace_back("");
+          p->str.reserve(char_w);
+          p->str.append(" ");
+        }
+      }
+      p->str.append(" |");
+    }
+  }
+}
+
+@ A special function |print_K_type_raw| is defined in \.{basic\_io.cpp} that
+formats $K$-types.
+@< Format $K$-type value |v| into |result| @>=
+{
+  const auto* Ktp = static_cast<const K_type_value*>(&v);
+  print_K_type_raw(o,Ktp->val,Ktp->rf->rc());
+  result.emplace_back(o.str());
+}
+
+@ Similarly, there is a function |print_stdrep_raw| in \.{basic\_io.cpp} for
+module parameters.
+
+@< Format parameter value |v| into |result| @>=
+{
+  const auto* pp = static_cast<const module_parameter_value*>(&v);
+  print_stdrep_raw(o,pp->val,pp->rf->rc());
+  result.emplace_back(o.str());
+}
+
+@ Formatting $K$-type polynomials is largely inspired by formatting of vectors,
+but we do more effort to keep coefficients and $K$-types aligned, as we try to
+reduce the size of coefficients when the are all of a certain kind (all $1$, or
+otherwise all integer, or all integer multiples of~$2$).
+
+@< Format $K$-type polynomial value |v| into |result| @>=
+{ const auto* Ktpp = static_cast<const K_type_pol_value*>(&v);
+  const K_type_poly& val = Ktpp->val;
+  auto l = val.count_terms();
+  const auto& rc = Ktpp->rf->rc();
+@)
+  if (l==0)
+    result.emplace_back("{}<Ktype>");
+  else
+  { unsigned mode = 0;
+    // whether anything( bit 0: not 1; bit 1: not $n*1$; bit 3: not $n*s$)
+    std::vector<std::string> tmp; tmp.reserve(l);
+    std::size_t w_item=0,w1=0,ws=0;
+    unsigned i=0;
+    for (const auto& term : val)
+    {
+      o.str("");
+      print_K_type_raw(o,term.first,rc);
+      @< Push the contents of |o| to |tmp| and track maximal widths in
+         |w_item|, |w1|, and |ws|, while setting |mode| to record some
+         regularity properties about the coefficients @>
+    }
+@)
+    @< Append to |result| the strings from |tmp|, left justified, preceded by
+       the rendering of split integer coefficients from |val|
+       formatted according to |mode|, and enclosed in braces @>
+
+  }
+}
+
+@ There is at least one term; we record |mode=4| if all coefficients are~$1$,
+otherwise |mode=5| if all coefficients are integer, |mode=3| if all coefficients
+are integer multiples of |s|, and |mode=7| in the remaining (mixed) cases.
+This module was isolated to be used also for \.{ParamPol} formatting.
+
+@< Push the contents of |o| to |tmp| and track maximal widths... @>=
+{ tmp.push_back(o.str());
+  if (tmp.back().length()>w_item)
+    w_item = tmp.back().length();
+
+  if (term.second.s()!=0)
+    mode |= term.second.e()==0 ? 0x3 : 0x7;
+  else
+    mode |= term.second.e()==1 ? 0x4 : 0x5;
+  unsigned w=std::to_string(term.second.e()).length();
+  if (w>w1)
+    w1=w;
+  if ((w=std::to_string(term.second.s()).length())>ws);
+    ws=w;
+}
+
+@ This module can be used identically for $K$-type polynomials and for module
+parameters, once their texts have been recorded in the |tmp| array. By computing
+the width necessary we determine whether everything fits on a line (recorded in
+|flat|) and otherwise how many items (|per_line|) will fit on a line. We ensure
+that |per_line| is not zero (forcing one over-size item on each line if needed),
+and take into account that a closing brace is needed on the same line only in
+the |flat| regime. For the possible values of |mode| we output: ($4$) no
+coefficients, ($5$) integer coefficients in parentheses, ($3$) multiple of $s$
+coefficients in parentheses, or ($7$) fully expanded split integer coefficients
+in parentheses.
+
+@< Append to |result| the strings from |tmp|, left justified...@>=
+{ auto w = w_item +
+      ( mode==7 ? 4+w1+ws
+      : mode==3 ? 3+ws
+      : mode==4 ? 0
+      : 2+w1);
+  const bool flat = 1+l*(w+1)<=width;
+  const unsigned per_line = flat ? l : width<=w ? 1 : width/(w+1);
+  const unsigned char_w = flat ? 1+l*(w+1) : per_line*(w+1);
+@)
+  unsigned pos = per_line;
+  auto* last = &*result.emplace_back("");
+  last->str.reserve(char_w);
+  i=0;
+  for (const auto& term : val)
+  { o.str("");
+    o << (i==0?'{':',');
+    if (mode!=4)
+    { o << '(' << std::right;
+      if (mode!=3) // then print multiple of $1$
+        o << std::setw(w1) << term.second.e();
+      if (mode==7)
+        o << '+';
+      if (mode!=5)
+        o << std::setw(ws) << term.second.s() << 's';
+      o << ')';
+    }
+    o << std::left << std::setw(w_item) << tmp[i++];
+    last->str.append(o.str());
+    if (not flat and --pos == 0)
+      // wrap to a new line every |per_line| entries
+    {@; pos = per_line;
+      last = &*result.emplace_back("");
+      last->str.reserve(char_w);
+    }
+  }
+  if (flat or last->str.empty())
+      last->str.append("}");
+@+else
+      last = &*result.emplace_back("}");
+}
+
+@ Formatting polynomials in module parameter now is a small variation of that
+for $K$-types.
+
+@< Format virtual module value |v| into |result| @>=
+{ const auto* vmp = static_cast<const virtual_module_value*>(&v);
+  const SR_poly& val = vmp->val;
+  auto l = val.size(); // since |SR_poly| is a |Free_Abelian|, this is exact
+  const auto& rc = vmp->rf->rc();
+@)
+  if (l==0)
+    result.emplace_back("{}<Param>");
+  else
+  { unsigned mode = 0;
+    // whether anything( bit 0: not 1; bit 1: not $n*1$; bit 3: not $n*s$)
+    std::vector<std::string> tmp; tmp.reserve(l);
+    std::size_t w_item=0,w1=0,ws=0;
+    unsigned i=0;
+    for (const auto& term : val)
+    {
+      o.str("");
+      print_stdrep_raw(o,term.first,rc);
+      @< Push the contents of |o| to |tmp| and track maximal widths in
+         |w_item|, |w1|, and |ws|, while setting |mode| to record some
+         regularity properties about the coefficients @>
+    }
+@)
+    @< Append to |result| the strings from |tmp|, left justified... @>
+  }
+}
+
 @*1 Generic operators and functions, and analogous ordinary ones.
 %
 Here we shall define various forms of size and concatenation functions, denoted
@@ -4165,6 +5460,7 @@ void print_wrapper(eval_level l);
 void prints_wrapper(eval_level l);
 void to_string_wrapper(eval_level l);
 void error_wrapper(eval_level l);
+void type_aware_print_wrapper(eval_level l,const type& tp);
 void sizeof_wrapper(eval_level l);
 void sizeof_vector_wrapper(eval_level l);
 void sizeof_ratvec_wrapper(eval_level l);
@@ -4251,6 +5547,28 @@ void error_wrapper(eval_level l)
   throw runtime_error(o.str());
 }
 
+@ We call |Print| the type aware version of |print|, our first type aware
+function. Unlike |print| it cannot return its argument, since there is no such
+thing as covariant type aware functions.
+
+@< Global function definitions @>=
+void type_aware_print_wrapper(eval_level l, const type& tp)
+{
+  *output_stream <<
+    "{[" << tp.degree() << ']' << tp << ":}\n";
+  unsigned width = 80;
+  auto res = format(tp.bake(),*execution_stack.back(),width);
+  if (res.singleton())
+    *output_stream << res.front().str << '\n';
+  else
+    for (const auto& item : res)
+    { for (unsigned i=0; i<item.indent; ++i)
+        *output_stream << ' ';
+      *output_stream << item.str << '\n';
+    }
+  if (l!=eval_level::single_value) // in |single_value| case we are done
+    push_expanded(l,pop_value()); // otherwise remove and possibly expand value
+}
 
 @ The other definitions are equally straightforward. The generic size-of wrapper
 is used to find the length of any ``row-of'' value, and the others are adapted
@@ -4480,6 +5798,7 @@ install_function(print_wrapper,"print","(T->T)");
 install_function(prints_wrapper,"prints","(T->)");
 install_function(to_string_wrapper,"to_string","(T->string)");
 install_function(error_wrapper,"error","(T->X)");
+install_type_aware_function(type_aware_print_wrapper,"Print","(T->T)");
 install_function(sizeof_wrapper,"#","([T]->int)");
 install_function(sizeof_string_wrapper,"#","(string->int)");
 install_function(sizeof_vector_wrapper,"#","(vec->int)");
