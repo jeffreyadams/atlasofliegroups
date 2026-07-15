@@ -2230,7 +2230,22 @@ use some details about structures introduced there, such as |let_expr_node|.
     link = next;
   }
 @)
-  expr_list tup_expr;
+  @< Attach at |*link| a nested tuple expression for a pair, the first
+     component of which is a tuple expression giving the implementations,
+     and the second of which defines an extra value for each type being defined,
+     to be used in printing values of that type @>
+}
+
+@ We build tuple expression for the implementation, then move it into a pair
+of which for now the second component is an empty tuple. Since |expr_list| is
+|simple_list<expr>|, we don't have |push_back| available; we build the
+implementation tuple using |expr_list::insert| with an iterator |expr_it| that
+is always advanced to the final iterator for the current list |tup_expr|, but
+for the outer |pair_expr| we just |emplace_front| each of the inner tuple
+expressions in reverse order.
+
+@< Attach at |*link| a nested tuple expression for a pair... @>=
+{ expr_list tup_expr;
   auto expr_it = tup_expr.begin();
   for (auto it = interface.sublist.begin(); not it.at_end(); ++it)
   { assert((it->kind&0x1)!=0); // syntax should ensure this
@@ -2238,7 +2253,10 @@ use some details about structures introduced there, such as |let_expr_node|.
       @< Complain that |it->name| is not implemented @>
     expr_it = tup_expr.insert(expr_it,expr(it->name,loc,expr::identifier_tag()));
   }
-  *link = expr(std::move(tup_expr),expr::tuple_display_tag(),loc);
+  expr_list pair_expr;
+  pair_expr.emplace_front(expr_list(),expr::tuple_display_tag(),loc);
+  pair_expr.emplace_front(std::move(tup_expr),expr::tuple_display_tag(),loc);
+  *link = expr(std::move(pair_expr),expr::tuple_display_tag(),loc);
 }
 
 @ The following two messages signal obvious problems that can arise with a
@@ -2257,6 +2275,34 @@ closed type definition.
     << main_hash_table->name_of(it->name) @|
     << " is never defined.";
   throw program_error(o.str());
+}
+
+@ Type checking is done by calling |analyse_types|, which usually does not
+impose a type on the expression, but here |implementation| is required to get
+type |implementation_tp|. We therefore changed the signature of |analyse_types|
+so that the required type is passed as argument; this is usually
+|type::bottom(0)|, but here we pass (by move construction) |implementation_tp|.
+Since the implementation type can (and usually will) involve the |arity| type
+variables that are abstracted in the whole closed type definition, we make sure
+these variables are treated as fixed types during the type analysis by passing
+|arity| to the |type::wrap| conversion.
+
+@< Type check and convert expression |implementation| in the strong type context
+   of |implementation_tp|, and store the converted expression
+   as |converted_impl| @>=
+analyse_types
+  (implementation, type::wrap(implementation_tp,arity),converted_impl);
+
+
+@ Calling the evaluator is easy; the method |expression::eval| calls
+|expression::evaluate|. Since this eventually leads to the evaluation of a tuple
+expression for a pair, whose second argument we wish to ignore for now, we pass
+|eval_level::multi_value| as second argument to |evaluate|, and then pop the
+unwanted value from the stack..
+
+@< Evaluate |converted_impl|, pushing the result on the evaluation stack @>=
+{ converted_impl->multi_eval();
+  execution_stack.pop_back();
 }
 
 @ Deriving the type required for the implementation from the interface
@@ -2311,37 +2357,21 @@ type_expr closed_subst
   }
 }
 
-@ Having defined |closed_subst|, this module becomes a simple call to that
-function.
+@ Having defined |closed_subst|, obtaining the actual implementation type is
+done using a simple call to that function. We must pair this type wit a second
+component that contains the type of the extra information per defined type
+(constructor) that will be provided, but which for now is void.
 
 @< Set |implementation_tp| to the result of substituting,
    into |interface_te|, each of the |repr_types| for the corresponding
    |closed_type| being defined @>=
-  implementation_tp =
+{ implementation_tp =
     closed_subst(interface_te,std::move(repr_types).to_vector());
-
-@ Type checking is done by calling |analyse_types|, which usually does not
-impose a type on the expression, but here |implementation| is required to get
-type |implementation_tp|. We therefore changed the signature of |analyse_types|
-so that the required type is passed as argument; this is usually
-|type::bottom(0)|, but here we pass (by move construction) |implementation_tp|.
-Since the implementation type can (and usually will) involve the |arity| type
-variables that are abstracted in the whole closed type definition, we make sure
-these variables are treated as fixed types during the type analysis by passing
-|arity| to the |type::wrap| conversion.
-
-@< Type check and convert expression |implementation| in the strong type context
-   of |implementation_tp|, and store the converted expression
-   as |converted_impl| @>=
-analyse_types
-  (implementation, type::wrap(implementation_tp,arity),converted_impl);
-
-
-@ Calling the evaluator is easy; the method |expression::eval| calls
-|expression::evaluate| with as second argument |eval_level::single_value|.
-
-@< Evaluate |converted_impl|, pushing the result on the evaluation stack @>=
-  converted_impl->eval();
+  type_list pair_type;
+  pair_type.push_front(void_type.copy());
+  pair_type.push_front(std::move(implementation_tp));
+  implementation_tp = type_expr::tuple(std::move(pair_type));
+}
 
 @ This part is very similar to what happens in phase~2 of |do_global_set|, and
 we can in fact share some modules with that code.
