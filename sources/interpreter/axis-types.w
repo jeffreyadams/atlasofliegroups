@@ -1770,12 +1770,11 @@ instead of the recursive open one.
 @ Grouped type definitions define an oriented graph, where each vertex is a type
 subexpression of one of the right hand sides of the definitions. Edges are for
 direct descendance relations, or for references within the definition group. The
-parser (followed by some processing by the caller |process_type_definitions| of
-|add_typedefs|) represents the latter by |tabled| types with
-|tabled_nr()>=table_size()|. (The |tabled| case with |tabled_nr()<table_size()|
-can also occur, indicating an already tabled type, or type constructor
-instantiation; we shall treat such cases differently depending on the
-|is_recursive| predicate.) This graph can serve to detect actual recursion
+parser (followed by some processing by our caller |process_type_definitions|)
+has represented the latter by |tabled| types that have
+|tabled_nr()>=table_size()| (which condition distinguished them from uses of
+already |tabled| types or type constructor instantiations, which have
+|tabled_nr()<table_size()|). This graph can serve to detect actual recursion
 patterns in our set of type definitions, which appear as cliques for the
 relation of mutual reachability among vertices.
 
@@ -1783,13 +1782,13 @@ To process a group of type definitions, we first decompose the right hand side
 type expressions into ``nodes'' of a graph; some of these will become tabled
 entries even if they are not a full right hand side type. Then we determine the
 recursive cliques among these nodes, and mark all their members in a bitmap
-|rec|. At this point we can check if any of the recursive nodes is an
+|rec|. At this point we can check if any of the nodes so marked is an
 instantiation of a previously defined recursive type constructor (which
 apparently has at least one of the types being defined as argument or as type
-subexpression thereof), and reject the current type definition for that reason
-(as was mentioned above). Otherwise, we copy those nodes that are either a right
-hand side or are involved in a type recursion, to become entries of
-|open_type_table|.
+subexpression thereof, in order to be in a clique), and if so, we reject the
+current type definition for that reason, as was mentioned above. Otherwise, we
+copy those nodes that are either a right hand side or are involved in a type
+recursion, to become entries of |open_type_table|.
 
 @h "preorder.h"
 
@@ -1808,8 +1807,9 @@ void type_expr::add_typedefs
   auto cliques = graph.closure().cliques();
 @/BitMap rec(type_array.size()), keep(type_array.size());
 @/
-  @< Set the |rec| flag for members of |cliques|, and flag an error if
-     any of them involves a previously defined recursive type constructor @>
+  @< Set the |rec| flag for members of |cliques|, and |keep| for them plus
+     all right hand sides; flag an error if any of |rec| involves a previously
+     defined recursive type constructor @>
   @< Add entries to |open_type_table| according to the entries of |type_array|,
      while setting the |recursive| flag from |rec|, and type names for those
      types that are given one in |defs| @>
@@ -1972,13 +1972,12 @@ instantiations, so any |tabled| type occurring as entry of |type_array| is
 necessarily an existing recursive |tabled| type or constructor; if we find any
 such entry in a clique, this means we are in a forbidden situation.
 
-@< Set the |rec| flag for members of |cliques|, and flag an error if
-     any of them involves a previously defined recursive type constructor @>=
+@< Set the |rec| flag for members of |cliques|... @>=
 {
   for (const auto& clique : cliques)
     rec |= BitMap(type_array.size(),clique.wcbegin(),clique.wcend());
   keep = rec;
-  keep.fill(0,n_defs);
+  keep.fill(0,n_defs); // we'll keep the |n_defs| right hand sides, and any recursive nodes
   for (auto index : rec)
   { const type_expr& tp = type_array[index].tp;
     if (tp.raw_kind()==tabled)
@@ -1994,15 +1993,15 @@ such entry in a clique, this means we are in a forbidden situation.
 
 @ When the |type_array| has served its purpose of allowing the detection of
 recursion within the simultaneous type definitions, some of its entries~|e| will
-give rise to types installed in |open_type_table|; these entries will be flagged
-in the local |BitMap| variable |keep| of |add_typedefs|. Such a type will be
-modelled on |e.tp|, but its direct descendants will typically be tabled
-references to other types tabled in |open_type_table| (though types that do not
-refer to |open_type_table| at all are also valid possibilities). The lambda
-|rewrite| will be called to construct the direct descendants of an entry written
-to |open_type_table|. It is given as argument an iterator into the list of
-outgoing edges of a |type_array| entry; it returns the corresponding descendant
-represented as a |type_expr|.
+give rise to types installed in |open_type_table|; these entries have been
+flagged in the local |BitMap| variable |keep| of |add_typedefs|. A type so
+installed will be modelled on |e.tp|, but any direct descendants that are also
+installed in |open_type_table| will be represented by tabled references; the
+remaining descendants are not involved in recursion and are copied in full. To
+construct the direct descendants of an entry written to |open_type_table|, we
+use the lambda |rewrite| defined below. It is given as argument an iterator into
+the list of outgoing edges of a |type_array| entry; it returns the corresponding
+descendant represented as a |type_expr|.
 
 We have chosen to use for |rewrite| a lambda, which allows it to have easy
 access (capturing by reference) to the local variables of |add_typedefs| that it
@@ -2038,6 +2037,7 @@ auto rewrite =
   }
   else
     return std::move(type_array[k].tp);
+    // use non kept members entirely, moving from |type_array|
 }@+;
 
 @ The transfer of elements of |type_array| to |open_type_table| is
@@ -2045,21 +2045,24 @@ straightforward. We only copy nodes whose index is recorded in |keep| (the types
 currently being defined and intermediate types in a recursion of one of them).
 The non tabled direct descendants of such a type will be placed
 in~|open_type_table|, by the logic of~|rewrite|. The only way in which a
-sub-type that is not tabled can have a descendant that is, is when it names one
-of the types being currently defined, which turns out to not be recursive. But
-such links were already produced in their final form upon entry to
-|add_typedefs|, so using such a |type_array| entry is fine.
+sub-type that is not flagged in |keep| can have a descendant that is so flagged,
+is when that descendant is one of the types being currently defined (and happens
+to not be recursive). But such descendants were already stored as tabled
+references in |type_array|, so even in such a case using the sub-type exactly as
+it is stored in |type_array| gives the desired result.
 
-Storing the new type constructed in a local variable |tp| and then moving from
-it could have been avoided using |open_type_table.emplace_back|, but this would
-make the already long calls to construct the type even longer. The only
-complication in our code is the rare case where the type in |type_array| already
-has |raw_kind()==tabled|; this can happen only if a type is defined
-non-recursively as an instantiation of an existing recursive tabled type, and we
-shall treat this in the next section. After moving from |tp| we complete the
-entry with its |recursive| and |name|; we also set the |starter| flag for the
-first type in the group (we always have |keep.isMember(0)| since this it the
-first of the types being defined), and clear it for all other ones.
+For |type_array| entries flagged in |keep|, we construct a new type of the same
+kind after passing any descendants through |rewrite|. The result is stored in a
+local variable |tp| and at the end moved into |open_type_table|. The local
+variable could have been avoided by using |open_type_table.emplace_back|
+directly, but this would make the already long calls to construct the type even
+longer. The only complication is the rare case where our type is |tabled|
+already. This only happens if it is being defined non-recursively as an
+instantiation of an existing recursive tabled type; the case is treated in the
+next section. After moving from |tp| we complete the entry with its |recursive|
+and |name| fields; we also set the |starter| flag for the first type in the
+group (including for |i=0|, since we always have |keep.isMember(0)|), and clear
+it for all other ones.
 
 @< Add entries to |open_type_table| according to the entries of... @>=
 @< Declare a local function |rewrite| @>@;
@@ -2107,12 +2110,12 @@ first of the types being defined), and clear it for all other ones.
 }
 
 @ When we encounter a |tabled| type among the |type_array| entries marked in
-|keep|, it is necessarily an existing recursive one. We pass any arguments
-types through |rewrite| like the direct descendants of other kinds of type, and
-call |user_type| to construct the type. The complication of this case is that we
-want to avoid storing this |tabled| type directly in |open_type_table|. The
-solution is to call |expanded| to obtain a top-level expansion, which can be
-stored in in |open_type_table|.
+|keep|, it is necessarily an existing recursive one. We pass any argument types
+through |rewrite| like the direct descendants of other kinds of type, and call
+|user_type| to construct the type. The complication of this case is that we want
+to avoid storing the resulting |tabled| type directly in |open_type_table|. The
+solution is to call |expanded| to obtain a top-level expansion, which can then
+be safely stored in |open_type_table|.
 
 While necessary to ensure that any tabled type will require just a
 single expansion to produce a type with non-tabled |top_kind()|, which is
