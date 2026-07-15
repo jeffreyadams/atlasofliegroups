@@ -2124,7 +2124,7 @@ void process_closed_type_definition
   patlist id_list(idl);
   type_ptr interface_tp_p(iftp);
   patlist interface_list(iface);
-  type_list repr_types(reptps);
+  auto repr_types = type_list(reptps).to_vector();
   let_list impl(imp);
   // ensure clean-up
 @)
@@ -2182,8 +2182,8 @@ internally takes into account the current size of |type_expr::closed_info|.
 
 @< While ensuring appropriate |swallow| conversions, define a vector |ids| of
    new type identifiers, the interface... @>=
-for (auto it = repr_types.wbegin(); not repr_types.at_end(it); ++it)
-  *it = global_id_table->swallow(*it);
+for (auto& tp : repr_types)
+  tp = global_id_table->swallow(tp);
 std::vector<id_type> ids;
 ids.reserve(length(id_list));
 for (auto it=id_list.begin(); not id_list.at_end(it); ++it)
@@ -2194,7 +2194,7 @@ for (auto it=id_list.begin(); not id_list.at_end(it); ++it)
       (it->name,type::constructor(std::move(new_tp),arity),loc);
   ids.push_back(it->name);
 }
-if (ids.size()!=length(reptps))
+if (ids.size()!=repr_types.size())
   @< Report a wrong number of type representations in |repts| for |ids| @>
 @) // prepare the effect of the definition for future type analysis
 id_pat interface(std::move(interface_list));
@@ -2360,15 +2360,18 @@ type_expr closed_subst
 @ Having defined |closed_subst|, obtaining the actual implementation type is
 done using a simple call to that function. We must pair this type wit a second
 component that contains the type of the extra information per defined type
-(constructor) that will be provided, but which for now is void.
+(constructor) that will be provided.
 
 @< Set |implementation_tp| to the result of substituting,
    into |interface_te|, each of the |repr_types| for the corresponding
    |closed_type| being defined @>=
-{ implementation_tp =
-    closed_subst(interface_te,std::move(repr_types).to_vector());
+{ implementation_tp = closed_subst(interface_te,repr_types);
+  type_list out_types;
+  for (unsigned int i=ids.size(); i-->0; )
+    out_types.push_front(type_expr::function @|
+      (std::move(repr_types[i]),type_expr::primitive(string_type)));
   type_list pair_type;
-  pair_type.push_front(void_type.copy());
+  pair_type.push_front(type_expr::tuple(std::move(out_types)));
   pair_type.push_front(std::move(implementation_tp));
   implementation_tp = type_expr::tuple(std::move(pair_type));
 }
@@ -2422,7 +2425,7 @@ type_expr::add_closed_types(ids,arity);
 { o << "Wrong number " << length(reptps)
   @|<< " of implementation types for type"
   @|<< (arity>0 ? " constructor" : "")
-    << (ids.size()>1 ? "s" : "");
+    << (ids.size()>1 ? "s " : " ");
   o << main_hash_table->name_of(ids[0]);
   for (unsigned i=1; i<ids.size(); ++i)
     o << ',' << main_hash_table->name_of(ids[i]);
