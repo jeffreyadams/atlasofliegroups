@@ -1337,6 +1337,9 @@ We need to predeclare some types used in the declaration of |type_expr| methods.
 
 @< Type declarations @>=
 struct type_binding;
+struct function_base; // a type derived from |value_base|, defined in \.{axis.w}
+using shared_function = std::shared_ptr<const function_base>;
+// specialises |shared_value| (defined later)
 struct closed_record;
 class type;
 
@@ -1452,7 +1455,8 @@ static void add_typedefs
  (const std::vector<std::pair<id_type,const_type_p> >& defs,
   unsigned short n_args);
 static void add_closed_types
- (const std::vector<id_type>& names, unsigned short arity);
+  (const std::vector<std::pair<id_type,shared_function> >& types,
+   unsigned short arity);
 
 @ Here are the easy ones among those methods: |table_size| just returns the
 current |size| of |open_type_table| while |reset_table_size| shrinks the table
@@ -2144,6 +2148,7 @@ printing of values of this closed type.
 struct type_expr::closed_record @+
 {@; id_type name;
     unsigned short arity;
+    shared_function to_string;
   };
 
 @ The static member |type_expr::closed_info| is a simple vector holding the
@@ -2178,10 +2183,11 @@ namely just a list of names to be added to |closed_info| and a common arity.
 
 @< Function definitions @>=
 void type_expr::add_closed_types
-  (const std::vector<id_type>& names, unsigned short arity)
-{ closed_info.reserve(closed_count()+names.size());
-  for (const auto name : names)
-    closed_info.push_back(closed_record{name,arity});
+  (const std::vector<std::pair<id_type,shared_function> >& type_info,
+   unsigned short arity)
+{ closed_info.reserve(closed_count()+type_info.size());
+  for (auto& p : type_info)
+    closed_info.push_back(closed_record{p.first,arity,std::move(p.second)});
 }
 
 
@@ -4898,18 +4904,19 @@ template <typename D> // |D| is a type derived from |value_base|
 
 @ Here is a function template similar to |get|, that applies in situations where
 the value whose type is known does not reside on the stack. As for |get| we
-convert using a dynamic case, and to throw a |logic_error| in case our type
-prediction was wrong. This function is defined at the level of ordinary
-pointers, and it is not intended for use where the caller assumes ownership of
-the result; the original pointer is assumed to retain ownership as long as the
-result of this call survives, and in particular that pointer should probably not
-be obtained by calling the |get| method for a smart pointer temporary, nor
-should the result of |force| converted to a smart pointer, lest double deletion
-would ensue. As a consequence, we here use the basic |dynamic_cast| of a raw
-pointer rather than a |dynamic_pointer_cast| of a |std::shared_ptr|. Like in the
-case of |get| we provide a version using a static cast (omitting any check) when
-no debugging is enabled, since the validity of the downcast should be ensured by
-having passed the type check.
+convert using a static or dynamic cast (depending on the |NDEBUG| macro), and in
+the latter case throw a |logic_error| if our type prediction was wrong. This
+function is defined using ordinary pointers (both on input and on output), and
+it is not intended for use where the caller assumes ownership of the result; the
+original pointer is assumed to retain ownership as long as the result of this
+call survives, and in particular that pointer should probably not be obtained by
+calling the |get| method for a smart pointer temporary, nor should the result of
+|force| be converted to a smart pointer, lest double deletion would ensue. As a
+consequence, we here use the basic |static_cast| or |dynamic_cast| of a raw
+pointer, rather than a |static_pointer_cast| or |dynamic_pointer_cast| of a
+|std::shared_ptr|. Like in the case of |get|, usage should be limited to
+situations where we know that the downcast will succeed because of a previously
+passed type check.
 
 We provide two versions, where overloading will choose one or the other
 depending on the const-ness of the argument. Since calling |get| for a
@@ -5080,9 +5087,6 @@ efficiency reasons) provided systematically in the library.
 @< Type declarations @>=
 using wrapper_function = @[void (* )(eval_level)@];
 using type_aware_wrapper = @[void (*)(eval_level, const type&)@];
-struct function_base; // a type derived from |value_base|, defined in \.{axis.w}
-using shared_function = std::shared_ptr<const function_base>;
-// specialises |shared_value|
 template <bool variadic> struct builtin_value;
 // derived from |function_base|, defined in \.{axis.w}
 using builtin = builtin_value<false>;

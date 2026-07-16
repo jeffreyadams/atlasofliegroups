@@ -2126,7 +2126,6 @@ void process_closed_type_definition
   patlist interface_list(iface);
   auto repr_types = type_list(reptps).to_vector();
   let_list impl(imp);
-  // ensure clean-up
 @)
   try {
     @< While ensuring appropriate |swallow| conversions, define a vector
@@ -2236,13 +2235,15 @@ use some details about structures introduced there, such as |let_expr_node|.
      to be used in printing values of that type @>
 }
 
-@ We build tuple expression for the implementation, then move it into a pair
-of which for now the second component is an empty tuple. Since |expr_list| is
-|simple_list<expr>|, we don't have |push_back| available; we build the
-implementation tuple using |expr_list::insert| with an iterator |expr_it| that
-is always advanced to the final iterator for the current list |tup_expr|, but
-for the outer |pair_expr| we just |emplace_front| each of the inner tuple
-expressions in reverse order.
+@ We build a tuple expression for the implementation, then move it into a pair
+of which for now the second component is a tuple with an applied
+identifier \\{to\_string} for each type (constructor) being defined (the type
+that will be imposed on it is a function from the corresponding implementation
+type to |string|). Since |expr_list| is |simple_list<expr>|, we don't have
+|push_back| available; we build the implementation tuple using
+|expr_list::insert| with an iterator |expr_it| that is always advanced to the
+final iterator for the current list |tup_expr|, but for the outer |pair_expr| we
+just |emplace_front| each of the inner tuple expressions in reverse order.
 
 @< Attach at |*link| a nested tuple expression for a pair... @>=
 { expr_list tup_expr;
@@ -2253,56 +2254,14 @@ expressions in reverse order.
       @< Complain that |it->name| is not implemented @>
     expr_it = tup_expr.insert(expr_it,expr(it->name,loc,expr::identifier_tag()));
   }
+  const auto ts_str = main_hash_table->match_literal("to_string");
+  expr_list tss;
+  for (unsigned int i=0; i<ids.size(); ++i)
+    tss.emplace_front(ts_str,loc,expr::identifier_tag());
   expr_list pair_expr;
-  pair_expr.emplace_front(expr_list(),expr::tuple_display_tag(),loc);
+  pair_expr.emplace_front(std::move(tss),expr::tuple_display_tag(),loc);
   pair_expr.emplace_front(std::move(tup_expr),expr::tuple_display_tag(),loc);
   *link = expr(std::move(pair_expr),expr::tuple_display_tag(),loc);
-}
-
-@ The following two messages signal obvious problems that can arise with a
-closed type definition.
-
-@< Complain that |it->pattern.name| is implemented more than once @>=
-{ o << loc << "\nInterface value "
-    << main_hash_table->name_of(it->pattern.name) @|
-    << " is multiply defined.";
-  throw program_error(o.str());
-}
-
-@~We must neither give to many nor too few implementation definitions.
-@< Complain that |it->name| is not implemented @>=
-{ o << loc << "\nInterface value "
-    << main_hash_table->name_of(it->name) @|
-    << " is never defined.";
-  throw program_error(o.str());
-}
-
-@ Type checking is done by calling |analyse_types|, which usually does not
-impose a type on the expression, but here |implementation| is required to get
-type |implementation_tp|. We therefore changed the signature of |analyse_types|
-so that the required type is passed as argument; this is usually
-|type::bottom(0)|, but here we pass (by move construction) |implementation_tp|.
-Since the implementation type can (and usually will) involve the |arity| type
-variables that are abstracted in the whole closed type definition, we make sure
-these variables are treated as fixed types during the type analysis by passing
-|arity| to the |type::wrap| conversion.
-
-@< Type check and convert expression |implementation| in the strong type context
-   of |implementation_tp|, and store the converted expression
-   as |converted_impl| @>=
-analyse_types
-  (implementation, type::wrap(implementation_tp,arity),converted_impl);
-
-
-@ Calling the evaluator is easy; the method |expression::eval| calls
-|expression::evaluate|. Since this eventually leads to the evaluation of a tuple
-expression for a pair, whose second argument we wish to ignore for now, we pass
-|eval_level::multi_value| as second argument to |evaluate|, and then pop the
-unwanted value from the stack..
-
-@< Evaluate |converted_impl|, pushing the result on the evaluation stack @>=
-{ converted_impl->multi_eval();
-  execution_stack.pop_back();
 }
 
 @ Deriving the type required for the implementation from the interface
@@ -2358,7 +2317,7 @@ type_expr closed_subst
 }
 
 @ Having defined |closed_subst|, obtaining the actual implementation type is
-done using a simple call to that function. We must pair this type wit a second
+done using a simple call to that function. We must pair this type with a second
 component that contains the type of the extra information per defined type
 (constructor) that will be provided.
 
@@ -2374,6 +2333,51 @@ component that contains the type of the extra information per defined type
   pair_type.push_front(type_expr::tuple(std::move(out_types)));
   pair_type.push_front(std::move(implementation_tp));
   implementation_tp = type_expr::tuple(std::move(pair_type));
+}
+
+@ Type checking is done by calling |analyse_types|, which usually does not
+impose a type on the expression, but here |implementation| is required to get
+type |implementation_tp|. We therefore changed the signature of |analyse_types|
+so that the required type is passed as argument; this is usually
+|type::bottom(0)|, but here we pass (by move construction) |implementation_tp|.
+Since the implementation type can (and usually will) involve the |arity| type
+variables that are abstracted in the whole closed type definition, we make sure
+these variables are treated as fixed types during the type analysis by passing
+|arity| to the |type::wrap| conversion.
+
+@< Type check and convert expression |implementation| in the strong type context
+   of |implementation_tp|, and store the converted expression
+   as |converted_impl| @>=
+analyse_types
+  (implementation, type::wrap(implementation_tp,arity),converted_impl);
+
+
+@ Calling the evaluator is easy; the method |expression::eval| calls
+|expression::evaluate|. Since this eventually leads to the evaluation of a tuple
+expression for a pair, whose second argument will be used to provide possibly
+specialised printing functions for each of the closed types being defined.
+By passing |eval_level::multi_value| as second argument to |evaluate|, this
+component will appear as a separate value on the top of the evaluation stack; we
+shall see below how it is used.
+
+@< Evaluate |converted_impl|, pushing the result on the evaluation stack @>=
+converted_impl->multi_eval();
+
+@ To update the static member |type_expr::closed_info|, we must first pair each
+(new type or type constructor) identifier from |ids| with one of the values in
+the tuple on top of the stack, and then call |type_expr::add_closed_types|.
+
+@< Update |type_expr::closed_type_table| with new |arity|
+   type constructors with names from |ids| @>=
+{ auto aux_values = get<tuple_value>();
+  std::vector<std::pair<id_type,shared_function> > type_info;
+  type_info.reserve(ids.size());
+  for (unsigned int i=0; i<ids.size(); ++i)
+  { push_value(std::move(aux_values->val[i]));
+    shared_function f = get<function_base>();
+    type_info.emplace_back(ids[i],std::move(f));
+  }
+  type_expr::add_closed_types(type_info,arity);
 }
 
 @ This part is very similar to what happens in phase~2 of |do_global_set|, and
@@ -2412,12 +2416,23 @@ we can in fact share some modules with that code.
   }
 }
 
-@ Finally, we must update the static member |type_expr::closed_info|, which can
-be done by calling |type_expr::add_closed_types|.
+@ The following two messages signal obvious problems that can arise with a
+closed type definition.
 
-@< Update |type_expr::closed_type_table| with new |arity|
-   type constructors with names from |ids| @>=
-type_expr::add_closed_types(ids,arity);
+@< Complain that |it->pattern.name| is implemented more than once @>=
+{ o << loc << "\nInterface value "
+    << main_hash_table->name_of(it->pattern.name) @|
+    << " is multiply defined.";
+  throw program_error(o.str());
+}
+
+@~We must neither give to many nor too few implementation definitions.
+@< Complain that |it->name| is not implemented @>=
+{ o << loc << "\nInterface value "
+    << main_hash_table->name_of(it->name) @|
+    << " is never defined.";
+  throw program_error(o.str());
+}
 
 @ And here are two more sections that explain things that can go wrong.
 
