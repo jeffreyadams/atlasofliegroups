@@ -1923,7 +1923,7 @@ an iterator~|it| into the list and a position~|i|.
 
 @< Update |global_id_table| with types and values... @>=
 { unsigned int i = 0; // position within |defs|
-  containers::sl_list<definition_group> store;
+  sl_list<definition_group> store;
   for (auto it=defs.wcbegin(); not defs.at_end(it); ++it,++i)
     if (not it->fields.empty())
     { auto type_nr = old_table_size+i;

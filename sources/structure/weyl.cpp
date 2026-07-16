@@ -84,12 +84,13 @@ const Generator UndefGenerator = UndefValue;
   (Confusingly Fokko's 1999 paper interchanges these terms at their definition,
   but their usual meaning and the sequel makes clear that this was an error).
 
-  The Transducer has tables to describe the two cases. the first table
-  |d_shift| describes the transitions, namely |d_shift[i][j]==i'| in the
-  first case; the cases that are transductions can be distinguished from these
-  by the fact that |d_shift[i][j]==i|. In these cases, the value |k| emitted
-  by the transduction is stored in |d_out[i][j]|, which otherwise contains the
-  value |UndefGenerator|
+  The Transducer has one |table| to describe the two cases. For transitions (the
+  first case above) we have |table[i][j]==i'|, and for transductions (the second
+  case), and |table[i][j]==sz+k|, where |sz| is the number of states (so that
+  |sz+k| cannot be validly interpreted as a shift entry). Access to the table
+  takes place via methods |has_shift|, |shift| and |out|, which interpret this
+  encoding and respectively return for a given pair $(i,j)$ whether transition
+  applies, the value of |i'| (former case) and the value of |k| (latter case).
 */
 
 struct WeylGroup::Transducer
@@ -97,7 +98,7 @@ struct WeylGroup::Transducer
   // there will be one such object for each $r\in\{1,2,\ldots,n\}$
   // but $r$ is not explicitly stored in the |Tranducer| object
 
-  struct elem_info
+  struct elem_info // information about one "piece", i.e., transducer state
   { unsigned char length; // length of |piece| in quotient Bruhat order
     Generator right; // rightmost factor of chosen word for this piece
 
@@ -111,7 +112,7 @@ struct WeylGroup::Transducer
   Generator offset; // first generator in this Dynkin diagram component
   Generator limit; // |shift| and |out| only valid for |Generator| below |limit|
   std::vector<elem_info> elt;
-  matrix::Matrix<Generator> table;
+  matrix::Matrix<Generator> table; // of dimension |elt.size()| times |limit|
 
 // constructors and destructors
   Transducer() {}
@@ -125,7 +126,7 @@ struct WeylGroup::Transducer
   static constexpr int max_piece_length = // for piece word reversal
     std::max(57ul,2*constants::RANK_MAX-1); // E8 needs 57, BCn needs 2n-1
 
-  // conversion into numbering for this component only and back again
+  // conversion into numbering for this Dynkin diagram component only and back
   Generator local(Generator s) const { return s-offset; }
   Generator unlocal(Generator s) const { return s+offset; }
 
@@ -180,7 +181,7 @@ struct WeylGroup::Transducer
    current component) and a standard ordering for each type is used, we no
    longer pass a Coxeter matrix to the constructor, but just a (simple) type.
    The following function computes Coxeter matrix entries for any type, in the
-   order we use, namely Bourbaki except for reversal in types B,C,D
+   order we use, namely Bourbaki except for an order reversal in types B,C,D
 */
 
 unsigned int Coxeter_entry(lietype::TypeLetter type, Generator i, Generator j)
@@ -281,6 +282,126 @@ unsigned int Coxeter_entry(lietype::TypeLetter type, Generator i, Generator j)
       times, or $m-2$ times followed by an upward step; then $xst$ goes up.
 */
 
+#if 1
+WeylGroup::Transducer::Transducer
+  (lietype::TypeLetter type, Generator offset, Generator r)
+    // here |r| is relative to |offset|
+    : offset(offset), limit(r+1), elt(), table()
+{
+  // One row of a transducer table for a Weyl group.
+  struct entry;
+
+  struct arc { entry* p; bool up; };
+  using Shifts = std::array<arc,constants::RANK_MAX>;
+  using Ducers = std::array<unsigned char,constants::RANK_MAX>;
+  struct entry
+  { Shifts shift; // Right multiplication by $s_j$ transitions to |*shift[j]|
+    Ducers out; // Right multiplication by $s_j$ may transduce |out[j]|
+    unsigned int nr;
+
+    entry(unsigned int nr): nr(nr)
+    { shift.fill(arc{nullptr,false}); out.fill(UndefGenerator); }
+  };
+  sl_list<entry> tab; // will determine |table| at the end
+
+  // first row of transition and of transduction table
+  elt.emplace_back(0); // length 0, empty |piece|, all fields Undef values
+  tab.emplace_back(0);
+  auto it = tab.wbegin();
+
+  // all shifts lower than |r| are transductions of unchanged generator
+  for (Generator i = 0; i < r; ++i)
+  {
+    it->shift[i] = arc{&*it,false}; // shift to self, no transition, not |up|
+    it->out[i]   = i;               // transduction of unchanged generator
+  }
+  // |tab[0].shift[r]=UndefEltPiece;| was set by |entry| constructor
+  // |tab[0].out[r]  =UndefGenerator;| idem
+
+  // In this loop, the |elt| and |tab| tables grow! The loop stops when |x|
+  // overtakes the table size because no more new elements are created.
+
+  EltPiece pos=0;
+  do // |while (not tab.at_end(it))|
+  {
+    for (Generator s = 0; s <= r; ++s)
+      if (it->shift[s].p==nullptr)
+      {
+	elt.emplace_back(elt[pos].length+1);
+
+	auto& top = *tab.emplace_back(tab.size());
+
+	elt.back().right=s; // last letter in word that leads to the |top|
+
+	// |shift| and |out| fields of |top| are currently set to Undef values
+	it->shift[s] = arc { &top, true };
+	top.shift[s] = arc { &*it, false };
+
+	// now define the shifts or transductions that do not take |xs| upwards
+
+	for (Generator t = 0; t <= r; ++t)
+	{
+	  if (t == s)
+	    continue;
+
+	  entry* here = &top;
+	  unsigned count = 0;
+	  const unsigned int m = Coxeter_entry(type,s,t);
+	  const Generator st[] = {s,t}; // convenience
+	  Generator u=s; // first go to |&*it| then alternate between |s| and |t|
+	  do
+	  { if ((here = here->shift[u].p)==nullptr)
+	      break; // this should only happen
+	    u = st[(++count)%2];
+	  } while(not here->shift[u].up);
+
+	  if (count!=m)
+	    assert(count<m); // since cycle closes in $2m$ steps
+	  else
+	  { assert(here!=nullptr); // null can only come before half of the cycle
+	    if (here->shift[st[(--count)%2]].up) // test other gererator than |u|
+	    { // arc is up for that one as well: a cycle without transductions
+	      while (count-->0) // repeat $m-1$ times, starting with |u| again
+	      { const auto& entry = here->shift[st[count%2]];
+		assert(entry.up and entry.p!=nullptr);
+		here = entry.p;
+	      }
+	      here->shift[st[count%2]] = arc { &top, true };
+	      top.shift[st[count%2]]   = arc { here, false };
+	    }
+	    else // we are a top of cycle whose bottom step is a transduction
+	    { // top step is also transduction
+	      top.shift[t] = arc { &top, false };
+	      // output for the the transduction step is the same as at bottom
+	      top.out[t]   = here->out[st[count%2]];
+	    }
+	  } // conditional on whether |count==m|
+	} // |for(t)|
+      } // |if (*it==nullptr)|
+    // |for(s)|
+    ++it, ++pos;
+  } while(not tab.at_end(it));
+
+  const unsigned int coset_size = pos;
+
+  // |Generator| need space to distinguish |coset_size| states and |r+1| outputs
+  assert(coset_size + r < std::numeric_limits<Generator>::max());
+
+  table=matrix::Matrix<Generator>(coset_size,r+1);
+  pos=0;
+  for (auto it=tab.wcbegin(); not tab.at_end(it); ++it,++pos)
+    for (Generator j=0; j<=r; ++j)
+    { assert(it->shift[j].p!=nullptr); // all links are filled by now
+      if (it->shift[j].p!=&*it) // whether it is a transition
+	table(pos,j) = it->shift[j].p->nr;
+      else // a transduction
+      { assert(it->out[j]!=UndefGenerator); // necessary output slot is filled
+	table(pos,j) = coset_size + it->out[j];
+      }
+    }
+} // |Transducer::Transducer|
+
+#else
 WeylGroup::Transducer::Transducer
   (lietype::TypeLetter type, Generator offset, Generator r)
     // here |r| is relative to |offset|
@@ -294,7 +415,7 @@ WeylGroup::Transducer::Transducer
 
     entry() { shift.fill(UndefEltPiece); out.fill(UndefGenerator); }
   };
-  std::vector<entry> tab; // local that will determine |table| at the end
+  std::vector<entry> tab; // local variable, will determine |table| at the end
 
   // first row of transition and of transduction table
   elt.emplace_back(0); // length 0, empty |piece|, all fields Undef values
@@ -409,6 +530,8 @@ WeylGroup::Transducer::Transducer
       else
 	assert(tab[i].out[j]<r),table(i,j) = tab.size() + tab[i].out[j];
 } // |Transducer::Transducer|
+
+#endif
 
 Generator WeylGroup::Transducer::unshift(EltPiece& x) const
 {
@@ -826,14 +949,14 @@ Twist WeylGroup::Chevalley_twist () const
 
   Algorithm: straightforward enumeration of the connected component of |w| in
   the graph defined by the operation |conjugate|, using a |std::set| structure
-  to record previously encountered elements and a |containers::queue| to store
+  to record previously encountered elements and a |queue| to store
   elements whose neighbors have not yet been generated.
 
 */
 WeylEltList conjugacy_class(const WeylGroup& W,const WeylElt& w)
 {
   std::set<WeylElt> found { w };
-  containers::queue<WeylElt> to_do { w };
+  queue<WeylElt> to_do { w };
 
   while (not to_do.empty())
   {
@@ -1249,7 +1372,7 @@ void TwistedWeylGroup::twistedConjugate // $tw = w.tw.twist(w)^{-1}$
 
   Algorithm: straightforward enumeration of the connected component of |w| in
   the graph defined by the operation |twistedConjugate|, using a |std::set|
-  to record previously encountered elements and a |containers::queue| to store
+  to record previously encountered elements and a |queue| to store
   elements whose neighbors have not yet been generated.
 */
 void TwistedWeylGroup::twistedConjugacyClass
@@ -1257,7 +1380,7 @@ void TwistedWeylGroup::twistedConjugacyClass
   const
 {
   std::set<TwistedInvolution> found { tw } ;
-  containers::queue<TwistedInvolution> to_do { tw };
+  queue<TwistedInvolution> to_do { tw };
 
   while (not to_do.empty())
   {

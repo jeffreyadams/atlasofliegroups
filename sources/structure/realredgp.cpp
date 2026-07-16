@@ -263,9 +263,9 @@ TorusPart minimal_torus_part
     = G.simple_roots_x0_compact(wrf).slice(basis_simples)^mask;
 
   BitMap seen (1ul<<rd.rank()); seen.insert(tp.data().to_ulong());
-  containers::simple_list<TorusPart> candidates;
+  simple_list<TorusPart> candidates;
 
-  { containers::stack<std::pair<TorusPart,Grading> > to_do;
+  { stack<std::pair<TorusPart,Grading> > to_do;
     to_do.push(std::make_pair(tp,start_grading));
 
     std::vector<TorusPart> m_alpha; m_alpha.reserve(r);

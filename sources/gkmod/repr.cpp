@@ -1200,13 +1200,138 @@ K_type_poly Rep_context::scale_0(const SR_poly& P) const
 using sr_term = std::pair<StandardRepr,int>;
 using sr_term_list = simple_list<sr_term>;
 
+#if 1
 // convert |z| into increasing list of final parameters, maybe with multiplicity
 sr_term_list Rep_context::finals_for(StandardRepr z) const
 {
   const RootDatum& rd = root_datum();
 
-  containers::queue<sr_term> to_do;
-  to_do.emplace(std::move(z),1);
+  sr_term_list result { sr_term(std::move(z),1) };
+  auto it = result.begin();
+  do
+  { // invariant: |not result.at_end(it)|
+    auto& cur = *it;
+    KGBElt x = cur.first.x();
+    Weight lr = lambda_rho(cur.first);
+#ifndef NDEBUG
+    auto height = cur.first.height();
+#endif
+    RatWeight& gamma = cur.first.infinitesimal_char;
+    auto& coef = cur.second; // always |1| or |-1|
+    bool changed = false;
+
+    if (false)
+    restart: changed = true; // flag when we have come around at least once
+
+    for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
+      // as |break| from loop is not available within |switch|, use |goto| below
+    { auto eval = // morally evaluation coroot at |gamma|, but only sign matters
+	rd.simpleCoroot(s).dot(gamma.numerator());
+      if (eval>0)
+	continue; // when strictly dominant, nothing to do for |s|
+      switch (kgb().status(s,x))
+      {
+      case gradings::Status::ImaginaryCompact:
+	if (eval==0)
+	  goto drop; // singular imaginary compact |s|, parameter is zero
+	rd.simple_reflect(s,lr,1); // $-\rho$-based reflection
+	rd.simple_reflect(s,gamma.numerator());
+	coef = -coef;
+	goto restart;
+      case gradings::Status::ImaginaryNoncompact:
+	if (eval==0)
+	  continue; // nothing to do for singular nci generator |s|
+	{ // |eval<0|: reflect, and also add Cayley transform terms
+	  KGBElt sx = kgb().cross(s,x);
+	  KGBElt Cx = kgb().cayley(s,x);
+	  if (sx==x) // then type 2 Cayley
+	  {
+	    StandardRepr t2 = sr_gamma(Cx,lr+rd.simpleRoot(s),gamma);
+	    assert( t2.height() < height );
+	    result.emplace(std::next(it),std::move(t2),coef);
+	  }
+	  // now first of two type 2 Cayleys, or unique type 1 Cayley
+	  StandardRepr t1 = sr_gamma(Cx,lr,gamma);
+	  assert( t1.height() < height );
+	  result.emplace(std::next(it),std::move(t1),coef);
+
+	  x = sx; // after testing we can update |x| for nci cross action
+	  rd.simple_reflect(s,lr,1); // $-\rho$-based reflection
+	  rd.simple_reflect(s,gamma.numerator());
+	  coef = -coef; // reflect, negate, and continue with modified values
+	  goto restart;
+	}
+      case gradings::Status::Complex:
+	if (eval==0 and not kgb().isDescent(s,x))
+	  continue; // nothing to do for singular complex ascent
+	// now we are either not dominant for |s|, or a complex ascent
+	x = kgb().cross(s,x);
+	rd.simple_reflect(s,lr,1); // $-\rho$-based reflection
+	rd.simple_reflect(s,gamma.numerator());
+	// keep |coef| unchanged here
+	goto restart;
+      case gradings::Status::Real:
+	if (eval==0) // singular real root
+	{ auto eval_lr = rd.simpleCoroot(s).dot(lr);
+	  if (eval_lr%2 == 0) // whether non-parity
+	    continue; // nothing to do for a (singular) real nonparity root
+	  // now $\alpha_s$ is parity real root: replace by inverse Cayley(s)
+	  // |kgb()| can distinguish type 1 and type 2
+	  lr -= rd.simpleRoot(s)*((eval_lr+1)/2); // project to wall for |s|
+	  assert( rd.simpleCoroot(s).dot(lr) == -1 );
+	  const KGBEltPair Cxs = kgb().inverseCayley(s,x);
+	  if (Cxs.second!=UndefKGB)
+	    result.emplace(std::next(it),sr_gamma(Cxs.second,lr,gamma),coef);
+	  x = Cxs.first;
+	  goto restart; // continue with first
+	} // (singular real root)
+	// |x = kgb().cross(s,x)|; real roots act trivially on KGB elements
+	rd.simple_reflect(s,lr); // $0$-based reflection of $\lambda-\rho$
+	rd.simple_reflect(s,gamma.numerator());
+	// keep |coef| unchanged here
+	goto restart;
+      } // |switch|
+    } // |for(s)|
+
+    // if loop terminates, then contribute modified, now final, parameter
+    if (changed)
+      cur.first = sr_gamma(x,lr,gamma);
+    if (true) // skip this when falling through
+      ++it;
+    else
+    drop:
+      result.erase(it);
+  }
+  while (not result.at_end(it));
+
+  if (not result.empty() and not result.singleton())
+  {
+    result.sort
+      ([](const sr_term& x,const sr_term& y)->bool { return x.first<y.first; });
+
+    // now cumulate the coefficients of like terms, maybe dropping the term
+    auto it = result.begin(),jt=std::next(it);
+    while(not result.at_end(jt))
+      if (jt->first!=it->first)
+	it=jt,++jt;
+      else
+      { do
+	  it->second += (jt++)->second;
+	while(not result.at_end(jt) and jt->first==it->first);
+
+	jt = result.erase(it->second==0 ? it: ++it,jt);
+	if (not result.at_end(jt))
+	  ++jt;
+      }
+  }
+  return result;
+} // |Rep_context::finals_for| a |StandardRepr|
+#else
+sr_term_list Rep_context::finals_for(StandardRepr z) const
+{
+  const RootDatum& rd = root_datum();
+
+  containers::queue<sr_term> to_do { sr_term(std::move(z),1) };
 
   sr_term_list result;
   do
@@ -1312,6 +1437,7 @@ sr_term_list Rep_context::finals_for(StandardRepr z) const
   while (not to_do.empty());
   return result;
 } // |Rep_context::finals_for| a |StandardRepr|
+#endif
 
 // function to consert |finals_for| output to |SR_poly| for Atlas user
 SR_poly Rep_context::expand_final (StandardRepr z) const
