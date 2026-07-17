@@ -193,11 +193,17 @@ set real_induce_irreducible_verbose (ParamPol P,RealForm G) = ParamPol:
 set cuspidal_data (Param p) = (Parabolic,Param):
   p:=p.to_no_Cplus; { equivalent parameter, but having |x| without C- roots }
   let x_G=x(p) then P=real_parabolic(x_G)
+  then M_t=xi_cover(Levi(P),cover_xi(real_form(p))) { cover-aware; mirrors induction.at
+    (this stock copy is loaded after induction.at via the FPP suite and would
+    otherwise shadow the cover-aware version under all.at) }
+    { may fail on covers: real Levis can have no delta-fixed cover datum
+      (type z!=1), e.g. the split Cartan inside the det/2 cover of GL(2,R) }
   then x_M=inverse_embed_KGB(x_G,Levi(P)), theta=involution(x_G)
+  then (,nxM)=%x_M
   in
   (P
   ,parameter
-   (x_M
+   (KGB(M_t,nxM)
   ,lambda(p)-rho_r(x_G)+rho_r(x_M)-(1-theta)*(rho_S(x_G)-rho_S(x_M))
    ,nu(p)
    )
@@ -212,12 +218,17 @@ set cuspidal_data (Param p) = (Parabolic,Param):
 set theta_stable_data (Param p) = (Parabolic,Param):
   p:=p.to_no_Cminus; { equivalent parameter, but having |x| without C- roots }
   let x_G=x(p) then P=theta_stable_parabolic(x_G) then L=Levi(P)
+  then L_t=xi_cover(L,cover_xi(real_form(p))) { same cover datum as source;
+    cover-aware (mirrors induction.at) so this stock copy no longer shadows
+    the cover-aware version under all.at }
   then x_L=inverse_embed_KGB(x_G,L)
+  then (,nxL)=%x_L
+  then x_Lt=KGB(L_t,nxL)
   in
   (P
   ,parameter
-   (x_L
-   ,lambda(p)-rho(real_form(p))+rho_r(x(p))+rho(L)-rho_r(x_L)
+   (x_Lt
+   ,lambda(p)-rho_xi(real_form(p))+rho_r(x(p))+rho_xi(L_t)-rho_r(x_Lt)
    ,nu(p)
    )
   )
@@ -234,7 +245,10 @@ set theta_stable_quasi_data (Param q) = (Parabolic,Param):
     then L1 = Q1.Levi
     then x1_L1=inverse_embed_KGB(x1,L1)
     in
-    (Q1, parameter(x1_L1, lambda1-rho(real_form(q1))+rho(L1), q1.nu))
+    (Q1 { cover-aware (mirrors induction.at); no longer shadows under all.at }
+    ,let L1_t=xi_cover(L1,cover_xi(real_form(q1))), (,nxL1)=%x1_L1
+     in parameter(KGB(L1_t,nxL1)
+                 ,lambda1-rho_xi(real_form(q1))+rho_xi(L1_t), q1.nu))
 
 {. Theta-stable data associated to a parameter q: a theta-stable
 parabolic Q=LU with L quasisplit, and parameter q_L for a fine
@@ -836,7 +850,10 @@ set reduce_good_range (Param p) = (Parabolic,Param):
       p
     else
       let x_L=inverse_embed_KGB (x,L) in
-      let p_L=parameter(x_L,lambda(p)-rho(G)+rho(L),nu(p)) in
+      let L_t=xi_cover(L,cover_xi(G)), (,nxL)=%x_L in { cover-aware (mirrors
+        induction.at); no longer shadows the cover-aware version under all.at }
+      let p_L=parameter(KGB(L_t,nxL)
+                       ,lambda(p)-rho_xi(G)+rho_xi(L_t),nu(p)) in
       {if ind_verbose then prints(goodness(p_L,G)) fi;}
       p_L
     fi
