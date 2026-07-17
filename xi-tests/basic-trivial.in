@@ -1,0 +1,23 @@
+prints("### ordinary group: trivial = basic (both the trivial rep)")
+set G=GL(2,R)
+prints("trivial(G) = ", trivial(G))
+prints("basic(G)   = ", basic(G))
+prints("equal, and inf.char = rho: ", trivial(G)=basic(G),
+       "  ", infinitesimal_character(trivial(G))=rho(G))
+prints("### det/2 cover: basic is the genuine analog, lambda = rho+xi")
+set Gx=xi_cover(G,[1,1]/2)
+set b=basic(Gx)
+prints("basic(Gx) = ", b, "  final: ", is_final(b))
+prints("lambda(basic) = rho_xi = rho+xi: ", b.lambda = rho_xi(Gx),
+       "   [expect true]")
+prints("inf.char(basic) = rho(G) (not rho+xi, since not a torus): ",
+       infinitesimal_character(b) = rho(Gx),
+       "   [expect true]")
+prints("### torus xi=1/2 cover: here inf.char(basic) = rho+xi (nu=0)")
+set Cx=xi_cover(compact_torus(1),[1/2])
+prints("inf.char(basic(Cx)) = rho+xi: ",
+       infinitesimal_character(basic(Cx)) = rho_xi(Cx), "   [expect true]")
+prints("### trivial(nontrivial cover) errors (expected -- next line aborts):")
+trivial(Gx)
+prints("### xi=0 sanity: trivial still works on collapsed cover")
+prints("trivial(xi_cover(G,[0,0])) = ", trivial(xi_cover(G,[0,0])))

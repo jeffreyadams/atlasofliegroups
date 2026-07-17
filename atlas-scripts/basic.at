@@ -2224,8 +2224,24 @@ set is_strongly_regular (Param p)=bool:
 set survives = (Param->bool): is_final@Param { defined to mean exactly that }
 
 set x_open (RealForm G) = KGBElt: KGB(G,G.KGB_size-1)
-set trivial (RealForm G) = Param: { parameter for the trivial representation }
+
+{ The "basic" (genuine) representation of a possibly-covered real form: the
+  natural analog of the trivial representation. Its |lambda| is rho_xi(G) =
+  rho+xi, the genuine basepoint, so on a cover it IS a genuine representation;
+  when G carries no cover (xi=0) this is exactly the trivial representation.
+  Note: its infinitesimal character is rho(G) (which coincides with rho+xi only
+  for tori, where nu=0); the parameter with infinitesimal character rho+xi
+  itself is non-final, so this final rep is the sensible "basic" object. }
+set basic (RealForm G) = Param:
   param(G.x_open,null(rank(G)),rho(G))
+
+{ The trivial representation. On a nontrivial cover there is no genuine trivial
+  representation (the deck group must act by -1 on genuine reps), so this
+  errors; use |basic(G)| for the analogous genuine representation. }
+set trivial (RealForm G) = Param:
+  assert(@:(=cover_xi(G))
+        ,"trivial(G) is not a genuine representation of a nontrivial cover; use basic(G) for the analogous genuine representation");
+  basic(G)
 
 set cross (WeylElt w,Param p) = Param:
   assert(@:w.root_datum=p.integrality_datum);

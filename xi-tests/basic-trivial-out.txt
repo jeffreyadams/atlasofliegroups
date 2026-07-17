@@ -1,0 +1,21 @@
+### ordinary group: trivial = basic (both the trivial rep)
+Variable G: RealForm
+trivial(G) = final parameter(x=1,lambda=[1,-1]/2,nu=[1,-1]/2)
+basic(G)   = final parameter(x=1,lambda=[1,-1]/2,nu=[1,-1]/2)
+equal, and inf.char = rho: true  true
+### det/2 cover: basic is the genuine analog, lambda = rho+xi
+Variable Gx: RealForm
+Variable b: Param
+basic(Gx) = final parameter(x=1,lambda=[0,0]/1,nu=[1,-1]/2)  final: true
+lambda(basic) = rho_xi = rho+xi: true   [expect true]
+inf.char(basic) = rho(G) (not rho+xi, since not a torus): true   [expect true]
+### torus xi=1/2 cover: here inf.char(basic) = rho+xi (nu=0)
+Variable Cx: RealForm
+inf.char(basic(Cx)) = rho+xi: true   [expect true]
+### trivial(nontrivial cover) errors (expected -- next line aborts):
+Runtime error:
+  trivial(G) is not a genuine representation of a nontrivial cover; use basic(G) for the analogous genuine representation
+Evaluation aborted.
+### xi=0 sanity: trivial still works on collapsed cover
+trivial(xi_cover(G,[0,0])) = final parameter(x=1,lambda=[1,-1]/2,nu=[1,-1]/2)
+Bye.
