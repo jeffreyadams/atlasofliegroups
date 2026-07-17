@@ -1,0 +1,78 @@
+<basic.at
+<restricted_roots.at   { restricted_roots, basis_max_split_torus }
+
+{ ------------------------------------------------------------------------
+  Smallest p with matrix coefficients in L^p, for an irreducible Param p
+  (in particular a cohomological A_q(lambda)).  Works for ANY real form,
+  split or not, by using the restricted root system on the maximal split
+  torus a_p.
+
+  A K-finite matrix coefficient decays along A^+ like  a^(Lambda - rho_p),
+  where a_p = maximal split torus, rho_p = half sum of positive restricted
+  roots WITH multiplicity, and Lambda = a_p-dominant projection of the real
+  Langlands parameter nu(p) to a_p*.  Haar density ~ a^(2 rho_p), so
+      integral_{A^+} a^( p(Lambda-rho_p) + 2 rho_p ) da
+  converges iff  p*Lambda(H) - (p-2)*rho_p(H) < 0  on every fundamental
+  coweight H^i of the restricted root system.  Hence
+
+      p_0(pi) = max_i  2 rho_p(H^i) / ( rho_p(H^i) - Lambda(H^i) ),
+
+  and the coefficients are in L^p iff p > p_0.
+     tempered (Lambda=0)   -> p_0 = 2
+     finite-dim (Lambda=rho_p) -> p_0 = infinity
+     SL(2,R) compl. series -> p_0 = 2/(1-nu).
+
+  Multiplicities: rho_p is NOT the rho of the (pruned) restricted root
+  datum; we recompute 2 rho_p = sum over all roots alpha of G with
+  proj(alpha) a_p-positive, of proj(alpha) -- this carries the correct
+  restricted-root multiplicities.  For split groups a_p is the full torus,
+  proj = identity, and everything reduces to the ambient computation.
+  ------------------------------------------------------------------------ }
+
+{ (projection X^* -> a_p* , restricted root datum rr , 2*rho_p in a_p coords) }
+set restricted_Lp_data (RealForm G) = (mat, RootDatum, ratvec):
+   let delta = G.trivial.x.involution
+   then proj  = ^eigen_lattice(^delta,-1)   { X^*(H) -> X^*(a_p) }
+   then rr    = restricted_roots(G)
+   then gen   = rho_check(rr)                { generic a_p-dominant coweight }
+   then two_rho_p = ratvec: null(rank(rr))
+   then dummy = for a in columns(roots(root_datum(G)))
+        do let pa = ratvec: proj*a in if pa*gen > 0 then two_rho_p +:= pa fi
+        od
+   in (proj, rr, two_rho_p)
+
+{ per-restricted-coweight data (rho_p(H^i), Lambda(H^i)) }
+set Lp_data (Param p) = [(rat,rat)]:
+   let (proj, rr, two_rho_p) = restricted_Lp_data(real_form(p))
+   then Lambda = dominant(rr, ratvec: proj*nu(p))
+   in for H in fundamental_coweights(rr) do ( (two_rho_p*H)/2, Lambda*H ) od
+
+{ is pi in some L^p at all? (fails only for finite-dimensional reps) }
+set Lp_finite (Param p) = bool: all(for (r,n) in Lp_data(p) do r-n>0 od)
+
+{ critical exponent p_0 ; returns -1 to mean +infinity }
+set Lp_critical_exponent (Param p) = rat:
+   let d = Lp_data(p) in
+   if all(for (r,n) in d do r-n>0 od)
+   then max(for (r,n) in d do 2*r/(r-n) od)
+   else minus_1
+   fi
+
+{ tempered <=> p_0 = 2 }
+set is_tempered_Lp (Param p) = bool: Lp_critical_exponent(p) = 2
+
+{ are the matrix coefficients of pi in L^q ? }
+set matrix_coeffs_in_Lp (Param p, rat q) = bool:
+   let p0 = Lp_critical_exponent(p) in p0.>= and q>p0
+
+set Lp_report (Param p) = void:
+   let (proj,rr,) = restricted_Lp_data(real_form(p))
+   then p0 = Lp_critical_exponent(p)
+   in prints("split rank = ", rank(rr),
+             ",  Lambda (a_p-dominant nu) = ", dominant(rr, ratvec: proj*nu(p)));
+      if p0.<
+      then prints("  NOT in any L^p  (p_0 = infinity; finite-dimensional)")
+      elif p0 = 2
+      then prints("  tempered:  matrix coefficients in L^{2+eps}   (p_0 = 2)")
+      else prints("  matrix coefficients in L^p  iff  p > p_0 = ", p0)
+      fi

@@ -1,0 +1,115 @@
+<basic.at
+<KL_polynomial_matrices.at   { KL_P_polynomials }
+<polynomial.at               { poly_format }
+
+{ ------------------------------------------------------------------------
+  Ext-groups between irreducibles X,Y (regular infinitesimal character)
+  via Kazhdan-Lusztig-Vogan polynomials.
+
+  Facts used:
+   * Total Ext is symmetric:  Ext^n(X,Y) = Ext^n(Y,X)  (duality fixes
+     irreducibles).  So Ext(X,Y)=0  <=>  Ext(Y,X)=0.
+   * P_{X,Y} != 0  <=>  X <= Y  <=>  X is a composition factor of the
+     standard module I(Y).   (constant term of a KLV polynomial is 1.)
+   * If X,Y are COMPARABLE (X<=Y or Y<=X) then Ext^*(X,Y) != 0.
+   * The composition-series (KLV) test is SUFFICIENT, not necessary:
+     incomparable X,Y may still have Ext != 0 in higher degree.
+     - distinct discrete series: incomparable, Ext = 0
+     - SL(2,R)xSL(2,R), the pair (e,s),(s,e): incomparable, Ext^2 != 0
+     Deciding the incomparable case needs the graded (Koszul-dual) Ext,
+     not just P_{X,Y} and P_{Y,X}.
+  ------------------------------------------------------------------------ }
+
+{ is an i_poly (coefficient vector) nonzero? }
+set is_nonzero_poly (i_poly v) = bool: any(for c in v do c!=0 od)
+
+{ the ordered pair of KLV polynomials (P_{X,Y}, P_{Y,X}); assumes same block }
+set KLV_pair (Param X, Param Y) = (i_poly,i_poly):
+   let B = block_of(X)
+   then iX = index_in(B)(X), iY = index_in(B)(Y)
+   in assert(iY.>=, "X and Y are in different blocks");
+      let M = KL_P_polynomials(B) in (M[iX][iY], M[iY][iX])
+
+{ TRUE  => Ext^*(X,Y) is certainly nonzero (X,Y comparable).
+  FALSE => not certified by the KLV test (either different block, or
+           incomparable -- in which case the test is inconclusive).      }
+set Ext_certainly_nonzero (Param X, Param Y) = bool:
+   let B = block_of(X)
+   then iX = index_in(B)(X), iY = index_in(B)(Y)
+   in if iY.< then false   { different block }
+      else let M = KL_P_polynomials(B) in
+           is_nonzero_poly(M[iX][iY]) or is_nonzero_poly(M[iY][iX])
+      fi
+
+{ human-readable report }
+set Ext_KLV_report (Param X, Param Y) = void:
+   let B = block_of(X)
+   then iX = index_in(B)(X), iY = index_in(B)(Y)
+   in
+   if iY.<
+   then prints("Y is not in the block of X   ==>   Ext^*(X,Y) = 0.")
+   else
+      let M = KL_P_polynomials(B)
+      then pXY = M[iX][iY], pYX = M[iY][iX]
+      then cXY = is_nonzero_poly(pXY), cYX = is_nonzero_poly(pYX)
+      in
+      prints("block size ", #B, ";  X: index ", iX, ", length ", length(X),
+             ";  Y: index ", iY, ", length ", length(Y));
+      prints("P_{X,Y} = ", poly_format(pXY,"q"),
+             "    [X is a comp. factor of standard(Y): ", cXY, "]");
+      prints("P_{Y,X} = ", poly_format(pYX,"q"),
+             "    [Y is a comp. factor of standard(X): ", cYX, "]");
+      if X=Y
+      then prints(">>> X = Y :  Ext^0 = C.")
+      elif cXY or cYX
+      then prints(">>> X, Y COMPARABLE   ==>   Ext^*(X,Y) = Ext^*(Y,X) != 0.")
+      else prints(">>> X, Y INCOMPARABLE.  KLV/comp-series test INCONCLUSIVE:");
+           prints("    Ext may be 0 (e.g. distinct discrete series) or nonzero");
+           prints("    in higher degree.  Needs the graded (Koszul-dual) Ext.")
+      fi
+   fi
+
+{ ---- graded (total) Ext via the Koszul-dual formula --------------------
+  For regular integral infinitesimal character the block is Koszul and
+  parity-pure, so the graded Poincare polynomial  sum_n dim Ext^n(X,Y) q^n
+  equals
+      E_{x,y}(q) = sum_a q^(l_x+l_y-2 l_a) bar(P_{a,x})(q) bar(P_{a,y})(q),
+  where bar(P)(q) = q^deg P(1/q).  Verified: E(0)=I, E(1)=|Euler form|=
+  total dim, symmetric, and it restricts to I on the discrete series.
+  Parity purity => NO cancellation, so this decides EVERY pair:
+      Ext^*(X,Y) = 0   <=>   E_{X,Y} = 0.
+  ------------------------------------------------------------------------ }
+
+{ q^d * p(1/q): reverse-and-pad the coefficient vector to degree d }
+set shift_bar (i_poly p, int d) = i_poly:
+   for j:d+1 do let k=d-j in if (k>=0) and (k<#p) then p[k] else 0 fi od
+
+{ full graded-Ext Poincare matrix over the block B (E[i][j] = E_{B[i],B[j]}) }
+set graded_Ext_matrix ([Param] B) = i_poly_mat:
+   let P = KL_P_polynomials(B)
+   then L = for q in B do length(q) od
+   then n = #B
+   then D  = for a:n do for x:n do shift_bar(P[a][x], L[x]-L[a]) od od
+   then Dt = for x:n do for a:n do D[a][x] od od
+   in Dt * D
+
+{ sum_n dim Ext^n(X,Y) q^n ; zero polynomial if X,Y in different blocks }
+set graded_Ext_poincare (Param X, Param Y) = i_poly:
+   let B = block_of(X)
+   then iX = index_in(B)(X), iY = index_in(B)(Y)
+   in if iY.< then null(1) else graded_Ext_matrix(B)[iX][iY] fi
+
+{ definitive decision:  is Ext^*(X,Y) = 0 ? }
+set Ext_vanishes (Param X, Param Y) = bool: =sum(graded_Ext_poincare(X,Y))
+
+{ total dimension  sum_n dim Ext^n(X,Y) }
+set Ext_total_dim (Param X, Param Y) = int: sum(graded_Ext_poincare(X,Y))
+
+{ human-readable definitive report }
+set graded_Ext_report (Param X, Param Y) = void:
+   let e = graded_Ext_poincare(X,Y)
+   in if =sum(e)
+      then prints("Ext^*(X,Y) = 0.")
+      else prints("Ext^*(X,Y) = Ext^*(Y,X) != 0  (total dim ", sum(e), ")");
+           prints("  Poincare  sum_n dim Ext^n(X,Y) q^n  =  ", poly_format(e,"q"))
+      fi
