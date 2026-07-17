@@ -4,19 +4,21 @@ prints("trivial(G) = ", trivial(G))
 prints("basic(G)   = ", basic(G))
 prints("equal, and inf.char = rho: ", trivial(G)=basic(G),
        "  ", infinitesimal_character(trivial(G))=rho(G))
-prints("### det/2 cover: basic is the genuine analog, lambda = rho+xi")
+prints("### det/2 cover: basic is the genuine analog, INF CHAR = rho+xi")
 set Gx=xi_cover(G,[1,1]/2)
 set b=basic(Gx)
 prints("basic(Gx) = ", b, "  final: ", is_final(b))
-prints("lambda(basic) = rho_xi = rho+xi: ", b.lambda = rho_xi(Gx),
-       "   [expect true]")
-prints("inf.char(basic) = rho(G) (not rho+xi, since not a torus): ",
-       infinitesimal_character(b) = rho(Gx),
-       "   [expect true]")
-prints("### torus xi=1/2 cover: here inf.char(basic) = rho+xi (nu=0)")
+prints("inf.char(basic) = rho_xi = rho+xi: ",
+       infinitesimal_character(b) = rho_xi(Gx), "   [expect true]")
+prints("lambda(basic) = rho+xi: ", b.lambda = rho_xi(Gx), "   [expect true]")
+prints("### torus xi=1/2 cover: inf char = rho+xi")
 set Cx=xi_cover(compact_torus(1),[1/2])
 prints("inf.char(basic(Cx)) = rho+xi: ",
        infinitesimal_character(basic(Cx)) = rho_xi(Cx), "   [expect true]")
+prints("### basic = trivial at xi=0 across groups")
+prints("Sp(4,R): ",basic(Sp(4,R))=trivial(Sp(4,R)),
+       "  SL(3,R): ",basic(SL(3,R))=trivial(SL(3,R)),
+       "  compact_torus(2): ",basic(compact_torus(2))=trivial(compact_torus(2)))
 prints("### trivial(nontrivial cover) errors (expected -- next line aborts):")
 trivial(Gx)
 prints("### xi=0 sanity: trivial still works on collapsed cover")

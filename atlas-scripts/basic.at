@@ -2225,23 +2225,15 @@ set survives = (Param->bool): is_final@Param { defined to mean exactly that }
 
 set x_open (RealForm G) = KGBElt: KGB(G,G.KGB_size-1)
 
-{ The "basic" (genuine) representation of a possibly-covered real form: the
-  natural analog of the trivial representation. Its |lambda| is rho_xi(G) =
-  rho+xi, the genuine basepoint, so on a cover it IS a genuine representation;
-  when G carries no cover (xi=0) this is exactly the trivial representation.
-  Note: its infinitesimal character is rho(G) (which coincides with rho+xi only
-  for tori, where nu=0); the parameter with infinitesimal character rho+xi
-  itself is non-final, so this final rep is the sensible "basic" object. }
-set basic (RealForm G) = Param:
-  param(G.x_open,null(rank(G)),rho(G))
-
 { The trivial representation. On a nontrivial cover there is no genuine trivial
   representation (the deck group must act by -1 on genuine reps), so this
-  errors; use |basic(G)| for the analogous genuine representation. }
+  errors; use |basic(G)| (defined below, after the ParamPol machinery it
+  needs) for the analogous genuine representation, of infinitesimal character
+  rho+xi. }
 set trivial (RealForm G) = Param:
   assert(@:(=cover_xi(G))
         ,"trivial(G) is not a genuine representation of a nontrivial cover; use basic(G) for the analogous genuine representation");
-  basic(G)
+  param(G.x_open,null(rank(G)),rho(G))
 
 set cross (WeylElt w,Param p) = Param:
   assert(@:w.root_datum=p.integrality_datum);
@@ -2422,6 +2414,19 @@ set param_pol (KTypePol P) = ParamPol:
 
 set first_param (ParamPol P) = Param: let (,p)=first_term(P) in p
 set last_param (ParamPol P)  = Param: let (,p)=last_term(P) in p
+
+{ The "basic" genuine representation of a possibly-covered real form: the
+  natural analog of the trivial representation, with infinitesimal character
+  rho+xi = rho_xi(G) (the genuine basepoint). When G carries no cover (xi=0)
+  this is exactly the trivial representation. Constructed as the parameter at
+  x_open with infinitesimal character rho_xi, then finalized: on a cover the
+  naive x_open parameter can be non-final (e.g. GL(2,R) det/2, where rho_xi is
+  singular), so we finalize and return the resulting genuine irreducible
+  (asserted unique). }
+set basic (RealForm G) = Param:
+  let p = null_module(G) + parameter_gamma(G.x_open, rho_xi(G), rho_xi(G))
+  in assert(@:#p=1, "basic(G) is not a single irreducible (unexpected)");
+     first_param(p)
 
 set s_to_1       (ParamPol P) = ParamPol: 0*P + for x@q in P do (+%x,q) od
 set s_to_minus_1 (ParamPol P) = ParamPol: 0*P + for x@q in P do (-%x,q) od
