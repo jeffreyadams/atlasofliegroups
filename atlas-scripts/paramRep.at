@@ -710,6 +710,20 @@ set has_maximal_PI(Param p) = bool:
     in C_flag:=false;
        same_PI_step(p,bits)
 
+{This is a NECESSARY condition for p to have maximal primitive ideal,
+ASSUMING it's an Arthur infl char}
+set is_Arthur(Param p) = bool:
+    if not(is_final(p)) then prints("Sorry, ",p," is not final"); return false fi;
+    let gamma = p.infinitesimal_character
+    then j = first(for Ovee in dual_orbits(p.root_datum) do Ovee.H = 2*gamma od)
+    then () = if j < 0 then prints("Sorry, infl char ",gamma," is not Arthur");
+    	      	 return false fi
+    then Gs= p.real_form.split_form
+    then psph = Finalize(parameter(x_open(Gs),Gs.rho,gamma))
+    then bits = TalphabetaTauss_bitset(psph)
+    in same_PI_step(p,bits)
+
+
 set cand_sigmas(Param p) = [int]:
     let rd = integrality_datum(p)
     then special_tauss_bitsets = special_taus_bitsets(rd)
