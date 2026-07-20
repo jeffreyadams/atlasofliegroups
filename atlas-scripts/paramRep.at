@@ -145,10 +145,13 @@ set local_TalphabetaRepeat([int] js, Param p) = [Param]:
               od
     in pHash.list()
 
+set C_flag = false {whether to do left-only computations in a complex group}
+
 {all 4-tuples of simple root indices making D4, ordered as (middle, edges)}
 set find_D4s(RootDatum rd) = [vec]:
     let CM = Cartan_matrix(rd)
-    then j0s = for j:rd.semisimple_rank if sum(CM[j]) = -1 do j fi od
+    then divider = if C_flag then 2 else 1 fi
+    then j0s = for j:rd.semisimple_rank\divider if sum(CM[j]) = -1 do j fi od
     then tCM = ^CM
     then j1s = for j in j0s if sum(tCM[j]) = -1 do j fi od
     in for j in j1s do [j]##for k:rd.semisimple_rank if CM[j,k] = -1 do k fi od od
@@ -278,25 +281,32 @@ set test(Param q, Param r) = bool:
 
 set D4_gen_tau_flag = true
 
-{BROKEN for BCG_2: need to include all reps in the local cell with opposite tau,
-in Talphabeta, even though some larger number of s* needed to reach}
 {all these guys have the SAME sigma}
 set Talphabeta = (Param -> [Param]):
     let pHash = make_Param_hash()
     then TabHash = make_Param_hash()
     then answers = [vec]: [] {vec #j is list of entries in TabHash for Tab(entry j in pHash)}
+    then pHashC = make_Param_hash()
+    then answersC = [vec]: []
     in (Param -> [Param]): (Param p):
     let q = if is_regular(p.root_datum,p.infinitesimal_character)
     	    then p
 	    else regularize(p)
 	    fi, G = p.real_form
-    then N = pHash.size()
-    then n = pHash.match(q)
+    then divider = if C_flag then 2 else 1 fi
+    then N = if C_flag
+    	     then pHashC.size()
+	     else pHash.size()
+	     fi
+    then n = if C_flag
+    	     then pHashC.match(q)
+	     else pHash.match(q)
+	     fi
     in if n = N
        then let gamma = q.infinitesimal_character, empty = null_module(G), tau = tau(q)
        	    then R = integrality_datum(G, gamma)
     	    then S = R.simple_roots
-    	    then P1 = (sum(G, for j:#S
+    	    then P1 = (sum(G, for j:#S\divider
     	      	      	     do Cayley_cross_sum(j,q)
 		     	     od))
 	    then D4s = if D4_gen_tau_flag
@@ -314,14 +324,21 @@ set Talphabeta = (Param -> [Param]):
 		       	  ([Param]: for v in qD4s
 		       	  do genTalphabetaStep(v,q)
 		       	  od.##)
-		in answers #:= (vec: for t in list
-       		     	    	    do TabHash.match(t)
-				    od.sort_u)
+	        then addl = (vec: for t in list
+       		     	    	  do TabHash.match(t)
+				  od.sort_u)
+		in if C_flag
+		   then answersC #:= addl
+		   else answers #:= addl
+		   fi
 	fi;
-        assert(@:pHash.size() = #answers,"Talphabetas is damaged");
+        if C_flag
+	then assert(@:pHashC.size() = #answersC,"TalphabetasC is damaged");
+	     for j in answersC[n] do regroup(p.real_form,TabHash.index(j)) od
+	else assert(@:pHash.size() = #answers,"Talphabetas is damaged");
+	     for j in answers[n] do regroup(p.real_form,TabHash.index(j)) od
+	fi
         {assert(@:all(for j in answers[n] do test(regroup(p.real_form,TabHash.index(j)),q) od));}
-        for j in answers[n] do regroup(p.real_form,TabHash.index(j))
-			    od
 
 {Recursive memoized levels in the T_{alpha,beta} graph (edges from |Talphabeta|).
 Every param reached becomes a node i of the graph (an index in |registry|), and
@@ -343,51 +360,115 @@ set (Talphabeta_levels, Talphabeta_levels_clear) =
     then dones = [bool]: [] {whether levelss[i] is complete}
     then nbrss = [vec]: [] {nbrss[i] = neighbours of node i, once computed}
     then have_nbrss = [bool]: [] {whether nbrss[i] has been computed}
+    then registryC = make_Param_hash() {node <-> param, shared by all nodes}
+    then levelssC = [[vec]]: [] {levelss[i][j] = nodes at distance <= j from node i}
+    then donesC = [bool]: [] {whether levelss[i] is complete}
+    then nbrssC = [vec]: [] {nbrss[i] = neighbours of node i, once computed}
+    then have_nbrssC = [bool]: [] {whether nbrss[i] has been computed}    
     then node = (Param -> int): (Param q):
-	 let M = registry.size() then i = registry.match(q)
-	 in if i = M
+	 let M = if C_flag
+	       	 then registryC.size()
+		 else registry.size()
+		 fi
+    then i = if C_flag
+    	     then registryC.match(q)
+	     else registry.match(q)
+	     fi
+    in if C_flag
+       then if i = M
+	    then levelssC #:= [vec:[i]]; donesC #:= false;
+		 nbrssC #:= (vec:[]); have_nbrssC #:= false
+	    fi; i
+       else if i = M
 	    then levelss #:= [vec:[i]]; dones #:= false;
 		 nbrss #:= (vec:[]); have_nbrss #:= false
 	    fi; i
+       fi {end def of node}
     then nbrs_of = (int -> vec): (int i):
-	 if have_nbrss[i] then nbrss[i]
-	 else have_nbrss[i] := true;
-	      nbrss[i] := (vec: for t in Talphabeta(registry.index(i)) do node(t) od)
-	 fi
+    	 if C_flag
+	 then if have_nbrssC[i] then nbrssC[i]
+	      else have_nbrssC[i] := true;
+	      	   nbrssC[i] := (vec: for t in Talphabeta(registryC.index(i)) do node(t) od)
+	      fi
+	 else if have_nbrss[i] then nbrss[i]
+	      else have_nbrss[i] := true;
+	      	   nbrss[i] := (vec: for t in Talphabeta(registry.index(i)) do node(t) od)
+	      fi
+	 fi{C_flag}
     then seen = make_int_hash(), old_size = int:0
     then rec_fun ensure(int i, int N) = void: {fill to level N, size N+1}
-	 if not dones[i] and #levelss[i] <= N
-	 then let nbrs = nbrs_of(i)
-	      then () = for k in nbrs do ensure(k,N-1) od
-	      then () = seen.clear() {all levels of i so far}
-	      in while not dones[i] and #levelss[i] <= N
+	 if C_flag
+	 then if not donesC[i] and #levelssC[i] <= N
+	      then let nbrs = nbrs_of(i)
+	      	   then () = for k in nbrs do ensure(k,N-1) od
+	      	   then () = seen.clear() {all levels of i so far}
+	      	   in while not donesC[i] and #levelssC[i] <= N
 	      	       {Since #levelss[i] is at least 1, exit if N = 0}
-		 do let n = #levelss[i]
-		    in for m in levelss[i][n-1] do seen.match(m) od;
-		       old_size := seen.size();
-		       for k in nbrs
-		       if (n-1 < #levelss[k])
-		       do (for m in levelss[k][n-1] do seen.match(m) od)
-		       fi
-		       od;
-		       if seen.size() = old_size  then dones[i] := true fi;
-		       levelss[i] #:= (vec: seen.list())
-		 od
-	 fi
+		      do let n = #levelssC[i]
+		      	 in for m in levelssC[i][n-1] do seen.match(m) od;
+		       	    old_size := seen.size();
+		       	    for k in nbrs
+		       	    if (n-1 < #levelssC[k])
+		       	    do (for m in levelssC[k][n-1] do seen.match(m) od)
+		       	    fi
+		       	    od;
+		       	    if seen.size() = old_size  then donesC[i] := true fi;
+		       	    levelssC[i] #:= (vec: seen.list())
+		       od
+	       fi {not donesC[i]}
+	   else if not dones[i] and #levelss[i] <= N
+	      	then let nbrs = nbrs_of(i)
+	      	     then () = for k in nbrs do ensure(k,N-1) od
+	      	     then () = seen.clear() {all levels of i so far}
+	      	     in while not dones[i] and #levelss[i] <= N
+	      	         {Since #levelss[i] is at least 1, exit if N = 0}
+		       	do let n = #levelss[i]
+		      	   in for m in levelss[i][n-1] do seen.match(m) od;
+		       	      old_size := seen.size();
+		       	      for k in nbrs
+		       	      if (n-1 < #levelss[k])
+		       	      do (for m in levelss[k][n-1] do seen.match(m) od)
+		       	      fi
+		       	      od;
+		       	      if seen.size() = old_size  then dones[i] := true fi;
+		       	      levelss[i] #:= (vec: seen.list())
+		       od
+	          fi {not dones[i]}
+	    fi {C_flag}
     in ( ((Param,int) -> ([[Param]],bool)): (Param p, int N):
 	 let q = regularize(p), G = p.real_form
 	 then i = node(q)
 	 in if N >= 0 then ensure(i,N)
-	    else while not dones[i] do ensure(i,#levelss[i]) od
+	    else if C_flag
+	    	 then while not donesC[i]
+		      do ensure(i,#levelssC[i])
+		      od
+		 else while not dones[i]
+		      do ensure(i,#levelss[i])
+		      od
+		 fi {C_flag}
 	    fi;
-	    let avail = if N < 0 then #levelss[i] else min(#levelss[i],N+1) fi
-	    in ( for lev in levelss[i][:avail]
-		 do for k in lev do regroup(G,registry.index(k)) od
+	    let data = if C_flag
+		       then levelssC[i]
+		       else levelss[i]
+		       fi
+	    then avail = if N < 0
+	    	       	 then #data
+			 else min(#data,N+1)
+			 fi
+	    in ( for lev in data[:avail]
+		 do for k in lev
+		    do if C_flag
+		       then regroup(G,registryC.index(k))
+		       else regroup(G,registry.index(k))
+		       fi
+		    od
 		 od
-	       , dones[i] and avail = #levelss[i]
+	       , (avail = #data) and (if C_flag then donesC[i] else dones[i] fi)
 	       )
        , @: ( registry.clear(); levelss := []; dones := []
-	    ; nbrss := []; have_nbrss := []; ())
+	    ; nbrss := []; have_nbrss := []; registryC.clear(); levelssC := []
+	    ; donesC := []; nbrssC := []; have_nbrssC:= [];())
        )
 
 {when true, TalphabetaRepeats uses the incremental Talphabeta_levels cache
@@ -511,6 +592,20 @@ set TalphabetaTauss_bitset(Param p,int N) = [int]:
 {For p = parameter(E7_s,20925,[1,1,1,1,1,1,1]/1,[1,1,1,0,1,0,1]/1), TalphabetaTauss_bitset has
 cardinality 11; entries 6-9 are equal, so using len inappropriately truncates the answer if N = 8.}
 
+{Tauss made into a list of of length at most N+1 of big_int bitsets}
+set TalphabetaTauss_bitsetC(Param p,int N) = [int]:
+    C_flag:=true;
+    let S = p.integrality_datum.semisimple_rank\2
+    then D = 2^S
+    then answer = for list in TalphabetaTauss(p,N)
+    	       	 do to_bitset(for tau in list
+		    	      do to_bitset(tau)%D
+			      od)
+		 od
+    { then len = first(for N in answer do N=answer~[0] od)}
+    in answer{[:len+1]} next C_flag:=false
+
+
 {Tauss made into a list of big_int bitsets}
 set TalphabetaTauss_bitset(Param p) = [int]:
     let answer = for list in TalphabetaTauss(p)
@@ -520,6 +615,19 @@ set TalphabetaTauss_bitset(Param p) = [int]:
 		 od
     then len = first(for N in answer do N=answer~[0] od)
     in answer[:len+1]
+
+{In complex case, first half of Tauss made into a list of big_int bitsets}
+set TalphabetaTauss_bitsetC(Param p) = [int]:
+    C_flag:=true;
+    let S = p.integrality_datum.semisimple_rank\2
+    then D = 2^S
+    then answer = for list in TalphabetaTauss(p)
+    	       	  do to_bitset(for tau in list
+		    	      do to_bitset(tau)%D
+			      od)
+		  od
+    then len = first(for N in answer do N=answer~[0] od)
+    in answer[:len+1] next C_flag:=false
 
 {If Ns is TalphabetaTauss_bitset(q), then this is a necessary condition for p and q to have
 the same primitive ideal; need N >= 1.}
@@ -592,6 +700,16 @@ set same_PI_step(Param p, [int] Tauss_bit) = bool:
 {lists the numbers AMONG SPECIAL REPS of the special W reps that admit all the taus
 in Talphabetataus(p)}
 
+{This is a NECESSARY condition for p to have maximal prim ideal}
+set has_maximal_PI(Param p) = bool:
+    if not(is_final(p)) then prints("Sorry, ",p," is not final"); return false fi;
+    let gamma = p.infinitesimal_character
+    then GC = p.real_form.complexification
+    then pminC = Finalize(parameter(x_open(GC),GC.rho,gamma##gamma))
+    then bits = TalphabetaTauss_bitsetC(pminC)
+    in C_flag:=false;
+       same_PI_step(p,bits)
+
 set cand_sigmas(Param p) = [int]:
     let rd = integrality_datum(p)
     then special_tauss_bitsets = special_taus_bitsets(rd)
@@ -633,6 +751,9 @@ set ideal_intList_hash = make_int_list_hash()
 set ideal_int_hash = make_int_hash()
 set test_step_flag = true
 
+{Sp(12) true with N = 10}
+{Sp(14) positive with N = 15 (not 14) in about 17360 sec}
+{E7_s positive with N=13 (not 12)}
 {tests whether  TalphabetaTauss_bitset to N really distinguished primitive ideals}
 set test_faster_packets(RootDatum rd, int N) = bool:
     let start = elapsed_ms(), G = split_form(rd)
@@ -674,7 +795,6 @@ set test_faster_packets(RootDatum rd) = bool:
 {Since previous test gave false for Spin(6,6), test whether TalphabetaTauss_bitset distinguishes
 primitive ideals in case of distinguished nilpotent}
 {E7 tested positive with N = 8 in 1690 sec}
-
 {If preload isn't empty, should be all distinguished unipotent}
 
 set test_faster_distinguished_packets(RootDatum rd, [Param] preload, int N) = bool:
@@ -797,3 +917,25 @@ set test_faster_distinguished_packets(RootDatum rd, int N) = bool:
 
 set test_faster_distinguished_packets(RootDatum rd) = bool:
     test_faster_distinguished_packets(rd,[])
+
+{compute partition of block_of(p) into Talphabeta clumps}
+set small_cells(Param p) = ([[Param]],vec):
+    let q = regularize(p)
+    then B = block_of(p)
+    then freq = min(#B\10+1, 1000)
+    then Bhash = make_Param_hash(B)
+    then cell_hash = make_vec_hash()
+    then index = vec: for j:#B do minus_1 od
+    in for p@j in B
+       do if (j%freq).= then prints("At block elt ",j," of ",#B,"; so far ",
+       	  cell_hash.size()," cells") fi;
+       if index[j] < 0
+       do let list = TalphabetaRepeats(p)~[0]
+       	  then ind = vec: for q in list do Bhash.match(q) od.sort_u
+	  then m = cell_hash.match(ind)
+	  in for j in ind do index[j]:=m od
+       fi
+       od;
+       prints("found ",cell_hash.size()," small cells, of sizes up to ",
+       		     max(for v in cell_hash.list() do #v od));
+       (for ind in cell_hash.list() do for j in ind do B[j] od od,index)
