@@ -268,6 +268,281 @@ set genTalphabetaStep ([int] js, Param p) = [Param]:
        else []
        fi
 
+{refer to D4s as js, E6s as ks}
+
+{all 4-tuples of simple root indices making D4, ordered as (middle, edges)}
+set find_E6s(RootDatum rd) = [vec]:
+    let CM = Cartan_matrix(rd)
+    then D4vs = find_D4s(rd)
+    then divider = if C_flag then 2 else 1 fi
+    then kss = for D4v in D4vs {list k adj to each outer j}
+    	      	do for j in D4v[1:] {examine outer vertex #j of D4v}
+		   do first(for k:rd.semisimple_rank\divider
+		       	    	  do CM[k,j]=-1 and k!= D4v[0] od)
+		   od
+		od
+    in for D4v@m in D4vs
+       if count(for k in kss[m] do k = -1 od) = 1
+       do let ell = first(for k in kss[m] do k=-1 od)
+       	  in [D4v[0]]##(for loc:3 if loc!=ell do [D4v[1+loc],kss[m][loc]] fi od.##) # D4v[1+ell]
+       fi
+       od
+
+{use also D4 extra D4 links}
+set local_TalphabetaD4([int] ks, Param p) = [Param]:
+    let js = [ks[0],ks[1],ks[3],ks[5]]
+    {then () = if not is_cool_D4(js,p) then return [] fi}
+    then q = if is_regular(p.root_datum,p.infinitesimal_character)
+    	    then p
+	    else regularize(p)
+	    fi, G = p.real_form
+    then TLQ = tau_loc(ks,q)
+    then gamma = q.infinitesimal_character, empty = null_module(G), tau = tau(q)
+    in local_Talphabeta(ks,q) ## genTalphabetaStep(js,q)
+
+set local_TalphabetaD4_hash = ((vec, Param) -> [Param]):
+    let kss = [vec]:[] {all sets ks considered}
+    then phashes = [Param_hash]: [] {one for each set of ks}
+    then TabD4Hash = make_Param_hash()
+    then answers = [[vec]]: []
+    	 {answers[k][m] is list of entries in TabD4Hash for TabD4(entry m in pHashes[k])}
+    in ((vec, Param) -> [Param]): (vec ks, Param p):
+       let k = first(for v in kss do v = ks od)
+       in if k < 0
+	  then kss#:=ks;
+	        phashes#:=make_Param_hash();
+		answers#:=([vec]:[]);
+		k:=#kss - 1
+	  fi;
+    	  let q = if is_regular(p.root_datum,p.infinitesimal_character)
+    	      	  then p
+	    	  else regularize(p)
+	    	  fi, G = p.real_form
+    	  then M = phashes[k].size(), m = phashes[k].match(q)
+    	  in if m=M
+       	     then answers[k] #:= (vec:
+	     	  	  for qnew in local_TalphabetaD4(ks,q)
+			  do TabD4Hash.match(qnew)
+			  od)
+	     fi;
+	     for i in answers[k][m] do TabD4Hash.index(i) od
+
+{ks meant to be an E6; do all Talphabeta plus cool_D4 links with ks}
+set local_TalphabetaD4Repeat([int] ks, Param p) = [Param]:
+    let q = regularize(p), G = p.real_form
+    then nullmod = null_module(G)
+    then gamma = q.infinitesimal_character, toDo = ParamPol: 1*q
+    then pHashD4 = make_Param_hash() {will hold answer}
+    then () = while #toDo > 0
+	      do {first record toDo's in pHash}
+	      	 for @r in toDo
+	      	 do pHashD4.match(r)
+		 od; {next compute all their Talphabeta}
+	      	 toDo := sum(G, for @r in toDo
+	      	  	    	     do sum(G, for t in local_TalphabetaD4_hash(ks,r)
+				   	       do 1*t od)
+				     od);
+			 {next step eliminate already handled from toDo}
+		 toDo := sum(G, for @r in toDo
+		      	 	do let j = pHashD4.lookup(r)
+				   in if j < 0
+				      then 1*r
+				      else nullmod
+				      fi
+				od)
+              od
+    in pHashD4.list()
+
+{ks meant to be an E6; do all Talphabeta plus cool_D4 links with ks}
+set local_TalphabetaD4Repeat_hash = ((vec, Param) -> [Param]):
+    let phashes = [Param_hash]:[] {one for each ks}
+    then kss = [vec]: []
+    then starts = [vec]: [] {record starting point in each phash of each cell}
+    then mystartNum = int:0, mystart = int:0, myend = int:0, sizeInd = int:0
+    in ((vec, Param) -> [Param]): (vec ks, Param p):
+       let index = first(for v in kss do v = ks od)
+       in if index < 0
+	  then kss#:=ks;
+	        phashes#:=make_Param_hash();
+		starts#:=(vec:[]);
+		index:=#kss - 1
+	  fi;
+    	  let q = regularize(p), G = p.real_form
+	  then M = phashes[index].size(), m = phashes[index].match(q)
+	  in if m = M
+    	     then let nullmod = null_module(G)
+    	     	  then gamma = q.infinitesimal_character, toDo = ParamPol: 1*q
+ 	  	  in starts[index] #:= M;
+		     while #toDo > 0
+	      	     do {first record toDo's in pHash}
+	      	     for @r in toDo
+	      	     do phashes[index].match(r)
+		     od;
+		     sizeInd := phashes[index].size();
+		     {next compute all their Talphabeta}
+	      	     toDo := sum(G, for @r in toDo
+	      	  	    	     do sum(G, for t in local_TalphabetaD4_hash(ks,r)
+				   	       do 1*t od)
+				     od);
+		     {prints("M = ",M,", sizeInd = ",sizeInd,", #toDo = ",#toDo);}
+			 {next step eliminate already handled from toDo}
+		     toDo := sum(G, for @r in toDo
+		      	 	do if phashes[index].could_add(r)
+				   then 1*r
+				   else nullmod
+				   fi
+				od)
+		     {prints("# trimmed toDo = ",#toDo)}
+                     od {while #toDo > 0}
+	       fi;
+	       mystartNum := last(for start in starts[index] do start<=m od);
+	       mystart := starts[index][mystartNum];
+	       myend := if mystartNum < #starts[index]-1
+	       	       then starts[index][mystartNum+1]
+		       else phashes[index].size()
+		       fi;
+	       {prints("mystart = ",mystart,", myend = ",myend);}
+    	       phashes[index].list()[mystart:myend]
+
+
+set is_cool_E6_hash = ((vec,Param) -> bool):
+    let kss = [vec]:[] {all sets ks considered}
+    then phashes = [Param_hash]: [] {one for each set of ks}
+    then answers = [[bool]]: [] {A list of bools for each phash, of size phash.size().}
+   in ((vec, Param) -> bool): (vec ks, Param p):
+       let index = first(for v in kss do v = ks od)
+       in if index < 0
+	  then kss#:=ks;
+	        phashes#:=make_Param_hash();
+		answers#:=([bool]:[]);
+		index:=#kss - 1
+	  fi;
+    	  let q = if is_regular(p.root_datum,p.infinitesimal_character)
+    	      	  then p
+	    	  else regularize(p)
+	    	  fi, G = p.real_form
+    	  then M = phashes[index].size(), m = phashes[index].match(q)
+    	  in if m=M
+       	     then let qs = local_TalphabetaD4Repeat_hash(ks, p)
+	         then big0 = ks[1:].sort, small0 = [ks[0]]
+    		 then big1 = (ks[:2]##ks[4:]).sort, small1 = ks[2:4].sort
+	     	  then answer = (any(for q in qs do tau_loc(ks,q) = big0 od) and
+       		       	       	 any(for q in qs do tau_loc(ks,q) = small0 od)) or
+       				 (any(for q in qs do tau_loc(ks,q) = big1 od) and
+       				 any(for q in qs do tau_loc(ks,q) = small1 od))
+		  in for qnew in qs
+		     do phashes[index].match(qnew);
+		     	answers[index] #:= answer
+		     od;
+		     assert(#answers[index] = phashes[index].size(),"cool_E6_hash damaged");
+		     assert(#answers[index] = M+#qs,"again cool_E6_hash damaged")
+	      fi {m=M};
+	      answers[index][m]
+
+set cool_hash_flag = true
+
+{test for belonging to the unique self-dual family for W(E6), corr to the 80-diml W rep}
+set is_cool_E6([int] ks, Param p) = bool:
+    if cool_hash_flag then return is_cool_E6_hash(ks,p) fi;
+    let qs = local_TalphabetaD4Repeat_hash(ks, p)
+    then big0 = ks[1:].sort, small0 = [ks[0]]
+    then big1 = (ks[:2]##ks[4:]).sort, small1 = ks[2:4].sort
+    in (any(for q in qs do tau_loc(ks,q) = big0 od) and
+       	any(for q in qs do tau_loc(ks,q) = small0 od)) or
+       (any(for q in qs do tau_loc(ks,q) = big1 od) and
+       	any(for q in qs do tau_loc(ks,q) = small1 od))
+
+
+{assume ks are indices for an E6 in simple roots, with js[0] the center. If p makes a big ("cool") E6 cell, then result is in this E6 cell; iterating gives whole cell}
+set genTalphabetaE6 = (([int], Param) -> [Param]):
+    let pHash = make_Param_hash() {just hash the cool p's}
+    then TabHash = make_Param_hash()
+    then answers = [vec]: [] {vec #j is list of entries in TabHash for Tab(entry j in pHash)}
+    in (([int],Param) -> [Param]): ([int] ks, Param p):
+        if not is_cool_E6(ks, p) then return ([Param]: []) fi;
+    	let q = if is_regular(p.root_datum,p.infinitesimal_character)
+    	      	then p
+	    	else regularize(p)
+	    	fi, G = p.real_form
+    	then N = pHash.size()
+    	then n = pHash.match(q)
+    	in if n = N
+       	   then	let P1 = (sum(G, for k in ks
+    	      	      	     do Cayley_cross_sum(k,q)
+		     	     od))
+		in answers #:= (vec: for @t in P1
+		   	       	     if is_cool_E6(ks,t)
+				     do TabHash.match(t)
+				     fi
+				     od)
+	   fi;
+	   assert(@:pHash.size() = #answers,"genTalphabeta is damaged");
+	   ([Param]: for j in answers[n] do regroup(p.real_form,TabHash.index(j)) od)
+
+{in case p is E6-cool, should be entire E6 cell of p}
+set genTalphabetaE6Repeats([int] ks, Param p) = [Param]:
+    if not is_cool_E6(ks, p) then return ([Param]: []) fi;
+    let q = regularize(p), G = p.real_form
+    then toDo = [q]
+    then pHashE6 = make_Param_hash()
+    then size = int:0
+    in while #toDo > 0
+       do for r in toDo
+	  do pHashE6.match(r)
+	  od;
+	  size:= pHashE6.size();
+	  toDo := for r in toDo
+	      	  do for t in genTalphabetaE6(ks,r)
+		     if pHashE6.match(t) >= size
+		     do t
+		     fi
+		     od
+		   od.##
+        od;
+    	pHashE6.list()
+
+{in case p is D4-cool, should be entire D4 cell of p}
+set genTalphabetaRepeatsE6_hash = ((vec, Param) -> [Param]):
+    let kss = [vec]:[] {all sets ks considered}
+    then phashes = [Param_hash]:[] {to hold D4-cool Params for each js}
+    then cells = [[vec]]: [] {cells[k,m]  is indices of cell for Param #m in phashes[k]}
+    in ((vec, Param) -> [Param]): (vec ks, Param p):
+    if not is_cool_E6(ks, p) then return ([Param]: []) fi;
+    let k = first(for v in kss do v = ks od)
+    in if k < 0
+	  then kss#:=ks;
+	        phashes#:=make_Param_hash();
+		cells#:=([vec]:[]);
+		k:=#kss - 1
+	  fi;
+    let q = regularize(p), G = p.real_form
+    then M = phashes[k].size(), m = phashes[k].match(q)
+    in if m = M {haven't seen q}
+       then let list = genTalphabetaE6Repeats(ks,q)
+       	    then inds = (vec: for r in list do phashes[k].match(r) od)
+       	    in assert(@:#list >= 10,"Too-small D4 cell");
+	       for j:#list
+	       do cells[k] #:= inds
+	       od
+       fi;
+       for i in cells[k][m]
+       do regroup(G, phashes[k].index(i))
+       od
+
+{every rep with four-elt tau invt excluding the central node is joined to all
+those with five-element tau excluding central node. Similarly, any rep with tau = central node is
+joined to the reps with tau (central, one other)}
+set genTalphabetaStepE6 ([int] ks, Param p) = [Param]:
+    if not is_cool_E6(ks,p) then return ([Param]: []) fi;
+    let list = genTalphabetaRepeatsE6_hash(ks,p), tau_loc = tau_loc(ks,p)
+    then tau_locs = for q in list do tau_loc(ks,q) od
+    in if #tau_loc = 4 and not is_member(tau_loc)(ks[0])
+       then for tau1@k in tau_locs if (tau1 = ks[1:].sort) do list[k] fi od
+       elif tau_loc = [ks[0]]
+       then for tau1@k in tau_locs if (#tau1=2 and is_member(tau1)(ks[0])) do list[k] fi od
+       else []
+       fi
+
 {is r adj to q in graph?}
 set test(Param q, Param r) = bool:
     let (B,m) = block(q), (,n) = block(r)
@@ -280,13 +555,17 @@ set test(Param q, Param r) = bool:
     in j>=0
 
 set D4_gen_tau_flag = true
+set E6_gen_tau_flag = true
 
+{make separate answers for only D4}
 {all these guys have the SAME sigma}
 set Talphabeta = (Param -> [Param]):
     let pHash = make_Param_hash()
     then TabHash = make_Param_hash()
     then answers = [vec]: [] {vec #j is list of entries in TabHash for Tab(entry j in pHash)}
-    then pHashC = make_Param_hash()
+    then pHashD4 = make_Param_hash() {for Params to be tested using only D4 gen tau}
+    then answersD4 = [vec]:[]
+    then pHashC = make_Param_hash() {for complex group params to be left tested}
     then answersC = [vec]: []
     in (Param -> [Param]): (Param p):
     let q = if is_regular(p.root_datum,p.infinitesimal_character)
@@ -296,10 +575,14 @@ set Talphabeta = (Param -> [Param]):
     then divider = if C_flag then 2 else 1 fi
     then N = if C_flag
     	     then pHashC.size()
+	     elif not E6_gen_tau_flag
+	     then pHashD4.size()
 	     else pHash.size()
 	     fi
     then n = if C_flag
     	     then pHashC.match(q)
+	     elif not E6_gen_tau_flag
+	     then pHashD4.match(q)
 	     else pHash.match(q)
 	     fi
     in if n = N
@@ -314,6 +597,10 @@ set Talphabeta = (Param -> [Param]):
 	       	       else []
 	       	       fi
 	    then qD4s = for v in D4s if is_cool_D4(v,q) do v fi od
+	    then qE6s = if E6_gen_tau_flag
+	    	       then ([vec]: find_E6s(integrality_datum(p.root_datum,gamma)))
+		       else []
+		       fi
 	    in let list = ([Param]: for @t in P1
  	       	       	  if not is_subset(tau(t), tau(q)) and
        	  	     	     not is_subset(tau(q), tau(t))
@@ -324,17 +611,26 @@ set Talphabeta = (Param -> [Param]):
 		       	  ([Param]: for v in qD4s
 		       	  do genTalphabetaStep(v,q)
 		       	  od.##)
+			  ##
+			  ([Param]: for v in qE6s
+		       	  do genTalphabetaStepE6(v,q)
+		       	  od.##)
 	        then addl = (vec: for t in list
        		     	    	  do TabHash.match(t)
 				  od.sort_u)
 		in if C_flag
 		   then answersC #:= addl
-		   else answers #:= addl
+		   elif not E6_gen_tau_flag
+		   then answersD4 #:= addl
+		   else answers #:=  addl
 		   fi
 	fi;
         if C_flag
 	then assert(@:pHashC.size() = #answersC,"TalphabetasC is damaged");
 	     for j in answersC[n] do regroup(p.real_form,TabHash.index(j)) od
+	elif not E6_gen_tau_flag
+	then assert(@:pHashD4.size() = #answersD4,"TalphabetasD4 is damaged");
+	     for j in answersD4[n] do regroup(p.real_form,TabHash.index(j)) od
 	else assert(@:pHash.size() = #answers,"Talphabetas is damaged");
 	     for j in answers[n] do regroup(p.real_form,TabHash.index(j)) od
 	fi
@@ -364,20 +660,35 @@ set (Talphabeta_levels, Talphabeta_levels_clear) =
     then levelssC = [[vec]]: [] {levelss[i][j] = nodes at distance <= j from node i}
     then donesC = [bool]: [] {whether levelss[i] is complete}
     then nbrssC = [vec]: [] {nbrss[i] = neighbours of node i, once computed}
-    then have_nbrssC = [bool]: [] {whether nbrss[i] has been computed}    
+    then have_nbrssC = [bool]: [] {whether nbrss[i] has been computed}
+    then registryD4 = make_Param_hash() {node <-> param, for not using E6}
+    then levelssD4 = [[vec]]: [] {levelssD4[i][j] = nodes at distance <= j from node i}
+    then donesD4 = [bool]: [] {whether levelssD4[i] is complete}
+    then nbrssD4 = [vec]: [] {nbrssD4[i] = neighbours of node i, once computed}
+    then have_nbrssD4 = [bool]: [] {whether nbrss[i] has been computed}
+
     then node = (Param -> int): (Param q):
 	 let M = if C_flag
 	       	 then registryC.size()
+		 elif not E6_gen_tau_flag
+		 then registryD4.size()
 		 else registry.size()
 		 fi
     then i = if C_flag
     	     then registryC.match(q)
+	     elif not E6_gen_tau_flag
+	     then registryD4.match(q)
 	     else registry.match(q)
 	     fi
     in if C_flag
        then if i = M
 	    then levelssC #:= [vec:[i]]; donesC #:= false;
 		 nbrssC #:= (vec:[]); have_nbrssC #:= false
+	    fi; i
+       elif not E6_gen_tau_flag
+       then if i = M
+       	    then levelssD4 #:= [vec:[i]]; donesD4 #:= false;
+	    	 nbrssD4 #:= (vec:[]); have_nbrssD4 #:= false
 	    fi; i
        else if i = M
 	    then levelss #:= [vec:[i]]; dones #:= false;
@@ -390,6 +701,11 @@ set (Talphabeta_levels, Talphabeta_levels_clear) =
 	      else have_nbrssC[i] := true;
 	      	   nbrssC[i] := (vec: for t in Talphabeta(registryC.index(i)) do node(t) od)
 	      fi
+	 elif not E6_gen_tau_flag
+	 then if have_nbrssD4[i] then nbrssD4[i]
+	      else have_nbrssD4[i] := true;
+	      	   nbrssD4[i] := (vec: for t in Talphabeta(registryD4.index(i)) do node(t) od)
+              fi
 	 else if have_nbrss[i] then nbrss[i]
 	      else have_nbrss[i] := true;
 	      	   nbrss[i] := (vec: for t in Talphabeta(registry.index(i)) do node(t) od)
@@ -416,6 +732,26 @@ set (Talphabeta_levels, Talphabeta_levels_clear) =
 		       	    levelssC[i] #:= (vec: seen.list())
 		       od
 	       fi {not donesC[i]}
+
+	 elif not E6_gen_tau_flag
+	 then if not donesD4[i] and #levelssD4[i] <= N
+	      then let nbrs = nbrs_of(i)
+	      	   then () = for k in nbrs do ensure(k,N-1) od
+	      	   then () = seen.clear() {all levels of i so far}
+	      	   in while not donesD4[i] and #levelssD4[i] <= N
+	      	       {Since #levelssD4[i] is at least 1, exit if N = 0}
+		      do let n = #levelssD4[i]
+		      	 in for m in levelssD4[i][n-1] do seen.match(m) od;
+		       	    old_size := seen.size();
+		       	    for k in nbrs
+		       	    if (n-1 < #levelssD4[k])
+		       	    do (for m in levelssD4[k][n-1] do seen.match(m) od)
+		       	    fi
+		       	    od;
+		       	    if seen.size() = old_size  then donesD4[i] := true fi;
+		       	    levelssD4[i] #:= (vec: seen.list())
+		       od
+	       fi {not donesD4[i]}
 	   else if not dones[i] and #levelss[i] <= N
 	      	then let nbrs = nbrs_of(i)
 	      	     then () = for k in nbrs do ensure(k,N-1) od
@@ -443,6 +779,10 @@ set (Talphabeta_levels, Talphabeta_levels_clear) =
 	    	 then while not donesC[i]
 		      do ensure(i,#levelssC[i])
 		      od
+		 elif not E6_gen_tau_flag
+		 then while not donesD4[i]
+		      do ensure(i,#levelssD4[i])
+		      od
 		 else while not dones[i]
 		      do ensure(i,#levelss[i])
 		      od
@@ -450,6 +790,8 @@ set (Talphabeta_levels, Talphabeta_levels_clear) =
 	    fi;
 	    let data = if C_flag
 		       then levelssC[i]
+		       elif not E6_gen_tau_flag
+		       then levelssD4[i]
 		       else levelss[i]
 		       fi
 	    then avail = if N < 0
@@ -460,15 +802,23 @@ set (Talphabeta_levels, Talphabeta_levels_clear) =
 		 do for k in lev
 		    do if C_flag
 		       then regroup(G,registryC.index(k))
+		       elif not E6_gen_tau_flag
+		       then regroup(G,registryD4.index(k))
 		       else regroup(G,registry.index(k))
 		       fi
 		    od
 		 od
-	       , (avail = #data) and (if C_flag then donesC[i] else dones[i] fi)
+	       , (avail = #data) and (if C_flag
+	       	 	  	     then donesC[i]
+				     elif not E6_gen_tau_flag
+				     then donesD4[i]
+				     else dones[i] fi)
 	       )
        , @: ( registry.clear(); levelss := []; dones := []
 	    ; nbrss := []; have_nbrss := []; registryC.clear(); levelssC := []
-	    ; donesC := []; nbrssC := []; have_nbrssC:= [];())
+	    ; donesC := []; nbrssC := []; have_nbrssC:= []
+	    ; registryD4.clear(); levelssD4 := []; donesD4 := []; nbrssD4 := []
+	    ; have_nbrssD4 := []; ())
        )
 
 {when true, TalphabetaRepeats uses the incremental Talphabeta_levels cache
@@ -560,71 +910,129 @@ set TalphabetaRepeat_count = int:0
 {jth term is all Param's accessible from p by <=j T_{alpha,beta}'s}
 {seek a result of size N + 1 >= 1}
 set TalphabetaRepeats(Param p, int N) = [[Param]]:
-    if Talphabeta_cache_flag
-    then TalphabetaRepeats_cached(p,N)
-    else TalphabetaRepeats_direct(p,N)
-    fi
+    TalphabetaRepeat_count+:= 1;
+    let start = elapsed_ms()
+    in if Talphabeta_cache_flag
+       then TalphabetaRepeats_cached(p,N)
+       else TalphabetaRepeats_direct(p,N)
+       fi next TalphabetaRepeat_time +:= elapsed_ms() - start
 
 {jth term is all Param's accessible from p by <=j T_{alpha,beta}'s}
 set TalphabetaRepeats(Param p) = [[Param]]:
-    if Talphabeta_cache_flag
-    then TalphabetaRepeats_cached(p)
-    else TalphabetaRepeats_direct(p)
-    fi
+    TalphabetaRepeat_count+:= 1;
+    let start = elapsed_ms()
+    in if Talphabeta_cache_flag
+       then TalphabetaRepeats_cached(p)
+       else TalphabetaRepeats_direct(p)
+       fi next TalphabetaRepeat_time +:= elapsed_ms() - start
+
+set TalphabetaTauss_time = int: 0
+
+{memoized wrapper around the library function tau: TalphabetaRepeats returns
+CUMULATIVE balls (level j = all params within distance j), so TalphabetaTauss
+below calls tau(q) once per level whose ball already contains q -- up to N+1
+times for q found early -- and test_faster_packets calls TalphabetaTauss once
+per block element, so the same q (shared between overlapping T_{alpha,beta}
+orbits of different starting points) gets its tau recomputed many more times
+still. tau(q) depends only on q's value, so caching it here is always safe.}
+set tau_cached = (Param -> vec):
+    let pHash = make_Param_hash()
+    then valHash = make_vec_hash(), val = int:0
+    then answer = vec: [] {size pHash.size(); jth coord is index in valHash}
+    in (Param q):
+       let M = pHash.size(), m = pHash.match(q)
+       in if m = M
+       	  then val := valHash.match(tau(q));
+	       answer#:= val
+	  fi;
+       	  valHash.index(answer[m])
+
+set TalphabetaTauss_tauonly_time = int: 0
+set TalphabetaTauss_sort_time = int: 0
 
 {jth term is all tau invariants found in <= j T_{alpha,beta}'s from p}
 set TalphabetaTauss(Param p,int N) = [[vec]]:
-    for list in TalphabetaRepeats(p,N) do for q in list do tau(q) od.sort_u_lex od
+    let TAR = TalphabetaRepeats(p,N), start_sort = int:0, start_tau = int:0
+    then answer = [[vec]]:[[tau_cached(p)]]
+    in for ell:N from 1
+       do start_tau := elapsed_ms();
+       	  let taus = for q in TAR[ell][#TAR[ell-1]:]
+	      	     do tau_cached(q)
+		     od
+	  in TalphabetaTauss_tauonly_time +:= elapsed_ms() - start_tau;
+	     start_sort := elapsed_ms();
+	     answer #:= merge_u(lex_leq@(vec,vec))(answer[ell-1],taus.sort_u_lex);
+	     TalphabetaTauss_sort_time +:= elapsed_ms() - start_sort
+       od;
+       answer
 
 {jth term is all tau invariants found in <= j T_{alpha,beta}'s from p}
 set TalphabetaTauss(Param p) = [[vec]]:
-    for list in TalphabetaRepeats(p) do for q in list do tau(q) od.sort_u_lex od
+    let TAR = TalphabetaRepeats(p), start_sort = int:0, start_tau = int:0
+    then answer = [[vec]]:[[tau_cached(p)]]
+    in for ell:#TAR-1 from 1
+       do start_tau := elapsed_ms();
+       	  let taus = for q in TAR[ell][#TAR[ell-1]:]
+	      	     do tau_cached(q)
+		     od
+	  in TalphabetaTauss_tauonly_time +:= elapsed_ms() - start_tau;
+	     start_sort := elapsed_ms();
+	     answer #:= merge_u(lex_leq@(vec,vec))(answer[ell-1],taus.sort_u_lex);
+	     TalphabetaTauss_sort_time +:= elapsed_ms() - start_sort
+       od;
+       answer
+
+set TalphabetaTauss_bitset_time = int: 0
 
 {Tauss made into a list of of length at most N+1 of big_int bitsets}
 set TalphabetaTauss_bitset(Param p,int N) = [int]:
-    let answer = for list in TalphabetaTauss(p,N)
-    	       	 do to_bitset(for tau in list
+    let start = int:0
+    then answer = for list in TalphabetaTauss(p,N)
+    	       	  do start:=elapsed_ms();
+		     to_bitset(for tau in list
 		    	      do to_bitset(tau)
-			      od)
-		 od
-    { then len = first(for N in answer do N=answer~[0] od)}
-    in answer{[:len+1]}
+			      od) next TalphabetaTauss_bitset_time +:= elapsed_ms() - start
+		  od
+    in answer
 {For p = parameter(E7_s,20925,[1,1,1,1,1,1,1]/1,[1,1,1,0,1,0,1]/1), TalphabetaTauss_bitset has
 cardinality 11; entries 6-9 are equal, so using len inappropriately truncates the answer if N = 8.}
 
 {Tauss made into a list of of length at most N+1 of big_int bitsets}
 set TalphabetaTauss_bitsetC(Param p,int N) = [int]:
     C_flag:=true;
-    let S = p.integrality_datum.semisimple_rank\2
+    let S = p.integrality_datum.semisimple_rank\2, start = int:0
     then D = 2^S
     then answer = for list in TalphabetaTauss(p,N)
-    	       	 do to_bitset(for tau in list
+    	       	 do start:=elapsed_ms();
+		    to_bitset(for tau in list
 		    	      do to_bitset(tau)%D
-			      od)
+			      od) next TalphabetaTauss_bitset_time +:= elapsed_ms() - start
 		 od
-    { then len = first(for N in answer do N=answer~[0] od)}
-    in answer{[:len+1]} next C_flag:=false
+    in answer next C_flag:=false
 
 
 {Tauss made into a list of big_int bitsets}
 set TalphabetaTauss_bitset(Param p) = [int]:
-    let answer = for list in TalphabetaTauss(p)
-    	       	 do to_bitset(for tau in list
+    let start = int:0
+    then answer = for list in TalphabetaTauss(p)
+    	       	  do start:=elapsed_ms();
+		     to_bitset(for tau in list
 		    	      do to_bitset(tau)
-			      od)
-		 od
+			      od) next TalphabetaTauss_bitset_time +:= elapsed_ms() - start
+		  od
     then len = first(for N in answer do N=answer~[0] od)
     in answer[:len+1]
 
 {In complex case, first half of Tauss made into a list of big_int bitsets}
 set TalphabetaTauss_bitsetC(Param p) = [int]:
     C_flag:=true;
-    let S = p.integrality_datum.semisimple_rank\2
+    let S = p.integrality_datum.semisimple_rank\2, start = int:0
     then D = 2^S
     then answer = for list in TalphabetaTauss(p)
-    	       	  do to_bitset(for tau in list
+    	       	  do start:=elapsed_ms();
+		     to_bitset(for tau in list
 		    	      do to_bitset(tau)%D
-			      od)
+			      od) next TalphabetaTauss_bitset_time +:= elapsed_ms() - start
 		  od
     then len = first(for N in answer do N=answer~[0] od)
     in answer[:len+1] next C_flag:=false
@@ -633,6 +1041,7 @@ set TalphabetaTauss_bitsetC(Param p) = [int]:
 the same primitive ideal; need N >= 1.}
 set same_PI_step(Param p, [int] Tauss_bit, int N) = bool:
     if to_bitset([to_bitset(tau(p))]) != Tauss_bit[0] then return false fi;
+    if N=0 then return true fi; {already tested equality}
     let q = regularize(p), G = p.real_form, step = int:0, pHash = make_Param_hash()
     then test = int:0
     then gamma = q.infinitesimal_character, toDo = 1*q, nullmod = null_module(G), size = int:0
@@ -723,6 +1132,16 @@ set is_Arthur(Param p) = bool:
     then bits = TalphabetaTauss_bitset(psph)
     in same_PI_step(p,bits)
 
+set is_Arthur(Param p,int N) = bool:
+    if not(is_final(p)) then prints("Sorry, ",p," is not final"); return false fi;
+    let gamma = p.infinitesimal_character
+    then j = first(for Ovee in dual_orbits(p.root_datum) do Ovee.H = 2*gamma od)
+    then () = if j < 0 then prints("Sorry, infl char ",gamma," is not Arthur");
+    	      	 return false fi
+    then Gs= p.real_form.split_form
+    then psph = Finalize(parameter(x_open(Gs),Gs.rho,gamma))
+    then bits = TalphabetaTauss_bitset(psph,N)
+    in same_PI_step(p,bits,N)
 
 set cand_sigmas(Param p) = [int]:
     let rd = integrality_datum(p)
@@ -765,12 +1184,22 @@ set ideal_intList_hash = make_int_list_hash()
 set ideal_int_hash = make_int_hash()
 set test_step_flag = true
 
+set ideal_intList_hash_time = int:0
+
 {Sp(12) true with N = 10}
 {Sp(14) positive with N = 15 (not 14) in about 17360 sec}
 {E7_s positive with N=13 (not 12)}
+{D5 true with N=5 in two seconds}
+{D6 true with N=8}
 {tests whether  TalphabetaTauss_bitset to N really distinguished primitive ideals}
 set test_faster_packets(RootDatum rd, int N) = bool:
-    let start = elapsed_ms(), G = split_form(rd)
+    TalphabetaRepeat_count:=0;
+    TalphabetaRepeat_time:=0;
+    TalphabetaTauss_time:=0;
+    TalphabetaTauss_sort_time:=0;
+    TalphabetaTauss_bitset_time:=0;
+    ideal_intList_hash_time :=0;
+    let start = elapsed_ms(), start_match = int:0, G = split_form(rd)
     then B = block_of(G.trivial)
     then PInum = num_prim_ideals(character_table(rd))
     then freq = min(#B\10 + 1,1000)
@@ -781,15 +1210,30 @@ set test_faster_packets(RootDatum rd, int N) = bool:
 	  print_time_string(elapsed_ms() -start),"; so far ",ideal_intList_hash.size(),
 	       " out of ",PInum," different prim ideals")
 	  fi;
-	  ideal_intList_hash.match(TalphabetaTauss_bitset (p, N))
+	  let list = TalphabetaTauss_bitset (p, N)
+	  in start_match :=elapsed_ms();
+	  ideal_intList_hash.match(list) next ideal_intList_hash_time +:=
+	  				 elapsed_ms() - start_match
        od;
-       prints("Total time = ",print_time_string(elapsed_ms() -start),
+       prints(print_time_string(elapsed_ms() -start),
        	      " to distinguish ",ideal_intList_hash.size(), " prim ideals to level ",N);
+       prints(print_time_string(TalphabetaRepeat_time)," for ",TalphabetaRepeat_count,
+       		" uses of TalphabetaRepeat");
+       prints(print_time_string(TalphabetaTauss_time)," for tau computation");
+       prints(print_time_string(TalphabetaTauss_sort_time)," for sorting");
+       prints(print_time_string(TalphabetaTauss_bitset_time)," for to_bitset");
+       prints(print_time_string(ideal_intList_hash_time)," for hashing");
        PInum = ideal_intList_hash.size()
 
 {tests whether  TalphabetaTauss_bitset really distinguished primitive ideals}
 set test_faster_packets(RootDatum rd) = bool:
-    let start = elapsed_ms(), G = split_form(rd)
+    TalphabetaRepeat_count:=0;
+    TalphabetaRepeat_time:=0;
+    TalphabetaTauss_time:=0;
+    TalphabetaTauss_sort_time:=0;
+    TalphabetaTauss_bitset_time:=0;
+    ideal_intList_hash_time :=0;
+    let start = elapsed_ms(), start_match = int:0, G = split_form(rd)
     then B = block_of(G.trivial)
     then PInum = num_prim_ideals(character_table(rd))
     then freq = min(#B\10 + 1,1000)
@@ -800,10 +1244,19 @@ set test_faster_packets(RootDatum rd) = bool:
 	  print_time_string(elapsed_ms() -start),"; so far ",ideal_intList_hash.size(),
 	       " out of ",PInum," different prim ideals")
 	  fi;
-	  ideal_intList_hash.match(TalphabetaTauss_bitset(p))
+	  let list = TalphabetaTauss_bitset (p)
+	  in start_match :=elapsed_ms();
+	  ideal_intList_hash.match(list) next ideal_intList_hash_time +:=
+	  				 elapsed_ms() - start_match
        od;
-       prints("Total time = ",print_time_string(elapsed_ms() -start),
-       	      " to distinguish ",ideal_intList_hash.size(), " prim ideals.");
+       prints(print_time_string(elapsed_ms() -start),
+       	      " to distinguish ",ideal_intList_hash.size(), " prim ideals");
+       prints(print_time_string(TalphabetaRepeat_time)," for ",TalphabetaRepeat_count,
+       		" uses of TalphabetaRepeat");
+       prints(print_time_string(TalphabetaTauss_time)," for tau computation");
+       prints(print_time_string(TalphabetaTauss_sort_time)," for sorting");
+       prints(print_time_string(TalphabetaTauss_bitset_time)," for to_bitset");
+       prints(print_time_string(ideal_intList_hash_time)," for hashing");
        PInum = ideal_intList_hash.size()
 
 {Since previous test gave false for Spin(6,6), test whether TalphabetaTauss_bitset distinguishes
@@ -812,7 +1265,8 @@ primitive ideals in case of distinguished nilpotent}
 {If preload isn't empty, should be all distinguished unipotent}
 
 set test_faster_distinguished_packets(RootDatum rd, [Param] preload, int N) = bool:
-    let start = elapsed_ms(), G = split_form(rd), rd_dual = dual(rd)
+    E6_gen_tau_flag:=false;
+    let start = elapsed_ms(), G = split_form(rd), rd_dual = dual(rd), testE6_bits = [int]:[]
     then distHs = for H in distinguished_Hs(rd_dual) ~do H od
     then distps = for H in distHs
     	 	  do parameter(x_open(G),G.rho,H/2)
@@ -826,14 +1280,17 @@ set test_faster_distinguished_packets(RootDatum rd, [Param] preload, int N) = bo
     then () = prints("At time ",print_time_string(elapsed_ms() - start),
     	      	     ", completed computation of target GK_dims.")
     then () = prints("At time ",print_time_string(elapsed_ms() - start),
-    	 	  ", starting to compute Tauss_bitset to ",N," for ",#distHs," parameters.")
-    then distTauss_bits = for p in distps
+    	 	  ", starting to compute Tauss_bitset_D4 to ",N," for ",#distHs," parameters.")
+    then distTauss_bitsD4 = for p in distps
     	 		  do  TalphabetaTauss_bitset(p,N)
 			  od
     then () = prints("At time ",print_time_string(elapsed_ms() - start),
-    	 	  ", completed computing Tauss_bitset to ",N," for ",#distHs," parameters.")
+    	 	  ", completed computing Tauss_bitset_D4 to ",N," for ",#distHs," parameters.")
     in all(#distps, (int j) bool:
 	   let allH = all_parameters_gamma(G,distHs[j]/2)
+	   then () = prints(new_line,"At time ",print_time_string(elapsed_ms() - start),
+	   	 " started testing_D4 of distinguished orbit #",j,
+		 "; need to test ",#allH," candidates")
 	   then actualsH =
 	   	if #preload > 0
 	   	then for q in preload
@@ -844,11 +1301,14 @@ set test_faster_distinguished_packets(RootDatum rd, [Param] preload, int N) = bo
 	   	else [Param]:[]
 	   	fi
 	   in
-	   prints(new_line, "At time ",print_time_string(elapsed_ms() - start),
-	   	 " started testing distinguished orbit #",j);
+	   prints(new_line,"At time ",print_time_string(elapsed_ms() - start),
+	   	 " started testing_D4 of distinguished orbit #",j);
 	   prints("need to test ",#allH," candidates");
-	   let candsH = for q@k in allH
-			 do if same_PI_step(q,distTauss_bits[j],N)
+	   let freq = max(#allH\20,1)
+	   then candsHD4 = for q@k in allH
+			 do if (k%freq).= then prints("at cand ",k," at time ",
+			    print_time_string(elapsed_ms() - start)) fi;
+			 if same_PI_step(q,distTauss_bitsD4[j],N)
 			    then {prints("positive result for cand #",k," of ",#allH);}
 			         [q]
 			    else []
@@ -856,31 +1316,50 @@ set test_faster_distinguished_packets(RootDatum rd, [Param] preload, int N) = bo
 			 od.##
 	   then actualsH =
 	   	if #preload = 0
-	   	then for q in candsH if GK_dim(q) = Dims[j] do q fi od
+	   	then for q in candsHD4 if GK_dim(q) = Dims[j] do q fi od
 	   	else actualsH
 	   	fi
-	   in
-	   prints(new_line,"candsH = ",candsH);
+	   then candsH = if #candsHD4 > #actualsH
+	   	       	 then E6_gen_tau_flag:=true;
+			      freq := max(#candsHD4\20,1);
+			      prints(new_line,"At time ",print_time_string(elapsed_ms() - start),
+    	 	  	      ", starting to compute Tauss_bitset_E6 to ",N," for unipotent #",j);
+			      testE6_bits := TalphabetaTauss_bitset(distps[j],N);
+			      prints("At time ",print_time_string(elapsed_ms() - start),
+    	 	  	      ", finished computing Tauss_bitset_E6 to ",N," for unipotent #",j);
+			      for q@k in candsHD4
+			      do if (k%freq).= then prints("at candHD4 ",k," of ",
+			      #candsHD4,", at time ",
+			      print_time_string(elapsed_ms() - start)) fi;
+			      if same_PI_step(q,testE6_bits,N)
+			      then [q]
+			      else []
+			      fi
+			      od.## next E6_gen_tau_flag:=false
+			   else candsHD4
+			   fi
+	   in prints(new_line,"candsH = ",candsH);
 	   prints(new_line,"actualsH = ",actualsH);
-	   if #candsH > #actualsH
-	   then prints(new_line,"for j = ",j," and H = ",distHs[j],", the ",#candsH - #actualsH,
-	   	" extra candidates are ",
+	   if (#candsH > #actualsH)
+	   then prints(new_line,"for j = ",j," and H = ",distHs[j],", the ",
+	   	#candsH - #actualsH," extra candidates are ",
 		       for q in candsH if first(for r in actualsH do q=r od) = -1
 		       do q fi od);
 		       false
 	   elif #candsH < #actualsH
-	   then prints("for j = ",j," and H = ",distHs[j],", the ",#actualsH - #candsH,
-	   	" missing candidates are ",
+	   then prints("ERROR: for j = ",j," and H = ",distHs[j],", the ",#actualsH - #candsH,
+	   	" actual unips missed by the test are ",
 		       for q in actualsH if first(for r in candsH do q=r od) = -1
 		       do q fi od);
 		       false
 	   else prints("for j = ",j," and H = ",distHs[j],", identified correctly the ",
 	   	#candsH," unipotent representations");
 	   true
-	   fi) next prints("Finished at ",print_time_string(elapsed_ms() - start))
+	   fi  next prints("Finished at ",print_time_string(elapsed_ms() - start)))
 
 set test_faster_distinguished_packets(RootDatum rd, [Param] preload) = bool:
-    let start = elapsed_ms(), G = split_form(rd), rd_dual = dual(rd)
+    E6_gen_tau_flag:=false;
+    let start = elapsed_ms(), G = split_form(rd), rd_dual = dual(rd), testE6_bits = [int]:[]
     then distHs = for H in distinguished_Hs(rd_dual) ~do H od
     then distps = for H in distHs
     	 	  do parameter(x_open(G),G.rho,H/2)
@@ -891,40 +1370,74 @@ set test_faster_distinguished_packets(RootDatum rd, [Param] preload) = bool:
     then Dims = for O in Os do dim(O)\2 od
     {then Dims = for  p in distps do GK_dim(p) od}
     then () = prints("At time ",print_time_string(elapsed_ms() - start),
-    	 	  ", starting to compute Tauss_bitset for ",#distHs," parameters.")
-    then distTauss_bits = for p in distps
+    	 	  ", starting to compute Tauss_bitset_D4 for ",#distHs," parameters.")
+    then distTauss_bitsD4 = for p in distps
     	 		  do  TalphabetaTauss_bitset(p)
 			  od
     then () = prints("At time ",print_time_string(elapsed_ms() - start),
-    	 	  ", completed computing Tauss_bitset for ",#distHs," parameters.")
+    	 	  ", completed computing Tauss_bitset_D4 for ",#distHs," parameters.")
     in all(#distps, (int j) bool:
 	   prints("At time ",print_time_string(elapsed_ms() - start),
 	   	 " started testing distinguished orbit #",j);
 	   let allH = all_parameters_gamma(G, distHs[j]/2)
-	   then cands = for q in allH
-			 if same_PI_step(q,distTauss_bits[j])
-			 do q
-			 fi
-			 od
+	   then freq = max(#allH\20,1)
+	   then candsD4 = for q@k in allH
+	   	      	do if (k%freq).= then prints("at cand ",k," at time ",
+			    print_time_string(elapsed_ms() - start)) fi;
+			    if same_PI_step(q,distTauss_bitsD4[j])
+			    then [q]
+			    else []
+			    fi
+			 od.##
 	   then actuals = if #preload > 0
 			   then for q in preload
 			   	  if q.infinitesimal_character = distHs[j]/2
 				  do q
 				  fi
 				  od
-			   else for q in cands
+			   else for q in candsD4
 			   	  if GK_dim(q) = Dims[j]
 				  do q
 				  fi
 				  od
 			   fi
-	   in if #cands != #actuals
-	   then prints("for j = ",j," and H = ",distHs[j],", bad candidates are ",
+	    then cands = if #candsD4 > #actuals
+	   	       	 then E6_gen_tau_flag:=true;
+			      freq := max(#candsD4\20,1);
+			      prints(new_line,"At time ",print_time_string(elapsed_ms() - start),
+    	 	  	      ", starting to compute Tauss_bitset_E6 for unipotent #",j);
+			      testE6_bits := TalphabetaTauss_bitset(distps[j]);
+			      prints("At time ",print_time_string(elapsed_ms() - start),
+    	 	  	      ", finished computing Tauss_bitset_E6 for unipotent #",j);
+			      for q@k in candsD4
+			      do if (k%freq).= then prints("at candHD4 ",k," of ",
+			      #candsD4,", at time ",
+			      print_time_string(elapsed_ms() - start)) fi;
+			      if same_PI_step(q,testE6_bits)
+			      then [q]
+			      else []
+			      fi
+			      od.##  next E6_gen_tau_flag:=false
+			   else candsD4
+			   fi
+	   in prints(new_line,"cands = ",cands);
+	   prints(new_line,"actuals = ",actuals);
+	   if (#cands > #actuals)
+	   then prints(new_line,"for j = ",j," and H = ",distHs[j],", the ",
+	   	#cands - #actuals," extra candidates are ",
 		       for q in cands if first(for r in actuals do q=r od) = -1
 		       do q fi od);
 		       false
-	   else true
-	   fi) next prints("Finished at ",print_time_string(elapsed_ms() - start))
+	   elif #cands < #actuals
+	   then prints("ERROR: for j = ",j," and H = ",distHs[j],", the ",#actuals - #cands,
+	   	" actual unips missed by the test are ",
+		       for q in actuals if first(for r in cands do q=r od) = -1
+		       do q fi od);
+		       false
+	   else prints("for j = ",j," and H = ",distHs[j],", identified correctly the ",
+	   	#cands," unipotent representations");
+	   true
+	   fi  next prints("Finished at ",print_time_string(elapsed_ms() - start)))
 
 set test_faster_distinguished_packets(RootDatum rd, int N) = bool:
     test_faster_distinguished_packets(rd,[],N)
@@ -953,3 +1466,13 @@ set small_cells(Param p) = ([[Param]],vec):
        prints("found ",cell_hash.size()," small cells, of sizes up to ",
        		     max(for v in cell_hash.list() do #v od));
        (for ind in cell_hash.list() do for j in ind do B[j] od od,index)
+
+
+{In F4, small cells not of GK codim 4 are always cells. Each has tau
+invts only 0, or only 4, or only 1, or only 3, or 1 and 2, or 2 and
+3.}
+
+{Remaining small cells are sizees either 3 (with 3 tau invts, sizes
+1,2,3) or all 6 tau invts of size 2.}
+
+{In E6, small cells of GKcodim 7}
