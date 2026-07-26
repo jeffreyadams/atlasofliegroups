@@ -964,6 +964,15 @@ set is_good_Aq(Param p)=bool:
    let (,p_L)=reduce_good_range(p) in
    is_unitary_character(p_L) and is_regular(p) and not is_zero(p)
 
+{. Determine whether p is cohomological (= good unitary Aq(lambda)). .}
+set is_cohomological(Param p)=bool:is_good_Aq(p)
+
+{. The cohomological representations in the block of basic(G). Uses basic, not
+   trivial: on a nontrivial xi-cover trivial(G) is not a genuine representation
+   and raises an error, while basic(G) is its genuine analogue (and equals
+   trivial(G) when xi=0, so this is unchanged for plain groups). .}
+set all_cohomological(RealForm G)=[Param]: for p in block_of(G.basic) do if is_cohomological(p) then [p] else [] fi od.##
+
 {. Determine whether p is a proper (weakly) good unitary Aq(lambda). .}
 set is_proper_Aq(Param p)=bool:
    let (,p_L)=reduce_good_range(p) in

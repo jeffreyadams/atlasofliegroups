@@ -35,10 +35,29 @@ for alpha in simple_imaginary_roots(x) do root_reflection(x.root_datum,alpha) od
 set fiber(KGBElt x)=[KGBElt]:
 for (y,) in cross_sub_orbit(simple_imaginary_reflections(x),x) do y od
 
-{if G is quasisplit this is guaranteed to work
- if not, it will fail with an error if there is no x with x.involution=theta}
-set fiber(RealForm G,mat theta)=[KGBElt]:
+{fiber_old: constructs the KGB element directly from the base grading vector.
+ If G is quasisplit this is guaranteed to work; if not, it fails with
+ "KGB element not present" even when a valid x with x.involution=theta does
+ exist in KGB(G). Kept for reference.}
+set fiber_old(RealForm G,mat theta)=[KGBElt]:
 fiber(KGB_elt(G,theta,G.base_grading_vector))
+
+{Search KGB(G) instead, so non-quasisplit G works too. Restored from the
+ endoscopy branch (origin/endoscopy L_packet.at), whose version was lost when
+ L_packet.at was taken from master during the endoscopy port; that regression
+ broke epstar_std on SO(4,5). Assumes all x with the same theta are
+ consecutive in KGB(G).}
+set fiber(RealForm G,mat theta)=[KGBElt]:
+let found=false then
+rv=[KGBElt]:[] in
+for x in KGB(G) do
+ if x.involution=theta then
+  rv#:=x;
+  found:=true
+ else
+  if found=true then break fi
+ fi
+od;rv
 
 {given G, gamma,y -> defines an L-homomorphism phi: W_R -> LG}
 
