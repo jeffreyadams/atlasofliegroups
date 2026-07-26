@@ -4,6 +4,11 @@ also: only pure strong real forms}
 <L_hom.at
 <endoscopic_groups.at
 <weak_packets.at
+<hodgeParamPol.at { supplies set_type hodgeParamPol=[ParamPol] with
+                    *(Split,hodgeParamPol) and real_form(hodgeParamPol), both
+                    used by epstar_std@ParamPol below; without it that overload
+                    fails to compile ("Failed to match '*' with argument type
+                    (Split,[ParamPol])") and is silently never defined }
 
 {M: X^*(H_v) to X^*(G_v), i.e. also takes X_*(H) to X_*(G)}
 
@@ -35,14 +40,36 @@ make_dominant(phi_G_0)
 
 {map S_phi_G -> S_phi_H is well defined, not 1-1 or onto}
 
+{The KGB element of G with the given involution and torus factor, as a list:
+ [x] if it exists, [] if not. The builtin KGB_elt(RealForm,mat,ratvec) THROWS
+ "KGB element not present" rather than reporting absence, so it cannot be used
+ to test existence.}
+set KGB_elt_opt(RealForm G,mat theta,ratvec tf)=[KGBElt]:
+ let rv=[KGBElt]:[] in
+ for x in KGB(G) do
+  if x.involution=theta and x.torus_factor=tf then rv#:=x fi
+ od; rv
+
+{The map S_phi_G -> S_phi_H is PARTIAL, not total: an x_G in S_phi_G need not
+ have any counterpart in KGB(ic_H). Example: H=endoscopic_group(Sp(4,R),
+ [1/2,1/2]), phi_G attached to a discrete series of Sp(4,R): S_phi_G has the
+ four torus factors [0,0],[-1,-1],[0,-1],[-1,0], but KGB(ic_H) at this
+ involution has only [0,0],[-1,-1]. ([-1,0] occurs on su(2).su(2), a different
+ real form of the inner class; [0,-1] occurs nowhere in the inner class.) The
+ old code called the builtin unconditionally and died with "KGB element not
+ present".
+ Such x_G are dropped: the only caller, epstar, keeps just the pairs with
+ x_H_new=x_H, so an x_G with no counterpart in KGB(ic_H) was discarded there
+ in any case. Dropping it here changes no result that previously computed,
+ and replaces the crash by the answer the filter would have given.}
 set inverse_map_on_pure_component_group(L_homomorphism phi_H,L_homomorphism phi_G,mat M)=
 let S_phi_G=pure_component_group(phi_G) then
 y_H=phi_H.y then
 ic_H=dual_quasisplit_form(inner_class(phi_H)) then
 theta_H_v=y_H.involution then theta_H=-^theta_H_v in
- for x_G in S_phi_G
-{  do (x_G,KGB_elt(inner_class(phi_H),theta_H,x_G.torus_factor*M))}
-  do (x_G,KGB_elt(ic_H,theta_H,x_G.torus_factor*M))
+ ##for x_G in S_phi_G
+  do let c=KGB_elt_opt(ic_H,theta_H,x_G.torus_factor*M) in
+     if #c>0 then [(x_G,c[0])] else [] fi
  od
 
 {lift pair (x_H,phi_H) to (x_G,phi_G); x_H must be pure element for H}
