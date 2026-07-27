@@ -1,0 +1,17 @@
+set rf_new_flag = true
+set KGB_new_flag = true
+
+set real_form_new(InnerClass ic, mat theta, ratvec tf) = RealForm:
+    let rf = real_form(ic, theta, tf)
+    in if rf_new_flag
+       then real_form(ic, form_number(rf))
+       else rf
+       fi
+
+set KGB_elt_new(RootDatum rd, mat theta, ratvec tf) = KGBElt:
+    let x = KGB_elt(rd,theta,tf)
+    then rf = real_form(x), ic = inner_class(x)
+    in if KGB_new_flag
+       then KGB(real_form(ic, form_number(rf)), x.number)
+       else x
+       fi
