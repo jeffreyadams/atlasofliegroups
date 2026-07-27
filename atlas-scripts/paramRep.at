@@ -1122,8 +1122,12 @@ in Talphabetataus(p)}
 set has_maximal_PI(Param p) = bool:
     if not(is_final(p)) then prints("Sorry, ",p," is not final"); return false fi;
     let gamma = p.infinitesimal_character
-    then GC = p.real_form.complexification
-    then pminC = Finalize(parameter(x_open(GC),GC.rho,gamma##gamma))
+    then rd = p.integrality_datum
+    then rdC = rd.complexification
+    then xC = x_open(rdC)
+    then theta = xC.involution
+    then thetas= mat: for j:rd.rank do theta[j][rd.rank:] od
+    then pminC = Finalize(parameter(x_open(rdC),rdC.rho,gamma##(-thetas*gamma)))
     then bits = TalphabetaTauss_bitsetC(pminC)
     in C_flag:=false;
        same_PI_step(p,bits)
@@ -1224,6 +1228,7 @@ set test_faster_packets(RootDatum rd, int N) = bool:
     TalphabetaRepeat_count:=0;
     TalphabetaRepeat_time:=0;
     TalphabetaTauss_time:=0;
+    TalphabetaTauss_tauonly_time:=0;
     TalphabetaTauss_sort_time:=0;
     TalphabetaTauss_bitset_time:=0;
     ideal_intList_hash_time :=0;
@@ -1247,7 +1252,7 @@ set test_faster_packets(RootDatum rd, int N) = bool:
        	      " to distinguish ",ideal_intList_hash.size(), " prim ideals to level ",N);
        prints(print_time_string(TalphabetaRepeat_time)," for ",TalphabetaRepeat_count,
        		" uses of TalphabetaRepeat");
-       prints(print_time_string(TalphabetaTauss_time)," for tau computation");
+       prints(print_time_string(TalphabetaTauss_tauonly_time)," for tau computation");
        prints(print_time_string(TalphabetaTauss_sort_time)," for sorting");
        prints(print_time_string(TalphabetaTauss_bitset_time)," for to_bitset");
        prints(print_time_string(ideal_intList_hash_time)," for hashing");
@@ -1258,6 +1263,7 @@ set test_faster_packets(RootDatum rd) = bool:
     TalphabetaRepeat_count:=0;
     TalphabetaRepeat_time:=0;
     TalphabetaTauss_time:=0;
+    TalphabetaTauss_tauonly_time:=0;
     TalphabetaTauss_sort_time:=0;
     TalphabetaTauss_bitset_time:=0;
     ideal_intList_hash_time :=0;
@@ -1281,7 +1287,7 @@ set test_faster_packets(RootDatum rd) = bool:
        	      " to distinguish ",ideal_intList_hash.size(), " prim ideals");
        prints(print_time_string(TalphabetaRepeat_time)," for ",TalphabetaRepeat_count,
        		" uses of TalphabetaRepeat");
-       prints(print_time_string(TalphabetaTauss_time)," for tau computation");
+       prints(print_time_string(TalphabetaTauss_tauonly_time)," for tau computation");
        prints(print_time_string(TalphabetaTauss_sort_time)," for sorting");
        prints(print_time_string(TalphabetaTauss_bitset_time)," for to_bitset");
        prints(print_time_string(ideal_intList_hash_time)," for hashing");
@@ -1525,6 +1531,29 @@ set test_faster_distinguished_packets(RootDatum rd, int N) = bool:
 
 set test_faster_distinguished_packets(RootDatum rd) = bool:
     test_faster_distinguished_packets(rd,[],-1)
+
+{compute partition of block_of(p) into Talphabeta clumps}
+set small_cells(Param p,int N) = ([[Param]],vec):
+    let q = regularize(p)
+    then B = block_of(p)
+    then freq = min(#B\10+1, 1000)
+    then Bhash = make_Param_hash(B)
+    then cell_hash = make_vec_hash()
+    then index = vec: for j:#B do minus_1 od
+    in for p@j in B
+       do if (j%freq).= then prints("At block elt ",j," of ",#B,"; so far ",
+       	  cell_hash.size()," cells") fi;
+       if index[j] < 0
+       do let list = TalphabetaRepeats(p,N)~[0]
+       	  then ind = vec: for q in list do Bhash.match(q) od.sort_u
+	  then m = cell_hash.match(ind)
+	  in for j in ind do index[j]:=m od
+       fi
+       od;
+       prints("found ",cell_hash.size()," small cells to level ",N,", of sizes up to ",
+       		     max(for v in cell_hash.list() do #v od));
+       (for ind in cell_hash.list() do for j in ind do B[j] od od,index)
+
 
 {compute partition of block_of(p) into Talphabeta clumps}
 set small_cells(Param p) = ([[Param]],vec):
