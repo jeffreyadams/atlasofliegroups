@@ -102,7 +102,8 @@ struct WeylGroup::Transducer
   { unsigned char length; // length of |piece| in quotient Bruhat order
     Generator right; // rightmost factor of chosen word for this piece
 
-    elem_info(unsigned short l): length(l), right(UndefGenerator) {}
+    elem_info() {}
+    elem_info(unsigned short l,Generator g): length(l), right(g) {}
   };
 
   using PieceIndex = unsigned short; // used to index letters inside a piece
@@ -297,16 +298,16 @@ WeylGroup::Transducer::Transducer
   struct entry
   { Shifts shift; // Right multiplication by $s_j$ transitions to |*shift[j]|
     Ducers out; // Right multiplication by $s_j$ may transduce |out[j]|
+    elem_info info;
     unsigned int nr;
 
-    entry(unsigned int nr): nr(nr)
+    entry(unsigned int nr, unsigned char l, Generator g): info(l,g),nr(nr)
     { shift.fill(arc{nullptr,false}); out.fill(UndefGenerator); }
   };
   sl_list<entry> tab; // will determine |table| at the end
 
   // first row of transition and of transduction table
-  elt.emplace_back(0); // length 0, empty |piece|, all fields Undef values
-  tab.emplace_back(0);
+  tab.emplace_back(0,0,UndefGenerator); // length 0, no last generator used
   auto it = tab.wbegin();
 
   // all shifts lower than |r| are transductions of unchanged generator
@@ -315,7 +316,7 @@ WeylGroup::Transducer::Transducer
     it->shift[i] = arc{&*it,false}; // shift to self, no transition, not |up|
     it->out[i]   = i;               // transduction of unchanged generator
   }
-  // |tab[0].shift[r]=UndefEltPiece;| was set by |entry| constructor
+  // |tab[0].shift[r]=arc{nullptr,false};| was set by |entry| constructor
   // |tab[0].out[r]  =UndefGenerator;| idem
 
   // In this loop, the |elt| and |tab| tables grow! The loop stops when |x|
@@ -327,11 +328,7 @@ WeylGroup::Transducer::Transducer
     for (Generator s = 0; s <= r; ++s)
       if (it->shift[s].p==nullptr)
       {
-	elt.emplace_back(elt[pos].length+1);
-
-	auto& top = *tab.emplace_back(tab.size());
-
-	elt.back().right=s; // last letter in word that leads to the |top|
+	auto& top = *tab.emplace_back(tab.size(),it->info.length+1,s);
 
 	// |shift| and |out| fields of |top| are currently set to Undef values
 	it->shift[s] = arc { &top, true };
@@ -351,7 +348,7 @@ WeylGroup::Transducer::Transducer
 	  Generator u=s; // first go to |&*it| then alternate between |s| and |t|
 	  do
 	  { if ((here = here->shift[u].p)==nullptr)
-	      break; // this should only happen
+	      break; // link becomes |up| later; only happens when |count==1|
 	    u = st[(++count)%2];
 	  } while(not here->shift[u].up);
 
@@ -384,12 +381,14 @@ WeylGroup::Transducer::Transducer
 
   const unsigned int coset_size = pos;
 
-  // |Generator| need space to distinguish |coset_size| states and |r+1| outputs
+  // |Generator| needs space to distinguish |coset_size| states and |r+1| outputs
   assert(coset_size + r < std::numeric_limits<Generator>::max());
 
+  elt.resize(coset_size);
   table=matrix::Matrix<Generator>(coset_size,r+1);
   pos=0;
   for (auto it=tab.wcbegin(); not tab.at_end(it); ++it,++pos)
+  { elt[pos] = it->info;
     for (Generator j=0; j<=r; ++j)
     { assert(it->shift[j].p!=nullptr); // all links are filled by now
       if (it->shift[j].p!=&*it) // whether it is a transition
@@ -399,6 +398,7 @@ WeylGroup::Transducer::Transducer
 	table(pos,j) = coset_size + it->out[j];
       }
     }
+  }
 } // |Transducer::Transducer|
 
 #else
@@ -418,7 +418,7 @@ WeylGroup::Transducer::Transducer
   std::vector<entry> tab; // local variable, will determine |table| at the end
 
   // first row of transition and of transduction table
-  elt.emplace_back(0); // length 0, empty |piece|, all fields Undef values
+  elt.emplace_back(0,UndefGenerator); // length 0, no last generator used
   tab.emplace_back();
 
   // all shifts lower than |r| are transductions of unchanged generator
@@ -443,12 +443,10 @@ WeylGroup::Transducer::Transducer
       {
 
 	const EltPiece xs = elt.size(); // piece that will be added
-	elt.emplace_back(elt[x].length+1);
+	elt.emplace_back(elt[x].length+1,s);
 	tab.emplace_back();
 
 	auto& top  = tab.back(); // or |tab[xs]|
-
-	elt.back().right=s; // last letter in word that leads to the |top|
 
 	// |shift| and |out| fields of |top| are currently set to Undef values
 	tab[x].shift[s] = xs;
