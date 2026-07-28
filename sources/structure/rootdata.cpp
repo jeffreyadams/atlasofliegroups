@@ -126,6 +126,9 @@ RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
   // lists that are strictly increasing by reverse lexicographic order
 
   sl_list<RootVecSet> roots_by_level { RootVecSet{} }; // start with level 1
+  using frozen_level = std::pair<RootNbr,std::vector<Byte_vector> >;
+
+  sl_list<frozen_level> previous_levels; // traversed levels get pushed here
 
   for (unsigned int i=0; i<rk; ++i)
   {
@@ -154,13 +157,13 @@ RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
 
   // now construct positive root list, simple reflection links, and descent sets
   std::vector<RootNbrList> link; // will get size |numPosRoots*rank|
-  RootNbrList first_l{0}; // where each level starts; this is for (empty) level 0
   unsigned int level=0;
 
   do // |while(not roots_by_level.empty())|
   {
     ++level; // first time around is level 1
-    first_l.push_back(ri.size()); // record start of |level|
+    auto level_start = ri.size(); // record start of |level|
+
     for (const Byte_vector& alpha : roots_by_level.front())
       // traverse set of roots at current level
     {
@@ -177,6 +180,15 @@ RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
 	{
 	  Byte_vector beta=alpha; // make a copy
 	  beta[i]-=c; // increase coefficient; add |-c| times |simple_root(i)|
+	  auto before_beta = // whether |alpha<beta| in reverse lex ordering
+	    [&beta] (const Byte_vector& alpha)->bool
+	    { int d;
+	      for (unsigned int i=alpha.size(); i-->0;)
+		if ((d=alpha[i]-beta[i])!=0 )
+		  return d<0;
+	      return false; // equal, therefore not before
+	    };
+
 	  if (c>0) // positive scalar product means $i$ gives a \emph{descent}
 	  {
 	    ri[cur].descents.set(i);
@@ -186,15 +198,15 @@ RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
 	      link[cur][i]=cur; // but reflection is actually minus itself
 	    }
 	    else
-	      for (RootNbr j=first_l[level-c]; j<first_l[level-c+1]; ++j)
-		// linearly look up |beta| in the level where it should be
-		if (root(j)==beta)
-		{
-		  link[cur][i]=j; // link current root downward to root |j|
-		  link[j][i]=cur; // and install reciprocal link at |j|
-		  break;
-		}
-	    assert(link[cur][i]!=RootNbr(~0)); // some value must have been set
+	    { auto pos = std::next(previous_levels.begin(),c-1);
+	      const auto& level = pos->second;
+	      auto it =
+		std::find_if_not(level.begin(),level.end(),before_beta);
+	      assert (it!=level.end() and *it==beta);
+	      RootNbr j = pos->first + std::distance(level.begin(),it);
+	      link[cur][i]=j; // link current root downward to root |j|
+	      link[j][i]=cur; // and install reciprocal link at |j|
+	    }
 	  }
 	  else // |c<0| so, reflection adding |-c| times $\alpha_j$, goes up
 	  {
@@ -205,20 +217,17 @@ RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
 		roots_by_level.insert(pos,RootVecSet{});
 	    while (++c < 0);
 	    // now insert |beta| into sorted list unless already present
-	    auto before_beta = [&beta] (const Byte_vector& alpha)->bool
-	      { int d;
-		for (unsigned int i=alpha.size(); i-->0;)
-		  if ((d=alpha[i]-beta[i])!=0 )
-		    return d<0;
-		return false; // equal, therefore not before
-	      };
 	    auto it = std::find_if_not(pos->begin(),pos->end(),before_beta);
 	    if (it.at_end() or *it!=beta) // avoid duplicates
 	      pos->insert(it,std::move(beta));
 	  }
 	}
     } // |for(alpha)|
-    roots_by_level.pop_front(); // done with current level, advance to next
+
+      previous_levels.emplace_front
+	(level_start,roots_by_level.front().to_vector());
+      roots_by_level.pop_front();
+    // done with current level, move the level to |previous_levels|
   }
   while(not roots_by_level.empty());
 
