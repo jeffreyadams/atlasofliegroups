@@ -925,6 +925,7 @@ set TalphabetaRepeats(Param p) = [[Param]]:
        fi next TalphabetaRepeat_time +:= elapsed_ms() - start
 
 set TalphabetaTauss_time = int: 0
+set TC_flag = true
 
 {memoized wrapper around the library function tau: TalphabetaRepeats returns
 CUMULATIVE balls (level j = all params within distance j), so TalphabetaTauss
@@ -938,6 +939,7 @@ set tau_cached = (Param -> vec):
     then valHash = make_vec_hash(), val = int:0
     then answer = vec: [] {size pHash.size(); jth coord is index in valHash}
     in (Param q):
+       if not TC_flag then return tau(q) fi;
        let M = pHash.size(), m = pHash.match(q)
        in if m = M
        	  then val := valHash.match(tau(q));
@@ -1220,7 +1222,8 @@ set test([Param] list, Param q, int N) = [Param]:
 
 {Sp(12) true with N = 10}
 {Sp(14) positive with N = 15 (not 14) in about 17360 sec}
-{E7_s positive with N=13 (not 12)}
+{E7_s no E6 negative with N=13 5732/6364
+E7_s with E6 negative with N=13 6249/6364}
 {D5 true with N=5 in two seconds}
 {D6 true with N=8}
 {tests whether  TalphabetaTauss_bitset to N really distinguished primitive ideals}
@@ -1250,12 +1253,16 @@ set test_faster_packets(RootDatum rd, int N) = bool:
        od;
        prints(print_time_string(elapsed_ms() -start),
        	      " to distinguish ",ideal_intList_hash.size(), " prim ideals to level ",N);
-       prints(print_time_string(TalphabetaRepeat_time)," for ",TalphabetaRepeat_count,
+       prints("  ",print_time_string(TalphabetaRepeat_time)," for ",TalphabetaRepeat_count,
        		" uses of TalphabetaRepeat");
-       prints(print_time_string(TalphabetaTauss_tauonly_time)," for tau computation");
-       prints(print_time_string(TalphabetaTauss_sort_time)," for sorting");
-       prints(print_time_string(TalphabetaTauss_bitset_time)," for to_bitset");
-       prints(print_time_string(ideal_intList_hash_time)," for hashing");
+       prints("  ",print_time_string(TalphabetaTauss_tauonly_time)," for tau computation");
+       prints("  ",print_time_string(TalphabetaTauss_sort_time)," for sorting");
+       prints("  ",print_time_string(TalphabetaTauss_bitset_time)," for to_bitset");
+       prints("  ",print_time_string(ideal_intList_hash_time)," for hashing");
+       prints("  ------------------------------------------------");
+       prints("  ",print_time_string(TalphabetaRepeat_time+TalphabetaTauss_tauonly_time+
+			TalphabetaTauss_sort_time+TalphabetaTauss_bitset_time+ideal_intList_hash_time),
+			" for timed parts of task");
        PInum = ideal_intList_hash.size()
 
 {tests whether  TalphabetaTauss_bitset really distinguished primitive ideals}
@@ -1285,12 +1292,16 @@ set test_faster_packets(RootDatum rd) = bool:
        od;
        prints(print_time_string(elapsed_ms() -start),
        	      " to distinguish ",ideal_intList_hash.size(), " prim ideals");
-       prints(print_time_string(TalphabetaRepeat_time)," for ",TalphabetaRepeat_count,
+       prints("  ",print_time_string(TalphabetaRepeat_time)," for ",TalphabetaRepeat_count,
        		" uses of TalphabetaRepeat");
-       prints(print_time_string(TalphabetaTauss_tauonly_time)," for tau computation");
-       prints(print_time_string(TalphabetaTauss_sort_time)," for sorting");
-       prints(print_time_string(TalphabetaTauss_bitset_time)," for to_bitset");
-       prints(print_time_string(ideal_intList_hash_time)," for hashing");
+       prints("  ",print_time_string(TalphabetaTauss_tauonly_time)," for tau computation");
+       prints("  ",print_time_string(TalphabetaTauss_sort_time)," for sorting");
+       prints("  ",print_time_string(TalphabetaTauss_bitset_time)," for to_bitset");
+       prints("  ",print_time_string(ideal_intList_hash_time)," for hashing");
+       prints("  ------------------------------------------------");
+       prints("  ",print_time_string(TalphabetaRepeat_time+TalphabetaTauss_tauonly_time+
+			TalphabetaTauss_sort_time+TalphabetaTauss_bitset_time+ideal_intList_hash_time),
+			" for timed parts of task");
        PInum = ideal_intList_hash.size()
 
 {Since previous test gave false for Spin(6,6), test whether TalphabetaTauss_bitset distinguishes
@@ -1533,6 +1544,8 @@ set test_faster_distinguished_packets(RootDatum rd) = bool:
     test_faster_distinguished_packets(rd,[],-1)
 
 {compute partition of block_of(p) into Talphabeta clumps}
+{Don't get PARTITION using N!}
+{
 set small_cells(Param p,int N) = ([[Param]],vec):
     let q = regularize(p)
     then B = block_of(p)
@@ -1553,11 +1566,12 @@ set small_cells(Param p,int N) = ([[Param]],vec):
        prints("found ",cell_hash.size()," small cells to level ",N,", of sizes up to ",
        		     max(for v in cell_hash.list() do #v od));
        (for ind in cell_hash.list() do for j in ind do B[j] od od,index)
-
+}
 
 {compute partition of block_of(p) into Talphabeta clumps}
+{equal to W_cells in C7}
 set small_cells(Param p) = ([[Param]],vec):
-    let q = regularize(p)
+    let start = elapsed_ms(), q = regularize(p)
     then B = block_of(p)
     then freq = min(#B\10+1, 1000)
     then Bhash = make_Param_hash(B)
@@ -1565,7 +1579,7 @@ set small_cells(Param p) = ([[Param]],vec):
     then index = vec: for j:#B do minus_1 od
     in for p@j in B
        do if (j%freq).= then prints("At block elt ",j," of ",#B,"; so far ",
-       	  cell_hash.size()," cells") fi;
+       	  cell_hash.size()," cells, at time ",print_time_string(elapsed_ms() - start)) fi;
        if index[j] < 0
        do let list = TalphabetaRepeats(p)~[0]
        	  then ind = vec: for q in list do Bhash.match(q) od.sort_u
@@ -1574,7 +1588,8 @@ set small_cells(Param p) = ([[Param]],vec):
        fi
        od;
        prints("found ",cell_hash.size()," small cells, of sizes up to ",
-       		     max(for v in cell_hash.list() do #v od));
+       		     max(for v in cell_hash.list() do #v od), "in time ",
+		     print_time_string(elapsed_ms() - start));
        (for ind in cell_hash.list() do for j in ind do B[j] od od,index)
 
 
