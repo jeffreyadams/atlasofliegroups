@@ -1265,6 +1265,17 @@ set test_faster_packets(RootDatum rd, int N) = bool:
 			" for timed parts of task");
        PInum = ideal_intList_hash.size()
 
+set MIN_FREQ = int:1000
+
+{with E6_gen_tau_flag false, or bot E6 and D4_gen_tau_flag false,
+psph = parameter(E8_s,320205,[1,1,1,1,1,1,1,1]/1,[0,0,0,1,0,0,1,0]/1)
+
+and
+
+parameter(E8_s,75829,[-2,-2,-4,7,0,-6,9,-2]/1,[-1,-1,-2,3,0,-3,4,-1]/1)
+
+have same TalphabetaTauss_bitset
+}
 {tests whether  TalphabetaTauss_bitset really distinguished primitive ideals}
 set test_faster_packets(RootDatum rd) = bool:
     TalphabetaRepeat_count:=0;
@@ -1277,7 +1288,7 @@ set test_faster_packets(RootDatum rd) = bool:
     let start = elapsed_ms(), start_match = int:0, G = split_form(rd)
     then B = block_of(G.trivial)
     then PInum = num_prim_ideals(character_table(rd))
-    then freq = min(#B\10 + 1,1000)
+    then freq = min(#B\10 + 1,MIN_FREQ)
     in ideal_intList_hash.clear();
        for p@j in B
        do if (j%freq).=
@@ -1361,7 +1372,7 @@ set test_faster_distinguished_packets(RootDatum rd, [Param] preload, int N) = bo
 	   prints(new_line,"At time ",print_time_string(elapsed_ms() - start),
 	   	 " started testing_D4 of distinguished orbit #",j);
 	   prints("need to test ",#allH," candidates");
-	   let freq = max(#allH\20,1)
+	   let freq = min(#allH\20 + 1,MIN_FREQ)
 	   then candsHD4 = for q@k in allH
 			 do if (k%freq).= then prints("at cand ",k," at time ",
 			    print_time_string(elapsed_ms() - start)) fi;
@@ -1380,7 +1391,7 @@ set test_faster_distinguished_packets(RootDatum rd, [Param] preload, int N) = bo
 	   	       	 then prints("sorry, ",#candsHD4," pass test, but ",#actualsH,
 			 " unip reps.");
 			 E6_gen_tau_flag:=true;
-			      freq := max(#candsHD4\20,1);
+			      freq := min(#candsHD4\20+1,MIN_FREQ);
 			      prints(new_line,"At time ",print_time_string(elapsed_ms() - start),
     	 	  	      ", starting to compute Tauss_bitset_E6 to ",N," for unipotent #",j);
 			      testE6_bits := TalphabetaTauss_bitset(distps[j],N);
@@ -1573,7 +1584,7 @@ set small_cells(Param p,int N) = ([[Param]],vec):
 set small_cells(Param p) = ([[Param]],vec):
     let start = elapsed_ms(), q = regularize(p)
     then B = block_of(p)
-    then freq = min(#B\10+1, 1000)
+    then freq = min(#B\10+1, MIN_FREQ)
     then Bhash = make_Param_hash(B)
     then cell_hash = make_vec_hash()
     then index = vec: for j:#B do minus_1 od
