@@ -81,7 +81,7 @@ set permuting_transporter(RootDatum rd, [int] mamas, [int] papas) =
           , pcr = mat: rd.rank # for i:k do coroot(rd,papas[f[i]]) od
        in for im in complement(n,f)
           do if =(deg,degree(papas[im],papas))
-	    and =(mcr_vec,coroot(rd,papas[im])*pcr)
+	    and =(mcr_vec,root(rd,papas[im])*pcr)
 	     do perms(f#im)
 	     fi
 	  od.##.##
