@@ -1703,7 +1703,7 @@ set from_dominant_root(RootDatum rd, [int]S, int alpha) = (WeylElt,int):
    , invols = for i in S do root_involution(rd,i) od
    , last_asc () = int: last(#S,(int i): coroot(rd,S[i])*root(rd,alpha)<0)
    in while let i=last_asc() in i>=0
-      do w *:= W_refl(rd,i); alpha:=invols[i][npr+alpha]-npr
+      do w *:= W_refl(rd,S[i]); alpha:=invols[i][npr+alpha]-npr
       od
    ;  (w,alpha)
 )

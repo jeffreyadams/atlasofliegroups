@@ -22,7 +22,7 @@ set centralizer(RootDatum rd,mat wts) = RootDatum:
 
 { in spite of the name, this works for pseudo Levi subsystems as well }
 set move_by_Levi (RootDatum rd,[int]Levi,int alpha,int beta) = Maybe<WeylElt>:
-   let (x,dom0) = from_dominant_root(rd,Levi,alpha)
+   let (x,dom0) = from_dominant_root(rd,Levi,alpha) 
      , (y,dom1) = from_dominant_root(rd,Levi,beta)
 in if dom0=dom1 then (y*/x).some else ().none fi
 
@@ -43,7 +43,7 @@ set transporter(RootDatum rd, [int] mamas, [int] papas) =
 	   ; let (,select) = Levi_info(rd,Levi)
 	     then stricter (int i) = bool:
 	        select(i) and coroot(rd,i)*root(rd,beta)=0
-	     in Levi := simples(rd,stricter)
+	     in Levi := simples(rd,stricter) {fix  papas through beta}
 	 esac
      ~od
    ;  some(Levi,cur_w)
@@ -57,10 +57,36 @@ set maybe_conjugate_strict (RootDatum rd,[vec] A,[vec] B) =
    | some(,w): some(w)
    esac
 
-{ Now try all permutations, intelligently }
+{degree of vertex i in Dynkin graph made by roots [js]}
+set degree(RootDatum rd, int i, [int] js) = int:
+    count(for j in js do coroot(rd, i)*root(rd,j) !=0 od)
+
+{all degree-preserving maps mamas --> papas}
+set maps(RootDatum rd, [int] mamas, [int] papas) = [[int]]:
+    let n = if #mamas = #papas then #mamas else return [] fi
+    then mdegs = for m in mamas do degree(rd,m,mamas) od
+    then pdegs = for p in papas do degree(rd,p,papas) od
+    then mcrts = mat: rd.rank # for m in mamas do coroot(rd,m) od
+{    then pcrts = mat: rd.rank # for p in papas do coroot(rd,p) od }
+    then () = if mdegs.sort_u != pdegs.sort_u then return [] fi
+    then rec_fun perms([int] f) = [[int]]: {extensions of a partial map f}
+     	 let k = #f
+     	 in if k = n then [f] {mcr_vec is pos of mamas[k] rel mamas[:k]}
+	 else let mk = mdegs[k], mcr_vec = root(rd,mamas[k])*mcrts[:k],
+	      	  pcm = mat: rd.rank # for i:k do coroot(rd,papas[f[i]]) od
+	      in for im in complement(n,f)
+	      	 if mk = pdegs[im] and mcr_vec =
+		    root(rd,papas[im])*(mat: rd.rank # for i:k do coroot(rd, papas[f[i]]) od)
+		 do perms(f#im)
+		 fi
+		 od.##
+	 fi
+    in perms([])
 
 { Find some Weyl group element that sends the |mamas| in to the |papas|
   as sets of root indices, possibly permuting them.
+
+  Try all permutations, intelligently 
 }
 set permuting_transporter(RootDatum rd, [int] mamas, [int] papas) =
       Maybe<(WeylElt)>:
@@ -70,23 +96,23 @@ set permuting_transporter(RootDatum rd, [int] mamas, [int] papas) =
    , crts = mat: rd.rank # for m in mamas do coroot(rd,m) od { by columns }
    then mdegs = for i in mamas do degree(i,mamas) od
    ,    pdegs = for i in papas do degree(i,papas) od
-   ,  maps = [[int]]:
+   {then maps = [[int]]:
       { maps |indices(mamas)->indices(papas)| preserving degree and more }
       ([]).
       (rec_fun perms([int]f) [[int]]:
        let k=#f in { now |f| maps #k->#n injectively }
        if k=n then [f]
        else
-          let deg = degree(mamas[k],mamas), mcr_vec = root(rd,mamas[k])*crts[:k]
+          let deg = mdegs[k], mcr_vec = root(rd,mamas[k])*crts[:k] {position of mamas[k] wrt 1st k}
           , pcr = mat: rd.rank # for i:k do coroot(rd,papas[f[i]]) od
        in for im in complement(n,f)
-          do if =(deg,degree(papas[im],papas))
-	    and =(mcr_vec,root(rd,papas[im])*pcr)
-	     do perms(f#im)
-	     fi
-	  od.##.##
+          if (deg = pdegs[im]) and =(mcr_vec,root(rd,papas[im])*pcr)
+	  do perms(f#im)
+	  fi
+	  od.##
        fi
-      )
+      )}
+     then maps = maps(rd,mamas,papas)
 in for f in maps
    do case transporter(rd,mamas,for v in f do papas[v] od)
       | none: () { skip unproductive maps  }
