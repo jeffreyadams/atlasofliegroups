@@ -149,11 +149,9 @@ class RootSystem
     Permutation root_perm;
     RankFlags descents,ascents; // for reflections by simple roots
 
-    root_info(const Byte_vector& v)
-    : root(v), coroot(), root_perm(), descents(), ascents() {}
+    root_info(Byte_vector v)
+      : root(std::move(v)), coroot(), root_perm(), descents(), ascents() {}
   };
-
-  struct root_compare; // auxiliary type declared here for access reasons
 
   const unsigned char rk; // rank of root system
   const bool prefer_co;

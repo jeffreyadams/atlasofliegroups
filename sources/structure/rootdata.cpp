@@ -122,18 +122,26 @@ RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
   if (rk==0)
     return; // avoid problems in trivial case
 
-  using RootVecSet = sl_list<Byte_vector>;
+  struct RootInfo
+  { Byte_vector root; RootNbrList links;
+    RootInfo(Byte_vector alpha)
+      : root(std::move(alpha))
+      , links(root.size(),RootNbr(~0))
+    {}
+  };
+  // |c>0| so, reflection subtracts |c| times $\alpha_j$
+  using RootLevel = sl_list<RootInfo>;
   // lists that are strictly increasing by reverse lexicographic order
 
-  sl_list<RootVecSet> roots_by_level { RootVecSet{} }; // start with level 1
-  using frozen_level = std::pair<RootNbr,std::vector<Byte_vector> >;
+  sl_list<RootLevel> roots_by_level { RootLevel{} }; // start with level 1
+  using frozen_level = std::pair<RootNbr,std::vector<RootInfo> >;
 
   sl_list<frozen_level> previous_levels; // traversed levels get pushed here
 
-  for (unsigned int i=0; i<rk; ++i)
+  for (unsigned int i=0; i<rk; ++i) // fill level of roots
   {
     Byte_vector e_i(rk,0); e_i[i]=1; // set to standard basis for simple roots
-    roots_by_level.front().push_back(e_i); // insert simple root at level 1
+    roots_by_level.front().emplace_back(std::move(e_i));
   }
 
   { arithmetic::big_int denom;
@@ -156,72 +164,65 @@ RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
   // |simple_root| or |simple_coroot|, the other from |ri|. |root| or |coroot|
 
   // now construct positive root list, simple reflection links, and descent sets
-  std::vector<RootNbrList> link; // will get size |numPosRoots*rank|
-  unsigned int level=0;
+  RootNbr cur = 0; // current root number, advanced at end of |do|--|while|
+  unsigned int level = 0; // sum of additive simple root coefficients
 
   do // |while(not roots_by_level.empty())|
   {
     ++level; // first time around is level 1
-    auto level_start = ri.size(); // record start of |level|
+    auto level_start = cur; // record start of |level|
 
-    for (const Byte_vector& alpha : roots_by_level.front())
+    for (auto& alpha_info : roots_by_level.front())
       // traverse set of roots at current level
     {
-      const RootNbr cur = ri.size();
-      assert(link.size()==cur);
-      ri.push_back(root_info(alpha)); // add new positive root to the list
-      link.push_back(RootNbrList(rk,RootNbr(~0))); // all links start undefined
+      const Byte_vector& alpha = alpha_info.root;
+      auto& our_link = alpha_info.links;
 
       byte c;
       for (unsigned int i=0; i<rk; ++i)
 	if ((c=alpha.dot(simple_coroot[i]))==0) // orthogonal
-	  link[cur][i]=cur; // point to root itself
+	  our_link[i] = cur; // point to root itself
 	else
 	{
 	  Byte_vector beta=alpha; // make a copy
 	  beta[i]-=c; // increase coefficient; add |-c| times |simple_root(i)|
 	  auto before_beta = // whether |alpha<beta| in reverse lex ordering
-	    [&beta] (const Byte_vector& alpha)->bool
-	    { int d;
+	    [&beta] (const RootInfo& alpha_info)->bool
+	    { int d; const auto& alpha=alpha_info.root;
 	      for (unsigned int i=alpha.size(); i-->0;)
 		if ((d=alpha[i]-beta[i])!=0 )
 		  return d<0;
 	      return false; // equal, therefore not before
 	    };
 
-	  if (c>0) // positive scalar product means $i$ gives a \emph{descent}
-	  {
-	    ri[cur].descents.set(i);
-	    if (level==1)
-	    {
-	      assert(i==cur); // a simple root is its own unique descent
-	      link[cur][i]=cur; // but reflection is actually minus itself
-	    }
-	    else
-	    { auto pos = std::next(previous_levels.begin(),c-1);
-	      const auto& level = pos->second;
-	      auto it =
-		std::find_if_not(level.begin(),level.end(),before_beta);
-	      assert (it!=level.end() and *it==beta);
-	      RootNbr j = pos->first + std::distance(level.begin(),it);
-	      link[cur][i]=j; // link current root downward to root |j|
-	      link[j][i]=cur; // and install reciprocal link at |j|
-	    }
-	  }
-	  else // |c<0| so, reflection adding |-c| times $\alpha_j$, goes up
-	  {
-	    ri[cur].ascents.set(i);
+	  if (c<0) // negative scalar product means $i$ gives an \emph{ascent}
+	  { // |c<0| so, reflection adds |-c| times $\alpha_j$
 	    auto pos=roots_by_level.begin();
 	    do // repeat |abs(c)| times
 	      if (roots_by_level.at_end(++pos))
-		roots_by_level.insert(pos,RootVecSet{});
+		roots_by_level.insert(pos,RootLevel{}); // ensure level exists
 	    while (++c < 0);
 	    // now insert |beta| into sorted list unless already present
 	    auto it = std::find_if_not(pos->begin(),pos->end(),before_beta);
-	    if (it.at_end() or *it!=beta) // avoid duplicates
-	      pos->insert(it,std::move(beta));
+	    if (it.at_end() or it->root!=beta) // avoid duplicates
+	      pos->emplace(it,std::move(beta));
+	    it->links[i] = cur; // install downward link immediately
 	  }
-	}
+	  else
+	  { // |c>0| so, reflection subtracts |c| times $\alpha_j$
+	    if (level==1) // a simple root is its own unique descent
+	      assert(i==cur), our_link[i]=cur;
+	    else
+	    { auto pos = std::next(previous_levels.begin(),c-1);
+	      auto& roots = pos->second;
+	      assert(our_link[i] != RootNbr(~0)); // downward links are set
+	      unsigned offset = our_link[i]-pos->first;
+	      assert (roots.at(offset).root==beta);
+	      roots[offset].links[i] = cur; // install reciprocal upward link
+	    }
+	  }
+	} // if |(c=0)|
+      ++cur; // done with this root; prepare for next
     } // |for(alpha)|
 
       previous_levels.emplace_front
@@ -231,7 +232,26 @@ RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
   }
   while(not roots_by_level.empty());
 
-  const RootNbr npos = numPosRoots(); // number of positive roots, |ri| is filled
+  const RootNbr npos = cur; // number of positive roots
+
+  std::vector<RootNbrList> link(npos);
+  ri.reserve(npos);
+  previous_levels.reverse();
+  { RootNbr alpha=0;
+    for (auto&& pair: std::move(previous_levels))
+    { assert(alpha==pair.first);
+      for (auto&& v : pair.second)
+      { ri.push_back(root_info(std::move(v.root)));
+	for (unsigned int i=0; i<rk; ++i)
+	  if (v.links[i]>alpha)
+	    ri.back().ascents.set(i);
+	  else if (v.links[i]<alpha
+		   or i==alpha) // simple roots are descents of themselves
+	    ri.back().descents.set(i);
+	link[alpha++] = std::move(v.links);
+      }
+    }
+  }
 
   // simple coroots in themselves are just standard basis, like simple roots
   for (RootNbr i=0; i<rk; ++i)
@@ -275,12 +295,12 @@ RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
       }
       else // don't change positivity status
       {
-	const RootNbr beta = link[alpha][i];
+	const RootNbr beta = link[alpha][i]; // alpha simply reflected by $s_i$
 	perm[posRootNbr(alpha)] = posRootNbr(beta);
 	perm[negRootNbr(alpha)] = negRootNbr(beta);
 
-	// mark bottom of root/coroot ladders got simple root/coroot |i|
-	Byte_vector coef_alpha = root(alpha);
+	// mark bottom of root/coroot ladders for simple root/coroot |i|
+	Byte_vector coef_alpha = root(alpha); // make a copy for modification
 	if (coef_alpha[i]-- ==0 or lookup_posroot(coef_alpha)==npos)
 	{
 	  bots.insert(posRootNbr(alpha));
@@ -296,7 +316,7 @@ RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
   }
 
 
-  // extend permutations to all positive roots by conjugation from lower root
+  // extend permutations to all positive roots by conjugation from a lower root
   for (RootNbr alpha=rk; alpha<npos; ++alpha)
   {
     RootNbr i=ri[alpha].descents.firstBit();
@@ -320,33 +340,21 @@ RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
       cobots.insert(simple_reflected_root(i,*it));
   }
 
+  // get negative root ladder bottoms by reflecting positive root bottoms
   for (RootNbr alpha=0; alpha<npos; ++alpha)
   {
     auto& bots =     root_ladder_bot[negRootNbr(alpha)];
     auto& cobots = coroot_ladder_bot[negRootNbr(alpha)];
     bots.set_capacity(2*npos); cobots.set_capacity(2*npos);
 
-    for (auto it=root_ladder_bot[posRootNbr(alpha)].begin(); it(); ++it)
-      bots.insert(ri[alpha].root_perm[*it]);
-    for (auto it=coroot_ladder_bot[posRootNbr(alpha)].begin(); it(); ++it)
-      cobots.insert(ri[alpha].root_perm[*it]);
+    for (RootNbr beta : root_ladder_bot[posRootNbr(alpha)])
+      bots.insert(ri[alpha].root_perm[beta]);
+    for (RootNbr beta : coroot_ladder_bot[posRootNbr(alpha)])
+      cobots.insert(ri[alpha].root_perm[beta]);
   }
 
 } // end of basic constructor
 #else
-struct RootSystem::root_compare
-{
-  root_compare() {}
-  bool operator()(const Byte_vector& alpha, const Byte_vector& beta)
-  {
-    int d;
-    for (unsigned int i=alpha.size(); i-->0;)
-      if ((d=alpha[i]-beta[i])!=0 )
-	return d<0;
-    return false; // equal, therefore not less
-  }
-};
-
 RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
   : rk(Cartan_matrix.n_rows())
   , prefer_co(prefer_co)
@@ -358,8 +366,20 @@ RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
   if (rk==0)
     return; // avoid problems in trivial case
 
+  struct root_compare
+  {
+    root_compare() {}
+    bool operator()(const Byte_vector& alpha, const Byte_vector& beta)
+    {
+      int d;
+      for (unsigned int i=alpha.size(); i-->0;)
+	if ((d=alpha[i]-beta[i])!=0 )
+	  return d<0;
+      return false; // equal, therefore not less
+    }
+  };
 
-  typedef std::set<Byte_vector,root_compare> RootVecSet;
+  using RootVecSet = std::set<Byte_vector,root_compare>;
   std::vector<RootVecSet> roots_at_level
     (4*rk); // more than enough if |rk>0|; $E_8$ needs 30 levels; 0..29
 
