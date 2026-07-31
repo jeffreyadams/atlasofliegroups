@@ -1,5 +1,6 @@
 < basic.at
 < generics.at
+< time.at {for print_time_string}
 
 { Hash tables for any type |T| that can provide hahshing and equality testing.
 
@@ -329,3 +330,56 @@ set make_RealForm_hash ([RealForm] list, (RealForm,int->int).) = RealForm_hash:
    let table = make_RealForm_hash() in table.fill(list); table
 set make_KGBElt_hash () = Hash<KGBElt>:
    make_hash(hash_code@(KGBElt,int),=@(KGBElt,KGBElt))
+
+{
+set tau_bitset = (Param -> [int]):
+    let pHash = make_Param_hash()
+    then valHash = make_int_list_hash()
+    then answer = vec: [] {jth entry is answer for jth in pHash}
+    in (Param p):
+       if not tau_hash_flag
+       then ([int]: [integrality_rank(p),to_bitset(tau(p))])
+       else let M = pHash.size(), m = pHash.match(p)
+       	    in if m = M
+	       then tau_hash_count +:=1;
+	       answer#:= valHash.match([integrality_rank(p),to_bitset(tau(p))])
+	       fi;
+	       valHash.index(answer[m])
+        fi
+
+set tau(Param p) = [int]:
+    tau_count +:= 1;
+    let start = elapsed_ms()
+    in set_bit_positions(tau_bitset(p)[1]) next tau_time+:= elapsed_ms() - start
+
+}
+
+set tau_hash_flag = true
+set tau_hash_count = int:0
+set tau_time = int: 0
+set tau_count = int:0
+
+set tau = (Param -> [int]):
+    let pHash = make_Param_hash(), timer = int:0
+    then answer = vec: [] {jth entry is answer for jth in pHash}
+    in (Param p):
+       tau_count+:=1; timer:=elapsed_ms();
+       if not tau_hash_flag
+       then [int]: tau(p) next tau_time+:= elapsed_ms() - timer
+       else let M = pHash.size(), m = pHash.match(p)
+       	    in if m = M
+	       then tau_hash_count +:=1;
+	       answer#:= to_bitset(tau(p))
+	       fi;
+	       set_bit_positions(answer[m])\
+	       next tau_time+:= elapsed_ms() - timer
+        fi
+
+set report_tau() = void:
+    if tau_hash_flag
+    then prints("called for ",tau_count," tau invariants of ",
+    	 tau_hash_count," distinct parameters in ",
+	 print_time_string(tau_time))
+    else prints("called for ",tau_count," tau invariants in ",
+    	 print_time_string(tau_time))
+    fi

@@ -84,3 +84,13 @@ prints("dual map: ");test_dual_map(st);
 prints("dual map inverse: ");test_dual_map_i(st);
 prints("Springer correspondence: ");test_springer(st)
 set test_all(RootDatum G)=test_all(G.Springer_table)
+
+set num_prim_ideals(RealForm G) = int:
+    let ORs = real_nilpotent_orbits(G)
+    then Hs = for (H,,) in ORs do H od.sort_u_lex
+    then OCs = [ComplexNilpotent]: for H in Hs do (G,(),H) od
+    then ST = Springer_table(G)
+    then CT = character_table(ST)
+    then SOCs = for OC in OCs if ST.is_special(OC) do OC fi od
+    then special_reps = for SOC in SOCs do ST.springer(SOC) od
+    in sum(for j in special_reps do dimension(CT,j) od)
