@@ -1,0 +1,147 @@
+<endoscopic_lifting.at
+
+{ ------------------------------------------------------------------------
+  square_check.at
+
+  Diagnostics for the "(y,gamma) is not valid" failure in epstar_std.
+
+  WHAT GOES WRONG.  epstar computes phi_G=(y,gamma) on G from p_H on H, then
+  component_group(G,phi) calls make_dominant(phi), which is (L_hom.at)
+
+      make_dominant(y,gamma) = (w*y, w*gamma),  (w,gamma_dom)=to_dominant(gamma)
+
+  and then asserts is_valid(y,gamma) = is_integer(square(y)-gamma).  Validity
+  is preserved iff
+
+      d := square(w*y) - w*square(y)    lies in X_*  (i.e. is_integer(d)),
+
+  because square(w*y)-w*gamma = d + w*(square(y)-gamma) and the second term is
+  always integral.  So d is the whole story: d integral => survives,
+  d non-integral => "(y,gamma) is not valid".
+
+  d is NOT zero in general: the action *(mat,KGBElt_gen) projects the torus
+  factor with (1+theta)/2, and with v=2*mu_new-rho_check the projection error is
+
+      d = -v*(1-theta_new)/2,
+
+  the (-1)-eigenspace component of v, halved.  It is nonzero whenever rho_check
+  is not theta-fixed.  Beware: the projection is applied in three places, so
+  editing only one of them changes little --
+     synthetic2.at:10   KGB_elt_gen(ic,theta,v) = (ic,theta,v*(1+theta)/2)
+                        (also reached by *(WeylElt,KGBElt_gen), since
+                         KGBElt_gen IS the tuple (InnerClass,mat,ratvec))
+     synthetic2.at:31   normalized_torus_factor = v*(1+theta)/2  (on READ)
+     synthetic2.at:214  *(mat,KGBElt_gen)
+  and square = normalized_torus_factor + rho_check re-projects every time.
+
+  USAGE
+     atlas> <square_check.at
+     atlas> set (H,M,dH)=endoscopic_group(SO(4,5),[0,0,1,1]/2)
+     atlas> sq_report(H,SO(5,4),M,24)      { table for block elements 0..23 }
+     atlas> sq_bad(H,SO(5,4),M,24)         { the failing indices }
+     atlas> sq_good(H,SO(5,4),M,24)        { the surviving indices }
+     atlas> sq_row(block_of(H.trivial)[4],SO(5,4),M)   { one element, verbose }
+
+  With the original (1+theta) formula this gives 16 good / 8 bad on the first
+  24; with (1+theta_new) it gives 15 good / 9 bad.
+
+  RESOLVED 7/31/26.  *(mat,KGBElt_gen) in synthetic2.at now mirrors
+  cross@(mat,KGBElt): it shifts by rho_check_i (imaginary), not rho_check, and
+  acts on the torus factor by inverse(delta), not delta.  Then t_new is
+  automatically theta_new-fixed, the (1+theta_new)/2 projection -- which was
+  the actual source of the halves -- is a no-op, and d is a difference of sums
+  of coroots, hence integral.  All 144 elements of the block now report
+  d integral / valid after, and all 144 lift.  These diagnostics are kept
+  because they are the cheap regression test for that formula.
+
+  CAVEAT: an index whose y_gen(p) or map_KGB_gen_tits already fails will abort
+  the whole loop (axis has no exception handling), so shrink the range if a run
+  dies before printing.
+  ------------------------------------------------------------------------ }
+
+{ the data epstar feeds to make_dominant: y on G, gamma on G, and the Weyl
+  element w making gamma dominant, together with w*gamma }
+set sq_data(Param p_H,InnerClass ic_G,mat M)=(KGBElt_gen,ratvec,WeylElt,ratvec):
+   let yG=map_KGB_gen_tits(y_gen(p_H),dual(ic_G),M) then
+   gG=M*p_H.infinitesimal_character then
+   (w,gdom)=to_dominant(yG.root_datum,gG) in
+   (yG,gG,w,gdom)
+
+{ d = square(w*y) - w*square(y); validity survives make_dominant iff is_integer(d) }
+set sq_defect(Param p_H,InnerClass ic_G,mat M)=ratvec:
+   let (yG,,w,)=sq_data(p_H,ic_G,M) in square(w*yG)-w*square(yG)
+
+{ does this parameter survive make_dominant? }
+set sq_ok(Param p_H,InnerClass ic_G,mat M)=bool:
+   is_integer(sq_defect(p_H,ic_G,M))
+
+{ verbose report for a single parameter }
+set sq_row(Param p_H,InnerClass ic_G,mat M)=void:
+   let (yG,gG,w,gdom)=sq_data(p_H,ic_G,M) then
+   yw=w*yG then
+   d=square(yw)-w*square(yG) in
+   prints("p_H            = ",p_H);
+   prints("gamma_G        = ",gG,"      w = ",w);
+   prints("w*gamma=gdom   = ",gdom,"   (gamma transforms correctly)");
+   prints("square(y)      = ",square(yG));
+   prints("square(y)-gamma= ",square(yG)-gG,
+          "   valid before = ",is_integer(square(yG)-gG));
+   prints("w*square(y)    = ",w*square(yG));
+   prints("square(w*y)    = ",square(yw));
+   prints("d              = ",d,"   integral = ",is_integer(d));
+   prints("equivariant    = ",d=null(#d));
+   prints("valid after    = ",is_integer(square(yw)-gdom));
+   prints("theta*w = w*theta : ",w.matrix*yG.involution=yG.involution*w.matrix)
+
+{ one line per block element }
+set sq_report(RealForm H,InnerClass ic_G,mat M,int n)=void:
+   let B=block_of(H.trivial) then
+   m=min(n,#B) in
+   prints("block of H.trivial has ",#B," elements; checking 0..",m-1);
+   prints(" i | d integral | valid after | d");
+   for i:m do
+      let d=sq_defect(B[i],ic_G,M) then
+      (yG,,w,gdom)=sq_data(B[i],ic_G,M) then
+      ok=is_integer(d) in
+      prints(if i<10 then " " else "" fi,i," |    ",ok,
+             if ok then "    " else "   " fi," |    ",
+             is_integer(square(w*yG)-gdom),
+             if is_integer(square(w*yG)-gdom) then "    " else "   " fi," | ",d)
+   od;
+   let bad=##for i:m do if is_integer(sq_defect(B[i],ic_G,M)) then [] else [i] fi od in
+   prints("good: ",m-#bad,"   bad: ",#bad);
+   prints("bad indices: ",bad)
+
+{ the indices that survive / fail }
+set sq_good(RealForm H,InnerClass ic_G,mat M,int n)=[int]:
+   let B=block_of(H.trivial) then m=min(n,#B) in
+   ##for i:m do if sq_ok(B[i],ic_G,M) then [i] else [] fi od
+
+set sq_bad(RealForm H,InnerClass ic_G,mat M,int n)=[int]:
+   let B=block_of(H.trivial) then m=min(n,#B) in
+   ##for i:m do if sq_ok(B[i],ic_G,M) then [] else [i] fi od
+
+{ lift the surviving ones (safe: skips those that would crash), so the results
+  can be compared against an independent lift such as lift_std_T_test }
+set sq_lift_good(RealForm H,InnerClass ic_G,mat M,int n)=void:
+   let B=block_of(H.trivial) in
+   for i in sq_good(H,ic_G,M,n) do
+      prints(i," -> ",epstar_std(B[i],ic_G,M))
+   od;()
+
+{ the SO(4,5) example from N. Arancibia's report }
+set sq_demo()=void:
+   let (H,M,)=endoscopic_group(SO(4,5),[0,0,1,1]/2) in
+   sq_report(H,SO(5,4),M,24)
+
+set G=SO(4,5)
+set (H,M,)=endoscopic_group(SO(4,5),[0,0,1,1]/2)
+set B=block_of(H.trivial)
+set n=24
+set p_H=B[4]
+set y_H=y_gen(p_H)
+set yG=map_KGB_gen_tits(y_H,dual(G),M)
+set gamma_H=p_H.infinitesimal_character
+set gamma=M*gamma_H
+set phi_H=L_homomorphism:(y_H,gamma_H)
+set phi_G=L_homomorphism:(yG,gamma)
