@@ -1,0 +1,118 @@
+<endoscopic_lifting.at
+<endoscopy_xi.at
+
+{ ------------------------------------------------------------------------
+  epstar_xi_compare.at
+
+  Compare the two independent endoscopic lifts available on this branch:
+
+     epstar_std (endoscopic_lifting.at)   vs   lift_std_xi (endoscopy_xi.at)
+
+  across a whole block on the endoscopic group H.  They should agree.  They
+  do not, everywhere: see OPEN ISSUE below.
+
+  Both take a standard module on H and return [ParamPol] on real forms of G.
+  They report "no lift" differently -- epstar_std returns an empty LIST,
+  lift_std_xi returns a list holding a zero ParamPol -- so those two cases are
+  counted separately rather than lumped together.
+
+  USAGE
+     atlas> <epstar_xi_compare.at
+     atlas> compare(SO(4,5),[0,0,1,1]/2,SO(4,5),SO(5,4),[0,0,0,0],144)
+     atlas> compare(Sp(4,R),[1/2,1/2],Sp(4,R),Sp(4,R),[0,0],6)
+
+     compare(G0,s,G_rf,G_ic,xi,n):
+        (H,M,)=endoscopic_group(G0,s), B=block_of(H.trivial), and for i<n
+        compare  epstar_std(B[i],G_ic,M)  with  lift_std_xi(B[i],G_rf,xi).
+        G_rf and G_ic are the same group, named as RealForm / InnerClass.
+
+  OPEN ISSUE (7/31/26).  The two do not agree everywhere.
+
+     compare(SO(4,5),[0,0,1,1]/2,SO(4,5),SO(5,4),[0,0,0,0],144)
+        agree 90 | differ 32 | only epstar 6 | only xi 12 | both none 4
+
+     compare(Sp(4,R),[1/2,1/2],Sp(4,R),Sp(4,R),[0,0],6)
+        agree 4 | differ 2 | only epstar 0 | only xi 0 | both none 0
+
+  Two different-looking phenomena, and they may or may not have one cause:
+
+  (a) PAIRING.  The Sp(4,R) pair is a straight transposition -- block elements
+      4 and 5 get each other's answer:
+         i=4  epstar {x10}          xi {x8}{x7}
+         i=5  epstar {x8}{x7}       xi {x10}
+      Same multiset, attached to swapped block elements.  That looks like the
+      two implementations pair x_H with x_G by different conventions, not like
+      either lift being wrong.  Several of the SO(4,5) "differ" rows have the
+      same transposed shape (e.g. 21/22, 31/32).
+
+  (b) NOT ONLY PAIRING.  Over the SO(4,5) block the multisets of lifts do NOT
+      match: 128 nonempty from epstar_std against 134 from lift_std_xi, and
+      the two disagree about which elements lift at all (6 where only
+      epstar_std gives something, 12 where only lift_std_xi does).  So a
+      pairing convention cannot be the whole story there.
+
+  Whether one of the two is wrong, or the two maps genuinely differ, is
+  unresolved.  Note that the four values quoted in N. Arancibia's report --
+  Sp(4,R) B[0] and B[1], SO(4,5) H.trivial, and SO(4,5) B[4] -- all agree
+  between the two, so the reference values alone do not expose any of this;
+  it takes the block sweep.
+
+  History: before the fixes to *(mat,KGBElt_gen) in synthetic2.at and to the
+  double make_dominant on x_G in epstar, this comparison could not be run at
+  all -- epstar_std threw "(y,gamma) is not valid" partway through the block,
+  and lift_std_xi threw "Torus factor does not define a valid strong
+  involution" on the same elements.  Both errors came from the synthetic2.at
+  formula, so note that those fixes moved lift_std_xi's output too, not only
+  epstar_std's; comparisons against pre-fix numbers must account for that.
+  ------------------------------------------------------------------------ }
+
+{ one-line serialization of a lift, so results can be compared and sorted as
+  plain text; to_string@ParamPol is multi-line and not usable for that }
+set exc_ser([ParamPol] L)=string:
+  if #L=0 then "NOLIFT"
+  else let s="" in
+    for c@p in L[0] do
+      s:=s+"{"+to_string(c)+"*x"+to_string(#p.x)+
+          ",l"+to_string(p.lambda)+",n"+to_string(p.nu)+"}"
+    od;
+    if s="" then "ZERO" else s fi
+  fi
+
+set exc_epstar(Param p_H,InnerClass G_ic,mat M)=string:
+  exc_ser(epstar_std(p_H,G_ic,M))
+
+set exc_xi(Param p_H,RealForm G_rf,ratvec xi)=string:
+  exc_ser(lift_std_xi(p_H,G_rf,xi))
+
+{ full comparison; prints a line for each disagreement, then the totals }
+set compare(RealForm G0,ratvec s,RealForm G_rf,InnerClass G_ic,ratvec xi,int n)=void:
+  let (H,M,)=endoscopic_group(G0,s) then
+  B=block_of(H.trivial) then
+  m=min(n,#B) then
+  agree=0, differ=0, only_ep=0, only_xi=0, neither=0 in
+  prints("H = ",H,"   block size ",#B,"; comparing 0..",m-1);
+  for i:m do
+    let e=exc_epstar(B[i],G_ic,M) then x=exc_xi(B[i],G_rf,xi) in
+    if e="NOLIFT" and x="ZERO" then neither+:=1
+    elif e="NOLIFT" then only_xi+:=1; prints(" ",i," only xi     : ",x)
+    elif x="ZERO" then only_ep+:=1; prints(" ",i," only epstar : ",e)
+    elif e=x then agree+:=1
+    else differ+:=1;
+      prints(" ",i," DIFFER",new_line,"      epstar_std : ",e,
+                                      new_line,"      lift_std_xi: ",x)
+    fi
+  od;
+  prints("agree ",agree," | differ ",differ," | only epstar ",only_ep,
+         " | only xi ",only_xi," | both none ",neither)
+
+{ the indices where the two disagree }
+set differing(RealForm G0,ratvec s,RealForm G_rf,InnerClass G_ic,ratvec xi,int n)=[int]:
+  let (H,M,)=endoscopic_group(G0,s) then B=block_of(H.trivial) then m=min(n,#B) in
+  ##for i:m do
+      let e=exc_epstar(B[i],G_ic,M) then x=exc_xi(B[i],G_rf,xi) in
+      if e!=x and not (e="NOLIFT" and x="ZERO") then [i] else [] fi
+    od
+
+{ the SO(4,5) case from N. Arancibia's report }
+set exc_demo()=void:
+  compare(SO(4,5),[0,0,1,1]/2,SO(4,5),SO(5,4),[0,0,0,0],144)
