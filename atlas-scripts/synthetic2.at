@@ -205,17 +205,35 @@ set *(WeylElt w,KGBElt x)=KGBElt:KGB_elt(x.inner_class,w.matrix*x.involution*inv
 set *(WeylElt w,KGBElt_gen x)=KGBElt_gen:KGB_elt_gen(x.inner_class,w.matrix*x.involution*inverse(w).matrix, w*x.torus_factor)
 }
 
-{x -> t=normalized torus factor 
-   -> mu = unnormalized torus factor = (t+rho_check)/2
-   -> mu_new=mu*w
-   -> t_new=(2*mu_new-rho_check)(1+theta)/2 = normalized torus factor of w*x
+{ Action of delta on a generalized KGB element.  This is exactly cross@(mat,KGBElt)
+  above, transcribed to KGBElt_gen; see the discussion there.
+
+  Two points, both of which were previously wrong (jda 7/31/26):
+
+  (1) delta acts on X^* on the left, so theta -> delta*theta*inverse(delta),
+      and therefore it acts on X_* (where the torus factor lives) on the right
+      by inverse(delta).  For delta an involution inverse(delta)=delta and the
+      distinction is invisible, which is why this survived so long; it only
+      shows up for the Weyl elements coming from to_dominant.
+
+  (2) the shift is by rho_check_i (imaginary), not rho_check.  What transforms
+      naturally is the grading coweight g=t+rho_check_i(theta):
+         g -> g*inverse(delta),  t_new = g*inverse(delta) - rho_check_i(theta_new)
+      Since rho_check_i(theta) is theta-fixed, t_new is automatically
+      theta_new-fixed and no renormalizing projection is needed.  With the full
+      rho_check the result is NOT theta_new-fixed, the projection (1+theta_new)/2
+      actually bites, and it is that projection which broke validity:
+         square(w*y)-w*square(y) = -(w*rho_check-rho_check)*(1-theta_new)/2,
+      non-integral in general.  With rho_check_i the defect is
+         rho_check_i(theta)*inverse(w)-rho_check_i(theta_new)
+           - (w*rho_check-rho_check),
+      a difference of sums of coroots, hence integral, so is_valid survives.
 }
 
 set *(mat delta,KGBElt_gen(ic,theta,t))= KGBElt_gen:
-   let mu=(t+ic.rho_check)/2 then {unnormalized tf}
-   mu_new=mu*delta then           {act by delta}
-   t_new= (2*mu_new-ic.rho_check)*(1+theta)/2 then  {convert back to normalized tf}
-   theta_new=delta*theta*inverse(delta)
+   let delta_inv=inverse(delta), rd=ic.root_datum then
+   theta_new=delta*theta*delta_inv then
+   t_new=(t+rho_check_i(rd,theta))*delta_inv - rho_check_i(rd,theta_new)
    in (ic,theta_new,t_new)
 
 set *(WeylElt w,KGBElt_gen x)=KGB_elt_gen(w.matrix*x)
