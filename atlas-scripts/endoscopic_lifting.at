@@ -89,7 +89,15 @@ theta_G_v=involution(y_G) then
 theta_G=-^theta_G_v then
 ()=if e_verbose then prints("theta_G: ", theta_G,new_line,"torus_factor(x_H): ", torus_factor(x_H)) fi then
 pairs=for (x_G,x_H_new) in inverse_map_on_pure_component_group(phi_H,phi_G_0,M) do if x_H_new=x_H then [(x_G,phi_G_0)] else [] fi od.## in
-for (x_G_0,phi_G) in pairs do make_dominant(x_G_0,phi_G) od
+{ The x_G here come from component_group(G,phi_G_0), which itself begins with
+  make_dominant(phi_G_0) and then returns fiber(G,-^y_dom.involution).  So they
+  are ALREADY matched to the dominant y.  Calling make_dominant(x_G_0,phi_G_0)
+  here applied w to x a SECOND time, leaving involution(x) and -^involution(y)
+  inconsistent (each conjugated by w relative to the other), which produced a
+  wrong lift without crashing.  Make phi dominant and leave x alone.
+  (jda 7/31/26) }
+let phi_G_dom=make_dominant(phi_G_0) in
+for (x_G_0,) in pairs do (x_G_0,phi_G_dom) od
 
 {x_G_0=KGB_elt(ic_G,theta_G,M*x_H.torus_factor) then   {NOTE: this might be on a different real form of G}
 ()=if e_verbose then prints("x_G_0: ", x_G_0) fi then
