@@ -1031,12 +1031,13 @@ set u_is_cheap(RealForm G) = bool:
     then false
     else let key = 16*G.KGB_size + G.semisimple_rank
     	 in if key = cheap_cache_key
-	    then cheap_cache_val
+	    then if cheap_cache_val then cheap_u_count +:= 1 fi; cheap_cache_val
 	    else let i = u_time_index(G)
 	    	 then v = (u_time_maxes[i] <= hard_u_time) and
        	    	      	  ((u_time_counts[i] >= cheap_u_min_data) and
 	    	 	   (u_time_totals[i] < cheap_u_time*u_time_counts[i]))
-	         in cheap_cache_key := key; cheap_cache_val := v; v
+	         in cheap_cache_key := key; cheap_cache_val := v;
+		    if v then cheap_u_count +:= 1 fi; v
 	    fi
     fi
 
@@ -1044,8 +1045,8 @@ set u_is_cheap(RealForm G) = bool:
 set skip_routing(RealForm G) = bool:
     if not predictor_flag
     then true
-    elif u_is_cheap(G)
-    then cheap_u_count +:= 1; true
+    elif u_is_cheap(G) {u_is_cheap already tallies cheap_u_count}
+    then true
     else false
     fi
 

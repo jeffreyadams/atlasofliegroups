@@ -3287,7 +3287,13 @@ set low_u_flag = true
 set is_unitary_to_ht_big_SIMPLE_interrupt(Param p, int HT) = bool:
        if (stat_holder:= simple_status(p,HT, is_unitary_to_ht_hash_big_SIMPLE_Lucas)).!=
        then stat_holder > 0
-       elif skip_routing(p.real_form) {no predictor, or tests are currently too cheap to be worth routing}
+       elif u_is_cheap(p.real_form)
+       	    {We have MEASURED that is_unitary is cheap on this group, so run it: asking
+	     low(p,HT) here would be perverse, since it often prefers to_ht, and to_ht is the
+	     dear one in just this regime (E7_s spherical: 1273 is_unitary tests cost 16.4sec,
+	     211 to_ht tests cost 2305sec).}
+       	    then is_pure(to_ht(big_unitary_hash.sig_entry(p,-1),HT))
+       elif not predictor_flag {no cost information at all: fall back on low(p,HT)}
        	    then if low(p,HT)
        	    	 then is_pure(big_unitary_hash.sig_entry(p,HT))
 		 else is_pure(to_ht(big_unitary_hash.sig_entry(p,-1),HT))
@@ -3516,7 +3522,9 @@ set is_unitary_to_hts_big_SIMPLE_interrupt(Param p, [int] HTs) = bool:
     let HTfirst = HTs[0], HTlast = HTs~[0]
     in if (stat_holder:= simple_status(p,HTlast, is_unitary_to_ht_hash_big_SIMPLE_Lucas)).!=
        then stat_holder > 0
-       elif skip_routing(p.real_form) {no predictor, or tests are currently too cheap to be worth routing}
+       elif u_is_cheap(p.real_form) {measured cheap: just run is_unitary, see the 2-arg case}
+       then is_pure(to_ht(big_unitary_hash.sig_entry(p,-1),HTlast))
+       elif not predictor_flag {no cost information at all: fall back on low(p,HT)}
        then if low(p,HTs[0])
        	    then all(for HT in HTs
 	    	     do @bool: is_pure(big_unitary_hash.sig_entry(p,HT))
@@ -4074,10 +4082,58 @@ set KU(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]] FVKH, Pa
 [vec]:
     KU(x,lambda,Lvd,FVKH,Uhash, is_unitary_hash_big_SIMPLE@Param)
 
+{whether known_unitaries should scan the known unitaries rather than the candidates}
+{ INCOMPLETE -- default false.  finalize(parameter(x,lambda,nu)) is a sum of terms
+  parameter(x',lambda',nu') with x' sometimes STRICTLY SMALLER than x, and a known unitary
+  sitting at such an (x',lambda') is invisible to a match on p.x = x.  The scan below is
+  therefore a subset: safe (a face it marks is correctly marked) but it finds fewer, and in
+  a WARM run, where the hash holds many such terms, it would find far fewer -- exactly
+  where known_unitaries earns its keep.  A correct fast version has to match on
+  containment instead: LKTs of the hashed parameter contained in those for (x,lambda), and
+  its infinitesimal character lying in the FPP set for (x,lambda) (whose vertices are
+  Lvd.list, the LocalVertexData built by localFD_Lvd2). }
+set KU_fast_flag = false
+
+{
+ Locations in LFDKH of the parameters already known unitary at this (x,lambda), found by
+ running through Uhash and mapping each entry to its face -- the direction that costs one
+ pass over Uhash with a cheap comparison per entry.  The versions below instead walk EVERY
+ candidate face, build its parameter and call finalize/simple_status on it, which is the
+ expensive direction: on E7_s spherical that made known_unitaries cost 54sec against about
+ 1sec of tests it saved, so KU_flag had to be left off to avoid a net loss.
+ Marking is conservative either way: membership in Uhash means unitary outright, hence
+ unitary to any HT, so a face marked here is correctly marked; at worst fewer are found
+ and the ordinary testing in local_testK_hash catches the rest.
+}
+set known_unitaries_fast(Param_hash Uhash, KGBElt x, ratvec lambda, LocalVertexData Lvd,
+    [[FaceVertsKHash]] LFDKH) = [vec]:
+    let lookups = for list@d in LFDKH
+    	          do index_in(if #list = 0 then [vec]:[]
+		  	      else for v in list do v[:d+1] od
+			      fi)
+		  od
+    then out = [vec]: for j:#LFDKH do vec:[] od
+    then () = for k:Uhash.size()
+    	      do let p = Uhash.index(k)
+	         in if p.x = x and p.lambda = lambda
+		    then let list = local_vertices(p)
+		         in if #list-1 < #LFDKH
+			    then let local_verts = vec:
+			    	      for ell in list do Lvd.lookup(ell) od.sort
+				 then m = lookups[#list-1](local_verts)
+				 in if m.>= {Uhash may hold faces no longer in LFDKH}
+				    then out[#list-1] #:= m
+				    fi
+			    fi
+		    fi
+	      od
+    in out
+
 {takes the known unitaries from unitary_hash having the given x and lambda,
  and returns their locations in LFDKH}
 set known_unitaries(Param_hash Uhash, KGBElt x, ratvec lambda, LocalVertexData Lvd,
     [[FaceVertsKHash]] LFDKH, (Param->bool) fancy_tester, int HT) = [vec]:
+    if KU_fast_flag then return known_unitaries_fast(Uhash,x,lambda,Lvd,LFDKH) fi;
     if KUKU_flag then return KU(x,lambda, Lvd, LFDKH, Uhash, fancy_tester) fi;
     let ps = for d:#LFDKH
 	     do for v in LFDKH[d]

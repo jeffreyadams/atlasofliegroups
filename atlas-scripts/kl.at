@@ -451,7 +451,18 @@ set prefer_lam_flag = false
 set low_flag = true
 
 {whether to apply test to switcb from KL_sum_to_ht to KL_sum}
-set low_char_flag = true
+{ false makes low_char return true throughout, i.e. ALWAYS compute to height.
+  Was true, which let low_diff_char promote truncated KL sums to full ones.  On E7_s
+  spherical (x_open, lambda = rho) that promotion fired 243720 times and a stored
+  KL_sum_at_s was reused only 9 times, so the extra work was never recovered.  Turning it
+  off takes that case from 2212sec to 1020sec: character time rises in aggregate
+  (475sec of char_to_ht against 91sec of char calcs) but the to_ht UNITARITY tests fall
+  from 1748sec to 427sec, because the promotion was inflating the character work done
+  inside them, which is billed to to_ht rather than to char calcs.  Reuse of a stored
+  KL_sum_at_s also inverts, 9 -> 1717.  Character cost grows with x, so a gain at x_open
+  is the case that matters most.
+  Worth revisiting whether the gate can be made valuable rather than simply disabled. }
+set low_char_flag = false
 
 {if true, allow hermitian_form_irreducible_to_ht; if false, truncate hermitian_form_irreducible}
 set low(Param p, int HT) = bool:
