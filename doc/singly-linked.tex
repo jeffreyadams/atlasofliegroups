@@ -44,6 +44,7 @@
 
 \newcommand\std[1]{\texttt{std::#1}}
 \def\frwl.{\std{forward\_list}}
+\def\vect.{\std{vector}}
 \def\uptr.{\std{unique\_ptr}}
 \def\insa.{\textit{insert\_\!after}}
 \def\ersa.{\textit{erase\_\!after}}
@@ -116,7 +117,7 @@ available the class templates of the standard container library. In our ``Atlas
 of Lie groups and Representations'' software, a project that has been in
 development since 2004 and the context in which the ideas and techniques
 discussed in this paper were developed, we choose in almost all cases to use the
-class template \std{vector} rather than native \Cpp\ arrays. Since our software
+class template \vect. rather than native \Cpp\ arrays. Since our software
 operates on mathematical structures specified by the user at run time, it is
 almost never possible for the size of composite values to be usefully fixed or
 bounded at compile time, which reason alone justifies our choice in most cases.
@@ -157,7 +158,7 @@ mention the \TeX\ typesetting engine, most of whose work involves of handling
 linked lists of tokens, boxes, etc. In algebraic the core of our `Atlas'
 software, occasions where using linked lists are a natural choice are not as
 frequent as those where it is natural to prefer structures based on
-\std{vector}, but they certainly do occur. As an example, some algorithms like
+\vect., but they certainly do occur. As an example, some algorithms like
 orbit generation or similar closure processes maintain a collection of values to
 be considered that evolves dynamically in a manner that contiguous storage is
 not best suited to handle. Similarly we sometimes need storage of a sequence of
@@ -168,9 +169,9 @@ various parts (parser, type checker/compiler, and runtime execution system) very
 frequently employ linked structures of various kinds.
 
 Nonetheless, the linked list container class templates provided by the \Cpp.
-standard library appear to be not nearly as useful as \std{vector} is. In our
+standard library appear to be not nearly as useful as \vect. is. In our
 project, we actually \emph{never} opted to use \std{list}. Apart from
-\std{vector} we made occasional use of \std{set} and \std{map}, and sometimes
+\vect. we made occasional use of \std{set} and \std{map}, and sometimes
 defined a recursive type to implement a linked structure ``manually'', for
 instance for representing a parse tree. Reasons for avoiding most linked
 container types are subjective, but an important sticking point was that
@@ -541,7 +542,7 @@ several such operations to be done in sequence without requiring a costly
 recomputation of iterators to the location in question. Whether the
 \Cpp\ standard entertains the possibility that a surviving iterator gives access
 to a different element after the operation that before is not entirely clear.
-The fact that \std{vector}::\textit{erase} is said to invalidate all iterators
+The fact that \vect.::\textit{erase} is said to invalidate all iterators
 at or beyond the point of erasure [23.3.6.5:3] suggests that the possibility is
 not looked upon favourably; this is all the more remarkable because this
 stipulation complicates trying to subsequently insert elements at the point of
@@ -619,7 +620,7 @@ the only instance of type travesty that our implementation uses.
 
 The development of our singly linked list class templates was largely demand
 driven, starting from a version that had the most basic and common
-methods allowing these lists to replace \std{vector} in situation where that
+methods allowing these lists to replace \vect. in situation where that
 seemed more natural, and adding functionality whenever this served an immediate
 purpose and possibly future similar needs. We did have a goal in mind of
 eventually having a class template that would provide everything that one would
@@ -637,7 +638,7 @@ equivalents for anything the standard specifies for \frwl.), those that extend
 these methods but are still within the spirit of the library, and those that add
 flexibility to these containers that we had a need for, but which flexibility is
 provided in a way not typically found in the standard container library. In the
-first category there are some technical methods like \textit{get\_allocator}
+first category there are some technical methods like \textit{get\_\!allocator}
 related to matters we shall discuss later, which we shall ignore here. We find
 in this category the usual panoply of constructors (default, copy, move, from an
 iterator-delimited range, from a single element possibly repeated, from an
@@ -653,7 +654,7 @@ which initial values can be obtained from the methods \textit{begin},
 \textit{pop\_front}, \textit{emplace}, \textit{insert}, \textit{erase},
 \textit{remove} (find and remove entries equal to some value),
 \textit{remove\_if} (the same with a predicate), \textit{unique} (remove
-duplicates), the methods \textit{splice} \textit{merge}, \textit{sort}, and
+duplicates), the methods \textit{splice}, \textit{merge}, \textit{sort}, and
 \textit{reverse} that reorganise lists by manipulating only links, and the
 Procrustean method \textit{resize}. Finally the method \textit{max\_size}, of
 even more doubtful utility than \textit{resize}, is only provided because \frwl.
@@ -665,12 +666,12 @@ with those of \frwl., the most obvious one being the uniform interpretation of
 iterator values as designating a boundary between list elements, which is why
 the methods \textit{emplace}, \textit{insert}, \textit{erase}, and
 \textit{splice} have no \textit{\_\!after} suffix to their name. Also, contrary
-to \spla., all our methods called \textit{splice} return an
-iterator value indicating the end of the spliced range, which a caller would
-otherwise not always have easy access to. This makes is possible for instance to
-successively (advancing from front to back) splice in several sub-lists at the
-same point in our list; this compares favourably to the effort required to do
-the same using \frwl.::\spla.
+to \spla., all our methods called \textit{splice} return an iterator value
+indicating the end of the spliced range, which a caller would otherwise not
+always have easy access to. This makes is possible for instance to successively
+(advancing from front to back) splice in several sub-lists at the same point in
+our list; this compares favourably to the effort that would be required to do
+the same using \frwl.::\spla..
 
 There are several other methods which, although not provided by \frwl., one
 would expect for our list type given that the list object itself has members
@@ -690,28 +691,29 @@ containers library, we provide relative versions of the methods \textit{merge},
 delimited by two given iterators. These versions of \textit{merge} (there is one
 using \std{less}$\ang{T}$ to compare elements of type~$T$ and another using a
 provided comparator) and of \textit{reverse} return the ending iterator of the
-merged or reversed range, since this iterator value but would otherwise be hard
-to get at afterwards. For the relative versions of~\textit{sort}, we deemed it
-so unlikely that the caller would have any use for the original value of the
-ending pointer of the sorted range (which has stuck to the node that came before
-it, thereby becoming an iterator somewhere inside the now sorted range) that we
-made this method take its second iterator argument by non constant reference,
-and before returning assign the new ending iterator for the sorted range to it.
-Thus it becomes easy, say, to separately sort the range up to a given iterator
-and the remainder of the list, which otherwise would have been very tricky to
-do correctly.
+merged or reversed range, since this iterator value would otherwise be hard to
+get at afterwards. The relative versions of~\textit{sort} do not seem useful
+unless the caller gets hold of a pair of iterators delimiting the now sorted
+range, and while the staring iterator value that was passed can still serve that
+purpose afterwards, this is not true for the ending iterator (which has stuck to
+the node that used to be the last one in the range, but can be anywhere in the
+range afterwards); therefore this method take its second iterator argument by
+non constant reference, and assigns the new ending iterator for the sorted range
+to it before returning. Thus it becomes easy, say, to separately sort both the
+range up to a given iterator value and the remainder of the list; without the
+method adjusting the second iterator, this would have been very tricky to do
+correctly.
 
 Some other methods provide common tasks that can be efficiently performed by an
-appropriate call of \textit{splice} (which is what they do). These are
-\textit{append} (extend at the end by another list), \textit{prepend} (the same
-at the front), and \textit{insert} (at a given iterator value). They take a list
-argument by rvalue reference so that its elements can incorporated into the
+appropriate call of \textit{splice} (which is how they are implemented). These
+are \textit{append} (extend at the end by another list), \textit{prepend} (the
+same at the front), and \textit{insert} (at a given iterator value). They take a
+list argument by rvalue reference so that its elements can incorporated into the
 destination list without copying anything. Other versions of \textit{append} and
 \textit{prepend} take a range delimited by a pair of iterators (of any type) or
 an initializer list, like those provided already for~\textit{insert}. Finally a
-predicate method \textit{singleton} tests for the test for having length~$1$
-(like \textit{empty} test for length~$0$), a test that we often found
-useful.
+predicate method \textit{singleton} tests the list for having length~$1$ (like
+\textit{empty} tests for length~$0$), a test that we often found useful.
 
 In the category of added functionality that one would maybe not expect in a type
 of the container library, there is the predicate \atend. for iterators. It
@@ -729,26 +731,27 @@ however ignores the value of \textit{my\_\!list}). The methods
 arguments for some container type, traverse the indicated range, and \emph{move}
 the values found there into fresh nodes. Finally methods \textit{to\_\!vector}
 transform our list (destructively in case of an rvalue) into a
-\std{vector}$\ang{T}$ value; this facilitates using a temporary linked list to
-compute the initial (or definitive) value of a vector variable or constant.
+\vect.$\ang{T}$ value; this facilitates using a temporary linked list to
+compute the initial (maybe definitive) value of a vector variable or constant.
 
 
 \subsection{Flexibility: simpler lists and weaker iterators}
 
 Besides \slls., we provide a related class template \smpl., which shares the
 internal linked structure and iterators; it is in fact closer in spirit to
-\frwl. than \slls.. Also there are alternative iterator types that can be
-used for both kinds of lists.
+\frwl. than \slls. is. In addition to this variation of the list type itself, we
+also define alternative iterator types that can be used with both kinds of
+lists.
 
 The class template \slls. and its iterators were set up to provide a singly
 linked list container classes with the most general functionality. The fields
 \textit{tail} and \textit{node\_count} fields were needed to do that
-efficiently; however they can be recovered from the list structure alone, so
-they are redundant if efficiency is ignored. And maintaining these fields does
-cost some time in many methods, so in use cases where one does not invoke any
-methods that depend on the presence of these fields, one can gain both time and
-space by employing a structure without them. The class template \smpl. provides
-such a structure.
+efficiently. However their value can be recovered from the list structure alone,
+so they are strictly speaking redundant. As maintaining these fields does make
+many methods somewhat slower, one could gain both time and space in use cases
+where no methods that depend on the presence of these fields are used, by
+employing a structure without them. The class template \smpl. provides such a
+structure.
 
 The class \smpl.$\ang{T}$ uses the same node and iterator types as
 \slls.$\ang{T}$, but has \textit{head} as unique data member of the class
@@ -789,13 +792,13 @@ from an rvalue of the other kind of list. For even simpler and more explicit
 conversion, each class template also provides a method that destructively
 transforms its list into one of the other kind; since we think of \smpl. as a
 naked \slls., the methods are called \smpl.\atT\textit{dress} and
-\slls.\atT\textit{undress}, respectively. Since both pilfer their list
-object, recycling its nodes, they leave that list in an empty state (even though
-no call of \std{move} is used). In case one needs to know the length or access
-the final iterators of a \smpl. just at some occasion, we provide free functions
+\slls.\atT\textit{undress}, respectively. Since both pilfer their list object,
+recycling its nodes, they leave that list in an empty state (even though no call
+of \std{move} is used). In case one needs to know the length or access the final
+iterators of a \smpl. just at one occasion, we provide free functions
 \textit{length}, \textit{end} and \textit{cend} that when called will find these
-values (by traversing the entire list); this may be preferable to converting the
-list to a \slls. and then back again.
+values the hard way (by traversing the entire list); this may be preferable to
+converting the list to a \slls. and then back again.
 
 We found it occasionally useful to be able to strip down the access to a list
 even further and access it through a raw pointer to \slnd.. This happens notably
@@ -809,7 +812,7 @@ locate the active variant and to arrange for its destruction explicitly; this is
 actually easier when a raw pointer is stored than if a smart pointer (which
 \smpl. essentially is) were. To this end we provide a method
 \smpl.\atT\textit{release} that, similarly to the method of \std{unique\_\!ptr}
-of the same name, returns such a pointer while emptying the list itself. In the
+of the same name, returns a raw pointer while emptying the object itself. In the
 opposite direction we provide a \smpl. constructor from a raw pointer. This
 allows a list object to ``go under cover'' as a POD value, and to be
 resuscitated at a later time. The raw representation is only intended for use
@@ -826,35 +829,36 @@ kind of forward iterators can be used, like delimiting a range for iteration.
 They cannot be used in contexts that specifically require a
 \slls.\atT\textit{\textbf{iterator}} or
 \slls.\atT\textit{\textbf{const\_iterator}}, like the arguments of
-\textit{insert}) and \textit{erase}. Having different types of iterators giving
+\textit{insert} and \textit{erase}. Having different types of iterators giving
 access to the same container (possibly with different possibilities for access)
 is not unusual, as can be seen for \textit{\textbf{const\_iterator}} versus
 \textit{\textbf{iterator}}, for $T*$ versus
-\std{vector}\atT\textit{\textbf{iterator}}, and for normal versus reverse
+\vect.\atT\textit{\textbf{iterator}}, and for normal versus reverse
 iterators.
 
-To obtain weak iterators and const
-weak iterators, we supplement the \textit{begin} and \textit{end} methods with
-counterparts \textit{wbegin} and \textit{wend}, similarly \textit{cbegin} and
-\textit{cend} methods with counterparts \textit{wcbegin} and \textit{wcend}.
-These methods are defined both for \slls., but also for \smpl.; indeed \smpl.
-provides \textit{wend} and \textit{wcend} methods in spite of not providing
-\textit{end} or \textit{cend}, as the former just wrap a null pointer and can be
-produced cheaply without first traversing the list. (Unfortunately there is no
-way to instruct range-based \textbf{for} loops to use alternatives for the names
-\textit{begin} and \textit{end}; if this were possible it would allow using a
-such loops over \smpl. objects, using weak iterators.) Weak iterators can even
-be used to traverse a list that is represented by a raw pointer to its first
-node, without first requiring its conversion to an actual container, since the
-weak iterator classes have a constructor from such pointers.
+To obtain weak iterators and const weak iterators, we supplement the
+\textit{begin} and \textit{end} methods with counterparts \textit{wbegin} and
+\textit{wend}, similarly \textit{cbegin} and \textit{cend} methods with
+counterparts \textit{wcbegin} and \textit{wcend}. These methods are defined both
+for \slls., but also for \smpl.; indeed \smpl. provides \textit{wend} and
+\textit{wcend} methods in spite of not providing \textit{end} or \textit{cend},
+as the former just wrap a null pointer and can be produced cheaply without first
+traversing the list. (Unfortunately there is no way to instruct range-based
+\textbf{for} loops to use alternatives for the names \textit{begin} and
+\textit{end}; if this were possible it would allow using a such loops over
+\smpl. objects, using weak iterators.) Weak iterators can even be used to
+traverse a list that is represented by a raw pointer to its first node, without
+first requiring its conversion to an actual container object, since the weak
+iterator classes have a constructor from such a raw pointer.
 
-For maximum orthogonality, we define the \atend. predicate for weak pointers as
-well, which for them amounts to comparison with an \textit{end()} iterator. In
-cases where both iterators and weak iterators are valid possibilities, rewriting
-a loop using iterators to one using weak iterators can be as simple as changing
-a usage of \textit{begin} to \textit{wbegin}. Therefore it seems best to code
-with ordinary iterators initially, and leave the decision to switch to weak
-iterators for efficiency reasons to a later stage of program development.
+For reasons of orthogonality, we define the \atend. predicate for weak pointers
+as well, which for them amounts to comparison with an \textit{end()} iterator.
+In cases where both iterators and weak iterators are valid possibilities,
+rewriting a loop using iterators to one using weak iterators can be as simple as
+changing a usage of \textit{begin} to \textit{wbegin}. Therefore we tend to
+initially program using ordinary iterators everywhere, and leave the
+decision of whether to switch to weak iterators for efficiency reasons to a
+later revision stage.
 
 \subsection{Implementing stacks and queues using linked lists}
 
@@ -894,7 +898,7 @@ type for a queue, forming the type $\std{queue}\ang{T,\slls.\ang{T}}$, since
 \smpl. lacks a method \textit{push\_back}, so it cannot be used to implement a
 queue. For \std{stack} on the other hand, there is a difficulty in that it wants
 to use \textit{back} and \textit{pop\_back} methods of the container (a choice
-probably motivated by the idea of using \std{vector} as container), which
+probably motivated by the idea of using \vect. as container), which
 neither of our singly linked list containers define. But singly linked lists
 (even of the \smpl. kind) are very well capable of implementing stacks: they
 just need to add and remove nodes at the front of the list rather than at the
@@ -967,7 +971,7 @@ and enriched over time. At some point a clear and prolonged effort was made
 though to completely cover the functionality of \frwl., retaining proximity to
 its specification, and to conform as much as possible to the standard library
 conventions for container types. In this section we shall discuss how the
-container type serves the needs we have encountered in withing our project, and
+container type serves the needs we have encountered within our project, and
 how its utility compares to alternative ways available to meet those needs.
 
 \subsection{The Atlas project}
@@ -992,26 +996,26 @@ future.
 To perform the necessary computations, the project develops a special purpose
 computer algebra program called \texttt{atlas}. It was originally conceived and
 implemented by Fokko du Cloux, and after his premature death in 2006 further
-developed under the technical direction of the current author. The software
-executable has two major components of rather different nature: on one hand an
-extensive library of specialised mathematical constructions and algorithms
-implemented in \Cpp, and on the other hand a user programmatic interface, which
-provides a high level programming language that gives access to the
-\Cpp\ library. This language has allowed members of the project who are not
-necessarily proficient in \Cpp\ contribute new functionality on top of the
-library, and indeed an extensive collection of such programs have been written
-over time; it is in this area that most of the activity directed directly to
-solving mathematical questions is taking place.
+developed by the author of this paper. The software executable has two major
+components of rather different nature: on one hand an extensive library of
+specialised mathematical constructions and algorithms implemented in \Cpp, and
+on the other hand a user programmatic interface, which provides a high level
+programming language that gives access to the \Cpp\ library. This language has
+allowed members of the project who are not necessarily proficient in \Cpp\ to
+contribute new functionality on top of the library, and indeed an extensive
+collection of such programs have been written over time; it is in this area that
+most of the activity directed directly to solving mathematical questions is
+taking place.
 
-The \Cpp\ library is organised in several informal layers of functionality,
+The \Cpp\ library is organised informally in several layers of functionality,
 ranging from low level utility and support classes and functions (which is where
-the implementation of linked lists is done), though code constructing internal
+the implementation of linked lists is done), through code constructing internal
 data to represent fundamental mathematical structures, to functions providing
 advanced mathematical computations based on these structures. The mathematical
 structures (like root systems, double cosets $K\backslash G/B$, blocks of
 representations) are represented by discrete, graph-like structures, mostly
 generated dynamically when needed, whose vertices with associated data are
-stored in tables (mostly implemented using \std{vector} containers). These
+stored in tables (mostly implemented using \vect. containers). These
 tables allow the mathematical values represented by such vertices to be
 henceforth represented by an index into the vector, so internally much of the
 computation is done using such small integers; the user interface hides this
@@ -1029,49 +1033,51 @@ The implementation of both parts was firmly in place long before we introduced
 our linked list container class template, and so the pieces of code where such
 lists are now used were either added recently, or (more often) have been adapted
 to use a list where previously some other solution was used. That other solution
-was often to use \std{vector} instead, or in the case of stacks and queues to
+was often to use \vect., or in the case of stacks and queues to
 (implicitly) use \std{deque}; in some cases we used (and sometimes still do)
 specialised recursive definitions of linked structures. (While there were
 certainly places where using \std{list} would have been an option, it was in
-fact never done. As for \frwl., although it had become officially part of the
-language by the time we introduced \slls., we would at that point still deemed
-using it a portability liability, so it was never really considered.)
+fact never done. As for \frwl., although it was added to the library in the same
+revision \Cpp11 as \std{unique\_\!ptr} that we used to implement \slls., we
+never really considered using it, mainly because we were not sufficiently aware
+of it.)
 
-\subsection{Use of singly linked lists in queues and stacks}
+\subsection{Usage of singly linked lists in queues and stacks}
 
 One simple and painless way in which we introduced the use of singly linked
 lists was to systematically replace any use of \std{queue}$\ang{T}$ or
 \std{stack}$\ang{T}$ with our types \queue.$\ang{T}$ and \stack.$\ang{T}$
-described above, respectively. This was a drop-in replacement, with a small
-added convenience that we added for placing one or more values into the data
-structure at construction. As it turns out the cases where we had used these
-types were almost all dynamic generation procedures, such as computing orbits
-under a discrete group action. Here one starts from some element, and applies
-one or more types of transformations to it to generate new elements, then
-repeats these transformations for the new elements (while checking for reaching
-values already encountered before, to avoid duplicates) until closure is
-obtained. In this process new elements are initially generated faster than they
-can be processed, so a collection of yet-to-process elements needs to be
-maintained that the process can both add to and remove from, and does so until
-the collection becomes empty. Mathematically it is just a set: the only
-operations needed are adding an element, and testing for being non empty and if
-so getting and removing an element; there is no need to insist on a selection
-criterion for that element. We could therefore have used either a queue (where
-the oldest element in the set is selected) or a stack (where the newest is
-chosen) to implement the yet-to-process collection. In practice we invariably
-chose to use a queue because a breadth first approach tends to generate elements
-in a somewhat more natural order than a depth first approach, but we don't think
-that using a stack would have been worse in any objective sense.
+described above, respectively. This was a drop-in replacement, with the
+mentioned additional functionality as a small added convenience, used mainly
+when they needed to be initialised at construction with a single item. As it
+turns out the cases where we had used these types were almost all dynamic
+generation procedures, such as computing orbits under a discrete group action.
+Here one starts from some element, and repeatedly applies one or more kinds of
+transformations to generate new elements, then repeats the same for any new
+elements generated (while checking for reaching values already encountered
+before, to avoid duplicates) until closure is obtained. In this process new
+elements are initially generated faster than they can be processed, so a
+collection of yet-to-process elements needs to be maintained that the process
+can both add to and remove from, and does so until the collection becomes empty.
+Mathematically it is just a set: the only operations needed are adding an
+element, and testing for being non empty and if so getting and removing an
+element; there is no need to insist on a selection criterion for that element.
+We could therefore have used either a queue (where the oldest element in the set
+is selected) or a stack (where the newest is chosen) to implement the
+yet-to-process collection. In practice we invariably chose to use a queue
+because a breadth first approach tends to generate elements in a somewhat more
+natural order than a depth first approach, but using a stack would have been
+worse in any objective sense.
 
-By contrast, in the mentioned cases, out choice of preferring our
-\queue.$\ang{T}$ to the default \std{queue}$\ang{T}$ does involve a trade-off.
-The latter involves a substantially larger up-front cost than the former when
-the queue is created: while creating an empty \queue.$\ang{T}$ uses $20$ bytes
-of memory none of which is dynamic, creating an empty \std{deque}$\ang{T}$
-requires $\max(650,144+\textbf{sizeof}(T))$ bytes of memory, all but $80$ bytes
-of which is dynamic (heap) storage; it also takes about $25$ times as long as
-the latter. On the other hand the average time needed to grow the queue by a
-given number of items is about $2.5$ times more when using our \queue. (probably
+By contrast, our choice of preferring our \queue.$\ang{T}$ to the default
+\std{queue}$\ang{T}$ in the mentioned cases does involve a trade-off. The latter
+involves a substantially larger up-front cost than the former when the queue is
+created: while creating an empty \queue.$\ang{T}$ uses $20$ bytes of memory none
+of which is dynamic, creating an empty \std{deque}$\ang{T}$ requires
+$\max(650,144+\textbf{sizeof}(T))$ bytes of memory, all but $80$ bytes of which
+is dynamic (heap) storage; it also takes about $25$ times as much time as the
+former. On the other hand, the average time needed to grow the queue by a given
+number of items is about $2.5$ times as much when using our \queue. (probably
 because \std{deque} allocates memory for new items in large chunks), and
 maintaining the queue in a regime of stable or decreasing size is also less
 efficient using our \queue., though by a somewhat smaller factor.
@@ -1085,60 +1091,233 @@ practice in somewhat complicated scenarios. They did not cause any problems; in
 other words, by the time we started using them as underlying containers for
 queues, the relevant methods of \slls. were all correctly implemented.
 
-That may not be surprising in itself, as it is quite a simple data type and we
-had of course done basic testing of our implementation; it is however noteworthy
-that when for comparison purposes we wrote a class template derived from \frwl.
-that can be used with \std{queue}, we did make some oversights, leading to
-somewhat subtle errors, \emph{even though} we had already correctly handled
-essentially the same problem when implementing \slls.. In both cases we need to
-supplement the simply linked list with data allowing efficient appending of a
-node at the end (for the \textit{push\_\!back} method), which is the final
-iterator in the case of \slls., and the penultimate iterator for \frwl.; this
-iterator is easily maintained when the mentioned appending happens. It must
-however also be explicitly set to the initial iterator whenever calling
-\textit{pop\_\!front} leaves the list empty, and when a list being
-move-constructed or move-assigned happens to be empty. The final point is easy
-to overlook (as we did) in the case of \frwl., if one thinks of the
-\textit{before\_\!begin}() iterator a pointing to a fake node before the head of
-the list; in reality it points into the \frwl.$\ang{T}$ object itself, which
-clearly needs updating when the object is moved. It is in fact not explicitly
-stated in the \Cpp\ standard that moving a \frwl.$\ang{T}$ object invalidates an
-iterator that was obtained by a call of \textit{before\_\!begin} on the object
-before the move: this can only be inferred from a charitable reading of language
-that states that iterators that refer to elements of a container are not
-invalidated by moving the container (instead they remain valid for the moved
-container); this language excludes (usually only) past-the-end iterators, but
-for \frwl. also can be taken to exclude before-the-beginning iterators.
+That is not surprising, given that they are very straightforward to implement,
+and have no subtle edge cases that require extra care. But it is noteworthy that
+when, for comparison purposes, we wrote a class template derived from \frwl. to
+be used with \std{queue}, we did make some oversights, leading to somewhat
+subtle errors, \emph{even though} we had already correctly handled essentially
+the same problem when implementing \slls.. In both cases we need to supplement
+the simply linked list with data allowing efficient appending of a node at the
+end (for the \textit{push\_\!back} method), which is the final iterator in the
+case of \slls., and the penultimate iterator for \frwl.; this iterator is easily
+maintained when the mentioned appending happens. It must however also be
+explicitly set to the initial iterator whenever calling \textit{pop\_\!front}
+leaves the list empty, and in move-construction or move-assignment when the list
+in question happens to be empty. The final point is easy to overlook in the case
+of \frwl. (as we did), if one thinks of the \textit{before\_\!begin}() iterator
+as pointing to a fake node before the head of the list; in reality it points
+into the \frwl.$\ang{T}$ object itself, which clearly needs updating when the
+object is moved. It is in fact not explicitly stated in the \Cpp\ standard that
+moving a \frwl.$\ang{T}$ object invalidates an iterator that was obtained by a
+call of \textit{before\_\!begin} on the object before the move: this can only be
+inferred from a charitable reading of language that states that iterators that
+refer to elements of a container are not invalidated by moving the container
+(instead they remain valid for the moved container); this language excludes
+(usually only) past-the-end iterators, but for \frwl. also can be taken to
+exclude before-the-beginning iterators.
 
 
 \subsection{Use of singly linked lists in the mathematical library}
 
 We introduced \slls. (or sometimes \smpl.) in places where this was more
 convenient to the programmer or led to a simplified implementation. In many
-cases there are no important differences with respect to using \std{vector}
+cases there are no important differences with respect to using \vect.
 instead, as we would have done if we had not had \slls. available. The most
-common reason to prefer the latter is when creating a list of elements whose
-length is not available beforehand; even when it can be predicted, the usage of
-\std{vector} would leave us with the choice of doing that calculation and
-\textit{reserve} the proper amount of entries, or not bothering because the
-algorithm for growing the allocated size of a vector by exponentially growing
-chunks will succeed in getting enough memory in amortised linear time anyway,
-even if it might result in allocating a bit more space than necessary. By
-contrast, using \slls., no decision to reserve anything is necessary, and
-producing the list otherwise proceeds using repeated calls of
+common reason to prefer \slls. is when successive items are produced by a
+process for which the total number of items is not predictable. Even when
+prediction is possible but complicated, the usage of \vect. poses the
+question of whether to perform the calculation and \textit{reserve} the precise
+amount of entries, or let the algorithm for growing the allocated size of a
+vector by exponentially growing chunks do its work in amortised linear time,
+with the inconvenience of possibly allocating substantially more space than
+necessary. By contrast, using \slls., no decision to reserve anything is
+necessary, and producing the list otherwise proceeds using repeated calls of
 \textit{push\_\!back} just like it would when using a vector. In some cases we
 want to store the result as a vector for reasons of efficiency of random access
-or of compactness, but even then this can simply be achieved using a final call
-of \textit{to\_\!vector}. Whether or not lists perform as well as vectors would
-in these cases (probably not quite) is not much of an issue, since these
-constructions are usually just an initial step in the actual computation with
-values produced. One practical advantage of using a linked list is that one can
-store a reference to a previously constructed element using a pointer or an
-iterator. When using \std{vector} neither of these is possible because any
-reallocation will invalidates them; instead one can store an index into the
-vector (which will lead to recomputation of the current address every time it is
-used), but using (unsigned) integers whose only meaningful use is to serve as an
-index to one particular vector decreases code readability.
+or of compactness, but even then this can simply be achieved by conversion using
+a final call of \textit{to\_\!vector}.
+
+Situations where we need to temporarily store sequences of values of size not
+fixed at compile time are very frequent in our program. We tend to use
+\vect. when the size of the list is available at runtime before the
+sequence is produced, or if random access to the sequence is needed during its
+construction, and \slls. in most other cases; this amounts to a considerable
+portion of our uses of singly linked lists in the library.
+
+There are also more substantial dynamical constructions, producing finite
+structured collections of values that will then be perused in further
+computations; they involve for instance the computation of a root system for a
+given Dynkin diagram, the transducer tables for our implementation of finite Coxeter groups (see~\ref{A transducer approach to Coxeter groups, J.
+  Symb. Comput. 1999}), or the structured set $K\backslash{G/B}$ of $K$-orbits
+on $G/B$ (affectionately called KGB-set within the Atlas project). In such
+cases, the time spent constructing a table is usually dwarfed by the time spent
+by computations using it, so efficiency of the former is not a main concern. A
+practical concern on the other hand may arise from the need one often has for an
+item to refer back to the previous ``parent'' item from which is was obtained.
+When the items are constructed in a linked list, such a reference can be made
+using a pointer or an iterator. When instead using \vect., both of these
+would be invalidated by any reallocation of the vector storage while it is
+growing; as a consequence, one would either need to ensure no reallocation
+happens by reserving up front an amount of space guaranteed to be sufficient, or
+choose to instead store an index into the vector rather than a pointer; this is
+safe since the current location of the entry is looked up every time the index
+is used. In some cases there may be reasons that more or less force constructing
+items directly in a vector, such as items referring to each other by index in
+the table (defining a graph structure of some kind); also, when the need to
+identify newly generated items with any existing one of the same value is best
+met by constructing a hash table, this forces (given our implementation of hash
+tables) the use of a \vect. for storing items.
+
+While all fundamental algorithms in the library were originally written using
+almost exclusively vectors, we have been able to rewrite several of them making
+more use of lists; this is the case for generating root systems (as the closure
+of a small set of ``simple roots'' under the ``simple reflection'' operations),
+and for building transducer tables to implement Weyl groups (these are
+essentially Cayley graphs of certain subquotients of the Weyl group as a finite
+Coxeter group), but for the KGB-set constructor it seems pointless to do so
+because of its use of a hash table, as mentioned above. We generally found that
+rewriting constructions using lists rather than vectors actually led to more
+transparent, though not necessarily faster, code. The reasons for this are
+varied. For one, trying to understand old code forces one to focus on its
+essential structure, so any kind of refactoring would bring that to the fore.
+But using lists instead of vectors also replaces some of the many small integer
+variables used in the algorithm by values like iterators that by their type are
+restricted to certain kinds of usage, which reduces possible confusion (much
+like using typed pointers is much more transparent then handling them as void
+pointers). Similarly the lack of random or even bidirectional access in singly
+linked lists is suggestive of the way they will serve in the computation.
+
+To illustrate this, we consider in some detail the case of the root system
+constructor. Its task is, given a ``Cartan matrix'' that describes a small
+number of reflections acting on the lattice spanned by the same number of
+``simple roots'', to complete the latter to the set of all ``positive roots'' by
+closure under this action. The construction organises roots by level, the level
+of a root being the sum of its coordinates expressed on the basis of simple
+roots. Although both the number of levels that will be required and the total
+number of positive roots produced could be computed beforehand after a detailed
+study of the Cartan matrix, the original vector-based construction does not do
+that; instead it reserves a sufficient number of levels based on a rough
+estimate, and for the vector of positive roots does not reserve any space ahead
+of time, letting repeated use of \textit{push\_\!back} determine its final size
+and capacity. Each simple reflection applied to a root produces a root at a
+nearby level; the level difference is at most~$3$, and if it is~$0$ then the
+root is fixed by the reflection; cases where the image lands at a negative level
+are few and easily singled out (it only happens when applying a reflection to
+the corresponding simple root). The construction progresses from level~1
+forwards, producing roots a few levels ahead, while reflections that do not
+increase the level are used to set the edges of the graph representing the
+reflection actions on the roots. Reflection actions that lower the level never
+produce a new positive root, so once a level is reached it is complete; however,
+in the levels ahead of this there may be roots missing, and since the desired
+ordering of the roots is not necessarily the one in which they are first
+encountered, a table index cannot yet be assigned to these roots. The structure
+in which the roots are initially constructed is therefore a \vect. of, for each
+level, a \std{set} of coordinate vectors. Arriving at a given level, the roots
+in that set are traversed using a range-based \textbf{for}-loop, which starts by
+adding the root using \textit{push\_\!back} into the vector of positive roots in
+the root system; the index at which it lands will henceforth be the number of
+the root in the system. Then the reflections are applied to the root; if this
+increases the level, the resulting root is inserted into the root set at this
+higher level, while otherwise that root is already present in the table, and
+after it is located, links are added into the table between it and the current
+element.
+
+When rewriting this constructor to take advantage of linked lists, the most
+obvious decision was to replace the vector of incomplete levels by a list. This
+list is only used to find the level for a new root obtained by a reflection that
+increases the level, and since this is always close to the current level, one
+only ever needs to advance a short distance along the list. Also, once we are
+done with the current level we no longer need that level on the list at all, so
+we can just pop it off the front, and thus the current level is always the one
+at the front of the list. (When using a vector of sets instead, we did clear the
+set representing the current level when done with it, but the action does creep
+along the vector to ever higher positions.) The levels below the current level
+are complete, and we know the final positions of all the roots they contain, but
+we are still unsure about the total number of positive roots that will be found.
+Therefore we avoid constructing the table for these roots just yet; instead we
+place the information about these roots on a separate list that runs backwards,
+so that the highest completed level is at the front of this list. Once the
+generating procedure is complete, namely when the list of levels ahead of the
+current level becomes empty, we know the number of positive roots so we can
+allocate and fill the table with the information on the list of previous levels,
+reversing the order.
+
+This new organisation came with some more changes. Once a level of roots becomes
+current, it is complete and the positions of all roots of the level are fixed;
+we therefore change the representation to a vector when pushing the level to the
+front of the list of previous levels. We also include information about the
+starting index for each level on the list of previous levels, so that locating
+one of its roots given it number can be done without searching, once its level
+is reached; this compensates for the fact that these roots are not all stored
+in a contiguous array yet.
+
+On the list of levels \emph{ahead} of the current level, the operations to be
+performed upon a level are: (1)~searching whether a newly constructed root is
+already present, (2)~inserting is as a new element if not, and (3)~in either
+case record the way it was obtained by a reflection from a root at a lower
+level. While these operations can be performed when the level is represented as
+\std{set}, as was originally done, they are actually a bit easier with a sorted
+linked list representation. And although \std{set} provides binary search that
+is asymptotically faster than a linear search needed with a linked list, we did
+not find this argument in favour of the former persuasive, given that levels
+never get very large; so we opted for initially storing levels as sorted
+instances of \slls.. This choice has the added advantage of allowing the
+\textit{to\_\!vector} method to perform the conversion to the \std{vector} while
+using move semantics to transfer the individual roots, something that would
+require manual coding if we were to convert from \std{set} to \std{vector}.
+
+Finally, the change of representation of levels when passing from one list to
+the other suggested a change in the manner the reflections links are set. When a
+new root is obtained from an old root by reflection~$i$, both roots will
+eventually store the number of the other root at position~$i$ in a vector of
+links in the table. But this pair of mutual links cannot be set when the new
+root is created, since the index of that root is not yet fixed; for this reason
+setting the pair used to be done when the new root becomes current, and the
+older roots is held in the list of previous levels. However, we can already
+install the downward link from the new root to the current root whose, index is
+known, provided the array of links is created as an additional member with the
+new root, which is an easy modification with the list representation of
+incomplete levels (it would be more tricky using \std{set}; indeed changing to a
+\std{map} representation would be better suited to achieve this). Now when the
+new root becomes current, it can locate root it links to easily within the list
+of previous roots, and then set the reverse link.
+
+We have discussed these changes in some detail, to illustrate how the
+availability of singly linked lists affects the design of algorithms. All of
+these changes could also have been made using different container types, but
+having a lightweight type adapted to small and simple situations available
+greatly facilitated opting for these changes. And \slls. plays very well with
+the standard library; indeed almost all handling of these lists not directly
+provided by list methods is done with the aid of library functions or using
+range-based loops. There is just one case where a loop over a list involves
+explicit iterator manipulation, namely the one that advances a given number of
+levels up along the list of incomplete levels: it must at each step ensure a
+level is present before advancing, by if necessary inserting an empty level
+first. In our opinion, the transformation of the code has made it much more
+transparent, with singly linked lists serving as ephemeral storage that allows
+postponing certain decisions until the moment the necessary size information is
+available, oiling the gears of the algorithm. That the roots go through two
+preliminary forms of storage before being definitively stored in the table of
+the root system is a follows from and elucidates the nature of the generation
+procedure.
+
+
+Another
+readability issue is that the natural way to set up the loop extending such a
+\textit{table}, after seeding it with some initial value(s), is to write
+$$
+\let\&=\textbf \let\\=\textit
+\&{for}~(\&{unsigned}~i=0;~ i\leq\textit{table}.\textit{size}();~\PP{i})
+~\ldots
+$$
+%
+which expresses the fact that the loop runs until the current index~$i$ catches
+up with the increasing \textit{size} of~\textit{table}; the \Cpp\ semantics
+ensures that the \textit{size} method is called anew after each iteration, as is
+required for this to work, but it is easy to misread this to be a standard
+simple loop over the indices~$i$ into a fixed~\textit{table}. In some cases
+however (among which that of generating a KGB-set), we To summarise, our experience is that writing such constructions
+using a singly linked list rather than a vector as storage, but sometimes is just not feasible.
 
 We have already mentioned how, during a process of generating a collection of
 values, a list embedded in a queue object can conveniently represent a
