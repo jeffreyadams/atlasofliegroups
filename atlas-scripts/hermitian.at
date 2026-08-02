@@ -942,8 +942,133 @@ set OT_hash = make_Param_hash() {used to record interrupted tests that ran too l
 set OT_times = [int]: [] {cumulative time for each OT_hash.list() entry}
 set OT_counts = [int]: [] {number of occurrences for each OT_hash.list() entry}
 
+{
+ Running mean of completed is_unitary times, kept SEPARATELY FOR EACH REAL FORM.  The
+ bottom layer arguments run many is_unitary tests on small Levi subgroups; those are far
+ cheaper than tests on G itself, so one global mean would be dominated by them and would
+ misreport G as cheap.  (sum(tested_pos_times) is O(#tests) and much too slow to consult
+ once per test, so these totals are maintained incrementally instead.)
+ Real forms are keyed by KGB_size and semisimple rank.  That is not a faithful identifier,
+ but it collects together real forms whose tests cost about the same, which is all that is
+ wanted here.
+}
+set u_time_keys = [int]: []
+set u_time_totals = [int]: []
+set u_time_counts = [int]: []
+
+{longest single is_unitary ever seen on each real form.  This is a latch, never decayed:
+ one slow test proves the group can produce slow tests, and LAPTOPE7 shows E7_s spends
+ almost all of its time in a handful of KGB elements (20925 alone runs for hours).  A
+ decaying mean can dip during a cheap stretch and switch the routing off just before one
+ of those, which is the one mistake that really costs; the high water mark prevents it.}
+set u_time_maxes = [int]: []
+
+{the mean is kept over about this many most recent tests, not over the whole run}
+set u_time_window = int: 512
+
+{index of G in the tables above, appending an entry if G is new}
+set u_time_index(RealForm G) = int:
+    let key = 16*G.KGB_size + G.semisimple_rank
+    then i = first(for k in u_time_keys do k = key od)
+    in if i.>=
+       then i
+       else u_time_keys #:= key; u_time_totals #:= 0; u_time_counts #:= 0;
+       	    u_time_maxes #:= 0;
+       	    #u_time_keys - 1
+       fi
+
+{
+ One-entry memo for u_is_cheap.  It is consulted at every routing dispatch -- of the order
+ of a million times in an E8_q run -- and the u_time_index lookup costs about 11.7us
+ against 0.45us for KGB_size, enough to add 8.5sec (2%) to an E8_q run that the detector
+ never even fires on.  A run works on one group at a time, so caching the last verdict
+ makes the common case a key computation and one integer compare.  record_u_time
+ invalidates it, which is the only thing that can change the answer.
+}
+set cheap_cache_key = int: -1
+set cheap_cache_val = bool: false
+
+set record_u_time(RealForm G, int T) = void:
+    cheap_cache_key := -1; {new data: the memoised verdict may no longer hold}
+    let i = u_time_index(G)
+    in u_time_totals[i] +:= T;
+       u_time_counts[i] +:= 1;
+       if T > u_time_maxes[i] then u_time_maxes[i] := T fi;
+       if u_time_counts[i] > u_time_window {halving keeps the mean over roughly the last
+       	  			 	    u_time_window tests, so it tracks a run that
+					    moves from cheap x to expensive ones}
+       then u_time_totals[i] := u_time_totals[i]\2;
+       	    u_time_counts[i] := u_time_counts[i]\2
+       fi
+
+{
+ The u_predictor routing, and the escalation through next_height that goes with it, only
+ pay for themselves when is_unitary on the group in question is genuinely expensive.  In
+ E7_s/E8_s a single is_unitary can take minutes and the routing is essential; on a small
+ Levi, or on E6_q where the mean test is a few ms, predicting costs more than testing.
+ So decide by measurement rather than by group.
+}
+set cheap_u_flag = true
+
+{skip the routing while the mean is_unitary test on this group costs less than this, in ms}
+set cheap_u_time = rat: interrupt_base_time/4
+
+{number of tests on a group to see before its mean is trusted}
+set cheap_u_min_data = int: 20
+
+{once one is_unitary on a group has cost this much, never skip the routing for that group
+ again, however cheap the recent mean looks}
+set hard_u_time = int: 8*interrupt_base_time
+
+set cheap_u_count = int: 0 {number of times the cheap path was taken}
+
+{true when recent is_unitary tests on G have been cheap enough that routing is not worth it}
+{NB the memo must sit in an else-branch, not behind an early |return|: a trailing
+ |let| gets evaluated even when the |return| above it fires, which left this costing
+ 10.3us a call instead of 0.7us.}
+set u_is_cheap(RealForm G) = bool:
+    if not cheap_u_flag
+    then false
+    else let key = 16*G.KGB_size + G.semisimple_rank
+    	 in if key = cheap_cache_key
+	    then cheap_cache_val
+	    else let i = u_time_index(G)
+	    	 then v = (u_time_maxes[i] <= hard_u_time) and
+       	    	      	  ((u_time_counts[i] >= cheap_u_min_data) and
+	    	 	   (u_time_totals[i] < cheap_u_time*u_time_counts[i]))
+	         in cheap_cache_key := key; cheap_cache_val := v; v
+	    fi
+    fi
+
+{true when the is_unitary/is_unitary_to_ht routing should be skipped altogether}
+set skip_routing(RealForm G) = bool:
+    if not predictor_flag
+    then true
+    elif u_is_cheap(G)
+    then cheap_u_count +:= 1; true
+    else false
+    fi
+
+{mean is_unitary time on G in ms, 0 if untested; for reporting}
+set mean_u_time(RealForm G) = rat:
+    let i = u_time_index(G)
+    in if u_time_counts[i] > 0 then u_time_totals[i]/u_time_counts[i] else 0 fi
+
+{
+ is_unitary cost broken down by real form.  The counts in report_tested are over ALL real
+ forms, so they mix G with the small Levi subgroups that the bottom layer arguments test;
+ this shows which is which.  Counts are over the trailing window, not the whole run.
+}
+set report_u_times() = void:
+    prints("is_unitary cost by real form (KGB size, ss rank, #tests, mean ms, max ms):");
+    for key@i in u_time_keys
+    do prints("   ",key\16," ",key%16," ",u_time_counts[i]," ",
+       	      u_time_totals[i]/max(1,u_time_counts[i])," ",u_time_maxes[i])
+    od
+
 {set cSp = int:0}
 set was_tested(Param p, int T, bool ans) = void:
+    record_u_time(p.real_form, T);
     {let () = if p = parameter(Sp(6,R),8,[2,1,1],[1,-1,0]/2)
     	     then cSp+:=1; 1/(cSp-4)
 	     else 1/1
@@ -1379,7 +1504,10 @@ set report_tested(string label) = void:
     fi;
     prints("pred_flag = ",predictor_flag,", pred u-time = ",print_time_string(predictor_u_time),
     	   ", pred u-count = ", predictor_u_count, ", pred h-time = ",print_time_string(predictor_h_time),
-    	   ", pred h-count = ", predictor_h_count);
+    	   ", pred h-count = ", predictor_h_count,
+    	   ", routing skipped ", cheap_u_count, " times");
+    	   report_u_times();
+
     prints("#bottom_layer = ",hash_bottom_layerCounter.use_count(), ", #one_level = ",
     	   hash_one_levelCounter.use_count(), {", #real_dumb = "} ", #dumb = ",
 	   hash_real_dumbCounter.use_count() +
@@ -1502,7 +1630,10 @@ set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(v
     fi;
    prints("pred_flag = ",predictor_flag,", pred u-time = ",print_time_string(predictor_u_time),
     	   ", pred u-count = ", predictor_u_count, ", pred h-time = ",print_time_string(predictor_h_time),
-    	   ", pred h-count = ", predictor_h_count);
+    	   ", pred h-count = ", predictor_h_count,
+    	   ", routing skipped ", cheap_u_count, " times");
+    	   report_u_times();
+
     prints("#bottom_layer = ",hash_bottom_layerCounter.use_count(), ", #one_level = ",
     	   hash_one_levelCounter.use_count(), {", #real_dumb = "} ", #dumb = ",
 	   hash_real_dumbCounter.use_count() +
@@ -1679,7 +1810,18 @@ set RP_EXP = int: 0	  {power of #reducibility_points(q) in monomial}
 set HTht_EXP = int: 0{1}  {power of (HT - height(q) + 1) in monomial}
 set BL_EXP = int: 0	  {power of (bit_length(#monomials) - bit_length(j)+1)  in monomial}
 set J_SHIFT = int: 5	  {must be >=1; maybe (length(trivial) - length(p) + 1??}
-set INVJ_EXP = int: 2     {power of (j + J_SHIFT)^{-1}) in monomial}
+set INVJ_EXP = int: 1     {power of (j + J_SHIFT)^{-1}) in monomial}
+{ Was 2, which overstates how fast full_deform times grow as j approaches 0 (i.e. as the
+  argument approaches p).  Calibrated against E8_q,
+  q = Finalize(parameter(E8_q,62658,[-5,3,-1,1,9,-8,3,1],[-3,1,0,0,4,-4,2,0])), N = 254:
+  over the 103 terms whose times had actually been measured the old curve was already
+  right (model 1041ms vs actual 1005ms, ratio 1.04), but on the 151 extrapolated terms it
+  gave 75684ms against a true 15566ms -- a factor 4.9, and a predicted total of 77.9sec
+  against a true 16.6sec.  The true head/tail ratio is 15.5; exponent 2 asserts 76.5,
+  exponent 1 gives 16.5.  Fitting the exponent to the data yields 0.95.  With
+  INVJ_EXP = 1 the predicted total is 17.6sec against the true 16.6sec.
+  The overestimate mattered: it made is_unitary look far dearer than is_unitary_to_ht, so
+  one_param_test* escalated through to_ht instead of just running is_unitary. }
 set PRED_END = rat: 1/4	  {value at N-1 of linear monomial. Should be in (0,1)} {1/10??}
 set LIN_EXP = int: 1      {power of 1 + (PRED_END-1)*j/(N-1) in monomial}
 set LIN_EXP_HT = int: 2   {was 2}
@@ -2192,6 +2334,226 @@ set check_hermitian (Param p, bool irreducible) = void:
 set show_unitary_time() = void: prints("Time so far for is_unitary = ",
     		      print_time_string(unitaryTime))
 
+{
+ Instrumentation for choosing a cost statistic for is_unitary.  With u_stats_flag set,
+ every completed is_unitary emits one USTAT line giving its time together with each
+ candidate predictor, so the candidates can be ranked against real data instead of
+ guessed at.  The first group of statistics is cheap (no KL computation); mons and pb
+ are not, and are recorded only to show how much predictability is available in
+ principle to a statistic that is allowed to look at the block.
+}
+set u_stats_flag = false
+
+{
+ Number of t in (0,1] at which deforming gamma_t = lam + t*nu crosses the reducibility
+ hyperplane belonging to the coroot av: the crossings are the t with
+
+     av*gamma_t  a strictly positive integer  AND  av*theta*gamma_t  strictly negative,
+
+ theta = p.x.involution.  Since theta*lam = lam and theta*nu = -nu, the second pairing is
+ av*lam - t*(av*nu), so writing l = av*lam, c = av*nu, n = l+tc and m = l-tc we need
+ n+m = 2l to be an integer, n > 0 > m, and t = (n-m)/(2c) in (0,1].  That makes the
+ crossings for this coroot the integers n with max(0,2l) < n <= l+c, and only c > 0 can
+ contribute (t and c must share a sign).  Note this is NOT #reducibility_points(p):
+ several coroots can come due at a single t, and it is the number of hyperplanes, not the
+ number of stopping points, that governs how much the deformation branches.
+}
+set wall_crossings(ratvec lam, ratvec nu, vec av) = int:
+    let c = nu*av
+    in if c <= 0 then return 0 fi;
+       let l = lam*av
+       then s = 2*l
+       in if s.denom != 1 then return 0 fi;
+          let lo = max(0,s.numer), hi = floor(l+c)
+	  in if hi > lo then hi - lo else 0 fi
+
+{total over all coroots; both orientations, since nu need not be dominant}
+set wall_crossings(ratvec lam, ratvec nu, RootDatum rd) = int:
+    sum(for av in rd.poscoroots
+    	do wall_crossings(lam,nu,av) + wall_crossings(lam,nu,-av)
+	od)
+
+{
+ Same count with the extra parity restriction n = <av,plam> mod 2.  Taken literally the
+ condition above disagrees with atlas's own reducibility_points: for
+ parameter(SL(2,R),2,[1],[3]) it admits t = 1/3, 2/3, 1 whereas reducibility_points gives
+ [1/3,1].  At t = 2/3 both pairings are integers of the right sign (2 and -2), so what
+ rules it out is the parity of n against <av,p.lambda> = 1 -- note p.lambda = [1] is not
+ gamma - nu = [0].  Which version predicts the running time better is settled by the data,
+ so both are recorded.
+}
+set wall_crossings_par(ratvec lam, ratvec nu, ratvec plam, vec av) = int:
+    let c = nu*av
+    in if c <= 0 then return 0 fi;
+       let l = lam*av
+       then s = 2*l
+       in if s.denom != 1 then return 0 fi;
+          let q = plam*av
+	  in if q.denom != 1 then return 0 fi;
+	     let lo = max(0,s.numer), hi = floor(l+c), par = q.numer%2, n = 0
+	     in sum(for j: max(0,hi-lo) do n:=lo+1+j; if n%2 = par then 1 else 0 fi od)
+
+set wall_crossings_par(ratvec lam, ratvec nu, ratvec plam, RootDatum rd) = int:
+    sum(for av in rd.poscoroots
+    	do wall_crossings_par(lam,nu,plam,av) + wall_crossings_par(lam,nu,plam,-av)
+	od)
+
+{
+ CORRECTED crossing count, checked against reducibility_points on
+ parameter(E6_q,1500,[1,1,1,1,1,1],[1,1,1,1,1,1]):
+
+   - at a COMPLEX (or imaginary) root every n in (max(0,2l), l+c] is a genuine
+     reducibility point;
+   - at a REAL root (theta*a = -a) only n = <av,p.lambda> mod 2 are genuine.
+
+ So neither earlier variant was right: wall_crossings applies no parity anywhere and
+ overcounts the real roots, wall_crossings_par applies it everywhere and undercounts the
+ complex ones.  On that parameter the true count is 68, against 74 for the former.
+}
+set wall_crossings_true(ratvec lam, ratvec nu, ratvec plam, mat th, vec av, vec a) = int:
+    let c = nu*av
+    in if c <= 0 then return 0 fi;
+       let l = lam*av
+       then s = 2*l
+       in if s.denom != 1 then return 0 fi;
+          let lo = max(0,s.numer), hi = floor(l+c)
+          in if hi <= lo then return 0 fi;
+	     if th*a != -a
+	     then hi - lo {complex or imaginary: every n is a wall}
+	     else let q = plam*av
+	     	  in if q.denom != 1 then return 0 fi;
+		     let par = ((q.numer%2)+2)%2, cnt = 0
+		     in for k:hi-lo
+		     	do if ((lo+1+k)%2) = par then cnt+:=1 fi
+			od;
+			cnt
+	     fi
+
+set wall_crossings_true(Param p) = int:
+    let rd = p.root_datum, th = p.x.involution, nu = p.nu
+    then lam = p.infinitesimal_character - nu, plam = p.lambda
+    in sum(for j: nr_of_posroots(rd)
+    	   do let a = rd.posroots[j], av = rd.poscoroots[j]
+	      in wall_crossings_true(lam,nu,plam,th,av,a)
+	       + wall_crossings_true(lam,nu,plam,th,-av,-a)
+	   od)
+
+{
+ Heights of the composition factors thrown off at the crossings for coroot av (with a the
+ corresponding root).  At the crossing indexed by n = nplus = av*(lam+nu), the factor is
+ parameter(x, plam + n*a, nu + n*a), whose theta-fixed part is lam + n*(1+theta)a/2; its
+ height is height(G,.) of that, and is always bigger than height(p).
+ That is what makes the deformation recursion truncatable: in is_unitary_to_ht(p,HT) any
+ branch already above HT contributes only K-types above HT and can be dropped, so the
+ to_ht tree is the subtree of nodes of height <= HT.  Costs of is_unitary_to_ht(p,HT) and
+ of is_unitary(p) are then the tree sizes truncated at HT and at GAM(p), and both are
+ reachable by arithmetic alone -- no KL sum, no block.
+}
+{
+ Height of the composition factor thrown off at each crossing, by root type.  Checked
+ against deformation_terms_scr on parameter(E6_q,1500,[1,1,1,1,1,1],[1,1,1,1,1,1]),
+ where height(p) = 82:
+
+  REAL root: new lam = lam + a*(av*nu)/2.  Gives 85, 95, 105, 117 at n = 1,3,5,7, which
+    are exactly the MAXIMUM actual factor heights at those points.  The factor itself
+    lives at another x with a different involution (a Cayley transform), so the formula
+    reproduces the height, not the vector.
+
+  COMPLEX root: the four roots a, theta*a, -a, -theta*a contribute just TWO reducibility
+    walls, and both nplus = av*gamma_t and nminus = t*(av*nu) - av*lam are needed:
+
+        ht(lam - nplus*(1+theta)a/2)   and   ht(lam + nminus*(1+theta)a/2).
+
+    Written this way the two heights come out right whatever the sign of lam*av, so there
+    is no case split and no lam*av >= 0 precondition.
+
+ Checked exhaustively: over all 14 reducibility points of the test parameter this predicts
+ 38 distinct heights, every one of which occurs among the actual factor heights (the
+ actual set is larger, since the deformation branches beyond the walls themselves).
+}
+
+set crossing_heights(ratvec lam, ratvec nu, mat th, RootDatum rd, vec av, vec a) = [int]:
+    let c = nu*av
+    in if c <= 0 then return [] fi;
+       let l = lam*av
+       then s = 2*l
+       in if s.denom != 1 then return [] fi;
+          let lo = max(0,s.numer), hi = floor(l+c)
+	  then half = ratvec: (a + th*a)/2
+	  then real_flag = th*a = -a
+	  then ht(ratvec v) = int:
+	       let q = dominant(rd,v)*rd.two_rho_check in q.numer\q.denom
+	  in (for k: max(0,hi-lo)
+	      do let np = lo+1+k    {nplus  = av*gamma_t}
+	      	 then nm = np - s.numer {nminus = t*c - l = nplus - 2l}
+	         in if real_flag
+	            then {one wall: new lam is lam + a*(av*nu)/2, and av*nu = nplus here
+		    	  because lam*av = 0 for a real root}
+	                 [ht(lam + (np/2)*a)]
+	            else {the four roots a, theta*a, -a, -theta*a give TWO walls, and both
+		    	  nplus and nminus are needed.  Written against (1+theta)a/2 the two
+			  heights take the same form whatever the sign of lam*av, so no
+			  case split and no lam*av >= 0 precondition is required.}
+	                 [ht(lam - np*half), ht(lam + nm*half)]
+	            fi
+	      od).##
+
+{all of them, over both orientations of every positive coroot}
+set crossing_heights(Param p) = [int]:
+    let rd = p.root_datum, th = p.x.involution, nu = p.nu
+    then lam = p.infinitesimal_character - nu
+    in (for j: nr_of_posroots(rd)
+    	do let a = rd.posroots[j], av = rd.poscoroots[j]
+	   in crossing_heights(lam,nu,th,rd,av,a) ## crossing_heights(lam,nu,th,rd,-av,-a)
+	od).##
+
+{how many walls stay at or below HT, i.e. survive truncation in is_unitary_to_ht}
+set crossings_to_ht(Param p, int HT) = int:
+    sum(for h in crossing_heights(p) do if h <= HT then 1 else 0 fi od)
+
+{
+ Companion to u_stats_line for the to_ht tests: one USTATH line per completed
+ is_unitary_to_ht, giving its time against crossings_to_ht(p,HT) -- the count of
+ reducibility coroots whose composition factor still lies at or below HT -- and against
+ the total crossing count, height and GAM, so the two can be ranked on real timings.
+}
+set uh_stats_line(Param p, int HT, int T) = void:
+    let G = p.real_form, rd = p.root_datum, nu = p.nu
+    then q = dominant(rd,nu)*rd.two_rho_check
+    then hs = crossing_heights(p)
+    in prints("USTATH ",T," ",HT," ",height(p)," ",GAM(p)," ",
+       	      sum(for h in hs do if h <= HT then 1 else 0 fi od)," ",#hs," ",
+	      q.numer\q.denom," ",p.x.number," ",G.KGB_size)
+
+set u_stats_line(Param p, int T) = void:
+    let G = p.real_form, x = p.x, rd = p.root_datum, nu = p.nu
+    then q = dominant(rd,nu)*rd.two_rho_check {height(rd,nu), inlined: unity.at is
+       	     	   	 	   	      not loaded this early}
+    then rps = reducibility_points(p)
+    then lam = p.infinitesimal_character - nu
+    {
+     xings = number of reducibility hyperplanes the deformation from nu to 0 must cross.
+     At each stop the work is governed by the partial block THERE, which lives at a
+     different infinitesimal character and so is not part of partial_block(p); pbsum and
+     pbmax measure that directly.  They are far too expensive to use as predictors and
+     are recorded only to show how much of the time they would explain if they were free.
+    }
+    then xings = wall_crossings(lam,nu,rd)
+    then xingsp = wall_crossings_par(lam,nu,p.lambda,rd)
+    then irs = for t in rps
+    	       do nr_of_posroots(integrality_datum(rd, lam + t*nu))
+	       od
+    then pbs = for t in rps do #partial_block(parameter(x,p.lambda,t*nu)) od
+    then irmax = if #irs = 0 then 0 else max(irs) fi
+    then irsum = if #irs = 0 then 0 else sum(irs) fi
+    then pbmax = if #pbs = 0 then 0 else max(pbs) fi
+    then pbsum = if #pbs = 0 then 0 else sum(pbs) fi
+    in prints("USTAT ",T," ",x.number," ",height(p)," ",GAM(p)," ",
+       	      q.numer\q.denom," ",#rps," ",
+	      rank(x.involution - 1)," ",length(p)," ",#tau(p)," ",#LKTs(p)," ",
+	      G.KGB_size," ",#monomials(KL_sum_at_s(p))," ",#partial_block(p)," ",
+	      irmax," ",irsum," ",xings," ",pbmax," ",pbsum," ",xingsp)
+
 {.Hermitian form on a irreducible module, normalization from its initial term.}
 set hermitian_form_irreducible(Param p) = KTypePol:
   {unitary_test_counter.use();}
@@ -2202,6 +2564,7 @@ set hermitian_form_irreducible(Param p) = KTypePol:
   		fi.convert_cform_hermitian
   in unitaryTime+:=elapsed_ms() - start_time;
      was_tested(p, elapsed_ms() - start_time, is_pure(answer));
+     if u_stats_flag then u_stats_line(p, elapsed_ms() - start_time) fi;
      answer
 
 set hermitian_form_irreducible_cut(Param p, int HT) = KTypePol:

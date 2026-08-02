@@ -203,6 +203,7 @@ set hermitian_form_irreducible_to_ht_MvL (Param p,int HT) = KTypePol:
        fi.convert_cform_hermitian
   in unitaryTime+:=elapsed_ms() - start_time;
      was_tested_to_ht(p,HT, elapsed_ms() - start_time,is_pure(answer));
+     if u_stats_flag then uh_stats_line(p,HT,elapsed_ms() - start_time) fi;
      answer
 
 {.Hermitian form to ht on a irreducible module, normalization from its
@@ -218,6 +219,7 @@ set hermitian_form_irreducible_to_ht_MvL (Param p,int HT,int time) = maybe_KTP:
     	       timed_out()
   | done(r): let ans = r.convert_cform_hermitian
     	     in was_tested_to_ht(p,HT,elapsed_ms() - start_time, is_pure(ans));
+    	        if u_stats_flag then uh_stats_line(p,HT,elapsed_ms() - start_time) fi;
 	     	ans.done
   esac
   in unitaryTime+:=elapsed_ms() - start_time;
@@ -231,6 +233,7 @@ set hermitian_form_irreducible_to_ht (Param p,int HT) = KTypePol:
   else  check_hermitian(p,true); twisted_c_form_irreducible_to_ht(p,HT)
   fi.convert_cform_hermitian
   in was_tested_to_ht(p,HT,elapsed_ms() - start_time, is_pure(answer));
+     if u_stats_flag then uh_stats_line(p,HT,elapsed_ms() - start_time) fi;
      unitaryTime+:=elapsed_ms() - start_time;
      answer
 
