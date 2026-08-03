@@ -419,7 +419,7 @@ sl_list<K_repr::K_type> Rep_context::KGP_set (K_repr::K_type& t) const
   sl_list<K_repr::K_type> result;
   result.push_back(t.copy()); // keep |t| itself for caller
 
-  do
+  do // process |Q|
   {
     pre_K_type current = std::move(Q.front()); Q.pop();
     KGBElt x=current.first;

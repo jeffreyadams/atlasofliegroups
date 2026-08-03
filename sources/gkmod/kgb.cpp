@@ -223,7 +223,7 @@ global_KGB::global_KGB(InnerClass& G_C)
 	TorusElement t=y_values::exp_pi(rcw);
 	t += ic.lift_from_fundamental_fiber(i); // add |TorusPart| from for |i|
 	elt.push_back(GlobalTitsElement(t));
-	add_element(); // create in base
+	KGB_base::add_element(); // create in base
       } // |for (i)|
     } // |for (c)|
     first_of_tau.push_back(elt.size()); // end of fundamental fiber
@@ -270,13 +270,15 @@ global_KGB::global_KGB(InnerClass& G_C, const GlobalTitsElement& x)
 
     // generating reflections are for simple-imaginary roots at |inv|
     const RootNbrList& gen_root = i_tab.imaginary_basis(inv);
-    for (size_t i=0; i<elt_hash.size(); ++i) // |elt_hash| grows during loop
-    {
-      add_element(); // create in base
+
+    size_t i=0;
+    do // |i| runs over growing vector |elt_hash| until catching up with its end
+    { KGB_base::add_element(); // create element in base
       for (auto alpha : gen_root)
 	elt_hash.match(i_tab.x_pack
 	  (Tg.cross(rd.reflection_word(alpha),elt_hash[i].repr())));
     }
+    while (++i<elt_hash.size());
 
     first_of_tau.push_back(elt_hash.size()); // end of fundamental fiber
 
@@ -516,6 +518,8 @@ KGB::KGB(RealReductiveGroup& G, const BitMap& Cartan_classes)
   HashTable<tits::TE_Entry,KGBElt> elt_hash(elt_pool);
 
   size_t size = ic.KGB_size(G.realForm(),Cartan_classes);
+  if (size==0)
+    return;
 
   elt_pool.reserve(size);
   KGB_base::reserve(size);
@@ -552,7 +556,8 @@ KGB::KGB(RealReductiveGroup& G, const BitMap& Cartan_classes)
   }
 
   // now inductively fill the table |elt_pool|/|elt_hash|, and related arrays
-  for (KGBElt x=0; x<elt_hash.size(); ++x) // loop makes |elt_hash| grow
+  KGBElt x=0;
+  do  // |x| runs over growing vector |elt_hash| until catching up with its end
   {
     // extend by cross actions
     const TitsElt& current = elt_pool[x];
@@ -612,7 +617,8 @@ KGB::KGB(RealReductiveGroup& G, const BitMap& Cartan_classes)
 
     } // |for(s)|
 
-  } // |for (x)|
+  }
+  while (++x<elt_hash.size());
 
   assert(KGB_base::size()==size);
 
