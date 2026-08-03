@@ -1121,21 +1121,20 @@ exclude before-the-beginning iterators.
 
 We introduced \slls. (or sometimes \smpl.) in places where this was more
 convenient to the programmer or led to a simplified implementation. In many
-cases there are no important differences with respect to using \vect.
-instead, as we would have done if we had not had \slls. available. The most
-common reason to prefer \slls. is when successive items are produced by a
-process for which the total number of items is not predictable. Even when
-prediction is possible but complicated, the usage of \vect. poses the
-question of whether to perform the calculation and \textit{reserve} the precise
-amount of entries, or let the algorithm for growing the allocated size of a
-vector by exponentially growing chunks do its work in amortised linear time,
-with the inconvenience of possibly allocating substantially more space than
-necessary. By contrast, using \slls., no decision to reserve anything is
-necessary, and producing the list otherwise proceeds using repeated calls of
-\textit{push\_\!back} just like it would when using a vector. In some cases we
-want to store the result as a vector for reasons of efficiency of random access
-or of compactness, but even then this can simply be achieved by conversion using
-a final call of \textit{to\_\!vector}.
+cases there are no important differences with respect to using \vect. instead,
+as we would have done if we had not had \slls. available. The most common reason
+to prefer \slls. is when successive items are produced by a process for which
+the total number of items is not predictable. Even when prediction is possible
+but complicated, using \vect. one must decide whether to perform the calculation
+and \textit{reserve} the precise amount of entries, or to let the algorithm for
+growing the allocated size of a vector by exponentially growing chunks do its
+work, in amortised linear time, with the inconvenience of possibly allocating
+substantially more space than necessary. By contrast, using \slls., no decision
+to reserve anything is necessary, and producing the list otherwise proceeds
+using repeated calls of \textit{push\_\!back} just like it would when using a
+vector. In some cases we want to store the result as a vector for reasons of
+efficiency of random access or of compactness, but even then this can simply be
+achieved by conversion using a final call of \textit{to\_\!vector}.
 
 Situations where we need to temporarily store sequences of values of size not
 fixed at compile time are very frequent in our program. We tend to use
@@ -1144,39 +1143,49 @@ sequence is produced, or if random access to the sequence is needed during its
 construction, and \slls. in most other cases; this amounts to a considerable
 portion of our uses of singly linked lists in the library.
 
+We have already mentioned how a process of generating a collection of values can
+use a list wrapped as a \queue. to hold a collection of values already generated
+but not yet inspected for the creation of further values. If at the end of the
+process one needs a list of all the values seen (possibly to then convert it to
+a vector), an alternative is to represent the whole collection as a \slls.,
+initially filled with one or more starting values, traversed from the front
+using an iterator while any new elements produced are pushed (or emplaced) at
+the back. In this approach the part of the list ahead of the iterator represents
+the queue of elements yet to be processed, while the part behind the iterator is
+settled;, the process terminates when the iterator catches up with the end of
+the list.
+
 There are also more substantial dynamical constructions, producing finite
 structured collections of values that will then be perused in further
 computations; they involve for instance the computation of a root system for a
-given Dynkin diagram, the transducer tables for our implementation of finite Coxeter groups (see~\ref{A transducer approach to Coxeter groups, J.
-  Symb. Comput. 1999}), or the structured set $K\backslash{G/B}$ of $K$-orbits
-on $G/B$ (affectionately called KGB-set within the Atlas project). In such
-cases, the time spent constructing a table is usually dwarfed by the time spent
-by computations using it, so efficiency of the former is not a main concern. A
-practical concern on the other hand may arise from the need one often has for an
-item to refer back to the previous ``parent'' item from which is was obtained.
-When the items are constructed in a linked list, such a reference can be made
-using a pointer or an iterator. When instead using \vect., both of these
-would be invalidated by any reallocation of the vector storage while it is
-growing; as a consequence, one would either need to ensure no reallocation
-happens by reserving up front an amount of space guaranteed to be sufficient, or
-choose to instead store an index into the vector rather than a pointer; this is
-safe since the current location of the entry is looked up every time the index
-is used. In some cases there may be reasons that more or less force constructing
-items directly in a vector, such as items referring to each other by index in
-the table (defining a graph structure of some kind); also, when the need to
-identify newly generated items with any existing one of the same value is best
-met by constructing a hash table, this forces (given our implementation of hash
-tables) the use of a \vect. for storing items.
+given Dynkin diagram, the transducer tables for our implementation of finite
+Coxeter groups (see~\cite{Fokko transducer}), or the structured set
+$K\backslash{G/B}$ of $K$-orbits on $G/B$ (affectionately called KGB-set within
+the Atlas project). For these, the time spent constructing a table is usually
+dwarfed by the time spent by computations using it, so efficiency of the former
+is not a main concern. A practical concern on the other hand may arise from the
+need one often has for an item to refer back to the previous ``parent'' item
+from which is was obtained. When the items are constructed in a linked list,
+such a reference can be made using a pointer or an iterator. When instead using
+\vect., both of these would be invalidated by any reallocation of the vector
+storage while it is growing; as a consequence, one would either need to ensure
+that no reallocation happens by reserving beforehand an amount of memory
+guaranteed to be sufficient, or else choose to store an index into the vector
+rather than a pointer; the latter is safe, since the current location of the
+entry is looked up every time the index is used. In some cases there may be
+reasons that more or less force constructing items directly in a vector; for
+instance the use of a hash table to identify each newly generated value with one
+that might already be present, strongly favours storing the items in a \vect.,
+since our implementation of hash tables stores its values in a \vect. anyway.
 
-While all fundamental algorithms in the library were originally written using
-almost exclusively vectors, we have been able to rewrite several of them making
-more use of lists; this is the case for generating root systems (as the closure
-of a small set of ``simple roots'' under the ``simple reflection'' operations),
-and for building transducer tables to implement Weyl groups (these are
-essentially Cayley graphs of certain subquotients of the Weyl group as a finite
-Coxeter group), but for the KGB-set constructor it seems pointless to do so
-because of its use of a hash table, as mentioned above. We generally found that
-rewriting constructions using lists rather than vectors actually led to more
+While all fundamental algorithms in our library were originally written using
+almost exclusively vectors, we were able to rewrite several of them making more
+use of lists; this is the case for generating root systems (as the closure of a
+small set of ``simple roots'' under the ``simple reflection'' operations), and
+for building transducer tables to implement Weyl groups (these are essentially
+Cayley graphs of certain subquotients of the Weyl group as a finite Coxeter
+group), but not for the KGB-set constructor: it seems pointless to do so because
+of its use of a hash table. We found that such rewriting generally led to more
 transparent, though not necessarily faster, code. The reasons for this are
 varied. For one, trying to understand old code forces one to focus on its
 essential structure, so any kind of refactoring would bring that to the fore.
@@ -1185,150 +1194,138 @@ variables used in the algorithm by values like iterators that by their type are
 restricted to certain kinds of usage, which reduces possible confusion (much
 like using typed pointers is much more transparent then handling them as void
 pointers). Similarly the lack of random or even bidirectional access in singly
-linked lists is suggestive of the way they will serve in the computation.
+linked lists makes them more suggestive of the way they will serve in the
+computation.
 
 To illustrate this, we consider in some detail the case of the root system
 constructor. Its task is, given a ``Cartan matrix'' that describes a small
-number of reflections acting on the lattice spanned by the same number of
-``simple roots'', to complete the latter to the set of all ``positive roots'' by
-closure under this action. The construction organises roots by level, the level
-of a root being the sum of its coordinates expressed on the basis of simple
-roots. Although both the number of levels that will be required and the total
-number of positive roots produced could be computed beforehand after a detailed
-study of the Cartan matrix, the original vector-based construction does not do
-that; instead it reserves a sufficient number of levels based on a rough
-estimate, and for the vector of positive roots does not reserve any space ahead
-of time, letting repeated use of \textit{push\_\!back} determine its final size
-and capacity. Each simple reflection applied to a root produces a root at a
-nearby level; the level difference is at most~$3$, and if it is~$0$ then the
-root is fixed by the reflection; cases where the image lands at a negative level
-are few and easily singled out (it only happens when applying a reflection to
-the corresponding simple root). The construction progresses from level~1
-forwards, producing roots a few levels ahead, while reflections that do not
-increase the level are used to set the edges of the graph representing the
-reflection actions on the roots. Reflection actions that lower the level never
-produce a new positive root, so once a level is reached it is complete; however,
-in the levels ahead of this there may be roots missing, and since the desired
-ordering of the roots is not necessarily the one in which they are first
-encountered, a table index cannot yet be assigned to these roots. The structure
-in which the roots are initially constructed is therefore a \vect. of, for each
-level, a \std{set} of coordinate vectors. Arriving at a given level, the roots
-in that set are traversed using a range-based \textbf{for}-loop, which starts by
-adding the root using \textit{push\_\!back} into the vector of positive roots in
-the root system; the index at which it lands will henceforth be the number of
-the root in the system. Then the reflections are applied to the root; if this
-increases the level, the resulting root is inserted into the root set at this
-higher level, while otherwise that root is already present in the table, and
-after it is located, links are added into the table between it and the current
-element.
+number of reflections acting on the lattice spanned by a set of the same number
+of ``simple roots'', to complete the latter set to the set of all ``positive
+roots'' by closure under these reflections. The construction organises roots by
+level, the level of a root being the sum of its coordinates expressed on the
+basis of simple roots. Although both the number of levels that will be required
+and the total number of positive roots produced could in principle be computed
+beforehand after a detailed study of the Cartan matrix, the original
+vector-based construction does not do that; instead it reserves a sufficient
+number of levels based on a rough estimate, and for the vector of positive roots
+does not reserve any space ahead of time, instead letting repeated use of
+\textit{push\_\!back} determine its final size and capacity.
+
+Each simple reflection applied to a root produces a root at a nearby level; the
+level difference is at most~$3$ in either direction, and if it is~$0$ then the
+root is fixed by the reflection. While roots at negative levels (aptly called
+negative roots) exist, the construction does not deal with them. A reflection of
+a positive root is a negative root only in the very special case of applying a
+simple reflection to the corresponding simple root; these cases are easily
+singled out and ignored. The construction then progresses from level~1 upwards,
+producing roots a few levels ahead. Reflection actions that lower the level
+never produce a new positive root, so once a level is reached, it is complete.
+But roots may be missing in the levels ahead of the current level, and since the
+desired ordering of the roots is not necessarily the one in which they are first
+encountered, a definitive root number cannot yet be assigned to these roots. The
+structure in which the roots are initially constructed is therefore a \vect. of,
+for each level, a \std{set} of coordinate vectors. Arriving at a given level,
+the set is traversed using a range-based \textbf{for}-loop. It starts by adding
+the root using \textit{push\_\!back} to the vector of positive roots in the root
+system; the index at which it lands defines the number of the root in the
+system. The reflections are then applied one by one to the root. If this
+increases the level, the resulting root is inserted into the set of roots at
+that level. If not, it should already by present in the table at the current or
+lower level; at the current level it is the root itself, and else it is looked
+up, and in both cases links in the table are set to express the reflection
+relation between the roots.
 
 When rewriting this constructor to take advantage of linked lists, the most
-obvious decision was to replace the vector of incomplete levels by a list. This
-list is only used to find the level for a new root obtained by a reflection that
-increases the level, and since this is always close to the current level, one
-only ever needs to advance a short distance along the list. Also, once we are
-done with the current level we no longer need that level on the list at all, so
-we can just pop it off the front, and thus the current level is always the one
-at the front of the list. (When using a vector of sets instead, we did clear the
-set representing the current level when done with it, but the action does creep
+consequential decision was to replace the vector of incomplete levels by a list.
+This list is only used to store the levels of new roots obtained by a reflection
+that increases the level, and since these are always close to the current level,
+one never needs to advance more than a short distance along the list. Also, once
+we are done with the current level, we no longer it on the list at all, so we
+can just pop it off the front; thus the current level is always the one at the
+front of the list. (When using a vector of sets instead, we did clear the set
+representing the current level when done with it, but the algorithm still creeps
 along the vector to ever higher positions.) The levels below the current level
 are complete, and we know the final positions of all the roots they contain, but
 we are still unsure about the total number of positive roots that will be found.
 Therefore we avoid constructing the table for these roots just yet; instead we
-place the information about these roots on a separate list that runs backwards,
-so that the highest completed level is at the front of this list. Once the
-generating procedure is complete, namely when the list of levels ahead of the
-current level becomes empty, we know the number of positive roots so we can
-allocate and fill the table with the information on the list of previous levels,
-reversing the order.
+place the information about these levels on a separate list that runs backwards.
+So the most recent previous level is at the front of this list, and any
+reflection that decreases the level will give a root present near the front of
+this list. Once the list of levels ahead of the current level becomes empty, the
+generating procedure is complete and we know the number of positive roots; we
+then allocate and fill the table with the information on the list of previous
+levels, reversing its order.
 
-This new organisation came with some more changes. Once a level of roots becomes
+This new organisation involves some more changes. Once a level of roots becomes
 current, it is complete and the positions of all roots of the level are fixed;
-we therefore change the representation to a vector when pushing the level to the
-front of the list of previous levels. We also include information about the
-starting index for each level on the list of previous levels, so that locating
-one of its roots given it number can be done without searching, once its level
-is reached; this compensates for the fact that these roots are not all stored
-in a contiguous array yet.
+we therefore change the representation from \slls. to \vect. when pushing a
+level to the front of the list of previous levels. We also include information
+about the starting index for each level on this list, so that locating one of
+its roots given its number can be done without searching, once its level is
+found; this compensates for the fact that these roots are not yet all stored in
+a contiguous array, as they were in the initial implementation.
 
-On the list of levels \emph{ahead} of the current level, the operations to be
-performed upon a level are: (1)~searching whether a newly constructed root is
-already present, (2)~inserting is as a new element if not, and (3)~in either
-case record the way it was obtained by a reflection from a root at a lower
-level. While these operations can be performed when the level is represented as
-\std{set}, as was originally done, they are actually a bit easier with a sorted
-linked list representation. And although \std{set} provides binary search that
-is asymptotically faster than a linear search needed with a linked list, we did
-not find this argument in favour of the former persuasive, given that levels
-never get very large; so we opted for initially storing levels as sorted
-instances of \slls.. This choice has the added advantage of allowing the
-\textit{to\_\!vector} method to perform the conversion to the \std{vector} while
-using move semantics to transfer the individual roots, something that would
-require manual coding if we were to convert from \std{set} to \std{vector}.
+We also replaced the \std{set} of roots at the levels ahead of the current one
+by a sorted \slls.. This may seem counterproductive, as looking up and possibly
+inserting a new root can be done asymptotically faster in the former than in the
+latter, where it requires a linear search. However, levels are never very large
+(never larger than level~1, in fact), so the speed argument is not pertinent,
+while the list representation makes further adaptation much simpler. The change
+in question is adding information to roots even before they become current,
+notably about how they were produced by a reflection. In order to record the
+way(s) in which a root was obtained by a reflection, we associate a vector of
+links to each root, with $\textit{link}[i]$ of root $\alpha$ giving the number,
+if any, of the root from which $\alpha$ was obtained using reflection~$i$.
+Adding this to the original \std{set} representation would involve changing it
+to a \std{map} (with $\alpha$ as key and \textit{link} as value), but this makes
+the insertion a lot more complicated; we'll not go into details here.
 
-Finally, the change of representation of levels when passing from one list to
-the other suggested a change in the manner the reflections links are set. When a
-new root is obtained from an old root by reflection~$i$, both roots will
-eventually store the number of the other root at position~$i$ in a vector of
-links in the table. But this pair of mutual links cannot be set when the new
-root is created, since the index of that root is not yet fixed; for this reason
-setting the pair used to be done when the new root becomes current, and the
-older roots is held in the list of previous levels. However, we can already
-install the downward link from the new root to the current root whose, index is
-known, provided the array of links is created as an additional member with the
-new root, which is an easy modification with the list representation of
-incomplete levels (it would be more tricky using \std{set}; indeed changing to a
-\std{map} representation would be better suited to achieve this). Now when the
-new root becomes current, it can locate root it links to easily within the list
-of previous roots, and then set the reverse link.
+On the other hand adding a \textit{link} field to roots that are in a sorted
+list is easy: it suffices to define a \textbf{struct} containing both, whose
+constructor take $\alpha$ as argument but also builds the \textit{link} vector.
+Insertion into a sorted list involves a search (using \std{find\_\!if\_\!not}
+with a comparison predicate) followed, if the root is not found, by
+\textit{insert} to add the root; then in either case the \textit{link} field to
+set can be accessed through the iterator used in the search. The same
+\textbf{struct} can continue to be used when the level is transferred to the
+list of previous levels, although the list of these \textbf{struct}s is then
+converted to a vector; incidentally the call of \textit{to\_\!vector} that
+performs the conversion uses move semantics for transferring elements, so the
+conversion does not involve a deep copy.
+
+This early addition of a field \textit{link} was part of a change in the timing
+of setting the reflection links. Originally the link vector of a root was
+created when the root was entered into that root system table, namely when it is
+current. But as just described, we can now already set the downward link
+from~$\alpha$ to the (at this point current) root from which it was obtained
+just after creating~$\alpha$. And if $\alpha$ is also obtained from other
+upwards reflections, those downward links can be set as well. Since reflections
+are their own inverse, each of these links will eventually have a reverse link
+for the same reflection, but that (upward) link cannot be set until the root
+number of~$\alpha$ is known. When $\alpha$ becomes current this number is known,
+so each downward link can be used to locate its target among the roots at
+previous levels, and set the reverse link. Note that this avoids looking up the
+image of the downward reflection in the root system, as used to be necessary,
+since the already set downward link provides us the root number of that image.
 
 We have discussed these changes in some detail, to illustrate how the
 availability of singly linked lists affects the design of algorithms. All of
-these changes could also have been made using different container types, but
-having a lightweight type adapted to small and simple situations available
-greatly facilitated opting for these changes. And \slls. plays very well with
-the standard library; indeed almost all handling of these lists not directly
-provided by list methods is done with the aid of library functions or using
-range-based loops. There is just one case where a loop over a list involves
-explicit iterator manipulation, namely the one that advances a given number of
-levels up along the list of incomplete levels: it must at each step ensure a
-level is present before advancing, by if necessary inserting an empty level
-first. In our opinion, the transformation of the code has made it much more
-transparent, with singly linked lists serving as ephemeral storage that allows
-postponing certain decisions until the moment the necessary size information is
-available, oiling the gears of the algorithm. That the roots go through two
-preliminary forms of storage before being definitively stored in the table of
-the root system is a follows from and elucidates the nature of the generation
-procedure.
-
-
-Another
-readability issue is that the natural way to set up the loop extending such a
-\textit{table}, after seeding it with some initial value(s), is to write
-$$
-\let\&=\textbf \let\\=\textit
-\&{for}~(\&{unsigned}~i=0;~ i\leq\textit{table}.\textit{size}();~\PP{i})
-~\ldots
-$$
-%
-which expresses the fact that the loop runs until the current index~$i$ catches
-up with the increasing \textit{size} of~\textit{table}; the \Cpp\ semantics
-ensures that the \textit{size} method is called anew after each iteration, as is
-required for this to work, but it is easy to misread this to be a standard
-simple loop over the indices~$i$ into a fixed~\textit{table}. In some cases
-however (among which that of generating a KGB-set), we To summarise, our experience is that writing such constructions
-using a singly linked list rather than a vector as storage, but sometimes is just not feasible.
-
-We have already mentioned how, during a process of generating a collection of
-values, a list embedded in a queue object can conveniently represent a
-collection of values already generated but not yet inspected for generation of
-further values. An alternative is to represent the whole collection as a \slls.
-to which new elements are pushed (or emplaced) at the back, while the inspection
-of elements for further generation is done using a separate iterator, the
-procedure terminating when it manages to catch up with the back of the list.
-When it is necessary to record for each values the previous value from which it
-is generated, the can be done by storing the value of the latter iterator at the
-moment the new value is pushed to the back.
+these changes could also have been made (with varying amounts of effort) using
+different container types. However, having a lightweight type adapted to small
+and simple situations available, greatly facilitated opting for these changes.
+And \slls. plays very well with the standard library; indeed almost all handling
+of these lists other than what is provided by list methods is done with the aid
+of library functions or using range-based loops. There is just one case where a
+loop over a list involves explicit iterator manipulation, namely the loop that
+advances a given number of levels up along the list of incomplete levels: it
+must at each step ensure that a next level is present before advancing, by if
+necessary inserting an empty level first. In our opinion, the transformation of
+the code has made it much more transparent, with singly linked lists serving as
+ephemeral storage that allows postponing certain decisions until the moment the
+necessary size information is available, oiling the gears of the algorithm. The
+fact that the roots go through two preliminary forms of storage before being
+definitively stored in the table of the root system is not a distraction;
+rather, it follows from and elucidates the nature of the generation procedure.
 
 \subsection{The interpreter}
 
@@ -1346,17 +1343,18 @@ mentioning is that the possibility to include at some point of a file the text
 from another file leads to a stack of active input sources being maintained,
 where we use the technique mentioned above of defining a derived
 not-quite-abstract data type of a stack enriched with extra methods. The extra
-methods allow finding the current size, as well as obtaining constant-iterators
-for traversal (which is needed to implement the safety precaution that no file
-can be opened a second time while it is already an active input source); as
-underlying container for this stack we use \textit{mirrored\_sl\_list}.
+methods allow finding the current stack size, as well as obtaining
+\textbf{const}-iterators for traversal of the stack (which is needed to
+implement the safety precaution that no file can be opened a second time while
+it is already an active input source); as underlying container for this stack we
+use \textit{mirrored\_sl\_list}.
 
 Our parser is produced using the \texttt{bison} parser generator program. Thus
 we have no control over the parser function itself, which is a table-driven
-skeleton program written in \Cee, but we do provide its action functions which
+skeleton program written in~\Cee, but we do provide its action functions which
 build up parse tree of the user input as it is being recognised. The generated
-parser can actually by compiled as \Cpp\ code, so the action code is not
-restricted to what can be written in \Cee, and notably the parse tree can use
+parser can actually be compiled as \Cpp\ code, so the action code is not
+restricted to what can be written in \Cee; notably the parse tree can use
 \Cpp\ types. These types have mutually recursive definitions that more or less
 reflect the context-free grammar being implemented, using pointers to refer to
 each other, and using a tagged \textbf{union} of variants when a type represents
@@ -1711,22 +1709,38 @@ control.
 \newcommand\tit[1]{\newblock ``#1'',}
 \newcommand\journ[3]{\newblock \textit{#1}, \textbf{#2} (#3),}
 \newcommand\publ[2]{\newblock \textit{#1}, #2,}
+\newcommand\doi[1]{\newblock doi: #1}
 
   \bibitem[Atlas]{Atlas source}
   \tit{Atlas of Lie groups and Representations} software project,
-  \url{https://github.com/jeffreyadams/atlasofliegroups}; the
+  \hfil\break\url{https://github.com/jeffreyadams/atlasofliegroups}; the
   implementation of singly linked lists is in subdirectory
   \texttt{sources/utilities} of the repository, in file \texttt{sl\_list.h}
 
   \bibitem[Comph]{triple ref}
   Computerphile YouTube channel: \tit{Triple Ref Pointers}
-  \url{https://www.youtube.com/watch?v=0ZEX_l0DFK0} (2017)
+  \hfil\break\url{https://www.youtube.com/watch?v=0ZEX_l0DFK0} (2017)
+
+  \bibitem[duCl]{Fokko transducer}
+  \tit{A Transducer Approach to Coxeter Groups}
+  \publ{Journal of Symbolic Computation}{27, 1998}
+  \doi{10.1006/jsco.1998.0254}
+  %% @article{article,
+  %%   author = {Cloux, Fokko},
+  %%   year = {1998},
+  %%   month = {08},
+  %%   pages = {},
+  %%   title = {A Transducer Approach to Coxeter Groups},
+  %%   volume = {27},
+  %%   journal = {Journal of Symbolic Computation},
+  %%   doi = {10.1006/jsco.1998.0254}
+  %% }
 
   \bibitem[Knejp]{P0316R0}
     \author{Miro Knejp}
     \tit{\texttt{allocate\_unique} and \texttt{allocator\_delete}}
     ISO/EJC JTC1/SC22/WG21 - Papers 2017, proposal P0316R0
-    \url{http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/}
+    \hfil\break\url{http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/}
 
   \bibitem[Knuth]{TeX the program}
   \author{D.~E. Knuth}
