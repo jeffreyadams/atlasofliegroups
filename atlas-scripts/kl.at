@@ -462,7 +462,18 @@ set low_flag = true
   KL_sum_at_s also inverts, 9 -> 1717.  Character cost grows with x, so a gain at x_open
   is the case that matters most.
   Worth revisiting whether the gate can be made valuable rather than simply disabled. }
-set low_char_flag = false
+{ REVERTED to true.  Setting it false (always compute to height) helped E7_s spherical
+  (2212 -> 1020sec) and the small whole groups E6_s and SO(5,6), but that evidence was
+  drawn entirely from x_open and from groups small enough that every x is "large".  On a
+  full E7_s run at KGBElt 8001 -- 38% of the way through KGB, hence BELOW the
+  diff_KGB_char_frac threshold of x > 10463 -- it costs 769sec of character work against
+  175sec, a 4.4x loss: 402451 promotions become 0, and the work moves from 175sec of char
+  to 74sec + 695sec of char_to_ht.
+  The existing gate already has the right shape: low_diff_char_old uses to_ht only when
+  x.number > diff_KGB_char_frac*KGB_size, which is the large-x regime where character
+  calculations are dear.  The spherical gain should be recovered by tuning that gate --
+  diff_KGB_char_frac or diff_char_mult -- not by disabling it. }
+set low_char_flag = true
 
 {if true, allow hermitian_form_irreducible_to_ht; if false, truncate hermitian_form_irreducible}
 set low(Param p, int HT) = bool:

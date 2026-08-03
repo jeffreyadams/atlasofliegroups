@@ -4105,40 +4105,101 @@ set KU_fast_flag = false
  unitary to any HT, so a face marked here is correctly marked; at worst fewer are found
  and the ordinary testing in local_testK_hash catches the rest.
 }
+{all coefficients non-negative integers}
+set is_pos(KTypePol P) = bool: all(for c in P do let a = int_part(c) in a.>= od)
+
+{LKTs(q) contained in LKTs(p)}
+set is_LKT_sub(Param p, Param q) = bool: is_pos(K_type_pol(p-q))
+
+{
+ Locations in LFDKH of the faces at (x,lambda) all of whose constituents are already known
+ unitary.  Everything in big_unitary_hash is automatically FPP, so no vertex geometry is
+ needed: walk the hash, keep those q whose LKTs sit inside the (constant) LKTs at
+ (x,lambda), form the candidate p = parameter(x,lambda,q.infinitesimal_character), and
+ keep it if dominant.  Only then is finalize called, and only on that candidate -- so
+ finalize runs once per surviving q rather than once per candidate FACE, which is what
+ made the scan below cost 54sec on E7_s spherical.
+ The all-constituents quantifier is preserved: every monomial of finalize(p) must be in
+ the hash, exactly as the slow version demands.
+}
 set known_unitaries_fast(Param_hash Uhash, KGBElt x, ratvec lambda, LocalVertexData Lvd,
-    [[FaceVertsKHash]] LFDKH) = [vec]:
+    [[FaceVertsKHash]] LFDKH, int HT) = [vec]:
     let lookups = for list@d in LFDKH
     	          do index_in(if #list = 0 then [vec]:[]
 		  	      else for v in list do v[:d+1] od
 			      fi)
 		  od
     then out = [vec]: for j:#LFDKH do vec:[] od
+    then p0 = parameter(x,lambda,0*lambda)
+    then seen = make_Param_hash() {one candidate p can arise from many q}
+    then dl0 = ratvec: p0.d_lambda
+    then cands0 = for q in Uhash.list()
+    	 	  if q.d_lambda = dl0
+		  do q
+		  fi
+		  od
+    in cands0 ##:= for q@j in u_to_ht_hash.list()
+    	 	    if u_to_ht_hts[j] <= HT and q.d_lambda = dl0
+		    do q
+		    fi
+		    od;
+       for q in cands0
+    	      do if is_LKT_sub(p0,q)
+	      	 then let p = parameter(x,lambda,q.infinitesimal_character)
+		      in if is_dominant(p)
+		      	 then let I = seen.size()
+			      in if seen.match(p) = I
+			      	 then if all(for r in monomials(finalize(p))
+				      	     do r= q or simple_status(r,HT) > 0 od)
+				      then let list = local_vertices(p)
+				      	   in if #list-1 < #LFDKH
+					      then let lv = vec: for ell in list do Lvd.lookup(ell) od.sort
+					      	   then m = lookups[#list -1](lv)
+						   in if m.>= then out[#list-1] #:= m fi
+					       fi {#list -1 < #LFDKH}
+				       fi {all r}
+				  fi {seen.match=I}
+			  fi {is_dominant(p)}
+	            fi {is LKT_sub}
+		 od;
+	 out
+{
     then () = for k:Uhash.size()
-    	      do let p = Uhash.index(k)
-	         in if p.x = x and p.lambda = lambda
-		    then let list = local_vertices(p)
-		         in if #list-1 < #LFDKH
-			    then let local_verts = vec:
-			    	      for ell in list do Lvd.lookup(ell) od.sort
-				 then m = lookups[#list-1](local_verts)
-				 in if m.>= {Uhash may hold faces no longer in LFDKH}
-				    then out[#list-1] #:= m
+    	      do let q = Uhash.index(k)
+	         in if q.d_lambda = dl0 {cheap prefilter: a ratvec compare, before the
+		    	    	       	 KTypePol subtraction in is_LKT_sub}
+		    and is_LKT_sub(p0,q)
+		    then let p = parameter(x,lambda,q.infinitesimal_character)
+		         in if is_dominant(p)
+			    then let I = seen.size()
+			         in if seen.match(p) = I
+				    then if all(for r in monomials(finalize(p))
+				    	 	do simple_status(r,HT) > 0
+						{broader than Uhash.lookup(r).>= :
+						 also sees unitary-to-height facts}
+						od)
+				         then let list = local_vertices(p)
+					      in if #list-1 < #LFDKH
+					         then let lv = vec:
+						      	  for ell in list do Lvd.lookup(ell) od.sort
+						      then m = lookups[#list-1](lv)
+						      in if m.>= then out[#list-1] #:= m fi
+						 fi
+					 fi
 				    fi
 			    fi
 		    fi
 	      od
     in out
+}
 
-{takes the known unitaries from unitary_hash having the given x and lambda,
- and returns their locations in LFDKH}
-set known_unitaries(Param_hash Uhash, KGBElt x, ratvec lambda, LocalVertexData Lvd,
+{the original candidate-scanning version: builds a parameter for EVERY candidate face
+ and calls finalize/simple_status on it}
+set known_unitaries_slow(Param_hash Uhash, KGBElt x, ratvec lambda, LocalVertexData Lvd,
     [[FaceVertsKHash]] LFDKH, (Param->bool) fancy_tester, int HT) = [vec]:
-    if KU_fast_flag then return known_unitaries_fast(Uhash,x,lambda,Lvd,LFDKH) fi;
-    if KUKU_flag then return KU(x,lambda, Lvd, LFDKH, Uhash, fancy_tester) fi;
     let ps = for d:#LFDKH
 	     do for v in LFDKH[d]
 		do parameter(x,lambda,face_bary(Lvd, v[:d+1]))
-		{face_bary_ic(x.inner_class, face_bary(Lvd.list, v[:d+1])))}
 		od
 	     od
     in for d:#LFDKH
@@ -4147,13 +4208,40 @@ set known_unitaries(Param_hash Uhash, KGBElt x, ratvec lambda, LocalVertexData L
 	     then [j]
 	     else let qs = monomials(finalize(p)) {save 2900/7200 in Spin(4,4)}
 	     	  in if all(for q in qs
-		     	    do simple_status(q,HT{, is_unitary_to_ht_hash_big_SIMPLE_Lucas})>0 od)
+		     	    do simple_status(q,HT)>0 od)
 		     then [j]
 		     else []
 		     fi
 	     fi
 	  od.##
        od
+
+{cost and yield of known_unitaries, for deciding whether KU_flag pays}
+set KU_calls = int:0
+set KU_time = int:0
+set KU_marks = int:0
+set KU_cands = int:0
+
+set report_KU() = void:
+    prints("known_unitaries: ",KU_calls," calls, ",print_time_string(KU_time),
+    	   ", marked ",KU_marks," faces out of ",KU_cands," candidates")
+
+{takes the known unitaries from unitary_hash having the given x and lambda,
+ and returns their locations in LFDKH}
+set known_unitaries(Param_hash Uhash, KGBElt x, ratvec lambda, LocalVertexData Lvd,
+    [[FaceVertsKHash]] LFDKH, (Param->bool) fancy_tester, int HT) = [vec]:
+    let KUstart = elapsed_ms()
+    then ans = [vec]: if KU_fast_flag
+    	       	      then known_unitaries_fast(Uhash,x,lambda,Lvd,LFDKH,HT)
+      		      elif KUKU_flag
+		      then KU(x,lambda, Lvd, LFDKH, Uhash, fancy_tester)
+      		      else known_unitaries_slow(Uhash,x,lambda,Lvd,LFDKH,fancy_tester,HT)
+      		      fi
+    in KU_calls +:= 1;
+       KU_cands +:= sum(for list in LFDKH do #list od);
+       KU_time +:= elapsed_ms() - KUstart;
+       KU_marks +:= sum(for v in ans do #v od);
+       ans
 
 {takes the known unitaries from unitary_hash having the given x and lambda,
  and returns their locations in LFDKH}
