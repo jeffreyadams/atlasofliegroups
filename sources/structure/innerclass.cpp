@@ -196,6 +196,7 @@ InnerClass::InnerClass
 
 void InnerClass::construct() // common part of two constructors
 {
+  assert(not Cartan.empty());
   { // task 1: generate Cartan classes, fill non-dual part of |Cartan|
     { // complete initialisation of |Cartan[0]|
       const Fiber& f=d_fundamental;
@@ -215,7 +216,8 @@ void InnerClass::construct() // common part of two constructors
     const TitsCoset adj_Tg(*this);     // based adjoint Tits group
     const TitsGroup& Tg=adj_Tg.Tits_group(); // same, forgetting "based" stuff
 
-    for (CartanNbr i=0; i<Cartan.size(); ++i) // |Cartan| grows as loop advances
+    CartanNbr i=0;
+    do // |l| runs over growing |Cartan| until catching up with its end
     {
       Cartan_poset.new_max(Cartan[i].below); // include now completed level
 
@@ -288,7 +290,8 @@ void InnerClass::construct() // common part of two constructors
 	  }
 	} // |for (rf)|
       } // |for (alpha)|; new Cartans above |Cartan[i]| are now found
-    } // |for (i<Cartan.size())|
+    }
+    while (++i<Cartan.size());
 
     C_orb.set_size(Cartan.size()); // dimension |C_orb|, but leave it at that
   } // task 1 (Cartan class generation)
