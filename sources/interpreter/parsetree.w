@@ -266,7 +266,7 @@ that method is distributed among the different variants of the anonymous |union|
 in |expr|, the active one being recorded in |kind|. The reason to separate out
 |clear| from the destructor is because in assignments we need to clear out the
 old value before setting the new one, but explicitly calling the destructor is
-not a valid way to do that. In fact of the code of |clear| were expanded into
+not a valid way to do that. In fact, if the code of |clear| were expanded into
 the body of the destructor, the final |kind=no_expr| could be optimised away,
 since any subsequent inspection of the field would be undefined behaviour.
 
@@ -1206,9 +1206,12 @@ structure:
 
 @< Structure and typedef definitions... @>=
 struct formula_node
-@/{ expr left_subtree; @+ expr op_exp; @+ int prio;
-@/  formula_node(expr&& l,expr&& o, int prio)
-    : left_subtree(std::move(l)), op_exp(std::move(o)), prio(prio) @+{}
+@/{ expr left_subtree;
+ @+ id_type op;
+ @+ int prio;
+ @+ source_location op_loc;
+@/  formula_node(expr&& l, id_type op, int prio, const YYLTYPE& loc)
+    : left_subtree(std::move(l)), op(op), prio(prio), op_loc(loc) @+{}
 @/  formula_node (const formula_node& x) = delete;
 @/  formula_node (formula_node&& x) = delete;
 };
@@ -1245,15 +1248,15 @@ the case of a binary formula.
 @< Definitions of functions for the parser @>=
 raw_form_stack start_formula
    (expr_p e, id_type op, int prio, const YYLTYPE& op_loc)
-{ form_stack result;
-  result.emplace (
-   std::move(*expr_ptr(e)), expr(op,op_loc,expr::identifier_tag()), prio );
+{ expr_ptr operand(e);
+  form_stack result;
+  result.emplace (std::move(*operand), op, prio, op_loc );
   return result.release();
 }
 @)
 raw_form_stack start_unary_formula (id_type op, int prio, const YYLTYPE& op_loc)
 { form_stack result;    // leave |left_subtree| empty
-  result.emplace (expr(), expr(op,op_loc,expr::identifier_tag()), prio );
+  result.emplace (expr(), op, prio,op_loc);
 @/  return result.release();
 }
 
@@ -1271,7 +1274,7 @@ raw_form_stack extend_formula
   while (not s.empty() and s.top().prio>=prio+prio%2)
     @< Replace |e| by |oper(left_subtree,e)| where |oper| and |left_subtree|
        come from popped |s.top()| @>
-  s.emplace(std::move(e),expr(op,op_loc,expr::identifier_tag()),prio);
+  s.emplace(std::move(e),op,prio,op_loc);
   return s.release();
 }
 
@@ -1282,9 +1285,10 @@ the node is emptied do we pop it with |s.pop()|.
 
 @< Replace |e| by |oper(left_subtree,e)|...@>=
 { expr& lt = s.top().left_subtree;
+  expr oper(s.top().op,s.top().op_loc,expr::identifier_tag());
+      // applied operator
   if (lt.kind==no_expr) // apply initial unary operator
   {
-    expr& oper = s.top().op_exp;
     const source_location range = join(oper.loc,e.loc); // extent of operands
     e = expr(new application_node(std::move(oper),std::move(e)),range);
   }
@@ -1296,7 +1300,7 @@ the node is emptied do we pop it with |s.pop()|.
     args.push_front(std::move(lt));
     expr arg_pack(std::move(args),expr::tuple_display_tag(),range);
     app a(new application_node @|
-      ( std::move(s.top().op_exp), std::move(arg_pack) ));
+      ( std::move(oper), std::move(arg_pack) ));
     e= expr(std::move(a),range); // move construct application expression
   }
   s.pop();
@@ -1309,7 +1313,7 @@ modification to make sure all nodes get cleaned up after use.
 
 @< Definitions of functions for the parser @>=
 expr_p end_formula (raw_form_stack pre, expr_p ep, const YYLTYPE& loc)
-{ expr e(std::move(*expr_ptr (ep))); form_stack s(pre);
+{ expr e(std::move(*ep)); form_stack s(pre);
   while (not s.empty())
     @< Replace |e| by |oper(left_subtree,e)|...@>
   return new expr(std::move(e));
