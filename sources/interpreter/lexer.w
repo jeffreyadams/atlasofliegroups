@@ -606,8 +606,8 @@ has already been performed; the lexer is therefore ready to receive those type
 variables, even though the identifiers are textually outside the closed
 expression that is their scope. However it may happen that the parser performs a
 reduction to |typevar_list| (which involves calling |put_type_variable|) at a
-point where it has already seen a look-ahead symbol that is incompatible with
-|typevar_list| (since not an opening symbol), but which also rules out any
+point where it has already seen a look-ahead symbol that is \emph{incompatible}
+with |typevar_list| (since not an opening symbol), but which also rules out any
 interpretation of the identifiers other than as members of a |typevar_list|.
 (The parser produced by the \.{bison} parser generator may perform certain
 reductions even in circumstances where a token that has already been seen will

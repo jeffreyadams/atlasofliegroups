@@ -59,13 +59,11 @@ therefore produced functions with \Cee-language linking. As a consequence some
 jumping through hoops was necessary to cleanly integrate them into the \Cpp\
 program. However it turns out to be possible to compile the
 file \.{parser.tab.c} by a \Cpp-compiler, which makes all linkage to be
-for \Cpp, and removes any need for |extern "C"| declarations. For the moment
-these declarations are simply removed, and the structure of this file still
-carries a legacy of the original design.
+for \Cpp, and removes any need for |extern "C"| declarations.
 
 This file also defines some other functions defined here which are not
 used in the parser, but can be used by other modules written in~\Cpp; their
-declaration is separated for historic reasons only.
+declarations are given in separate modules for documentation reasons.
 
 @( parsetree.h @>=
 #ifndef PARSETREE_H
@@ -109,15 +107,15 @@ namespace atlas
 @*1 Outline of the type {\bf expr}.
 %
 For a large part the declarations for the parser consist of the recursive
-definition of the type |expr|. While that used to be a POD type used directly on
-the parser stack, this solution was very inflexible; it was therefore replaced
-by one where |expr| is not so constrained, and raw pointers |expr_p| to it are
-what is placed on the parser stack. The parser rarely needs to take apart
-parsing values, so one might think that just having seen |typedef struct expr*
-expr_p;| would have sufficed for it. But in fact it needs to know about several
-types occurring in the recursive definition of |expr|, using them as values on
-the parsing stack, so we put the detailed definition of |expr| here where the
-parser can see it.
+definition of the type |expr|. While that used to be a type acceptable in \Cee\
+and used directly on the parser stack, this solution was very inflexible; it was
+therefore replaced by one where |expr| is not so constrained, while on the
+parser stack one uses raw pointers |expr_p| to it. The parser rarely needs to
+take apart parsing values, so one might think that just having seen |typedef
+struct expr* expr_p;| would have sufficed for it. But in fact it needs to know
+about several types occurring in the recursive definition of |expr|, using them
+as values on the parsing stack, so we put the detailed definition of |expr| here
+where the parser can see it.
 
 @< Type declarations for the parser @>=
 
@@ -158,6 +156,7 @@ struct source_location
 { unsigned int start_line;
   unsigned short extent, first_col, last_col;
   id_type file;
+@)
   source_location(const YYLTYPE& loc); // construct from parser-provided data
   source_location() : start_line(~0u) @+{}
     // sometimes we have no location
@@ -185,7 +184,7 @@ std::ostream& operator<<(std::ostream& out, const source_location& sl)
 }
 
 @ The following constructor computes a |source_location| structure, given the
-|YYLTYPE| structure that the parser computes. In addition to the information
+|YYLTYPE| structure that the parser maintains. In addition to the information
 it provides, we need to get the file name from the |main_input_buffer|.
 
 @< Definitions of functions for the parser @>=
@@ -619,8 +618,8 @@ case die_expr: out << " die "; break;
 There are at least two syntactic categories that contain an (almost) arbitrary
 length sequence of subexpressions, namely tuple displays or row displays.
 Therefore, there will be a variant in~|expr| that accesses a list of
-subexpressions. We use our homegrown container type |sl_list| for
-simply linked lists, and related types like |simple_list|, to
+subexpressions. We use our homegrown container type |sl_list| (for
+simply linked lists), and related types like |simple_list|, to
 implement this.
 
 @< Includes needed... @>=
@@ -737,18 +736,15 @@ whether or not the list should be reversed can only be understood when the
 grammar rules involved are known, and this is the case only at the point these
 functions are called.
 
-Calling the function |reverse_expr_list| has as side effect to actually
-reverse the nodes in the list (rather than producing a separate reversed list),
-and as a consequence the argument raw pointer will no longer point to the whole
-list after the call, but only to the last node of the reversed list. This is
-usually no problem, as this function is called near the end of a parser action
-and the variable in that action holding the |raw| pointer will no longer be used
-after the call. Nonetheless this is something callers should be aware of. We
-could have decreased the surprise by passing the pointer be reference and
-assigning the reversed list to it before returning; in this way the caller can
-would still be able access the whole list through the variable after the call,
-but would still need to be aware of the reversal. We prefer not to do this
-modification for so little gain, and simply state: caller beware!
+Calling the function |reverse_expr_list| has as side effect to actually reverse
+the nodes in the list (rather than producing a separate reversed list).
+Therefore our caller, in practice always a parsing action in \.{parser.y},
+should not use the argument to |reverse_expr_list| a second time, since the call
+has the side effect of making it no longer point to the same list. This is never
+a problem, since partial parse trees are never used in more than one place in a
+parsing action, and the call to |reverse_expr_list| occurs in the final (often
+only) statement of a parsing action. Nonetheless this is something users should
+be aware of if they should decide to use this function in unusual ways.
 
 @< Definitions of functions for the parser @>=
 raw_expr_list make_exprlist_node(expr_p e, raw_expr_list raw)
@@ -1186,12 +1182,12 @@ surprise that \.{x\pow-y\pow2} parses as $x^{(-y)^2}$.
 
 @ The data type necessary to store these intermediate data during priority
 resolutions is a dynamic list of triples subtree-operator-priority. We use a
-|stack| instance, which is (trivially derived from) a |std::stack|
-using an appropriately adapted |simple_list| as container. That stack top
-represents the rightmost part of the formula seen do far. To implement the above
-solution for unary operators, we allow for the very first pending operator (at
-the tail of the list) to not have any left subtree; the expression is left of
-type |no_expr|, which can be tested to detect the end of the list.
+|stack| instance, which is (trivially derived from) a |std::stack| using an
+appropriately adapted |simple_list| as container. That stack top represents the
+rightmost part of the formula seen so far. To implement the above solution for
+unary operators, we allow for the very first pending operator (at the tail of
+the list) to not have any left subtree; the expression is left to be of
+kind~|no_expr|, which can be tested to detect the end of the list.
 
 All nodes, of type |formula_node|, will be directly constructed in place,
 through |emplace_back|, so we declare a single constructor for this type, moving
@@ -1226,7 +1222,7 @@ struct form_stack : public stack<formula_node>
   form_stack(raw_form_stack s) @| : base{sub_base{ssub_base{s}}} @+{}
     // resuscitate stack from raw pointer
   raw_form_stack release() @+{@; return c.release(); }
-    // inanimate the stack to a raw pointer
+    // anaesthetise the stack to a raw pointer
 };
 
 @ We define the following functions operating on partial formulae: two to
