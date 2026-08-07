@@ -2188,7 +2188,7 @@ std::vector<id_type> ids;
 ids.reserve(length(id_list));
 for (auto it=id_list.begin(); not id_list.at_end(it); ++it)
 {
-  auto new_tp = type_expr::new_abstract_type(ids.size(),type_list());
+  auto new_tp = type_expr::new_abstract_type(ids.size());
     // a new |closed_type|
   global_id_table->add_type_def
       (it->name,type::constructor(std::move(new_tp),arity),loc);

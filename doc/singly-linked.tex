@@ -993,19 +993,18 @@ power and storage capabilities have substantially increased over the years, it
 would appear that the mentioned goal should be within reach in the foreseeable
 future.
 
-To perform the necessary computations, the project develops a special purpose
-computer algebra program called \texttt{atlas}. It was originally conceived and
-implemented by Fokko du Cloux, and after his premature death in 2006 further
-developed by the author of this paper. The software executable has two major
-components of rather different nature: on one hand an extensive library of
-specialised mathematical constructions and algorithms implemented in \Cpp, and
-on the other hand a user programmatic interface, which provides a high level
-programming language that gives access to the \Cpp\ library. This language has
-allowed members of the project who are not necessarily proficient in \Cpp\ to
-contribute new functionality on top of the library, and indeed an extensive
-collection of such programs have been written over time; it is in this area that
-most of the activity directed directly to solving mathematical questions is
-taking place.
+To perform the necessary computations, the project has developed a special
+purpose computer algebra program called \texttt{atlas}. It was originally
+conceived and implemented by Fokko du Cloux, and after his premature death in
+2006 further developed by the author of this paper. The software executable has
+two major components of rather different nature: on one hand an extensive
+library of specialised mathematical constructions and algorithms implemented in
+\Cpp, and on the other hand a user programmatic interface, which provides access
+to the \Cpp\ library through a high level programming language. This has allowed
+members of the project who are not necessarily proficient in \Cpp\ to contribute
+new functionality on top of the library, and indeed an extensive collection of
+such programs have been written over time; it is in this area that most of the
+activity directed directly to solving mathematical questions is taking place.
 
 The \Cpp\ library is organised informally in several layers of functionality,
 ranging from low level utility and support classes and functions (which is where
@@ -1022,13 +1021,15 @@ computation is done using such small integers; the user interface hides this
 fact for the most part, and provides mathematical values as elements of more
 meaningful specialised types.
 
-The user programming interface is a compiler and interpreter for a programming
-language called Axis that somewhat resembles Python (but which has static
-typing, and is not ostensibly object oriented). It has a layered structure
-common to many language processing tools: input and output facilities, a lexical
-analyser, a (generated) parser, a type checker that also transforms expressions
-and functions into executable tree structures, and an evaluator for such
-structures.
+The user programming language is called Axis, and in some aspects resembles
+Python, but it has static typing, and is not ostensibly object oriented. It is
+provided in the form of an interpreter, which takes input from the command line
+or from a file, analyses it while converting it to an internal format, and if
+this succeeds and the input is not a just definition, executes the resulting
+code. The interpreter has a layered structure common to many language processing
+tools: input and output facilities, a lexical analyser, a (generated) parser, a
+type checker that also transforms expressions and functions into executable tree
+structures, and an evaluator for such structures.
 
 The implementation of both parts was firmly in place long before we introduced
 our linked list container class template, and so the pieces of code where such
@@ -1483,6 +1484,32 @@ could have easily used a \smpl. directly instead of a \stack., just like one can
 always avoid using a container adaptor by using the underlying container
 directly. But this was one occasion where using the stack operations was really
 all that was needed.)
+
+\subsubsection{Usage in the type system}
+
+After building a parse tree, if the entered input is a (as in the case of a
+function definition) contains an expression, that expression is type-checked,
+which process will also (upon success) produce a transformed and directly
+executable version of the expression. The types used are originally just small
+expressions constructed from a limited number of type constants (designating the
+various primitive types that the system provides) and a small number of
+constructions to combine them (forming function, row, tuple, and discriminated
+union types). The possibilities have since been enlarged by the introduction of
+for instance recursive and second-order types, but in spirit and internal
+representation they have stayed close to the original simple repertoire. That
+representation takes the form of a recursive linked structure
+\textbf{\textit{type\_\!expr}} built around a
+tagged union, quite similar to the representation of parse trees, but with
+substantially fewer variants. The tuple and union type constructors allow for an
+arbitrary number of type subexpressions, and these are represented by
+$\smpl.\ang{\textbf{\textit{type\_\!expr}}}$; that type is used during the
+construction of these lists, but when inserted into the \textbf{union} that
+defines \textbf{\textit{type\_\!expr}}, they are converted to a raw pointer by
+calling~\textit{release}, like we have seen above for lists in parse trees.
+Before the introduction of our list container types, these lists were coded by an
+explicit recursion, and replacing these by the container type was a very simple
+change, and simplified their manipulation through the use of standard library
+facilities.
 
 
 \section{Implementation details}

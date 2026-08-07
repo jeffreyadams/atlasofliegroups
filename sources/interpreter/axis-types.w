@@ -545,7 +545,9 @@ the parts to assemble, and |local_ref| supplies a given tabled type with an
 empty argument list, as is appropriate for mutual references between tabled
 types defined within a same group, and for types stored in the global identifier
 table (for which all other information about the type is found in
-|open_type_table|).
+|open_type_table|). Finally |new_abstract_type| builds a closed type that is
+still being defined, from its offset from the current number |closed_count()| of
+closed types.
 
 @< Ordinary methods of the |type_expr| class @>=
 
@@ -593,8 +595,8 @@ static type_expr user_type(type_nr_type type_nr,type_list&& l,bool closed=false)
 static type_expr local_ref(type_nr_type type_nr)
 {@; return user_type(type_nr,type_list(),false);}
 
-static type_expr new_abstract_type(type_nr_type type_nr,type_list&& l)
-{@; return user_type(closed_info.size()+type_nr,std::move(l),true);}
+static type_expr new_abstract_type(type_nr_type offset)
+{@; return user_type(closed_count()+offset,type_list(),true);}
 
 
 @ A move constructor for |type_expr| is provided, but no copy constructor;
