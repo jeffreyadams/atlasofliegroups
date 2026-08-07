@@ -924,11 +924,11 @@ the method of the same name of the container; but \slls. has no such method, nor
 can it be efficiently implemented without recording additional data. However, we
 consider this to be an error on the part of the \Cpp\ specification, which
 should not have defined a \textit{back} method for \std{queue}, since access to
-the most recently pushed item is not part of the queue abstract data type. Indeed
-in none of the many places where we use queues in our software do we have any
-use for such a method. We have chosen to use $\std{queue}\langle T,\slls.\ang
-T\rangle$ in these places; since methods of a class template that are never
-called are not compiled either, this causes no problems. Similarly
+the most recently pushed item is not part of the queue abstract data type.
+Indeed in none of the many places where we use queues in our software do we have
+any use for such a method. We have chosen to use $\std{queue}\langle
+T,\slls.\ang T\rangle$ in these places; since methods of a class template that
+are never called are not compiled either, this causes no problems. Similarly
 $\std{stack}\langle T,\mspl.\ang T\rangle$ cannot handle calls to \textit{size},
 but code using a stack should not have any need for such calls, and in the
 absence of such calls the program will compile correctly.
@@ -1022,12 +1022,13 @@ computation is done using such small integers; the user interface hides this
 fact for the most part, and provides mathematical values as elements of more
 meaningful specialised types.
 
-The user programming interface is a compiler and interpreter for a language
-somewhat resembling Python (but with static typing and not ostensibly object
-oriented). It has a layered structure common to many language processing tools:
-input and output facilities, a lexical analyser, a (generated) parser, a type
-checker that also transforms expressions and functions into executable tree
-structures, and an evaluator for such structures.
+The user programming interface is a compiler and interpreter for a programming
+language called Axis that somewhat resembles Python (but which has static
+typing, and is not ostensibly object oriented). It has a layered structure
+common to many language processing tools: input and output facilities, a lexical
+analyser, a (generated) parser, a type checker that also transforms expressions
+and functions into executable tree structures, and an evaluator for such
+structures.
 
 The implementation of both parts was firmly in place long before we introduced
 our linked list container class template, and so the pieces of code where such
@@ -1143,6 +1144,8 @@ sequence is produced, or if random access to the sequence is needed during its
 construction, and \slls. in most other cases; this amounts to a considerable
 portion of our uses of singly linked lists in the library.
 
+\subsubsection{Lists in generative processes}
+
 We have already mentioned how a process of generating a collection of values can
 use a list wrapped as a \queue. to hold a collection of values already generated
 but not yet inspected for the creation of further values. If at the end of the
@@ -1163,31 +1166,33 @@ Coxeter groups (see~\cite{Fokko transducer}), or the structured set
 $K\backslash{G/B}$ of $K$-orbits on $G/B$ (affectionately called KGB-set within
 the Atlas project). For these, the time spent constructing a table is usually
 dwarfed by the time spent by computations using it, so efficiency of the former
-is not a main concern. A practical concern on the other hand may arise from the
-need one often has for an item to refer back to the previous ``parent'' item
-from which is was obtained. When the items are constructed in a linked list,
-such a reference can be made using a pointer or an iterator. When instead using
-\vect., both of these would be invalidated by any reallocation of the vector
-storage while it is growing; as a consequence, one would either need to ensure
-that no reallocation happens by reserving beforehand an amount of memory
-guaranteed to be sufficient, or else choose to store an index into the vector
-rather than a pointer; the latter is safe, since the current location of the
-entry is looked up every time the index is used. In some cases there may be
-reasons that more or less force constructing items directly in a vector; for
+is not a main concern.
+
+A practical concern on the other hand may arise from the need one often has for
+an item to refer back to the previous ``parent'' item from which is was
+obtained. When the items are constructed in a linked list, such a reference can
+be made using a pointer or an iterator. When instead using \vect., both of these
+would be invalidated by any reallocation of the vector storage while it is
+growing; as a consequence, one would either need to ensure that no reallocation
+happens by beforehand reserving an amount of memory guaranteed to be sufficient,
+or else choose to store an index into the vector rather than a pointer; the
+latter is safe, since the current location of the entry is looked up every time
+the index is used. Apart from this, there may in some cases be reasons that more
+or less force the choice of constructing items directly in a vector; for
 instance the use of a hash table to identify each newly generated value with one
 that might already be present, strongly favours storing the items in a \vect.,
 since our implementation of hash tables stores its values in a \vect. anyway.
 
-While all fundamental algorithms in our library were originally written using
-almost exclusively vectors, we were able to rewrite several of them making more
-use of lists; this is the case for generating root systems (as the closure of a
-small set of ``simple roots'' under the ``simple reflection'' operations), and
-for building transducer tables to implement Weyl groups (these are essentially
-Cayley graphs of certain subquotients of the Weyl group as a finite Coxeter
-group), but not for the KGB-set constructor: it seems pointless to do so because
-of its use of a hash table. We found that such rewriting generally led to more
-transparent, though not necessarily faster, code. The reasons for this are
-varied. For one, trying to understand old code forces one to focus on its
+While all fundamental construction algorithms in our library were first written
+using almost exclusively vectors, we were able to rewrite several of them making
+more use of lists; this is the case for generating root systems (as the closure
+of a small set of ``simple roots'' under the ``simple reflection'' operations),
+and for building transducer tables to implement Weyl groups (these are
+essentially Cayley graphs of certain subquotients of the Weyl group as a finite
+Coxeter group), but not for the KGB-set constructor: it seems pointless to do so
+because of its use of a hash table. We found that such rewriting generally led
+to more transparent, though not necessarily faster, code. The reasons for this
+are varied. For one, trying to understand old code forces one to focus on its
 essential structure, so any kind of refactoring would bring that to the fore.
 But using lists instead of vectors also replaces some of the many small integer
 variables used in the algorithm by values like iterators that by their type are
@@ -1219,21 +1224,21 @@ a positive root is a negative root only in the very special case of applying a
 simple reflection to the corresponding simple root; these cases are easily
 singled out and ignored. The construction then progresses from level~1 upwards,
 producing roots a few levels ahead. Reflection actions that lower the level
-never produce a new positive root, so once a level is reached, it is complete.
-But roots may be missing in the levels ahead of the current level, and since the
-desired ordering of the roots is not necessarily the one in which they are first
-encountered, a definitive root number cannot yet be assigned to these roots. The
-structure in which the roots are initially constructed is therefore a \vect. of,
-for each level, a \std{set} of coordinate vectors. Arriving at a given level,
-the set is traversed using a range-based \textbf{for}-loop. It starts by adding
-the root using \textit{push\_\!back} to the vector of positive roots in the root
-system; the index at which it lands defines the number of the root in the
-system. The reflections are then applied one by one to the root. If this
-increases the level, the resulting root is inserted into the set of roots at
-that level. If not, it should already by present in the table at the current or
-lower level; at the current level it is the root itself, and else it is looked
-up, and in both cases links in the table are set to express the reflection
-relation between the roots.
+never produce a new positive root, so once a level becomes current, it is
+complete. But roots may be missing in the levels ahead of the current level, and
+since the desired ordering of the roots is not necessarily the one in which they
+are first encountered, a definitive root number cannot yet be assigned to these
+roots. The structure into which the roots used to be initially constructed is
+therefore a \vect. of, for each level, a \std{set} of coordinate vectors.
+Arriving at a given level, the set is traversed using a range-based
+\textbf{for}-loop. It starts by adding the root using \textit{push\_\!back} to
+the vector of positive roots in the root system; the index at which it lands
+defines the number of the root in the system. The reflections are then applied
+one by one to the root. If this increases the level, the resulting root is
+inserted into the set of roots at that level. If not, it should already by
+present in the table at the current or lower level; at the current level it is
+the root itself, and else it is looked up, and in both cases links in the table
+are set to express the reflection relation between the roots.
 
 When rewriting this constructor to take advantage of linked lists, the most
 consequential decision was to replace the vector of incomplete levels by a list.
@@ -1247,23 +1252,24 @@ representing the current level when done with it, but the algorithm still creeps
 along the vector to ever higher positions.) The levels below the current level
 are complete, and we know the final positions of all the roots they contain, but
 we are still unsure about the total number of positive roots that will be found.
-Therefore we avoid constructing the table for these roots just yet; instead we
-place the information about these levels on a separate list that runs backwards.
-So the most recent previous level is at the front of this list, and any
-reflection that decreases the level will give a root present near the front of
-this list. Once the list of levels ahead of the current level becomes empty, the
-generating procedure is complete and we know the number of positive roots; we
-then allocate and fill the table with the information on the list of previous
+Therefore we now avoid constructing the table for these roots just yet; instead
+we place the information about these past levels on a separate list that runs
+backwards. So the most recent previous level is at the front of this list, and
+any reflection that decreases the level will give a root present near the front
+of this list. Once the list of levels ahead of the current level becomes empty,
+the generating procedure is complete and we know the number of positive roots;
+we then allocate and fill the table with the information on the list of previous
 levels, reversing its order.
 
-This new organisation involves some more changes. Once a level of roots becomes
-current, it is complete and the positions of all roots of the level are fixed;
-we therefore change the representation from \slls. to \vect. when pushing a
-level to the front of the list of previous levels. We also include information
-about the starting index for each level on this list, so that locating one of
-its roots given its number can be done without searching, once its level is
-found; this compensates for the fact that these roots are not yet all stored in
-a contiguous array, as they were in the initial implementation.
+This new organisation involves some more changes. When, having traversed the
+current level, it is removed from the list of levels ahead and pushed to the
+list of previous levels, the set of its roots is complete, so we change the
+representation from \slls. to \vect., which will later become a contiguous
+segment of the vector of all positive roots. We also add in each node on the
+list of previous levels the starting index for roots of this level, so that
+locating one of its roots given its number can be done without searching, once
+its level is found; this compensates for the fact that these roots are not yet
+all stored in a single vector, as they were in the initial implementation.
 
 We also replaced the \std{set} of roots at the levels ahead of the current one
 by a sorted \slls.. This may seem counterproductive, as looking up and possibly
@@ -1277,24 +1283,24 @@ way(s) in which a root was obtained by a reflection, we associate a vector of
 links to each root, with $\textit{link}[i]$ of root $\alpha$ giving the number,
 if any, of the root from which $\alpha$ was obtained using reflection~$i$.
 Adding this to the original \std{set} representation would involve changing it
-to a \std{map} (with $\alpha$ as key and \textit{link} as value), but this makes
-the insertion a lot more complicated; we'll not go into details here.
+to a \std{map} (with $\alpha$ as key and \textit{link} as value), but this would
+make insertion a lot more complicated; we shall not go into details here.
 
 On the other hand adding a \textit{link} field to roots that are in a sorted
 list is easy: it suffices to define a \textbf{struct} containing both, whose
 constructor take $\alpha$ as argument but also builds the \textit{link} vector.
-Insertion into a sorted list involves a search (using \std{find\_\!if\_\!not}
-with a comparison predicate) followed, if the root is not found, by
-\textit{insert} to add the root; then in either case the \textit{link} field to
-set can be accessed through the iterator used in the search. The same
-\textbf{struct} can continue to be used when the level is transferred to the
-list of previous levels, although the list of these \textbf{struct}s is then
-converted to a vector; incidentally the call of \textit{to\_\!vector} that
-performs the conversion uses move semantics for transferring elements, so the
-conversion does not involve a deep copy.
+Insertion into a sorted list involves searching the position for~$\alpha$ (using
+\std{find\_\!if\_\!not} with a comparison predicate) followed, if $\alpha$ is
+not already present, by \textit{insert} to add it; in either case the
+\textit{link} field to set can then be accessed through the iterator from the
+search. The same \textbf{struct} can continue to be used when the level is
+transferred to the list of previous levels, although the list of these
+\textbf{struct}s is then converted to a vector; incidentally the call of
+\textit{to\_\!vector} that performs the conversion uses move semantics for
+transferring elements, so the conversion does not involve a deep copy.
 
-This early addition of a field \textit{link} was part of a change in the timing
-of setting the reflection links. Originally the link vector of a root was
+This early addition of a field \textit{link} was part of a change involving the
+timing of setting the reflection links. Originally the link vector of a root was
 created when the root was entered into that root system table, namely when it is
 current. But as just described, we can now already set the downward link
 from~$\alpha$ to the (at this point current) root from which it was obtained
@@ -1327,46 +1333,164 @@ fact that the roots go through two preliminary forms of storage before being
 definitively stored in the table of the root system is not a distraction;
 rather, it follows from and elucidates the nature of the generation procedure.
 
-\subsection{The interpreter}
+\subsection{Use of singly linked lists in the Axis interpreter}
 
 While the user interface of the Atlas software originally just consisted of code
 to gather input for library functions and to print their results, this has since
 been replaced by a programmable interface, which over time has become a
-full-fledged programming language, representing a substantial part of the code
-base. In the interpreter, linked structures are much more frequently used than
-in the library part, so there was much more opportunity for using linked lists
-in this part than in the rest of the software.
+full-fledged programming language Axis. The implementation and support for this
+language represents a substantial part of the \Cpp\ code base. In the
+interpreter, linked structures are much more frequently used than in the library
+part, so there were more opportunities for using linked lists in this part than
+in the rest of the software.
 
-This does not apply to the first stages of input processing, namely gathering
-lines of input and lexical scanning. Here the only point that might be worth
-mentioning is that the possibility to include at some point of a file the text
-from another file leads to a stack of active input sources being maintained,
-where we use the technique mentioned above of defining a derived
-not-quite-abstract data type of a stack enriched with extra methods. The extra
-methods allow finding the current stack size, as well as obtaining
-\textbf{const}-iterators for traversal of the stack (which is needed to
-implement the safety precaution that no file can be opened a second time while
-it is already an active input source); as underlying container for this stack we
-use \textit{mirrored\_sl\_list}.
+In the first stages of input processing, gathering lines of input and lexical
+scanning lists are not used very often. The only point that might be worth
+mentioning is that the possibility to textually include one file into another
+leads to a stack of active input sources being maintained; here we use the
+technique mentioned above of defining a derived not-quite-abstract data type of
+a stack enriched with extra methods. The extra methods allow finding the current
+stack size, as well as obtaining \textbf{const}-iterators for traversal of the
+stack (which is needed to implement the safety precaution that no file can be
+opened a second time while it is already an active input source); as underlying
+container for this stack we use \textit{mirrored\_sl\_list}.
 
-Our parser is produced using the \texttt{bison} parser generator program. Thus
-we have no control over the parser function itself, which is a table-driven
-skeleton program written in~\Cee, but we do provide its action functions which
-build up parse tree of the user input as it is being recognised. The generated
-parser can actually be compiled as \Cpp\ code, so the action code is not
-restricted to what can be written in \Cee; notably the parse tree can use
-\Cpp\ types. These types have mutually recursive definitions that more or less
-reflect the context-free grammar being implemented, using pointers to refer to
-each other, and using a tagged \textbf{union} of variants when a type represents
-a syntactic category with many different production rules.
+\subsubsection{Usage during parsing}
+
+Linked lists are very much present in the parse tree structure that results from
+reading user input. Some particularities makes their use somewhat different from
+what one would expect in a normal \Cpp\ program. Our parser is produced using
+the \texttt{bison} parser generator program. Thus we have no control over the
+parsing function itself, which is a table-driven skeleton program written
+in~\Cee, but we do provide the action functions that it calls when parts of the
+user input have been recognised, to build up the corresponding parse tree. This
+generated parser can actually be compiled as \Cpp~code (due to the fact that the
+\Cpp\ language includes the relevant part of~\Cee), which allows the action code
+to use some functionality not present in~\Cee; notably this allows it to use
+\Cpp\ types in the representation of the parse tree. These types have mutually
+recursive definitions that reflect the production rules of the context-free
+grammar being implemented. They use pointers to refer to each other, and often
+employ a tagged \textbf{union} of variants when a type represents a syntactic
+category with several production rules.
+
+Many syntactic structures, like formulas or argument lists in a function call,
+have a repetitive structure. Since we do not know the number of such parts while
+parsing them, it is natural to represent these structures in the parse tree
+using linked lists. But since these lists occur as variants of a \textbf{union}
+type, it is convenient to store the initial link of such a list as a raw pointer
+to a \slnd. (while any further links will have the usual smart pointer type used
+by our implementation of linked lists, as will detailed later). In particular
+these lists are of the naked kind, lacking the direct access to their final link
+to support extension at the back that \slls. provides. Our grammar
+systematically uses left recursive rules for such repeating structures, which
+avoids having to place all parts of the structure on the parsing stack before
+combining any of them (as would happen with right recursive rules). This implies
+that the action rule called when a part is complete must combine the tree for
+this part with the list constructed for the previous parts; since the only cheap
+way to do this is to push the new tree to the front of that list, the result is
+that the lists run backwards during their construction. The parsing
+function that is called when the list gets to be incorporated in a surrounding
+structure (for instance, when the closing parenthesis of an argument list is
+reached) must then reverse the list before including it into that structure;
+indeed this is what we systematically do in such cases.
+
+We mentioned that the first link of each such list is a raw pointer. This is a
+consequence of a more general design decision made in the representation of the
+parse tree, to use only POD\footnote{\Cpp\ acronym for Plain Old Data} types as
+variants of any \textbf{union} type, which rules out \Cpp\ types like smart
+pointers whose construction or destruction can involve non-local action, but
+which allows raw pointers. Since partial parse trees handled directly by the
+parser program are placed on a parsing stack as instances of a large
+\textbf{union} type, they are always represented as POD types. The raw pointers
+involved have ownership of the tree they point to, meaning that whoever holds
+them is responsible for cleaning up that tree when they are done with the
+pointer, unless they previously stored it in an object that takes over the
+ownership. But the tree structure is such that all lower levels are ``smart'':
+whenever one calls \textbf{delete} on a pointer, the destructor of the object it
+points to will take care of destructing the entire tree; in particular this
+means that destructors of any tagged union types in the parse tree will find the
+active variant and call \textbf{delete} on any (raw) pointers it contains. The
+\textbf{union} used for the parsing stack is not tagged, but when the parser
+decides to discard the values after a syntax error has been found, it knows the
+active variants based on the current parser state, and it then calls ``destroy''
+functions the user has associated with those variants to clean up; this again
+involves simply calling \textbf{delete} on any pointers components of the
+variant. As we shall see below, the node type used in our linked list has a
+destructor that makes linked lists fit well into this scheme.
+
+The parser action functions have a standard way of dealing with the partial
+parse trees that are passed to them as arguments, in the form of raw pointers.
+As first matter of affairs they construct a \smpl. from any raw pointer
+to~\slnd. passed, which incorporates the nodes into the container without any
+actual action; similarly \std{unique\_\!ptr} instances are constructed from any
+other raw pointers, again without any actual action. Then the action function
+does whatever it needs to do, which in case of extending a list involves calling
+\textit{push\_\!front} on the \smpl. just constructed, and at the end the
+function returns the new parse tree as a raw pointer by calling the
+\textit{release} method on the (list or other) object that holds it. Note that,
+even though the task of a parsing action is usually to construct a node of the
+true by invoking \textbf{new}, this call is hidden inside the
+\textit{push\_\!front} operation in the case of building lists, and the code
+gives less of a feel of manually constructing the parse tree than other action
+functions do. The list reversal function similarly proceeds by converting to
+\smpl., calling \textit{reverse}, and returning the list while applying
+\textit{release} to it.
+
+\subsubsection{Implementing a precedence parser for formulas}
+
+One place where lists are used in a slightly different way to help building a
+parse tree is in applying precedence rules in formulas. The Axis language has
+fairly conventional arithmetical formulas, with a fixed repertoire of operator
+symbols, each of which can be used both as infix and as prefix operator, and is
+given a (small integer) precedence level that governs both its binding strength
+and (through the parity of the level) its associativity. To simplify the
+grammar, the production rules ignore precedence level, but pass precedence as
+argument to action functions. A formula is built from a sequence of alternating
+operands and operators ending with an operand. Here any parenthesised
+subexpressions or prefix operators not at the very beginning of the formula are
+incorporated into operands, and need no further consideration. So if the formula
+starts with an operand, all operators considered are infix, and otherwise the
+initial operator is the unique prefix operator; it will be treated like an infix
+operator with an empty expression as left operand.
+
+Parsing a formula mainly involves a non-terminal that represents an incomplete
+formula in which there is no final operand. Three parsing actions are associated
+with it: it is first reduced to when the initial operator of the formula is
+seen, it can then repeatedly be extended by an operand and a following operator,
+and finally when en operand not followed by an operator occurs it reduces to a
+formula. These actions implement an operator precedence parser, by producing as
+value not a single parse tree, but a small stack of triples of a parse tree for
+an operand, an operator symbol, and its precedence level (the tree is destined
+to be the left operand of the operator, but its right operand is yet to be
+determined). The actions ensure that in the stack precedence increases towards
+the top, and strictly so at even levels. The action for adding an operand and
+operator does the precedence parsing by pushing onto the stack if it can, and
+otherwise combining the operand with the stack top to produce a new operand
+replacing it, and repeating after popping the stack. The final reduction to a
+completed formula repeatedly combines the rightmost operand with the stack top,
+until the stack is empty.
+
+The reason we mention all this as an application of linked lists, is that we
+implement the parsing value for an incomplete formula using an appropriate
+instance of \stack., which as we have seen is a wrapper around a \smpl.. However
+as in other cases of parsing values that are or contain lists, we represent the
+list by a raw pointer wherever it is handled by the skeleton parser, convert it
+to a \stack. upon entry to an action function, do stack operations inside, and
+upon returning transform it back to a raw pointer. Having a container type with
+the flexibility to allow these transformations easily and with zero runtime cost
+greatly facilitated the implementation of this part of the parsing process. (We
+could have easily used a \smpl. directly instead of a \stack., just like one can
+always avoid using a container adaptor by using the underlying container
+directly. But this was one occasion where using the stack operations was really
+all that was needed.)
+
 
 \section{Implementation details}
 
 Implementing various methods for manipulating singly linked lists is an
-instructive exercise, resulting in most cases in quite straightforward code.
-Yet there are a few occasions where our implementation seeks a slight
-improvement to the most obvious approach;  we briefly mention here a few of such
-cases.
+instructive exercise, resulting in most cases in quite straightforward code. Yet
+there are a few occasions where our implementation seeks a slight improvement to
+the most obvious approach; we briefly mention here a few of such cases.
 
 \subsection{Details for methods of \textbf{\textit{sl\_list}}$\langle T\rangle$}
 
