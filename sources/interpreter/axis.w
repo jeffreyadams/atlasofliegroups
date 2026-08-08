@@ -872,7 +872,7 @@ case tuple_display:
   comp.reserve(n);
   sl_list<type> comp_types;
 @)
-  wtl_const_iterator tl_it (ntt.tuple());
+  auto tl_it = ntt.tuple().wcbegin();
   for (wel_const_iterator it(e.sublist); not it.at_end(); ++it,++tl_it)
   {
     type& comp_type = *comp_types.push_back(type::wrap(*tl_it,fc));
@@ -2180,8 +2180,8 @@ the same.
   else // |n_args!=1|
   { assert(a_priori_type.kind()==tuple_type
        and arg_type.raw_kind()==tuple_type);
-    wtl_const_iterator apt_it(a_priori_type.tuple())
-    , argt_it(arg_type.tuple());
+    auto apt_it = a_priori_type.tuple().wcbegin()
+    , argt_it = arg_type.tuple().wcbegin();
     wel_const_iterator exp_it(args.sublist);
     for (auto res_it = arg_vector.begin(); res_it!=arg_vector.end();
        ++res_it,++apt_it,++argt_it,++exp_it)
@@ -3354,7 +3354,7 @@ void thread_bindings
     // recursively traverse sub-list for a tuple of identifiers
   { auto tex = te.expanded(); // ensure substitution into any argument types
     assert(tex.raw_kind()==tuple_type);
-    wtl_const_iterator t_it(tex.tuple());
+    auto t_it = tex.tuple().wcbegin();
     for (auto p_it=pat.sublist.begin(); not pat.sublist.at_end(p_it);
          ++p_it,++t_it)
       thread_bindings(*p_it,*t_it,lvl,dst,is_const);
@@ -5941,7 +5941,7 @@ case discrimination_expr:
   if (subject_type.expand().raw_kind()!=union_type)
     @< Report that a discrimination clause needs to be a union type,
        |exp.subject| has non-union type |subject_type| @>
-  const auto* variants = subject_type.top_expr().tuple();
+  const auto& variants = subject_type.top_expr().tuple();
   size_t n_variants=length(variants);
   std::vector<choice_part> choices(n_variants);
 @)
@@ -5957,7 +5957,7 @@ case discrimination_expr:
     @< Filter from |candidates| those that do not know all |tags|, and report an
        error if this does not reduce it to a singleton;
        otherwise set |positions| according to that remaining candidate @>
-    const wtl_const_iterator candidate_var_tps(candidates.front()->tp.tuple());
+    const auto candidate_var_tps = candidates.front()->tp.tuple().wcbegin();
   @)
     @< Process |branches| and assign them to |choices|, possibly reordering them
       according to the specified variant names and taking into account a
@@ -5980,7 +5980,7 @@ with the case with tags.
 { if (n_branches!=n_variants)
     @< Report mismatching number of branches @>
   case_list::weak_const_iterator branch_it(&exp.branches);
-  wtl_const_iterator type_it(variants);
+  auto type_it = variants.wcbegin();
   for (size_t k=0; k<n_branches; ++k,++branch_it,++type_it)
   { const auto& branch = *branch_it;
     const type variant_type =
@@ -6060,7 +6060,7 @@ conversion of previous branches.
     { size_t k = *pos_it;
       ++pos_it;
       @< Check that |choices[k]| has not been filled before @>
-      const wtl_const_iterator types_start(variants); // base for ``indexing''
+      const auto types_start = variants.wcbegin(); // base for ``indexing''
       type variant_type =
         type::wrap(*std::next(types_start,k),fc);
       // type of variant for this branch
@@ -8409,7 +8409,7 @@ void threader::thread(const id_pat& pat,type_expr& te)
   if ((pat.kind&0x2)!=0) // first treat any sublist
   { te.expand().specialise(unknown_tuple(length(pat.sublist)));
     assert(te.raw_kind()==tuple_type); // succeeds due to successful |specialise|
-    wtl_iterator t_it(te.tuple());
+    auto t_it = te.tuple().wbegin();
     for (auto it=pat.sublist.begin(); not pat.sublist.at_end(it); ++it,++t_it)
       thread(*it,*t_it);
   }
@@ -9286,7 +9286,7 @@ iterator.
 @)
   type_expr tup_exp = tuple_tp->bake().expanded();
     // ensure tabled type is expanded
-  component = std::move(*std::next(wtl_iterator(tup_exp.tuple()),pos));
+  component = std::move(*std::next(tup_exp.tuple().wbegin(),pos));
 }
 
 @ We try to give error messages that identify clearly what has gone wrong.

@@ -336,7 +336,7 @@ type_expr Id_table::swallow(const type_expr& tp) const
     case tuple_type:
     case union_type:
     { dressed_type_list aux;
-      for (wtl_const_iterator it(tp.tuple()); not it.at_end(); ++it)
+      for (auto it = tp.tuple().wcbegin(); not it.at_end(); ++it)
         aux.push_back(swallow(*it));
       return type_expr::tuple_or_union(tp.raw_kind(),aux.undress());
     }
@@ -352,7 +352,7 @@ type_expr Id_table::swallow(const type_expr& tp) const
         @< Throw a |program_error| signalling an incorrectly applied type symbol
            or type constructor @>
       dressed_type_list arg_list;
-      for (wtl_const_iterator it(tp.ctor_args()); not it.at_end(); ++it)
+      for (auto it = tp.ctor_args().wcbegin(); not it.at_end(); ++it)
         arg_list.push_back(swallow(*it));
       return type_expr::user_type @|
         (defined_type.stored_nr(),arg_list.undress(),
@@ -1004,7 +1004,7 @@ void definition_group::thread_bindings
     // recursively traverse sub-list for a tuple of identifiers
   { auto tex = te.expanded(); // ensure substitution into any argument types
     assert(tex.raw_kind()==tuple_type);
-    wtl_const_iterator t_it(tex.tuple());
+    auto t_it = tex.tuple().wcbegin();
     for (auto p_it=pat.sublist.begin(); not pat.sublist.at_end(p_it);
          ++p_it,++t_it)
       thread_bindings(*p_it,*t_it,is_const);
@@ -1416,7 +1416,7 @@ rather than the union type itself. We therefore need to set up a second
 iterator |comp_it| to loop over those components.
 
 @< Remove injector functions... @>=
-{ wtl_const_iterator comp_it (defined_type->tuple());
+{ auto comp_it = defined_type->tuple().wcbegin();
   for (unsigned i=0; i<fields.size(); ++i,++comp_it)
     if (fields[i]!=type_binding::no_id)
     { const auto* entry =
@@ -1562,7 +1562,7 @@ themselves and store them in |jectors|.
    their projector or injector functions... @>=
 { assert(tp.kind()==tuple_type or tp.kind()==union_type);
     // ensured by the grammar
-  auto tp_it =wtl_const_iterator(tp.tuple());
+  auto tp_it = tp.tuple().wcbegin();
   auto id_it=fields.wcbegin();
   if (tp.kind()==tuple_type)
   { for (unsigned i=0; i<n; ++i,id_it++,tp_it++)
@@ -1796,16 +1796,16 @@ pointers to types remaining to be visited.
         }
       break; case row_type: work.push(&t.component_type());
       break; case tuple_type: case union_type:
-        for (wtl_iterator it(t.tuple()); not it.at_end(); ++it)
+        for (auto it = t.tuple().wbegin(); not it.at_end(); ++it)
           work.push(&*it);
       break; case tabled:
-        for (wtl_iterator it(t.ctor_args()); not it.at_end(); ++it)
+        for (auto it = t.ctor_args().wbegin(); not it.at_end(); ++it)
           work.push(&*it);
         @< Replace |t.tabled_nr()| by the number that either |position| or the
            |global_id_table| associates to it; if there is none
            |throw| a |program_error| @>
       break; case closed_type:
-        { for (wtl_iterator it(t.ctor_args()); not it.at_end(); ++it)
+        { for (auto it = t.ctor_args().wbegin(); not it.at_end(); ++it)
             work.push(&*it);
           id_type id = t.closed_nr();
           @< Check that the type |tp| in |*global_id_table| stored for |id| is
@@ -1881,7 +1881,7 @@ identifiers at all, and to throw a |program_error| in such cases.
   if (position.count(id)>0)
     // then type is defined in our group: replace by future tabled reference
   {
-    if (t.ctor_args()!=nullptr)
+    if (not t.ctor_args().empty())
     { std::ostringstream o;
       o << "Type '" << main_hash_table->name_of(id) @|
         << "' being defined cannot be given type arguments";
@@ -1983,7 +1983,7 @@ function type through |definition_group::add|.
 { assert(tp.raw_kind()==tuple_type or tp.raw_kind()==union_type);
   auto& @;record = *store.emplace_back(definition_group(length(fields)));
 @/
-  auto tp_it =wtl_const_iterator(tp.tuple());
+  auto tp_it = tp.tuple().wcbegin();
   if (tp.raw_kind()==tuple_type)
   {
     for (auto id_it=fields.wcbegin(); not fields.at_end(id_it);
@@ -2334,14 +2334,14 @@ type_expr closed_subst
     case tuple_type:
     case union_type:
     { dressed_type_list aux;
-      for (wtl_const_iterator it(tp.tuple()); not it.at_end(); ++it)
+      for (auto it = tp.tuple().wcbegin(); not it.at_end(); ++it)
         aux.push_back(closed_subst(*it,ctors));
       return type_expr::tuple_or_union(tp.raw_kind(),aux.undress());
     }
     case closed_type:
     case tabled:
     { auto nr = tp.stored_nr(); dressed_type_list aux;
-      for (wtl_const_iterator it(tp.ctor_args()); not it.at_end(); ++it)
+      for (auto it = tp.ctor_args().wcbegin(); not it.at_end(); ++it)
         aux.push_back(closed_subst(*it,ctors));
       if (tp.raw_kind()==closed_type and nr>=type_expr::closed_count())
       { BitMap nothing(type_expr::table_size());
@@ -2566,7 +2566,7 @@ void type_of_type_name(id_type id)
   const auto& fields = type_expr::fields(tp.tabled_nr());
   auto f_it = fields.begin();
   char sep = expansion.raw_kind()==tuple_type ? ',' : '|';
-  for (wtl_const_iterator it(expansion.tuple()); not it.at_end(); ++it,++f_it)
+  for (auto it = expansion.tuple().wcbegin(); not it.at_end(); ++it,++f_it)
     *output_stream << "\n  " << (f_it==fields.begin() ? '(' : sep)
      << ' ' << *it << ' ' @|
      << (*f_it == type_binding::no_id ? "." : main_hash_table->name_of(*f_it));
@@ -4696,9 +4696,9 @@ redundant parentheses.
 
 @< Local function definitions @>=
 
-std::string highlight (const_raw_type_list tuple, bool is_union, unsigned pos)
+std::string highlight (const type_list& tuple, bool is_union, unsigned pos)
 { std::ostringstream o;
-  wtl_const_iterator p(tuple);
+  auto p = tuple.wcbegin();
   for (unsigned i=0; not p.at_end(); ++p,++i)
   { o << (i==0 ? "(" : is_union ? "|" : ",");
     if (i==pos)
@@ -4866,12 +4866,12 @@ lines.
 @< Build parenthesised sequence of entries of |v|, preceded by field names...@>=
 { const auto* tv = static_cast<const tuple_value*>(&v);
   auto* names = te.raw_kind()==tabled ? &te.fields(te.tabled_nr()) : nullptr;
-  auto* tup = te.expand().tuple();
-  if (tup==nullptr)
+  auto& tup = te.expand().tuple();
+  if (tup.empty())
     result.emplace_back("()");
   else
   { std::string cur; // current line
-    wtl_iterator it (tup);
+    auto it = tup.wbegin();
     for (unsigned i=0; i<tv->length(); ++i,++it)
     {
       const bool is_prim = it->top_kind()==primitive_type;
@@ -4967,7 +4967,7 @@ this information.
     te.raw_kind()==tabled ? &type_expr::fields(te.tabled_nr()) : nullptr;
   id_type tag_id = names==nullptr ? type_binding::no_id : (*names)[uv->variant()];
 @)
-  auto* uni = te.expand().tuple();
+  auto& uni = te.expand().tuple();
   std::string tag_str;
   if (tag_id==type_binding::no_id)
     tag_str = highlight(uni,true,uv->variant());
@@ -4977,7 +4977,7 @@ this information.
     tag_str = main_hash_table->name_of(tag_id) + std::string("(born ")
     + main_hash_table->name_of(uv->stored_name()) + ")";
   type_expr& inner_type =
-    *std::next(wtl_iterator(uni),uv->variant());
+    *std::next(uni.wbegin(),uv->variant());
   const bool need_parens = not(has_parens(inner_type));
 @)
   auto inner =
@@ -5058,7 +5058,7 @@ void print(std::ostream& o, type_expr&& te, const id_pat& pat)
     o << te << ' ' << '.';
   else // no identifier but a sublist is present; break open
   { assert(te.top_kind()==tuple_type);
-    wtl_iterator te_it(te.expand().tuple());
+    auto te_it = te.expand().tuple().wbegin();
     for (auto it=pat.sublist.begin(); not pat.sublist.at_end(it); ++te_it,++it)
       print(o << (it==pat.sublist.begin()?'(':','),std::move(*te_it),*it);
     o << ')';

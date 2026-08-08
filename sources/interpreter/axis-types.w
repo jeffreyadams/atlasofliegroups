@@ -414,7 +414,7 @@ purpose.
 @< Type definitions @>=
 
 using type_nr_type = id_type; // interpretation flips after parsing
-struct tabled_type_cons {@; type_nr_type nr; raw_type_list type_args; };
+struct tabled_type_cons {@; type_nr_type nr; type_list type_args; };
 class type_expr
 { type_tag tag;
   union
@@ -422,7 +422,7 @@ class type_expr
     unsigned int typevar_variant; // when |tag==variable_type|
     func_type* func_variant; // when |kind==function_type|
     type_p row_variant; // when |kind==row_type|
-    raw_type_list tuple_variant; // when |kind==tuple_type| or |kind==union_type|
+    type_list tuple_variant; // when |kind==tuple_type| or |kind==union_type|
     tabled_type_cons tabled_variant; // when |is_symbolic()|
   };
 @)
@@ -489,22 +489,25 @@ unsigned int typevar_count () const @+
     {@; assert(tag==variable_type); return typevar_variant; }
 const func_type* func() const  @+
     {@; assert(tag==function_type); return func_variant; }
-  func_type* func() @+
+func_type* func() @+
     {@; assert(tag==function_type); return func_variant; }
 const type_expr& component_type () const @+
     {@; assert(tag==row_type); return *row_variant; }
- type_expr& component_type () @+
+type_expr& component_type () @+
     {@; assert(tag==row_type); return *row_variant; }
-const_raw_type_list tuple () const
+const type_list& tuple () const
     {@; assert(tag==tuple_type or tag==union_type); return tuple_variant; }
-  raw_type_list tuple () @+
+type_list& tuple () @+
     {@; assert(tag==tuple_type or tag==union_type); return tuple_variant; }
 @)
 type_nr_type tabled_nr () const @+
     {@; assert(tag==tabled); return tabled_variant.nr; }
 void replace_stored_nr (type_nr_type nr) @+
     {@; assert(is_symbolic()); tabled_variant.nr=nr; }
-const raw_type_list ctor_args() const @+
+const type_list& ctor_args() const @+
+    {@; assert(is_symbolic());
+      return tabled_variant.type_args; }
+type_list& ctor_args() @+
     {@; assert(is_symbolic());
       return tabled_variant.type_args; }
 unsigned short ctor_arity() const; // number of arguments taken
@@ -572,23 +575,23 @@ static type_expr row(type_expr&& t)
     return result;
   }
 static type_expr tuple(type_list&& l)
-@/{@; type_expr result;
+@/{ type_expr result;
     result.tag=tuple_type,
-      result.tuple_variant=l.release();
+      new(&result.tuple_variant) type_list(std::move(l));
     return result;
   }
 static type_expr tuple_or_union(type_tag tag,type_list&& l)
-@/{@; type_expr result;
-  result.tag=tag,
-    result.tuple_variant=l.release();
+@/{ type_expr result;
+    result.tag=tag,
+      new(&result.tuple_variant) type_list(std::move(l));
   return result;
 }
 
 static type_expr user_type(type_nr_type type_nr,type_list&& l,bool closed=false)
 { type_expr result;
-  result.tag=(closed?closed_type:tabled),
-    result.tabled_variant.nr=type_nr,
-    result.tabled_variant.type_args=l.release();
+  result.tag=(closed?closed_type:tabled);
+  result.tabled_variant.nr=type_nr,
+    new(&result.tabled_variant.type_args) type_list(std::move(l));
   return result;
 }
 
@@ -734,47 +737,45 @@ type_expr type_expr::copy() const
       result.row_variant=new type_expr(row_variant->copy());
     break;
     case tuple_type: case union_type:
-      @< Assign a deep copy of |tuple_variant| to |result.tuple_variant| @>
+      @< Install a deep copy of |tuple_variant| to |result.tuple_variant| @>
     break;
     case tabled: case closed_type:
       result.tabled_variant.nr=stored_nr();
-      @< Assign a deep copy of |tabled_variant.type_args| to
+      @< Install a deep copy of |tabled_variant.type_args| to
          |result.tabled_variant.type_args| @>
   }
   result.tag=tag; // henceforth |result| owns added things
   return result;
 }
 
-@ The code below exemplifies looping over a list accessed by a raw
-pointer-to-node like |raw_type_list|. Since we do not need to alter the
-structure (or indeed anything) of the list looped over, we can do with a weak
-iterator; we can create one from the raw pointer which is a matter of
-repackaging, and then use the usual |simple_list| iteration syntax. For building
-the copy we use an actual list container for exception safety; we choose
-|dressed_type_list| (which is |sl_list<type_expr>|) to facilitate appending at
-the end. Eventually we must |undress| to |simple_list|, and then |release| from
-it the raw pointer to be assigned into |result|.
+@ Since |type_expr| has no copy constructor, making a deep copy requires calling
+|copy| for all elements explicitly. The result is constructed in a |sl_list|,
+which allows advancing from front to back, but afterwards we |undress| to keep
+only a |simple_list|. We must use placement |new| rather than (move) assignment
+to install as |result.tuple_variant|, since the latter would call the destructor
+of that not yet initialised field before the actual move, probably crashing the
+program.
 
-@< Assign a deep copy of |tuple_variant| to |result.tuple_variant| @>=
+@< Install a deep copy of |tuple_variant| to |result.tuple_variant| @>=
 {
   dressed_type_list dst;
-  for (wtl_const_iterator it(tuple_variant); not it.at_end(); ++it)
+  for (auto it = tuple_variant.wcbegin(); not it.at_end(); ++it)
     dst.push_back(it->copy());
-  result.tuple_variant = dst.undress().release();
+  new(&result.tuple_variant) type_list(dst.undress());
   // incorporate and transfer ownership
 }
 
 @ Just as illustration that we can, we here do the same but using a |simple_list|
-rather than |sl_list|.
+rather than |sl_list|. Again we must use placement |new| to actually install the
+type list.
 
-@< Assign a deep copy of |tabled_variant.type_args| to
+@< Install a deep copy of |tabled_variant.type_args| to
   |result.tabled_variant.type_args| @>=
 {
   type_list dst; auto dit=dst.begin();
-  for (wtl_const_iterator it(tabled_variant.type_args); not it.at_end(); ++it)
+  for (auto it = tabled_variant.type_args.wcbegin(); not it.at_end(); ++it)
     dit = dst.insert(dit,it->copy());
-  result.tabled_variant.type_args = dst.release();
-  // incorporate and transfer ownership
+  new(&result.tabled_variant.type_args) type_list(std::move(dst));
 }
 
 @ The method |clear| does the work for the |type_expr| destructor, cleaning up
@@ -783,9 +784,8 @@ reason for separating this out from the destructor is that it allows variables
 to be made ready for reuse. The recursion of this method is implicit, as the
 |delete| calls may run destructors that call |clear| again.
 
-If some variants of the |union| had been smart pointers, then we would have
-needed to explicitly call their destructors, rather than |delete|. This would
-not really have made the code simpler or more transparent.
+For the variants of the |union| that are or contain objects of a type with a
+destructor, here |type_list|, we need to explicitly call that destructor.
 
 @< Function definitions @>=
 void type_expr::clear() noexcept
@@ -793,8 +793,8 @@ void type_expr::clear() noexcept
   { case undetermined_type: case primitive_type: case variable_type: break;
     case function_type: delete func_variant; break;
     case row_type: delete row_variant; break;
-    case tuple_type: case union_type: delete tuple_variant; break;
-    case tabled: case closed_type: delete tabled_variant.type_args;
+    case tuple_type: case union_type: tuple_variant.~type_list(); break;
+    case tabled: case closed_type: tabled_variant.type_args.~type_list();
   }
   tag = undetermined_type;
 }
@@ -808,12 +808,11 @@ requires that |type_expr| previously had |tag==undetermined_type|. We test this
 condition using an |assert| statement (rather than throwing |logic_error|) to
 honour the |noexcept| specification.
 
-Using assignments (rather than placement-|new|) in |set_from| is possible since
-all variants are POD types. Also we do not use move-assignments here (although
-morally they are), because the data consists of either raw pointers or of basic
-(integer) data, for which moving is not anything other than copying; the raw
-pointers that are left in |p| will not get deleted because |p.tag| is reset to
-|undetermined_type|.
+For the variants that are POD types, we can use assignments rather than
+placement-|new| in |set_from|. Also morally these are move-assignments, these
+are the same as ordinary assignments for POD types, so we do not bother to
+invoke |std::move|. The raw pointers that are left in |p| will not have |delete|
+called for them because |p.tag| is reset to |undetermined_type|.
 
 The moving copy constructor is nearly identical to |set_from| method, so we call
 the default constructor first, and then |set_from| to move the top-level value.
@@ -829,8 +828,10 @@ void type_expr::set_from(type_expr&& p) noexcept
     case variable_type: typevar_variant=p.typevar_variant; break;
     case function_type: func_variant=p.func_variant; break;
     case row_type: row_variant=p.row_variant; break;
-    case tuple_type: case union_type: tuple_variant = p.tuple_variant; break;
-    case tabled: case closed_type: tabled_variant=p.tabled_variant;
+    case tuple_type: case union_type:
+      new(&tuple_variant) type_list(std::move(p.tuple_variant)); break;
+    case tabled: case closed_type:
+      new(&tabled_variant) tabled_type_cons(std::move(p.tabled_variant));
   }
   p.tag=undetermined_type;
   // detach descendants, so |p.clear()| becomes a no-op
@@ -893,7 +894,7 @@ substitution.
 
 bool type_expr::is_void () const
 { const type_expr& t = tag==tabled ? tabled_eq() : *this;
-  return t.tag == tuple_type and t.tuple()==nullptr;
+  return t.tag == tuple_type and t.tuple().empty();
 }
 
 @ The |specialise| method is mostly used to either set (if initially
@@ -1009,8 +1010,8 @@ one of the lists runs out, or a component specialisation fails.
 @< Try to specialise types in |tuple_variant| to those in
    |pattern.tuple_variant|... @>=
 {
-  wtl_iterator it0(tuple_variant);
-  wtl_const_iterator it1(pattern.tuple_variant);
+  auto it0 =tuple_variant.wbegin();
+  auto it1= pattern.tuple_variant.wcbegin();
   while (not it0.at_end() and not it1.at_end() and it0->specialise(*it1))
     @/{@; ++it0; ++it1; }
   return it0.at_end() and it1.at_end();
@@ -1024,8 +1025,8 @@ equal lengths.
 |pattern.ctor_args()|, and |return| whether this succeeded @>=
 
 { assert(length(ctor_args())==length(pattern.ctor_args()));
-  wtl_const_iterator it1(pattern.ctor_args());
-  for (wtl_iterator it0(ctor_args()); not it0.at_end(); ++it0, ++it1)
+  auto it1 = pattern.ctor_args().wcbegin();
+  for (auto it0 = ctor_args().wbegin(); not it0.at_end(); ++it0, ++it1)
     if (not it0->specialise(*it1))
       return false;
   return true;
@@ -1086,7 +1087,7 @@ iterators throughout.
 @< Find out and |return| whether we can specialise the types in
    |tuple_variant| to those in |pattern.tuple_variant| @>=
 {
-  wtl_const_iterator it0(tuple_variant), it1(pattern.tuple_variant);
+  auto it0 = tuple_variant.wbegin(), it1 = pattern.tuple_variant.wbegin();
   while (not it0.at_end() and not it1.at_end()
          and it0->can_specialise(*it1))
     @/{@; ++it0; ++it1; }
@@ -1100,8 +1101,8 @@ testing only |it0|.
 @< Find out and |return| whether |ctor_args()| can specialise to
    |pattern.ctor_args()| @>=
 { assert(length(ctor_args())==length(pattern.ctor_args()));
-  wtl_const_iterator it1(pattern.ctor_args());
-  for (wtl_iterator it0(ctor_args()); not it0.at_end(); ++it0, ++it1)
+  auto it1 = pattern.ctor_args().wcbegin();
+  for (auto it0 = ctor_args().wbegin(); not it0.at_end(); ++it0, ++it1)
     if (not it0->can_specialise(*it1))
       return false;
   return true;
@@ -1151,7 +1152,7 @@ bool type_expr::operator== (const type_expr& y) const
 @< Find out and |return| whether all types in |tuple_variant| are equal to
 those in |y.tuple_variant| @>=
 {
-  wtl_const_iterator it0(tuple_variant), it1(y.tuple_variant);
+  auto it0 = tuple_variant.wbegin(), it1=y.tuple_variant.wbegin();
   while (not it0.at_end() and not it1.at_end()
          and *it0==*it1)
     @/{@; ++it0; ++it1; }
@@ -1175,8 +1176,8 @@ this code between tabled types and actual closed types (the field
            and expanded()==y.expanded();
 @)
   assert(length(ctor_args())==length(y.ctor_args()));
-  wtl_const_iterator it1(y.ctor_args());
-  for (wtl_iterator it0(ctor_args()); not it0.at_end(); ++it0, ++it1)
+  auto it1 = y.ctor_args().wcbegin();
+  for (auto it0 = ctor_args().wbegin(); not it0.at_end(); ++it0, ++it1)
     if (*it0!=*it1)
       return false;
   return true;
@@ -1203,7 +1204,7 @@ bool type_expr::is_unstable() const
     case row_type: return(row_variant->is_unstable());
     case tuple_type: case union_type:
     {
-      for (wtl_const_iterator it(tuple_variant); not it.at_end(); ++it)
+      for (auto it = tuple_variant.wbegin(); not it.at_end(); ++it)
         if (it->is_unstable()) return true;
       return false;
     }
@@ -1273,7 +1274,7 @@ type_expr simple_subst
     case tuple_type:
     case union_type:
     { dressed_type_list aux;
-      for (wtl_const_iterator it(tp.tuple()); not it.at_end(); ++it)
+      for (auto it = tp.tuple().wcbegin(); not it.at_end(); ++it)
         aux.push_back(simple_subst(*it,assign,group));
       return type_expr::tuple_or_union(tp.raw_kind(),aux.undress());
     }
@@ -1285,7 +1286,7 @@ type_expr simple_subst
         for (const auto& t : assign)
           aux.push_back(t.copy());
       else // use of an out-group type constructor
-        for (wtl_const_iterator it(tp.ctor_args()); not it.at_end(); ++it)
+        for (auto it = tp.ctor_args().wcbegin(); not it.at_end(); ++it)
           aux.push_back(simple_subst(*it,assign,group));
       return type_expr::user_type(nr,aux.undress(),tp.raw_kind()==closed_type);
     }
@@ -1617,7 +1618,7 @@ type_expr type_expr::expanded () const
   BitMap group(table_size());
   group.fill(open_type_table.group_id(nr),open_type_table.next_group_id(nr));
   assign.reserve(arity);
-  for (wtl_const_iterator it(ctor_args()); not it.at_end(); ++it)
+  for (auto it = ctor_args().wcbegin(); not it.at_end(); ++it)
     assign.push_back(it->copy());
   return simple_subst(open_type_table.definiens(nr),assign,group);
 }
@@ -1680,7 +1681,7 @@ names). We also avoid expansion when two tabled type constructors differ by
 |arity| or at least one of them is recursive.
 
 @< Local function definitions @>=
-bool textually_equal_lists (const_raw_type_list lx, const_raw_type_list ly);
+bool textually_equal_lists (const type_list& lx, const type_list& ly);
 bool textually_equal (const type_expr& x, const type_expr& y)
 { if (x.raw_kind()!=y.raw_kind())
   { if (x.raw_kind()==tabled) // then |y.raw_kind()!=tabled|
@@ -1715,8 +1716,8 @@ bool textually_equal (const type_expr& x, const type_expr& y)
   }
 }
 @)
-bool textually_equal_lists (const_raw_type_list lx, const_raw_type_list ly)
-{ wtl_const_iterator it0(lx), it1(ly);
+bool textually_equal_lists (const type_list& lx, const type_list& ly)
+{ auto it0 = lx.wcbegin(), it1 = ly.wcbegin();
   while (not it0.at_end() and not it1.at_end()
          and textually_equal(*it0,*it1))
     @/{@; ++it0; ++it1; }
@@ -1916,18 +1917,18 @@ type_nr_type type_expr::dissect_to (std::vector<type_data>& type_array) const
     func_variant->arg_type.record(type_array,out);
     func_variant->result_type.record(type_array,out);
   break; case tuple_type: case union_type:
-    for (wtl_const_iterator it(tuple_variant); not it.at_end(); ++it)
+    for (auto it = tuple_variant.wbegin(); not it.at_end(); ++it)
       it->record(type_array,out);
   break; case tabled:
     assert(tabled_nr()<table_size()); // local references should not come here
     if (is_recursive())
-      for (wtl_const_iterator it(ctor_args()); not it.at_end(); ++it)
+      for (auto it = ctor_args().wcbegin(); not it.at_end(); ++it)
         it->record(type_array,out);
     else
       return expanded().dissect_to(type_array);
       // retry for our expansion in this case
   break; case closed_type:
-    for (wtl_const_iterator it(ctor_args()); not it.at_end(); ++it)
+    for (auto it = ctor_args().wcbegin(); not it.at_end(); ++it)
       it->record(type_array,out);
   }
   const type_nr_type result = type_array.size();
@@ -2079,7 +2080,7 @@ it for all other ones.
       }
     break;case tuple_type: case union_type:
       { dressed_type_list aux;
-        for (wtl_const_iterator it(data.tp.tuple()); not it.at_end(); ++it)
+        for (auto it = data.tp.tuple().wcbegin(); not it.at_end(); ++it)
           aux.push_back(rewrite(oit));
         tp = type_expr::tuple_or_union(data.tp.raw_kind(),aux.undress());
       }
@@ -2089,7 +2090,7 @@ it for all other ones.
          |data.tp.tabled_nr()| applied to that list of argument types @>
     break; case closed_type:
       { dressed_type_list aux;
-        for (wtl_const_iterator it(data.tp.ctor_args()); not it.at_end(); ++it)
+        for (auto it = data.tp.ctor_args().wcbegin(); not it.at_end(); ++it)
           aux.push_back(rewrite(oit));
         tp = type_expr::user_type(data.tp.closed_nr(),aux.undress(),true);
       }
@@ -2124,7 +2125,7 @@ somewhat unfortunate effect, so we currently just accept it.
 @< Apply |rewrite| to every type in |data.tp.ctor_args()|... @>=
 { assert(not rec.isMember(i)); // since we tested for this earlier
   dressed_type_list aux;
-  for (wtl_const_iterator it(data.tp.ctor_args()); not it.at_end(); ++it)
+  for (auto it = data.tp.ctor_args().wcbegin(); not it.at_end(); ++it)
     aux.push_back(rewrite(oit));
   tp = type_expr::user_type(data.tp.tabled_nr(),aux.undress(),false).expanded();
 }
@@ -2213,8 +2214,8 @@ tuple or union types.
 std::ostream& operator<<(std::ostream& out, const type_expr& t)
 {@; t.print(out); return out; }
 @)
-std::ostream& print_seq(std::ostream& out, const_raw_type_list l,char sep)
-{ wtl_const_iterator it(l);
+std::ostream& print_seq(std::ostream& out, const type_list& l,char sep)
+{ auto it = l.wbegin();
   if (not it.at_end())
     while (out << *it, not (++it).at_end())
       out << sep;
@@ -2225,14 +2226,14 @@ std::ostream& operator<<(std::ostream& out, const func_type& f)
 {
   out << '(';
   if (f.arg_type.raw_kind()==tuple_type or @|
-      f.arg_type.raw_kind()==union_type and f.arg_type.tuple()!=nullptr)
+      f.arg_type.raw_kind()==union_type and not f.arg_type.tuple().empty())
      print_seq(out,f.arg_type.tuple()
               ,@|f.arg_type.raw_kind()==tuple_type?',':'|');
      // naked tuple or union
   else out << f.arg_type; // other component type
   out << "->";
   if (f.result_type.raw_kind()==tuple_type or @|
-      f.result_type.raw_kind()==union_type and f.result_type.tuple()!=nullptr)
+      f.result_type.raw_kind()==union_type and not f.result_type.tuple().empty())
      print_seq(out,f.result_type.tuple()
               ,@|f.result_type.raw_kind()==tuple_type?',':'|');
      // tuple, union
@@ -2257,12 +2258,12 @@ void type_expr::print(std::ostream& out) const
   break; case function_type: out << *func_variant;
   break; case row_type: out << '[' << *row_variant << ']';
   break; case tuple_type:
-      if (tuple_variant==nullptr)
+      if (tuple_variant.empty())
         out << "void";
       else
          print_seq(out << '(', tuple_variant,',') << ')';
   break; case union_type:
-      if (tuple_variant==nullptr)
+      if (tuple_variant.empty())
         out << "(*)"; // this should not really occur
       else
         print_seq(out << '(', tuple_variant,'|') << ')';
@@ -2273,7 +2274,7 @@ void type_expr::print(std::ostream& out) const
       // |else| fall through
          case closed_type:
       out << main_hash_table->name_of(type_name());
-      if (tabled_variant.type_args!=nullptr)
+      if (not tabled_variant.type_args.empty())
         print_seq(out << '<', tabled_variant.type_args,',') << '>';
   }
 }
@@ -2568,14 +2569,14 @@ type_expr shift
     case tuple_type:
     case union_type:
     { dressed_type_list aux;
-      for (wtl_const_iterator it(t.tuple()); not it.at_end(); ++it)
+      for (auto it = t.tuple().wcbegin(); not it.at_end(); ++it)
         aux.push_back(shift(*it,fix,amount));
       return type_expr::tuple_or_union(t.raw_kind(),aux.undress());
     }
     case tabled:
     case closed_type:
     { dressed_type_list aux;
-      for (wtl_const_iterator it(t.ctor_args()); not it.at_end(); ++it)
+      for (auto it = t.ctor_args().wcbegin(); not it.at_end(); ++it)
         aux.push_back(shift(*it,fix,amount));
       return type_expr::user_type
         (t.stored_nr(),aux.undress(),t.raw_kind()==closed_type);
@@ -2792,13 +2793,13 @@ bool type_assignment::is_free_in(const type_expr& tp, unsigned int nr) const
     is_free_in(tp.func()->result_type,nr);
   case tuple_type:
   case union_type:
-    for(wtl_const_iterator it(tp.tuple()); not it.at_end(); ++it)
+    for(auto it = tp.tuple().wcbegin(); not it.at_end(); ++it)
       if (is_free_in(*it,nr))
         return true;
     return false;
   case tabled:
   case closed_type:
-    for(wtl_const_iterator it(tp.ctor_args()); not it.at_end(); ++it)
+    for(auto it = tp.ctor_args().wcbegin(); not it.at_end(); ++it)
       if (is_free_in(*it,nr))
         return true;
     return false;
@@ -2887,14 +2888,14 @@ type_expr type_assignment::substitution
     case tuple_type:
     case union_type:
     { dressed_type_list aux;
-      for (wtl_const_iterator it(tp.tuple()); not it.at_end(); ++it)
+      for (auto it = tp.tuple().wcbegin(); not it.at_end(); ++it)
         aux.push_back(substitution(*it,shift_amount));
       return type_expr::tuple_or_union(tp.raw_kind(),aux.undress());
     }
     case tabled:
     case closed_type:
     { dressed_type_list aux;
-      for (wtl_const_iterator it(tp.ctor_args()); not it.at_end(); ++it)
+      for (auto it = tp.ctor_args().wcbegin(); not it.at_end(); ++it)
         aux.push_back(substitution(*it,shift_amount));
       return type_expr::user_type
         (tp.stored_nr(),aux.undress(),tp.raw_kind()==closed_type);
@@ -2997,15 +2998,15 @@ bool type_assignment::unify(const type_expr& P, const type_expr& Q)
   case row_type: return
     unify(P.component_type(),Q.component_type());
   case tuple_type: case union_type:
-      for (wtl_const_iterator p_it(P.tuple()), q_it(Q.tuple()); @|
+      for (auto p_it = P.tuple().wcbegin(), q_it = Q.tuple().wcbegin(); @|
            not (p_it.at_end() and q_it.at_end()); ++p_it,++q_it)
         if (p_it.at_end() or q_it.at_end() or not unify(*p_it,*q_it))
           return false; // unequal lengths or some sub-type fails unification
       return true;
   case closed_type:
       assert(length(P.ctor_args())==length(Q.ctor_args()));
-      for (wtl_const_iterator p_it(P.ctor_args()), q_it(Q.ctor_args()); @|
-           not p_it.at_end(); ++p_it,++q_it)
+      for (auto p_it = P.ctor_args().wcbegin(), q_it = Q.ctor_args().wcbegin();
+      @|   not p_it.at_end(); ++p_it,++q_it)
         if (not unify(*p_it,*q_it))
           return false;
       return true;
@@ -3065,8 +3066,8 @@ latter are recursive through the argument of the closed type constructor.
     @/return not (P.is_recursive() and Q.is_recursive()) @|
         and unify(P.expanded(),Q.expanded());
     assert(length(P.ctor_args())==length(Q.ctor_args()));
-    wtl_iterator it1(Q.ctor_args());
-    for (wtl_iterator it0(P.ctor_args()); not it0.at_end(); ++it0, ++it1)
+    auto it1 = Q.ctor_args().wbegin();
+    for (auto it0 = P.ctor_args().wbegin(); not it0.at_end(); ++it0, ++it1)
       if (not unify(*it0,*it1))
         return false;
     return true;
@@ -3289,7 +3290,7 @@ const func_type* func() const  @+{@; return te.func(); }
 type_expr arg_type() const;
 type_expr result_type() const;
 func_type f_type() const; // cut through type assignments and |tabled|
-const_raw_type_list tuple () const @+{@; return te.tuple(); }
+const type_list& tuple () const @+{@; return te.tuple(); }
 type_nr_type tabled_nr () const @+{@; return te.tabled_nr(); }
 type_nr_type stored_nr () const @+{@; return te.stored_nr(); }
 @)
@@ -3533,14 +3534,14 @@ type_expr pack(const type_expr& te, trans_list& translate)
     case tuple_type:
     case union_type:
     { dressed_type_list aux;
-      for (wtl_const_iterator it(te.tuple()); not it.at_end(); ++it)
+      for (auto it = te.tuple().wcbegin(); not it.at_end(); ++it)
         aux.push_back(pack(*it,translate));
       return  type_expr::tuple_or_union(te.raw_kind(),aux.undress());
     }
     case tabled:
     case closed_type:
     { dressed_type_list aux;
-      for (wtl_const_iterator it(te.ctor_args()); not it.at_end(); ++it)
+      for (auto it = te.ctor_args().wcbegin(); not it.at_end(); ++it)
         aux.push_back(pack(*it,translate));
       return type_expr::user_type
         (te.stored_nr(),aux.undress(),te.raw_kind()==closed_type);
@@ -3735,8 +3736,8 @@ bool type::unify_specialise(const type_expr& sub_tp, type_expr& pattern)
   case row_type: return
     unify_specialise(sub_tp.component_type(),pattern.component_type());
   case tuple_type: case union_type:
-    { wtl_const_iterator p_it(sub_tp.tuple()); // need two different types here
-      for(wtl_iterator q_it(pattern.tuple());
+    { auto p_it = sub_tp.tuple().wcbegin(); // need two different types here
+      for(auto q_it = pattern.tuple().wbegin();
           not (p_it.at_end() and q_it.at_end()); ++p_it,++q_it)
         if (p_it.at_end() or q_it.at_end() or not unify_specialise(*p_it,*q_it))
           return false; // unequal lengths or some sub-type fails unification
@@ -3744,8 +3745,8 @@ bool type::unify_specialise(const type_expr& sub_tp, type_expr& pattern)
     }
   case closed_type:
     { assert(length(sub_tp.ctor_args())==length(pattern.ctor_args()));
-      wtl_const_iterator p_it(sub_tp.ctor_args());
-      for(wtl_iterator q_it(pattern.ctor_args());
+      auto p_it = sub_tp.ctor_args().wcbegin();
+      for(auto q_it = pattern.ctor_args().wbegin();
           not p_it.at_end(); ++p_it,++q_it)
         if (not unify_specialise(*p_it,*q_it))
           return false; // unequal lengths or some sub-type fails unification
@@ -3812,8 +3813,8 @@ recursive call.
     @/return not (sub_tp.is_recursive() and pattern.is_recursive()) @|
         and unify_specialise(sub_tp.expanded(),pattern=pattern.expanded());
     assert(length(sub_tp.ctor_args())==length(pattern.ctor_args()));
-    wtl_iterator it1(pattern.ctor_args());
-    for(wtl_const_iterator it0(sub_tp.ctor_args()); not it0.at_end();
+    auto it1 = pattern.ctor_args().wbegin();
+    for(auto it0 = sub_tp.ctor_args().wcbegin(); not it0.at_end();
          ++it0, ++it1)
       if (not unify_specialise(*it0,(*it1)=it1->expanded()))
         return false;
@@ -5638,8 +5639,8 @@ unsigned int is_close (const type_expr& x, const type_expr& y)
   if (xk!=tuple_type)
     return 0x0; // non-aggregate types are only close if equal
   unsigned int flags=0x7; // now we have two tuple types; compare components
-  wtl_const_iterator it0(x.tuple());
-  wtl_const_iterator it1(y.tuple());
+  auto it0 = x.tuple().wcbegin(),
+       it1 = y.tuple().wcbegin();
   while (not it0.at_end() and not it1.at_end() @|
          and (flags&=is_close(*it0,*it1))!=0)
   @/{@; ++it0; ++it1; }
@@ -5755,8 +5756,8 @@ bool accepts (const type_expr& a, const type_expr& b)
     return a.func()->arg_type==b.func()->arg_type and @|
     accepts(a.func()->result_type,b.func()->result_type);
   case tuple_type: case union_type:
-  { wtl_const_iterator itb(b.tuple());
-    for (wtl_const_iterator ita(a.tuple());
+  { auto itb = b.tuple().wcbegin();
+    for (auto ita = a.tuple().wcbegin();
          not ita.at_end(); ++ita,++itb)
       if (itb.at_end() or not accepts(*ita,*itb))
         return false;
