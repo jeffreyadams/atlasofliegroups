@@ -712,28 +712,41 @@ copy constructor.
 Copying is done using a straightforward structural recursion. We do not replace
 any tabled types by their definitions, so there is no possibility of infinite
 recursion; we do however continue to deep copy to the argument types, if any, of
-a tabled type constructor. Note that any owned pointers of |result| are assigned
-just before exit from the |switch|, and therefore just before |result.tag| gets
-assigned so as to signal ownership of those pointers; no exception (which would
-cause a memory leak) can happen between the two assignments. And if an exception
-should occur before those pointers are installed, no attempt will be made to
-|delete| any pointer fields while destructing |result| because one still has
-|result.tag==undetermined_type| (this would be different if we instead had
-written |switch (result.tag=tag)|, as we erroneously used to).
+a tabled type constructor.
+
+Setting |result.tag=tag| as we do below is less work than setting the tag
+explicitly in each branch of the switch, but forces us to make a decision of
+doing it at entry to or after the switch. The difference is that if an exception
+should occur inside the switch (and since we are allocating memory to make the
+copy, this is a theoretic possibility), then the destructor will try to clean up
+the active variant of |result| unless we still have
+|result.tag==undetermined_type| (as set by the default constructor). Assigning
+the tag after the switch then risks a memory leak if we have a partially
+constructed variant, but assigning the tag at entry risks calling the destructor
+for a not yet initialised variant. The latter is a much more serious danger, but
+we can proceed safely by setting the variant to a safely destructible value
+right at the beginning of each variant. which is what we have decide to do. For
+the (row and function) variants that are raw pointers, this gives the curious
+situation of assigning to the same pointer twice in succession: the first
+assignment makes sure no crash occurs if the evaluation right hand side of the
+second assignment should be interrupted by an exception. For the variants
+containing a |type_list|, that list will be constructed as an empty list at the
+beginning of the corresponding branch, but then we shall have the advantage of
+being able to extend that list without risking a memory leak.
 
 @:type expression copy@>
 
 @< Function definitions @>=
 type_expr type_expr::copy() const
 { type_expr result;
-  switch (tag)
+  switch (result.tag=tag)
   { case undetermined_type: break;
     case primitive_type: result.prim_variant=prim_variant; break;
     case variable_type: result.typevar_variant=typevar_variant; break;
-    case function_type: result.func_variant=new
-      func_type(func_variant->copy());
+    case function_type: result.func_variant=nullptr;
+      result.func_variant=new func_type(func_variant->copy());
     break;
-    case row_type:
+    case row_type: result.row_variant=nullptr;
       result.row_variant=new type_expr(row_variant->copy());
     break;
     case tuple_type: case union_type:
@@ -744,7 +757,6 @@ type_expr type_expr::copy() const
       @< Install a deep copy of |tabled_variant.type_args| to
          |result.tabled_variant.type_args| @>
   }
-  result.tag=tag; // henceforth |result| owns added things
   return result;
 }
 
@@ -758,24 +770,27 @@ program.
 
 @< Install a deep copy of |tuple_variant| to |result.tuple_variant| @>=
 {
+  @[new(&result.tuple_variant) type_list@]; // ensure safe initialisation
   dressed_type_list dst;
   for (auto it = tuple_variant.wcbegin(); not it.at_end(); ++it)
     dst.push_back(it->copy());
-  new(&result.tuple_variant) type_list(dst.undress());
-  // incorporate and transfer ownership
+  result.tuple_variant = dst.undress(); // incorporate and transfer ownership
 }
 
-@ Just as illustration that we can, we here do the same but using a |simple_list|
-rather than |sl_list|. Again we must use placement |new| to actually install the
-type list.
+@ Just as illustration that we can, we here do the same but using the
+|type_list| inside the variant (namely |result.tabled_variant.type_args|)
+directly; since it is a |simple_list| rather than a |sl_list|, we need an
+additional iterator~|dit| to keep track of the end of the list where we want to
+insert. Again start using placement |new| to initialise the variant, then form
+an alias |dst| for |result.tabled_variant.type_args| to save some keystrokes.
 
 @< Install a deep copy of |tabled_variant.type_args| to
   |result.tabled_variant.type_args| @>=
 {
-  type_list dst; auto dit=dst.begin();
+  auto& dst = *@[new(&result.tabled_variant.type_args) type_list@];
+  auto dit=dst.begin();
   for (auto it = tabled_variant.type_args.wcbegin(); not it.at_end(); ++it)
     dit = dst.insert(dit,it->copy());
-  new(&result.tabled_variant.type_args) type_list(std::move(dst));
 }
 
 @ The method |clear| does the work for the |type_expr| destructor, cleaning up
