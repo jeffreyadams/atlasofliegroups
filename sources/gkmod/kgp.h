@@ -15,7 +15,6 @@
 #include "kgb.h"
 #include "bruhat.h"
 #include "bitmap.h"
-#include "sl_list.h"
 
 namespace atlas {
 namespace kgb {
