@@ -117,15 +117,17 @@ template<typename T, typename C, typename Compare>
 /*
   A class template that should be functionally equivalent to |Free_Abelian|, at
   least when its public derivation from a |std::map| instance is not directly
-  used, but which avoids using |std::map|, using a sorted |std::vector| instead.
-
-  This should save quite a bit of space when |T| is a small type, but costs a
-  bit of complexity if small insertions are frequent. To alleviate this burden,
-  term insertions that are not matched (so would produce a fresh term) are
-  stored in a temporary |containers::sl_list| that will be merged into to main
-  vector once it gets large relative to the square root of the size of the main
-  vector; thus insertion costs are amortised square root of the size per element
-  at worst. Term deletions, assumed rare, are performed on the vector directly.
+  used, but which avoids using |std::map|. The initial idea was using a sorted
+  |std::vector| instead, and to avoid the price of insertion when a terms is not
+  yet present, store those terms in a temporary |containers::sl_list| to be
+  merged into to main vector when getting too large. A better solution is to
+  replace the overflow list with a similar but strictly smaller accumulator,
+  recursively. This leads to our representation as a list of sorted vectors of
+  terms, each following vector being at least twice as small as the previous
+  one. An insertion is tried throught the list until a matching term is found,
+  and if none are, it is added at the end. When the size relations between the
+  vectors get violated, the offending vectors are merged, and the size
+  comparison of the result with the previous vector may repeat this step.
 */
 template<typename T, typename C, typename Compare>
   class Free_Abelian_light
