@@ -199,10 +199,10 @@ template<typename T, typename C, typename Compare>
   if (v.empty())
     return;
   typename poly_list::iterator L_it = L.begin();
-  containers::simple_list<typename poly_list::iterator> prev;
+  containers::stack<typename poly_list::iterator> prev;
   while (not (L.at_end(L_it) or L_it->size() < 2*v.size()))
   {
-    prev.push_front(L_it); // save for possible later fusion
+    prev.push(L_it); // save for possible later fusion
     ++L_it; // but for now skip this too large term vector
   }
 
@@ -225,13 +225,13 @@ template<typename T, typename C, typename Compare>
 	  mrg.push_back(std::move(entry));
 	}
       mrg.insert(mrg.end(),it,v.end()); // copy remained of |v|
-      if (prev.empty() or not (prev.front()->size() < 2*mrg.size()))
+      if (prev.empty() or not (prev.top()->size() < 2*mrg.size()))
       { *L_it = std::move(mrg); // move merged |vector| into last merged slot
 	return; // equivalently, |break| from |while(true)|
       }
       L.erase(L_it); // discard empty shell
-      L_it = prev.front(); // continue working with previous node
-      prev.pop_front();
+      L_it = prev.top(); // continue working with previous node
+      prev.pop();
       v = std::move(mrg); // continue with merged vector in place of |v|
     } // |while(true)|
 } // |insert|
