@@ -59,6 +59,7 @@
 \def\atend.{\textit{at\_\!end}}
 \def\queue.{\textbf{\textit{queue}}}
 \def\stack.{\textbf{\textit{stack}}}
+\def\tpex.{\textbf{\textit{type\_\!expr}}}
 
 \def\ang#1{\langle#1\rangle}
 \def\atT{$\ang T$::}
@@ -489,13 +490,16 @@ it allows pointers only to point entire structures generated on the heap; by
 contrast the model of \Cee\ (and \Cpp) has these characteristics. To our
 knowledge the first high level programming language that allows this technique
 is \textsc{Algol~68}, where it was known as the ``triple ref
-technique''\footnote {That name derives from the fact that the mode of the
-variables involved is \textbf{ref ref ref node}, where each reference level
-corresponds to a level of mutability: the final one for modifying the node
-contents, the preceding one for modifying links, and the initial one for
-modifying the variable itself to traverse the set of link fields. In \Cee\ the
-latter is implicit, so there the type of the variable has just two pointer
-levels. } (see~\cite{triple ref} for a witness to this fact, and a popular
+technique''\footnote
+%
+{That name derives from the fact that the mode of the variables involved is
+  \textbf{ref ref ref node}, where each reference level corresponds to a level
+  of mutability: the final one for modifying the node contents, the preceding
+  one for modifying links, and the initial one for modifying the variable itself
+  to traverse the set of link fields. In \Cee\ the latter is implicit, so there
+  the type of the variable has just two pointer levels.}
+%
+(see~\cite{triple ref} for a witness to this fact, and a popular
 explanation, in contemporary social media).
 
 In \Cpp\ it should therefore be possible to implement iterators for simply
@@ -776,9 +780,10 @@ $$
 which does the iteration efficiently. As a consequence of the above, whereas
 range-based \textbf{for} statement works fine with \slls., it should not be used
 with \smpl. since it always essentially translates into it first form
-given above.\footnote
+given above\footnote
+%
 {In fact such usage will fail to compile, die to the implicit call of the deleted
- member \textit{end}.}
+  member \textit{end}.}.
 
 The methods of \smpl. differ from the corresponding methods for \slls. by
 leaving out the parts that deal with \textit{tail} and \textit{node\_count},
@@ -1121,22 +1126,22 @@ exclude before-the-beginning iterators.
 
 \subsection{Use of singly linked lists in the mathematical library}
 
-We introduced \slls. (or sometimes \smpl.) in places where this was more
-convenient to the programmer or led to a simplified implementation. In many
-cases there are no important differences with respect to using \vect. instead,
-as we would have done if we had not had \slls. available. The most common reason
-to prefer \slls. is when successive items are produced by a process for which
-the total number of items is not predictable. Even when prediction is possible
-but complicated, using \vect. one must decide whether to perform the calculation
-and \textit{reserve} the precise amount of entries, or to let the algorithm for
-growing the allocated size of a vector by exponentially growing chunks do its
-work, in amortised linear time, with the inconvenience of possibly allocating
-substantially more space than necessary. By contrast, using \slls., no decision
-to reserve anything is necessary, and producing the list otherwise proceeds
-using repeated calls of \textit{push\_\!back} just like it would when using a
-vector. In some cases we want to store the result as a vector for reasons of
-efficiency of random access or of compactness, but even then this can simply be
-achieved by conversion using a final call of \textit{to\_\!vector}.
+We introduced \slls. or \smpl. in places where this was more convenient to the
+programmer or led to a simplified implementation. In many cases there are no
+important differences with respect to using \vect. instead, as we would have
+done if we had not had \slls. available. The most common reason to prefer \slls.
+is when successive items are produced by a process for which the total number of
+items is not predictable. Even when prediction is possible but complicated,
+using \vect. requires a decision whether to perform the calculation and
+\textit{reserve} the precise amount of entries, or instead to let the algorithm
+for growing the allocated size of a vector by exponentially growing chunks do
+its work, in amortised linear time, with the inconvenience of possibly
+allocating substantially more space than necessary. By contrast, using \slls.,
+no decision to reserve anything is necessary, and producing the list otherwise
+proceeds using repeated calls of \textit{push\_\!back} just like it would when
+using a vector. In some cases we want to ultimately obtain the result as a
+vector, for reasons of efficiency of random access or of compactness, but
+this can be achieved by conversion using a final call of \textit{to\_\!vector}.
 
 Situations where we need to temporarily store sequences of values of size not
 fixed at compile time are very frequent in our program. We tend to use
@@ -1191,65 +1196,65 @@ of a small set of ``simple roots'' under the ``simple reflection'' operations),
 and for building transducer tables to implement Weyl groups (these are
 essentially Cayley graphs of certain subquotients of the Weyl group as a finite
 Coxeter group), but not for the KGB-set constructor: it seems pointless to do so
-because of its use of a hash table. We found that such rewriting generally led
-to more transparent, though not necessarily faster, code. The reasons for this
-are varied. For one, trying to understand old code forces one to focus on its
-essential structure, so any kind of refactoring would bring that to the fore.
-But using lists instead of vectors also replaces some of the many small integer
-variables used in the algorithm by values like iterators that by their type are
-restricted to certain kinds of usage, which reduces possible confusion (much
-like using typed pointers is much more transparent then handling them as void
-pointers). Similarly the lack of random or even bidirectional access in singly
-linked lists makes them more suggestive of the way they will serve in the
-computation.
+because of its use of a hash table. Our experience is that such rewriting
+generally leads to more easily understood, though not necessarily faster, code.
+The reasons for this are varied. For one, trying to understand old code forces
+one to get to grips with its essential structure, so any kind of subsequent
+refactoring would bring that structure to the fore. But using lists instead of
+vectors also replaces some of the many small integer variables used in the
+algorithm by values like iterators that by their type are restricted to certain
+kinds of usage, which reduces possible confusion (much like using typed pointers
+is much more transparent then handling them as void pointers). Similarly the
+lack of random or even bidirectional access in singly linked lists makes them
+more suggestive of the way in which they will serve in the computation.
 
 To illustrate this, we consider in some detail the case of the root system
 constructor. Its task is, given a ``Cartan matrix'' that describes a small
 number of reflections acting on the lattice spanned by a set of the same number
 of ``simple roots'', to complete the latter set to the set of all ``positive
-roots'' by closure under these reflections. The construction organises roots by
-level, the level of a root being the sum of its coordinates expressed on the
-basis of simple roots. Although both the number of levels that will be required
-and the total number of positive roots produced could in principle be computed
-beforehand after a detailed study of the Cartan matrix, the original
-vector-based construction does not do that; instead it reserves a sufficient
-number of levels based on a rough estimate, and for the vector of positive roots
-does not reserve any space ahead of time, instead letting repeated use of
-\textit{push\_\!back} determine its final size and capacity.
+roots'' by closure under these so-called simple reflections. The construction
+organises roots by level, the level of a root being the sum of its coordinates
+expressed on the basis of simple roots. Although both the number of levels that
+will be required and the total number of positive roots produced could in
+principle be computed beforehand after a detailed study of the Cartan matrix,
+the original vector-based construction does not do that; instead it reserves a
+sufficient number of levels based on a rough estimate, and for the vector of
+positive roots does not reserve any space ahead of time, instead letting
+repeated use of \textit{push\_\!back} determine its final size and capacity.
 
 Each simple reflection applied to a root produces a root at a nearby level; the
 level difference is at most~$3$ in either direction, and if it is~$0$ then the
 root is fixed by the reflection. While roots at negative levels (aptly called
-negative roots) exist, the construction does not deal with them. A reflection of
-a positive root is a negative root only in the very special case of applying a
-simple reflection to the corresponding simple root; these cases are easily
-singled out and ignored. The construction then progresses from level~1 upwards,
-producing roots a few levels ahead. Reflection actions that lower the level
-never produce a new positive root, so once a level becomes current, it is
-complete. But roots may be missing in the levels ahead of the current level, and
-since the desired ordering of the roots is not necessarily the one in which they
-are first encountered, a definitive root number cannot yet be assigned to these
-roots. The structure into which the roots used to be initially constructed is
-therefore a \vect. of, for each level, a \std{set} of coordinate vectors.
-Arriving at a given level, the set is traversed using a range-based
-\textbf{for}-loop. It starts by adding the root using \textit{push\_\!back} to
-the vector of positive roots in the root system; the index at which it lands
-defines the number of the root in the system. The reflections are then applied
-one by one to the root. If this increases the level, the resulting root is
-inserted into the set of roots at that level. If not, it should already by
-present in the table at the current or lower level; at the current level it is
-the root itself, and else it is looked up, and in both cases links in the table
-are set to express the reflection relation between the roots.
+negative roots) exist, the construction does not deal with them. A simple
+reflection applied to a positive root produces a negative root only in the very
+special case that the root is the simple root corresponding to the simple
+reflection; these cases are easily singled out and ignored. The construction
+then progresses from level~1 upwards, producing roots a few levels ahead.
+Reflection actions that lower the level never produce a new positive root, so
+once a level becomes current, it is complete. But roots may be missing in the
+levels ahead of the current level, and since the desired ordering of the roots
+is not necessarily the one in which they are first encountered, a definitive
+root number cannot yet be assigned to these roots. The structure into which the
+roots used to be initially constructed is therefore a \vect. of, for each level,
+a \std{set} of coordinate vectors. Arriving at a given level, the set is
+traversed using a range-based \textbf{for}-loop. It starts by adding the root
+using \textit{push\_\!back} to the vector of positive roots in the root system;
+the index at which it lands will henceforth be the number of the root in the
+system. The simple reflections are then applied one by one to the root. If this
+increases the level, the resulting root is inserted into the set of roots at
+that level. If not, it should already by present in the table at the current or
+lower level; at the current level it is the root itself, and else it is looked
+up, and in both cases links in the table are set to express the reflection
+relation between the roots.
 
 When rewriting this constructor to take advantage of linked lists, the most
 consequential decision was to replace the vector of incomplete levels by a list.
-This list is only used to store the levels of new roots obtained by a reflection
-that increases the level, and since these are always close to the current level,
-one never needs to advance more than a short distance along the list. Also, once
-we are done with the current level, we no longer it on the list at all, so we
-can just pop it off the front; thus the current level is always the one at the
-front of the list. (When using a vector of sets instead, we did clear the set
-representing the current level when done with it, but the algorithm still creeps
+This list only serves to store the incomplete levels of new roots ahead of the
+current level, and once we are done with the current level, we pop it off the
+front. Thus the current level is always the one at the front of the list, and
+since the incomplete levels are always close to the current level, the list
+remains short. (When using a vector of sets instead, we did clear the set
+representing the current level when done with it, but the algorithm still crept
 along the vector to ever higher positions.) The levels below the current level
 are complete, and we know the final positions of all the roots they contain, but
 we are still unsure about the total number of positive roots that will be found.
@@ -1285,7 +1290,7 @@ links to each root, with $\textit{link}[i]$ of root $\alpha$ giving the number,
 if any, of the root from which $\alpha$ was obtained using reflection~$i$.
 Adding this to the original \std{set} representation would involve changing it
 to a \std{map} (with $\alpha$ as key and \textit{link} as value), but this would
-make insertion a lot more complicated; we shall not go into details here.
+make insertion more complicated; we shall not go into details here.
 
 On the other hand adding a \textit{link} field to roots that are in a sorted
 list is easy: it suffices to define a \textbf{struct} containing both, whose
@@ -1334,19 +1339,184 @@ fact that the roots go through two preliminary forms of storage before being
 definitively stored in the table of the root system is not a distraction;
 rather, it follows from and elucidates the nature of the generation procedure.
 
+\subsubsection{A container for recording linear combinations}
+
+We shall not enumerate all the ways in which lists are used to handle some minor
+problems, like representing the output of functions that rather then always
+producing a single result sometimes produce a few of different values or none at
+all. There is however one place where linked lists play a role in one of the
+heavy lifting computations that the software provides, though they do not do so
+on their own.
+
+The software manipulates several classes of algebraic values such as those
+called (for lack of more imaginative terms) ``$K$-types'' and ``parameters''
+that represent (equivalence classes of) representations of certain groups.
+Unlike KGB elements, it is not practical to tabulate all possible values of
+these kinds for a given real reductive group, but they can be compactly
+described, using an index into the KGB table and some additional discrete
+numerical data. Several algorithms produce (potentially quite large)
+combinations of these values, where each one can have a ``split integer''
+coefficient, that for our present discussion can be thought of as a machine
+integer (in fact as the name suggests they have two integer components; the
+only relevant point however is that they can be added and subtracted). Therefore
+a type is needed to represent such combinations, just like polynomials represent
+linear combination of monomials (indeed these types are presented to the user
+respectively as primitive Axis types \texttt{KTypePol} and \texttt{ParamPol}).
+
+The requirements for such a type are that is must allow efficient accumulation
+of terms that are contributed one by one, and it must also allow adding a scalar
+multiple of one combination to another, if possible more efficiently than adding
+its terms individually. One can view terms as key-value pairs, where the key is
+the algebraic value ($K$-type or parameter) represented and the value is its
+coefficient; the set of possible keys carries a total ordering that will for
+instance determine the order in which order the terms of a combination will be
+visited when traversed. In applications, the set of available keys can be
+relatively small compared to the number of times a contribution is produced, so
+there is a fair probability that such a contribution can be handled by modifying
+the coefficient of an existing term, but in the remaining cases a new term needs
+to be produced. The simplest representation, namely a sorted vector of key-value
+pairs, can handle the search for a term efficiently, but in case this fails, the
+cost of inserting a new term is linear in the size of the vector on average;
+although the alternative of a sorted linked list could handle insertion
+efficiently, it would first require a linear search every time, which is even
+worse. So the standard solution for this kind of situation is to use a search
+tree, with some internal balancing mechanism that avoids the maximum depth from
+getting much worse than the (logarithmic) lower bound that the tree size
+imposes. The associative containers of the standard library implement such
+(binary) trees, and indeed using $\std{map}\ang{\mathit{Key},\mathit{Value}}$
+for these combinations allows a good implementation of the required operations.
+
+Originally our software worked only with the more general \texttt{ParamPol}
+combinations that were so implemented, but we realised that one of the central
+algorithms, the so-called deformation algorithm, produced terms of a limited
+kind (where one of the numeric components of the parameter was always zero), so
+we decided to also implement the more restricted \texttt{KTypePol} type. Since
+the deformation algorithm is costly to perform relatively to the size of the
+combination that it produces, our software applies memoisation to it: already
+computed values are stored so that a future call with the same argument can
+produce its result by looking it up rather that running the computation again.
+This means that a lot of \texttt{KTypePol} values are going to be stored, and it
+is worth while to take space considerations into account. Now the balanced
+binary trees of the standard library require three pointers for each internal
+node of the tree (two links to descendants and one back to the parent node) plus
+one bit of information used to keep the tree balanced; due to the magic of
+alignment requirements, this one bit probably occupies as much memory as a
+fourth pointer would. This means that the tree representation involves quite
+some storage overhead, even if the requirements for actual data still dominate.
+
+While it might be possible to use a more compact vector representation just for
+the storage of complete results (on which no operations need to be performed any
+more), we found an implementation for \texttt{KTypePol} that is quite memory
+efficient, while keeping logarithmic complexity for search and insertion
+operations. The idea is to use a sorted vector for most of the stored
+combination, in which binary search can be used to locate terms, but when a term
+to be inserted is not found, it is placed elsewhere rather than being inserted
+into the vector. This of course will eventually cause the ``overflow storage''
+to grow relative to the main vector, which must occasionally be repaired by
+merging the two together to replace the main vector. This still remains vague
+and messy, but what turns it into a simple and working model is to apply the
+same idea recursively to the overflow storage. We end up with a short
+(logarithmic in length, at worst) list of sorted vectors, satisfying the
+invariant that each vector after the first is at most half the size of the
+previous vector (call these the size relations). Upon insertion of a new term,
+it is looked up in the vectors one by one, stopping once a search is successful;
+if the term is not found at all, it produces a new singleton vector at the end
+of the list. Whenever the list of vectors is altered (other than by updating a
+coefficient), the size relations are checked, and when they fail, the two
+offending vectors are merged and replaced by the result (after which the size
+relation with its predecessor might be violated, in which case repeat).
+
+In this model no individual vector changes size, but the list of vectors is
+regularly restructured, it is therefore natural to implement it this using a
+linked list of vectors, and in fact we use
+$\smpl.\ang{\vect.\ang{\textit{Term}}}$ as implementation type. The list runs
+from largest to smallest vector, which besides being natural actually helps
+performance, because the search for a term in an existing vector obviously has
+more chance of succeeding for the larger vectors. The principal methods operate
+as follows. There is a (private) \textit{find} method that applies repeated
+binary search for a key, and either returns the address of the corresponding
+coefficient or a null pointer to indicate failure. There is a method
+\textit{insert} that takes a sorted vector of terms which it takes as a
+candidate to insert into the list of vectors; after finding the proper place in
+the list (the first position such that appending the remainder of the vectors to
+the new vector would produce a list not violating the size relations), it either
+performs the insertion if that produces no conflict with the previous vector (if
+any), or merges the vector with that previous vector, after which it repeats
+(comparing with any vector coming before). The incorporation of a single term
+consists of calling \textit{find} and then either updating the coefficient (if
+one is found), or else calling \textit{insert} with a singleton vector for the
+new term. Finally, adding a scalar multiple of one combination to another one
+proceeds by traversing the former combination, looking up each term in the
+latter and if found updating its coefficient, while forming a sorted vector of
+the terms not found; the method ends with a call to \textit{insert} with this
+vector.
+
+There are a few points to note. First, we allow an updated coefficient to become
+zero without attempting to remove its term, since term removal does not fit well
+in our scheme. But we do provide a \textit{flatten} operation that combines all
+nonzero terms into a single vector that replaces of vectors in the list; this
+removes such terms and provides the most compact form possible. Second, we note
+that any non singleton vectors are formed by merging two vectors that are
+guaranteed to not have any similar terms, the precise size of the result can be
+allocated for them; therefore all vectors will be tight, without unused spare
+capacity\footnote
+%
+{There is one place where explicit care is required to ensure this tightness:
+  when \textit{insert} detects that the new vector can be inserted as-is into
+  the list without violating the size relations, it tests whether the vector has
+  spare capacity (as it well may be when used while adding one combination to
+  another, as the vector in question was constructed with as capacity the size
+  of the former combination, which is sufficient but probably not necessary, to
+  hold all its terms that could not be found in the latter), in which case it
+  copies rather than moves the vector into a fresh node of the list.}.
+%
+Third, it may seem that the backward progression in \textit{insert} after each
+merge operation would be inefficient since singly linked lists do not support
+reverse traversal. One quite natural possibility would be to use recursion,
+where passing forward down the list is done using a recursive call rather than
+by iteration, and the backward progression can be done on the way back, by code
+executed in function instance after the recursive call and (of course) before
+the return from that instance itself. There is however a trick that makes this
+unnecessary, and which is more attractive given the fact that the backward
+progression need no go all the way to the beginning of the list. We define a
+local \stack. of iterators, and at each step of the forward iteration we push
+the current value of the iterator onto the stack; then in order to go back we
+just pop an iterator from the stack to get access to the previous node. Since in
+our case we need to restructure the list during the backward progression, we
+really need a stack of list iterators rather than of pointers or weak iterators.
+Once \textit{insert} decides that its work is done, it can just \textbf{return},
+dropping the local stack (while a recursive solution would still have to unwind
+from the still pending recursive calls, each time signalling in some way to the
+caller that no post-recursion action is required).
+
+We still need to explain how iteration over the terms of such a combination is
+done. We define an iterator type, which contains a list of items that
+\textit{begin} initialises to be of the same length as the list of vectors, each
+item containing an iterator into the corresponding vector plus some extra
+information designed to allow the dereference operator to access its term
+immediately, also to advance to the next nonzero term using $O(1)$ comparisons
+on average; we omit details. Using a linked list of such items rather than a
+vector allows easily erasing an item from the list once its vector has been
+exhausted; the ending condition is that the list becomes empty. While these are
+forward iterators, there is also an opposite iterator type, for backwards
+iteration. All in all this container is a good example of how a judicious mix
+of using vectors and linked lists can lead to better solutions than either of
+them could provide on it own.
+
+
 \subsection{Use of singly linked lists in the Axis interpreter}
 
 While the user interface of the Atlas software originally just consisted of code
 to gather input for library functions and to print their results, this has since
 been replaced by a programmable interface, which over time has become a
-full-fledged programming language Axis. The implementation and support for this
-language represents a substantial part of the \Cpp\ code base. In the
-interpreter, linked structures are much more frequently used than in the library
-part, so there were more opportunities for using linked lists in this part than
-in the rest of the software.
+full-fledged programming language called Axis (in reference to the second
+cervical vertebra~C2). The implementation and support for this language
+represents a substantial part of our \Cpp\ code base. In the interpreter, linked
+structures are much more frequently used than in the library part, so there were
+more opportunities for using linked lists here than in the rest of the software.
 
 In the first stages of input processing, gathering lines of input and lexical
-scanning lists are not used very often. The only point that might be worth
+scanning, lists are not used very often. The only point that might be worth
 mentioning is that the possibility to textually include one file into another
 leads to a stack of active input sources being maintained; here we use the
 technique mentioned above of defining a derived not-quite-abstract data type of
@@ -1354,28 +1524,28 @@ a stack enriched with extra methods. The extra methods allow finding the current
 stack size, as well as obtaining \textbf{const}-iterators for traversal of the
 stack (which is needed to implement the safety precaution that no file can be
 opened a second time while it is already an active input source); as underlying
-container for this stack we use \textit{mirrored\_sl\_list}.
+container for this stack we use \textit{\textbf{mirrored\_\!sl\_\!list}}.
 
 \subsubsection{Usage during parsing}
 
-Linked lists are very much present in the parse tree structure that results from
-reading user input. Some particularities makes their use somewhat different from
-what one would expect in a normal \Cpp\ program. Our parser is produced using
-the \texttt{bison} parser generator program. Thus we have no control over the
-parsing function itself, which is a table-driven skeleton program written
-in~\Cee, but we do provide the action functions that it calls when parts of the
-user input have been recognised, to build up the corresponding parse tree. This
-generated parser can actually be compiled as \Cpp~code (due to the fact that the
-\Cpp\ language includes the relevant part of~\Cee), which allows the action code
-to use some functionality not present in~\Cee; notably this allows it to use
-\Cpp\ types in the representation of the parse tree. These types have mutually
-recursive definitions that reflect the production rules of the context-free
-grammar being implemented. They use pointers to refer to each other, and often
-employ a tagged \textbf{union} of variants when a type represents a syntactic
-category with several production rules.
+Linked lists are present in various places in the parse tree structure that
+results from reading user input. Some particularities makes their use somewhat
+different from what one would expect in a normal \Cpp\ program. Our parser is
+produced using the \texttt{bison} parser generator program. Thus we have no
+control over the parsing function itself, which is a table-driven skeleton
+program written in~\Cee, but we do provide the action functions that it calls
+when parts of the user input have been recognised, to build up the corresponding
+parse tree. This generated parser can actually be compiled as \Cpp~code (due to
+the fact that the \Cpp\ language includes the relevant part of~\Cee), which
+allows the action code to use some functionality not present in~\Cee; notably
+this allows it to use \Cpp\ types in the representation of the parse tree. These
+types have mutually recursive definitions that reflect the production rules of
+the context-free grammar being implemented. They use pointers to refer to each
+other, and often employ a tagged \textbf{union} of variants when a type
+represents a syntactic category with several production rules.
 
-Many syntactic structures, like formulas or argument lists in a function call,
-have a repetitive structure. Since we do not know the number of such parts while
+Many syntactic structures, like argument lists in a function call, have a
+repetitive structure. Since we do not know the number of such parts while
 parsing them, it is natural to represent these structures in the parse tree
 using linked lists. But since these lists occur as variants of a \textbf{union}
 type, it is convenient to store the initial link of such a list as a raw pointer
@@ -1388,12 +1558,12 @@ avoids having to place all parts of the structure on the parsing stack before
 combining any of them (as would happen with right recursive rules). This implies
 that the action rule called when a part is complete must combine the tree for
 this part with the list constructed for the previous parts; since the only cheap
-way to do this is to push the new tree to the front of that list, the result is
-that the lists run backwards during their construction. The parsing
-function that is called when the list gets to be incorporated in a surrounding
-structure (for instance, when the closing parenthesis of an argument list is
-reached) must then reverse the list before including it into that structure;
-indeed this is what we systematically do in such cases.
+way to do this is to push the tree for the new part to the front of that list,
+the result is that the lists run backwards during their construction. The
+parsing function that is called when the list gets to be incorporated in a
+surrounding structure (for instance, when the closing parenthesis of an argument
+list is reached) must then reverse the list before including it into that
+structure; indeed this is what we systematically do in such cases.
 
 We mentioned that the first link of each such list is a raw pointer. This is a
 consequence of a more general design decision made in the representation of the
@@ -1459,10 +1629,11 @@ formula in which there is no final operand. Three parsing actions are associated
 with it: it is first reduced to when the initial operator of the formula is
 seen, it can then repeatedly be extended by an operand and a following operator,
 and finally when en operand not followed by an operator occurs it reduces to a
-formula. These actions implement an operator precedence parser, by producing as
-value not a single parse tree, but a small stack of triples of a parse tree for
-an operand, an operator symbol, and its precedence level (the tree is destined
-to be the left operand of the operator, but its right operand is yet to be
+formula. By choosing as parsing value for such incomplete formulas not a single
+parse tree but a small stack of values, these parsing actions can implement an
+operator precedence parser. The stack contains triples of a parse tree for an
+operand, an operator symbol, and its precedence level (the tree is destined to
+be the left operand of the operator, but its right operand is yet to be
 determined). The actions ensure that in the stack precedence increases towards
 the top, and strictly so at even levels. The action for adding an operand and
 operator does the precedence parsing by pushing onto the stack if it can, and
@@ -1487,30 +1658,104 @@ all that was needed.)
 
 \subsubsection{Usage in the type system}
 
-After building a parse tree, if the entered input is a (as in the case of a
-function definition) contains an expression, that expression is type-checked,
+After building a parse tree, if the entered input is an expression, or contains
+one (as in the case of a function definition), that expression is type-checked,
 which process will also (upon success) produce a transformed and directly
-executable version of the expression. The types used are originally just small
-expressions constructed from a limited number of type constants (designating the
-various primitive types that the system provides) and a small number of
-constructions to combine them (forming function, row, tuple, and discriminated
-union types). The possibilities have since been enlarged by the introduction of
-for instance recursive and second-order types, but in spirit and internal
-representation they have stayed close to the original simple repertoire. That
-representation takes the form of a recursive linked structure
-\textbf{\textit{type\_\!expr}} built around a
-tagged union, quite similar to the representation of parse trees, but with
-substantially fewer variants. The tuple and union type constructors allow for an
-arbitrary number of type subexpressions, and these are represented by
-$\smpl.\ang{\textbf{\textit{type\_\!expr}}}$; that type is used during the
-construction of these lists, but when inserted into the \textbf{union} that
-defines \textbf{\textit{type\_\!expr}}, they are converted to a raw pointer by
-calling~\textit{release}, like we have seen above for lists in parse trees.
-Before the introduction of our list container types, these lists were coded by an
-explicit recursion, and replacing these by the container type was a very simple
-change, and simplified their manipulation through the use of standard library
-facilities.
+executable version of the expression.
 
+The types used were originally just small expressions constructed from a limited
+number of type constants (designating the various primitive types that the
+system provides) and a small number of constructions to combine them (forming
+function, row, tuple, and discriminated union types). The possibilities have
+since been enlarged by the introduction of for instance recursive and
+second-order types, but in spirit and internal representation they have stayed
+close to the original simple repertoire. That representation takes the form of a
+recursive linked structure \tpex. built around a tagged union, quite similar to
+the representation of parse trees, but with substantially fewer variants. The
+tuple and union type constructors allow for an arbitrary number of type
+subexpressions, and these can be represented by $\smpl.\ang{\tpex.}$. Since this
+is a complete type even when \tpex. itself is still incomplete, it can be used
+inside the definition of \tpex., which is what we do currently\footnote
+%
+{This property of \smpl. (and of \slls.), which is possible since the a class
+ $\smpl.\ang{T}$ has no member of type~$T$, is not automatic. Indeed our
+ original definition did not have this property even though otherwise
+ equivalent to our current definition, because not enough care was taken with
+ some class-local typedefs. This just goes to show that defining a container
+ class template can be subtle to get entirely right.
+}.
+%
+But since these lists occur as (or are a member of) a variant of a
+\textbf{union}, there was an option to store a pointer to $\slnd.\ang{\tpex.}$
+instead, calling~\textit{release} when inserting constructed type list,
+similarly to what we do in the case of parse trees. Indeed this is what we did
+until recently, and the main reason that it was possible is that clients (and
+methods of \tpex. itself) never need to access these type lists as proper
+container types, but just need to perform structure preserving iterations
+over the list; this can be done using a weak iterator constructed from the raw
+pointer. Since types were used from the very beginning, before we defined our
+list types and indeed before the \Cpp11 standard essential for their
+implementation was published, these type lists had yet another representation
+before that: they were coded by an explicit recursion, and the \tpex. methods
+took care of their memory management. The initial change to using the container
+based lists was particularly unproblematic, since it basically meant replacing
+type specific code by the use of equivalent but generic stuff.
+
+It is interesting to compare what is needed to adapt the code to working with
+actual type lists inside \tpex., from a situation where they are represented as
+raw pointers. As we mentioned, that earlier solution was only possible because
+needs to access these lists are limited to simple traversals. (Strictly
+speaking, since the data members of a list node are public, it would in
+principle be possible to do anything by direct manipulation, given a pointer to
+the first node; however such a low level approach goes against the spirit of
+using a container type.) In particular, the earlier representation does not
+allow accessing the list through an actual object or reference of type
+$\smpl.\ang{\tpex.}$, since the nodes of such a list would be owned by it, and
+therefore be disjoint from the list inside the \tpex., which also owns the nodes
+that it contains.
+
+So it is more principled to use a $\smpl.\ang{\tpex.}$ inside the relevant
+variants of \tpex.. A first important change that this entails is that one must
+use placement-\textbf{new} to install these fields when a type of the kind in
+question is created, rather than assignment, since the latter would first call
+the destructor on the previous value of the field, which is uninitialised. This
+requirement has no relation with lists in particular, but applies to any type
+with a nontrivial destructor that occurs inside the variant of a \textbf{union}.
+Before \Cpp11, it was actually forbidden to have such variants, but their uses
+since \Cpp11 remains awkward, since the runtime system has no way of knowing
+which variant is currently active, and therefore whether any objects inside
+variants have been constructed. We use a union-like class with a \textit{tag}
+member to record the active variant, which makes it possible for the class
+destructor to clean up (only) the active variant; it does this by explicitly
+calling the destructor for the relevant object(s). The fact that it does, brings
+another subtlety into play: setting the tag and initialising the corresponding
+variant object(s) using placement-\textbf{new} can be done in any relative
+order, but must be done in such a manner that there is no risk of an exception
+being thrown between the two events. Such an exception would either cause a the
+variant object to be constructed but not destructed (if the tag was to be set
+afterwards), or worse to be destructed without first being constructed (if the
+tag were set before). In our case, the default (empty) construction of a linked
+list allocates no dynamic memory, so it cannot cause an exception; we can
+therefore proceed by setting the tag and then immediately perform
+placement-\textbf{new} without arguments of any list in the corresponding
+variant. Once this is done, actions to fill the list can be performed without
+any risk of causing a memory leak.
+
+With these hurdles overcome, the use of these type lists poses no practical
+difficulties, and is in fact more straightforward than it previously was. From a
+raw pointer to a node one can construct a weak iterator using a constructor for
+the iterator type; having instead a (reference to) the list object, it suffices
+to instead call the \textit{begin} method or a variant like \textit{wbegin};
+this avoids explicitly naming the iterator type, which can be left \textbf{auto}
+in the declaration. In practice we always use a weak const or weak iterator
+(methods \textit{wcbegin} and \textit{wbegin}, respectively). The new approach
+enforces const-correctness more systematically than before: having access to an
+(unqualified) pointer to a list node allows obtaining a non \textbf{const} weak
+iterator, even if the containing \tpex. was \textbf{const} qualified. Using a
+\smpl. instead does not allow this (any \textit{begin} methods applied to a
+\textbf{const} container produce a const-iterator); while rewriting the code we
+discovered that we needed to be more specific on this point than we had been
+before, even though no actual abuse of the mentioned possibility was ever made.
 
 \section{Implementation details}
 
