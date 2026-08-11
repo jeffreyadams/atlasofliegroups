@@ -233,11 +233,12 @@ occasionally after enriching the repertoire of methods of the container type.
 Also, it turns out to be useful to sometimes not use the provided container
 types directly; for instance, for a component of a \Cpp\ |union| type, there is
 little advantage of using a smart pointer (it still needs to be managed manually
-by the containing union type), so we use a raw pointer to a node
-(|raw_type_list| or |const_raw_type_list|) in such occasions. We shall also have
-occasions where instead of normal iterators over type lists we use weak
-iterators (ones that cannot be used to insert or delete nodes), and the types
-|wtl_iterator| and |wtl_const_iterator| are defined for that purpose.
+by the containing union type), so we may choose to use a raw pointer to a node
+on such occasions. In a fairly recent change of implementation, we do now use an
+actual |type_list| inside the |union| of |type_expr|, so the raw versions below
+only serve in communication with the parser.
+
+@h "sl_list.h"
 
 @< Type declarations @>=
 using type_list = containers::simple_list<type_expr>;
@@ -245,9 +246,6 @@ using dressed_type_list = containers::sl_list<type_expr>;
 @)
 using raw_type_list = @[atlas::containers::sl_node<type_expr>*@];
 @/using const_raw_type_list = @[atlas::containers::sl_node<type_expr>const *@];
-using wtl_iterator = containers::weak_sl_list_iterator<type_expr>;
-  // wtl = weak type list
-using wtl_const_iterator = containers::weak_sl_list_const_iterator<type_expr>;
 
 @ Since types and type lists own their trees, copying them means making a deep
 copy. The class |type_expr| will provide no copy constructor but instead a more
@@ -386,17 +384,6 @@ like the equality operation on |type_expr| values take care to not indefinitely
 expand tabled references; they avoid specifically to do this when both types (or
 constructors) are recursive, in which case they just test equality of type
 number, and in case of a constructor equivalence of any type arguments present.
-
-Although \Cpp11 allows variant members of a |union| with nontrivial special
-member functions, such as smart pointers, it leaves it to the programmer's
-responsibility to explicitly call constructors and destructors as those variants
-come and go; this effectively ruins most of the advantages that smart pointers
-would give. For this reason we use raw pointers here instead, and in particular
-|raw_type_list| rather than |type_list| for the |tuple_variant| and the
-|type_args| field in |tabled_type_cons|. One drawback of that is that we will
-not be able to create a |type_list::iterator| for traversal of the list, but in
-practice weak iterators (specifically |wtl_iterator| or |wtl_const_iterator|),
-which one can construct from a raw pointer, will always suffice.
 
 There is one restriction on types that is not visible in the definition below,
 namely that the list of types referred to by the |tuple_variant| field cannot
@@ -1617,9 +1604,9 @@ const type_expr& type_expr::tabled_eq() const
 {@; return open_type_table.definiens(tabled_variant.nr); }
 
 @ The |expanded| methods requires more work, but a call to |simple_subst| does
-the essential part. We just need to convert the type arguments from
-|raw_type_list| to a |std::vector| to prepare for the call. In all cases we must
-make a copy, so trying to save work when |arity==0| is not really worth it.
+the essential part. We just need to convert the type arguments from |type_list|
+to a |std::vector| to prepare for the call. In all cases we must make a copy, so
+trying to save work when |arity==0| is not really worth it.
 
 @< Function definitions @>=
 type_expr type_expr::expanded () const
@@ -2223,7 +2210,6 @@ tuple and union types) and function types. For the latter we suppress
 additional parentheses around argument and result types in case these are
 tuple or union types.
 
-@h "sl_list.h"
 @< Function definitions @>=
 
 std::ostream& operator<<(std::ostream& out, const type_expr& t)
