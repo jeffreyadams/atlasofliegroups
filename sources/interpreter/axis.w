@@ -433,9 +433,9 @@ no run time stack frame will correspond at all (as such a frame would incur a
 runtime cost for no good at all). The method |lookup| skips such layers without
 increasing the |depth| it reports.
 
-The loop variable |range| below is a const-iterator over a |simple_list|, where
-|*range| is a list item which is a pointer to |layer|. We therefore access
-|layer| members using a double dereference of |range| (the second one is
+The loop variable |range| below is a const-iterator over a
+|simple_list<layer*>|, so |*range| is (still) a pointer to |layer|. We therefore
+access |layer| members using a double dereference of |range| (the second one is
 sometimes hidden in the form of an arrow symbol).
 
 @< Function def... @>=
@@ -1148,14 +1148,14 @@ once a common type is found.
 accept all component expressions; being passed as an argument, the caller may
 already have (partially) set this type, or otherwise pass |type::bottom(fc)| to
 leave it undetermined initially. Each branch will be converted initially in the
-context of this type, recording both the type and the converted expression.
-Then a pass is made that tries to possibly modify |common| to a type that
-accepts all the types found. This may fail for some types encountered
-(if |common| was initially undetermined, there is no reason to suppose any
-relation between those types), so we collect the rejected types in a list of
-|conflicts|. When a common type is found this may resolve some conflicts (if
-|common| is |void| it will accept any type), but if after a pruning round there
-are still any |conflicts| left, we report this as an error.
+context of this type, recording both the type and the converted expression. Then
+a pass is made that tries to possibly modify |common| to a type that accepts all
+the types found. This may fail for some types encountered (there is no reason to
+suppose there exists any relation between those types, especially if |common|
+was initially undetermined), so we collect the rejected types in a list of
+|conflicts|. When a common type is found this may resolve some conflicts (for
+instance, if |common| is |void| it will accept any type), but if after a pruning
+round there are still any |conflicts| left, we report this as an error.
 
 In case of success, any branches that were originally found to have a different
 type than the final |common| one, are converted again in the context of that
@@ -1175,19 +1175,20 @@ void balance
    , std::vector<expression_ptr>& components // output, converted expressions
    )
 {
-  using data = std::pair<std::unique_ptr<type>,expression_ptr>;
-  sl_list<data> comp_data;
+  using data = std::pair<type,expression_ptr>;
   sl_list<type> conflicts;
-  @< Convert each expression in |elist| in the context of a copy of |common|,
+  std::vector<data> comp_data;
+  comp_data.reserve(length(elist));
+@/@< Convert each expression in |elist| in the context of a copy of |common|,
      pushing the results to |comp_data|... @>
-  @< Join |common| with each of the types in |comp_data|, copying to
+@/@< Join |common| with each of the types in |comp_data|, copying to
      |conflicts| those for which this fails @>
-  @< Prune from |conflicts| any types that |common| now accepts, and if any
+@/@< Prune from |conflicts| any types that |common| now accepts, and if any
      conflicts remain, |throw| a |balance_error| mentioning |common| and all
      remaining |conflicts| @>
 @)
   if (not common.is_polymorphic())
-    @< Redo conversion with context type |common| for components that do not
+  @/@< Redo conversion with context type |common| for components that do not
        already have that type @>
 @)
   components.clear();
@@ -1226,19 +1227,18 @@ purpose of pruning.
    converting the component, also add the incriminated types to |conflicts| @>=
 for (wel_const_iterator it(elist); not it.at_end(); ++it)
 { try
-  { auto last = comp_data.emplace_back
-     (std::make_unique<type>(common.copy()),expression_ptr());
-    last->second = convert_expr(*it,*last->first);
+  { comp_data.emplace_back(common.copy(),expression_ptr());
+    comp_data.back().second = convert_expr(*it,comp_data.back().first);
   }
   catch (balance_error& err)
   { if (&err.offender!=&*it) // only incorporate top-level balancing errors
       throw; // any deeper error is propagated to be reported
     else if (err.offender.kind==list_display)
-      // then wrap variants in row-of
+      // then maybe wrap variants in row-of
       for (auto jt=err.variants.wbegin(); not err.variants.at_end(jt); ++jt)
         jt->wrap_row();
         // replace |*jt| by its ``row-of'' type
-    conflicts.append(std::move(err.variants)); // then join to our |conflicts|
+    conflicts.append(std::move(err.variants)); // then record then in |conflicts|
   }
 }
 
@@ -1258,14 +1258,14 @@ changes.
 
 @< Join |common| with each of the types in |comp_data|, copying to
      |conflicts| those for which this fails @>=
-for (const auto& node : comp_data)
-  if (not join_to(common,*node.first))
-    conflicts.push_back(node.first->copy());
+for (const auto& datum : comp_data)
+  if (not join_to(common,datum.first))
+  @/conflicts.push_back(datum.first.copy());
 
 
 @ Pruning is quite simple, and gives us an occasion to exercise the |erase|
-method of |sl_list|. In such loops one should not forget
-to \emph{not advance} the iterator in case a node is erased in front of it.
+method of |sl_list|. In such loops one should not forget to \emph{not advance}
+the iterator in case a node is erased in front of it.
 
 Only if at least one conflicting type remains do we report an error; if so, the
 type |common| is added as first type to the error object, unless it is unchanged
@@ -1312,11 +1312,11 @@ unification).
 { assert(comp_data.size()==length(elist));
   wel_const_iterator it(elist);
   type_expr te = common.bake();
-  for (auto& node : comp_data)
+  for (auto& datum : comp_data)
   {
-    if (node.second == nullptr or
-        (not node.first->is_polymorphic() and node.first->bake_off()!=te))
-      node.second = convert_expr(*it,common);
+    if (datum.second == nullptr or
+        (not datum.first.is_polymorphic() and datum.first.bake_off()!=te))
+      datum.second = convert_expr(*it,common);
       // redo conversion with unifying |common| type
     ++it; // keep traversal of |elist| in sync with that of |comp_data|
   }
