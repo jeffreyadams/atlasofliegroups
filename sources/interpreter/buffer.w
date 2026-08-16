@@ -1179,7 +1179,7 @@ sl_list<const char*> completions(const char* text)
   { const char* s = main_hash_table->name_of(i);
     if (std::strncmp(text,s,l) == 0 // is |text| a prefix of |s|?
         and (i<lex->first_identifier() @|
-             or global_overload_table->variants(i)!=nullptr @|
+             or global_overload_table->instances(i)!=nullptr @|
              or global_id_table->present(i)
             )
        )
