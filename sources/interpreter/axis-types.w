@@ -25,9 +25,9 @@
 
 @* Outline.
 %
-This file describes a central part of the interpreter for Axis, the (new)
-command language of the Atlas of Lie Groups and Representation software. This
-part describes the fundamental type declarations used throughout the
+This file describes a central part of the interpreter for Axis, the command and
+programming language of the Atlas of Lie Groups and Representation software.
+This part describes the fundamental type declarations used throughout the
 interpreter, as well as some functions that operate on types, for instance to
 see if one can be converted into another. This compilation unit is
 called \.{axis-types}, which refers both to user types and to meta-types of the

@@ -25,15 +25,15 @@
 
 @* Outline.
 %
-This file describes the central part of the interpreter for the command
-language of the Atlas of Lie Groups and Representation software
-called \.{axis} (after the second cervical vertebra, the one below atlas).
-This part is concerned with the analysis and execution of expressions that
-have already been processed by the parser. These are highly recursive
-processes, and this rather large module has been limited to those functions
-that play a part in this recursion. Other more one-time matters like
-initialisation and setting global variables that were originally done in this
-module have been relegated to a separate module \.{global.w}.
+This file describes the central part of the interpreter for the command and
+programming language Axis (named after the second cervical vertebra~C2, the one
+below atlas~C1) of the Atlas of Lie Groups and Representation software. This
+part is concerned with the analysis and execution of expressions that have
+already been processed by the parser. These are highly recursive processes, and
+this rather large module has been limited to those functions that play a part in
+this recursion. Other more one-time matters like initialisation and setting
+global variables that were originally done in this module have been relegated to
+a separate module \.{global.w}.
 
 @( axis.h @>=
 
@@ -806,7 +806,14 @@ using tuple_expression = tuple_expression_tmpl<false>;
 
 @ When we print a tuple display, we just print the component expressions,
 enclosed in parentheses and separated by commas, to match their input syntax.
-
+The initial parenthesis is output explicitly rather than as an alternative for
+the comma at the first time through the |for| loop so that it will also be
+present when printing an empty tuples display; this is a recurrent concern for
+the output of enclosed repetitive structures. We indicate the reverse evaluation
+attribute by a tilde preceding the closing parenthesis although this is not
+valid input syntax (the user is not supposed to know and has no explicit control
+of evaluation order in a tuple display; besides, many tuple displays are not
+explicitly written, as those for the operands of an infix operator).
 
 @< Function def... @>=
 template<bool r_to_l>
@@ -821,17 +828,17 @@ template<bool r_to_l>
 may be components that turn out to have a polymorphic type, in which case we
 must ensure that they are converted at an unchanged level of fixed type
 variables (because any new type variables introduced inside the component
-expression will be numbered by the lexical analyser at that level), but that in
-the resulting type the polymorphic variable may then need renumbering to make
-then disjoint form those of previous components. In a case where this might
-happen, we do not want to pass a component of |tp| to the recursive call of
-|convert_expr| for the component, as it will get specialised to the wrong type
-and do not want to then later assign a renumbered component type (maybe it would
-be acceptable since we are still assigning a specialised version of the original
-type pattern, but we do not want to break a convention this is adhered to
-everywhere else). So whenever this might happen we pass a |type_expr| disjoint
-from |tp| to |convert_expr|, and specialise |tp| only after possibly creating a
-renumbered polymorphic type.
+expression will be numbered by the lexical analyser without taking into account
+the change to a new component), but that in the resulting type the polymorphic
+variable may then need renumbering to make then disjoint form those of previous
+components. In a case where this might happen, we do not want to pass a
+component of |tp| to the recursive call of |convert_expr| for the component, as
+it will get specialised to the wrong type and do not want to then later assign a
+renumbered component type (maybe it would be acceptable since we are still
+assigning a specialised version of the original type pattern, but we do not want
+to break a convention this is adhered to everywhere else). So whenever this
+might happen we pass a |type_expr| disjoint from |tp| to |convert_expr|, and
+specialise |tp| only after possibly creating a renumbered polymorphic type.
 
 One property that we do exploit here is that any determined components of |tp|
 will be so to a monomorphic type. (We used to think that |tp| is either
@@ -857,7 +864,9 @@ that case |ntt| now holds the a priori $n$-tuple type of the expression, and
 |tp| is unmodified since entering this case. Therefore the error message given
 by |type_error| describes faithfully the actual and expected type patterns.
 
-@h <memory> // for |std::unique_ptr|
+@h <memory>
+  // for |std::unique_ptr| but redundant: |expression_ptr| is a |std::unique_ptr|
+
 @< Cases for type-checking and converting... @>=
 case tuple_display:
 {
@@ -867,10 +876,12 @@ case tuple_display:
     // maybe fill components of |ntt| according to |tp|
   bool is_constant = true; // whether all components are denotations
 @)
-  std::unique_ptr<tuple_expression> tup_exp(new tuple_expression(0));
-  std::vector<expression_ptr>& comp = tup_exp->component;
+  std::unique_ptr<tuple_expression>
+    // will be transformed into |expression_ptr| below
+     tup_exp(new tuple_expression(0));
+@/std::vector<expression_ptr>& comp = tup_exp->component;
   comp.reserve(n);
-  sl_list<type> comp_types;
+  sl_list<type> comp_types; // to be wrapped to a tuple |type| below
 @)
   auto tl_it = ntt.tuple().wcbegin();
   for (wel_const_iterator it(e.sublist); not it.at_end(); ++it,++tl_it)
@@ -885,7 +896,7 @@ case tuple_display:
   if (is_constant)
      make_row_denotation<false>(result);
      // wrap tuple inside a denotation, see below
-  auto tup_tp = type::wrap_tuple(std::move(comp_types),fc);
+  type tup_tp = type::wrap_tuple(std::move(comp_types),fc);
   if (tp.unify_to(tup_tp) or coerce(tup_tp.bake(),tp.bake(),result,e.loc))
     return result;
   throw type_error(e,tup_tp.bake_off(),tp.bake());
@@ -1536,47 +1547,62 @@ template<bool pilfer>
 
 @*1 Local identifiers.
 %
-Local identifiers will be accessed from the current execution context, which
-is a stack of variable bindings independent of the |execution_stack| (the
-latter being used for anonymous components of expressions being evaluated).
-This stack is implemented as a singly linked list, and accessed through a
-shared pointer. It is not an instance of |simple_list| mainly
-because of sharing of parts between different contexts, which arises when
-closures are formed as will be described later. The structure pointed to by
-|shared_context| is described in \.{axis-types.w}; essentially, each node of the
-list is a vector of values associated with identifiers introduced in the same
-lexical |layer|. Although each value is associated with an identifier, they
-are stored anonymously; the proper location of an applied identifier is
-determined by its position in the list of lexical layers at the time of type
-checking, and recorded as a pair of a relative depth (of the defining
-occurrence with respect to the applied occurrence) and an offset within the
-layer.
-
-Thus using applied identifiers requires no looking up at run time, although
-traversing of the linked list of corresponding |frame|s, up to the specified
-depth, is necessary. One might imagine keeping a stack of |layer| pointers
-cached to speed up the evaluation of applied identifiers of large depth, but
-such a cache would have to be renewed at each context switch, such as those
-that occur when calling or returning from a user-defined function; it is
-doubtful whether this would actually result in more rapid evaluation.
+Local identifiers will be accessed from the current execution context, which is
+a sequence of groupings of variable bindings that functions independently of the
+|execution_stack| (the latter being used for anonymous components of expressions
+being evaluated). It is implemented as a singly linked list that mostly operates
+like a stack, but it cannot be of any container type because different contexts
+can have shared parts without one being contained in the other. Such partial
+sharing arises because closures can capture a context, as will be described
+later, while ordinary execution pops of groupings and pushed others. So rather
+than using a |stack| or a |simple_list|, the evaluation context is accessed
+through a pointer of type |shared_context|. The |evaluation_context| structure
+that this shared pointer points to is described in \.{axis-types.w}; it is a
+node of a list structure linked by shared pointers, which node contains a vector
+of values associated with identifiers introduced in the same lexical |layer|.
+While each value is associated with an identifier, values are stored
+anonymously; during type checking, |layer::lookup| associates with each applied
+identifier used a relative depth of the layer containing the defining occurrence
+with respect to the applied occurrence, and its position within that layer.
 
 The pointer holding the current execution context is declared a as static
-variable of a local class |frame| to be detailed in section @#frame class@>.
-Having a static variable has the advantage, compared with making it a
-parameter to the |evaluate| methods, of not encumbering the numerous such
-methods that neither use nor modify the context in any way (those not
-involving identifiers or user defined functions).
+variable of a class |frame|, which is local to this compilation unit and will be
+detailed in section @#frame class@>. The |frame| class controls the ordinary
+management of the execution context, pushing and popping groups of bindings, but
+(unlike |layer| which functions similarly with respect to the |lexical_context|
+at compile time) does not appear in the execution context itself. Also, |frame|
+does not control all changes to the execution context, as the call of a user
+defined function will temporarily replace |frame::current| by the context stored
+in the closure. Having the execution context accessed through a static variable
+has the advantage, compared with making it a parameter to the |evaluate|
+methods, of being accessible at all times, thereby not burdening the recursive
+evaluation interface with the obligation to pass on the current evaluation
+context, while many of the methods involved (those not involving identifiers or
+user defined functions) neither use nor modify the context in any way.
+
+At run time, using applied identifiers requires no looking up, although the
+necessary traversal of the linked list of corresponding |evaluation_context|s
+from |frame::current|, up to the specified depth, must be done each time. One
+might imagine caching a stack of pointers to |evaluation_context| structures to
+speed up the evaluation of applied identifiers of large depth. But such a cache
+would have to be renewed at each context switch, for instance whenever calling
+or returning from a user-defined function; it is doubtful whether caching would
+actually result in more rapid evaluation.
+
 
 @< Local var... @>=
 shared_context frame::current; // points to topmost current frame
 
-@ We derive the class of local identifiers from that of global ones, which
-takes care of its |print| method. The data stored are |depth| identifying a
-layer, and |offset| locating the proper values within the layer.
+@ We derive the class of local identifiers from |identifier|. Like for global
+identifiers we add a Boolean template parameter to this class, which indicates
+whether the evaluation empties the variable itself. The data stored here are
+|depth| identifying a layer, and |offset| locating the proper values within the
+layer. Even though the |identifier| class defines a |print| method that
+|local_identifier<false>| would like to use, we see no way to only declare a new
+definition of this virtual function when |pilfer=true|, and declaring the method
+in the class definition obliges every template instance to define in instance of
+the virtual method.
 
-Like for global identifiers we add a Boolean template parameter to this class,
-which indicates whether the evaluation empties the variable itself, which again
-the compiler can employ for efficiency purposes.
 
 @< Type definitions @>=
 template<bool pilfer=false>
@@ -1589,8 +1615,22 @@ public:
   virtual void evaluate(level l) const; // only this method is redefined
 };
 
-@ The method |local_identifier::evaluate| looks up a value in the evaluation
-context |frame::current|, by calling the method |evaluation_context::elem|.
+@ We print a dollar sign after the identifier name when it is flagged as
+being pilfered upon use; this is why we have separate versions of~|print|.
+
+Both versions of the method |local_identifier::evaluate| look up a value in the
+evaluation context accessible from |frame::current|, by calling the method
+|evaluation_context::elem|. The difference between the versions lies in the fact
+that we move from rather than copy the value stored for the identifier if
+|pilfer=true|. The idea is that we do this only if were are sure that a value is
+going to be assigned to the same location just after. Should the operation that
+produces the new values throw an exception rather than return normally, the
+resulting stack unwinding will probably make the local variable disappear (i.e.,
+become unreachable), but the |evaluation_context| containing the local variable
+might be shared by function that continues to exist, in which case the hole that
+moving produces might remain there to potentially cause future problems. This is
+not good, but such a rare possibility of failure might be acceptable given the
+speed and memory improvement that moving allows.
 
 @< Function definitions @>=
 template<>
@@ -1600,14 +1640,13 @@ template<>
   void local_identifier<true>::print(std::ostream& out) const
 @+{@; out << '$' << name(); }
 
-template<bool pilfer>
-  void local_identifier<pilfer>::evaluate(level l) const
-{
-  if (pilfer)
-    push_expanded(l,std::move(frame::current->elem(depth,offset)));
-  else
-    push_expanded(l,frame::current->elem(depth,offset));
-}
+template<>
+  void local_identifier<false>::evaluate(level l) const
+{@; push_expanded(l,frame::current->elem(depth,offset)); }
+
+template<>
+  void local_identifier<true>::evaluate(level l) const
+{@; push_expanded(l,std::move(frame::current->elem(depth,offset))); }
 
 @*1 Type-checking applied identifiers.
 %
@@ -5994,7 +6033,7 @@ with the case with tags.
 @ When tags were specified, their set is given in |tags| and the candidate union
 types that were retrieved from |type_expr::type_map| are collected in the list
 |candidates|. Before insisting that there is a unique candidate that governs the
-correspondence between tags and positions in the union, we remove and candidates
+correspondence between tags and positions in the union, we remove the candidates
 whose set of tags do not provide for all tags that were used in the clause.
 
 @< Filter from |candidates| those that do not know all |tags|,...@>=
