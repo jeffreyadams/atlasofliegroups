@@ -468,11 +468,11 @@ set binary = (int->string):
   (int n)string: if n.< then "-"##f(-n) else f(n) fi
 
 set digits36 = (int->string): { map digits in base up to 36 to a letter }
-  let !shift = "A".ascii-10
-  in (int k)string: if k<=9 then k.to_string else ascii(k+shift) fi
+  let !shift = "A".ASCII-10
+  in (int k)string: if k<=9 then k.to_string else ASCII(k+shift) fi
 
 set hexadecimal = (int->string):
-  let !shift = "A".ascii-10 then f=to_base(16,digits36@int)
+  let !shift = "A".ASCII-10 then f=to_base(16,digits36@int)
   in (int n)string: if n.< then "-"##f(-n) else f(n) fi
 
 {		some transformations of sequences of numbers		}
@@ -539,7 +539,7 @@ in sign
 
 {                               Strings                                 }
 
-set !new_line = ascii(10) { including this in a string passes to a new line }
+set !new_line = ASCII(10) { including this in a string passes to a new line }
 
 set char_index (string c, string s) = int: first(#s,(int i)bool: c=s[i])
 
@@ -1121,7 +1121,7 @@ set is_simple (LieType t) = bool: t.derived_is_simple and =t.central_torus_rank
 { compute |t.semisimple.adjoint.two_rho| without constructing a |RootDatum| }
 set adjoint_2rho (LieType t) = vec: { $2\rho$ on basis of simple roots }
   for (letter,n) in simple_factors(t)
-  do case ascii(letter)-ascii("A")
+  do case ASCII(letter)-ASCII("A")
      in { A } for i:n from 1 do i*(1+n-i) od
      ,  { B } for i:n from 1 do i*(n+n-i) od
      ,  { C } for i:n from 1 do i*(1+n+n-i)   \ if i<n then 1 else 2 fi od
@@ -1139,7 +1139,7 @@ set adjoint_2rho (LieType t) = vec: { $2\rho$ on basis of simple roots }
 { similarly $2\check\rho$ on basis of simple coroots }
 set simply_connected_2rho_check (LieType t) = vec:
   for (letter,n) in simple_factors(t)
-  do case ascii(letter)-ascii("A")
+  do case ASCII(letter)-ASCII("A")
      in { A } for i:n from 1 do i*(1+n-i) od
      ,  { B } for i:n from 1 do i*(1+n+n-i)   \ if i<n then 1 else 2 fi od
      ,  { C } for i:n from 1 do i*(n+n-i) od
