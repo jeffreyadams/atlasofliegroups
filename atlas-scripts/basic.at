@@ -1,5 +1,3 @@
-set ASCII(int n) = string: ascii(n)
-set ASCII(string str) = int: ascii(str)
 {=== GENERIC TYPE CONSTRUCTORS ===}
 
 set_type Pair<S,T>   = ( S fst , T snd ) !
