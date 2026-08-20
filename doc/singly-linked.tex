@@ -60,6 +60,8 @@
 \def\queue.{\textbf{\textit{queue}}}
 \def\stack.{\textbf{\textit{stack}}}
 \def\tpex.{\textbf{\textit{type\_\!expr}}}
+\def\lay.{\textbf{\textit{layer}}}
+\def\frm.{\textbf{\textit{frame}}}
 
 \def\ang#1{\langle#1\rangle}
 \def\atT{$\ang T$::}
@@ -166,7 +168,7 @@ not best suited to handle. Similarly we sometimes need storage of a sequence of
 values just as a conduit between one function producing them sequentially and
 another one processing them, where the flexibility of linked lists is an
 advantage. The software also supports a full user programming language, and its
-various parts (parser, type checker/compiler, and runtime execution system) very
+various parts (parser, type checker/compiler, and runtime execution system)
 frequently employ linked structures of various kinds.
 
 Nonetheless, the linked list container class templates provided by the \Cpp.
@@ -221,25 +223,32 @@ difficulties were found. As our work did not involve any truly novel ideas, we
 remain somewhat surprised at not having found any indication that the
 \Cpp\ community ever attempted a similar avenue.
 
-In this paper we shall first give some technical background to singly linked
-lists and iterators for them, and then proceed to describe our implementation of
-a container class template using singly linked lists. We discuss how these lists
-are used within our software package, and some adaptations and variation that
-were inspired by practical questions arising while using them. Our lists can be
-used as a fully capable container type in conjunction with the standard library,
-but occasionally a somewhat less abstract approach proved to be useful. Our new
-container blends in perfectly with using the standard library.
+In this paper we shall first discuss the role of iterators in \Cpp\ in general,
+and in relation to linked lists in particular, followed by a description of a
+container class template using singly linked lists and their iterators, from a
+programmer's perspective. This description defines a fully capable container
+type that can be used as such in conjunction with other container types and more
+generally the standard library, with which it blends in perfectly well. But our
+experience of using them also inspired some adaptations and variations that
+provide added flexibility. We then discuss how these lists are used in our
+software, and which design decisions were concerned with them. Finally we
+discuss some technical details about the implementation of this container type,
+which was coded in a more straightforward style than used for container types in
+the \Cpp\ standard library (that was originally called the Standard Template
+Library).
 
-We illustrate these matters by concrete examples taken from the `Atlas'
-software. Our implementation is in the public domain, licensed under the GNU
+Our implementation is in the public domain, licensed under the GNU
 Public Licence, and available from our source code repository \cite{Atlas
   source}.
 
 The \Cpp\ language is constantly evolving, but in this paper we shall take the
-\Cpp11 revision as our reference point. This corresponds roughly to the current
-state of our project (although we has since moved to requiring \Cpp14 support),
-being a compromise between adopting useful innovations and not restricting our
-software to users that have the most recent compiler versions installed.
+\Cpp11 version as our reference point. This corresponds roughly to what we
+allowed ourselves to use in most parts of our software, to strike a balance
+between the availability of useful features and the possibility of not imposing
+installation of recent compiler versions on our users (and the obligation for
+ourselves to keep up with new language directions). Nonetheless we did start
+in~2022 to use a few things introduced in \Cpp14, notably \std{make\_unique},
+mainly for aesthetic reasons.
 
 \section{Design considerations}
 \subsection{Iterators in \Cpp.}
@@ -1145,7 +1154,7 @@ this can be achieved by conversion using a final call of \textit{to\_\!vector}.
 
 Situations where we need to temporarily store sequences of values of size not
 fixed at compile time are very frequent in our program. We tend to use
-\vect. when the size of the list is available at runtime before the
+\vect. when the size of the list is available at run time before the
 sequence is produced, or if random access to the sequence is needed during its
 construction, and \slls. in most other cases; this amounts to a considerable
 portion of our uses of singly linked lists in the library.
@@ -1756,6 +1765,98 @@ iterator, even if the containing \tpex. was \textbf{const} qualified. Using a
 \textbf{const} container produce a const-iterator); while rewriting the code we
 discovered that we needed to be more specific on this point than we had been
 before, even though no actual abuse of the mentioned possibility was ever made.
+
+\subsubsection{Usage during type checking and conversion of expressions}
+
+The usage of linked lists within the functions that perform type checking of
+expressions and the construction of executable versions of them occurs mostly on
+places where this is either imposed (when encountering lists in expression or
+type values, or when constructing type values containing lists) or a natural
+choice. An example of the latter is type balancing, where a common type must be
+found for collection of subexpressions (like branches of a conditional
+expression or \textbf{return} statements from a same function): sometimes types
+up to a certain point can be incompatible, but the type of a subexpression
+considered later may change the target type in a way that can accommodate (via
+implicit conversion operations) all previous types; the problematic types
+therefore are stored away on a list to be reconsidered once the target type has
+been decided upon. An example where the choice of using a list is a bit more
+consequential is representation of the ``overload table'', used for the storing
+global bindings of (function) identifiers and operator symbols, where one symbol
+can be bound to several definitions. Here the choice of a linked list to store
+multiple definitions is natural because on one hand searching the set of
+definitions is always linear, and there are reasons to impose an ordering in
+which definitions are to be searched (so that the first match will automatically
+be the best), which means that the place to insert a new definition may be
+anywhere in the list.
+
+The use of a \smpl. instance to represent the stack of nested layers of local
+identifiers, produced by syntactic constructions like local definitions, loop
+clauses (that may introduce loop variables) and function headings (that may
+introduce parameters) is worth mentioning, not so much because the list
+representation chosen makes a great difference (using \vect. here instead would
+have been perfectly fine), but because of the particular way in which pushing
+and popping of layers is controlled. Each layer is represented by an object of
+class \lay. that holds the types of a set of identifiers introduced in the same
+lexical scope. This class has a private static member
+\textit{lexical\_\!context} of type $\smpl.\ang{\lay.*}$, by which methods of
+\lay. can access the all layers currently in existence. Each constructor of
+\lay. pushes a pointer to the constructed object onto
+\lay.::\textit{lexical\_\!context}, and the destructor of \lay. pops an item off
+its front (this should always be the pointer to the destructed object). In this
+manner, as long as the user adheres to the discipline of always creating \lay.
+objects as local variables (on the \Cpp\ runtime stack), the correct lexical
+context is automatically maintained. The mechanism is even exception-safe, and
+throwing exceptions during type checking is a common possibility (but since a
+thrown exception terminates type checking for the current expression and thereby
+clears the lexical context anyway, one may consider this a bit of a gimmick).
+
+\subsubsection{Usage during evaluation of expressions}
+
+When type checking of an expression succeeds, it constructs a corresponding
+\Cpp\ object that is executable in the sense that it provides an
+\textit{evaluate} method whose call will perform the computation that the
+expression described, and produce the value of the expression; this
+transformation of the expression can be considered to be a compilation, even
+though no machine code is produced. In this process, the linked structures
+produced by the parser often give rise to vector structures; for instance in a
+(multi-way selection) \textbf{case} expression, the list of branches from the
+parser is converted into a vector of (shared) pointers to the compiled forms of
+the branches, so that upon evaluation one of them can be selected in constant
+time. In a similar vein, the collection of identifiers in a single lexical
+layer, which the parser represents using a linked recursive type that allows for
+a list of identifiers but also for sublists of the same, is flattened during
+compilation to a simple sequence, associating each identifier with a position
+within the layer. Then the runtime counterpart of a layer is a vector of shared
+pointers that each represent the value of an identifier; these can cohabit even
+if those values are of different types, and they allow each value to be accessed
+in constant time.
+
+There is one place in the evaluation process where linked lists play an
+essential role, namely to represent the evaluation context: it is represented as
+a sequence of nodes, each containing the runtime counterpart of a layer we just
+mentioned. But this sequence cannot be stored as an instance of \smpl., or of
+any other container type for that matter: because such an evaluation context can
+be captured in a closure value and as such continue to exist when it is no
+longer the context of the current evaluation, one needs to cater for the
+simultaneous existence of different contexts that share a part of their nodes,
+which cannot be done with container types that own their entire contents. Since
+the shared part of two contexts is always a tail portion of either, this
+situation is well suited for the use of shared pointers; we therefore represent
+these contexts by a \std{shared\_ptr} to a node structure that apart from the
+vector of identifier values contains another such pointer to the remainder of
+the context, in other words a traditional singly linked list, but using shared
+pointers as links.
+
+There remains one situation where we do use our singly list container at run
+time. In Axis, loops can be used to produce values of row type, containing one
+element produced by each iteration of the loop. In the case of \textbf{for}
+loops, the number of iterations is known when the loop starts (or at least an
+upper bound if there should be any \textbf{break} from the loop) and the values
+from each iteration are internally accumulated into a \Cpp~vector before being
+turned into an Axis row value. For a \textbf{while} loop however, the number of
+iterations is not known beforehand, so the system uses an \slls. value instead
+to accumulate elements, which will be turned into a vector once the loop
+terminates.
 
 \section{Implementation details}
 
