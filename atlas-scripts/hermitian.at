@@ -59,6 +59,13 @@ set LARmin = rat: 1/2
 {count total (vertices,edges) considered}
 set FDcount = vec:[0,0]
 
+{Time in localFD_1Dirac2 and localFD_1Dirac2_by_zero.  These are ACCUMULATED in
+ FPP_faces_herm.at, but declared here so that report_tested can print them: that
+ way the numbers are visible at every report during a run, instead of only in the
+ end-of-run summaries in FPP_globalDirac.at.}
+set FD12Time = int: 0
+set FD12bzTime = int: 0
+
 {count cases of changing form_to_ht to form because low(p,HT) is false}
 set HF_false_low_count = int:0
 
@@ -1293,6 +1300,8 @@ set report_tested(string label) = void:
     prints(print_time_string(unitaryTime)," for ",unitary_test_counter.use_count()," utests; ",
     print_time_string(charTime), " for ",char_counter.use_count(), " char calcs; ",
     print_time_string(charTimeToHt), " for ",char_counter_to_ht.use_count(), " char_to_ht calcs.");
+    prints(print_time_string(FD12Time + FD12bzTime)," in localFD_1Dirac2*, of which ",
+    	   print_time_string(FD12bzTime)," in localFD_1Dirac2_by_zero");
     prints(HF_false_low_count," form_to_ht -> form because of low(p,HT); ",FD_new_count," full_deform_to_ht DISAPPEAR because of stored_full_deform");
     if KL_sum_to_ht_new_flag then prints(KL_new_count," KL_sum_at_s_to_ht calcs -> known KL_sum_at_s, ",
        KL_false_low_count," KL_sum_at_s_to_ht calcs -> new KL_sum_at_s because of low_char");

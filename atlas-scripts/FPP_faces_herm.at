@@ -4826,7 +4826,7 @@ set localFD_Lvd2 \
   (KGBElt x, ratvec lambda, {VertexData vd,} (vec->int) FlippedEdgeLookup) = (LocalVertexData, PermOrderTwo{, vec}):
   localFD_Lvd2(x.inner_class, x.involution, lambda, {vd,} FlippedEdgeLookup)
 
-set FD12Time = int: 0
+{FD12Time now declared in hermitian.at, so report_tested can print it}
 
 set FD_wiggle_flag = false {whether to use def_incident_edges}
 set FD_wiggle_HT_flag =false {whether to use def_incident_edges to ht}
@@ -5000,7 +5000,7 @@ set localFD_1Dirac2\
   ( KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2) = [[FaceVertsIndex]]:
   localFD_1Dirac2(x, lambda, next_heights(parameter(x,lambda,0*lambda),edge_offset +1)~[0], Lvd, Perm2)
 
-set FD12bzTime = int:0
+{FD12bzTime now declared in hermitian.at, so report_tested can print it}
 set FD12bzFFTime = int:0
 set FD12bzFTTime = int:0
 set FD12bzTTTime = int:0
