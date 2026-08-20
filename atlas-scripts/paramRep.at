@@ -20,25 +20,6 @@ set test(Param q, Param r) = bool:
     then j = first(for (x,) in outs do x = i_n od)
     in j>=0
 
-{Move the param out where W_int(p)  can act}
-set regularize_new(Param p) = Param:
-    let gamma = p.infinitesimal_character, rd = p.root_datum
-    then shift = sum(#gamma, for av@j in rd.simple_coroots
-    	       	     if (av*gamma).=
-		     do rd.fundamental_weights[j]
-		     fi
-		     od).numer
-    in translate_param_by (p, shift)
-
-set regularize_new_flag = true
-
-{Move the param out where W_int(p)  can act}
-set regularize(Param p) = Param:
-    if regularize_new_flag
-    then regularize_new(p)
-    else translate_param_by (p, p.root_datum.two_rho)
-    fi
-
 set Cayley_cross_sum(int j, Param p) = ParamPol:
     let s = status(j,p)
     in case s in cross(j,p), 0*p, let q = Cayley(j,p) in q + cross(j,q), Cayley(j,p),
@@ -1193,7 +1174,7 @@ the same primitive ideal; need N >= 1. Second return is position where first dif
 set same_PI_step_long(Param p, [int] Tauss_bit, int N) = (bool,int):
     if N < 0 then return same_PI_step_long(p,Tauss_bit) fi;
     if to_bitset([to_bitset(tau(p))]) != Tauss_bit[0] then return (false,0) fi;
-    if N=0 then return (true,-1) fi; {already tested equality}
+    if N=0 then return (true,-1) fi; {already tested equality of tau(p)}
     let q = regularize(p), G = p.real_form, step = int:0, pHash = make_Param_hash()
     then test = int:0, ans = bool: true
     then gamma = q.infinitesimal_character, toDo = 1*q, nullmod = null_module(G), size = int:0

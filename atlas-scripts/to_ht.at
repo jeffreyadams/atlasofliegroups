@@ -100,13 +100,18 @@ set c_form_irreducible_to_ht_MvL (Param p,int HT, int time ) = maybe_KTP:
 
 
 
+set p1 = parameter(x_open(E7_s),[1,1,1,1,1,1,1]/1,[ 4, 4, 4, 1, 4, 4, 4 ]/4)
+set START = int:0
+
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
 {.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
 set c_form_irreducible_to_ht (Param p,int HT) = KTypePol:
+  if p = p1 then prints("starting CFTH to ",HT); START := elapsed_ms() fi;
   if back_form_ht_flag
   then back_map(c_form_std_to_ht(HT), oriented_KL_sum_to_ht(HT)(p) )
   else map(c_form_std_to_ht(HT), oriented_KL_sum_to_ht(HT)(p) )
-  fi
+  fi next if p = p1 then prints("ending CFTH to ",HT,", after ",
+	    print_time_string(elapsed_ms() - START)) fi
 
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
 {.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
@@ -236,6 +241,24 @@ set hermitian_form_irreducible_to_ht (Param p,int HT) = KTypePol:
      if u_stats_flag then uh_stats_line(p,HT,elapsed_ms() - start_time) fi;
      unitaryTime+:=elapsed_ms() - start_time;
      answer
+
+set hermitian_form_irreducible_to_ht(Param p,int HT,int time) = maybe_KTP:
+  let start_time = elapsed_ms()
+  then answer =
+  case if is_equal_rank(real_form(p))
+       then c_form_irreducible_to_ht(p,HT,time) { not twisted, in equal rank case this is faster }
+       else  check_hermitian(p,true); twisted_c_form_irreducible_to_ht(p,HT,time)
+       fi
+  | timed_out: was_tested_inter_to_ht(p, HT, elapsed_ms() - start_time);
+    	       timed_out()
+  | done(r): let ans = r.convert_cform_hermitian
+    	     in was_tested_to_ht(p,HT,elapsed_ms() - start_time, is_pure(ans));
+    	        if u_stats_flag then uh_stats_line(p,HT,elapsed_ms() - start_time) fi;
+	     	ans.done
+  esac
+  in unitaryTime+:=elapsed_ms() - start_time;
+     answer
+
 
 { compute Hermitian form to ht on p, and report if it is unitary }
 set is_unitary_to_ht_base (Param p,int HT) = bool:

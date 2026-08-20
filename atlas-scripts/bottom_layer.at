@@ -7,7 +7,6 @@
 <derived_cover.at
 <K.at {for projection_to_K_matrix}
 <FPP_faces_herm.at {for is_unitary_hash_big}
-<count.at {for char_counter}
 <smallQ {for theta_stable_data_small}
 
 {small_test_flag = true creates MANY more p in more_bad_hash. Most of these are height 0: places where
@@ -822,8 +821,6 @@ set min_small_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
 			    if big_unitary_hash.uhash(derLjs[j]).lookup(derpL0j).>=
 			    then {let startCF = elapsed_ms()}
 			       	 let QLj = character_formula_to_ht(derpL0j,DLs[j])
-			       	 {then () = charTime +:= elapsed_ms() - startCF
-			       	 then () = char_counter.use()}
 			       	 in K_type_pol(QLj)
 			     elif RF_code
 	    	      	     then big_unitary_hash.sig_entry(derpL0j, DLs[j])
@@ -1037,16 +1034,16 @@ set min_bottom_elim_factors(Param p, KTypePol P) = bool:
 {These min_bottom functions are used only on simple G}
 set min_bottom_elim_factors(Param p0, Param p) = bool:
     {let startCF = elapsed_ms()}
-    let CF = if small_test_flag
-    	     then character_formula_to_ht(p0, minSmallBottomData.G_min_height(p.x,p.lambda))
-    	     else character_formula_to_ht(p0, max(for mu in LKTs(p0)
-    	       	    				     do minBottomData.G_min_height(mu)
-		   				     od))
-	     fi
+    let H = if small_test_flag
+    	    then minSmallBottomData.G_min_height(p.x,p.lambda)
+	    else max(for mu in LKTs(p0) do minBottomData.G_min_height(mu) od)
+	    fi
     {could figure out max ht needed?}
-    {then () = charTime +:= elapsed_ms() - startCF
-    then () = char_counter.use()}
-    in min_bottom_elim_factors(p0, p, K_type_pol(CF))
+    in min_bottom_elim_factors(p0, p,
+       	  if KT_char_hash_flag {hashed: reuse an answer computed to a bigger height}
+	  then char_to_ht_hashed(p0,H)
+	  else K_type_pol(character_formula_to_ht(p0,H))
+	  fi)
 
 set min_bottom_elim_factors(Param p) = bool:
     min_bottom_elim_factors(p,p)
@@ -1132,11 +1129,12 @@ set min_bottom_elim_factors(Param p, KTypePol P,int HT) = bool:
 {These min_bottom functions are used only on simple G}
 set min_bottom_elim_factors(Param p0, Param p, int HT) = bool:
     {let startCF = elapsed_ms()}
-    let CF = character_formula_to_ht(p0, HT)
     {could figure out max ht needed?}
-    {then () = charTime +:= elapsed_ms() - startCF
-    then () = char_counter.use()}
-    in min_bottom_elim_factors(p0, p, K_type_pol(CF),HT)
+    min_bottom_elim_factors(p0, p,
+          if KT_char_hash_flag
+	  then char_to_ht_hashed(p0,HT)
+	  else K_type_pol(character_formula_to_ht(p0,HT))
+	  fi, HT)
 
 set min_bottom_elim_factors(Param p, int HT) = bool:
     min_bottom_elim_factors(p,p,HT)
@@ -1290,7 +1288,10 @@ factor inducing to p !!!}
 {LKdata[j] is [(tauj,tauLj)]: tauLj are thes Lj\cap K-types inducing to a bottom layer tauj of p.}
 set bottom_elim_factors(Param p0, Param p, QKL_bottom_data (Q,LKdata)) = bool:
     let DG = max([height(p)]##for (tau,) in LKdata do height(tau) od)
-    then P = K_type_pol(character_formula_to_ht(p0,DG))
+    then P = if KT_char_hash_flag {hashed: reuse a stored answer computed to a bigger height}
+    	     then char_to_ht_hashed(p0,DG)
+	     else K_type_pol(character_formula_to_ht(p0,DG))
+	     fi
     in bottom_elim_factors(p0, p, (Q, LKdata), P)
 
 set bottom_elim_factors(Param p0, QKL_bottom_data qkl) = bool:

@@ -35,6 +35,38 @@ choose whether "to height" or "to infinity" algorithm is faster.}
 { ------------------------------------------------------------------- }
 {seat_belt_on:=false}
 
+{Move the param out where W_int(p)  can act}
+set regularize_new(Param p) = Param:
+    let gamma = p.infinitesimal_character, rd = p.root_datum
+    then shift = sum(#gamma, for av@j in rd.simple_coroots
+    	       	     if (av*gamma).=
+		     do rd.fundamental_weights[j]
+		     fi
+		     od).numer
+    in translate_param_by (p, shift)
+
+set regularize_new_flag = true
+
+{Move the param out where W_int(p)  can act}
+set regularize(Param p) = Param:
+    if regularize_new_flag
+    then regularize_new(p)
+    else translate_param_by (p, p.root_datum.two_rho)
+    fi
+
+set dualPBTime = int: 0
+
+{first return is partial block above p; second is dual, for predicting time for KL_sum_at_s_to_height}
+set dual_partial_block_sizes(Param p, int HT) = (int,int):
+    let start = elapsed_ms(), p2r = p.root_datum.two_rho
+    then preg = translate_param_by (p, p2r)
+    then (Breg,m) = block(preg)
+    then M = m-first(for j:m+1 do height(translate_param_by(Breg[m-j],-p2r)) > HT od)
+    in (m, if M > m
+       	   then #Breg - m
+       	   else #Breg - M
+       	   fi) next dualPBTime +:= elapsed_ms() - start
+
 {whether to turn on u_predictor and u_predictor_to_ht in hermitian.at}
 set predictor_flag = false {evening 12/21/25; was false until 12/19, when something went wrong}
 
@@ -150,8 +182,8 @@ Number of pairs of [bool] with ANSWER IS 3^rank.}
 {typically applied near principal series, where all tau invts large; so (3/4)^rk factor is not justified}
 {Extra factof of 4 is unexplained heuristic; undo rate heuristic}
 set KL_predictor_to_ht(Param p, int HT) = int:
-    let rk = semisimple_rank(integrality_datum(p))
-    in floor((#full_block_to_ht(p,HT))^2 * {3^rk*}KL_rate/2{/2^({2*rk+}1)})
+    {let rk = semisimple_rank(integrality_datum(p))}
+    floor((#full_block_to_ht(p,HT))^2 * {3^rk*}KL_rate/2{/2^({2*rk+}1)})
 {next prints("we're in KL_pred_up at ",p)}
 
 {relevant to KL_sum_at_s for p}
@@ -160,8 +192,8 @@ set KL_predictor(Param p) = int:
     in floor((full_block_down_size(p))^2*3^rk*KL_rate/2^(2*rk + 1))
 {next prints("we're in KL_pred at ",p)}
 
-set low_count= int:0
-set low_time = int:0
+set lowp_count= int:0
+set lowp_time = int:0
 {for predicting whether to_ht or is_unitary is faster}
 set low(Param p) = (int,int,int):
     let start = elapsed_ms(), ic = p.inner_class, theta = p.x.involution, gamma = p.infinitesimal_character
@@ -170,7 +202,7 @@ set low(Param p) = (int,int,int):
     then NU = (dominant(ic, (1-theta)*gamma) *ic.two_rho_check)\2 {size of nu}
     then GAM = (p.infinitesimal_character* ic.two_rho_check)\1 {this is max height at infl char}
     	 {is_unitary_to_ht(p,GAM) means unitary}
-    in (LAM,NU,GAM) next low_count+:=1; low_time +:= elapsed_ms() - start
+    in (LAM,NU,GAM) next lowp_count+:=1; lowp_time +:= elapsed_ms() - start
 
 set GAM(Param p) = int: (p.infinitesimal_character*p.inner_class.two_rho_check)\1
 
@@ -178,17 +210,130 @@ set GAM(Param p) = int: (p.infinitesimal_character*p.inner_class.two_rho_check)\
 (gamma0,theta*alphav) <0 int) crossed in deforming gamma to local zero
 (gamma+theta*gamma)/2. Estimates cost of is_unitary(x,gamma)}
 set red_walls(KGBElt x, ratvec gamma) = int:
-    let theta = x.involution, rd = x.root_datum, answer = int:0
-    in for av in rd.poscoroots
+    let theta = x.involution, rd = x.root_datum, answer = rat:0
+    in for av@j in rd.poscoroots
        do let pos = floor(av*gamma), neg = ceil(av*theta*gamma)
        	  in if pos >=1 and neg <= -1
-       	     then answer+:= if (av+av*theta).=
-	     	  	    then min(pos,-neg)\2
-			    else min(pos,-neg)
+       	     then answer+:= if (av+av*theta).= {forces pos=neg}
+	     	  	    then (pos+1)/2
+			    else min(pos,-neg)/2
 			    fi
 	     fi
        od;
-       answer
+       floor(answer)
+
+{TAKEN FROM STEVE}
+
+set Levix_baseTIME = int:0
+set LevixTIME = int:0
+
+{root datum from all coroots restricting to A as multiple of av}
+set Levix_base(KGBElt x, vec av) = (RealForm,KGBElt):
+    let start = elapsed_ms(), G = x.real_form, theta = x.involution
+    then pos_r = G.posroots, pos_co = G.poscoroots
+    then av_min_th = av - av*theta
+    then js = for bv@j in pos_co
+    	      do if rank([av_min_th,bv-bv*theta]) <=1
+	      	 then [j]
+		 else []
+		 fi
+	      od.##
+     then two_rho_L = sum(G.rank, for j in js do pos_r[j] od)
+     then min_js = for j in js
+     	  	   do if pos_co[j]*two_rho_L = 2
+		      then [j]
+		      else []
+		      fi
+		   od.##
+     then rdL = root_datum(mat: for j in min_js do pos_r[j] od,
+     	      		   mat: for j in min_js do pos_co[j] od, G.prefers_coroots)
+     {then tfL = x.torus_factor - G.rho_check + rdL.rho_check}
+     then xL = KGB_elt(rdL, theta, x.torus_factor)
+    in (real_form(xL),xL) next Levix_baseTIME+:= elapsed_ms() - start
+
+set Levix = ((KGBElt, vec)->(RealForm,KGBElt)):
+    let KGBhash = make_KGBElt_hash()
+    then vechashes = [vec_hash]: [] {one for each KGBElt}
+    then answers = [[(RealForm,KGBElt)]]: [] {1st index is x, second av}
+    {then L = RealForm: GL(1,R), xL = KGBElt:KGB(GL(1,R),0)}
+    in ((KGBElt, vec)->(RealForm,KGBElt)): (KGBElt x, vec av) (RealForm,KGBElt):
+    let start = elapsed_ms(), N = KGBhash.size()
+    then n = KGBhash.match(x)
+    in if n=N
+       then vechashes#:=make_vec_hash();
+       	    answers#:= ([(RealForm,KGBElt)]:[])
+       fi;
+       let J = vechashes[n].size()
+       then j = vechashes[n].match(av)
+       in if j=J
+	  then answers[n]#:= Levix_base(x,av)
+	  fi;
+	  answers[n][j] next LevixTIME +:=elapsed_ms() - start
+
+set pLTIME = int:0
+
+{parameter on nonstandard Levi L}
+set pL(KGBElt x, ratvec lambda, vec av, rat t) = Param:
+    let start = elapsed_ms(), (L,xL) = Levix(x,av), G = x.real_form, theta = x.involution
+    then m = coroot_index(G,av) + #G.posroots, {lambdaL = lambda-rho(G) + rho(L)}
+    	 lambda_shift = -rho(G) +rho(L) + rho_C(G,theta) - rho_C(L,theta)
+    then a = roots(G)[m], lambdaL = lambda + lambda_shift
+    then nu1 = (a-theta*a)
+    then wt = av*nu1, shift = av*(lambdaL+theta*lambdaL)/2
+    in parameter(xL,lambdaL, ((t-shift)/wt)*nu1) next pLTIME +:= elapsed_ms() - start
+
+{
+set pL1 = ((KGBElt, ratvec, vec) -> Param,(KGBElt, ratvec, vec, rat) -> bool):
+    let answers = make_Param_hash()
+    in ((KGBElt, ratvec, vec)->Param): (KGBElt x, ratvec lambda, vec av) Param:
+       let (L,xL) = Levix(x,av)
+       (
+}
+set std_quo(Param p) = ParamPol:
+    1*p-character_formula(1*p)
+
+set ind_quoTIME = int:0
+
+set ind_quo(KGBElt x, ratvec lambda, vec av, rat t) = KTypePol:
+    let start = elapsed_ms(), pL = pL(x,lambda,av,t)
+    in K_type_pol(std_quo(pL)) next ind_quoTIME+:= elapsed_ms() - start
+
+set to_ht_G(RealForm G, KTypePol QL, int HT) = KTypePol:
+    if HT.< then return QL fi;
+    sum(QL.real_form,
+	for c@tauL in QL
+    	do if dominant(G,parameter(tauL).d_lambda)*(G.two_rho_check) <= HT
+	   then c*tauL
+	   else 0*tauL
+	   fi
+	od)
+
+set testTIME = int: 0
+
+set test(KGBElt x, ratvec lambda, vec av, rat t, int HT) = bool:
+    let start = elapsed_ms(), QL = ind_quo(x,lambda,av,t)
+    in to_ht_G(x.real_form, QL,HT).!= next testTIME +:=elapsed_ms() - start
+
+{END TAKEN FROM STEVE}
+
+set rwTIME = int:0
+
+set red_walls(Param p) = int:
+    let start = elapsed_ms(), theta = p.x.involution, rd = p.root_datum, gamma=p.infinitesimal_character 
+    then p0 = p*0, answer = rat:0
+    in for av@j in rd.poscoroots
+       do let pos = floor(av*gamma), neg = ceil(av*theta*gamma)
+       	  in if pos >=1 and neg <= -1
+       	     then answer+:= if (av+av*theta).= {forces pos=neg}
+	     	  	    then if is_parity(rd.posroots[j], p0)
+			    	 then pos\2
+			         else (pos+1)\2
+				 fi
+			    else min(pos,-neg)/2
+			    fi
+	     fi
+       od;
+       answer\1 next rwTIME +:=elapsed_ms() - start
 
 set next_x(KGBElt x, ratvec gamma, int HT) = KGBElt:
 let nx = x.number, G= x.real_form
@@ -198,38 +343,100 @@ in if ans < 0
    else KGB(G,nx-ans)
    fi
 
-{opposite to red_walls: in dual KGB algorithm, start more or less on x_open and work up (to next_x).
+{
+opposite to red_walls: in dual KGB algorithm, start more or less on x_open and work up (to next_x).
 This counts walls crossed in the process, so estimates cost of is_unitary_to_ht(x,gamma,HT)}
-set red_walls_to_ht(KGBElt x, ratvec gamma, int HT) = int:
+{set red_walls_to_ht(KGBElt x, ratvec gamma, int HT) = int:
     let xH = next_x(x,gamma,HT)
     in red_walls(x_open(x.real_form),gamma) - red_walls(xH,gamma)
+}
+set rwhTIME = int:0
 
+set red_walls_to_ht(Param p, int HT) = int:
+    let start = elapsed_ms(), x = p.x, lambda = p.lambda, answer = rat:0
+    then theta = p.x.involution, rd = p.root_datum, gamma=p.infinitesimal_character 
+    in for av@j in rd.poscoroots
+       do let pos = floor(av*gamma), neg = ceil(av*theta*gamma)
+       	  in if pos >=1 and neg <= -1
+       	     then for t: min(pos,-neg) from 1
+	     	  do if test(x,lambda, av, t,HT)
+		     then answer+:= 1/(if (av + (av*theta)).= then 1 else 2 fi)
+		     fi
+		  od
+	     fi
+       od;
+       answer\1 next rwhTIME:=elapsed_ms() - start
+
+{
 {could refine these to count only parity walls (smaller better answer}
-set red_walls(Param p) = red_walls(p.x,p.infinitesimal_character)
+{set red_walls(Param p) = red_walls(p.x,p.infinitesimal_character)}
 set red_walls_to_ht(Param p, int HT) = red_walls_to_ht(p.x,p.infinitesimal_character,HT)
+}
 
 {gamma meant to be dominant. count reducibility hyperplanes (gamma0,alphav) >0 int,
-(gamma0,theta*alphav) <0 int) crossed in deforming gamma to local zero
-(gamma+theta*gamma)/2. Estimates cost of KL_sum_at_s(x,gamma)}
+(gamma0,theta*alphav) <0 int). Estimates cost of KL_sum_at_s(x,gamma)}
 set red_walls_int(KGBElt x, ratvec gamma) = int:
-    let theta = x.involution, rd = x.root_datum, answer = int:0
-    then gamma_reg = gamma+rd.rho
+    let theta = x.involution, rd = x.root_datum, answer = rat:0
+    {then gamma_reg = gamma+rd.rho}
     in for av in rd.poscoroots
-       do if is_integer(av*gamma) and av*theta*gamma_reg < 0
+       do if is_integer(av*gamma) and av*theta*gamma{_reg} < 0
        	     {could also check parity}
-       	  then answer+:= 1
+       	  then answer+:= 1/2
 	  fi
        od;
-       answer
+       answer\1
+
+set rwiTIME = int:0
+
+set red_walls_int(Param p) = int:
+    let start = elapsed_ms(), x = p.x,  gamma = p.infinitesimal_character
+    then theta = x.involution, rd = x.root_datum, answer = rat:0
+    in for av@j in rd.poscoroots
+       do if is_integer(av*gamma) and av*theta*gamma{_reg} < 0
+       	  then if is_real(j,x)
+	       then if is_parity(rd.posroots[j],p)
+	       	    then answer+:=1
+		    fi
+	       else answer +:= 1/2
+	       fi
+	  fi
+       od;
+       answer\1 next rwiTIME+:=elapsed_ms() - start
 
 set red_walls_to_ht_int(KGBElt x, ratvec gamma, int HT) = int:
-    let xH = next_x(x,gamma,HT)
-    in red_walls_int(x_open(x.real_form),gamma) - red_walls_int(xH,gamma)
+    let start = elapsed_ms(), xH = next_x(x,gamma,HT)
+    in max(red_walls_int(x_open(x.real_form),gamma) - red_walls_int(xH,gamma),0)
 
+set rwhiTIME = int:0
 
-{could refine these to count only parity walls (smaller better answer}
-set red_walls_int(Param p) = red_walls_int(p.x,p.infinitesimal_character)
-set red_walls_to_ht_int(Param p, int HT) = red_walls_to_ht_int(p.x,p.infinitesimal_character,HT)
+set red_walls_to_ht_int(Param p, int HT) = int:
+    let start = elapsed_ms(), x = p.x, gamma = p.infinitesimal_character, lambda = p.lambda,
+    	answer = rat: 0/1
+    then theta = p.x.involution, rd = p.root_datum, gamma=p.infinitesimal_character
+    in for av@j in rd.poscoroots
+       do if is_integer(av*gamma) and av*theta*gamma < 0 and
+       	     test(x,lambda, av, av*gamma,HT)
+       	  then answer +:= if (av*(1+theta)).=
+	       	       	  then 1
+		       	  else 1/2
+		       	  fi
+       	  fi
+       od;
+       answer\1 next rwhiTIME +:= elapsed_ms() - start
+
+set prefer_red_char_flag = true
+
+{how much should to_ht win by to use to_ht?}
+set red_mult_char = rat:3/2
+
+{How many reducibility walls are needed to make to_ht worth considering?}
+set red_NUM_char = int: 10
+
+set low_red_char(Param p, int HT) = bool:
+    if HT < 0 then return true fi;
+    let RWI = red_walls_int(p)
+    in RWI > red_NUM_char and red_walls_to_ht_int(p,HT)*red_mult_char < RWI
+
 
 {If NU (nu part) > LAM (lambda part) *nu_frac, then figure to_ht could work better}
 set nu_frac = 1/1
@@ -246,7 +453,7 @@ set gamma_frac = 1/4
 {if diff_mult*rank*(HT - LAM) >= GAM then don't try is_unitary_to_ht.
 So largest reasonable target height is (1/(diff_mult*rank))*GAM + LAM.
 DECREASE to use to_ht more often, range is (0,infty)}
-set diff_mult = rat: 1/1
+set diff_mult = rat: 3/2 {switch from 1/1 8/11/26}
 
 {if target height < GAM*diff_char_frac, then figure
 {formerly (GAM - LAM)*diff_frac}
@@ -297,24 +504,22 @@ set low_gamma(Param p, int HT) = bool:
 set low_rank_mult = rat: 2/1
 
 {true means to_ht should REALLY be better; LESS true than low_diff}
-set low_diff_def_ht_old(Param p, int HT) = bool:
-    if (HT < 0) then return  false fi;
+set low_diff_def_ht(Param p, int HT) = bool:
     let LAM = p.height, GAM = GAM(p), rk = p.real_form.rank
     in lam_mult*LAM < GAM and
-       (5/4)*diff_mult*(HT - LAM)*rk < GAM
+       2*diff_mult*(HT - LAM)*rk < GAM
        {(5/4)*(p.real_form.rank)*(HT - LAM) < GAM} {rm LAM 5/27/26}
 
-{false means is_u should REALLY be better; more true than low diff}
-set low_diff_def_u_old(Param p, int HT) = bool:
-    if (HT < 0) then return  false fi;
+{true means is_u should REALLY be better; less true than low_diff is false}
+set low_diff_def_u(Param p, int HT) = bool:
     let LAM = p.height, GAM = GAM(p), rk = p.real_form.rank
-    in lam_mult*LAM < GAM and
-       (4/5)*diff_mult*rk*(HT - LAM) < GAM {6/1 revert to mid-april}
+    in lam_mult*LAM > GAM or
+       (1/2)*diff_mult*rk*(HT - LAM) > GAM {6/1 revert to mid-april}
        {(4/5)*(p.real_form.rank)*(HT - LAM) < GAM} {rm LAM 5/27/26}
 
 {Note HT must be in [LAM,GAM) True says it's near the bottom of that range: small HT, to_ht better}
 {to get more to_ht, DECREASE lam_mult and diff_mult}
-set low_diff_old(Param p, int HT) = bool:
+set low_diff(Param p, int HT) = bool:
     if (HT < 0) then return  false fi;
     let LAM = p.height, GAM = GAM(p), rk = p.real_form.rank
     in lam_mult*LAM < GAM and
@@ -324,28 +529,31 @@ set low_diff_old(Param p, int HT) = bool:
     {(LAM < lam_frac*GAM) and} {(HT < diff_frac*GAM)}
     {(LAM < lam_frac*GAM) and ((GAM - LAM)*diff_frac) > HT {(HT-LAM)}}
 
-set low_diff_old_flag = true
-set low_diff_mult = rat:6/1
+{how much should to_ht win by to prefer unitary_to_ht?}
+set red_mult = rat:4/3
 
-{true means to_ht should REALLY be better; LESS true than low_diff}
-set low_diff_def_ht(Param p, int HT) = bool:
-    if low_diff_old_flag then return low_diff_def_ht_old(p,HT) fi;
-    if (HT < 0) then return  false fi;
-    2*low_diff_mult*red_walls_to_ht(p,HT) < red_walls(p)
+{How many reducibility walls are needed to make unitary_to_ht worth considering?}
+set red_NUM = int: 40
 
-{false means is_u should REALLY be better; more true than low diff}
-set low_diff_def_u(Param p, int HT) = bool:
-    if low_diff_old_flag then return low_diff_def_u_old(p,HT) fi;
+{true means to_ht should REALLY be better; LESS true than low_red}
+set low_red_def_ht(Param p, int HT) = bool:
     if (HT < 0) then return  false fi;
-    (1/2)*low_diff_mult*red_walls_to_ht(p,HT) < red_walls(p)
+    let RW = red_walls(p)
+    in RW > (3/2)*red_NUM and (3/2)*red_walls_to_ht(p,HT)*red_mult < RW
+
+{true means is_u should REALLY be better; LESS true than low_diff is false}
+set low_red_def_u(Param p, int HT) = bool:
+    if (HT < 0) then return  false fi;
+    let RW = red_walls(p)
+    in (3/2)*RW < red_NUM or red_walls_to_ht(p,HT)*red_mult > (3/2)*RW
 
 {Note HT must be in [LAM,GAM) True says it's near the bottom of that range: small HT, to_ht better}
-set low_diff(Param p, int HT) = bool:
-    if low_diff_old_flag then return low_diff_old(p,HT) fi;
+set low_red(Param p, int HT) = bool:
     if (HT < 0) then return  false fi;
-    low_diff_mult*red_walls_to_ht(p,HT) < red_walls(p)
+    let RW = red_walls(p)
+    in RW > red_NUM and red_walls_to_ht(p,HT)*red_mult < RW
 
-set low_diff_char_mult = low_diff_mult
+set low_diff_char_mult = rat: 1
 set low_diff_char_old_flag = true
 set low_diff_char_time = int:0
 
@@ -367,12 +575,23 @@ set low_diff_char_def_inf(Param p, int HT) = bool:
 
 
 {if true, allow KL_sum_at_s_to_height}
+{when true, use KL_sum_at_s_to_height; when false, truncate the full KL_sum_at_s.
+ The height condition says the span HT-height(p) to be covered is small next to GAM(p),
+ i.e. truncation is preferred for SMALL gamma and LARGE height, to_ht otherwise.  The
+ x.number condition is a separate restriction to large x; drop_x_char_gate removes it, so
+ the criterion rests on gamma and height alone.}
+set drop_x_char_gate = false
+
 set low_diff_char_old(Param p, int HT) = bool: {false {ALWAYS use KL_sum_at_s}}
     if (HT < 0) then return  false fi;
     let start = elapsed_ms(), rk = p.real_form.rank
-    then ans = p.x.number > diff_KGB_char_frac*KGB_size(p.real_form)
+    then ans = (drop_x_char_gate or
+    	        p.x.number > diff_KGB_char_frac*KGB_size(p.real_form))
 	       and diff_char_mult*rk*(HT-height(p)) < GAM(p)
     in ans next low_diff_char_time +:= (elapsed_ms() - start)
+
+{how to-ht estimate should win by to choose KL_sum_at_s_to_height}
+set KL_char_mult = rat:18/1 {4 seems too small E7 spherical; 16 beats 12}
 
 {if true, allow KL_sum_at_s_to_height}
 set low_diff_char(Param p, int HT) = bool: {false {ALWAYS use KL_sum_at_s}}
@@ -387,10 +606,10 @@ set low_diff_char(Param p, int HT) = bool: {false {ALWAYS use KL_sum_at_s}}
 set low_KL_char(Param p, int HT) = bool:
     {prints("we're in low_KL_char at ",p);}
     p.x.number > diff_KGB_char_frac*KGB_size(p.real_form) and
-    KL_predictor_to_ht(p,HT) < KL_predictor(p)
+    (let (T,TH) = dual_partial_block_sizes(p,HT) in TH*KL_char_mult < T)
+    {KL_predictor_to_ht(p,HT) < KL_predictor(p)}
 
-set quick_frac = rat: 1/5
-set TRUELIST = [(Param,int)]: []
+set quick_frac = rat: 1/6 {1/10: 406 seconds for E7 ht 27} {change from 1/5 8/8/26}
 
 {meant to predict ratio (to_ht time)/u time)}
 set low_quick_frac(Param p,int HT) = rat:
@@ -399,18 +618,24 @@ set low_quick_frac(Param p,int HT) = rat:
     then (LAMreg,,GAMreg) = low(preg)
     in (LAMreg+HT)/(GAMreg - LAMreg)
 
+{true means u_to_ht should REALLY be better; LESS true than low_quick}
+set low_quick_def_ht(Param p, int HT) = bool:
+    3*low_quick_frac(p, HT) < quick_frac
+
+
+{true means u should REALLY be better; LESS true than low_quick is false}
+set low_quick_def_u(Param p, int HT) = bool:
+    low_quick_frac(p, HT) > 3*quick_frac
+
 {true means allow to_ht, so DECREASING quick_frac means less to_ht}
 set low_quick(Param p, int HT) = bool:
-    if predictor_flag then 0/0 fi;
-    let ans = low_quick_frac(p, HT) < quick_frac
-    in if ans then TRUELIST #:= (p,HT) fi;
-       ans
+    {if predictor_flag then 0/0 fi;}
+    low_quick_frac(p, HT) < quick_frac
 
 {    let preg = translate_param_by(p,p.real_form.two_rho)
-    then (LAMreg,,GAMreg) = low(preg)
-    then ans = (LAMreg+HT) < quick_frac*(GAMreg - LAMreg)
-    in if ans then TRUELIST #:= (p,HT) fi;
-       ans}
+     then (LAMreg,,GAMreg) = low(preg)
+     in (LAMreg+HT) < quick_frac*(GAMreg - LAMreg)
+}
 
 {How small the to_ht block should be vs orig block for to_ht to be faster}
 set quick_char_frac = rat: 1/9
@@ -432,15 +657,18 @@ set low_lam(Param p, int HT) = bool:
     {let (LAM, , GAM) = low(p)
     in}  (lam_mult*p.height < GAM(p))
 
-set prefer_quick_flag = false {true; changed 6/5/26 evening}
+set prefer_red_flag = true {changed 8/4/26, back to false 8/7/26, true 8/13}
+
+set prefer_quick_flag = false {true; changed 6/5/26 evening back 8/8/26}
 
 set prefer_quick_char_flag = false {terrible luck with true on x_open(E7_s)}
 
 set prefer_dual_flag = false {try true again with short_dual_diffs}
 
 set prefer_KL_flag = false
+set prefer_KL_char_flag = false {switch to false 8/13/26}
 
-set prefer_diff_flag = true {true used to give true for parameter(E7_s,773,[0,1,1,1,1,1,0]/1,
+set prefer_diff_flag = false {true used to give true for parameter(E7_s,773,[0,1,1,1,1,1,0]/1,
     [-3,0,0,0,6,-6,0]/2) and HT 327, leading to a very slow is_unitary_to_ht}
 
 set prefer_gamma_flag = false
@@ -475,32 +703,102 @@ set low_flag = true
   diff_KGB_char_frac or diff_char_mult -- not by disabling it. }
 set low_char_flag = true
 
-{if true, allow hermitian_form_irreducible_to_ht; if false, truncate hermitian_form_irreducible}
-set low(Param p, int HT) = bool:
-    if HT < 0 then return false
-    {elif predictor_flag then return true {decided elsewhere to try to_ht}}
-    elif not low_flag
-    then return true
-    elif prefer_quick_flag 
-    then low_quick(p,HT)
-    elif prefer_diff_flag 
-    then {strict_}low_diff(p,HT)
+{
+ Decide low_char once per KGB element rather than per parameter.  Measured on E7_s:
+ uniformly truncating (low_char_flag false) costs 64.2sec at x in [7990,8010] but only
+ 988sec at x_open, against 54.0sec and 2243sec for the uniform full-sum default -- so each
+ setting wins in one regime.  But MIXING them per parameter is worse than either
+ (diff_char_mult:=1/2 gave 3892sec at x_open), which looks like a caching effect: a
+ truncated sum cannot serve a later full request nor the reverse, so a per-parameter gate
+ leaves neither store warm.  Deciding per x keeps whichever store is being filled warm for
+ the whole element.  Large x truncates, small x computes full sums, using the same
+ diff_KGB_char_frac boundary the old gate already used. }
+set low_char_per_x_flag = true
+
+set TRUELISTht = [(Param,int)]:[]
+set TRUELISTu = [(Param,int)]:[]
+set TRUELIST = [(Param,int)]: []
+
+set low_def_ht_time = int: 0
+set low_def_ht_count = int: 0
+{true means form_to_ht REALLY faster than form: LESS true than low}
+set low_def_ht(Param p, int HT) = bool:
+    if HT < 0 then return false fi;
+    let start = elapsed_ms(), ansht = if not low_flag
+    then true
+    elif prefer_red_flag
+    then low_red_def_ht(p,HT)
+    elif prefer_quick_flag
+    then low_quick_def_ht(p,HT)
+    elif prefer_diff_flag
+    then low_diff_def_ht(p,HT)
     elif prefer_gamma_flag
     then {strict_}low_gamma(p,HT)
     elif prefer_lam_flag
-    then low_lam(p,HT) and low_diff(p,HT)
+    then low_lam(p,HT) and low_red(p,HT)
     else {strict_}low_nu(p,HT)
     fi
+    in if ansht then TRUELISTht#:=(p,HT) fi;
+       ansht next low_def_ht_time +:= elapsed_ms() - start; low_def_ht_count +:= 1
+
+set low_def_u_time = int: 0
+set low_def_u_count = int: 0
+
+{true means form REALLY faster than form_to_ht, so truncate u;  LESS true than low is false}
+set low_def_u(Param p, int HT) = bool:
+    if HT < 0 then return true fi;
+    let start=elapsed_ms(), ansu = if prefer_red_flag
+    then low_red_def_u(p,HT)
+    elif prefer_quick_flag
+    then low_quick_def_u(p,HT)
+    elif prefer_diff_flag
+    then low_diff_def_u(p,HT)
+    elif prefer_gamma_flag
+    then {strict_}low_gamma(p,HT)
+    elif prefer_lam_flag
+    then low_lam(p,HT) and low_red(p,HT)
+    else {strict_}low_nu(p,HT)
+    fi
+    in if ansu then TRUELISTu#:=(p,HT) fi;
+       ansu next low_def_u_time +:= elapsed_ms() - start; low_def_u_count +:= 1
+
+{if true, allow hermitian_form_irreducible_to_ht; if false, truncate hermitian_form_irreducible}
+
+set low_time = int: 0
+set low_count = int: 0
+
+set low(Param p, int HT) = bool:
+    if HT < 0 then return false fi;
+    {elif predictor_flag then return true {decided elsewhere to try to_ht}}
+    let start = elapsed_ms(), ans = if prefer_red_flag
+    then low_red(p,HT)
+    elif prefer_quick_flag
+    then low_quick(p,HT)
+    elif prefer_diff_flag
+    then low_diff(p,HT)
+    elif prefer_gamma_flag
+    then {strict_}low_gamma(p,HT)
+    elif prefer_lam_flag
+    then low_lam(p,HT) and low_red(p,HT)
+    else {strict_}low_nu(p,HT)
+    fi
+    in if ans then TRUELIST#:=(p,HT) fi;
+       ans next low_time +:= elapsed_ms() - start; low_count +:= 1
 
 set low_char_time = int: 0
+set low_char_count = int: 0
 
 {whether to consider replacing KL_sum_to_ht with KL_sum}
 set low_char(Param p, int HT) = bool:
     let start=elapsed_ms() in
-    if HT < 0 then return false
+    if (HT < 0 or p.x.number < diff_KGB_char_frac*KGB_size(p.real_form)) then return false
     elif not low_char_flag
     then return true {ALWAYS do to_height}
-    elif prefer_quick_char_flag {true 4/29/26}
+    elif prefer_KL_char_flag
+    then low_KL_char(p,HT)
+    elif prefer_red_flag
+    then low_red_char(p,HT)
+    elif prefer_quick_char_flag {false 8/4/26; true 4/29/26}
     then low_quick_char(p,HT)
     elif prefer_dual_flag {default false 4/29/26}
     then low_dual(p,HT)
@@ -508,10 +806,8 @@ set low_char(Param p, int HT) = bool:
     then low_diff_char(p,HT)
     {elif prefer_strict_KL_flag
     then strict_low_KL_char(p,HT)}
-    elif prefer_KL_flag
-    then low_KL_char(p,HT)
-    else false{ALWAYS switch to KL_sum}
-    fi next low_char_time +:= elapsed_ms() - start
+    else false{ALWAYS truncate to KL_sum}
+    fi next low_char_time +:= elapsed_ms() - start; low_char_count+:=1
 
 set to_ht (KTypePol P,int N) = KTypePol:
   if N<0 then return P fi;
@@ -547,14 +843,14 @@ set KL_sum_at_s_to_ht_new(int HT) = (Param p) ParamPol: {should check whether li
        else let mKLS = stored_KL_sum_at_s(p)
        	    in case mKLS
 	       | none: unstored_count+:=1;
-	       	 	       if low_char(p,HT)
-       	       	 	       then let ans = KL_sum_at_s_to_height(p,HT)
+	       	 	       {if low_char(p,HT) {tested in KL_sum_at_s_to_ht}
+       	       	 	       then} let ans = KL_sum_at_s_to_height(p,HT)
 			    	    in charTimeToHt +:= elapsed_ms() - start;
 				       char_counter_to_ht.use();
 			    	       ans
-       			       else let (below,) = height_split(KL_sum_at_s(p),HT)
+       			       {else let (below,) = height_split(KL_sum_at_s(p),HT)
     	    		    	 in KL_false_low_count+:=1; below
-			    fi
+			    fi}
 	       | some(KLS): stored_count+:=1;
 	       	 	       let (below,) = height_split(KLS,HT)
     	       	 	       in KL_new_count +:= 1;
@@ -566,63 +862,67 @@ set KL_sum_at_s_to_ht_new(int HT) = (Param p) ParamPol: {should check whether li
 {switch back to true after making invocation depend on low_char}
 set KL_sum_to_ht_new_flag = true {false}
 
+{let caller decide whether to use to_ht}
 {should test that x is pretty big??}
 set KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol: {should check
     whether library knows KL_sum_at_s, use that}
-    {if KL_sum_to_ht_new_flag then return  KL_sum_at_s_to_ht_new(HT)(p) fi;}
     let start = elapsed_ms()
     in if HT < 0
        then KL_sum_at_s(p)
-       elif low_char(p,HT) and KL_sum_to_ht_new_flag
-       then let ans = KL_sum_at_s_to_ht_new(HT)(p)
-       	    in charTimeToHt +:= elapsed_ms() - start;
-	       char_counter_to_ht.use();
-	       ans
-       else let (below,) = height_split(KL_sum_at_s(p),HT), middle = elapsed_ms()
-    	    in KL_false_low_count+:=1; below
+       {
+	  else let (below,) = height_split(KL_sum_at_s(p),HT)
+       	       in charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use();
+	       below
        fi
+       }
+       {elif low_char(p,HT)}
+       	     {KL_sum_to_ht_new_flag true routes through KL_sum_at_s_to_ht_new, which costs a
+             stored_KL_sum_at_s lookup and a SECOND evaluation of low_char on every call.
+             It was false on the March 5 code, where this arm went straight to
+             KL_sum_at_s_to_height; that direct arm is restored here as the false case.}
+       	else if KL_sum_to_ht_new_flag
+       	     then KL_sum_at_s_to_ht_new(HT)(p)
+       	     else char_counter_to_ht.use();
+	     	  KL_sum_at_s_to_height(p,HT) next charTimeToHt +:= elapsed_ms() - start
+       	     fi
+       {else let (below,) = height_split(KL_sum_at_s(p),HT) {this records char_counter}
+    	    in KL_false_low_count+:=1;
+	       below}
+       fi
+
+set KL_new_inter_count = int:0
 
 set KL_sum_at_s_to_ht_new_inter(int HT) = (Param p,int time) maybe_PP:
     let start = elapsed_ms()
     in if  HT < 0
-       then KL_sum_at_s_to_height(p, -1, time)
-       else let mKLS = stored_KL_sum_at_s(p)
+       then char_counter.use();
+       	    KL_sum_at_s_to_height(p, -1, time) next charTime+:=elapsed_ms() - start
+       else char_counter_to_ht.use();
+       	    let mKLS = stored_KL_sum_at_s(p)
        	    in case mKLS
 	       | none: unstored_count+:=1;
-	       	 	       if low_char(p,HT)
-       	       	 	       then let ans = KL_sum_at_s_to_height(p,HT,time)
-			    	    in charTimeToHt +:= elapsed_ms() - start;
-				       char_counter_to_ht.use();
-			    	       ans
-       			       else let ans = KL_sum_at_s_to_height(p,-1,time)
-			       	    in charTimeToHt +:= elapsed_ms() - start;
-				       char_counter_to_ht.use();
-				       KL_false_low_count+:=1;
-    	    		    	       case ans
-				       | none: ans
-				       | some(KLS): let (below,) = height_split(KLS, HT)
-				       	 	    in below.some
-				       esac
-			       fi
+	       	       KL_sum_at_s_to_height(p,HT,time) next charTimeToHt +:= elapsed_ms() - start
 	       | some(KLS): stored_count+:=1;
 	       	 	       let (below,) = height_split(KLS,HT)
     	       	 	       in KL_new_count +:= 1;
-			       	  charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use();
+			       	  charTimeToHt +:= elapsed_ms() - start;
 			          below.some
 	       esac
-        fi
+        fi next KL_new_inter_count +:=1
 
 {should test that x is pretty big??}
 set KL_sum_at_s_to_ht_inter(int HT) = (Param p,int time) maybe_PP:
     {if KL_sum_to_ht_new_flag then return KL_sum_at_s_to_ht_new_inter(HT)(p, time) fi;}
     let start = elapsed_ms()
-    in if  HT < 0
-       then KL_sum_at_s(p).some
-       elif low_char(p,HT) and KL_sum_to_ht_new_flag
-       then KL_sum_at_s_to_ht_new_inter(HT)(p,time)
-       {next charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use()}
-       else let (below,) = height_split(KL_sum_at_s(p),HT)
-    	    in below.some
+    in if low_char(p,HT)
+       then KL_sum_at_s_to_ht_new_inter(HT)(p,time) {in "else" HT >= 0, but we're required to truncate}
+       else char_counter.use();
+       	    let full = KL_sum_at_s_to_height(p,-1,time)
+	    in charTime +:= elapsed_ms() -start;
+	       case full
+	       | none: full
+	       | some(ans): truncate_above_height(ans,HT).some
+	       esac
        fi
 
 set twisted_KL_sum_at_s(Param p) = ParamPol:
@@ -647,11 +947,83 @@ set character_formula_to_height(Param p, int HT) = ParamPol:
 set character_formula_to_height (ParamPol P, int HT) = ParamPol:
     map(((Param->ParamPol): (Param p): character_formula_to_height(p, HT)), P)
 
+{these use low_char(p,HT) to decide whether to truncate full char}
 set character_formula_to_ht(Param p, int HT) = ParamPol:
     s_to_1(KL_sum_at_s_to_ht(HT)(p))
 
 set character_formula_to_ht (ParamPol P, int HT) = ParamPol:
     map(((Param->ParamPol): (Param p): character_formula_to_ht(p, HT)), P)
+
+{
+ Hashed K_type_pol(character_formula_to_ht(p,HT)), modelled on defHashHtTime.  For each
+ Param we keep the KTypePol already computed and the greatest height it was computed to, so
+ a later call at a SMALLER height truncates the stored answer instead of recomputing.
+ KL_sum_at_s_to_ht_new keeps nothing: on a miss it recomputes from scratch every time, so it
+ pays a stored_KL_sum_at_s lookup and a second evaluation of low_char per call and still
+ repeats the work.
+ Storing the K_type_pol rather than the ParamPol is much cheaper in memory, since
+ K_type_pol collapses many different ParamPols onto a small number of KTypePols -- and it
+ is the form nearly every caller actually wants.  Values are deduplicated through a
+ KTypePol hash exactly as defHashHtTime does.
+ Truncating a stored height-H answer down to HT is sound: the terms are height-graded, so
+ restricting below HT gives what computing directly to HT would.
+ The library's own stored full sum is not consulted here; a miss goes through
+ character_formula_to_ht, which reaches stored_KL_sum_at_s downstream anyway.
+ Access is behind KT_char_hash_flag so it can be measured against the current code.
+}
+set KT_char_hash_flag = false
+
+set KT_char_hit = int:0    {answered by truncating a stored KTypePol}
+set KT_char_miss = int:0   {had to be computed}
+
+set KT_char_params = make_Param_hash()
+set KT_char_pols = make_KTypePol_hash()
+set KT_char_loc = vec: []  {jth entry: location in KT_char_pols of the answer for Param #j}
+set KT_char_hts = vec: []  {jth entry: greatest height Param #j has been computed to}
+
+{
+ Repeated calls for one p almost always ask for an INCREASING sequence of heights, so a
+ cache keyed on "already computed to at least HT" would never be consulted: every call
+ would miss, store, and be superseded.  The hash only earns its keep if something computes
+ AHEAD of what is asked.  Hence this form: compute to HTup, store that, and return the
+ truncation to HT.  A caller that knows it will later want the bigger of two heights should
+ pass it as HTup and take the smaller answer now.  That trade is favourable because the
+ cost of character_formula_to_height grows more slowly with height than is_unitary_to_ht
+ does, so a little unnecessary character work buys a later hit cheaply.
+}
+set char_to_ht_hashed(Param p, int HT, int HTup) = KTypePol:
+    if HT < 0 then return K_type_pol(character_formula(p)) fi;
+    let top = max(HT,HTup)
+    then I = KT_char_params.size()
+    then j = KT_char_params.match(p)
+    in if j < I and KT_char_hts[j] >= HT
+       then KT_char_hit +:= 1;
+       	    to_ht(KT_char_pols.index(KT_char_loc[j]),HT)
+       else KT_char_miss +:= 1;
+       	    let ans = K_type_pol(character_formula_to_ht(p,top))
+	    then m = KT_char_pols.match(ans)
+	    in if j = I
+	       then KT_char_loc #:= m; KT_char_hts #:= top
+	       else KT_char_loc[j] := m; KT_char_hts[j] := top
+	       fi;
+	       to_ht(ans,HT)
+       fi
+
+{how much higher than asked to compute, when the caller gives no better height}
+set KT_char_ahead = int: 0
+
+set char_to_ht_hashed(Param p, int HT) = KTypePol:
+    char_to_ht_hashed(p,HT,HT+KT_char_ahead)
+
+set clear_char_to_ht_hash() = void:
+    KT_char_params.clear(); KT_char_pols.clear();
+    KT_char_loc := (vec: []); KT_char_hts := (vec: []);
+    KT_char_hit := 0; KT_char_miss := 0
+
+set report_char_to_ht_hash() = void:
+    prints("char_to_ht_hash: ",KT_char_hit," from hash, ",KT_char_miss," computed; ",
+    	   KT_char_params.size()," Params, ",KT_char_pols.size()," KTypePols")
+
 
 { ------------------------------------------------------------------- }
 
@@ -806,8 +1178,6 @@ set composition_series_to_heightB(Param p, int H) = ParamPol:
     		  else let (below,) = height_split(composition_series(p),H)
        	 	       in s_to_1(below)
     		  fi
-     {then () = charTime+:= elapsed_ms() - start}
-     {then () = char_counter.use()}
      in CS_time +:= elapsed_ms() - start;
      	answer
 

@@ -8,7 +8,6 @@
 <twisted_root_datum.at {for is_distinguished}
 <parabolics.at {for Levi}
 <kl.at {for character_formula}
-<count.at {for char_count}
 <writeFiles {to write hash tables}
 <simple_factors.at {for simple_factors}
 <red_count.at {for red_count}
@@ -1902,10 +1901,7 @@ coeffs of characters of unitary reps}
 set local_face_defs(Param p) = [ParamPol]:
     let list = local_vertices(p)
     in if #list = 1 then [ParamPol]: []
-       else {let start = elapsed_ms()
-       	    then () = char_counter.use()
- 	    then} let CF = character_formula(p)
- 	    {then () = charTime +:= elapsed_ms() -start}
+       else let CF = character_formula(p)
        	    then sum = sum(#list[0], list), d=#list
        	    in for v in list
        	       do wiggle(CF, (sum - v)/(d-1))
