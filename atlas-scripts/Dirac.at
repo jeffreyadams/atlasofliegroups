@@ -1,5 +1,7 @@
 {scripts to calculate Dirac inequality attached to a K-type}
 {works only when rank(G) = rank(K)}
+{8/21/26: I think the preceding comment referred to an old version of the script,
+and that now it works in all cases.}
 
 <basic.at
 <K.at { for |K_0| }

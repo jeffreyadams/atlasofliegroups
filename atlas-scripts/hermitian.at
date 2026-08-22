@@ -951,6 +951,11 @@ set OT_times = [int]: [] {cumulative time for each OT_hash.list() entry}
 set OT_counts = [int]: [] {number of occurrences for each OT_hash.list() entry}
 
 {
+Following "cheap" stuff was almost entirely written by claude. I think it's not so useful now (8/20/26):
+design was based on unitary_to_ht behavior in the bad April Fool's Day atlas of 4/1/26 to ?? It's mostly
+turned off now; I haven't checked that it really does nothing
+}
+{
  Running mean of completed is_unitary times, kept SEPARATELY FOR EACH REAL FORM.  The
  bottom layer arguments run many is_unitary tests on small Levi subgroups; those are far
  cheaper than tests on G itself, so one global mean would be dominated by them and would
@@ -1258,8 +1263,10 @@ set was_tested_inter_to_ht(Param p,int HT, int T) = void:
 set report_tested(string label) = void:
 {    prints("...",label,"...",DTcount," Dirac elim, ",DBTcount," best-Dirac elim; predictor_time = ",
     	  print_time_string(predictor_time));}
-    prints("...",label,"...",DTcount + DBTcount," Dirac elim; status_time = ",
+    prints(new_line,"...",label,"...",DTcount + DBTcount," Dirac elim; status_time = ",
     	   print_time_string(status_time), " for ", status_count," reports");
+    prints(print_time_string(FD12Time + FD12bzTime)," in localFD_1Dirac2*, of which ",
+    	   print_time_string(FD12bzTime)," in localFD_1Dirac2_by_zero");
    prints("FPP_def_time = ",print_time_string(FPP_def_time), " for ",
    FPP_use_count, " tests, ",FPP_def_count, " eliminations; FDcount = ", FDcount);
    	   {predictor_time = ", print_time_string(predictor_time));}
@@ -1286,9 +1293,9 @@ set report_tested(string label) = void:
     fi;
     prints("pred_flag = ",predictor_flag,", pred u-time = ",print_time_string(predictor_u_time),
     	   ", pred u-count = ", predictor_u_count, ", pred h-time = ",print_time_string(predictor_h_time),
-    	   ", pred h-count = ", predictor_h_count,
-    	   ", routing skipped ", cheap_u_count, " times");
-    	   report_u_times();
+    	   ", pred h-count = ", predictor_h_count{,
+    	   ", routing skipped ", cheap_u_count, " times"});
+    	   { report_u_times();}
 
     prints("#bottom_layer = ",hash_bottom_layerCounter.use_count(), ", #one_level = ",
     	   hash_one_levelCounter.use_count(), {", #real_dumb = "} ", #dumb = ",
@@ -1300,8 +1307,6 @@ set report_tested(string label) = void:
     prints(print_time_string(unitaryTime)," for ",unitary_test_counter.use_count()," utests; ",
     print_time_string(charTime), " for ",char_counter.use_count(), " char calcs; ",
     print_time_string(charTimeToHt), " for ",char_counter_to_ht.use_count(), " char_to_ht calcs.");
-    prints(print_time_string(FD12Time + FD12bzTime)," in localFD_1Dirac2*, of which ",
-    	   print_time_string(FD12bzTime)," in localFD_1Dirac2_by_zero");
     prints(HF_false_low_count," form_to_ht -> form because of low(p,HT); ",FD_new_count," full_deform_to_ht DISAPPEAR because of stored_full_deform");
     if KL_sum_to_ht_new_flag then prints(KL_new_count," KL_sum_at_s_to_ht calcs -> known KL_sum_at_s, ",
        KL_false_low_count," KL_sum_at_s_to_ht calcs -> new KL_sum_at_s because of low_char");
@@ -1400,6 +1405,8 @@ set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(v
     	   print_time_string(status_time), " for ", status_count," reports");
     prints("FPP_def_time = ",print_time_string(FPP_def_time)," for ",
     	    FPP_use_count, " tests, ",FPP_def_count, " eliminations; FDcount = ", FDcount);
+    prints(print_time_string(FD12Time + FD12bzTime)," in localFD_1Dirac2*, of which ",
+    	   print_time_string(FD12bzTime)," in localFD_1Dirac2_by_zero");
 	   		{predictor_time = ", print_time_string(predictor_time));}
     prints(new_line,tph," pos is_unitary tests, in time = ", print_time_string(tpt),"; ",tnh,
 	" neg is_unitary tests, in time = ",print_time_string(tnt));
@@ -1416,10 +1423,9 @@ set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(v
     fi;
    prints("pred_flag = ",predictor_flag,", pred u-time = ",print_time_string(predictor_u_time),
     	   ", pred u-count = ", predictor_u_count, ", pred h-time = ",print_time_string(predictor_h_time),
-    	   ", pred h-count = ", predictor_h_count,
-    	   ", routing skipped ", cheap_u_count, " times");
-    	   report_u_times();
-
+    	   ", pred h-count = ", predictor_h_count{,
+    	   ", routing skipped ", cheap_u_count, " times"});
+    	   {report_u_times();}
     prints("#bottom_layer = ",hash_bottom_layerCounter.use_count(), ", #one_level = ",
     	   hash_one_levelCounter.use_count(), {", #real_dumb = "} ", #dumb = ",
 	   hash_real_dumbCounter.use_count() +
@@ -2029,21 +2035,21 @@ in if back_form_flag then back_map(c_form_std@Param, oriented_KL_sum )
    else map(c_form_std@Param, oriented_KL_sum )
    fi
 
-set p1 = parameter(x_open(E7_s),[1,1,1,1,1,1,1]/1,[ 4, 4, 4, 1, 4, 4, 4 ]/4)
-set START = int:0
+{set p1 = parameter(x_open(E7_s),[1,1,1,1,1,1,1]/1,[ 4, 4, 4, 1, 4, 4, 4 ]/4)
+set START = int:0}
 
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
 {.c-invariant form on irreducible module of p as KTypePol }
 set c_form_irreducible_cut (Param p,int HT) = KTypePol:
-   if p = p1 then prints("starting CFIC to ",HT); START := elapsed_ms() fi;
+   {if p = p1 then prints("starting CFIC to ",HT); START := elapsed_ms() fi;}
    let ori_nr_p = orientation_nr(p)
    then oriented_KL_sum = ParamPol: null_module(p) +
       for c@q in KL_sum_at_s_to_ht(HT)(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
    then cfsc = (Param -> KTypePol): (Param qi) KTypePol: c_form_std_cut(HT)(qi)
 in to_ht(if back_form_ht_flag then back_map(cfsc, oriented_KL_sum)
    	 else map(cfsc, oriented_KL_sum)
-	 fi ,HT) next if p = p1 then prints("ending CFIC to ",HT,", after ",
-	    print_time_string(elapsed_ms() - START)) fi
+	 fi ,HT) {next if p = p1 then prints("ending CFIC to ",HT,", after ",
+	    print_time_string(elapsed_ms() - START)) fi}
 
 {    twisted_c_form_irreducible   }
 

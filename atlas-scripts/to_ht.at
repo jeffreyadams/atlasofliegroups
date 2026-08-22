@@ -98,24 +98,26 @@ set c_form_irreducible_to_ht_MvL (Param p,int HT, int time ) = maybe_KTP:
 	     fi
 	fi {#unknown_ks}
 
+{
 set p2 = parameter(x_open(E7_s),[1,1,1,1,1,1,1]/1,[2,1,2,1,2,2,2]/2)
 set p1 = parameter(x_open(E7_s),[1,1,1,1,1,1,1]/1,[ 4, 4, 4, 1, 4, 4, 4 ]/4)
 set START = int:0
+}
 
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
 {.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
 set c_form_irreducible_to_ht (Param p,int HT) = KTypePol:
-  if p = p1
+  {if p = p1
   then prints("starting CFTH to ",HT);
        START := elapsed_ms();
        let P2 = full_deform_to_height_MvL_base(p2,HT)
        in prints("full_deform_to_ht_MvL_base(p2,HT) took ",print_time_string(elapsed_ms() - START))
-  fi;
+  fi;}
   if back_form_ht_flag
   then back_map(c_form_std_to_ht(HT), oriented_KL_sum_to_ht(HT)(p) )
   else map(c_form_std_to_ht(HT), oriented_KL_sum_to_ht(HT)(p) )
-  fi next if p = p1 then prints("ending CFTH to ",HT,", after ",
-	    print_time_string(elapsed_ms() - START)) fi
+  fi {next if p = p1 then prints("ending CFTH to ",HT,", after ",
+	    print_time_string(elapsed_ms() - START)) fi}
 
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
 {.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
@@ -130,6 +132,7 @@ set c_form_irreducible_to_ht (Param p,int HT, int time) = maybe_KTP:
   no deformation is done, but orientation numbers are included;
   fixed contributions are already halved; for unfixed ones this needs to wait
 }
+
 set twisted_c_form_irreducible_contributions_to_ht(Param p,int HT) =
     (ParamPol,ParamPol): { (fixed part, 2*unfixed part) }
   let G=p.real_form, ori_nr_p = orientation_nr(p)
