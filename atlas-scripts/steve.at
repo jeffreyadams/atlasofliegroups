@@ -15,129 +15,12 @@ set range(KGBElt x, ratvec lambda, vec av) = (int, int):
     then vals = for w in lfe do av*w od
     in (floor(av*(1+x.involution)*lambda), ceil(max(vals)))
 
-{avL is meant to be a coroot in Lmin}
-{set rangeL(KGBElt x, ratvec lambda, vec avL) = (int, int):
-    let (,pL0) = theta_stable_quasi_data(parameter(x,lambda,0*lambda))
-    then lfe = local_FPP_extrema(x,lambda)
-    then pwLs = for w in lfe
-    	      	do let (,pwL) = theta_stable_quasi_data(parameter(x,lambda,w))
-    	      	   in pwL
-		od
-    then valsL = for pwL in pwLs
-    	       	 do avL*(pwL.infinitesimal_character)
-		 od
-    in (floor(avL*pwLs[0].d_lambda), ceil(max(valsL)))}
-
 set ranges(KGBElt x, ratvec lambda) = [(vec, (int, int))]:
     let rc = red_coroots_DV(x,lambda)
     in for av in rc
        do (av,range(x, lambda, av))
        od
 
-{set rangesL(KGBElt x, ratvec lambda) = [(vec, (int, int))]:
-    let (,pL0) = theta_stable_quasi_data(parameter(x,lambda,0*lambda))
-    then rcL = red_coroots_DV(pL0.x,pL0.lambda)
-    in for avL in rcL
-       do (avL,rangeL(x, lambda, avL))
-       od}
-
-{root datum from all coroots restricting to A as multiple of av}
-set Levix(KGBElt x, vec av) = (RealForm,KGBElt):
-    let G = x.real_form, theta = x.involution
-    then pos_r = G.posroots, pos_co = G.poscoroots
-    then av_min_th = av - av*theta
-    then js = for bv@j in pos_co
-    	      do if rank([av_min_th,bv-bv*theta]) <=1
-	      	 then [j]
-		 else []
-		 fi
-	      od.##
-     then two_rho_L = sum(G.rank, for j in js do pos_r[j] od)
-     then min_js = for j in js
-     	  	   do if pos_co[j]*two_rho_L = 2
-		      then [j]
-		      else []
-		      fi
-		   od.##
-     then rdL = root_datum(mat: for j in min_js do pos_r[j] od,
-     	      		   mat: for j in min_js do pos_co[j] od, G.prefers_coroots)
-     {then tfL = x.torus_factor - G.rho_check + rdL.rho_check}
-     then xL = KGB_elt(rdL, theta, x.torus_factor)
-    in (real_form(xL),xL)
-
-{parameter on nonstandard Levi L}
-set pL(KGBElt x, ratvec lambda, vec av, rat t) = Param:
-    let (L,xL) = Levix(x,av), G = x.real_form, theta = x.involution
-    then m = coroot_index(G,av) + #G.posroots, {lambdaL = lambda-rho(G) + rho(L)}
-    	 lambda_shift = -rho(G) +rho(L) + rho_C(G,theta) - rho_C(L,theta)
-    then a = roots(G)[m], lambdaL = lambda + lambda_shift
-    then nu1 = (a-theta*a)
-    then wt = av*nu1, shift = av*(lambdaL+theta*lambdaL)/2
-    in parameter(xL,lambdaL, ((t-shift)/wt)*nu1)
-
-set std_quo(Param p) = ParamPol:
-    1*p-character_formula(1*p)
-
-set ind_quo(KGBElt x, ratvec lambda, vec av, rat t) = KTypePol:
-    let pL = pL(x,lambda,av,t)
-    in K_type_pol(std_quo(pL))
-
-set to_ht_G(RealForm G, KTypePol QL, int HT) = KTypePol:
-    if HT.< then return QL fi;
-    sum(QL.real_form,
-	for c@tauL in QL
-    	do if dominant(G,parameter(tauL).d_lambda)*(G.two_rho_check) <= HT
-	   then c*tauL
-	   else 0*tauL
-	   fi
-	od)
-
-set test(KGBElt x, ratvec lambda, vec av, rat t, int HT) = bool:
-    let QL = ind_quo(x,lambda,av,t)
-    in to_ht_G(x.real_form, QL,HT).!=
-
-{set red_points_time = int:0}
-
-{works for HT < 0, giving all reducibility points}
-{omitting the singular real roots gives 2 too many unitary in Sp(6,R)}
-{set red_points(KGBElt x, ratvec lambda, vec av, int HT) = [int]:
-    let start = elapsed_ms(), (m,M) = range(x,lambda,av)
-    then ans = for j:M-m+1 from m
-       	       do if test_scr(x,lambda,av,j,HT)
-       	       	  then [j]
-	  	  else []
-	  	  fi
-       	       od.##
-     in red_points_time +:= elapsed_ms() - start;
-     	ans}
-
-{set red_points(KGBElt x,ratvec lambda, int HT) = [[int]]:
-    for av in red_coroots_DV(x,lambda)
-    do red_points_rp_abvd(x,lambda,av,HT, (x.root_datum).rho*av)
-    od}
-
-{set red_pointsL(KGBElt x, ratvec lambda, vec avL, int HTL) = [int]:
-    let (,pL0) = theta_stable_quasi_data(parameter(x,lambda,0*lambda))
-    then start = elapsed_ms(), (mL,ML) = rangeL(x,lambda,avL)
-    then ans = for j:ML-mL+1 from mL
-       	       do if test_scr(pL0.x, pL0.lambda, avL, j, HTL)
-       	       	  then [j]
-	  	  else []
-	  	  fi
-       	       od.##
-     in red_points_time +:= elapsed_ms() - start;
-     	ans}
-
-{set red_pointsL(KGBElt x,ratvec lambda, int HTL) = [[int]]:
-    let (,pL0) = theta_stable_quasi_data(parameter(x,lambda,0*lambda))
-    in for avL in red_coroots_DV(pL0.x, pL0.lambda)
-    do red_pointsL(x,lambda,avL,HTL)
-    od}
-
-{record location of rat t with respect to strictly increasing
-sequence of M ints red_pts by integer from 0 to 2M.
-0 means red_pts is empty; 0 means smaller than any, 2M means larger than any;
-2j}
 { range [0..2*#a]; a[i]=r -> 2i+1; even number: r absent }
 set location([int] a,rat t) = int:
     let loc = locate_sorted(a,ceil(t)) { first with |a[loc]>=t| }

@@ -103,8 +103,7 @@ set revert_steve_flag(KGBElt x, ratvec lambda) = bool:
        	       is_quasisplit(G) and
        	       (x.number = KGB_size(G) - 1) and
        	       (lambda != G.rho)
-    in {if ans then predictor_flag:=false fi;}
-       ans
+    in ans
 
 set contragredient(KGBElt x) = KGBElt:
     let wzero = w0(x.root_datum) in cross(wzero,x)
@@ -1133,10 +1132,10 @@ then coh_ind_unip_few(G,Uhash)}
 	       fi
     then () = for (x,lambda)@k in xlambdasW
     	      do {xlambdasW}
-	      	{predictor_flag:= x.number > adjust_frac*KGB_size(G);}
-		{predictor_flag:=false;} {not sure about this change 2/19/26}
-					 {undo 4/29/26}
 		test_next(x);
+		predictor_flag:= x.number > adjust_frac*KGB_size(G);
+	      {restoring this made some E7_s on x_open 25% faster, but still 3x slower
+	       than hash2. Did not test thoroughly.}
 	      	if twist(x) != x
 		then big_unitary_hash.finishx(x)
 		elif is_finished(x,lambda) {this includes possibility that x is finished}
@@ -1349,9 +1348,9 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 	       fi
     then () = for x@j in xs
     	      do {xs}
-	 {predictor_flag:= x.number > adjust_frac*KGB_size(G);}
-	 {predictor_flag:=false;} {not sure about this 2/19/26}
-	 			  {undo 4/29/26}
+	 predictor_flag:= x.number > adjust_frac*KGB_size(G);
+	 {restoring this made some E7_s on x_open 25% faster, but still 3x slower than hash2.
+	  Did not test thoroughly.}
 	 if every_KGB_flag and (not every_lambda_flag) and
 	    lotta_lambda_flag and
 	    x.number >= G.KGB_size - rank(G)-1 and
