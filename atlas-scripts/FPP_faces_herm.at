@@ -5006,7 +5006,7 @@ set FD12bzFTTime = int:0
 set FD12bzTTTime = int:0
 
 {whether to eliminate known nonunitary vertices from localFD_1Dirac2}
-set bz_nu_flag = true
+set bz_nu_flag = false
 
 {edge-finding tests are performed by (Test B) for vertex set smaller than BoundB,}
 {NOT ANY MORE: A1 is always slower than C, by quite a bit?}
@@ -5048,7 +5048,15 @@ set localFD_1Dirac2_by_zero\
 		      then Q:=QG; DiracBD:=bd
 		      fi
 	      fi
-    then () = bz_nu_flag := (height(parameter(x,lambda,0*lambda)) > 0)
+    then () = bz_nu_flag := (let p0 = parameter(x,lambda,0*lambda) in first_param(p0).x != p0.x)
+    {Removing SLOWED E7_s a lot: factor of 2 by 19000?  The old gate here was
+     (height(parameter(x,lambda,0*lambda)) > 0), which is BACKWARDS at x_open of a split
+     group: there every lambda has height 0, so the scan was switched off for all of them.
+     Turning it on is worth 2.76x on the non-spherical x_open lambdas of E7_s (385.8sec ->
+     138.2sec on four of them, identical face counts) and is neutral on the spherical one.
+     The gate now asks whether finalization moves p0 to a strictly smaller x, which is
+     exactly when there can be lower-x results to find; that is false only for parameters
+     spherical on the identity component -- one lambda at x_open of E7_s, four for PSO(4,4).}
     then length = #(Lvd.list)
     then freq = max(length\10,1)
     then LF0 = [FaceVertsIndex]:
@@ -5065,40 +5073,6 @@ set localFD_1Dirac2_by_zero\
 			    do @bool: is_pos_on_LKTs(q)
 			    od))
 	       then []
-	       {
-	        elif (stats := for q in qs do status(q,-1) od;
-	       	     any(for b in stats do b < 0 od))
-	        then []
-	        elif all(for b in stats do b > 0 od)
-	        then if red_count_flag
-		     then [[j, red_count(p,HT)]]
-		     else [[j]]
-		     fi
-	        elif (statsH := for q in qs do status(q,HT) od;
-	       	      any(for b in statsH do b < 0 od))
-	        then []
-	        elif all(for b in statsH do b > 0 od)
-	        then if red_count_flag
-		     then [[j, red_count(p,HT)]]
-		     else [[j]]
-		     fi
-	        elif (DMB_stats := for q in qs do is_FPP_unitary(q) od;
-	       	      any(for b in DMB_stats do b < 0 od))
-	        then []
-	        elif all(for b in DMB_stats do b > 0 od)
-	        then if red_count_flag
-		     then [[j, red_count(p,HT)]]
-		     else [[j]]
-		     fi
-	        elif (DMB_statsH := for q in qs do is_FPP_unitary_to_ht(q,HT) od;
-	       	      any(for b in DMB_statsH do b < 0 od))
-	        then []
-	        elif all(for b in DMB_statsH do b > 0 od)
-	        then if red_count_flag
-		     then [[j, red_count(p,HT)]]
-		     else [[j]]
-		     fi
-	       }
 	       elif bz_nu_flag and any(for q in qs do @bool: status(q,-1) < 0 od)
 	       then []
 	       elif FPP_def_flag and not FPP_def_test_wk_final(p)
