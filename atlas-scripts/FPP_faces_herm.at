@@ -4839,6 +4839,34 @@ set WcaughtCount = int:0
 set WHcaughtCount = int:0
 set FPP_edge_count = int:0
 
+{
+This version used an old version of Perm2, and it's now broken: for G=Sp(4,R) and x = KGB(G,4)
+and lambda = [1,0], it correctly finds the two vertices but not the connecting edge. Probably it
+is not difficult to repair the error, but seems not worthwhile at the moment (8/22/26). So I'll
+just comment it out.
+
+FOUND AND FIXED (8/22/26), but left commented out because it is much SLOWER.  The defect was
+a single misapplied test in the FixFix branch, marked "THE BUG WAS HERE" below: Llookup was
+built from local vertex indices and applied to global FPP vertex indices, so every FixFix edge
+was thrown away.  FixTrans and TransTrans were correct.  With that one line repaired the
+function agrees with localFD_1Dirac2_by_zero everywhere tested:
+
+  FPP-unitary faces   Sp(4,R)  39 -> 46      Spin(5,3)  119 -> 215
+                      Spin(4,4)  635 -> 1062
+  E6_s at x_open: identical set of 1534 edges (the two differ only in enumeration order)
+
+But it is far slower, including in the height-0 case where scanning all global edges was
+hoped to be competitive:
+
+  x_open, lambda = rho     E6_s   7113ms vs 56ms      (127x)
+                           E7_s 212409ms vs 6052ms     (35x)
+  whole-group runs         Spin(5,3) 3389ms vs 862ms   (3.9x)
+                           Spin(4,4) 1557ms vs 348ms   (4.5x)
+
+E7_s has 230836 local edges at x_open, so filtering the global edge list stays much dearer
+than constructing them.  Keeping the repaired source here in case it is ever wanted; there is
+no performance reason to revive it.
+
 {takes local data and low global faces and computes vertices and edges, imposing
 hermitian, pos on LKTs, and Dirac. Subspace is fixed points of affine involution of
 h*. Perm records involution action on FPP verts. mapAct records local vertex to which an FPP
@@ -4917,14 +4945,22 @@ set localFD_1Dirac2\
 	 let EdgesFixFix = [vec]:
 	     if #Perm2.fixed > 1
 	     then for v in FPP_edges(G)
-		  do if not(Llookup(v[0]) and Llookup(v[1])) then []
-		     else let m = locate_sorted(Perm2.fixed, v[0]), n = locate_sorted(Perm2.fixed, v[1])
-			  in if m< #Perm2.fixed and n < #Perm2.fixed and Perm2.fixed[m] = v[0]
-				and Perm2.fixed[n] = v[1]
-			     then [[m,n].sort]
-			     else []
-			     fi
-		      fi
+		  do let m = locate_sorted(Perm2.fixed, v[0]), n = locate_sorted(Perm2.fixed, v[1])
+		     in if m< #Perm2.fixed and n < #Perm2.fixed and Perm2.fixed[m] = v[0]
+			   and Perm2.fixed[n] = v[1]
+			   and Llookup(m) and Llookup(n)
+			{THE BUG WAS HERE.  This read
+			   if not(Llookup(v[0]) and Llookup(v[1])) then [] else ... fi
+			 Llookup is built from LF0, which holds LOCAL vertex indices, but
+			 v[0],v[1] are GLOBAL FPP vertex indices.  So the test asked whether
+			 global indices were members of a local-index table, which is false
+			 essentially always, and EVERY FixFix edge was discarded before the
+			 correct locate_sorted mapping below could run.  Map to local indices
+			 first, then apply Llookup to those.  FixTrans and TransTrans were
+			 never affected.}
+			then [[m,n].sort]
+			else []
+			fi
 		  od.##
 	       else []
 	       fi
@@ -4990,6 +5026,8 @@ set localFD_1Dirac2\
 				  ",",#LF1,"]") fi;
        {if time_verbose then prints("     ",print_time_string(elapsed_ms() - start),
 					  " for localFD_1Dirac2") fi;}
+
+       FDcount+:= [#LF0,#LF1];
        if sort_LFD_flag
        then sort(G, Lvd, answer)
        else answer
@@ -4999,6 +5037,7 @@ set localFD_1Dirac2\
 set localFD_1Dirac2\
   ( KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2) = [[FaceVertsIndex]]:
   localFD_1Dirac2(x, lambda, next_heights(parameter(x,lambda,0*lambda),edge_offset +1)~[0], Lvd, Perm2)
+}
 
 {FD12bzTime now declared in hermitian.at, so report_tested can print it}
 set FD12bzFFTime = int:0
