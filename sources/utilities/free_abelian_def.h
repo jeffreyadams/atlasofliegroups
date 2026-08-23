@@ -98,6 +98,7 @@ Monoid_Ring<T,C,Compare>
 
 //				|Free_Abelian_light|
 
+// monomial constructor
 template<typename T, typename C, typename Compare>
   Free_Abelian_light<T,C,Compare>::Free_Abelian_light(T&& p, Compare c)
   : Compare(c), L()
@@ -106,6 +107,7 @@ template<typename T, typename C, typename Compare>
     L.push_front(std::move(mononom));
   }
 
+// mononomial constructor
 template<typename T, typename C, typename Compare>
   Free_Abelian_light<T,C,Compare>::Free_Abelian_light(T&& p,C m, Compare c)
   : Compare(c), L()
@@ -116,6 +118,7 @@ template<typename T, typename C, typename Compare>
     }
   }
 
+// constructor from (possibly already sorted) vector of terms
 template<typename T, typename C, typename Compare>
   Free_Abelian_light<T,C,Compare>::Free_Abelian_light
     (poly&& vec, bool do_sort, Compare c)
@@ -127,11 +130,12 @@ template<typename T, typename C, typename Compare>
     return; // nothing left, so leave |L| empty
   vec.erase(it,vec.end()); // otherwise collect the garbage, reducing size
 
-  auto less = [this](const term_type& a, const term_type& b)
-		    { return cmp()(a.first,b.first); };
   if (do_sort) // if requested, ensure elements are sorted by |cmp()|
+  { auto less = [this](const term_type& a, const term_type& b)
+		      { return cmp()(a.first,b.first); };
     std::sort(vec.begin(),vec.end(),less);
-  L.push_front(std::move(vec));
+  }
+  L.push_front(std::move(vec)); // build a single-vector list
 }
 
 // find the coefficient of |e| in |*this|
@@ -205,30 +209,27 @@ template<typename T, typename C, typename Compare>
   if (L.at_end(L_it) or not (v.size() < 2*L_it->size()))
     L.insert(L_it,std::move(v));
   else // do fusion with at least one existing |poly|, avoid |L.insert|
-  {
     while(true) // merge polynomial |*L_it|, and maybe predecessors, into |v|
     {
-      poly org = std::move(v);
-      v.clear(); v.reserve(L_it->size()+org.size());
-      auto it = org.begin();
+      poly mrg; mrg.reserve(L_it->size()+v.size());
+      auto it = v.begin();
       for (auto& entry : *L_it)
 	if (entry.second!=C(0)) // skip any term whose coefficient has become 0
-	{
-	  for ( ; it!=org.end() and it->first < entry.first; ++it)
-	    v.push_back(std::move(*it));
-	  v.push_back(std::move(entry));
+	{ // first copy part of |v| with exponent less than |entry|
+	  for ( ; it!=v.end() and it->first < entry.first; ++it)
+	    mrg.push_back(std::move(*it));
+	  mrg.push_back(std::move(entry));
 	}
-      while (it!=org.end())
-	v.push_back(std::move(*it++)); // copy final piece of |v|
-
-      if (prev.empty() or not (prev.front()->size() < 2*v.size()))
-	break;
+      mrg.insert(mrg.end(),it,v.end()); // copy remained of |v|
+      if (prev.empty() or not (prev.front()->size() < 2*mrg.size()))
+      { *L_it = std::move(mrg); // move merged |vector| into last merged slot
+	return; // equivalently, |break| from |while(true)|
+      }
       L.erase(L_it); // discard empty shell
       L_it = prev.front(); // continue working with previous node
       prev.pop_front();
-    }
-    *L_it = std::move(v); // move merged |v| into last merged slot
-  }
+      v = std::move(mrg); // continue with merged vector in place of |v|
+    } // |while(true)|
 } // |insert|
 
 template<typename T, typename C, typename Compare>
