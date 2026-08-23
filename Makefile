@@ -151,6 +151,7 @@ endif
 # the compiler to use, including language switch
 # some C++11 support needed (rvalue references, shared_ptr) but g++-4.4 suffices
 # now (31 Oct 2022) also use a C++14 feature (constexpr std::max); g++-6.1
+# this also makes the function template |std::make_unique| available
 CXX = g++ -std=c++14
 
 # RULES follow below

@@ -550,7 +550,8 @@ struct block_modifier
   block_modifier (const common_block& b); // construct trivial modifier
 };
 
-struct sub_triple; // implementation specific, needed in auxiliary method type
+struct sub_triple;
+// implementation specific, needed in auxiliary methods |add_block|, |.._below|
 
 
 
@@ -704,7 +705,7 @@ class Rep_table : public Rep_context
   sl_list<StandardReprMod> Bruhat_below
   (const common_context& ctxt, const StandardReprMod& init) const;
 
-  blocks::common_block& add_block_below // partial; defined in common_blocks.cpp
+  blocks::common_block& add_block_below // partial
     (const StandardReprMod& srm, BitMap* subset, const locator& loc);
 
   // full twisted deformation, with |flip| telling whether to multiply by |s|

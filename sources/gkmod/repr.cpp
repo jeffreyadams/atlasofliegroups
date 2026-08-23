@@ -115,7 +115,7 @@ int_Vector codec::internalise (const RatWeight& gamma) const
 Reduced_param Reduced_param::reduce
   (const Rep_context& rc, StandardReprMod srm, const RatWeight& gamma,
    locator& loc)
-{ // below |int_item| must set |loc| before argument to |transform| is evaluated
+{ // below, |int_item| must set |loc| before argument to |transform| is evaluated
   InnerClass& ic = rc.inner_class();
   const auto& integral = ic.int_item(gamma,loc); // completely sets |loc|
   rc.transform<true>(loc.w,srm); // move |srm| towards fundamental alcove
@@ -1778,7 +1778,7 @@ sl_list<StandardReprMod> Rep_table::Bruhat_below
   Mod_hash_tp hash(pool);
   Bruhat_generator gen(hash,ctxt); // object to help generating Bruhat interval
   gen.block_below(init); // generate Bruhat interval below |srm| into |pool|
-  return sl_list<StandardReprMod>(pool.begin(),pool.end());
+  return sl_list<StandardReprMod>(pool.begin(),pool.end()); // convert
 } // |Rep_table::Bruhat_below|
 
 // A structure used in |Rep_table::add_block_below| and |Rep_table::add_block|

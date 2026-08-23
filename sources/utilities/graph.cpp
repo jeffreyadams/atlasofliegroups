@@ -118,7 +118,7 @@ partition::Partition OrientedGraph::to_unoriented_components()
 
   The vertices will be traversed in the order of depth-first search. When they
   are first seen we say the become "active", and some data associated to them
-  is entered on a local vector structure |active| that behaves somewhat like a
+  is entered on a local list structure |active| that behaves somewhat like a
   stack (but we need more liberal access than |std::stack| would provide).
   When all its descendants have been traversed we shall call a vertex
   "mature", but in this case it remains in the |active| structure. Finally
