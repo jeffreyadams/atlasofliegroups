@@ -1,0 +1,527 @@
+<deform.at {for script deform}
+<FPP_faces_geom.at {for herm_center, local_vertices}
+<K_highest_weights.at {for all_parameters_gamma, used only in the tests}
+
+{The goal is to modify the algorithm for full_deform and
+full_deform_to_ht, which are now done in the library. I will try to
+modify the script version in deform.at, specifically the function
+recursive_deform_scr@(Param p, int HT). That function (like
+full_deform) computes the c-form on the standard module p. "c-form on
+the standard module" is a KTypePol: each summand a*tau represents the
+c-form on the standard module tau (which is at nu=0 since it's a
+K-type), multiplied by the Split a. The answer is of the form
+K_type_pol(p) + (1-s)*(error terms).}
+
+{So what does {c-form on std} mean? The "canonical c-form" is
+degenerate if p is reducible, and we want something nondegenerate. So
+we right multiply p by some (1+epsilon), with epsilon small; this
+makes it irreducible, so that the canonical c-form is non-degenerate,
+and that's what we mean.}
+
+{How does the old algorithm compute it? It considers all deformations
+p*t, t in [0,1]. Such deformations are IRREDUCIBLE except at the
+finite set red_points(t) = [t0,...t{r-1}]. The c-form is constant on
+each half-open interval [ti,t{i+1}); and at t=0, it is the standard
+c-form on K_type_pol(p). So the only question is: how does it change
+as t crossed from ti+epsilon to ti-epsilon. This question is answered
+by the library function deform(p), or equivalently by the script
+function deformation_terms_scr(p). It is calculated by a KL
+calculation at p*ti.}
+
+{I propose to proceed differently:
+
+1) deform p UPWARD (increasing nu) slightly, to a point p_bump = p0
+with gamma0 = p0.infinitesimal_character not on any integrality
+hyperplanes, but with c-form(p) = c-form(p-bump)
+
+deform p-bump DOWNWARD...
+
+2) enumerate integrality hyperplanes separating p0 from 0.
+
+3) pick one of these hyperplanes H0 defining a codim one face of the open face of p0.
+
+4) move gamma0 to gamma01 in the same open face as gamma0, but close
+to H0. The corresponding p01 has the same c-form as p0.
+
+5) Deform p01 to p10 = p01*(1-2epsilon) so that we have crossed the hyperplane (at p01*(1-epsilon))
+H0, and are now in another local open face.
+
+How has the c-form changed? By deform(p01*(1-epsilon)), or
+equivalently deformation_terms_scr(p01*(1-epsilon).
+
+6) wiggle p10 to the barycenter herm_center(p10) of its face, and
+continue. The number of separating hyperplanes has gone down; so
+eventually we will reach NONE, and then the c-form is c-form(p*0).
+}
+
+{Why is this better? (since there are MORE reducibility points to
+consider). Each reducibility point is on a codim 1 face of a local
+open face, meaning that the representations are all irreducibly
+induced from much simpler ones}
+
+set heights(KTypePol P) = [int]:
+    let ans = [int]: [], Q = P
+    in while Q.!=
+       do let HT = height(first_K_type(Q))
+       	  then (bott,Q1) = height_split(Q,HT)
+       	  in Q:=Q1;
+	     ans#:=HT
+       od;
+       ans
+
+{root datum from all coroots zero on nu}
+set Levinu(KGBElt x, ratvec nu) = (RealForm,KGBElt):
+    let G = x.real_form, theta = x.involution
+    then pos_r = G.posroots, pos_co = G.poscoroots
+    then js = for bv@j in pos_co
+    	      if bv*nu = 0
+	      do j
+	      fi
+	      od
+     then two_rho_L = sum(G.rank, for j in js do pos_r[j] od)
+     then min_js = for j in js
+     	  	   do if pos_co[j]*two_rho_L = 2
+		      then [j]
+		      else []
+		      fi
+		   od.##
+     then rdL = root_datum(mat: if #min_js = 0
+     	      		   	then null(G.rank,0)
+				else mat:for j in min_js do pos_r[j] od
+				fi,
+				if #min_js = 0
+				then null(G.rank,0)
+				else mat: for j in min_js do pos_co[j] od
+				fi, G.prefers_coroots)
+     then xL = KGB_elt(rdL, theta, x.torus_factor)
+    in (real_form(xL),xL)
+
+{meant to be nonzero on all non-imag roots where nu is zero}
+set nu_bump(Param p) = ratvec:
+    let ans = herm_center(p), G = p.real_form
+    then x_ans = ans.x, lambda_ans = ans.lambda, nu_ans = ans.nu,
+    	 gamma_ans = ans.infinitesimal_character
+    then (Lnu,xnu0) = Levinu(x_ans,nu_ans)
+    then (y,xnu1) = from_no_Cplus(xnu0) {y \cross xnu1 = xnu0}
+    in assert(@: cross(y,xnu1) = xnu0);
+    y*(1-xnu1.involution)*rho(Lnu)
+
+{move "up" slightly to an open region for same x}
+set bump(Param p) = Param:
+    let nu_up = ((10^3 + 1)/10^3)*p.nu + (1/10^6)*nu_bump(p)
+    then theta = p.x.involution
+    in assert(@:all(for av in p.real_form.poscoroots do (av*theta-av).= or (av*nu_up).!=  od),"bad nu_up");
+    parameter(p.x,p.lambda,nu_up)
+
+{restricted coroots on h*^(-theta) which can contribute to reducibility}
+set local_restr_coroots(Param p) = [vec]:
+    let theta = p.x.involution, gamma = p.infinitesimal_character, rd = p.root_datum
+    then rho = rd.rho
+    in for av in rd.poscoroots
+       if av != av*theta
+       do av
+       fi
+       od
+
+{these are the coroots related to reducibility}
+set local_red_coroots(Param p) = [vec]:
+    let theta = p.x.involution, gamma = p.infinitesimal_character, rd = p.root_datum
+    in for av in rd.poscoroots
+       if (av*gamma >= 1 and av*theta*gamma <0)
+       do av
+       fi
+       od
+
+{AffineCoroot's so p is immediately ABOVE that reducibility hyperplane}
+{if down_walls is empty, then full_deform(p) = p?}
+set down_walls(Param p) = [AffineCoroot]:
+    let lrc = local_red_coroots(p), gamma = p.infinitesimal_character
+    in for av in lrc
+       do (av,floor(av*gamma))
+       od
+
+{-------------------------------------------------------------------}
+{ STEP 3: which of the down_walls are codim one faces (facets) of the }
+{ open local face containing p                                        }
+{-------------------------------------------------------------------}
+
+{ The local face of p is the intersection of the alcove containing
+  gamma with the affine subspace gamma_0 + h^{-theta} (gamma_0 =
+  (1+theta)gamma/2 = gamma - nu, the nu=0 point).  That intersection is
+  the fixed point set of the affine involution
+              sigma: v |--> -theta*v + (1+theta)*lambda
+  acting on the alcove.  (Indeed sigma fixes v iff (1+theta)v =
+  (1+theta)lambda, which for v in the alcove says exactly v is in
+  gamma_0 + h^{-theta}.)  For any polytope P = conv(V) and any affine
+  involution sigma permuting V, one has
+              Fix(sigma) cap P = conv{ (v+sigma v)/2 : v in V },
+  because x = (x + sigma x)/2 symmetrises any expression of x as a
+  convex combination.  So the vertices of the local face are among the
+  sigma-orbit averages of the vertices of the alcove.  For a simple
+  root datum the alcove is a simplex, sigma permutes its vertices, and
+  the local face is again a simplex.
+
+  This is exactly what |local_vertices| (FPP_faces_geom.at) computes,
+  and |local_verts| below is just a synonym for it -- nothing about
+  that function is reimplemented or modified here.  In particular this
+  file inherits FPP's restriction to SIMPLE G, which is what makes the
+  local face a simplex: then a wall is a facet exactly when it contains
+  all but one of the vertices, which is the test written below. }
+
+{local_verts(bump(p)) = set of rk(A) ratvecs}
+{one wall = sum(all but one of these)}
+set local_verts(Param p) = FaceVerts: local_vertices(p)
+
+{the vertices of the local face lying on the affine hyperplane av*gamma=n}
+set on_wall(AffineCoroot (av,n), FaceVerts vs) = [int]:
+    for v@j in vs if av*v = n do j fi od
+
+{the vertices NOT on that hyperplane}
+set off_wall(AffineCoroot (av,n), FaceVerts vs) = [int]:
+    for v@j in vs if av*v != n do j fi od
+
+{the face being a simplex, a wall is a facet iff exactly one vertex is
+ off it; |opposite_vert| is that vertex, or -1 if it is not a facet}
+set opposite_vert(AffineCoroot w, FaceVerts vs) = int:
+    let off = off_wall(w,vs) in if #off = 1 then off[0] else minus_1 fi
+
+set is_facet(AffineCoroot w, FaceVerts vs) = bool: #off_wall(w,vs) = 1
+
+{barycenter of the facet cut out by w; meaningful only if |is_facet|}
+set facet_center(AffineCoroot w, FaceVerts vs) = ratvec:
+    let js = on_wall(w,vs) in sum(#vs[0], for j in js do vs[j] od)/#js
+
+{barycenter of the local face itself}
+set face_bary(FaceVerts vs) = ratvec: sum(#vs[0],vs)/#vs
+
+{is gamma in an OPEN local face, i.e. on no integrality hyperplane at all?}
+set is_generic(Param p) = bool:
+    let gamma = p.infinitesimal_character
+    in all(for av in local_restr_coroots(p) do av*gamma != floor(av*gamma) od)
+
+{The weaker condition that is what we actually need, and all we can get.
+ A hyperplane av*gamma'=n with av*nu=0 contains the whole ray p*t, in
+ particular its endpoint nu=0; it is never crossed, and indeed such
+ coroots are skipped in |reducibility_points|.  We cannot and need not
+ move off those.  What matters is being off every hyperplane TRANSVERSE
+ to the ray; then gamma is in the relative interior of its local face F,
+ the hyperplanes containing F all contain the endpoint too, and the
+ whole jagged walk can (and does) stay inside the affine span of F.}
+set is_ray_generic(Param p) = bool:
+    let gamma = p.infinitesimal_character, nu = p.nu
+    in all(for av in local_restr_coroots(p)
+           do av*nu = 0 or av*gamma != floor(av*gamma) od)
+
+{the facets of the local face among a list of candidate walls, with
+ duplicates (distinct coroots cutting out the same facet, hence with
+ the same opposite vertex) removed}
+set facets_among([AffineCoroot] ws, FaceVerts vs) = [AffineCoroot]:
+    let seen = for :#vs do false od
+    in for w in ws
+       do let d = opposite_vert(w,vs) in
+       	  if d < 0 or seen[d] then [] else seen[d] := true; [w] fi
+       od.##
+
+{STEP 3.  Assume p is inside an open local face.  These are the
+ reducibility hyperplanes below p that actually bound its local face;
+ crossing any one of them is a legal single step of the deformation.}
+set bdry_down_walls(Param p) = [AffineCoroot]:
+    facets_among(down_walls(p),local_verts(p))
+
+{the same, keeping duplicate descriptions of the same facet}
+set bdry_down_walls_all(Param p) = [AffineCoroot]:
+    let vs = local_verts(p)
+    in for w in down_walls(p) if is_facet(w,vs) do w fi od
+
+{-------------------------------------------------------------------}
+{ walls that must be crossed on the way to nu=0 but at which nothing  }
+{ happens.  Not every hyperplane separating gamma from gamma_0 is a   }
+{ reducibility hyperplane: av*gamma can increase on the way down (if  }
+{ av*nu<0), and even when it decreases the parity/size condition       }
+{ behind |local_red_coroots| can fail.  Such a wall can still be the   }
+{ facet through which the segment [gamma,gamma_0] leaves the local     }
+{ face, and then we cross it for free.                                 }
+{-------------------------------------------------------------------}
+
+{the nearest hyperplane in each coroot direction that strictly
+ separates gamma from the endpoint gamma_0 = gamma - nu; these are the
+ only candidates for a facet that has to be crossed}
+set sep_walls(Param p) = [AffineCoroot]:
+    let gamma = p.infinitesimal_character
+    then gamma_0 = gamma - p.nu
+    in for av in local_restr_coroots(p)
+       do let u = av*gamma, a = av*gamma_0 in
+       	  if a < floor(u) then [(av,floor(u))]
+	  elif a > ceil(u) then [(av,ceil(u))]
+	  else []
+	  fi
+       od.##
+
+set bdry_sep_walls(Param p) = [AffineCoroot]:
+    facets_among(sep_walls(p),local_verts(p))
+
+{-------------------------------------------------------------------}
+{ STEPS 4,5,6: cross a chosen facet                                   }
+{-------------------------------------------------------------------}
+
+{STEP 4/5.  The parameter sitting exactly on the wall w, at the
+ barycenter of the facet.  It is as generic as a point of that
+ hyperplane can be, so its block should be small: this is the point of
+ the whole exercise.  (Instead of moving to gamma01 near H0 and then
+ scaling by 1-epsilon, we simply land on the facet barycenter, which is
+ the limit of that construction as epsilon -> 0.)}
+set wall_param(Param p, AffineCoroot w) = Param:
+    parameter(p.x,p.lambda,facet_center(w,local_verts(p)))
+
+{how far we may continue past the facet barycenter, in the direction
+ (facet barycenter) - (face barycenter), before hitting another
+ hyperplane; the answer returned is half of that, so it is safe}
+set cross_step(Param p, ratvec c, ratvec d) = rat:
+    let lims = for av in local_restr_coroots(p)
+    	       do let r = av*d in
+	       	  if r = 0 then []
+		  else let u = av*c then f = floor(u)
+		       in [ if u = f then (if r>0 then 1/r else -1/r fi)
+		       	    elif r > 0 then (f+1-u)/r
+			    else (f-u)/r
+			    fi ]
+		  fi
+	       od.##
+    in if #lims = 0 then 1/1 else min(lims)/2 fi
+
+{STEP 6.  Cross the facet w and return the barycenter of the local face
+ on the other side.}
+set across_wall(Param p, AffineCoroot w) = Param:
+    let vs = local_verts(p)
+    then c = facet_center(w,vs), b = face_bary(vs)
+    then d = c - b
+    then s = cross_step(p,c,d)
+    then q = parameter(p.x,p.lambda,c + s*d)
+    then vsq = local_verts(q)
+    in parameter(q.x,q.lambda,face_bary(vsq))
+
+{move p to the barycenter of its own local face (no crossing)}
+set face_center(Param p) = Param:
+    parameter(p.x,p.lambda,face_bary(local_verts(p)))
+
+{-------------------------------------------------------------------}
+{ STEP 1 revisited: a provably safe upward bump                       }
+{-------------------------------------------------------------------}
+
+{smallest factor t>1 at which the ray p*t meets an integrality
+ hyperplane transverse to it; capped at cap.  Every reducibility point
+ is such a meeting, so p*t has the c-form of p for 1<=t< this value,
+ and moreover p*t is then off all those hyperplanes.}
+set next_wall_up(Param p, rat cap) = rat:
+    let nu = p.nu, gamma = p.infinitesimal_character
+    then gamma_0 = gamma - nu
+    then ts = for av in local_restr_coroots(p)
+    	      do let b = av*nu in
+	      	 if b = 0 then []
+		 else let a = av*gamma_0, u = av*gamma
+		      then m = if b > 0 then floor(u)+1 else ceil(u)-1 fi
+		      in [(m-a)/b]
+		 fi
+	      od.##
+    in if #ts = 0 then cap
+       else let m = min(ts) in if m < cap then m else cap fi
+       fi
+
+{STEP 1.  This is |bump| with its two placeholder constants computed
+ from the actual infinitesimal character instead of hard-coded.
+
+ The scaling factor, in place of 1.001: the c-form is constant on
+ [t_i,t_{i+1}), so any factor strictly below |next_wall_up| leaves it
+ alone, and the midpoint also lands strictly off every hyperplane
+ transverse to the ray.
+
+ The push, in place of 1/10^6: |nu_bump| gives a direction nonzero on
+ the coroots with av*nu = 0, and |cross_step| gives a step along it
+ that provably crosses nothing else.  Note that a hyperplane with
+ av*nu = 0 has av*gamma = av*gamma_0, i.e. it passes through the
+ endpoint nu=0, and such a hyperplane is never a reducibility
+ hyperplane (reducibility for av needs |m - av*gamma_0| > |av*gamma_0|,
+ which fails at m = av*gamma_0).  So the push is free, and it is worth
+ making: it puts gamma in a full dimensional open face, so the walls we
+ later land on are as generic as possible.
+
+ If |nu_bump| comes back zero we simply stay on those hyperplanes; that
+ is still correct, since they are never crossed -- they contain the
+ endpoint.  Hence the assertion is |is_ray_generic|, not |is_generic|.}
+set jag_bump(Param p) = Param:
+    let f = (1 + next_wall_up(p,2))/2
+    then g = p.infinitesimal_character - p.nu + f*p.nu
+    then q0 = parameter(p.x,p.lambda,g)
+    then w = nu_bump(p)
+    then q = if w.= then q0
+       	     else parameter(p.x,p.lambda, g + cross_step(q0,g,w)*w)
+	     fi
+    in assert(@:q.is_ray_generic,"jag_bump: gamma still on a transverse wall");
+       face_center(q)
+
+{-------------------------------------------------------------------}
+{ the jagged walk                                                     }
+{-------------------------------------------------------------------}
+
+{The jump in the c-form on crossing a wall, at the parameter q sitting
+ on it.  As everywhere else, HT<0 means no height truncation.
+
+ The library |deform| is much the fastest, but this build has no
+ |deform@(Param,int)|, so for HT>=0 the height cut is applied
+ afterwards: same terms of height <= HT, but the linear algebra is done
+ on the whole block instead of on its low part.  Set the flag false to
+ get |deformation_terms_scr|, which truncates the block first.}
+set jag_library_deform_flag = true
+
+set wall_terms(Param q, int HT) = ParamPol:
+    if jag_library_deform_flag
+    then if HT < 0 then deform(q)
+    	 else let (low,) = height_split(deform(q),HT) in low
+	 fi
+    else if HT < 0 then deformation_terms_scr(q)
+    	 else deformation_terms_scr(q,HT)
+	 fi
+    fi
+
+{one step: cross one facet of the local face of p in the direction of
+ nu=0.  Which facet is crossed first (here: the first one found) should
+ not affect the answer, but may well affect the cost; that is a knob to
+ experiment with.
+ Returns (moved?, new parameter, deformation terms picked up).
+ The terms are empty when the facet crossed is not a reducibility wall.
+ We stop when no facet separates gamma from nu=0, i.e. when the
+ endpoint lies in the closure of the current local face; then
+ down_walls is empty as well.}
+set jagged_step(Param p, int HT) = (bool,Param,ParamPol):
+    let dws = bdry_down_walls(p)
+    in if #dws > 0
+       then let w = dws[0]
+       	    in (true, across_wall(p,w),
+	        wall_terms(Finalize(wall_param(p,w)),HT))
+       else let sws = bdry_sep_walls(p)
+       	    in if #sws = 0
+	       then assert(@:#down_walls(p)=0,"jagged_step: stuck above a wall");
+	       	    (false,p,null_module(p.real_form))
+	       else (true, across_wall(p,sws[0]), null_module(p.real_form))
+	       fi
+       fi
+
+{the sequence of reducibility points visited by the jagged walk from p
+ down to nu=0, for inspection: (parameter on the wall, block size there)}
+set jagged_walk(Param p) = [(Param,int)]:
+    let q = jag_bump(p), ans = [(Param,int)]: [], go = true
+    in while go
+       do let dws = bdry_down_walls(q) in
+       	  if #dws > 0
+	  then let pw = Finalize(wall_param(q,dws[0]))
+	       in ans #:= (pw,#block_of(pw)); q := across_wall(q,dws[0])
+	  else let sws = bdry_sep_walls(q) in
+	       if #sws = 0 then go := false else q := across_wall(q,sws[0]) fi
+	  fi
+       od;
+       ans
+
+{same as full_deform_to_ht(p,HT) = c_form_std(p,HT), computed along a
+ jagged path: every reducibility point met is generic on its wall}
+set jagged_deform(Param p, int HT) = KTypePol:
+    if not is_final(p) then error("improper parameter") fi;
+    assert(@:is_equal_rank(p.inner_class) and is_simple(p.root_datum),
+    	   "jagged_deform: simple and equal rank only (see the note at the end)");
+    let empty = null_module(p.real_form)
+    in (rec_fun jag (Split sc, Param p, int HT) KTypePol:
+        begin
+	  let at_nu0 = KTypePol: sc*(p.K_type) in
+	  if p.nu.= then at_nu0
+	  else let acc = empty, q = jag_bump(p), go = true in
+	       while go
+	       do let (g,q1,terms) = jagged_step(q,HT)
+	       	  in go := g; q := q1; acc +:= terms
+	       od
+	     ; for k@r in acc do at_nu0 +:= jag(sc*k,r,HT) od
+	     ; at_nu0
+	  fi
+	end)(1,p,HT)
+
+{HT<0 means no truncation, so this is the one that equals full_deform(p).
+ (Note that a nonnegative HT must be bigger than height(p) to be of any
+ use: jagged_deform(p,p.height) throws away almost everything, exactly
+ like recursive_deform_scr(p,p.height).)}
+set jagged_deform(Param p) = KTypePol: jagged_deform(p,-1)
+
+{-------------------------------------------------------------------}
+{ testing                                                             }
+{-------------------------------------------------------------------}
+
+{jagged versus the script version of the old algorithm.  Give this a
+ nonnegative HT: recursive_deform_scr does not honour the HT<0
+ convention (deformation_terms_scr@(Param,int) lacks the guard that
+ deformation_terms_by_dual_scr@(Param,int) has), so HT=-1 would make it
+ discard everything.  For the untruncated check use test_jagged_full.}
+set test_jagged(Param p, int HT) = bool:
+    let a = jagged_deform(p,HT), b = recursive_deform_scr(p,HT)
+    then ok = a = b
+    in if not ok
+       then prints("MISMATCH at ",p); prints("jagged: ",a); prints("recur:  ",b)
+       fi;
+       ok
+
+{jagged versus the library full_deform (no height truncation)}
+set test_jagged_full(Param p) = bool:
+    let a = jagged_deform(p), b = full_deform(p)
+    then ok = a = b
+    in if not ok
+       then prints("MISMATCH at ",p); prints("jagged: ",a); prints("full:   ",b)
+       fi;
+       ok
+
+{sweep all parameters with a given infinitesimal character}
+set test_jagged(RealForm G, ratvec gamma) = bool:
+    let ps = all_parameters_gamma(G,gamma)
+    then bad = for p in ps if not test_jagged_full(p) do p fi od
+    in prints(G," gamma=",gamma,": ",#ps-#bad," ok, ",#bad," bad");
+       #bad = 0
+
+{Timing.  Run these in SEPARATE atlas sessions: the library stores KL
+ polynomials, so whichever of the two runs second gets the benefit of
+ what the first one computed.}
+set time_jagged(Param p, int HT) = void:
+    let t0 = elapsed_ms()
+    then a = jagged_deform(p,HT)
+    in prints("jagged ",elapsed_ms()-t0,"ms  ",p)
+
+set time_old(Param p, int HT) = void:
+    let t0 = elapsed_ms()
+    then b = recursive_deform_scr(p,HT)
+    in prints("recursive_deform_scr ",elapsed_ms()-t0,"ms  ",p)
+
+{the library C++ implementation of the OLD algorithm, for scale}
+set time_lib(Param p) = void:
+    let t0 = elapsed_ms()
+    then c = full_deform(p)
+    in prints("full_deform ",elapsed_ms()-t0,"ms  ",p)
+
+{-------------------------------------------------------------------}
+{ scope: equal rank                                                   }
+{-------------------------------------------------------------------}
+
+{ SIMPLE AND EQUAL RANK ONLY.  Simple because that is FPP_faces_geom's
+  restriction, inherited through |local_vertices|.  Equal rank because
+  this file computes full_deform, which is what the unitarity algorithm
+  uses when delta = 1 (hermitian.at branches on is_equal_rank and calls
+  twisted_full_deform otherwise).  Split E7, E8, F4 and G2 all have
+  delta = 1; split E6 does not.  |jagged_deform| asserts both rather
+  than pretending to cover the rest.
+
+  For unequal rank, |deformation_terms_scr| at the wall has to be
+  replaced by its twisted analogue.  One thing I ran into that may be
+  relevant when that is done: with the untwisted deform, the terms
+  thrown off by a hermitian parameter need not be hermitian -- in
+  SL(3,R), (x=3,lambda=[2,1],nu=[2,1]) throws off
+  (x=2,lambda=[2,1],nu=[3,0]/2), which is not twist-fixed -- and
+  |local_vertices| then has no delta-fixed gamma to work with.
+  Presumably the twisted deform is exactly what keeps the terms on the
+  delta-fixed locus, but I have not checked that.
+
+  Verified against the library full_deform on every parameter at
+  gamma = rho, 2rho, rho/2, 3rho/2 for: SL(2,R), Sp(4,R), Sp(6,R),
+  G2_s, SU(2,1), SU(3,1), SU(2,2), Spin(4,3), SO(3,2). }
