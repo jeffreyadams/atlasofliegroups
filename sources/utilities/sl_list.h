@@ -80,9 +80,9 @@ typename std::allocator_traits<Alloc>::pointer
 template<typename T,typename Alloc>
 struct sl_node
 {
+  using node_ptr = struct sl_node *;
   using node_alloc_type =
     typename std::allocator_traits<Alloc>::template rebind_alloc<sl_node>;
-  using node_ptr = typename std::allocator_traits<node_alloc_type>::pointer;
   using deleter_type = allocator_deleter<node_alloc_type>;
   using link_type = std::unique_ptr<sl_node, deleter_type >;
 
@@ -127,18 +127,18 @@ template<typename T, typename Alloc >
 {
   friend class simple_list<T,Alloc>;
   friend class sl_list<T,Alloc>;
-  friend class sl_list_iterator<T,Alloc>; // lest |link_loc| needs |protected|
+  friend class sl_list_iterator<T,Alloc>; // lest |link_loc| need |protected|
 
+  using self = sl_list_const_iterator<T,Alloc>;
   using AT = std::allocator_traits<Alloc>;
+
+public:
   using node_type       = sl_node<T, Alloc>;
   using node_alloc_type = typename AT::template rebind_alloc<node_type>;
-  using node_ptr = typename std::allocator_traits<node_alloc_type>::pointer;
   using deleter_type = allocator_deleter<node_alloc_type>;
   using link_type = std::unique_ptr<node_type,deleter_type>;
 
 private:
-  using self = sl_list_const_iterator<T,Alloc>;
-
   // data
   link_type* link_loc; // pointer to link field
 
@@ -196,22 +196,22 @@ template<typename T, typename Alloc>
 {
   friend class weak_sl_list_iterator<T,Alloc>;
 public:
-  using pointer = typename sl_node<T,Alloc>::link_type::pointer;
-  using const_pointer = const sl_node<T,Alloc>*; // hard to describe this otherwise
+  using node_ptr = sl_node<T,Alloc> *;
+  using const_node_ptr = const sl_node<T,Alloc> *;
 
 private:
   using self = weak_sl_list_const_iterator<T,Alloc>;
 
   // data
-  pointer ptr; // pointer to non-const, but only exploitable by derived type
+  node_ptr ptr; // pointer to non-const, but only exploitable by derived type
 
 public:
   // constructors
   weak_sl_list_const_iterator() : ptr(nullptr) {} // default iterator: |end()|
-  explicit weak_sl_list_const_iterator(const_pointer p)
+  explicit weak_sl_list_const_iterator(const_node_ptr p)
   /* the following const_cast is safe because not exploitable using a mere
      |const_iterator|; only used to allow weak_iterator to be derived */
-  : ptr(const_cast<pointer>(p)) {}
+  : ptr(const_cast<node_ptr>(p)) {}
 
   // contents access; return |const| ref/ptr only: we are a |const_iterator|
   const T& operator*() const { return ptr->contents; }
@@ -244,7 +244,7 @@ class weak_sl_list_iterator
 public:
   // constructors
   weak_sl_list_iterator() : Base() {} // default iterator: end
-  explicit weak_sl_list_iterator(typename Base::pointer p): Base(p) {}
+  explicit weak_sl_list_iterator(typename Base::node_ptr p): Base(p) {}
 
   // contents access methods;  return non-const ref/ptr
   T& operator*() const { return Base::ptr->contents; }
