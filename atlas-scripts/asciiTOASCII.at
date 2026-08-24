@@ -1,0 +1,4 @@
+{load first when running a library with ascii}
+
+set ASCII(int n) = ascii(n)
+set ASCII(string str) = ascii(str)

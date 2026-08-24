@@ -1,0 +1,3 @@
+set_type maybe_KTP = (void timed_out | KTypePol done)
+set branch(KTypePol P, int HT, int time) = maybe_KTP:
+    branch(P,HT).done
