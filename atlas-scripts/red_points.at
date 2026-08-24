@@ -134,6 +134,7 @@ set (red_points_rp_avbd, report_rpavbd) = (((KGBElt, ratvec, vec, int, rat) -> [
     then avbds = [[rat]]: [] {one largest avbd for each ((x,lambda),av); nth list has size av_hashes[n].size()}
     then answers = [[[[int]]]]: [] {one list of computed reducibility hyperplanes for each ((x,lambda),av,HT)}
     in (((KGBElt, ratvec, vec, int, rat) -> [int]): (KGBElt x, ratvec lambda, vec av, int HT, rat avbd) [int]:
+       {this is the function red_points_rp_avbd}
     let N = xl_hash.size(), start = elapsed_ms()
     then n = xl_hash.match(x,lambda)
     then m = -1 {location of av in av_hashes[n]}
@@ -144,12 +145,13 @@ set (red_points_rp_avbd, report_rpavbd) = (((KGBElt, ratvec, vec, int, rat) -> [
        	    hts #:= [HT];
 	    m := av_hashes[n].match(av);
 	    avbds #:= (let add = for av0 in av_hashes[n].list()
-	    	      	      	 do x.real_form.rho*av
+	    	      	      	 do x.real_form.rho*av0
+				    {codex said this should be av0, not av; probably correct}
 				 od
 	    	       in add[m]:=avbd;
 		      	  add);
-       	    answers #:= for av0 in av_hashes[n].list()
-	    	    	do [red_points_rp_base(x,lambda,av0,HT,avbds[n][m])]
+       	    answers #:= for av0@m0 in av_hashes[n].list() {codex said insert m0 here; probably correct}
+	    	    	do [red_points_rp_base(x,lambda,av0,HT,avbds[n][m0])]
 			od;
 	    h:=0
        else m := av_hashes[n].match(av);

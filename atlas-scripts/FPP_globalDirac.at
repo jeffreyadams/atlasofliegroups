@@ -601,9 +601,10 @@ then coh_ind_unip_few(G,Uhash)}
 				   	then LF = [[FaceVertsIndex]]:
 		      	   		     if revert_steve_flag
 					     then [[]]
-		      	   		     elif by_zero_flag {and height(p0) > 0}
-		      	   		     then localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2)
-			   		     else localFD_1Dirac2(x, lambda, Lvd, Perm2)
+		      	   		     {elif by_zero_flag {and height(p0) > 0}
+		      	   		     then}
+					     else localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2)
+			   		     {else localFD_1Dirac2(x, lambda, Lvd, Perm2)}
 			   		     fi {just red_count to edge_offset}
 		 			then () = if every_lambda_deets_flag and FPP_report_flag
 					     	     and not revert_steve_flag
@@ -918,9 +919,10 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
  		      		      	       then LF = [[FaceVertsIndex]]:
 					       	         if revert_steve_flag
 					       	       	 then [[]]
-					       		 elif by_zero_flag
-		      	      	      	      	       	 then localFD_1Dirac2_by_zero(xW, lambdaW, Lvd, Perm2)
-			   				 else localFD_1Dirac2(xW, lambdaW, Lvd, Perm2)
+					       		 {elif by_zero_flag
+		      	      	      	      	       	 then}
+							 else localFD_1Dirac2_by_zero(xW, lambdaW, Lvd, Perm2)
+			   				 {else localFD_1Dirac2(xW, lambdaW, Lvd, Perm2)}
 			   				 fi {by_zero_flag}
 				      	       then () = if every_lambda_deets_flag and FPP_report_flag and
 					       	       	    not revert_steve_flag
@@ -1963,10 +1965,10 @@ fancy_tester) = void:
 		    	 then LF = [[FaceVertsIndex]]:
 		      	   if revert_steve_flag
 			   then [[]]
-		      	   elif by_zero_flag {and height(parameter(x,lambda,0*lambda)) > 0}
-		      	   then {prints("data = ",(x_sc,M*lambda,Lvd,Perm2));}
-			   	localFD_1Dirac2_by_zero(x_sc, lambda_sc, Lvd, Perm2)
-			   else localFD_1Dirac2(x_sc, lambda_sc, Lvd, Perm2)
+		      	   {elif by_zero_flag {and height(parameter(x,lambda,0*lambda)) > 0}
+		      	   then} {prints("data = ",(x_sc,M*lambda,Lvd,Perm2));}
+			   else	localFD_1Dirac2_by_zero(x_sc, lambda_sc, Lvd, Perm2)
+			   {else localFD_1Dirac2(x_sc, lambda_sc, Lvd, Perm2)}
 			   fi
 		        then () = if every_lambda_deets_flag and FPP_report_flag and not revert_steve_flag
     	      	      	     	  then prints("time for localFD_1Dirac2* = ",
@@ -2350,10 +2352,10 @@ this for a long time, leading to wrong answers for PSU(2,2).}
 		    	else adjust_Dirac_flags(x_sc);
 			     let LF = [[FaceVertsIndex]]:
 			     	      if revert_steve_flag then [[]]
-				      elif by_zero_flag {and dominant(G,lamthlam)*G.two_rho_check > 0}
- 		      	      	      then {prints("data = ",(x_sc,lambda_sc,Lvd,Perm2));}
-				      	   localFD_1Dirac2_by_zero(x_sc, lambda_sc, Lvd, Perm2)
-			   	      else localFD_1Dirac2(x_sc, lambda_sc, Lvd, Perm2)
+				      {elif by_zero_flag {and dominant(G,lamthlam)*G.two_rho_check > 0}
+ 		      	      	      then} {prints("data = ",(x_sc,lambda_sc,Lvd,Perm2));}
+				      else localFD_1Dirac2_by_zero(x_sc, lambda_sc, Lvd, Perm2)
+			   	      {else localFD_1Dirac2(x_sc, lambda_sc, Lvd, Perm2)}
 			   	      fi
 		             then () = if every_lambda_deets_flag and FPP_report_flag and not revert_steve_flag
     	      	      	      	then prints("time for localFD_1Dirac2* = ",
@@ -2732,10 +2734,10 @@ set unitary_nus(RealForm G) = [[[ratvec]]]:
 {all local vertex nu for (x,lambda). To be applied only to G simple mod center.}
 set all_vertex_nus(RealForm G, KGBElt x, ratvec lambda) = [ratvec]:
     let (Lvd,Perm2{, mapAct}) = LPm_table.LPm_entry(G,x.involution,((1+x.involution)*lambda).numer)
-    then LF = if by_zero_flag {and height(parameter(x,lambda,0*lambda)) > 0}
-	      then localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2)
-	      else localFD_1Dirac2(x, lambda, Lvd, Perm2)
-	      fi
+    then LF = {if by_zero_flag {and height(parameter(x,lambda,0*lambda)) > 0}
+	      then} localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2)
+	      {else localFD_1Dirac2(x, lambda, Lvd, Perm2)
+	      fi}
     then gammas = for v in LF[0] do Lvd.list[v[0]] od ##
     	 	  for w in LF[1] do face_bary(Lvd,w) od
     in for gamma in gammas

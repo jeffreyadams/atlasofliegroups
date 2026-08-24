@@ -16,6 +16,9 @@ set twistedDeformLookupCounter = make_counter()
 set twistedDeformCalcCounter = make_counter()
 set test_interrupt_verbose = false
 
+{whether to compute full_deform with jagged_deform.at}
+set jag_flag = false
+
 {whether to compute forms starting with small x (true) or large x (false)}
 set back_form_flag = false {x_open(E7_s suggests TRUE doesn't help or hurt}
 
@@ -190,7 +193,11 @@ set impure_height(KTypePol P) = int:
 	 in -1
      fi
 
-set full_deform_library(Param p) = full_deform(p)
+set full_deform_library(Param p) =
+    if jag_flag
+    then jagged_deform(p)
+    else full_deform(p)
+    fi
 
 {repeating this is useful: library remembers partial info}
 set full_deform_library(Param p, int time) = full_deform(p, time)
@@ -266,6 +273,7 @@ set full_deform_to_height_MvL_base(Param p, int height) = KTypePol:
 if height < 0 then return full_deform_library(p) fi;
 if full_deform_old_flag then return full_deform_to_height_MvL_old(p,height) fi;
 if deform_script_flag then return recursive_deform_scr(p,height) fi;
+if jag_flag then return jagged_deform(p,height) fi;
 FDH_count+:=1;
 (    let !empty_K=null_K_module(p.real_form), !empty=null_module(p), start = elapsed_ms()
      then output = empty_K, def = empty
