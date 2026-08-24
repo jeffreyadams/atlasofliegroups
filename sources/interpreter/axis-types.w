@@ -2018,17 +2018,10 @@ and otherwise return a copy of~|type_array[k].tp|. In the latter case, since
 this (unnamed) entry of |type_array| was created for a single parent, we can
 safely move from it; therefore we do so.
 
-In the code below, it is tempting to try to write |k=*it++|. But the
-post-increment operator for |sl_list| iterators was deliberately left undefined
-(to avoid the temptation of incorrectly using it in the argument of the |erase|
-method, as would be appropriate for certain other iterator types); therefore,
-that expression does not work, and we need to increment |it| separately after
-dereferencing it.
-
 @< Declare a local function |rewrite| @>=
 auto rewrite =
   @[ [&] (sl_list<unsigned short>::const_iterator& it) -> type_expr @] @;
-{ auto k=*it; ++it; // an index into |type_array|
+{ auto k=*it++; // an index into |type_array|
   if (keep.isMember(k))
   { if (type_array[k].tp.raw_kind()==tabled and
         type_array[k].tp.tabled_nr()>=old_table_size)

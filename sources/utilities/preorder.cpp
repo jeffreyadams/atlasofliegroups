@@ -120,6 +120,7 @@ auto Preorder::cliques() const -> containers::sl_list<List>
     {
       if (not data[x].out.isMember(x))
 	continue; // without a self-loop, there is no actual clique
+      // now filter and convert |data[x].out| from |BitMap| into a |List|
       auto& L = *result.push_back(List{}); // no need to push |x|, is in |out[x]|
       for (auto y : data[x].out)
 	if (root(y)==x)

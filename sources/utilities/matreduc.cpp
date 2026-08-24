@@ -321,15 +321,15 @@ matrix::PID_Matrix<C> adapted_basis(matrix::PID_Matrix<C> M, // by value
   } // |for(i)|
 
   if (not kept_rows.full())
-  {
+  { // permute columns of |result| with kept ones before dropped ones
     containers::sl_list<matrix::Vector<C> > kept_columns,dropped_columns;
     for (size_t i=0; i<m; ++i)
       (kept_rows.isMember(i) ? kept_columns : dropped_columns).
 	push_back(result.column(i));
     kept_columns.append(std::move(dropped_columns));
     auto it=kept_columns.begin();
-    for (size_t i=0; i<m; ++i,++it)
-      result.set_column(i,*it);
+    for (size_t j=0; j<m; ++j,++it)
+      result.set_column(j,*it);
   }
 
   return result;

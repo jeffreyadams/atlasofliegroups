@@ -1112,7 +1112,7 @@ WeylWord RootDatum::word_of_inverse_matrix
 template<typename C>
   WeylWord RootDatum::factor_dominant (matrix::Vector<C>& v) const
 {
-  containers::sl_list<weyl::Generator> w;
+  sl_list<weyl::Generator> w;
   weyl::Generator s;
 
   // greedy approach: find and apply reflections bringing |v| closer to dominant
@@ -1135,7 +1135,7 @@ template<typename C>
 template<typename C>
   WeylWord RootDatum::factor_codominant (matrix::Vector<C>& v) const
 {
-  containers::sl_list<weyl::Generator> w;
+  sl_list<weyl::Generator> w;
   weyl::Generator s;
 
   // greedy approach: find and apply reflections bringing |v| closer to dominant
@@ -1178,7 +1178,7 @@ template<typename C>
   auto RootDatum::factor_dominant (Gens g, matrix::Vector<C>& v) const
   -> GenWord
 {
-  containers::sl_list<weyl::Generator> w;
+  sl_list<weyl::Generator> w;
   weyl::Generator s;
 
   // greedy approach: find and apply reflections bringing |v| closer to dominant
@@ -1203,7 +1203,7 @@ template<typename C>
   auto RootDatum::factor_codominant (Gens g, matrix::Vector<C>& v) const
   -> GenWord
 {
-  containers::sl_list<weyl::Generator> w;
+  sl_list<weyl::Generator> w;
   weyl::Generator s;
 
   // greedy approach: find and apply reflections bringing |v| closer to dominant
@@ -1400,7 +1400,7 @@ sl_list<std::pair<weyl::Generator,RootNbr> > to_positive_system
   (const RootSystem& rs, RootNbrList& Delta)
 {
   sl_list<std::pair<weyl::Generator,RootNbr> > result;
-  const RootNbr rank=Delta.size(); // rank of subsystem
+  const weyl::Generator rank=Delta.size(); // rank of subsystem
   weyl::Generator s;
   do
     for (s=0; s<rank; ++s)
@@ -1408,7 +1408,7 @@ sl_list<std::pair<weyl::Generator,RootNbr> > to_positive_system
       { // then we apply reflection with respect to root |Delta[s]| to |Delta|
 	result.emplace_back(s,Delta[s]);
 	const auto& pi=rs.root_permutation(Delta[s]);
-	for (auto& entry : Delta) // apply |pi| to |Delta[t]|
+	for (auto& entry : Delta) // apply |pi| to each |entry| of |Delta|
 	  entry=pi[entry];
 	break;
       }

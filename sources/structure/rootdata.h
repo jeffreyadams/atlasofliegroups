@@ -50,10 +50,11 @@ RootNbrSet makeOrthogonal(const RootNbrSet& o, const RootNbrSet& subsys,
 
 void toDistinguished(WeightInvolution&, const RootDatum&);
 
-/* Transform each element of |Delta| under $W$ until all are posroot numbers
-   Return for each step: index at which negroot was found, and reflection index.
-   List is in order so that the reflections transform original |Delta| into the
-   final one (which is the order in which the pairs were found).
+/* Transform |Delta| under the action of $W_\Delta$ until all its elements
+   are positive in |rs|. Return for each step a pair consisting of the index
+   into |Delta| at which negroot was found, and the negroot as |RootNbr|.
+   The order of the list is such that the reflections transform the original
+   |Delta| into the final one (which is the order in which the pairs are found).
 */
 sl_list<std::pair<weyl::Generator,RootNbr> > to_positive_system
   (const RootSystem& rs, RootNbrList& Delta);

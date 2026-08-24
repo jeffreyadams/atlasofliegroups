@@ -703,7 +703,7 @@ extern "C"
 char* id_completion_func(const char* text, int state)
 { using namespace atlas;
   char* result = nullptr;
-  static containers::sl_list<const char*> comps;
+  static sl_list<const char*> comps;
   if (state==0)
     comps = interpreter::completions(text);
   if (comps.empty())
