@@ -12,23 +12,10 @@
 #include <iostream>
 #include <cstdlib>
 
-/*****************************************************************************
-
-        Chapter I -- The FatalError class
-
-******************************************************************************/
 
 namespace atlas {
 
 namespace error {
-
-// Calling |FatalError("why")| will actually terminate the program!
-void FatalError::operator() (const char* mess)
-{
-  std::cerr << mess << std::endl;
-  std::exit(0);
-}
-
 
 /*
   Execute the |InputError|.
@@ -53,17 +40,6 @@ void OutputError::operator() (const char* mess)
   return;
 }
 
-
-/*
-  Execute the |MemoryOverflow| error.
-
-  This prints a short message and returns.
-*/
-void MemoryOverflow::operator() (const char* mess)
-{
-  std::cerr << mess << std::endl;
-  return;
-}
 
 /*
   Execute the |NumericOverflow| error.

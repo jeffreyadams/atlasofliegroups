@@ -25,6 +25,7 @@
 #include "blocks.h"	// the |blocks::common_block| class, |dual_involution|
 #include "subsystem.h" // |SubSystem| methods
 #include "alcoves.h"
+#include "K_repr.h"
 
 #include "kl.h"
 
@@ -1597,6 +1598,7 @@ Rep_table::Rep_table(RealReductiveGroup &G)
 , KL_poly_pool{KLPol(),KLPol(KLCoeff(1))}, KL_poly_hash(KL_poly_pool)
 , poly_pool{ext_kl::Pol(0),ext_kl::Pol(1)}, poly_hash(poly_pool)
 , block_list(), place()
+, KTF_table()
 {}
 Rep_table::~Rep_table() = default;
 
@@ -2491,7 +2493,7 @@ simple_list<std::pair<BlockElt,kl::KLPol> >
 } // |Rep_table::KL_column|
 
 
-const deformation_unit& Rep_table::deformation(StandardRepr& z)
+const deformation_unit& Rep_table::deformation(StandardRepr z)
 {
   assert(is_final(z));
   if (z.gamma().denominator() > (1LL<<rank()))
@@ -2539,7 +2541,7 @@ bool Rep_table::has_deformation(const StandardRepr& z)
   return h!=alcove_hash.empty and pool[h].has_def_contrib();
 }
 
-K_type_nr_poly Rep_table::full_deformation(StandardRepr& z)
+K_type_nr_poly Rep_table::full_deformation(const StandardRepr& z)
 // that |z| is dominant and final is a precondition assured in the recursion
 // for more general |z|, do the preconditioning outside the recursion
 {
@@ -2816,7 +2818,7 @@ SR_poly Rep_table::twisted_deformation_terms (unsigned long sr_hash)
 #endif
 
 const deformation_unit&
-  Rep_table::twisted_deformation(StandardRepr& z, bool& flip)
+  Rep_table::twisted_deformation(StandardRepr z, bool& flip)
 {
   assert(is_final(z));
   assert(is_delta_fixed(z));
@@ -2896,7 +2898,7 @@ bool Rep_table::has_twisted_deformation(const StandardRepr& z)
   return h!=alcove_hash.empty and pool[h].has_twdef_contrib();
 }
 
-K_type_nr_poly Rep_table::twisted_full_deformation(StandardRepr& z)
+K_type_nr_poly Rep_table::twisted_full_deformation(const StandardRepr& z)
 {
   assert(is_final(z));
   assert(is_delta_fixed(z));
