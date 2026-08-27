@@ -2,6 +2,7 @@
 < W_orbit {for Weyl group}
 < translate {for T_param}
 < kl {for character_formula}
+< K.at {for parameter@KType}
 
 set lower_bounds(RealForm G, ratvec gamma) = ratvec:
 let F=fundamental_weights(G), W=W(G), X=two_rho_check(G)*gamma in

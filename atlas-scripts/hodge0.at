@@ -331,16 +331,26 @@ set (Hodge_twisted_hash_0, Hodge_twisted_hash_clear, print_HTH_stats, HTH_data) 
 		  v
        	  else let orp = orientation_nr(p) {henceforth p is reducible}
 	       then (B,Ppol,pols) = partial_extended_KL_block(p,delta)
-	       then sgns = for q in B do (-1)^(length(q)) od
 	       then P = id_mat(#B)
 	       then () = for i:#B - 1
 	    	       	 do  for j: #B - i - 1 from i+1
 		      	     do  P[i,j]:= if Ppol[i,j] = 0
 			    	       	  then 0
-				       	  else sgns[i]*sgns[j]*pols[Ppol[i,j]][0]
+				       	  else pols[Ppol[i,j]][0]
 				       	  fi
 			     od
 		         od
+	       {FIX: no sgns[i]*sgns[j] here.  |partial_extended_KL_block| is
+	        already signed -- that is exactly what |KL_block(p,delta)| in
+	        KL_polynomial_matrices.at:81 has to "undo signs" from, by
+	        multiplying each entry by minus_1^(len_j-len_i).  Compare the
+	        two deformation_terms: the untwisted one (deform.at) applies
+	        minus_1^(lj-l[i]) explicitly, while the twisted one
+	        (ext_deform.at:30) does NOT --
+	            P_mat = for col in P_ind_mat do for entry in col do pev[entry] od od
+	        The line below was copied from the untwisted branch of this
+	        file, where partial_KL_block really is unsigned, so in the
+	        twisted branch it applied the sign a second time.}
 	       {now the columns of P are irreducibles written in terms of standards}
 	       then last = null(#B-1)#1
 	       {this is the standard for p}

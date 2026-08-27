@@ -5,7 +5,7 @@
 <polynomial.at {for eval}
 <dualB.at {for dualB, low_dual}
 <translate.at {for translate_param_by}
-
+<K.at {for parameter@KType}
 { KL stuff, including character formulas and composition series
   This implementation seeks to avoid using KL_block, and instead uses
   KL_sum_at_s, as this function stores earlier results
@@ -932,13 +932,17 @@ set twisted_KL_sum_at_s(Param p) = ParamPol:
 
 set twisted_KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol:
     if HT < 0 then return twisted_KL_sum_at_s(p)
-    elif low_char(p,HT)
+    else let start = elapsed_ms()
+    	 in height_split(twisted_KL_sum_at_s(p),HT).fst \
+	    next charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use()
+    fi
+{    elif low_char(p,HT)
     then let start = elapsed_ms()
     	 then (below,) = height_split(twisted_KL_sum_at_s(p),HT)
     	 in below next charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use()
     else let (below,) = height_split(twisted_KL_sum_at_s(p),HT)
     	 in below
-    fi
+    fi}
 
 {next two never try not to_ht}
 set character_formula_to_height(Param p, int HT) = ParamPol:

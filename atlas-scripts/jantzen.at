@@ -54,7 +54,7 @@ set graded_multiplicity ([Param] B,i_poly_mat Q,Param irr, Param std) = i_poly:
    if irr=std then [1]
    elif length(std)-length(irr)<0 then i_poly:[]
    else
-      let f=KL_Q_polynomial(B,Q,irr,std), d=length(std)-length(irr)
+      let f=KL_Q_polynomial(B,Q,irr,std), d=length(std)-length(irr) {degree is at most (d-1)/2}
       then v=null(d+1)
    in for i:#f do v[d-2*i] := f[i] od; v
    fi
@@ -63,6 +63,7 @@ set graded_multiplicity ([Param] B,i_poly_mat Q,Param irr, Param std) = i_poly:
 set graded_multiplicity ([Param] B,Param irr, Param std) = i_poly:
    {note: KL_Q_polynoials(irr) here, not KL_Q_polynomials(B)}
    graded_multiplicity(B,KL_Q_polynomials(irr),irr,std)
+
 set graded_multiplicity (Param irr, Param std) = i_poly:
    graded_multiplicity(singular_block_of(irr),irr,std)
 

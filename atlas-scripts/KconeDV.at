@@ -157,8 +157,8 @@ set down_tr_one_root(KType mu) = KTypePol:
    then result=zeroPol
      in for avee@j in poscoroots(rd)
         do if (Lambda*avee > 0 and not( is_compact(j,x)))
-              then let R=to_ht(HT-1)(composition_series(standardize
-	                  (parameter(x,lambda-pr[j], rhoL-pr[j]))))
+              then let R= height_split(composition_series(standardize
+	                  (parameter(x,lambda-pr[j], rhoL-pr[j]))), HT-1).fst
                    in for @ m in R
 	              do for lkt in LKTs(m)
 		         do if (result[lkt]=0 and is_ge_tr(Q,lkt))
@@ -177,8 +177,8 @@ set down_tr_two_roots(KType mu)=KTypePol:
         usedpcr = ##for avee@j in poscoroots(rd) do if (Lambda*avee > 0 and
    not( is_compact(j,x))) then [j] else [] fi od
    then result=zeroPol
-     in for j@i in usedpcr do for k:i do let R=to_ht(HT-1)(composition_series(standardize
-                 (parameter(x,lambda-pr[j]-pr[usedpcr[k]], rho_r(x)-pr[j]-pr[usedpcr[k]]))))
+     in for j@i in usedpcr do for k:i do let R=height_split(composition_series(standardize
+                 (parameter(x,lambda-pr[j]-pr[usedpcr[k]], rho_r(x)-pr[j]-pr[usedpcr[k]]))),HT-1).fst
             in for @m in R do
 	       for lkt in LKTs(m) do
 	       if (result[lkt]=0 and is_ge_tr(Q,lkt))
@@ -197,15 +197,15 @@ set down_tr(KType mu) = KTypePol:
         usedpcr = ##for avee@j in poscoroots(rd) do if (Lambda*avee > 0 and
    not( is_compact(j,x))) then [j] else [] fi od
    then result=zeroPol
-     in for j in usedpcr do let R=to_ht(HT-1)(composition_series(standardize
-                 (parameter(x,lambda-pr[j], rho_r(x)-pr[j]))))
+     in for j in usedpcr do let R=height_split(composition_series(standardize
+                 (parameter(x,lambda-pr[j], rho_r(x)-pr[j]))),HT-1).fst
                    in for @ m in R
              do for lkt in LKTs(m) do
 	       if (result[lkt]=0 and is_ge_tr(Q,lkt))
 	       then result+:=lkt
                 fi od od od;
-   for j@i in usedpcr do for k:i do let R=to_ht(HT-1)(composition_series(standardize
-                 (parameter(x,lambda-pr[j]-pr[usedpcr[k]], rho_r(x)-pr[j]-pr[usedpcr[k]]))))
+   for j@i in usedpcr do for k:i do let R=height_split(composition_series(standardize
+                 (parameter(x,lambda-pr[j]-pr[usedpcr[k]], rho_r(x)-pr[j]-pr[usedpcr[k]]))),HT-1).fst
             in for @m in R do
 	       for lkt in LKTs(m) do
 	       if (result[lkt]=0 and is_ge_tr(Q,lkt))
@@ -224,15 +224,15 @@ set down_tr_alt(KType mu) = KTypePol:
         usedpcr = ##for avee@j in poscoroots(rd) do if (Lambda*avee > 0 and
    not( is_compact(j,x))) then [j] else [] fi od
    then result=zeroPol
-     in for j in usedpcr do let R=to_ht(HT-1)(composition_series(standardize
-                 (parameter(x,lambda-pr[j], rho_r(x)-pr[j]))))
+     in for j in usedpcr do let R=height_split(composition_series(standardize
+                 (parameter(x,lambda-pr[j], rho_r(x)-pr[j]))),HT-1).fst
                    in for @ m in R
              do for lkt in LKTs(m) do
 	       if result[lkt]=0
 	       then result+:=lkt
                 fi od od od;
-   for j@i in usedpcr do for k:i do let R=to_ht(HT-1)(composition_series(standardize
-                 (parameter(x,lambda-pr[j]-pr[usedpcr[k]], rho_r(x)-pr[j]-pr[usedpcr[k]]))))
+   for j@i in usedpcr do for k:i do let R=height_split(composition_series(standardize
+                 (parameter(x,lambda-pr[j]-pr[usedpcr[k]], rho_r(x)-pr[j]-pr[usedpcr[k]]))),HT-1).fst
             in for @m in R do
 	       for lkt in LKTs(m) do
 	       if result[lkt]=0

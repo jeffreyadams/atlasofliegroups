@@ -1,6 +1,7 @@
 <deform.at {for script deform}
 <FPP_faces_geom.at {for herm_center, local_vertices}
 <K_highest_weights.at {for all_parameters_gamma, used only in the tests}
+<kl.at {for reducibility walls}
 
 {The goal is to modify the algorithm for full_deform and
 full_deform_to_ht, which are now done in the library. I will try to
@@ -126,14 +127,79 @@ set local_restr_coroots(Param p) = [vec]:
 {these are the coroots related to reducibility}
 set local_red_coroots(Param p) = [vec]:
     let theta = p.x.involution, gamma = p.infinitesimal_character, rd = p.root_datum
-    in for av in rd.poscoroots
-       if (av*gamma >= 1 and av*theta*gamma <0)
+    in for av@j in rd.poscoroots
+       if (floor(av*gamma) > 0) and (ceil(av*theta*gamma)<0)
        do av
        fi
        od
 
+
+set local_red_aff_coroots(Param p) = [AffineCoroot]:
+    let theta = p.x.involution, gamma = p.infinitesimal_character,
+    	rd = p.root_datum, p0 = p*0, answer = [AffineCoroot]: []
+    in for av@j in rd.poscoroots
+       do let pos = floor(av*gamma), neg = ceil(av*theta*gamma)
+       	  in if (pos >= 1 and neg <= -1)
+       	     then answer##:=
+	     	  if (av+av*theta).=
+	       	  then if is_parity(rd.posroots[j],p0)
+	       	       then for m:pos\2
+	       	       	    do (av,2*(m+1))
+		       	    od
+	       	       else for m:(pos+1)\2
+	       	       	    do (av,2*m+1)
+		       	    od
+		       fi
+	  	  else for m:min(pos,-neg)
+	       	       do (av,m+1)
+	       	       od
+       	  	  fi
+	     fi
+       od;
+       answer
+
+{assume av is a positive coroot and n>0 and av*theta < 0}
+set is_red(Param p, AffineCoroot (av,n), int HT) = bool:
+    let gamma = p.infinitesimal_character
+    in if av*gamma != n then return false fi;
+       let x = p.x, lambda = p.lambda, p0 = p*0
+       in test(x,lambda,av,n,HT)
+
+{these are the affine coroots related to reducibility}
+set local_red_aff_coroots(Param p, int HT) = [AffineCoroot]:
+    let x = p.x, lambda = p.lambda, p0 = p*0, answer = [AffineCoroot]: []
+    then theta = x.involution, gamma = p.infinitesimal_character, rd = p.root_datum
+    in for av@j in rd.poscoroots
+       do let pos = floor(av*gamma), neg = ceil(av*theta*gamma)
+       	  in if (pos >= 1 and neg <= -1)
+       	     then answer##:=
+	       	  if (av+av*theta).=
+	       	  then if is_parity(rd.posroots[j],p0)
+	       	       then for m:pos\2
+	       	    	    if test(x,lambda,av,2*(m+1),HT)
+		    	    do (av,2*(m+1))
+		    	    fi
+		    	    od
+	       	       else for m:(pos+1)\2
+	       	    	    if test(x,lambda,av,2*m+1,HT)
+	       	    	    do (av,2*m+1)
+		    	    fi
+		    	    od
+	               fi
+	         else for m:min(pos,-neg)
+	       	      if test(x,lambda,av,m+1,HT)
+	       	      do (av,m+1)
+		      fi
+	       	      od
+       	      	 fi
+	      fi
+       od; answer
+
+
 {AffineCoroot's so p is immediately ABOVE that reducibility hyperplane}
-{if down_walls is empty, then full_deform(p) = p?}
+{if down_walls is empty, then full_deform(p) = p; but can happen that no
+coroot in down_walls defines a wall of the chamber of p. Example is
+p = parameter(Sp(6,R),25,[3,3,0]/1,[2,9,-2]/6)}
 set down_walls(Param p) = [AffineCoroot]:
     let lrc = local_red_coroots(p), gamma = p.infinitesimal_character
     in for av in lrc
@@ -168,7 +234,7 @@ set down_walls(Param p) = [AffineCoroot]:
   local face a simplex: then a wall is a facet exactly when it contains
   all but one of the vertices, which is the test written below. }
 
-{local_verts(bump(p)) = set of rk(A) ratvecs}
+{local_verts(bump(p)) = set of <= rk(A) ratvecs}
 {one wall = sum(all but one of these)}
 set local_verts(Param p) = FaceVerts: local_vertices(p)
 
@@ -233,6 +299,7 @@ set bdry_down_walls_all(Param p) = [AffineCoroot]:
     let vs = local_verts(p)
     in for w in down_walls(p) if is_facet(w,vs) do w fi od
 
+
 {-------------------------------------------------------------------}
 { walls that must be crossed on the way to nu=0 but at which nothing  }
 { happens.  Not every hyperplane separating gamma from gamma_0 is a   }
@@ -259,6 +326,10 @@ set sep_walls(Param p) = [AffineCoroot]:
 
 set bdry_sep_walls(Param p) = [AffineCoroot]:
     facets_among(sep_walls(p),local_verts(p))
+
+{this function may not find a hyperplane to cross}
+set bdry_down_walls(Param p) = [AffineCoroot]:
+    facets_among(down_walls(p),local_verts(p))
 
 {-------------------------------------------------------------------}
 { STEPS 4,5,6: cross a chosen facet                                   }
@@ -289,18 +360,75 @@ set cross_step(Param p, ratvec c, ratvec d) = rat:
 	       od.##
     in if #lims = 0 then 1/1 else min(lims)/2 fi
 
+{The extended flip incurred by re-expressing p at infinitesimal character
+ g.  |finalize_extended| finalises as an EXTENDED parameter and reports the
+ flip as a coefficient of s (1 = no flip).  This is the general version of
+ the second component of |scale_extended|, which only covers g=factor*nu.
+ In equal rank delta=1 and there is never a flip, so skip the work.}
+{The flip has TWO parts, and |finalize_extended| supplies only the second.
+ |scaled_extended_finalise| (ext_block.cpp:2737) starts from the default
+ extension of the ORIGINAL parameter and transports it,
+     ext_param E = default_extend(ctxt,sr); E.gamma_lambda += gamma-sr.gamma();
+ whereas |extended_finalise| starts from the moved parameter's own
+ presentation.  The difference is exactly |shift_flip(p,delta,g)|, which
+ "tells whether the default extension of a parameter when shifted to a
+ different infinitesimal character gamma produces an extended parameter
+ opposite to the default extension at gamma" (atlas-types.w:7593).
+ Verified: transport * finalisation reproduces the flip reported by
+ |scale_extended| on all 20 reducibility scalings of the hermitian
+ parameters of SL(4,R) at rho.  Using finalize_extended alone gets
+ parameter(SL(4,R),8,[3,2,1],[2,2,0]) wrong in one K-type.}
+
+{transport part only: p carried to infinitesimal character g}
+set jag_shift_flip(Param p, ratvec g, mat delta) = Split:
+    if is_equal_rank(p.real_form) then Split:1
+    elif shift_flip(p,delta,g) then Split:s
+    else Split:1
+    fi
+
+{both parts: transport, then finalisation at g}
+set jag_flip(Param p, ratvec g, mat delta) = Split:
+    if is_equal_rank(p.real_form) then return 1 fi;
+    let cs = for c@q in finalize_extended(parameter(p.x,p.lambda,g),delta) do c od
+    in assert(@:#cs = 1,"jag_flip: finalisation split into several terms");
+       jag_shift_flip(p,g,delta)*cs[0]
+
 {STEP 6.  Cross the facet w and return the barycenter of the local face
- on the other side.}
-set across_wall(Param p, AffineCoroot w) = Param:
-    let vs = local_verts(p)
+ on the other side, together with the extended flip the move incurs.  The
+ construction parameter(p.x,p.lambda,c+st*d) can be non-dominant -- in
+ SL(4,R) from parameter(x=10,[3,2,1],[10,5,5]/4) the second crossing gives
+ exactly that, with flip s -- and the implicit normalisation then discards
+ the flip silently.  The walk has to carry it, because every later wall in
+ the same walk is expressed relative to this parameter.  |herm_center| and
+ |Finalize| are further re-expressions that could in principle flip too, so
+ the flip is measured once for the whole move, from p to the gamma the move
+ actually lands on; that also makes double counting impossible.}
+set across_wall_ext(Param p, AffineCoroot w) = (Param,Split):
+    let delta = p.real_form.distinguished_involution
+    then vs = local_verts(p)
     then c = facet_center(w,vs), b = face_bary(vs)
     then d = c - b
-    then s = cross_step(p,c,d)
-    then q = parameter(p.x,p.lambda,c + s*d)
+    then st = cross_step(p,c,d)
+    then q = parameter(p.x,p.lambda,c + st*d)
     then vsq = local_verts(q)
-    in parameter(q.x,q.lambda,face_bary(vsq))
+    then g2 = face_bary(vsq)
+    then pa = Finalize(herm_center(parameter(q.x,q.lambda,g2)))
+    in (pa, jag_flip(p,g2,delta))
+    {NB the flip is measured at g2 -- the target gamma in p's OWN presentation
+     -- and not at pa.infinitesimal_character.  The latter is the dominant
+     representative chosen by finalisation, and feeding it back into p's
+     presentation is meaningless, since parameter(x,lambda,.) reads its third
+     argument as nu and projects it.  Example: from
+     parameter(SL(4,R),8,[4,2,2],[5,5,0]/2), g2 = [7,3,4]/2 while pa has
+     gamma = [7,4,3]/2; shift_flip is true at g2 and false at pa's gamma, and
+     taking the latter cost exactly one K-type in jagged_deform of
+     parameter(SL(4,R),8,[4,2,2],[4,4,0]).}
+
+set across_wall(Param p, AffineCoroot w) = Param:
+    let (pa,) = across_wall_ext(p,w) in pa
 
 {move p to the barycenter of its own local face (no crossing)}
+{better to replace by herm_center}
 set face_center(Param p) = Param:
     parameter(p.x,p.lambda,face_bary(local_verts(p)))
 
@@ -348,16 +476,77 @@ set next_wall_up(Param p, rat cap) = rat:
  If |nu_bump| comes back zero we simply stay on those hyperplanes; that
  is still correct, since they are never crossed -- they contain the
  endpoint.  Hence the assertion is |is_ray_generic|, not |is_generic|.}
+ 
+ {Now fails on G=GL(5,R), q16 = parameter(G,16,[2,1,1,0,-2]/1,[3,0,0,0,-3]/4)}
+{FIX (unequal rank).  |nu_bump| returns a direction that need not be
+ delta-fixed, and adding it moves gamma off the delta-fixed subspace -- the
+ parameter stops being hermitian, and |global_vertices| (hence
+ |local_verts|) then fails with "No solution found".  Instance:
+ r = parameter(SL(4,C),21,[3,2,1,3,2,1],[10,5,5,10,5,5]/4) got bumped to
+ gamma = [44,33,11,44,27,17]/16, whose two A3 halves differ although delta
+ swaps them.  Scaling nu is harmless (it preserves delta-fixedness); only
+ the push is at fault, so symmetrise it.  If the symmetrised push is zero
+ we simply omit it: staying on those hyperplanes is already allowed, which
+ is why the assertion below is |is_ray_generic| and not |is_generic|.}
 set jag_bump(Param p) = Param:
-    let f = (1 + next_wall_up(p,2))/2
-    then g = p.infinitesimal_character - p.nu + f*p.nu
+    let delta = p.real_form.distinguished_involution
+    then f = (1 + next_wall_up(p,2))/2
+    then g = {p.infinitesimal_character - p.nu +} f*p.nu {the commented out term is d_lambda}
     then q0 = parameter(p.x,p.lambda,g)
-    then w = nu_bump(p)
+    then w0 = nu_bump(p)
+    then w = (w0 + delta*w0)/2 {delta-fixed part: keeps the walk hermitian}
     then q = if w.= then q0
-       	     else parameter(p.x,p.lambda, g + cross_step(q0,g,w)*w)
+       	     else parameter(p.x,p.lambda,
+	     	  	    g + cross_step(q0,q0.infinitesimal_character,w)*w)
 	     fi
+    {FIX: |cross_step|'s second argument must be an infinitesimal CHARACTER --
+     it computes floor(av*c) to find the slab the point sits in -- but |g| is
+     a NU (that is fine for parameter(x,lambda,.), which projects its third
+     argument, but not here).  Since the gamma_0 term was commented out of g
+     above, g stopped being a gamma and the step size came out too large, so
+     the push landed ON a wall.  Instance: F4_s,
+     parameter(F4_s,69,[2,-2,5,-2],[2,-4,6,-2]/3) gives step 1/16 with g and
+     1/32 with the gamma; only the latter is ray-generic, and the former made
+     jagged_deform(F4_s x_open, nu=rho) abort with "gamma still on a
+     transverse wall".}
     in assert(@:q.is_ray_generic,"jag_bump: gamma still on a transverse wall");
-       face_center(q)
+       assert(@:is_hermitian_scr(q),"jag_bump: left the hermitian locus");
+       {|equivalent(twist(q),q)|, per hermitian.at; a bare twist(q)=q compares
+        exact forms and fails on the non-normal q that jag_bump can produce}
+       q
+       {herm_center(Finalize(q))}
+
+{jag_bump together with the extended flip it incurs.  As in
+ |across_wall_ext|, the flip must be measured at the gamma actually used in
+ the construction, in p's own presentation.}
+set jag_bump_ext(Param p) = (Param,Split):
+    let delta = p.real_form.distinguished_involution
+    then f = (1 + next_wall_up(p,2))/2
+    then g = f*p.nu
+    then q0 = parameter(p.x,p.lambda,g)
+    then w0 = nu_bump(p)
+    then w = (w0 + delta*w0)/2
+    then q = jag_bump(p)
+    in (q, jag_shift_flip(p,q.infinitesimal_character,delta))
+    {the target gamma is read off the bumped parameter itself rather than
+     recomputed here: jag_bump keeps p's presentation (x,lambda), so its
+     infinitesimal character IS the gamma we moved to, and the two can no
+     longer drift apart}
+    {TRANSPORT ONLY here.  |jag_bump| returns its parameter unfinalised -- it
+     can be non-dominant, and the walk goes on using that raw presentation --
+     so the finalisation half of the flip must NOT be charged yet; it is
+     charged later, by the |finalize_extended| inside |wall_terms| and by the
+     |Finalize| inside |across_wall_ext|.  For
+     parameter(SL(4,C),3,[2,1,1,2,1,1],[1,-1,0,1,-1,0]/2) the transport flip
+     is trivial while the finalisation flip is s, and charging the latter
+     here flipped the whole subtree.}
+    {|gt| is a NU (jag_bump feeds it to parameter(x,lambda,.), whose third
+     argument is nu), but |shift_flip| wants an infinitesimal CHARACTER, so
+     gamma_0 = gamma-nu has to be added back.  In |across_wall_ext| the
+     target g2 = face_bary(...) already is a gamma, which is why that one
+     needed no adjustment.  Passing the bare nu here made jag_bump_ext
+     report a flip of s instead of 1 for
+     parameter(SL(4,C),3,[2,1,1,2,1,1],[1,-1,0,1,-1,0]/2).}
 
 {-------------------------------------------------------------------}
 { the jagged walk                                                     }
@@ -373,10 +562,35 @@ set jag_bump(Param p) = Param:
  get |deformation_terms_scr|, which truncates the block first.}
 set jag_library_deform_flag = true
 
+set twisted_deform(ParamPol P) = ParamPol:
+    sum(P.real_form, for c@q in P do c*twisted_deform(q) od)
+
+set twisted_full_deform(ParamPol P) = KTypePol:
+    sum(P.real_form, for c@q in P do c*twisted_full_deform(q) od)
+
+{FIX (unequal rank).  |1*q| performs the ORDINARY conversion of a
+ non-dominant / non-final parameter to a normal one, which silently drops
+ the accompanying flip of the extended structure.  That flip is exactly
+ what |scale_extended| returns as its second component, and what
+ |recursive_deform| in ext_deform.at:80 applies as |s^#flipped|:
+     let (pf,flipped)=scale_extended(p,delta,factor) then def= s^#flipped*terms(pf)
+ Our wall points are not reached by scaling, so |scale_extended| does not
+ apply; |finalize_extended(q,delta)| is the general version -- it finalises
+ q as an EXTENDED parameter and records the flip as a coefficient of s.
+ Instance: q = parameter(SL(4,R),10,[3,2,1],[2,1,1]/2) is non-normal, and
+     1*q                        = 1*parameter(x=2,lambda=[1,1,0],nu=[0,1,-1]/2)
+     finalize_extended(q,delta) = 1s*parameter(x=2,lambda=[1,1,0],nu=[0,1,-1]/2)
+ so the deformation terms come out with opposite signs, which is what made
+ jagged_deform(SL(4,R).trivial) wrong in two of its seven K-types.}
 set wall_terms(Param q, int HT) = ParamPol:
-    if jag_library_deform_flag
+    if not is_equal_rank(q.real_form)
+       then let T = twisted_deform(finalize_extended(q,q.real_form.distinguished_involution))
+       	    in if HT < 0 then T else height_split(T,HT).fst fi
+    elif jag_library_deform_flag
     then if HT < 0 then deform(q)
-    	 else let (low,) = height_split(deform(q),HT) in low
+    	 else height_split(deform(q),HT).fst
+	 {block_deform(q, 1*q, HT).fst - q}
+	 	{this seems to fail, because if moves infl char}
 	 fi
     else if HT < 0 then deformation_terms_scr(q)
     	 else deformation_terms_scr(q,HT)
@@ -392,19 +606,27 @@ set wall_terms(Param q, int HT) = ParamPol:
  We stop when no facet separates gamma from nu=0, i.e. when the
  endpoint lies in the closure of the current local face; then
  down_walls is empty as well.}
-set jagged_step(Param p, int HT) = (bool,Param,ParamPol):
-    let dws = bdry_down_walls(p)
+
+{the commented out assert about c_forms needs an orientation number correction}
+{|sgn| is the extended sign the walk has accumulated so far: every move
+ that re-expresses the parameter can flip it (see |across_wall_ext|), and
+ the wall terms have to be multiplied by it.  In equal rank it is always 1.}
+set jagged_step(Param p, Split sgn, int HT) = (bool,Param,Split,ParamPol):
+    let dws = bdry_sep_walls(p)
     in if #dws > 0
        then let w = dws[0]
-       	    in (true, across_wall(p,w),
-	        wall_terms(Finalize(wall_param(p,w)),HT))
-       else let sws = bdry_sep_walls(p)
-       	    in if #sws = 0
-	       then assert(@:#down_walls(p)=0,"jagged_step: stuck above a wall");
-	       	    (false,p,null_module(p.real_form))
-	       else (true, across_wall(p,sws[0]), null_module(p.real_form))
-	       fi
+       	    then pw = wall_param(p,w)
+	    then (pa,fl) = across_wall_ext(p,w)
+	    then trw = jag_shift_flip(p,pw.infinitesimal_character,
+	    	       		      p.real_form.distinguished_involution)
+       	    in (true, pa, sgn*fl, sgn*trw*wall_terms(pw,HT))
+       else assert(@:#down_walls(p)=0,"jagged_step: stuck above a wall");
+	    (false,p,sgn,null_module(p.real_form))
        fi
+
+{old signature, for callers that do not track the sign (equal rank only)}
+set jagged_step(Param p, int HT) = (bool,Param,ParamPol):
+    let (g,pa,,terms) = jagged_step(p,Split:1,HT) in (g,pa,terms)
 
 {the sequence of reducibility points visited by the jagged walk from p
  down to nu=0, for inspection: (parameter on the wall, block size there)}
@@ -413,7 +635,7 @@ set jagged_walk(Param p) = [(Param,int)]:
     in while go
        do let dws = bdry_down_walls(q) in
        	  if #dws > 0
-	  then let pw = Finalize(wall_param(q,dws[0]))
+	  then let pw = wall_param(q,dws[0])
 	       in ans #:= (pw,#block_of(pw)); q := across_wall(q,dws[0])
 	  else let sws = bdry_sep_walls(q) in
 	       if #sws = 0 then go := false else q := across_wall(q,sws[0]) fi
@@ -425,17 +647,18 @@ set jagged_walk(Param p) = [(Param,int)]:
  jagged path: every reducibility point met is generic on its wall}
 set jagged_deform(Param p, int HT) = KTypePol:
     if not is_final(p) then error("improper parameter") fi;
-    assert(@:is_equal_rank(p.inner_class) and is_simple(p.root_datum),
-    	   "jagged_deform: simple and equal rank only (see the note at the end)");
+    {assert(@:is_equal_rank(p.inner_class) and is_simple(p.root_datum),
+    	   "jagged_deform: simple and equal rank only (see the note at the end)");}
     let empty = null_module(p.real_form)
     in (rec_fun jag (Split sc, Param p, int HT) KTypePol:
         begin
-	  let at_nu0 = KTypePol: sc*(p.K_type) in
+	  let at_nu0 = KTypePol: sc*(K_type_pol_extended(p,p.real_form.distinguished_involution))
+	  in
 	  if p.nu.= then at_nu0
-	  else let acc = empty, q = jag_bump(p), go = true in
+	  else let acc = empty, (q,sgn) = jag_bump_ext(p), go = true in
 	       while go
-	       do let (g,q1,terms) = jagged_step(q,HT)
-	       	  in go := g; q := q1; acc +:= terms
+	       do let (g,q1,sgn1,terms) = jagged_step(q,sgn,HT)
+	       	  in go := g; q := q1; sgn := sgn1; acc +:= terms
 	       od
 	     ; for k@r in acc do at_nu0 +:= jag(sc*k,r,HT) od
 	     ; at_nu0
@@ -467,7 +690,12 @@ set test_jagged(Param p, int HT) = bool:
 
 {jagged versus the library full_deform (no height truncation)}
 set test_jagged_full(Param p) = bool:
-    let a = jagged_deform(p), b = full_deform(p)
+    if not (twist(p)=p) then return true fi;
+    let a = jagged_deform(p)
+    then b = if is_equal_rank(p.real_form)
+    	     then full_deform(p)
+	     else twisted_full_deform(p)
+	     fi
     then ok = a = b
     in if not ok
        then prints("MISMATCH at ",p); prints("jagged: ",a); prints("full:   ",b)
@@ -493,7 +721,6 @@ set time_old(Param p, int HT) = void:
     let t0 = elapsed_ms()
     then b = recursive_deform_scr(p,HT)
     in prints("recursive_deform_scr ",elapsed_ms()-t0,"ms  ",p)
-
 {the library C++ implementation of the OLD algorithm, for scale}
 set time_lib(Param p) = void:
     let t0 = elapsed_ms()

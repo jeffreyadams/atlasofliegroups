@@ -76,6 +76,7 @@ set dual_KL_block(Param p) = if use_dual_KL_block_hash_flag
 			     fi
 }
 
+{meant to be the same as deform(p)}
 set deformation_terms_scr (Param p) = ParamPol:
   let (B,KL_mat,length) = ([Param],mat,vec):
     let (block,M,polys) = partial_KL_block(p:=normal(p))
@@ -99,7 +100,7 @@ set deformation_terms_scr (Param p) = ParamPol:
     , !opposite_parity=1-length~[0]%2 { opposite to that of |length(p)| }
     , !on_p = orientation_nr(p)
     in
-    for q_ind : nB
+    for q_ind : nB {I think q_ind are indices of irreducible composition factors of std(p)}
     ~do let contrib=remainder[q_ind]*KL_mat[q_ind] in
       remainder -:= contrib
     ; if length[q_ind]%2=opposite_parity

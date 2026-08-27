@@ -5112,7 +5112,7 @@ set localFD_1Dirac2_by_zero\
 			    do @bool: is_pos_on_LKTs(q)
 			    od))
 	       then []
-	       elif bz_nu_flag and any(for q in qs do @bool: status(q,-1) < 0 od)
+	       elif bz_nu_flag and (qs[0].x != x) and any(for q in qs do @bool: status(q,-1) < 0 od)
 	       then []
 	       elif FPP_def_flag and not FPP_def_test_wk_final(p)
 	       then []
