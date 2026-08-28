@@ -602,10 +602,52 @@ set face (SimpleAffine Affd, ratvec gamma) = Face:
    in (for betav in F0pos do wtilde*betav od
       ,for betav in F0zero do wtilde*betav od)
 
+set FVH_count = int: 0
+set FV_base_count = int: 0
+
 { computes the FaceVerts (vertex set) of any barycenter of a face of them }
-set face_verts(SimpleAffine Affd, ratvec gamma) = FaceVerts:
+set face_verts_base(SimpleAffine Affd, ratvec gamma) = FaceVerts:
+    FV_base_count +:=1;
     let (wtilde,gamma0) = from_fundamental_alcove(Affd, gamma)
     in wtilde*face_verts0(Affd,gamma0)
+
+set face_verts_hash = ((SimpleAffine, ratvec)->FaceVerts):
+    let rd_hash = make_RootDatum_hash()
+    then gamma_hashes = [ratvec_hash]: [] {one for each RootDatum}
+    then vert_hashes = [ratvec_hash]: [] {one for each RootDatum}
+    then answers = [[vec]]: [[]] {one list for each RootDatum; jth is indices of
+    	 	   	    	  verts in vert_hash for jth gamma}
+    in ((SimpleAffine, ratvec)->FaceVerts): (SimpleAffine Affd, ratvec gamma):
+       FVH_count +:=1;
+       let N = rd_hash.size()
+       then n = rd_hash.match(Affd)
+       in if n = N
+       	  then gamma_hashes #:= make_ratvec_hash();
+	       vert_hashes #:= make_ratvec_hash();
+	       answers #:= ([vec]: [])
+	  fi;
+	  let GAM = gamma_hashes[n].size()
+	  then gam = gamma_hashes[n].match(gamma)
+	  in if gam = GAM
+	     then let ez = vert_hashes[n].lookup(gamma)
+	     	  in if ez >=0
+		     then let vind = (vec: [ez])
+		     	  in answers[n] #:= vind
+		     else let verts = face_verts_base(Affd,gamma)
+	     	     	  then vind = vec:
+			       (for v in verts do vert_hashes[n].match(v) od)
+		  	  in answers[n] #:= vind
+		     fi
+	     fi;
+	     for j in answers[n][gam] do vert_hashes[n].index(j) od
+
+set face_verts_hash_flag = true
+
+set face_verts(SimpleAffine Affd, ratvec gamma) = FaceVerts:
+    if face_verts_hash_flag
+    then face_verts_hash(Affd,gamma)
+    else face_verts_base(Affd,gamma)
+    fi
 
 set lookup_vertices_for_barycenters \
     (SimpleAffine Affd, VertexData vd, [FaceBary] centers) \
@@ -1795,15 +1837,71 @@ set local_vertices2(Param p) = (FaceVerts,int):
     in (for n in fixed do list[n] od ##
         for (n,m) in trans do (vd.list[n] + vd.list[m])/2 od, #fixed)
 
-{compute the vertices of the local face containing the HERMITIAN FPP
-parameter p.}
-set local_vertices(Param p) = FaceVerts:
+{compute the vertices of the local face containing the HERMITIAN
+parameter p.  (No FPP hypothesis: the vertex lookup is built from |list|
+itself by |to_vertex_data|, and |global_vertices| handles any gamma via
+|from_fundamental_alcove|.  It is |local_vertices2| that needs an FPP
+parameter, since that one goes through |FPP_vertex_data|.  Checked: along
+jagged_deform walks in Sp(6,R), F4_s and SL(4,R) the walk is outside the
+FPP at 88 of 122 points, and the local face came out consistent at every
+one of them.)}
+
+set LVH_count = int: 0
+set LV_base_count = int: 0
+
+set local_vertices_base(Param p) = FaceVerts:
+    LV_base_count +:= 1;
     let G = p.real_form, gamma = p.infinitesimal_character
     then list = global_vertices(G, gamma)
     then LLvd = to_vertex_data(list), x = p.x, lambda = p.lambda
     then Perm = thetaAct(x,lambda,LLvd)
     then () = assert(@:Perm.>=,"p appears not to be a hermitian parameter")
     in for v@j in list do (v + list[Perm[j]])/2 od.no_reps
+
+{|local_vertices_base| depends on p only through (x,lambda,gamma), so it can
+ be memoised on that triple.  Worth doing on top of the |face_verts| hash:
+ the rest of |local_vertices| (|to_vertex_data|, |thetaAct|, the averaging)
+ runs on every call otherwise, and it repeats heavily -- measured on F4_s
+ x=200, 988966 calls but only 15244 distinct triples, a 98% hit rate, taking
+ local_vertices from 87.6s to 18.9s and the whole deformation from 437s to
+ 376s.}
+set local_vertices_hash = (Param->FaceVerts):
+    let rf_hash = make_RealForm_hash()
+    then key_hashes = [ratvec_hash]: []   {one per real form}
+    then vert_hashes = [ratvec_hash]: []  {one per real form}
+    then answers = [[vec]]: []            {per real form, per key: vertex indices}
+    in (Param p) FaceVerts:
+       LVH_count +:= 1;
+       let N = rf_hash.size()
+       then n = rf_hash.match(p.real_form)
+       in if n = N
+       	  then key_hashes #:= make_ratvec_hash();
+	       vert_hashes #:= make_ratvec_hash();
+	       answers #:= ([vec]: [])
+	  fi;
+	  let rk = p.real_form.rank
+	  then lam = ratvec: p.lambda, gam = ratvec: p.infinitesimal_character
+	  then key = ratvec: for i:2*rk+1
+	       	     	     do if i=0 then rat: p.x.number
+			  	elif i<=rk then lam[i-1]
+				else gam[i-rk-1]
+				fi
+			     od
+	  then K = key_hashes[n].size()
+	  then k = key_hashes[n].match(key)
+	  in if k = K
+	     then let verts = local_vertices_base(p)
+		  in answers[n] #:= (vec: for v in verts do vert_hashes[n].match(v) od)
+	     fi;
+	     for j in answers[n][k] do vert_hashes[n].index(j) od
+
+set local_vertices_hash_flag = true
+
+set local_vertices(Param p) = FaceVerts:
+    if local_vertices_hash_flag
+    then local_vertices_hash(p)
+    else local_vertices_base(p)
+    fi
 
 set hermCenterOldTime = int:0
 

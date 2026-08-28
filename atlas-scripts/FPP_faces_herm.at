@@ -5112,7 +5112,17 @@ set localFD_1Dirac2_by_zero\
 			    do @bool: is_pos_on_LKTs(q)
 			    od))
 	       then []
-	       elif bz_nu_flag and (qs[0].x != x) and any(for q in qs do @bool: status(q,-1) < 0 od)
+	       elif bz_nu_flag and any(for q in qs do @bool: status(q,-1) < 0 od)
+	       {The conjunct (qs[0].x != x) was here from 8/27/26 (commit 480ce90b) until
+		8/27/26.  It was a mistake: it copied the bz_nu_flag gate above, which asks
+		first_param(p0).x != p0.x about the ZERO-nu parameter p0, down onto the
+		per-vertex parameter p, where it has no justification.  It can only BLOCK
+		eliminations, never cause them, so every count rose and none fell.  At
+		(KGB(E7_s,448),[1,1,1,0,1,2,1]) it kept vertex 1 (nu=[2,2,2,1,2,2,2]/2),
+		which has qs[0].x = x = 448 and a monomial of negative status, so LF0 had 2
+		vertices instead of 1.  On Spin(6,5) the conjunct cost 23% more one_level
+		calls (1932 vs 1565) and 1.5-2x the FDcount ([11271,28653] vs [7627,14445])
+		for an IDENTICAL answer (6485 known / 6331 found FPP-unitary faces).}
 	       then []
 	       elif FPP_def_flag and not FPP_def_test_wk_final(p)
 	       then []

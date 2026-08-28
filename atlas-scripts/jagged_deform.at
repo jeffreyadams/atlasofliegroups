@@ -493,8 +493,17 @@ set jag_bump(Param p) = Param:
     then f = (1 + next_wall_up(p,2))/2
     then g = {p.infinitesimal_character - p.nu +} f*p.nu {the commented out term is d_lambda}
     then q0 = parameter(p.x,p.lambda,g)
-    then w0 = nu_bump(p)
-    then w = (w0 + delta*w0)/2 {delta-fixed part: keeps the walk hermitian}
+    then w = if q0.is_ray_generic then ratvec: null(p.real_form.rank)
+             else let w0 = nu_bump(p) in (w0 + delta*w0)/2
+	     fi
+    {|nu_bump| is only needed when scaling alone has not cleared every
+     transverse wall, which is what the assertion below requires; the push
+     beyond that buys extra genericity at the wall, and the wall blocks are
+     already of size 1 or 3, so there is nothing to gain.  It is worth
+     guarding: nu_bump is the single most expensive thing in jag_bump (it
+     builds a Levi), and measured on F4_s x=150 the scaled point was already
+     ray-generic in 5844 of 5844 bumps, with nu_bump returning zero in 5620
+     of them anyway.  Guarding it cut jag_bump by about a quarter.}
     then q = if w.= then q0
        	     else parameter(p.x,p.lambda,
 	     	  	    g + cross_step(q0,q0.infinitesimal_character,w)*w)
@@ -520,14 +529,11 @@ set jag_bump(Param p) = Param:
  |across_wall_ext|, the flip must be measured at the gamma actually used in
  the construction, in p's own presentation.}
 set jag_bump_ext(Param p) = (Param,Split):
-    let delta = p.real_form.distinguished_involution
-    then f = (1 + next_wall_up(p,2))/2
-    then g = f*p.nu
-    then q0 = parameter(p.x,p.lambda,g)
-    then w0 = nu_bump(p)
-    then w = (w0 + delta*w0)/2
-    then q = jag_bump(p)
-    in (q, jag_shift_flip(p,q.infinitesimal_character,delta))
+    let q = jag_bump(p)
+    in (q, jag_shift_flip(p,q.infinitesimal_character,
+                          p.real_form.distinguished_involution))
+    {these five lines used to recompute next_wall_up, nu_bump and the push
+     and then discard all of it, doubling the cost of every bump}
     {the target gamma is read off the bumped parameter itself rather than
      recomputed here: jag_bump keeps p's presentation (x,lambda), so its
      infinitesimal character IS the gamma we moved to, and the two can no
