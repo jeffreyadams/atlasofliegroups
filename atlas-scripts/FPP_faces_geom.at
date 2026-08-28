@@ -1936,12 +1936,53 @@ set herm_center(Param p) = Param:
     then () = hermCenterNewTime +:= elapsed_ms() - start
     in answer
 
-set non_herm_center(Param p) = Param:
-    let start = elapsed_ms(), rd = p.root_datum, gamma = p.infinitesimal_character
-    then zgamma = gamma -
+set NHC_count = int: 0
+set NHC_base_count = int: 0
+
+{The barycenter depends on p only through (root datum, gamma) -- not on x or
+ lambda -- so that part is memoised on the pair, in the same shape as
+ |face_verts| above.  The |parameter(x,lambda,.)| construction at the end
+ cannot be memoised and remains on every call.  Measured on
+ is_unitary_Hodge_0 at x_open(Sp(10,R)), nu=[4,3,2,1,1]: 44774 calls, only
+ 4316 distinct (rd,gamma), and the run went 16387ms -> 15034ms (8.3%, means
+ of three cold runs each, the two groups not overlapping).  Answers verified
+ identical on 1545 parameters of Sp(6,R), SL(4,R), Spin(4,3).}
+set non_herm_bary_base(RootDatum rd, ratvec gamma) = ratvec:
+    NHC_base_count +:= 1;
+    let zgamma = gamma -
     sum(rd.rank, for alphav@j in rd.simple_coroots do (gamma*alphav)*rd.fundamental_weights[j] od)
-    then gamma_bary = sum(rank(rd), for rdf in simple_factors(rd)
+    in sum(rank(rd), for rdf in simple_factors(rd)
     	 do let vertsf = face_verts(rdf,gamma) in sum(rank(rd), vertsf)/#vertsf od) + zgamma
+
+set non_herm_bary_hash = ((RootDatum, ratvec)->ratvec):
+    let rd_hash = make_RootDatum_hash()
+    then gamma_hashes = [ratvec_hash]: []
+    then bary_hashes = [ratvec_hash]: []
+    then answers = [vec]: []
+    in ((RootDatum, ratvec)->ratvec): (RootDatum rd, ratvec gamma):
+       NHC_count +:=1;
+       let N = rd_hash.size()
+       then n = rd_hash.match(rd)
+       in if n = N
+       	  then gamma_hashes #:= make_ratvec_hash();
+	       bary_hashes #:= make_ratvec_hash();
+	       answers #:= (vec: [])
+	  fi;
+	  let GAM = gamma_hashes[n].size()
+	  then gam = gamma_hashes[n].match(gamma)
+	  in if gam = GAM
+	     then answers[n] #:= bary_hashes[n].match(non_herm_bary_base(rd,gamma))
+	     fi;
+	     bary_hashes[n].index(answers[n][gam])
+
+set non_herm_center_hash_flag = true
+
+set non_herm_center(Param p) = Param:
+    let start = elapsed_ms()
+    then gamma_bary = if non_herm_center_hash_flag
+    	 	      then non_herm_bary_hash(p.root_datum, p.infinitesimal_character)
+		      else non_herm_bary_base(p.root_datum, p.infinitesimal_character)
+		      fi
     in parameter(p.x, p.lambda, gamma_bary) next hermCenterNewTime +:= elapsed_ms() - start
 
 
