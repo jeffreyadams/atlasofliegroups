@@ -2112,7 +2112,7 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
   assert(is_dominant_ratweight(root_datum(),gamma));
   auto& block = lookup_full_block(p,start,bm); // also makes |p| dominant
   kl::KL_table& KL_Q_tab // table of KL $Q$-polynomials; empty table first time
-    = block.dual_KL_tab(&KL_poly_hash);
+    = block.dual_KL_tab(&KL_poly_hash); // share the |block| polynomial pool
 
   // record heights for the block, and extract block terms from |queue|
   std::vector<level> heights(block.size());
@@ -2141,15 +2141,6 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
   }
   KL_Q_tab.fill(); // fill whole table; we might go beyond |size()-1-start|
 
-  int_Vector value_at_minus_1;
-  value_at_minus_1.reserve(KL_Q_tab.pol_store().size());
-  for (const auto& entry : KL_Q_tab.pol_store())
-  { int val = 0;
-    for (unsigned d=entry.size(); d-->0;)
-      val = static_cast<int>(entry[d])-val; // Horner evaluate polynomial at -1
-    value_at_minus_1.push_back(val);
-  }
-
   const RankFlags singular = block.singular(bm,gamma); // singular simple coroots
   auto it = result.begin();
   for (BlockElt z : retained) // run over block elements recorded in |result|
@@ -2166,12 +2157,21 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
 
   // viewed from |block|, the |KL_Q_tab| is lower triangular
   // build its transpose, restricted to |retained|, and evaluated at $q=-1$
+
   int_Matrix Q_mat (retained.size()); // initialise to identity matrix
-  unsigned int i=0,j;
-  unsigned int const top=block.size()-1;
-  for (auto it=retained.begin(); it(); ++it,++i)
-    for (auto jt=(j=i+1,std::next(it)); jt(); ++jt,++j)
-      Q_mat(i,j) = value_at_minus_1[KL_Q_tab.KL_pol_index(top-*jt,top-*it)];
+  { // Since |KL_Q_tab| shares full polynomial pool, DO NOT tablulate all their
+    // evaluations. Don't bother even to memoize; juste recompute for each $i,j$
+    unsigned int i=0,j;
+    unsigned int const top=block.size()-1;
+    for (auto it=retained.begin(); it(); ++it,++i)
+      for (auto jt=(j=i+1,std::next(it)); jt(); ++jt,++j)
+      { int val = 0;
+	const auto& entry = KL_Q_tab.KL_pol(top-*jt,top-*it);
+	for (unsigned d=entry.size(); d-->0;) // Horner evaluate |entry| at -1
+	  val = static_cast<int>(entry[d])-val;
+	Q_mat(i,j) = val;
+      }
+  }
 
   int_Matrix signed_P = inverse_upper_triangular(Q_mat);
   BitMap odd_length(signed_P.n_rows());
