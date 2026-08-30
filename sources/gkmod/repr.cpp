@@ -1847,7 +1847,7 @@ blocks::common_block& Rep_table::lookup_full_block
   auto rp = Reduced_param::reduce(*this,srm,sr.gamma(),loc); // sets |loc|
 
   auto h = reduced_hash.find(rp);
-  if (h!=reduced_hash.empty and place[h].first->first.is_full()) // then
+  if (h!=reduced_hash.empty and place[h].first->first.is_full())
   { // then we can return a looked-up block, suitably modified
     auto& block_loc = *place[h].first;
     auto& block = block_loc.first;
@@ -2117,8 +2117,8 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
 
   // record heights for the block, and extract block terms from |queue|
   std::vector<level> heights(block.size());
-  level low_mark = height_bound+1; // lowest height of any term in |queue|
   BitMap retained(block.size());
+  level low_mark = height_bound+1; // to be lowest height of any term in |queue|
   sl_list<SR_poly::value_type> result;
   // where that |value_type| is |std::pair<const StandardRepr,Split_integer>|
   for (BlockElt z=0; z<block.size(); ++z)
