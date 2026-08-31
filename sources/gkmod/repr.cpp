@@ -2585,18 +2585,6 @@ sl_list<std::pair<StandardRepr,int> > Rep_table::twisted_deformation_terms
 
   const auto& kl_tab = eblock.kl_table(&poly_hash,y_index+1);
 
-  std::vector<int> pool_at_minus_1; // evaluations at $q=-1$ of KL polynomials
-  {
-    const auto& pool=kl_tab.polys();
-    pool_at_minus_1.reserve(pool.size());
-    for (const auto& pol: pool)
-    {
-      int eval=0;
-      for (unsigned i=pol.degree()+1; i-->0; )
-	eval = pol[i]-eval;
-      pool_at_minus_1.push_back(eval);
-    }
-  }
 
   std::unique_ptr<unsigned int[]> index // a sparse array, map final to position
     (new unsigned int [eblock.size()]); // unlike |std::vector| do not initialise
@@ -2621,18 +2609,19 @@ sl_list<std::pair<StandardRepr,int> > Rep_table::twisted_deformation_terms
     const BlockElt z=*it; // element |pos| of |finals|; value decreases in loop
     const bool contribute = block.length(eblock.z(z))%2!=y_parity;
     for (auto x : kl_tab.nonzero_column(z))
-    {
-      auto p = kl_tab.KL_pol_index(x,z); // pair (index,negate_p)
-      if (pool_at_minus_1[p.first]==0)
+    { int val = 0;
+      ext_kl::Pol P = kl_tab.P(x,z);
+      if (P.is_zero())
 	continue; // polynomials with $-1$ as root do not contribute; skip
-      const int val_xz = p.second!= // XOR stored sign with length diff. parity
-	((block.length(eblock.z(x))-block.length(eblock.z(z)))%2!=0)
-	? -pool_at_minus_1[p.first] : pool_at_minus_1[p.first];
+      for (unsigned d=P.size(); d-->0;) // Horner evaluate |entry| at -1
+	val = P[d]-val;
+      if ((block.length(eblock.z(x))-block.length(eblock.z(z)))%2!=0)
+	val = -val;
       for (auto jt=contrib[x].wcbegin(); not contrib[x].at_end(jt); ++jt)
       {
 	auto j=index[jt->first]; // position where |P(x,z)| contributes
 	assert(j>=pos); // triangularity of KLV polynomials
-	int c =c_cur*val_xz*jt->second;
+	int c =c_cur*val*jt->second;
 	remainder[j] -= c;
 	if (contribute) // optimisation will apply loop unswitching to this test
 	  acc[j] += c; // here we contribute
