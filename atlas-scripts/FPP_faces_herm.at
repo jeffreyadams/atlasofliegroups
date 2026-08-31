@@ -9,6 +9,7 @@
 <unity.at {for deform_hts}
 <red_count.at {for red_count@Param}
 <face_classes.at {for coords}
+<hodge0.at {for is_unitary_Hodge_0@(Param,int), the level-0 screen}
 <cohom_reductionND.at {for glue_sigs}
 <up_mu.at {for up_mu_hash}
 <Vogan-dual.at {for dual@Param}
@@ -2171,12 +2172,135 @@ set wiggle_status_cod_one_flag = false {whether to wiggle to codim 1 bdry faces 
 set wiggle_status_all_flag = false {whether to wiggle to all bdry faces for known u-testing}
 
 {return 1 if is_unitary_to_ht(p,HT) known true, -1 if known false, 0 else}
+{---- Hodge level-0 screen for localFD_1Dirac2_by_zero ---------------------
+ ONLY NEGATIVE VERDICTS ARE USED.  Purity of the level-0 Hodge form is
+ NECESSARY for unitarity but NOT sufficient: on Spin(5,4), 170 of the 537
+ parameters FPP found nonunitary are pure at level 0 and come back +1.  So -1
+ is conclusive and is passed on; +1 and "timed out" are both reported as 0,
+ meaning "nothing learnt".
+
+ A catch is RECORDED in the nonunitary hash, exactly as any other negative
+ verdict would be; without that, nuhash silently shrinks (537 -> 491 on
+ Spin(5,4)) because eliminated candidates never reach the code that records
+ them.
+
+ TRUNCATION MUST MATCH THE QUESTION BEING ASKED.
+ - In the LF0 loop of localFD_1Dirac2_by_zero the screen discards a VERTEX,
+   which is a statement about the parameter itself, so the UNTRUNCATED test is
+   used there even when that function is running with a finite HT: level 0 is
+   what carries the information, and truncating only weakens the test without
+   making it cheaper.  That is |hodge_screen_full|.
+ - Inside status@(Param,int) the question is "unitary to height HT", so the
+   TRUNCATED test must be used.  A parameter can fail to be unitary while
+   still being unitary to height HT (the failure sits above HT), so an
+   untruncated -1 does NOT answer the truncated question.  Using the
+   untruncated test here gave WRONG ANSWERS: E6_s came out with 1367 known
+   FPP-unitary faces instead of 2217.  That is |hodge_screen|.
+
+ Cost is controlled inside hodge0.at by the nu gate (hodge_nu_flag): the cost
+ of hodge0 doubles roughly every 12 units of low(p).NU, so a budget converts
+ to a NU cutoff and anything above it returns at once.  That is what makes a
+ budget of a few hundred ms safe here.
+
+ CAVEAT, measured before the nu gate existed: this screen did NOT pay on
+ Spin(5,4) (+36%) or Spin(6,5) (+48%), because hodge cost and is_unitary_to_ht
+ cost are positively correlated -- where the real test is dear, hodge cannot
+ decide.  FDcount did drop 12-14%, but not enough.  The flag defaults FALSE;
+ turn it on only to re-measure.}
+set hodge_FD_flag = bool: false     {screen in the LF0 loop of localFD_1Dirac2_by_zero}
+set hodge_status_flag = bool: false {screen inside status@(Param,int), after the lookups}
+set hodge_screen_frac = rat: 1/2
+set hodge_screen_min_time = int: 200
+set HodgeCaughtCount = int: 0
+set HodgeTriedCount = int: 0
+set HodgeScreenTime = int: 0
+
+{hodge_screen_frac times the running average of how long is_unitary_to_ht has
+ been taking, floored.  Same body as |av_to_ht_time| later in this file, which
+ is defined too late to be used here.}
+set hodge_screen_time() = int:
+    let prevtimes = (for j:#tested_pos_to_ht_times do tested_pos_to_ht_times[j] od
+    	 	  ##for j:#tested_neg_to_ht_times do tested_neg_to_ht_times[j] od).##
+    in max(hodge_screen_min_time,
+           if #prevtimes = 0
+           then floor(hodge_screen_frac*interrupt_base_time)
+           else floor(hodge_screen_frac*sum(prevtimes)/#prevtimes)
+           fi)
+
+{TWO RULES, both learned the hard way.
+
+ (1) TRUNCATION MUST MATCH THE QUESTION.  Where a vertex is discarded outright
+     (the LF0 loop) the question is global -- "is this nonunitary?" -- and the
+     UNTRUNCATED test answers it.  Inside status@(Param,int) the question is
+     "not unitary to height HT", and an untruncated -1 does NOT answer it: a
+     nonunitary parameter can still be unitary to height HT, the failure
+     sitting above HT.  Using the untruncated test there gave WRONG ANSWERS --
+     E6_s reported 1367 known FPP-unitary faces instead of 2217.
+
+ (2) NON-FINAL PARAMETERS are handled by testing every term of finalize(p);
+     if any term is nonunitary the answer is -1 (David).  Callers do not
+     guarantee finality -- inside status the parameter has been through
+     herm_center, and at E6_s 36 of 111 herm_center results are not final.
+
+ A pure level-0 form is NECESSARY but not sufficient for unitarity (on
+ Spin(5,4), 170 of 537 known-nonunitary parameters are pure at level 0), so
+ these return -1 or 0 and never +1.
+
+ The untruncated branch also learns WHERE purity fails: |impure_height|
+ (hermitian.at:194) gives the lowest such height D, and the catch is recorded
+ with |numatch_height(p,D)|, which keeps the minimum known failure height.
+ The truncated branch makes no global claim and so records nothing.}
+
+set hodge_screen_one(Param q, int HT) = int:   {q assumed final}
+    let start = elapsed_ms()
+    then v = int:
+      if HT < 0
+      then case Hodge_hash_0_irr(q,hodge_screen_time())
+      	   | timed_out(): 0
+	   | done(H): let D = impure_height(H.convert_cform_hermitian)
+	     	      in if D < 0 then 0
+		      	 else if nuhash_flag
+			      then let () = big_unitary_hash.numatch_height(q,D) in ()
+			      fi;
+			      -1
+			 fi
+	   esac
+      else case Hodge_hash_0_irr_to_ht(q,HT,hodge_screen_time())
+      	   | timed_out(): 0
+	   | done(H): if is_pure(H.convert_cform_hermitian) then 0 else -1 fi
+	   esac
+      fi
+    in HodgeTriedCount +:= 1;
+       HodgeScreenTime +:= (elapsed_ms()-start);
+       if v < 0 then HodgeCaughtCount +:= 1 fi;
+       v
+
+set hodge_screen(Param p, int HT) = int:
+    if any(for q in monomials(finalize(p)) do hodge_screen_one(q,HT) < 0 od)
+    then -1 else 0
+    fi
+
+{the LF0 loop discards a vertex outright: the untruncated question}
+set hodge_screen_full(Param p) = int: hodge_screen(p,-1)
+
+set hodge_screen_report() = void:
+    prints("hodge screen: ",HodgeTriedCount," calls, ",HodgeCaughtCount,
+    	   " caught, ",HodgeScreenTime," ms, budget now ",hodge_screen_time(),
+	   " ms, nu-skipped ",HodgeNuSkipped)
+
+set hodge_screen_reset() = void:
+    HodgeTriedCount := 0; HodgeCaughtCount := 0; HodgeScreenTime := 0;
+    HodgeNuSkipped := 0
+
 set status(Param p, int HT) = int:
     if not is_hermitian(p) then return -1 fi;
     p:= herm_center(p);
     if wiggle_status_cod_one_flag then return wiggle_status_cod_one(p,HT) fi;
     if wiggle_status_all_flag then return wiggle_status_all(p,HT) fi;
-    simple_status(p,HT)
+    let st = simple_status(p,HT)
+    {the screen is a COMPUTATION, so it runs only after the cheap lookups in
+     simple_status have come back "not known"}
+    in if st.= and hodge_status_flag then hodge_screen(p,HT) else st fi
 
 {assume p is hermitian, FPP}
 set hermitian_form_irreducible_big_SIMPLE(Param p) = KTypePol:
@@ -5132,6 +5256,9 @@ set localFD_1Dirac2_by_zero\
 	       elif FD_wiggle_HT_flag and any(for q in monomials(finalize(p)) do wiggle_status_all(q,HT) < 0 od)
 	       then WHcaughtCount+:=1;
 	       	    []
+	       elif hodge_FD_flag and
+	       	    any(for q in monomials(finalize(p)) do hodge_screen_full(q) < 0 od)
+	       then []
 	       elif red_count_flag
 	       then [[j, red_count(p,HT)]]
 	       else [[j]]

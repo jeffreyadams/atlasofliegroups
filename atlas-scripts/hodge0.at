@@ -1,5 +1,42 @@
 <hodge_deform.at
 <TWOHEIGHTS.at {for HT}
+{Lengths along a library block list are monotone non-decreasing, from 0 to at
+ most #posroots (David).  length@Param is expensive -- it is a block-theoretic
+ quantity, the number of successive ascents possible in the full block, so it
+ depends on lambda as well as x and gamma and cannot be replaced by
+ length(p.x): parameter(x_open(F4_s),lambda,[1,1,1,1]) has length 0, 8 or 14 as
+ lambda runs over box(2,4), all at the same x and all integral.
+
+ But monotonicity means the whole vector is recoverable from its breakpoints by
+ binary search, in O(L log #B) calls instead of #B, where L <= #posroots+1 is
+ the number of distinct lengths.  Verified equal to the naive vector, and the
+ saving grows with the block:
+
+     group      #B     naive              binary search      speedup
+     Sp(10,R)   236    28ms  (236 calls)   7ms  ( 58 calls)    4x
+     E6_s       662   246ms  (662 calls)  48ms  (127 calls)    5x
+     E7_s      8549  8542ms (8549 calls) 242ms  (242 calls)   35x
+
+ The naive loop was the single largest item in hodge0: 5978ms of 15104ms (40%)
+ on Sp(10,R) x_open, and at E7_s 8542ms on one block against 1161ms for the
+ partial_KL_block that produced it.}
+set block_lengths([Param] B) = [int]:
+    let n = #B in
+    if n = 0 then []
+    else let ans = null(n), i = 0
+         in while i < n
+            do let cur = length(B[i])
+               then lo = i, hi = n-1
+               {last index whose length is still cur}
+               in while lo < hi
+                  do let mid = (lo+hi+1)\2
+                     in if length(B[mid]) = cur then lo := mid else hi := mid-1 fi
+                  od;
+                  for k:lo-i+1 from i do ans[k] := cur od;
+                  i := lo+1
+            od;
+            ans
+    fi
 
 {Back substitution for the systems solved in this file.  In every case P is
  built as id_mat(#B) with entries written only for j>i, so P is upper
@@ -19,6 +56,18 @@ set back_solve(mat P, vec b) = vec:
              x[i] := t
        od;
        x
+
+{TRIED AND REJECTED (2026-08-28): keying hodge_param_hash on
+ (real form, x, lambda, barycenter) instead of on the centered Param, so that
+ the |parameter| construction happens only on a hash MISS (10955 of 44774
+ visits at x_open(Sp(10,R))).  Correct once the real form is included in the
+ key -- without it Sp(6,R) and SL(4,R), same rank and same rho, collide in the
+ module-level hash and you get "Real form mismatch when adding two K_types" --
+ but MEASURABLY SLOWER: 17237/17426ms against 15034ms.  Building and hashing a
+ (2*rank+2)-component ratvec key costs more than the Param construction plus
+ Param-hash lookup it was meant to replace.  Do not retry without first timing
+ the key construction on its own.}
+
 
 
 set is_positive(KTypePol P) = bool:
@@ -53,7 +102,7 @@ set rec_fun Hodge_0A_std(Param p) = KTypePol:
        then Hodge_0A_std(Finalize(p*rp~[0]))
        else let orp = orientation_nr(p)
 	    then (B,Ppol,pols) = partial_KL_block(p)
-	    then sgns = for q in B do (-1)^(length(q)) od
+	    then sgns = for l in block_lengths(B) do (-1)^l od
 	    then P = id_mat(#B)
 	    then () = for i:#B - 1
 	    	      do  for j: #B - i - 1 from i+1
@@ -121,7 +170,7 @@ set rec_fun Hodge_0(Param p) = (KTypePol,KTypePol):
 	       in (Hstd,Hstd)
        else let orp = orientation_nr(p) {henceforth p is reducible, rp~[0] = 1}
 	    then (B,Ppol,pols) = partial_KL_block(p)
-	    then sgns = for q in B do (-1)^(length(q)) od
+	    then sgns = for l in block_lengths(B) do (-1)^l od
 	    then P = id_mat(#B)
 	    then () = for i:#B - 1
 	    	      do  for j: #B - i - 1 from i+1
@@ -172,8 +221,89 @@ set rec_fun Hodge_0(Param p) = (KTypePol,KTypePol):
 
 set herm_center_flag = true
 
+{Interruption.  |hodge_interrupt_flag| is checked before the clock so the
+ uninterrupted path pays only a boolean test per visit (there are 44774 visits
+ in one is_unitary_Hodge_0 at x_open(Sp(10,R))).  On timeout the recursion
+ unwinds returning the empty vec, WITHOUT writing to hodge_param_hash or
+ |answers|, so everything already cached stays valid and a later call resumes
+ from it rather than starting over.}
+set hodge_interrupt_flag = bool: false
+set hodge_timed_out = bool: false
+set hodge_expiration = int: 0
+{Probe before committing to a big block.  A single partial_KL_block cannot be
+ interrupted from inside, and at E8_s one costs ~26s, so a 500ms budget
+ overshot 60x.  The library REUSES partial KL work: computing it first for a
+ q in the middle of p's own block makes the later call for p cheaper by
+ almost exactly what the probe cost (E7_s x=18000: cold 2268ms; with a probe
+ costing 262/273/345ms the p-call drops to 2010/2018/2022ms).  So the probe is
+ a prefix of the work, not waste, and its cost estimates the whole:
+
+    group      x       #block   probe    total   total/probe
+    Sp(12,R)   3674     1650       7ms     38ms      5.4
+    E7_s      15694     8549     180      1341       7.4
+    E7_s      18000    10969     262-345  ~2300      6.9-8.7
+    E7_s      20925    23867    2711     21677       8.0
+    E8_s     100000    34776    1999     26233     13.1
+
+ The ratio drifts up with block size (KL cost is superlinear while a mid-block
+ q is a fixed POSITIONAL fraction), so treat hodge_probe_factor as an
+ order-of-magnitude guide, not an estimate.  It is used only to decide whether
+ to give up, so erring high just means giving up sooner.
+
+ KNOWN LIMITATION -- the probe DOES NOT protect a large budget at E8_s.
+ Measured at x=100000: with a 500ms budget it bails and the call returns in
+ 1614ms instead of 27206ms (good), but at 5000ms and above it passes every
+ time (bails 0) and the call runs to 27.9s, and at a 60000ms budget to
+ 415688ms -- about 7x over.  The reason is that the POSITIONAL midpoint of an
+ E8_s block is a tiny SIZE fraction: at x=100000 the mid element has
+ #partial_block = 553 of 34776, i.e. 1.6%, against 7.9% at E7_s x=18000.  So
+ Tq badly underestimates, and it underestimates worst exactly where the block
+ is largest.  A proper fix is to choose q by TARGET SIZE rather than position
+ -- binary-search the block list for #partial_block(q) about 15% of
+ #partial_block(p); partial_block is cheap relative to partial_KL_block
+ (410ms vs 2270ms at E7_s x=18000).  Not built or tested.
+
+ Note also that hodge0 returns 0 at E8_s for every budget tried from 500ms to
+ 120s at x=30000 and x=100000, so at that size the question is not how to
+ ration the budget but whether to call it at all.
+
+ SUPERSEDED IN PRACTICE by the nu gate below, which answers exactly that
+ question and does it before any block is built: on E7_s it made a 14-parameter
+ sweep 45x-121x faster with identical verdicts, and at E8_s it returns in 0ms
+ where the probe still ran for up to 417s.  The probe is harmless and left in
+ place, but the nu gate is what does the work.}
+set hodge_probe_flag = bool: true
+set hodge_probe_cutoff = int: 2000  {only probe when the block is this big}
+set hodge_probe_factor = rat: 10    {assumed total / probe cost}
+set hodge_probe_target = rat: 3/20  {aim the probe at this SIZE fraction}
+set hodge_probe_steps = int: 6
+
+{Pick q by TARGET SIZE, not by position.  The positional midpoint is a wildly
+ variable size fraction -- at E8_s x=100000 the middle element of the block has
+ #partial_block = 553 of 34776 (1.6%), against 7.9% at E7_s x=18000 -- which is
+ what made the cost estimate unreliable.  #partial_block is monotone along the
+ block list (measured at E8_s x=100000: 36, 55, 346, 553, 4468, 6756, 11505 at
+ positions 1,2,4,8,12,14,15 of 16) and costs only 2-10ms per call once the
+ block is built, so a binary search for the target size is essentially free.}
+set hodge_probe_pick([Param] Bl) = Param:
+    let n = #Bl, want = floor(hodge_probe_target*#Bl)
+    then lo = 0, hi = n-1
+    in for :hodge_probe_steps
+       do let mid = (lo+hi)\2
+       	  in if #partial_block(Bl[mid]) < want then lo := mid+1 else hi := mid fi
+       od;
+       Bl[max(0,min(hi,n-1))]
+set HodgeProbeCount = int: 0
+set HodgeProbeBails = int: 0
+
+set hodge_check_time() = bool:
+    if hodge_interrupt_flag and not hodge_timed_out and elapsed_ms() > hodge_expiration
+    then hodge_timed_out := true
+    fi; hodge_timed_out
+
 set_type [hodge0_data = (KTypePol H0std, KTypePol H0irr, vec inds)]
-set (Hodge_hash_0, Hodge_hash_clear, print_HH_stats, HH_data) = ((Param -> (KTypePol, KTypePol)), ( -> ), ( -> ), ( -> (Param_hash, KTypePol_hash,[vec]))):
+
+set (Hodge_hash_0, Hodge_hash_clear, print_HH_stats, HH_data, Hodge_maybe_0) = ((Param -> (KTypePol, KTypePol)), ( -> ), ( -> ), ( -> (Param_hash, KTypePol_hash,[vec])), ((Param,int) -> (maybe_KTP,maybe_KTP))):
 (    let hodge_param_hash = make_Param_hash()
     then hodge_Kpol_hash = make_KTypePol_hash()
     then answers = [vec]: []
@@ -188,6 +318,7 @@ set (Hodge_hash_0, Hodge_hash_clear, print_HH_stats, HH_data) = ((Param -> (KTyp
 	 else -hodge_Kpol_hash.index(-m-1)
 	 fi
     then rec_fun HHinds(Param p) = vec:
+     if hodge_check_time() then return (vec: []) fi;
      let N = hodge_param_hash.size()
      then () = if herm_center_flag
      	       then p := non_herm_center(p)
@@ -204,14 +335,36 @@ set (Hodge_hash_0, Hodge_hash_clear, print_HH_stats, HH_data) = ((Param -> (KTyp
 			  assert(@:N=n and #answers = N+1);
 	       	       	  [m,m]
        	  elif rp~[0] < 1
-       	  then let ind = HHinds(Finalize(p*rp~[0])), N = hodge_param_hash.size(), n = -1
+       	  then let ind = HHinds(Finalize(p*rp~[0]))
+	       	    then () = if hodge_timed_out then return (vec: []) fi
+	       	    then N = hodge_param_hash.size(), n = -1
 	       	    in n:= hodge_param_hash.match(p);
 	       	       answers#:= [ind[0],ind[0]];
 		       assert(@: N = n and #answers = N+1);
 	       	       [ind[0],ind[0]]
        	  else let orp = orientation_nr(p) {henceforth p is reducible}
+	       then () = if hodge_interrupt_flag and hodge_probe_flag and not hodge_timed_out
+	       	     	 then let Bl = partial_block(p)
+			      in if #Bl >= hodge_probe_cutoff
+			      	 then HodgeProbeCount +:= 1;
+				      let tpr = elapsed_ms()
+				      then () = (let (,,) = partial_KL_block(hodge_probe_pick(Bl)) in ())
+				      then cost = elapsed_ms()-tpr
+				      in if elapsed_ms() + floor(hodge_probe_factor*cost)
+				      	    > hodge_expiration
+				      	 then HodgeProbeBails +:= 1;
+					      hodge_timed_out := true
+					 fi
+				 fi
+			 fi
+	       then () = if hodge_timed_out then return (vec: []) fi
 	       then (B,Ppol,pols) = partial_KL_block(p)
-	       then sgns = for q in B do (-1)^(length(q)) od
+	       {second deadline check: the block is the expensive part of a node,
+		and at E7_s a single one can run for many seconds.  Testing here
+		as well as on entry keeps a 500ms budget from overshooting by
+		the whole of the P fill and the solve on top of the block.}
+	       then () = if hodge_check_time() then return (vec: []) fi
+	       then sgns = for l in block_lengths(B) do (-1)^l od
 	       then P = id_mat(#B)
 	       then () = for i:#B - 1
 	    	       	 do  for j: #B - i - 1 from i+1
@@ -227,6 +380,7 @@ set (Hodge_hash_0, Hodge_hash_clear, print_HH_stats, HH_data) = ((Param -> (KTyp
 	       then lowers = for j in lower_inds
 	    	     	     do HHinds(B[j])
 		     	     od
+	       then () = if hodge_timed_out then return (vec: []) fi
 	       then Hstds = for ind in lowers {p is last in Bp}
 	    	     	    do HKH_index(ind[0])
 			    od
@@ -240,9 +394,11 @@ set (Hodge_hash_0, Hodge_hash_clear, print_HH_stats, HH_data) = ((Param -> (KTyp
 			      else emptyK
 			      fi
 			od)
+	    then hpaux = if #rp = 1 then vec: [-1] else HHinds(Finalize(p*rp~[1])) fi
+	    then () = if hodge_timed_out then return (vec: []) fi
 	    then Hpstd = if #rp = 1
 	     	       	 then def + K_type_pol(p)
-			 else hodge_Kpol_hash.index(HHinds(Finalize(p*rp~[1]))[0]) + def
+			 else hodge_Kpol_hash.index(hpaux[0]) + def
 			 fi
 	    then N = hodge_param_hash.size()
             in Hstds #:=Hpstd; lower_inds#:=#B-1;
@@ -272,6 +428,22 @@ set (Hodge_hash_0, Hodge_hash_clear, print_HH_stats, HH_data) = ((Param -> (KTyp
     , ( -> ): clearHH
     , ( -> ): @:prints("hodge_param_hash.size() = ",hodge_param_hash.size(),", hodge_Kpol_hash.size() = ", hodge_Kpol_hash.size(),", #answers = ",#answers)
     , ( -> (Param_hash, KTypePol_hash,[vec])): @:(hodge_param_hash, hodge_Kpol_hash, answers)
+    , ((Param,int) -> (maybe_KTP,maybe_KTP)): (Param p, int time):
+       let saved_flag = hodge_interrupt_flag, saved_exp = hodge_expiration
+       then () = hodge_interrupt_flag := true
+       then () = hodge_timed_out := false
+       then () = hodge_expiration := elapsed_ms() + time
+       then ind = HHinds(p)
+       then to = hodge_timed_out
+       then () = hodge_interrupt_flag := saved_flag
+       then () = hodge_expiration := saved_exp
+       then () = hodge_timed_out := false {MUST reset: otherwise every later
+       	    	 call, including the uninterrupted entry, sees the stale flag,
+		 returns the empty vec, and dies indexing ind[0]}
+       in if to or #ind < 2
+       	  then (timed_out(), timed_out())
+	  else (HKH_index(ind[0]).done, HKH_index(ind[1]).done)
+	  fi
     )
     )
 
@@ -294,7 +466,7 @@ set s_index(KTypePol H) = KTypePol:
 				{sum of 2^r LKTs, each with 1 or s}
 		     	      	        do if c = 1 then mu else -mu fi od)}
 
-set (Hodge_twisted_hash_0, Hodge_twisted_hash_clear, print_HTH_stats, HTH_data) = ((Param -> (KTypePol, KTypePol)), ( -> ), ( -> ), ( -> (Param_hash, KTypePol_hash,[vec]))):
+set (Hodge_twisted_hash_0, Hodge_twisted_hash_clear, print_HTH_stats, HTH_data, Hodge_twisted_maybe_0) = ((Param -> (KTypePol, KTypePol)), ( -> ), ( -> ), ( -> (Param_hash, KTypePol_hash,[vec])), ((Param,int) -> (maybe_KTP,maybe_KTP))):
 (    let hodge_param_hash = make_Param_hash()
     then hodge_Kpol_hash = make_KTypePol_hash()
     then answers = [vec]: []
@@ -310,6 +482,7 @@ set (Hodge_twisted_hash_0, Hodge_twisted_hash_clear, print_HTH_stats, HTH_data) 
 	 else -hodge_Kpol_hash.index(-m-1)
 	 fi
     then rec_fun HTHinds(Param p) = vec:
+     if hodge_check_time() then return (vec: []) fi;
      let prf = p.real_form
      then delta = prf.distinguished_involution
      then () = assert(@:is_fixed(delta,p),"Hodge_twisted requires fixed parameter")
@@ -340,7 +513,9 @@ set (Hodge_twisted_hash_0, Hodge_twisted_hash_clear, print_HTH_stats, HTH_data) 
 	     	       	 then prints(new_line,"Hodge_twisted_hash_0(",p,
 			      ") deforms to proper red point ",pr," = p*",rp~[0])
 		  	 fi
-	       then ind = HTHinds(pr), N = hodge_param_hash.size(), n = -1
+	       then ind = HTHinds(pr)
+	       then () = if hodge_timed_out then return (vec: []) fi
+	       then N = hodge_param_hash.size(), n = -1
 	       then v = vec: if boo
 	       	      	     then -[ind[0]+1,ind[0]+1]
 			     else [ind[0],ind[0]]
@@ -351,6 +526,7 @@ set (Hodge_twisted_hash_0, Hodge_twisted_hash_clear, print_HTH_stats, HTH_data) 
 		  v
        	  else let orp = orientation_nr(p) {henceforth p is reducible}
 	       then (B,Ppol,pols) = partial_extended_KL_block(p,delta)
+	       then () = if hodge_check_time() then return (vec: []) fi
 	       then P = id_mat(#B)
 	       then () = for i:#B - 1
 	    	       	 do  for j: #B - i - 1 from i+1
@@ -380,6 +556,7 @@ set (Hodge_twisted_hash_0, Hodge_twisted_hash_clear, print_HTH_stats, HTH_data) 
 	       then lowers = for j in lower_inds{p is last in Bp}
 	    	     	     do HTHinds(B[j])
 		     	     od
+	       then () = if hodge_timed_out then return (vec: []) fi
 	       then Hstds = for ind in lowers {p is last in Bp}
 	    	     	    do HKH_index(ind[0])
 			    od
@@ -404,7 +581,9 @@ set (Hodge_twisted_hash_0, Hodge_twisted_hash_clear, print_HTH_stats, HTH_data) 
 			      	      {sum of 2^r LKTs, each with 1 or s}
 			      in ans + def
 			 else let (pr,boo) = scale_extended(p,delta,rp~[1])
-			      then Hrstd = HKH_index(HTHinds(pr)[0])
+			      then htaux = HTHinds(pr)
+			      then () = if hodge_timed_out then return (vec: []) fi
+			      then Hrstd = HKH_index(htaux[0])
 		     	      in if boo {there was a flip here}
 			      	 then -Hrstd + def
 				 else Hrstd + def
@@ -437,6 +616,22 @@ set (Hodge_twisted_hash_0, Hodge_twisted_hash_clear, print_HTH_stats, HTH_data) 
     , ( -> ): clearHTH
     , ( -> ): @:prints("hodge_param_hash.size() = ",hodge_param_hash.size(),", hodge_Kpol_hash.size() = ", hodge_Kpol_hash.size(),", #answers = ",#answers)
     , ( -> (Param_hash, KTypePol_hash,[vec])): @:(hodge_param_hash, hodge_Kpol_hash, answers)
+    , ((Param,int) -> (maybe_KTP,maybe_KTP)): (Param p, int time):
+       let saved_flag = hodge_interrupt_flag, saved_exp = hodge_expiration
+       then () = hodge_interrupt_flag := true
+       then () = hodge_timed_out := false
+       then () = hodge_expiration := elapsed_ms() + time
+       then ind = HTHinds(p)
+       then to = hodge_timed_out
+       then () = hodge_interrupt_flag := saved_flag
+       then () = hodge_expiration := saved_exp
+       then () = hodge_timed_out := false {MUST reset: otherwise every later
+       	    	 call, including the uninterrupted entry, sees the stale flag,
+		 returns the empty vec, and dies indexing ind[0]}
+       in if to or #ind < 2
+       	  then (timed_out(), timed_out())
+	  else (HKH_index(ind[0]).done, HKH_index(ind[1]).done)
+	  fi
     )
     )
 
@@ -468,17 +663,200 @@ set Hodge_extended_hash_0_irr(Param p) = KTypePol:
 
 set Hodge_jeff_irr(Param p) = K_type_pol(hodge_grading_irreducible(p)[0])
 
-set is_unitary_Hodge_0_new(Param p) = bool:
-    if is_equal_rank(p.real_form)
-    then is_pure(Hodge_hash_0_irr(p).convert_cform_hermitian)
-    else is_pure(Hodge_extended_hash_0_irr(p).new_convert_cform_hermitian)
+{---------------------------------------------------------------------------}
+{ Public interface.                                                          }
+{                                                                            }
+{ Naming.  Each used function comes in a pair with the SAME name, the timed   }
+{ one taking an extra int argument (milliseconds); and each of those has a    }
+{ _to_ht partner taking an int HT before the time.  So:                       }
+{                                                                            }
+{    Hodge_hash_0_irr(p)                Hodge_hash_0_irr(p,time)             }
+{    Hodge_hash_0_irr_to_ht(p,HT)       Hodge_hash_0_irr_to_ht(p,HT,time)    }
+{    is_unitary_Hodge_0(p)              is_unitary_Hodge_0(p,time)           }
+{    is_unitary_to_ht_Hodge_0(p,HT)     is_unitary_to_ht_Hodge_0(p,HT,time)  }
+{                                                                            }
+{ The |maybe| names are kept only for the raw outputs of the two hash         }
+{ closures, where overloading on argument type is not available.             }
+{                                                                            }
+{ EQUAL RANK.  There the twisted and untwisted Hodge filtrations coincide,    }
+{ so the extended answer could be recovered from the untwisted one -- but     }
+{ computing it that way would run BOTH recursions and nearly double the       }
+{ work.  Every dispatcher below therefore takes the untwisted path when       }
+{ is_equal_rank(p.real_form), and the Hodge_extended_* functions are the      }
+{ genuinely extended ones, meant for the unequal rank case; they are not      }
+{ dispatchers.                                                               }
+{                                                                            }
+{ TO_HT.  At present the _to_ht forms compute the whole answer and truncate,  }
+{ so they cost what the untruncated ones cost.  The names anticipate a        }
+{ future in which the truncation is pushed down into the recursion.  They     }
+{ are still useful as a TEST: the verdict is monotone in HT, so a negative    }
+{ at a low HT is already conclusive.                                          }
+{---------------------------------------------------------------------------}
+
+{Interruptible forms.  |Hodge_hash_0_irr(p,time)| computes for at most |time|
+ milliseconds and returns done(.) or timed_out().  Whatever the recursion
+ finished before the deadline stays in the hash, so a later call resumes rather
+ than restarting: on F4_s x=150 (627ms uninterrupted) repeated 300ms calls
+ finish in 3 calls / 663ms, repeated 100ms calls in 8 calls / 821ms.
+
+ CAVEAT: the deadline is only tested on entry to a node, so a node whose OWN
+ work (its partial_KL_block and back_solve) exceeds the budget can never be
+ completed, and since a timing-out node is not written to the hash that work is
+ redone and discarded on every call.  Repeated 25ms calls on the same parameter
+ therefore stall for ever at 110 of the 497 nodes.  Give the budget at least
+ the cost of the single most expensive block on the path, or accept
+ timed_out().
+
+ OVERSHOOT is bounded by the same quantity, and at E7_s that is large: a
+ single partial_KL_block there can run for seconds and cannot be interrupted
+ from inside.  The deadline is therefore tested twice per node, on entry and
+ again immediately after the block, which on 12 cold x_open(E7_s) parameters
+ with a 500ms budget took the worst case from 18747ms to 3943ms and the total
+ from 29640ms to 12673ms.  A 500ms budget can still overshoot ~8x there; on
+ F4_s x=150 a 1ms budget returns in 18ms.}
+
+{---- the nu gate ----------------------------------------------------------
+ The cost of hodge0 is governed by the SIZE OF NU -- |low(p)| (kl.at:198)
+ returns (size of d_lambda, size of nu, size of gamma) -- and the dependence is
+ exponential.  Measured on E7_s, parameter(KGB(E7_s,x),rho,rho), untimed:
+
+     NU    17    51    68     97    119    122    137    139    155    182
+     ms     6    77   191   3055   8405   5583   8749  11778  34654   >40000
+
+ so the cost roughly DOUBLES every 12 units of NU, over a range in which
+ |LAM| moves the other way (388 down to 149) and |GAM| does not move at all.
+ At E8_s the same pattern: NU 415/518/667 at x=30000/50000/100000 gives
+ 675/3149/27666 ms, a factor 41 for a factor 1.6 in NU.
+
+ So the budget can be turned into a NU cutoff and the whole computation
+ abandoned BEFORE any block is built -- much cheaper than probing a block, and
+ it is what makes the timed form honour its budget at all at E8_s.  Returning
+ timed_out() early is always safe: it says "not known", never a verdict.
+
+ Since Lvd is ordered by the size of nu, a caller scanning a vertex list can
+ equivalently just stop once the gate starts firing.}
+set hodge_nu_flag = bool: true
+set hodge_nu_base = int: 51        {reference point of the table above}
+set hodge_nu_time_base = int: 77   {...and its cost in ms}
+set hodge_nu_double = int: 12      {NU units per doubling of cost}
+
+{largest NU worth attempting within |time| milliseconds}
+set hodge_nu_cutoff(int time) = int:
+    let k = 0, t = hodge_nu_time_base
+    in while t < time and k < 200 do t := 2*t; k := k+1 od;
+       hodge_nu_base + hodge_nu_double*k
+
+set HodgeNuSkipped = int: 0
+
+set hodge_nu_too_big(Param p, int time) = bool:
+    if not hodge_nu_flag then false
+    else let (,NU,) = low(p)
+    	 in if NU > hodge_nu_cutoff(time)
+	    then HodgeNuSkipped +:= 1; true
+	    else false
+	    fi
     fi
 
+set Hodge_maybe_0_irr(Param p, int time) = maybe_KTP:
+    let (,ans) = Hodge_maybe_0(p,time) in ans
+
+set Hodge_twisted_maybe_0_irr(Param p, int time) = maybe_KTP:
+    let (,ans) = Hodge_twisted_maybe_0(p,time) in ans
+
+{genuinely extended: runs both halves, the second on whatever budget is left}
+set Hodge_extended_maybe_0_irr(Param p, int time) = maybe_KTP:
+    let start = elapsed_ms()
+    in case Hodge_maybe_0_irr(p,time)
+       | timed_out(): timed_out()
+       | done(Hirr): let left = time - (elapsed_ms() - start)
+       	 	     in if left <= 0 then timed_out()
+		     	else case Hodge_twisted_maybe_0_irr(p,left)
+			     | timed_out(): timed_out()
+			     | done(Hirrtw):
+			       (half(Hirr + Hirrtw) + s*half(Hirr - Hirrtw)).done
+			     esac
+			fi
+       esac
+
+{--- irr, timed ---}
+set Hodge_hash_0_irr(Param p, int time) = maybe_KTP:
+    if hodge_nu_too_big(p,time) then timed_out()
+    elif is_equal_rank(p.real_form) then Hodge_maybe_0_irr(p,time)
+    else Hodge_extended_maybe_0_irr(p,time)
+    fi
+
+set Hodge_extended_hash_0_irr(Param p, int time) = maybe_KTP:
+    if hodge_nu_too_big(p,time) then timed_out()
+    else Hodge_extended_maybe_0_irr(p,time)
+    fi
+
+{--- irr, truncated ---}
+set Hodge_hash_0_irr_to_ht(Param p, int HT) = KTypePol:
+    to_ht(if is_equal_rank(p.real_form)
+    	  then Hodge_hash_0_irr(p)
+	  else Hodge_extended_hash_0_irr(p)
+	  fi, HT)
+
+set Hodge_hash_0_irr_to_ht(Param p, int HT, int time) = maybe_KTP:
+    to_ht(Hodge_hash_0_irr(p,time),HT)
+
+set Hodge_extended_hash_0_irr_to_ht(Param p, int HT) = KTypePol:
+    to_ht(Hodge_extended_hash_0_irr(p),HT)
+
+set Hodge_extended_hash_0_irr_to_ht(Param p, int HT, int time) = maybe_KTP:
+    to_ht(Hodge_extended_maybe_0_irr(p,time),HT)
+
+{--- std, timed ---}
+set Hodge_hash_0_std(Param p, int time) = maybe_KTP:
+    if is_equal_rank(p.real_form)
+    then let (ans,) = Hodge_maybe_0(p,time) in ans
+    else let start = elapsed_ms()
+    	 in case (let (a,) = Hodge_maybe_0(p,time) in a)
+	    | timed_out(): timed_out()
+	    | done(Hstd): let left = time - (elapsed_ms() - start)
+	      	 	  in if left <= 0 then timed_out()
+			     else case (let (a,) = Hodge_twisted_maybe_0(p,left) in a)
+			     	  | timed_out(): timed_out()
+				  | done(Hstdtw):
+				    (half(Hstd + Hstdtw) + s*half(Hstd - Hstdtw)).done
+				  esac
+			     fi
+	    esac
+    fi
+
+{--- unitarity ---}
 set is_unitary_Hodge_0(Param p) = bool:
     if is_equal_rank(p.real_form)
     then is_pure(Hodge_hash_0_irr(p).convert_cform_hermitian)
     else is_pure(Hodge_extended_hash_0_irr(p).convert_cform_hermitian)
     fi
+
+{1 = finished and unitary, -1 = finished and not unitary, 0 = ran out of time.}
+set is_unitary_Hodge_0(Param p, int time) = int:
+    case Hodge_hash_0_irr(p,time)
+    | timed_out(): 0
+    | done(H): if is_pure(H.convert_cform_hermitian) then 1 else -1 fi
+    esac
+
+set is_unitary_to_ht_Hodge_0(Param p, int HT) = bool:
+    is_pure(Hodge_hash_0_irr_to_ht(p,HT).convert_cform_hermitian)
+
+set is_unitary_to_ht_Hodge_0(Param p, int HT, int time) = int:
+    case Hodge_hash_0_irr_to_ht(p,HT,time)
+    | timed_out(): 0
+    | done(H): if is_pure(H.convert_cform_hermitian) then 1 else -1 fi
+    esac
+
+{|is_unitary_Hodge_0_new| and its use of |new_convert_cform_hermitian|
+ (convert_c_form.at:140) are DROPPED.  Tested on 258 parameters over
+ SL(4,R), SL(5,R), Sp(4,C), SL(4,C), Sp(6,R), Spin(4,3): the new conversion is
+ ALWAYS either equal to |convert_cform_hermitian| or exactly s times it, never
+ anything else, and it agreed with is_unitary on every one of the 76
+ unequal-rank cases.  Using one global |shift| taken from the first K-type
+ instead of a per-tau z*lambdar gets the RELATIVE signs right -- which is all
+ is_pure sees -- but the global normalisation wrong in about 44% of cases, so
+ the result is s times the hermitian form rather than the form.  Nothing else
+ in the scripts calls it.}
 
 {this one only works in equal rank ???}
 set is_unitary_Hodge_jeff(Param p) = bool:

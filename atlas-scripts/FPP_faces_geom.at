@@ -241,13 +241,44 @@ lattice of G.}
 affine Weyl group to act on delta-fixed weights; and the unique label
 j0 (or -1) for a simple coroot needing to be divided by two to get
 full FPP}
-set cofolded(InnerClass ic) = (RootDatum, mat, int):
+set cofolded_base(InnerClass ic) = (RootDatum, mat, int):
     let (rdB,rdC,M) = cofoldedBOTH(ic.root_datum, ic.distinguished_involution)
     then j0=
 	 first(
 	 for alpha@j in rdB.simple_roots do alpha != rdC.simple_roots[j] od
 	 )
     in (rdB,M,j0)
+
+{|cofolded_base| depends on |ic| ONLY through |ic.root_datum| and
+ |ic.distinguished_involution| (see the body above), and it is expensive:
+ |cofoldedBOTH| computes an eigen_lattice and makes two O(#poscoroots^2)
+ |find| sweeps.  It used to be recomputed on EVERY call, and |global_vertices|
+ -- hence |herm_center| -- calls it once per call for an inner class that is
+ NOT equal rank (the equal rank branch goes to the hashed |face_verts|).
+ That made |herm_center| 20-40x dearer for unequal rank groups, which since
+ May 2026 became the dominant cost there: on Spin(5,5),
+ FPP_unitary_hash_one_level spent 35.2sec of 46.1sec inside |herm_center|.
+ Memoising on (root_datum, distinguished_involution) is exact.  Measured
+ (identical face counts everywhere): Spin(5,5) 46.1sec -> 10.7sec,
+ Spin(5,3) 2.73sec -> 0.72sec, SL(4,R) 152ms -> 83ms; equal rank groups
+ Spin(4,4), Spin(6,4), Spin(5,4), Spin(6,3), Sp(4,R), G2_s unchanged.}
+set cofolded_count = int: 0      {calls}
+set cofolded_base_count = int: 0 {calls that missed the memo}
+set cofolded_keys = [(RootDatum,mat)]: []
+set cofolded_vals = [(RootDatum,mat,int)]: []
+set cofolded(InnerClass ic) = (RootDatum, mat, int):
+    cofolded_count +:= 1;
+    let rd = ic.root_datum, delta = ic.distinguished_involution
+    then n = #cofolded_keys, j = int: -1, i = int: 0
+    then () = while j.< and i<n
+              do let (r,d) = cofolded_keys[i]
+                 in if r=rd and d=delta then j:=i else i+:=1 fi
+              od
+    in if j.>= then cofolded_vals[j]
+       else cofolded_base_count +:= 1;
+            let v = cofolded_base(ic)
+            in cofolded_keys #:= (rd,delta); cofolded_vals #:= v; v
+       fi
 
 {these are the edges of the fundamental parallelepiped}
 set FPP_lines(InnerClass ic) = [ratvec]:
@@ -1954,12 +1985,18 @@ set non_herm_bary_base(RootDatum rd, ratvec gamma) = ratvec:
     in sum(rank(rd), for rdf in simple_factors(rd)
     	 do let vertsf = face_verts(rdf,gamma) in sum(rank(rd), vertsf)/#vertsf od) + zgamma
 
+set bary_hash2_flag = true
+set non_herm_bary_hash2(RootDatum rd, ratvec gamma) = ratvec:
+    let verts = face_verts(rd,gamma)
+    in sum(#(verts[0]),verts)/#verts
+
 set non_herm_bary_hash = ((RootDatum, ratvec)->ratvec):
     let rd_hash = make_RootDatum_hash()
     then gamma_hashes = [ratvec_hash]: []
     then bary_hashes = [ratvec_hash]: []
     then answers = [vec]: []
     in ((RootDatum, ratvec)->ratvec): (RootDatum rd, ratvec gamma):
+       if bary_hash2_flag then return non_herm_bary_hash2(rd, gamma) fi;
        NHC_count +:=1;
        let N = rd_hash.size()
        then n = rd_hash.match(rd)
@@ -1976,7 +2013,6 @@ set non_herm_bary_hash = ((RootDatum, ratvec)->ratvec):
 	     bary_hashes[n].index(answers[n][gam])
 
 set non_herm_center_hash_flag = true
-
 set non_herm_center(Param p) = Param:
     let start = elapsed_ms()
     then gamma_bary = if non_herm_center_hash_flag
