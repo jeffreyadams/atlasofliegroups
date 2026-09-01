@@ -285,6 +285,17 @@ set write_nu_flag = true
 set make_big_unitary_hash() = big_unitary_hash_table:
 (   let real_form_hash = make_RealForm_hash()
     then uhashes = [Param_hash]: [] {one for each real form}
+    {Index from KGB number to the positions in uhashes[] of the parameters at
+     that x.  writexlam_no_G_string used to find a pair's parameters by pulling
+     the whole hash with uhashes[i].list() and testing every entry: O(hash),
+     once per pair -- on E8_q that is 211,017 entries scanned 5.9 million
+     times.  The hash only grows, so the index is extended incrementally and
+     costs O(new entries) amortised.  It is held for one real form at a time
+     (these runs use one) and rebuilt if a different one is written; nested
+     assignment a[i][j]:= is not available in axis, so this is kept flat.}
+    then xindex = [[int]]: []      {bucket per KGB number, for real form xindex_rf}
+    then xindex_rf = int: -1       {which real form xindex currently describes}
+    then xindex_upto = int: 0      {how much of uhashes[xindex_rf] is indexed}
     then nuhashes = [Param_hash]: [] {one for each real form}
     then phashes = [Param_hash]: []
     {then status_strings = [[string]]: [] {one for each real form; "" is unknown, "T..." is unitary, "F..." nonunitary}}
@@ -1367,9 +1378,24 @@ some lambdas for that x might be finished.}
       then i = add_real_form(G)
       then Gname = "G_temp"
       then listname = Gname+"_list"
-      then longlist = uhashes[i].list()
-      then plist = for p in longlist
-		   do if p.x = x and p.lambda = lambda
+      {(re)build the bucket index if it is for another real form}
+      then () = if xindex_rf != i
+		then xindex := for k:KGB_size(G) do [] od;
+		     xindex_rf := i;
+		     xindex_upto := 0
+		fi
+      {extend it over whatever has been added to the hash since last time}
+      then nnow = uhashes[i].size()
+      then () = for c:(nnow - xindex_upto)
+		do let k = xindex_upto + c
+		   then q = uhashes[i].index(k)
+		   in xindex[q.x.number] := xindex[q.x.number] # k
+		od
+      then () = xindex_upto := nnow
+      {then look only in this x's bucket rather than scanning the whole hash}
+      then plist = for k in xindex[xnum]
+		   do let p = uhashes[i].index(k)
+		      in if p.lambda = lambda
 		      then [p]
 		      else []
 		      fi
@@ -1418,9 +1444,24 @@ some lambdas for that x might be finished.}
       then i = add_real_form(G)
       then Gname = "G_temp"
       then listname = Gname+"_list"
-      then longlist = uhashes[i].list()
-      then plist = for p in longlist
-		   do if p.x = x and p.lambda = lambda
+      {(re)build the bucket index if it is for another real form}
+      then () = if xindex_rf != i
+		then xindex := for k:KGB_size(G) do [] od;
+		     xindex_rf := i;
+		     xindex_upto := 0
+		fi
+      {extend it over whatever the hash has grown by since last time}
+      then nnow = uhashes[i].size()
+      then () = for c:(nnow - xindex_upto)
+		do let k = xindex_upto + c
+		   then q = uhashes[i].index(k)
+		   in xindex[q.x.number] := xindex[q.x.number] # k
+		od
+      then () = xindex_upto := nnow
+      {look only in this x's bucket rather than scanning the whole hash}
+      then plist = for k in xindex[xnum]
+		   do let p = uhashes[i].index(k)
+		      in if p.lambda = lambda
 		      then [p]
 		      else []
 		      fi
@@ -1440,9 +1481,24 @@ some lambdas for that x might be finished.}
       then i = add_real_form(G)
       then Gname = "G_temp"
       then listname = Gname+"_list"
-      then longlist = uhashes[i].list()
-      then plist = for p in longlist
-		   do if p.x = x and p.lambda = lambda
+      {(re)build the bucket index if it is for another real form}
+      then () = if xindex_rf != i
+		then xindex := for k:KGB_size(G) do [] od;
+		     xindex_rf := i;
+		     xindex_upto := 0
+		fi
+      {extend it over whatever the hash has grown by since last time}
+      then nnow = uhashes[i].size()
+      then () = for c:(nnow - xindex_upto)
+		do let k = xindex_upto + c
+		   then q = uhashes[i].index(k)
+		   in xindex[q.x.number] := xindex[q.x.number] # k
+		od
+      then () = xindex_upto := nnow
+      {look only in this x's bucket rather than scanning the whole hash}
+      then plist = for k in xindex[xnum]
+		   do let p = uhashes[i].index(k)
+		      in if p.lambda = lambda
 		      then [p]
 		      else []
 		      fi
@@ -4115,6 +4171,13 @@ set KU(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]] FVKH, Pa
   its infinitesimal character lying in the FPP set for (x,lambda) (whose vertices are
   Lvd.list, the LocalVertexData built by localFD_Lvd2). }
 set KU_fast_flag = false
+{instrumentation: log every hash consultation in known_status as
+   KHLOOK <pair x> <q x> <status>
+ so the reduction targets of finalize(p) can be compared with the pair's own
+ x, and it can be seen whether they were already known.  Off by default; it
+ is very verbose and it slows the run, so timings taken with it are not
+ comparable with production runs.}
+set khash_log_flag = false
 
 {
  Locations in LFDKH of the parameters already known unitary at this (x,lambda), found by
@@ -5113,16 +5176,6 @@ set localFD_1Dirac2_by_zero\
 			    od))
 	       then []
 	       elif bz_nu_flag and any(for q in qs do @bool: status(q,-1) < 0 od)
-	       {The conjunct (qs[0].x != x) was here from 8/27/26 (commit 480ce90b) until
-		8/27/26.  It was a mistake: it copied the bz_nu_flag gate above, which asks
-		first_param(p0).x != p0.x about the ZERO-nu parameter p0, down onto the
-		per-vertex parameter p, where it has no justification.  It can only BLOCK
-		eliminations, never cause them, so every count rose and none fell.  At
-		(KGB(E7_s,448),[1,1,1,0,1,2,1]) it kept vertex 1 (nu=[2,2,2,1,2,2,2]/2),
-		which has qs[0].x = x = 448 and a monomial of negative status, so LF0 had 2
-		vertices instead of 1.  On Spin(6,5) the conjunct cost 23% more one_level
-		calls (1932 vs 1565) and 1.5-2x the FDcount ([11271,28653] vs [7627,14445])
-		for an IDENTICAL answer (6485 known / 6331 found FPP-unitary faces).}
 	       then []
 	       elif FPP_def_flag and not FPP_def_test_wk_final(p)
 	       then []
