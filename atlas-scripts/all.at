@@ -1,4 +1,12 @@
 {Load this file to load all recommended .at files}
+
+{These two must come first when running an atlas built before Marc's
+ post-2026-03-31 library changes: asciiTOASCII.at supplies ASCII (renamed from
+ ascii in commit 7fc1f10d, so basic.at will not load without it), and branch.at
+ supplies the maybe_KTP form of branch that the FPP scripts need.}
+<asciiTOASCII.at
+<branch.at
+
 <basic.at
 <generics.at
 <combinatorics.at
