@@ -59,7 +59,7 @@ set_type Hash<T> =
 any_type T begin
 set make_hash (HashInfo<T> (hash_code,eq), int N, [T] data) = Hash<T>:
    let !empty=minus_1, values = ([T]:[])
-   then N2 = exp_2(bit_length((3*N)\2))
+   then N2 = exp_2(bit_length((3*{N}#data)\2))
    then seq_nbrs = for j:max(2, N2) do empty od{[empty,empty]}
    then locate(T x) = (int,bool):
      let  capacity=#seq_nbrs
@@ -70,9 +70,10 @@ set make_hash (HashInfo<T> (hash_code,eq), int N, [T] data) = Hash<T>:
 	; i:=seq_nbrs[code]
         od
      ; (code,i=empty) { slot in |seq_nbrs|, and whether it is new }
-   then () = for d@i in data
+   then () = for d in data
 	do let (code,new) = locate(d)
-	in if new then seq_nbrs[code] := i; values #:= d
+	in prints("code = ",code,", new = ",new);
+	   if new then seq_nbrs[code] := #values; values #:= d
 	   fi
 	od
    then max_fill() = 2*#seq_nbrs\3
