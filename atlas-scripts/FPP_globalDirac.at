@@ -38,9 +38,12 @@ set kill_for_big_uTime() = void:
     then prints("I can't live...if living is without U")
     fi
 
+{ this flag has been removed }
+{
 set UFast() = void:
     prints("Setting old_test_interrupt_flag:=false");
     old_test_interrupt_flag:=false
+}
 
 set ULoud() = void:
     test_interrupt_verbose:=true

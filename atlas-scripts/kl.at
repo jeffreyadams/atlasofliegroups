@@ -1067,7 +1067,7 @@ set composition_series_to_height(Param p, int HT) = ParamPol:
     in sum(p.real_form, for q@j in B[:m+1] do if height(q) <= HT then eval(polys[M[m,j]],1)*q else 0*q fi od)
 
 set composition_series_to_height (ParamPol P,int HT) = ParamPol:
-    sum(P.real_form, for c@q in P do composition_series_to_height(q, HT) od)
+    sum(P.real_form, for c@q in P do c*composition_series_to_height(q, HT) od)
 
 set CSB_KGB_char_frac = 9/10
 set CSB_frac = 1/8
