@@ -1852,9 +1852,13 @@ set next_heightsB(KType mu, int D) = [int]:
 
 set next_heights(KType mu, int D) = [int]:
     let m = NKTlookup(mu)
-    then answer = [height(mu)]##NKThtLists[m]
-    in if #answer < D+1
-       then let start = elapsed_ms(), M = answer~[0]
+    then answer = NKThtLists[m]
+    in if #answer < D
+       then let start = elapsed_ms()
+       	    then M = if #answer > 0
+       	    	     then answer~[0]
+		     else height(mu)
+		     fi
        	    then list = [KType]: []
     	    in while #answer < D
        	       do M+:=5;
