@@ -2653,7 +2653,7 @@ set local_test_wiggle_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 					then let CF = character_formula(pC)
 					     in monomials(composition_series((sum(x.real_form,
 						for j:d+1{v in ratverts}
-						do wiggle(CF, face_bary(Lvd,verts[:j]##verts[:j+1]))
+						do wiggle(CF, face_bary(Lvd,verts[:j]##verts[j+1:]))
 						{(sigma - v)/d)}
 						od))))
 					else []
@@ -3606,7 +3606,7 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, LocalVertexData Lvd, [
 				      then let CF = character_formula(pC)
 					   then pCdef =  monomials(composition_series((sum(x.real_form,
 					   	      for j:#verts
-						      do wiggle(CF, face_bary(Lvd, verts[:j]##verts[j+1:]))
+						      do wiggle(CF, face_bary(Lvd, verts[:j]##verts[:j+1]))
 						      od))))
 							  {proper_face_deformed(pC)}
 				      	        in if any(for q in pCdef

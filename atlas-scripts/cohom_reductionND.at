@@ -273,7 +273,6 @@ set dfkiTime = int: 0
 set derived_factor_K_types_info0(KType mu) = [(KType,mat)]:
     let start = elapsed_ms(), L = mu.real_form
     then DSFinfo = derived_simple_factors_info(L), P = projection_to_K_matrix(L)
-    then Pinv = right_inverse(P)
     then derPs = for (,derS,) in DSFinfo do projection_to_K_matrix(derS) od
     then answer = for (,derS,M)@j in DSFinfo {this is automatically a theta-stable Levi}
        	 	  do (K_type(derived_factor_KGBs0(mu.x)[j], M*(mu.lambda_minus_rho)), M)
