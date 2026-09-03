@@ -1590,35 +1590,136 @@ set list_all_finished(RealForm G) = [(KGBElt,ratvec)]:
        od.##
 {how much to scale semisimple rank to get ht trial jump}
 
+{to store next_K_type info}
+set NKThash = make_KType_hash()
+
+{size of NKThash; jth entry is indices of next_to_lowests}
+set NKTanswer = [vec]:[]
+
+{size of NKThash; jth entry is some heights above jth hash member}
+set NKThtLists = [vec]:[]
+
+set NKTlookup(KType mu) = int:
+    let N = NKThash.size()
+    then n= NKThash.match(mu)
+    in if n=N
+       then NKTanswer#:=(vec:[]);
+       	    NKThtLists#:=(vec:[])
+       fi;
+       n
+
 set next_height_time = int:0
 
-set next_to_lowest(KType mu) = KType:
+set next_to_lowest_base(KType mu) = [KType]:
     let start = elapsed_ms(), HT = height(mu)+1
     then NTL = null_K_module(mu)
     then () = while NTL.=
 	      do NTL := big_unitary_hash.K_type_formula_to_ht(mu,HT) - mu;
 		 HT+:=1
 	      od
-    in first_K_type(NTL) next next_height_time +:=elapsed_ms() - start
+    in monomials(NTL) next next_height_time +:=elapsed_ms() - start
+
+set next_to_lowest_inds(KType mu) = [int]:
+    let n = NKTlookup(mu)
+    in if #NKTanswer[n] = 0
+       then NKTanswer[n]:=(vec: for tau in next_to_lowest_base(mu)
+       	    			do NKTlookup(tau)
+				od)
+       fi;
+       NKTanswer[n]
 
 set next_to_lowests(KType mu) = [KType]:
-    let start = elapsed_ms(), HT = height(mu)+1
-    then NTL = null_K_module(mu)
-    then () = while NTL.=
-	      do NTL := big_unitary_hash.K_type_formula_to_ht(mu,HT) - mu;
-		 HT+:=1
+       for m in next_to_lowest_inds(mu)
+       do NKThash.index(m)
+       od
+
+set next_to_lowest_short(KType mu) = KType:
+    next_to_lowests(mu)[0]
+
+{creates a list of size D}
+set next_to_lowest_short(KType mu, int D) = [KType]:
+    let mui = mu in for i:D do mui:=next_to_lowest_short(mui) od
+
+{list of (some) KTypes above mus to ht HT, sorted by height}
+{Need all mus of same height; to be applied to LKTs(p)}
+set next_to_lowest([KType] mus,int HT) = [KType]:
+   if HT <= height(mus[0]) then return [] fi;
+    let is = for mu in mus do NKTlookup(mu) od, mu = mus[0]
+    then H0 = height(mus[0]) {always biggest height in to_do}
+    then answer = [[int]]: for h:HT-height(mu)+1 do [] od {indexed by ht - ht(mu) - 1}
+    then to_do = [int]: is {these will be indices of K-types we need to move up from}
+    in while #to_do > 0 and (H0:=max(for j in to_do do height(NKThash.index(j)) od)) < HT
+       do { prints("answer = ",answer,", to_do = ",to_do,", H0 = ",H0);}
+	  let new_to_do = [int]:[]
+       	  in for j in to_do
+	     do let NTL = next_to_lowest_inds(NKThash.index(j))
+	     	then H= height(NKThash.index(NTL[0]))
+		in if H<=HT
+		   then (answer[H-height(mu)-1]##:=NTL).sort_u
+		   fi;
+		   if H<HT
+		   then new_to_do ##:=NTL
+		   fi;
+		   to_do:=new_to_do.sort_u
 	      od
-    then (bottom,) = height_split(NTL,HT)
-    in monomials(bottom) next next_height_time +:=elapsed_ms() - start
+       od;
+       for m in answer.## do NKThash.index(m) od
 
-set next_to_lowests_fast(KType mu, int D) = [KType]:
-    let mui = mu in for i:D do mui:=next_to_lowest(mui) od
+set next_to_lowest(KType mu,int HT) = next_to_lowest([mu],HT)
 
-{list of (some) KTypes above mu to ht HT}
+{list of (some) KTypes above mu to ht HT, sorted by height, ascending step times}
+{
+set next_to_lowest_step(KType mu,int step) = [KType]:
+   if step <= 0 then return [] fi;
+   let i = NKTlookup(mu)
+   then to_do = [[int]]:[[i]]
+   then answer = [[int]]: for d: step do [] od {indexed by number of "next"'s}
+   in for d:step
+      do answer##:=for j in to_do[d]
+      		    do next_to_lowest_inds(NKThash.index(j))
+		    od.##.sort_u
+
+while #to_do > 0 and (H0:=max(for j in to_do do height(NKThash.index(j)) od)) < HT
+       do { prints("answer = ",answer,", to_do = ",to_do,", H0 = ",H0);}
+	  let new_to_do = [int]:[]
+       	  in for j in to_do
+	     do let NTL = next_to_lowest_inds(NKThash.index(j))
+	     	then H= height(NKThash.index(NTL[0]))
+		in if H<=HT
+		   then (answer[H-height(mu)-1]##:=NTL).sort_u
+		   fi;
+		   if H<HT
+		   then new_to_do ##:=NTL
+		   fi;
+		   to_do:=new_to_do.sort_u
+	      od
+       od;
+       for m in answer.## do NKThash.index(m) od
+}
+
+{
+	     (,NTL) = add_NTL(KHash.index(j))
+	     	in {prints("NTL = ",NTL,", next_hts[j] = ",next_hts[j]); }
+		   if next_hts[j] <= HT
+	     	   then for k in NTL if height(KHash.index(k)) <= HT
+		     	do answer#:=k;
+		     	to_do#:=k
+		     fi od
+		   fi
+	      od;
+	      to_do:= to_do[TD:].sort_u;
+	      if #to_do > 0 then H0 := min(for j in to_do do height(KHash.index(j)) od) fi
+        od; {while #to_do}
+	answer := answer.sort_u;
+	for k in answer do KHash.index(k) od.sort_by_height next next_height_time +:=elapsed_ms() - start
+}
+
+{
 set next_to_lowest_new = ((KType,int) -> [KType]):
-    let start = elapsed_ms(), KHash = make_KType_hash()
+    let KHash = make_KType_hash()
     then next_types = [vec]: [] {for each KType in Khash, a list of certain WEAKLY higher ones}
-    then next_hts = [int]: [] {for each KType in Khash, lowest ht in next_to_lowest (if computed) or ht}
+    then next_hts = [int]: [] {for each KType mu in Khash, lowest ht in next_to_lowest (if computed)
+    	 	    	      	   or height(mu)}
     then add_KType(KType mu) = int: {put tau in Khash, record location}
     	 let I = KHash.size()
 	 then i = KHash.match(mu)
@@ -1640,7 +1741,7 @@ set next_to_lowest_new = ((KType,int) -> [KType]):
 	     (i,next_types[i])
     in ((KType,int) -> [KType]): (KType mu, int HT):
     if HT <= height(mu) then return [] fi;
-    let i = add_KType(mu), H0 = height(mu) {always biggest height on to_do}
+    let start = elapsed_ms(), i = add_KType(mu), H0 = height(mu) {always biggest height on to_do}
     then to_do = [int]: [i] {these will be K-types we need to move up from}
     then answer = [int]: []
     in while #to_do > 0 and H0 < HT
@@ -1661,33 +1762,23 @@ set next_to_lowest_new = ((KType,int) -> [KType]):
         od; {while #to_do}
 	answer := answer.sort_u;
 	for k in answer do KHash.index(k) od.sort_by_height next next_height_time +:=elapsed_ms() - start
+}
 
-set next_to_lowest_new(Param p,int HT) = [KType]:
-    let LKTs = LKTs(p)
-    in for mu in LKTs do next_to_lowest_new(mu,HT) od.##.sort_by_height
+set next_to_lowest(Param p) = [KType]: 
+    let inds = for mu in LKTs(p)
+    	       do next_to_lowest_inds(mu)
+	       od.##.sort_u
+    in for j in inds do NKThash.index(j) od
+
+set next_to_lowest(Param p,int HT) = [KType]:
+    next_to_lowest(LKTs(p),HT) 
 
 {these functions were in unity.at; give useful heights to which to try unitarity}
 
-{. gives (one of) the K-types of lowest height above mu in the
-standard of LKT mu .} {NEED USEFUL BOUND in K_type_formula.}
-set next_to_lowest_old(KType mu, int step) = KType:
-    let start = elapsed_ms(), form = null_K_module(mu.real_form)
-    then m = height(mu)
-    then () = for j:60 from 1
-	      do let () = form :=
-		     if my_branch_flag
-		     then big_unitary_hash.branch(mu, m+j*step)-mu
-		     else branch(mu,m+j*step) - mu
-		     fi
-		 in if form.!= then break fi
-	      od
-    in last_K_type(form) next next_height_time +:=elapsed_ms() - start
-
-{SHOULD MAKE A FORMULA USING irr p restricted to K}
 
 {. height of a smallest non-lowest K_type of standard with LKT mu .}
 set next_height(KType mu)  = int:
-    height(next_to_lowest(mu))
+    height(next_to_lowests(mu)[0])
 
 {if we know p unitary to HT, AND have K-char to GAM(p), next height where something could change}
 set next_height = ((Param,int,KTypePol) -> int):
@@ -1707,14 +1798,15 @@ set next_height = ((Param,int,KTypePol) -> int):
        else hts[j] {next hts:=hts[j+1:] this messes up repeated calls}
        fi next next_height_time+:=elapsed_ms()-start
 
+{a height > HT which might be a KType height for p}
 set next_height(Param p, int HT) = int:
-    let ans = HT+1, start = elapsed_ms()
-    then list = next_to_lowest_new(p, ans)
-    in while height(list~[0]) < HT
+    let ans = HT+1{, start = elapsed_ms()}
+    then list = next_to_lowest(p, ans)
+    in while #list = 0 or height(list~[0]) < HT
        do ans +:= 1;
-       	  list := next_to_lowest_new(p,ans)
+       	  list := next_to_lowest(p,ans)
        od;
-       next_height_time+:=elapsed_ms()-start;
+       {next_height_time+:=elapsed_ms()-start;}
        ans
 
 {
@@ -1725,23 +1817,29 @@ is_unitary_next_big_SIMPLE
 
 {. height of a smallest non-lowest K_type of standard p .}
 set next_height(Param p) = int:
-    min(for mu in LKTs(p) do height(next_to_lowest(mu)) od)
+    min(for mu in LKTs(p) do next_height(mu) od)
 
 set heights(KTypePol P) = [int]:
     for @mu in P do height(mu) od.sort_u
 
+{replace by next_to_lowest or next_to_lowest_short}
+{
 set next_taus(KType mu, int D) = [KType]:
     if D.<= then return [] fi;
     let start = elapsed_ms(), tau = mu
     in for j:D do tau := next_to_lowest(tau) od next next_height_time+:=elapsed_ms()-start
-
+}
+{
 set next_heights_old(KType mu, int D) = [int]:
     for tau in next_taus(mu,D) do height(tau) od
 
 set NH_old_flag = false {true}
+}
 
-set next_heights(KType mu, int D) = [int]:
-    if NH_old_flag then return next_heights_old(mu,D) fi;
+set next_height_timeB = int:0
+set next_height_timeF = int:0
+
+set next_heightsB(KType mu, int D) = [int]:
     let start = elapsed_ms(), M = 5+height(mu)
     then P = branch_std_hash(mu,M)
     then answer = heights(P)
@@ -1750,13 +1848,33 @@ set next_heights(KType mu, int D) = [int]:
 	  ; P:= branch_std_hash(mu,M)
 	  ; answer:=heights(P)
        od;
-       answer[1:D+1] next next_height_time+:=elapsed_ms()-start
+       answer[1:D+1] next next_height_timeB+:=elapsed_ms()-start
 
+set next_heights(KType mu, int D) = [int]:
+    let m = NKTlookup(mu)
+    then answer = [height(mu)]##NKThtLists[m]
+    in if #answer < D+1
+       then let start = elapsed_ms(), M = answer~[0]
+       	    then list = [KType]: []
+    	    in while #answer < D
+       	       do M+:=5;
+	       	  list:= next_to_lowest(mu,M);
+	  	  answer:=for tau in list do height(tau) od.sort_u
+       	       od;
+	       NKThtLists[m]:=answer next next_height_timeF+:=elapsed_ms()-start
+       fi;
+       answer[:D]
+
+
+{
 set next_heights_old(KType mu, int D) = [int]:
     for tau in next_taus(mu,D) do height(tau) od
+}
 
+{
 set next_taus(Param p, int D) = [KType]:
     for mu in LKTs(p) do next_taus(mu, D) od.##.temp_sort_u[:D]
+}
 
 {if this produces -1, then the (hermitian) p is automatically unitary}
 set next_heightB(Param p) = int:
@@ -2746,18 +2864,22 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
 	    fi
   then () = p := herm_center(p)
   then result = 0, mu = LKTs(p)[0], ht = height(p)
-  then taus = [KType]:[]
-  then tau_bd = KType:mu
+  then taus = next_to_lowest_short(mu,step)
+  {[KType]:[]}
+  {then tau_bd = KType:mu}
   {then ht = int: height(p) {(tau_bd)}}
+  {
   then () = {if next_heightC_flag
        	    then for j:step
 	    	 do ht := next_heightC(p,ht)
 		 od
-       	    else} taus := next_taus(p,step);
+       	    else} taus := {next_taus(p,step)}
+	    	       	  next_to_lowest(p);
 	    	 tau_bd := taus~[0];
   		{ ht := height(tau_bd)
 	    fi;}
-	    ht := min(GAM,height(tau_bd))
+}
+  then ht = min(GAM,height(taus~[0]))
   then () = if ht < 0 {p is finite-dimensional; we're in FPP, so 1-diml}
        	    then return true
 	    fi
@@ -2982,11 +3104,11 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, [int] hts) = bool:
       	   	  print_time_string(elapsed_ms() - start), " result ",result,new_line)
       		  fi;
 		  return false fi
-   then taus = next_taus(mu,#hts), last_ht = hts~[0]
-   then N = if height(taus~[0])> last_ht
+   {then taus = {next_taus(mu,#hts),} next_to_lowest_short(mu,last_ht = hts~[0]}
+   then N = {if height(taus~[0])> last_ht
 	    then first(for tau in taus do height(tau)> last_ht od)
-	    else #hts
-	    fi
+	    else} #hts
+	    {fi}
    in is_unitary_test_big_SIMPLE_interrupt(p, N)
 
 {How bad things have to be before using wiggle_status inside is_unitary}
