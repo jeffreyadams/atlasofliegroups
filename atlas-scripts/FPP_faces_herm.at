@@ -2374,19 +2374,31 @@ set hodge_screen_time() = int:
  with |numatch_height(p,D)|, which keeps the minimum known failure height.
  The truncated branch makes no global claim and so records nothing.}
 
-set hodge_screen_one(Param q, int HT) = int:   {q assumed final}
+set hodge_screen_one(Param q, int HT) = int:
+    {hodge0 needs a final HERMITIAN parameter; callers do not guarantee either}
+    if not (is_final(q) and is_hermitian(q)) then return 0 fi;
     let start = elapsed_ms()
     then v = int:
       if HT < 0
       then case Hodge_hash_0_irr(q,hodge_screen_time())
       	   | timed_out(): 0
-	   | done(H): let D = impure_height(H.convert_cform_hermitian)
-	     	      in if D < 0 then 0
-		      	 else if nuhash_flag
-			      then let () = big_unitary_hash.numatch_height(q,D) in ()
-			      fi;
-			      -1
-			 fi
+	   | done(H): if is_pure(H.convert_cform_hermitian) then 0
+	     	      else {Record nonunitarity with NO HEIGHT CLAIM.
+			    numatch_height(q,H) means "already detected by height H",
+			    and nu_heights keeps the MINIMUM, so a value that is too
+			    small poisons the entry permanently.  Passing
+			    impure_height of the LEVEL-0 form was exactly that
+			    mistake: level 0 failing purity at height D does not make
+			    is_unitary_to_ht(q,D) false, since the full form may fail
+			    nonunitarity and no height.
+			    (This is correct, but was NOT the cause of the E6_s "Inexact
+			     halving" abort: that persists with H = -1.  It is a library bug
+			     in twisted_KL_sum_at_s; see inexact_halving_bug.txt.)}
+		           if nuhash_flag
+			   then let () = big_unitary_hash.numatch_height(q,-1) in ()
+			   fi;
+			   -1
+		      fi
 	   esac
       else case Hodge_hash_0_irr_to_ht(q,HT,hodge_screen_time())
       	   | timed_out(): 0
