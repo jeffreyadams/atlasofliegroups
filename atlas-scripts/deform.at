@@ -14,6 +14,11 @@
 
 {this is defined in hermitian.at, which maybe isn't yet loaded}
 set_type maybe_KTP = (void timed_out | KTypePol done)
+set *(Split c, maybe_KTP mP) = maybe_KTP:
+    case mP
+    | done(P):(c*P).done
+    |timed_out: mP
+    esac
 
 { this function is now obsolete, as |partial_KL_block| now condenses internally }
 set compress { output from old |partial_KL_block| to a more useful form } (

@@ -415,28 +415,36 @@ set make_deformation_hash_time () = deformation_hash_time:
        param_hash.clear();
        time_list :=[]
   then add_param(Param p) = (KTypePol,int):
-       let I = param_hash.size()
+       let I = param_hash.size(), delta = p.inner_class.distinguished_involution
        then i = param_hash.match(p), start = elapsed_ms()
        in if i=I {haven't considered p} or time_list[i] <= -3
-       	  then let rp = reducibility_points(p)
+       	  then let rp = reducibility_points(p), c=Split: 1
 	       in if #rp = 0
 	       	  then FD := if is_equal_rank(p.real_form)
 		       	     then full_deform_library(p)
 			     else twisted_full_deform_library(p) {These are NOT K_type_pol(p)!}
 			     fi;
 		       start:= -2
-		  else if rp~[0] < 1 then p:= herm_center(Finalize(p*rp~[0])) fi;
+		  else if rp~[0] < 1
+		       then if is_equal_rank(p.real_form)
+		       	    then p:= herm_center(Finalize(p*rp~[0]))
+		       	    else let (d,q) = first_term(finalize_extended(p*rp~[0], delta))
+		       	    	 in p:= herm_center(q);
+			    	    c:= d
+			    fi
+		        fi;
+		  {p:= herm_center(Finalize(p*rp~[0])) fi;} {ERROR: need extended!}
 		       mFD := if is_equal_rank(p.real_form)
 	       	       	      then stored_full_deform(p)
 		      	      else stored_twisted_full_deform(p)
 		      	      fi;
 	       	       FD:= case mFD
 		       	    | done(FD): start:=-1;
-			      FD
+			      c*FD
 		      	    | timed_out: start:=elapsed_ms();
 	       		         	 if is_equal_rank(p.real_form)
 		      	 	 	 then full_deform_library(p)
-			 	 	 else twisted_full_deform_library(p)
+			 	 	 else c*twisted_full_deform_library(p)
 			 	 	 fi
 		     	    esac
 		   fi; {#rp = 0}
@@ -463,17 +471,25 @@ set make_deformation_hash_time () = deformation_hash_time:
 	  fi; {end of i=I or time_list[i] <= -3}
 	  (FD,i)
   then maybe_add_param(Param p, int time) = (maybe_KTP,int): {full_deform, loc of p in param_hash}
-       let I = param_hash.size()
+       let I = param_hash.size(), delta = p.inner_class.distinguished_involution
        then i = param_hash.match(p), start = elapsed_ms()
        in  if i=I or time_list[i] <= -3
-       	   then let rp = reducibility_points(p)
+       	   then let rp = reducibility_points(p), c=Split: 1
 	        in if #rp = 0
 	       	   then mFD := if is_equal_rank(p.real_form)
 		       	       then full_deform_library(p).done
 			       else twisted_full_deform_library(p).done {These are NOT K_type_pol(p)!}
 			       fi;K_type_pol(p).done;
 		        start:= -2
-		   else if rp~[0] < 1 then p:= herm_center(Finalize(p*rp~[0])) fi;
+		   else if rp~[0] < 1
+		   	then if is_equal_rank(p.real_form)
+		       	    then p:= herm_center(Finalize(p*rp~[0]))
+		       	    else let (d,q) = first_term(finalize_extended(p*rp~[0], delta))
+		       	    	 in p:= herm_center(q);
+			    	    c:= d
+			    fi
+		        fi;
+		 {p:= herm_center(Finalize(p*rp~[0])) fi;} {ERROR: need extended}
 	   	       mFD := if is_equal_rank(p.real_form)
 	   	       	      then stored_full_deform(p)
 	   	       	      else stored_twisted_full_deform(p)
@@ -484,7 +500,7 @@ set make_deformation_hash_time () = deformation_hash_time:
 		       	      |timed_out: start := elapsed_ms();
 	   		    	   	  if is_equal_rank(p.real_form)
 		       	    	   	  then full_deform_library(p,time)
-		       	    	   	  else twisted_full_deform_library(p,time)
+		       	    	   	  else c*twisted_full_deform_library(p,time)
 		       	    	   	  fi
 		       	      esac
 		   fi; {#rp = 0}
@@ -605,18 +621,26 @@ set make_deformation_hash_height_time () = deformation_hash_height_time:
        trial_time_list := [];
        trial_height_list:= []
   then add_param(Param p, int HT) = (KTypePol,int):
-       let I = param_hash.size()
+       let I = param_hash.size(), delta = p.inner_class.distinguished_involution
        then i = param_hash.match(p), start = elapsed_ms()
        in if i=I or (#heights_list[i] = 0 or heights_list[i]~[0] < HT)
        	  {haven't finished p to HT}
-       	  then let rp = reducibility_points(p)
+       	  then let rp = reducibility_points(p), c=Split: 1
 	       in if #rp = 0
 	       	  then FDH := if is_equal_rank(p.real_form)
 		       	      then full_deform_library(p)
 			      else twisted_full_deform_library(p){These are NOT K_type_pol(p)!}
 			      fi;
 		       start:= -2
-		  else if rp~[0] < 1 then p:= herm_center(Finalize(p*rp~[0])) fi;
+		  else if rp~[0] < 1
+		       then if is_equal_rank(p.real_form)
+		       	    then p:= herm_center(Finalize(p*rp~[0]))
+		       	    else let (d,q) = first_term(finalize_extended(p*rp~[0], delta))
+		       	    	 in p:= herm_center(q);
+			    	    c:= d
+			    fi
+		        fi;
+			{p:= herm_center(Finalize(p*rp~[0])) fi;} {ERROR: need extended}
 	  	       FDH := (mFDH := if is_equal_rank(p.real_form)
 	       	     	      	      then stored_full_deform(p)
 		     	      	      else stored_twisted_full_deform(p)
@@ -656,18 +680,26 @@ set make_deformation_hash_height_time () = deformation_hash_height_time:
 	       {we already deformed to a greater height}
 	  fi
   then maybe_add_param(Param p, int HT, int time) = (maybe_KTP,int):
-       let I = param_hash.size()  {always HT >= 0}
+       let I = param_hash.size(), delta = p.inner_class.distinguished_involution  {always HT >= 0}
        then i = param_hash.match(p), start = elapsed_ms()
        in  if i=I or (#heights_list[i] = 0 or heights_list[i]~[0] < HT)
        	   {haven't finished p to HT}
-       	   then let rp = reducibility_points(p)
+       	   then let rp = reducibility_points(p), c=Split: 1
 	       	in if #rp = 0
 	       	   then mFDH := if is_equal_rank(p.real_form)
 		       	       	then full_deform_library(p).done
 			       	else twisted_full_deform_library(p).done {These are NOT K_type_pol(p)!}
 			       	fi;
 		       	start:= -2
-		   else (if rp~[0] < 1 then p:= herm_center(Finalize(p*rp~[0])) fi;
+		   else (if rp~[0] < 1
+		   then if is_equal_rank(p.real_form)
+		       	    then p:= herm_center(Finalize(p*rp~[0]))
+		       	    else let (d,q) = first_term(finalize_extended(p*rp~[0], delta))
+		       	    	 in p:= herm_center(q);
+			    	    c:= d
+			    fi
+		        fi;
+		   {then p:= herm_center(Finalize(p*rp~[0])) fi;} {ERROR: need extended}
 	   	   	mFDH := if is_equal_rank(p.real_form) {this is maybe_KTP}
 	       	     	      	then stored_full_deform(p)
 		     	      	else stored_twisted_full_deform(p)
