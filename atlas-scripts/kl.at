@@ -35,6 +35,8 @@ choose whether "to height" or "to infinity" algorithm is faster.}
 { ------------------------------------------------------------------- }
 {seat_belt_on:=false}
 
+set twisted_KL_sum_at_s_library(Param p) = twisted_KL_sum_at_s(p)
+
 {Move the param out where W_int(p)  can act}
 set regularize_new(Param p) = Param:
     let gamma = p.infinitesimal_character, rd = p.root_datum

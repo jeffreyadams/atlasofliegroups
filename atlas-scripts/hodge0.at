@@ -763,10 +763,11 @@ set Hodge_maybe_0_irr(Param p, int time) = maybe_KTP:
 set Hodge_twisted_maybe_0_irr(Param p, int time) = maybe_KTP:
     let (,ans) = Hodge_twisted_maybe_0(p,time) in ans
 
-{genuinely extended: runs both halves, the second on whatever budget is left}
+{genuinely extended: runs both halves, first on time\2 and second
+on whatever budget is left}
 set Hodge_extended_maybe_0_irr(Param p, int time) = maybe_KTP:
     let start = elapsed_ms()
-    in case Hodge_maybe_0_irr(p,time)
+    in case Hodge_maybe_0_irr(p,time\2)
        | timed_out(): timed_out()
        | done(Hirr): let left = time - (elapsed_ms() - start)
        	 	     in if left <= 0 then timed_out()

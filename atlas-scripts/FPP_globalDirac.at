@@ -985,6 +985,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 					 	 	   " in time ", print_time_string(charTime - startCtime));
 				  			   report_tested(
 			"cumulative totals after (x,lam)=(#"+to_string(x.number)+","+to_string(lambda)+")");
+							   if hodge_status_flag then hodge_screen_report() fi;
 					 		   prints("  ------------------")
 				    		       fi{every_lambda_flag}
 			      			 fi{#LF[0] = 0}
@@ -1015,7 +1016,8 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 				 " time spent in char_to_ht = ",print_time_string(charTimeToHt-formerCTHTime),
        	      		  	 ", for ", char_counter_to_ht.use_count() - formerCTHcounter, " calcs");
 				 {" time spent in red_count = ",  print_time_string(red_count_times[j]));}
-			 report_tested_cum("for x=#"+to_string(x.number),"running totals")
+			 report_tested_cum("for x=#"+to_string(x.number),"running totals");
+			 if hodge_status_flag then hodge_screen_report() fi
                      fi
 	   then () = big_unitary_hash.finish(x, full_M) {mark as done all lambdas for x}
 	   in big_unitary_hash.finishx(x) {mark as done all lambdas for x}
@@ -1061,7 +1063,8 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 			   ", time for position = ", print_time_string(position_time));
       	    prints("Number of known FPP-unitary faces = ",Uhash.size(),
        	      ", number found on this run = ", Uhash.size() - oldUhash);
-	    report_tested("CUMULATIVE TOTALS")
+	    report_tested("CUMULATIVE TOTALS");
+	    if hodge_status_flag then hodge_screen_report() fi
       fi {FPP_report_flag}
    in kill_for_big_uTime(); ()
 
@@ -1267,6 +1270,7 @@ then coh_ind_unip_few(G,Uhash)}
 				 ", #more-caught total = ",more_good_hash.size());
 			 report_tested_cum("for (x,lam)=(#"+to_string(x.number)+","+to_string(lambda)+")",
 			 			"running totals");
+			 if hodge_status_flag then hodge_screen_report() fi;
 			 prints("  ------------------")
 		      fi {every_lambda_flag}
 		    fi{tw.>=}
@@ -1302,6 +1306,7 @@ then coh_ind_unip_few(G,Uhash)}
 	      	 	", #hash_one_level = ", hash_one_levelCounter.use_count(), ", #hash_bottom_layer = ",
 			hash_bottom_layerCounter.use_count());}
 	    report_tested("CUMULATIVE TOTALS");
+	    if hodge_status_flag then hodge_screen_report() fi;
 	    report_steve_graph();
        	    prints("Number of unitary params = ", sum(answerCards), ", time for is_finished = ",
 	    print_time_string(is_finished_time), ", time for position = ",
@@ -1543,6 +1548,7 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 					 	 	   " in time ", print_time_string(charTime - startCtime));
 				  			   report_tested(
 				"cumulative totals after (x,lam)=(#"+to_string(x.number)+","+to_string(lambda)+")");
+							   if hodge_status_flag then hodge_screen_report() fi;
 					 		   prints("  ------------------")
 				    		       fi{every_lambda_flag}
 					    fi{lcontnum.>=}
@@ -1580,6 +1586,7 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
        	      		  	 ", for ", char_counter_to_ht.use_count() - formerCTHcounter, " calcs");
 				 {" time spent in red_count = ",  print_time_string(red_count_times[j]));}
 			 report_tested_cum("for x=#"+to_string(x.number),"running totals");
+			 if hodge_status_flag then hodge_screen_report() fi;
 			 report_steve_graph()
                      fi
 	   then () = big_unitary_hash.finish(x, full_M) {mark as done all lambdas for x}
@@ -1627,6 +1634,7 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
       	    prints("Number of known FPP-unitary faces = ",Uhash.size(),
        	      ", number found on this run = ", Uhash.size() - oldUhash);
 	    report_tested("CUMULATIVE TOTALS");
+	    if hodge_status_flag then hodge_screen_report() fi;
 	    report_steve_graph()
       fi {FPP_report_flag}
    in kill_for_big_uTime(); ()
@@ -2071,6 +2079,7 @@ fancy_tester) = void:
 				 ", #more-caught total = ",more_good_hash.size());
 				 report_tested_cum("for (x,lam)=(#"+to_string(x.number)+","+to_string(lambda)+")",
 				 "running totals");
+				 if hodge_status_flag then hodge_screen_report() fi;
 				 prints("  ------------------")
 			    fi
 		    fi{#LF[0] = 0}
@@ -2131,7 +2140,8 @@ fancy_tester) = void:
 	    		   print_time_string(is_finished_time), ", time for position = ",
 	    		   print_time_string(position_time));
        	    prints("Number of FPP-unitary faces = ",UhashG.size(), ", number found on this run = ", UhashG.size() - oldUhash);
-	    report_tested("CUMULATIVE TOTALS")
+	    report_tested("CUMULATIVE TOTALS");
+	    if hodge_status_flag then hodge_screen_report() fi
 	    fi {FPP_report_flag}
      in kill_for_big_uTime(); () 
 
@@ -2438,6 +2448,7 @@ this for a long time, leading to wrong answers for PSU(2,2).}
       	    {", #Params more-missed for lambda = ", more_bad_hash.size() - startmorebadlambda}
 	    ", #more-caught total = ", more_good_hash.size());
 	    report_tested("CUMULATIVE TOTALS");
+	    if hodge_status_flag then hodge_screen_report() fi;
 	    prints("  ------------------")
 				    fi{every_lambda_flag}
 			       fi{#LF = 0}
@@ -2472,7 +2483,8 @@ this for a long time, leading to wrong answers for PSU(2,2).}
 	    prints("     Time spent in char calcs = ", print_time_string(charTime - formerCharTime),
 			      	     ", number of char calcs = ", currentCcounter - formerCcounter,
 				     ", time for red_count = ",print_time_string(red_count_times[j]));
-			   report_tested_cum("for x=#"+to_string(x.number),"running totals")
+			   report_tested_cum("for x=#"+to_string(x.number),"running totals");
+			   if hodge_status_flag then hodge_screen_report() fi
                      fi {every_KGB_flag}
 	   then () = big_unitary_hash.finish(x, full_N1) {mark as done all lambdas for x}
 	   in big_unitary_hash.finishx(x)
@@ -2528,7 +2540,8 @@ this for a long time, leading to wrong answers for PSU(2,2).}
 			   ", time for position = ", print_time_string(position_time));
             prints("Number of known FPP-unitary faces = ",UhashG.size(),
        	      ", number found on this run = ", UhashG.size() - oldUhash);
-	    report_tested("CUMULATIVE TOTALS")
+	    report_tested("CUMULATIVE TOTALS");
+	    if hodge_status_flag then hodge_screen_report() fi
       fi {FPP_report_flag}
      in kill_for_big_uTime(); ()
 

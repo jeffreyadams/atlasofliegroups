@@ -72,7 +72,7 @@ set make_hash (HashInfo<T> (hash_code,eq), int N, [T] data) = Hash<T>:
      ; (code,i=empty) { slot in |seq_nbrs|, and whether it is new }
    then () = for d in data
 	do let (code,new) = locate(d)
-	in prints("code = ",code,", new = ",new);
+	in {prints("code = ",code,", new = ",new);}
 	   if new then seq_nbrs[code] := #values; values #:= d
 	   fi
 	od
