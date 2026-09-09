@@ -28,8 +28,16 @@ public:
   Timer() : start(std::chrono::steady_clock::now()) {}
   long long int elapsed_ms() const // number of milliseconds since construction
   {
-    using namespace std::literals::chrono_literals;
+    using namespace std::literals::chrono_literals; // requires std >= c++14
     return (std::chrono::steady_clock::now()-start)/1ms;
+  }
+  long long int delta_ms() // number of milliseconds since last time
+  {
+    using namespace std::literals::chrono_literals; // requires std >= c++14
+    auto now = std::chrono::steady_clock::now();
+    auto delta = now-start;
+    start = now; // reset time for next time
+    return delta/1ms;
   }
 }; // class |Timer|
 

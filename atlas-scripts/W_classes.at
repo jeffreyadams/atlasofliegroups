@@ -49,23 +49,23 @@ set Levi_of (WeylElt w) = [int]: { posroot indices for simples of |w| system }
    w.Levi_info.simples { avoiding construction of a |RootDatum| }
 
 
-set_type StdLeviWImage =
+set_type StdLeviEltImage =
    (WeylElt actor { conjugator from |image| back to original |w| }
   , [int]   Levi  { simples for a standard Levi }
   , WeylElt image { an element for Levi, conjugate in |W| to original |w| }
   )
-set_type StdLeviReducer = (WeylElt->StdLeviWImage)
+set_type StdLeviReducer = (WeylElt->StdLeviEltImage)
 
 { it is easy (but not very useful) to find some "standard" conjugate of |w| }
 set conjugate_from_some_standard_Levi = StdLeviReducer:
    (WeylElt w):
    let (chamber,unsorted_standard_Levi)
       = from_standard_Levi(w.root_datum,Levi_of(w))
-   in StdLeviWImage: (chamber,unsorted_standard_Levi.sort,/chamber*w*chamber)
+   in StdLeviEltImage: (chamber,unsorted_standard_Levi.sort,/chamber*w*chamber)
 
 
 { The usefulness of a |StdLeviReducer| is limited if it can choose different
-  standard Levis for different element, even though they are conjugate. To be
+  standard Levis for different elements, even though they are conjugate. To be
   more useful, we must force finding a Levi from a fixed set of representatives.
   Both |levi_lookup| methods from Levi_subgroups.at will force choosing a Levi
   from a fixed set of representatives of classes of standard Levi subgroups.
@@ -73,7 +73,7 @@ set conjugate_from_some_standard_Levi = StdLeviReducer:
 
 set conjugate_from_elected_Levi (StdLeviFinder lookup) = StdLeviReducer:
    (WeylElt w): let (conj,elected_Levi) = lookup(Levi_of(w)) in
-   StdLeviWImage: (conj,elected_Levi,/conj*w*conj)
+   StdLeviEltImage: (conj,elected_Levi,/conj*w*conj)
 
 Levi_reducer : (RootDatum->StdLeviReducer)
 { make this a variable; implements a map to standard Levi }
@@ -113,7 +113,7 @@ set conjugacy_witness (StdLeviReducer classify, LeviConjugacyWitnesser Lcw) =
    ConjugacyWitnesser:
    (WeylElt x):
    let rd=x.root_datum, ord_x = order(x), chi=char_poly(x)
-   , class_x = StdLeviWImage: classify(x)
+   , class_x = StdLeviEltImage: classify(x)
    then Levi_test = (WeylElt->Maybe<WeylElt>): Lcw(class_x.Levi,class_x.image)
 in { end of preparations for |x|, now define the function of |y| }
    (WeylElt y) Maybe<WeylElt>:
@@ -141,7 +141,7 @@ set conjugacy_test (StdLeviReducer classify, LeviConjugacyTester Levi_test) =
    ConjugacyTester:
    (WeylElt x):
    let rd=x.root_datum, ord_x = order(x), chi=char_poly(x)
-   , (,Levi,xx) = StdLeviWImage: classify(x)
+   , (,Levi,xx) = StdLeviEltImage: classify(x)
    then test = (WeylElt->bool): Levi_test(Levi,xx)
 in { end of preparations for |x|, now define the function of |y| }
    (WeylElt y) bool:

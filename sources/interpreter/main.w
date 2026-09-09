@@ -572,50 +572,49 @@ file.
 for (auto it=prelude_filenames.begin(); it!=prelude_filenames.end(); ++it )
 { std::ostringstream log_stream; output_stream = &log_stream;
   main_input_buffer->push_file(*it,true);
-    // set up to read |fname|, unless already done
-  while (main_input_buffer->include_depth()>0) // go on until file ends
-  { if (not ana.prime())
-    { std::cerr << "Internal error, getline fails reading " << *it
-                  << std::endl;
-      return EXIT_FAILURE;
-    }
-    expr_p parse_tree;
-    if (yyparse(&parse_tree,&verbosity)!=0)
-      // if a syntax error was signalled input has been closed
-    {@; ana.reset();  continue; }
-    if (verbosity!=0)
-    { std::cerr << "Cannot "
-                << (verbosity<0 ? "quit" :
-                    verbosity==1 ? "set verbose" : "redirect output")
-                         << " during prelude.\n";
-      verbosity=0; main_input_buffer->close_includes();
-    }
-    else
-    { try
-      { expression_ptr e;
-        type found_type=analyse_types(*parse_tree,e,0);
-        e->evaluate(eval_level::single_value);
-        if (not found_type.is_void())
-          log_stream << "Value: " << *pop_value() << '\n';
-        else
-          pop_value(); // don't forget to cast away that void value
+    // set up to read prelude file, unless already done
+  try
+  { while (main_input_buffer->include_depth()>0) // go on until file ends
+    { if (not ana.prime())
+      { std::cerr << "Internal error, getline fails reading " << *it
+                    << std::endl;
+        return EXIT_FAILURE;
       }
-      catch (error_base& err)
-      { std::cerr << err.message << "\nEvaluation aborted.\n";
-      @/clean=false;
-        clear_timer();
-        reset_evaluator(); main_input_buffer->close_includes();
+      expr_p parse_tree;
+      if (yyparse(&parse_tree,&verbosity)!=0)
+        // on syntax error input has been closed
+      {@; ana.reset();  continue; }
+      if (verbosity!=0)
+      { std::cerr << "Cannot "
+                  << (verbosity<0 ? "quit" :
+                      verbosity==1 ? "set verbose" : "redirect output")
+                           << " during prelude.\n";
+        verbosity=0; main_input_buffer->close_includes();
       }
-      catch (std::exception& err)
-      {
-        std::cerr << err.what() << "\nEvaluation aborted.\n";
-      @/clean=false;
-        clear_timer();
-        reset_evaluator(); main_input_buffer->close_includes();
+      else
+      { try
+        { expression_ptr e;
+          type found_type=analyse_types(*parse_tree,e,0);
+          e->evaluate(eval_level::single_value);
+          if (not found_type.is_void())
+            log_stream << "Value: " << *pop_value() << '\n';
+          else
+            pop_value(); // don't forget to cast away that void value
+        }
+        catch (std::exception& err) @+
+        {@; throw runtime_error(err.what()); } // convert error
       }
+      destroy_expr(parse_tree);
     }
-    destroy_expr(parse_tree);
   }
+  catch (error_base& err)
+  { std::cerr << err.message << '\n';
+  @/clean=false;
+    reset_evaluator(); main_input_buffer->close_includes();
+    ana.reset();
+    clear_timer();
+  }
+
   row_value* logs = uniquify<row_value>(*prelude_log_pointer);
   logs->val.emplace_back(std::make_shared<string_value>(log_stream.str()));
   output_stream = &std::cout;

@@ -1501,12 +1501,13 @@ void Rep_table::add_block (const StandardReprMod& srm, const locator& loc)
   }
   auto& block = singleton.front().first; // pick up reference to moved block
 #else // so instead we shall construct the block directly into the pair
-  auto& block = singleton.emplace_back // build full block in place, take its ref
+  auto& block = // reference to block constructed here
+    singleton.emplace_back // build full block in place
     (std::piecewise_construct, // indicates constructiion, not passing, of args
      std::tuple<const common_context&,const StandardReprMod&>
      (common_context(*this,loc),srm), // arguments of full |common_block| ctor
      std::tuple<const locator&>(loc) // single |locator&| argument
-    ) .first;
+    )->first;
 #endif
 
   // record current boundary of "old" |place| values, before adding any
@@ -1699,7 +1700,7 @@ blocks::common_block& Rep_table::add_block_below
      std::tuple<const common_context&,sl_list<StandardReprMod>&>
      (ctxt,elements), // arguments of partial |common_block| constructor
      std::tuple<const locator&>(loc) // |locator| copy constructor
-    ) .first;
+    )->first;
 
   *subset=BitMap(block.size()); // this bitmap will be exported via |subset|
   sl_list<std::pair<BlockElt,BlockEltList> > partial_Hasse_diagram;
@@ -1846,7 +1847,7 @@ blocks::common_block& Rep_table::lookup_full_block
   auto rp = Reduced_param::reduce(*this,srm,sr.gamma(),loc); // sets |loc|
 
   auto h = reduced_hash.find(rp);
-  if (h!=reduced_hash.empty and place[h].first->first.is_full()) // then
+  if (h!=reduced_hash.empty and place[h].first->first.is_full())
   { // then we can return a looked-up block, suitably modified
     auto& block_loc = *place[h].first;
     auto& block = block_loc.first;
@@ -2112,12 +2113,12 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
   assert(is_dominant_ratweight(root_datum(),gamma));
   auto& block = lookup_full_block(p,start,bm); // also makes |p| dominant
   kl::KL_table& KL_Q_tab // table of KL $Q$-polynomials; empty table first time
-    = block.dual_KL_tab(&KL_poly_hash);
+    = block.dual_KL_tab(&KL_poly_hash); // share the |block| polynomial pool
 
   // record heights for the block, and extract block terms from |queue|
   std::vector<level> heights(block.size());
-  level low_mark = height_bound+1; // lowest height of any term in |queue|
   BitMap retained(block.size());
+  level low_mark = height_bound+1; // to be lowest height of any term in |queue|
   sl_list<SR_poly::value_type> result;
   // where that |value_type| is |std::pair<const StandardRepr,Split_integer>|
   for (BlockElt z=0; z<block.size(); ++z)
@@ -2141,15 +2142,6 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
   }
   KL_Q_tab.fill(); // fill whole table; we might go beyond |size()-1-start|
 
-  int_Vector value_at_minus_1;
-  value_at_minus_1.reserve(KL_Q_tab.pol_store().size());
-  for (const auto& entry : KL_Q_tab.pol_store())
-  { int val = 0;
-    for (unsigned d=entry.size(); d-->0;)
-      val = static_cast<int>(entry[d])-val; // Horner evaluate polynomial at -1
-    value_at_minus_1.push_back(val);
-  }
-
   const RankFlags singular = block.singular(bm,gamma); // singular simple coroots
   auto it = result.begin();
   for (BlockElt z : retained) // run over block elements recorded in |result|
@@ -2166,12 +2158,21 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
 
   // viewed from |block|, the |KL_Q_tab| is lower triangular
   // build its transpose, restricted to |retained|, and evaluated at $q=-1$
+
   int_Matrix Q_mat (retained.size()); // initialise to identity matrix
-  unsigned int i=0,j;
-  unsigned int const top=block.size()-1;
-  for (auto it=retained.begin(); it(); ++it,++i)
-    for (auto jt=(j=i+1,std::next(it)); jt(); ++jt,++j)
-      Q_mat(i,j) = value_at_minus_1[KL_Q_tab.KL_pol_index(top-*jt,top-*it)];
+  { // Since |KL_Q_tab| shares full polynomial pool, DO NOT tablulate all their
+    // evaluations. Don't bother even to memoize; juste recompute for each $i,j$
+    unsigned int i=0,j;
+    unsigned int const top=block.size()-1;
+    for (auto it=retained.begin(); it(); ++it,++i)
+      for (auto jt=(j=i+1,std::next(it)); jt(); ++jt,++j)
+      { int val = 0;
+	const auto& entry = KL_Q_tab.KL_pol(top-*jt,top-*it);
+	for (unsigned d=entry.size(); d-->0;) // Horner evaluate |entry| at -1
+	  val = static_cast<int>(entry[d])-val;
+	Q_mat(i,j) = val;
+      }
+  }
 
   int_Matrix signed_P = inverse_upper_triangular(Q_mat);
   BitMap odd_length(signed_P.n_rows());
@@ -2366,7 +2367,7 @@ simple_list<std::pair<BlockElt,kl::KLPol> >
 } // |Rep_table::KL_column|
 
 
-const deformation_unit& Rep_table::deformation(StandardRepr& z)
+const deformation_unit& Rep_table::deformation(StandardRepr z)
 {
   assert(is_final(z));
   if (z.gamma().denominator() > (1LL<<rank()))
@@ -2414,7 +2415,7 @@ bool Rep_table::has_deformation(const StandardRepr& z)
   return h!=alcove_hash.empty and pool[h].has_def_contrib();
 }
 
-K_type_nr_poly Rep_table::full_deformation(StandardRepr& z)
+K_type_nr_poly Rep_table::full_deformation(const StandardRepr& z)
 // that |z| is dominant and final is a precondition assured in the recursion
 // for more general |z|, do the preconditioning outside the recursion
 {
@@ -2584,18 +2585,6 @@ sl_list<std::pair<StandardRepr,int> > Rep_table::twisted_deformation_terms
 
   const auto& kl_tab = eblock.kl_table(&poly_hash,y_index+1);
 
-  std::vector<int> pool_at_minus_1; // evaluations at $q=-1$ of KL polynomials
-  {
-    const auto& pool=kl_tab.polys();
-    pool_at_minus_1.reserve(pool.size());
-    for (const auto& pol: pool)
-    {
-      int eval=0;
-      for (unsigned i=pol.degree()+1; i-->0; )
-	eval = pol[i]-eval;
-      pool_at_minus_1.push_back(eval);
-    }
-  }
 
   std::unique_ptr<unsigned int[]> index // a sparse array, map final to position
     (new unsigned int [eblock.size()]); // unlike |std::vector| do not initialise
@@ -2620,18 +2609,19 @@ sl_list<std::pair<StandardRepr,int> > Rep_table::twisted_deformation_terms
     const BlockElt z=*it; // element |pos| of |finals|; value decreases in loop
     const bool contribute = block.length(eblock.z(z))%2!=y_parity;
     for (auto x : kl_tab.nonzero_column(z))
-    {
-      auto p = kl_tab.KL_pol_index(x,z); // pair (index,negate_p)
-      if (pool_at_minus_1[p.first]==0)
+    { int val = 0;
+      ext_kl::Pol P = kl_tab.P(x,z);
+      if (P.is_zero())
 	continue; // polynomials with $-1$ as root do not contribute; skip
-      const int val_xz = p.second!= // XOR stored sign with length diff. parity
-	((block.length(eblock.z(x))-block.length(eblock.z(z)))%2!=0)
-	? -pool_at_minus_1[p.first] : pool_at_minus_1[p.first];
+      for (unsigned d=P.size(); d-->0;) // Horner evaluate |entry| at -1
+	val = P[d]-val;
+      if ((block.length(eblock.z(x))-block.length(eblock.z(z)))%2!=0)
+	val = -val;
       for (auto jt=contrib[x].wcbegin(); not contrib[x].at_end(jt); ++jt)
       {
 	auto j=index[jt->first]; // position where |P(x,z)| contributes
 	assert(j>=pos); // triangularity of KLV polynomials
-	int c =c_cur*val_xz*jt->second;
+	int c =c_cur*val*jt->second;
 	remainder[j] -= c;
 	if (contribute) // optimisation will apply loop unswitching to this test
 	  acc[j] += c; // here we contribute
@@ -2691,7 +2681,7 @@ SR_poly Rep_table::twisted_deformation_terms (unsigned long sr_hash)
 #endif
 
 const deformation_unit&
-  Rep_table::twisted_deformation(StandardRepr& z, bool& flip)
+  Rep_table::twisted_deformation(StandardRepr z, bool& flip)
 {
   assert(is_final(z));
   assert(is_delta_fixed(z));
@@ -2771,7 +2761,7 @@ bool Rep_table::has_twisted_deformation(const StandardRepr& z)
   return h!=alcove_hash.empty and pool[h].has_twdef_contrib();
 }
 
-K_type_nr_poly Rep_table::twisted_full_deformation(StandardRepr& z)
+K_type_nr_poly Rep_table::twisted_full_deformation(const StandardRepr& z)
 {
   assert(is_final(z));
   assert(is_delta_fixed(z));

@@ -54,11 +54,6 @@
 #include "weyl.h" // for classes |Twist|, |WeylWord|, |WeylElt|
 #include "prerootdata.h"
 
-// extra defs for windows compilation -spc
-#ifdef WIN32
-#include <iterator>
-#endif
-
 /*****************************************************************************
 
   This module contains the implementation of the RootDatum class. What we call a
@@ -1532,7 +1527,7 @@ sl_list<RootNbrSet> components(const RootSystem& rs,const RootNbrSet& roots)
 	++it; // skip only over disconnected sets
     }
 
-    auto& new_comp = result.emplace_back(roots.capacity());
+    auto& new_comp = *result.emplace_back(roots.capacity());
     new_comp.insert(alpha);
     for (auto comp : adhere) // unite with components that adhere to |alpha|
       new_comp |= comp;

@@ -124,18 +124,28 @@ template<typename T, typename C, typename Compare>
     (poly&& vec, bool do_sort, Compare c)
   : Compare(c), L()
 {
+  if (do_sort) // if requested, ensure elements are sorted by |cmp()|
+  { auto less = [this](const term_type& a, const term_type& b)
+		      { return cmp()(a.first,b.first); };
+    std::sort(vec.begin(),vec.end(),less);
+    // now combine any similar terms, which have become adjacent
+    unsigned last;
+    for (unsigned i=0; i<vec.size(); ++i)
+      if (i==0 or vec[i].first!=vec[last].first)
+	last=i;
+      else
+      {
+	vec[last].second += vec[i].second;
+	vec[i].second = C(0);
+      }
+  }
   auto it = std::remove_if // squeeze out any terms with zero coefficients
     (vec.begin(),vec.end(),[](const term_type& x){return x.second==C(0);});
   if (it==vec.begin())
     return; // nothing left, so leave |L| empty
   vec.erase(it,vec.end()); // otherwise collect the garbage, reducing size
 
-  if (do_sort) // if requested, ensure elements are sorted by |cmp()|
-  { auto less = [this](const term_type& a, const term_type& b)
-		      { return cmp()(a.first,b.first); };
-    std::sort(vec.begin(),vec.end(),less);
-  }
-  L.push_front(std::move(vec)); // build a single-vector list
+  L.push_front(std::move(vec));
 }
 
 // find the coefficient of |e| in |*this|

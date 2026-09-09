@@ -469,7 +469,8 @@ sl_list<K_repr::K_type> Rep_context::KGP_set (K_repr::K_type& t) const
 
 } // |Rep_context::KGP_sum|
 
-K_repr::KT_pol Rep_context::monomial_product (const K_repr::KT_pol& P, const Weight& e) const
+K_repr::KT_pol Rep_context::monomial_product
+  (const K_repr::KT_pol& P, const Weight& e) const
 {
   const InvolutionTable& i_tab = involution_table();
   K_repr::KT_pol::poly result; // a single |std::vector| of |(K_type,int)| pairs
@@ -484,8 +485,8 @@ K_repr::KT_pol Rep_context::monomial_product (const K_repr::KT_pol& P, const Wei
     auto ht = height(new_exp+theta*new_exp+i_tab.theta_plus_1_rho(i_x));
     result.emplace_back(K_repr::K_type{x,std::move(new_exp),ht},term.second);
   } // |for(term)|
-  return // convert to |K_repr::KT_pol|, sorting the shifted terms again
-    { std::move(result), true, P.cmp() };
+  return // convert to |K_repr::KT_pol|, sorting and combining the shifted terms
+    K_repr::KT_pol { std::move(result), true, P.cmp() };
 } // |Rep_context::monomial_product|
 
 // compute height of "orthogonal projection to dominant cone" (closest point)

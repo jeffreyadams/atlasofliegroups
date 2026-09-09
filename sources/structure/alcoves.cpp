@@ -966,7 +966,7 @@ sl_list<std::pair<WeylElt,sl_list<int_Vector> > > FPP_w_shifts
     WeylElt w;
     RootNbrList image; // image by $w$ of simply-integral coroots at |gamma|
     RootNbrSet integral_roots; // all roots integral on |w*gamma|
-    sl_list<WeylElt>::weak_const_iterator it;
+    sl_list<WeylElt>::weak_const_iterator it; // current coset position
   };
 
   const auto Delta = integrality_simples(rd,gamma);
@@ -974,11 +974,12 @@ sl_list<std::pair<WeylElt,sl_list<int_Vector> > > FPP_w_shifts
   for (RootNbr alpha : Delta)
     int_gens.push_back(W.element(rd.reflection_word(alpha)));
 
-  std::vector<w_info> states(coset_lists.size()+1); // thought right-to-left
+  std::vector<w_info> states(coset_lists.size()+1);
+  // each |state| records an iteration position, where last one varies fastest
   // |states[0]| is a sentinel without iterator; |states.back()| always exists
   { unsigned int i=0;
     const RootNbrSet init = additive_closure(rd,stabilising_walls);
-    for (auto& state : states)
+    for (auto& state : states) // fill |states|
     {
       state.w = WeylElt();
       state.image = Delta.to_vector();
@@ -1010,7 +1011,7 @@ sl_list<std::pair<WeylElt,sl_list<int_Vector> > > FPP_w_shifts
     }
 #endif
 
-    auto& node = result.emplace_back(w,sl_list<int_Vector>{});
+    auto& cur_list = result.emplace_back(w,sl_list<int_Vector>{})->second;
     const auto image = W.image_by(rd,w,numer);
 
     RankFlags fix, ups, downs; // simple roots for which facet lands on its wall
@@ -1028,7 +1029,7 @@ sl_list<std::pair<WeylElt,sl_list<int_Vector> > > FPP_w_shifts
 
     for (const auto& shift : cc.shifts(fix,ups,downs))
     {
-      auto& v = node.second.push_back(int_Vector(rd.rank(),0));
+      auto& v = *cur_list.push_back(int_Vector(rd.rank(),0));
       for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
 	if (shift[s]!=0) // |shift[s]| is sufficiently often zero to merit test
 	  v += rd.simpleRoot(s)*shift[s];

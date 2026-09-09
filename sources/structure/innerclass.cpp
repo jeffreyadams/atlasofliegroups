@@ -1166,7 +1166,7 @@ subsystem::integral_datum_item& InnerClass::int_item
     for (RootNbr alpha : int_sys.simple_roots())
       { auto beta = rd.permuted_root(ww,alpha);
 	assert(rd.is_posroot(beta)); // |loc.w| perserves integral positivity
-	im_set.insert(images.push_back(beta));
+	im_set.insert(*images.push_back(beta));
       }
     assert(im_set.size()==int_sys.rank());
   }

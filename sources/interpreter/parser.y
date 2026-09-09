@@ -182,6 +182,9 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	| FORGET id '\n'      { global_forget_identifier($2); YYABORT; }
 	| FORGET id_op '@' type '\n'
 	  { global_forget_overload($2,$4); YYABORT;  }
+	| FORGET id_op '@' typevar_list closed_type '\n'
+	  { global_forget_overload($2,$5); YYABORT; }
+	  // reducing |typevar_list| prepares type variables in |closed_type|
 	| SET_TYPE id_eq type_spec '\n'
 	  { type_define_identifier($2,$3.type_pt,0,$3.ip,@$); YYABORT; }
 	| settype_open '[' type_equations ']' '\n'

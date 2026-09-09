@@ -49,8 +49,10 @@ a large section with basic functions related to these types.
 
 #include "Atlas.h" // must be very first \.{atlas} include
 
+
 @< Includes needed in the header file @>@;
-namespace atlas { namespace interpreter {
+@q One day we will find out why |atlas| below needs to be neutered @>
+namespace @;atlas { namespace interpreter {
 @< Type definitions @>@;
 @< Declarations of global variables @>@;
 @< Declarations of exported functions @>@;
@@ -64,7 +66,7 @@ sections are present.
 @h "global.h"
 @h <cstdlib>
 @c
-namespace atlas { namespace interpreter {
+namespace @;atlas { namespace interpreter {
 @< Global variable definitions @>@;
 namespace {@;
 @< Local function definitions @>@;
@@ -299,16 +301,14 @@ shared_share Id_table::address_of(id_type id)
 
 @ The method |Id_table::swallow| transforms a |type_expr| from an external form
 produced by the parser into one used internally, updating the representation of
-user-defined types and type constructors, represented as nodes with
-|raw_kind()==tabled|. The parser stores the code for the type identifier as
-|tabled_nr()|, and our |Id_table| provides the type it is defined as. Due to the
-way type definitions are processed, this type is always |tabled|, holding the
-index into the static table |type_expr::type_map|; some later code essentially
-depends on that, so we feel free to assume it here as well. This has not always
-been the case: rather than calling the |user_type| factory method below, we
-could apply |simple_subst| to the |defined_type| with appropriate arguments, and
-this would cater for arbitrary defining type expressions with fairly little
-hassle.
+user-defined types and type constructors. The parser stores these as nodes with
+|raw_kind()==tabled|, but in it stores just the code for the type identifier; it
+is the task of |swallow| to replace it by the actual tabled number of the
+corresponding type (constructor). It used to be the case that for defined type
+identifiers |Id_table| could store any type rather than just one of the |tabled|
+kind. We then used |simple_subst| (with appropriate arguments), rather than
+|user_type| as we do below. This is no longer the case: even in the case of a
+type constructor, |Id_table| stores a |tabled| type with an empty argument list.
 
 For any |type_expr| whose |raw_kind()| is not |tabled|, the recursive method
 |swallow| simply descends into its subexpressions. When a |tabled| case is
@@ -353,9 +353,10 @@ type_expr Id_table::swallow(const type_expr& tp) const
     }
     case tabled: // this is where something happens
     { const id_type id = tp.tabled_nr();
-      const auto* p = type_of(id);
+    @/const auto* p = type_of(id);
       assert(p!=nullptr); // the scanner ensures this
       const type& defined_type = *p;
+      assert(defined_type.kind()==tabled);
       unsigned int len=length(tp.tabled_args()), degree = defined_type.degree();
       if (len!=degree)
         @< Throw a |program_error| signalling an incorrectly applied type symbol
@@ -1457,7 +1458,7 @@ is marked by square brackets around the list of definition clauses in the latter
 case, and the placement of formal type parameters of the definition in case of a
 type constructor definition. In simple type constructor definitions the
 parameter list is postfixed to the constructor name in pointy brackets to
-resemble an application of the constructor, whereas in a grouped type
+resemble an instantiation of the constructor, whereas in a grouped type
 constructor definition the formal type parameter list, which is common to every
 member of the group, is inserted before the opening square bracket.
 
@@ -1486,7 +1487,7 @@ void type_define_identifier
   const source_location& loc)
 { type_ptr saf(t); id_pat field_pat(ip); // ensure clean-up
   type tp= type::constructor(global_id_table->swallow(*t),deg);
-  auto& fields = field_pat.sublist;
+  patlist& fields = field_pat.sublist;
   const auto n=length(fields);
   // |n==0| means no tuple/union, or no names were specified
 @)
@@ -1500,15 +1501,19 @@ void type_define_identifier
        also report the type definition proper @>
 @)
     type_nr_type k = type_expr::add_simple_typedef(id,tp.bake(),deg);
-    type_expr tabled_tp = type_expr::local_ref(k,deg);
-    // tabled type with |deg| arguments
-    global_id_table->add_type_def(id,type::constructor(tabled_tp.copy(),deg),loc);
+    global_id_table->add_type_def
+      (id,type::constructor(type_expr::local_ref(k),deg),loc);
 @)
-    if (not fields.empty())
+    if (tp.kind()==tabled)
+      type_expr::copy_fields(tp.tabled_nr(),k);
+    else if (not fields.empty())
     {
+      type_expr tabled_tp = type_expr::tabled_call(k);
+      // tabled type with |deg| arguments
       @< Bind in |group| any field identifiers in |fields| to the types of
-         their projector or injector functions, store the identifiers themselves
-         in |names|, and store the corresponding function values in |jectors| @>
+         their projector or injector functions constructed from |tabled_tp|
+         and |tp|; store the identifiers themselves in |names|,
+         and store the corresponding function values in |jectors| @>
       @< Add to |global_overload_table| the projector or injector function
          values from |jectors| @>
       type_expr::set_fields(k,std::move(names));
@@ -1516,7 +1521,7 @@ void type_define_identifier
   }
   catch (program_error& err)
   { std::ostringstream o;
-    o << "Error in type definition " << loc << ":\n" @| << err.message
+    o << "(in type definition " << loc << "):\n" @| << err.message
       << "\n  Type definition aborted";
     err.message = o.str(); // replace message by extended one
     throw; // then re-throw
@@ -1638,13 +1643,14 @@ void process_type_definitions
        identifier |id| defined by the equation; |throw| a |program_error|
        if any identifiers in the equation are problematic @>
   @/@< Replace, for any type with |kind==tabled| occurring in |defs|,
-       the stored identifier code |id| by |position[id]| if that is set,
-       or else by the|tabled_nr()| obtained from its type in |global_id_table| @>
+       the stored identifier code |id| by |position[id]| if that is set, or else
+       by the |tabled_nr()| obtained from its type in |global_id_table| @>
 @)
 @/  std::vector<std::pair<id_type,const_type_p> > b; b.reserve(n_defs);
     for (auto it=defs.wcbegin(); not defs.at_end(it); ++it)
       b.emplace_back(it->id,it->tp);
-    auto type_nrs = type_expr::add_typedefs(b,deg);
+    const auto old_table_size = type_expr::table_size();
+    type_expr::add_typedefs(b,deg);
 @)
     @< Update |global_id_table| with types and values (injector and  projector
        functions, if any) corresponding to the type definitions in |defs|, or
@@ -1654,7 +1660,7 @@ void process_type_definitions
   catch (program_error& err)
   { type_expr::reset_table_size(old_size); // roll back any extension made
     std::ostringstream o;
-    o << "Error in 'set_type' command " << loc << ":\n" @| << err.message
+    o << "(in 'set_type' command " << loc << "):\n" @| << err.message
       << "\n  Type definition aborted";
     err.message = o.str(); // replace message by extended one
     throw; // then re-throw
@@ -1685,7 +1691,7 @@ status as a type identifier would make the field name unusable.
     else
     { std::ostringstream o;
       o << "Repeated definition of '" @| << main_hash_table->name_of(id)
-      @|<< " in grouped type definition";
+      @|<< "' in grouped type definition";
       throw program_error(o.str());
     }
   }
@@ -1786,7 +1792,7 @@ well).
 }
 
 @ We come here for any type subexpression of a right hand side that is given as
-a type identifier or as an application of an already defined type constructor.
+a type identifier or as an instantiation of an already defined type constructor.
 In case this is a previously defined type (constructor) we must replace the
 identifier code that parser temporarily stored as |tabled_nr()| of a |tabled|
 type, by the actual tabled number stored in |global_id_table| for that
@@ -1852,37 +1858,37 @@ identifiers at all, and to throw a |program_error| in such cases.
 
 @ When we come here, the newly defined types from |defs| have been tested for
 equivalence with previous types and with each other, and added to the static
-class member of |type_expr|, so that their (new) type numbers available in the
-|type_nrs| array can be used with for instance the |type_expr::expanded| method.
+class member of |type_expr|, so that their (new) type numbers can be used with
+for instance the |type_expr::expanded| method.
 
 Three kinds of actions remain to be done. For each definition, its left hand
 side identifier has to be bound to a type expression in |global_id_table|, which
-will be of the |tabled| kind, referring to the internal definition just added at
-a position found in |type_nrs|. The other two actions only apply when the right
-hand side is a tuple or union type with specified field names: if so, projector
-respectively injector functions have to be bound to these field names in the
-|global_overload_table|, and the list of field names has to be added to the
-|type_expr| static data. The new overloads for field names might conflict with
-existing overloads, and to be certain that we don't leave matters in a partially
-updated state upon an error, we must make two passes over |defs|: one to test
-for problems (which might end up throwing an error), and if there are none, a
-second pass to actually make the changes.
+will be of the |tabled| kind, referring to the internal definition just added.
+The other two actions only apply when the right hand side is a tuple or union
+type with specified field names: if so, projector respectively injector
+functions have to be bound to these field names in the |global_overload_table|,
+and the list of field names has to be added to the |type_expr| static data. The
+new overloads for field names might conflict with existing overloads, and to be
+certain that we don't leave matters in a partially updated state upon an error,
+we must make two passes over |defs|: one to test for problems (which might end
+up throwing an error), and if there are none, a second pass to actually make the
+changes.
 
 Since testing the overloads for the field names involves constructing the types
 that will be bound to them, we stash them away in a list |store| of
 |definition_group| objects, from which they can be recovered in the second pass.
-Each pass needs to traverse the linked list~|defs| and in parallel the
-vector~|type_nrs|, for which we maintain an iterator~|it| into the list and an
-index~|i| into the vector.
+Each pass needs to traverse the linked list~|defs|, for which we maintain both
+an iterator~|it| into the list and a position~|i|.
 
 @< Update |global_id_table| with types and values... @>=
 { unsigned int i = 0; // position within |defs|
   containers::sl_list<definition_group> store;
   for (auto it=defs.wcbegin(); not defs.at_end(it); ++it,++i)
     if (not it->fields.empty())
-    { type_expr tabled_tp = type_expr::local_ref(type_nrs[i],deg);
-      const auto& tp = tabled_tp.tabled_eq(); // a |type_map| entry
-      const auto& fields = it->fields;
+    { auto type_nr = old_table_size+i;
+      type_expr tabled_tp = type_expr::tabled_call(type_nr);
+      const auto tp = tabled_tp.expanded();
+      const patlist& fields = it->fields;
       @/@< Append to |store| bindings for the identifiers in |fields| as
          injector or projector function for |tabled_tp|, the component types
          being taken from |tp| @>
@@ -1890,31 +1896,33 @@ index~|i| into the vector.
 @)
   auto store_it = store.wbegin(); // rewind the list of field lists
   for (auto it=(i=0,defs.wcbegin()); not defs.at_end(it); ++it,++i)
-  {
-    const auto& fields = it->fields;
-    const auto type_nr = type_nrs[i];
-    type tabled_tp =
-      type::constructor(type_expr::local_ref(type_nr,deg),deg);
-    const type_expr& tp = tabled_tp.unwrap().tabled_eq();
+  { auto type_nr = old_table_size+i;
     if (it->id!=type_binding::no_id)
     {
       if (global_id_table->is_defined_type(it->id))
         clean_out_type_identifier(it->id);
-      global_id_table->add_type_def(it->id,std::move(tabled_tp),loc);
+      global_id_table->add_type_def @|
+        (it->id,type::constructor(type_expr::local_ref(type_nr),deg),loc);
     }
     @< Emit... @>
+    const type_expr tp = type_expr::tabled_call(type_nr).expanded();
     if (it->id==type_binding::no_id)
       *output_stream << "Anonymous type "
                      << tp << std::endl;
     else
       *output_stream << "Type name '" << main_hash_table->name_of(it->id) @|
-        << "' defined as " << tp.expanded() << std::endl;
-    if (not fields.empty())
-    { auto& group = *store_it;
-      @< Add to |global_overload_table| functions for |fields| with types taken
-         from |group|, and associate those fields to type |type_nr|;
+        << "' defined as " << tp << std::endl;
+    if (it->tp->raw_kind()==tabled)
+      type_expr::copy_fields(it->tp->tabled_nr(),type_nr);
+    else
+    { const auto& fields = it->fields;
+      if (not fields.empty())
+      { auto& group = *store_it++;
+         // |store_it| only advances when fields were present
+      @/@< Add to |global_overload_table| functions for |fields| with types
+         taken from |group|, and associate those fields to type |type_nr|;
          also print project/injector names @>
-    @/ ++store_it; // |store_it| only advances when fields were present
+      }
     }
   }
 }
@@ -1932,28 +1940,28 @@ function type through |definition_group::add|.
 
 @< Append to |store| bindings for the identifiers in |fields|... @>=
 { assert(tp.raw_kind()==tuple_type or tp.raw_kind()==union_type);
-  auto& record = store.emplace_back(definition_group(length(fields)));
+  auto& @;record = *store.emplace_back(definition_group(length(fields)));
 @/
   auto tp_it =wtl_const_iterator(tp.tuple());
   if (tp.raw_kind()==tuple_type)
   {
     for (auto id_it=fields.wcbegin(); not fields.at_end(id_it);
          ++id_it,++tp_it)
-      if (id_it->kind==0x1)
+      if ((id_it->kind&0x1)!=0)
       // field selector present (|*id_it| is an |id_pat|)
       {
         type_expr fte = type_expr::function(tabled_tp.copy(),tp_it->copy());
-        record.add(id_it->name,type::wrap(std::move(fte),0),id_it->kind);
+      @;record.add(id_it->name,type::wrap(std::move(fte),0),id_it->kind);
           // projector type
       }
   }
   else // |tp.raw_kind()==union_type|
   { for (auto id_it=fields.wcbegin(); not fields.at_end(id_it);
          ++id_it,++tp_it)
-      if (id_it->kind==0x1) // injector name present
+      if ((id_it->kind&0x1)!=0) // injector name present
       {
         type_expr fte = type_expr::function(tp_it->copy(),tabled_tp.copy());
-        record.add(id_it->name,type::wrap(std::move(fte),0),id_it->kind);
+      @;record.add(id_it->name,type::wrap(std::move(fte),0),id_it->kind);
           // injector type
       }
   }
@@ -1974,7 +1982,7 @@ passing the |constexpr no_id@;| by reference (it builds a temporary
 instead); this avoids needing to allocate an actual static variable.
 
 @< Add to |global_overload_table| functions for |fields| with types
-   taken from |group|,... @>=
+   taken from |group|... @>=
 
 { assert(tp.raw_kind()==tuple_type or tp.raw_kind()==union_type);
   bool is_tup = tp.raw_kind()==tuple_type;
@@ -2001,7 +2009,7 @@ instead); this avoids needing to allocate an actual static variable.
   }
   *output_stream << '.' << std::endl;
 @/
-  type_expr::set_fields(type_nrs[i],std::move(names));
+  type_expr::set_fields(type_nr,std::move(names));
 
 }
 
@@ -2778,6 +2786,9 @@ also define wrappers for built-in functions |rows| and |columns| here; the
 second in fact does the same as the implicit conversion and is indeed called by
 it.
 
+@s eval_level matrix_value
+@q Unclear how CWEAVEX overlooked declaration of |eval_level| in axis-types.h @>
+
 @< Local function def... @>=
 
 void rows_wrapper(eval_level l)
@@ -3354,7 +3365,7 @@ expression_ptr rhs_is_1
   (expression_ptr& args,const shared_builtin& f,const source_location& loc)
 { auto t = dynamic_cast<const tuple_expression*>(args.get());
   if (t!=nullptr and t->component.size()==2)
-  { auto a = dynamic_cast<const denotation*>(t->component[1].get());
+  { const auto* a = dynamic_cast<const denotation*>(t->component[1].get());
     if (a!=nullptr)
     { auto v = force<int_value>(a->denoted_value.get());
       if (v->val==1)
@@ -3367,9 +3378,9 @@ expression_ptr rhs_is_1
 }
 expression_ptr lhs_is_minus_1
   (expression_ptr& args,const shared_builtin& f,const source_location& loc)
-{ auto t = dynamic_cast<const tuple_expression*>(args.get());
+{ const auto* t = dynamic_cast<const tuple_expression*>(args.get());
   if (t!=nullptr and t->component.size()==2)
-  { auto a = dynamic_cast<const denotation*>(t->component[0].get());
+  { const auto* a = dynamic_cast<const denotation*>(t->component[0].get());
     if (a!=nullptr)
     { auto v = force<int_value>(a->denoted_value.get());
       if (v->val==-1)
@@ -3644,9 +3655,9 @@ used earlier.
 @< Local function definitions @>=
 expression_ptr lhs_is_1
   (expression_ptr& args,const shared_builtin& f,const source_location& loc)
-{ auto t = dynamic_cast<const tuple_expression*>(args.get());
+{ const auto* t = dynamic_cast<const tuple_expression*>(args.get());
   if (t!=nullptr and t->component.size()==2)
-  { auto a = dynamic_cast<const denotation*>(t->component[0].get());
+  { const auto* a = dynamic_cast<const denotation*>(t->component[0].get());
     if (a!=nullptr)
     { auto v = force<int_value>(a->denoted_value.get());
       if (v->val==1)
@@ -3872,9 +3883,9 @@ right hand side $0$.
 @< Local function definitions @>=
 expression_ptr rhs_is_0
   (expression_ptr& args,const shared_builtin& f,const source_location& loc)
-{ auto t = dynamic_cast<const tuple_expression*>(args.get());
+{ const auto* t = dynamic_cast<const tuple_expression*>(args.get());
   if (t!=nullptr and t->component.size()==2)
-  { auto a = dynamic_cast<const denotation*>(t->component[1].get());
+  { const auto* a = dynamic_cast<const denotation*>(t->component[1].get());
     if (a!=nullptr)
     { auto v = force<int_value>(a->denoted_value.get());
       if (v->val.is_zero())
@@ -3923,9 +3934,9 @@ implement constant folding.
 @< Local function definitions @>=
 expression_ptr rhs_is_rat0
   (expression_ptr& args,const shared_builtin& f,const source_location& loc)
-{ auto t = dynamic_cast<const tuple_expression*>(args.get());
+{ const auto* t = dynamic_cast<const tuple_expression*>(args.get());
   if (t!=nullptr and t->component.size()==2)
-  { auto a = dynamic_cast<const denotation*>(t->component[1].get());
+  { const auto* a = dynamic_cast<const denotation*>(t->component[1].get());
     if (a!=nullptr)
     { auto v = force<rat_value>(a->denoted_value.get());
       if (v->val.is_zero())
@@ -4095,12 +4106,13 @@ void readline_completions_wrapper(eval_level l)
 
 @ We shall make some optimisations for testing explicitly against an empty
 string.
+
 @< Local function definitions @>=
 expression_ptr rhs_is_empty
   (expression_ptr& args,const shared_builtin& f,const source_location& loc)
-{ auto t = dynamic_cast<const tuple_expression*>(args.get());
+{ const auto* t = dynamic_cast<const tuple_expression*>(args.get());
   if (t!=nullptr and t->component.size()==2)
-  { auto a = dynamic_cast<const denotation*>(t->component[1].get());
+  { const auto* a = dynamic_cast<const denotation*>(t->component[1].get());
     if (a!=nullptr)
     { auto v = force<string_value>(a->denoted_value.get());
       if (v->val.empty())
@@ -4170,11 +4182,11 @@ produce) in order to give the user full control of the string produced.
 std::ostream& to_string_aux(std::ostream& o, eval_level l)
 { shared_value v=pop_value();
 @)
-  const string_value* s=dynamic_cast<const string_value*>(v.get());
+  const auto* s=dynamic_cast<const string_value*>(v.get());
   if (s!=nullptr)
     o << s->val; // single string without quotes
   else
-  { const tuple_value* t=dynamic_cast<const tuple_value*>(v.get());
+  { const auto* t=dynamic_cast<const tuple_value*>(v.get());
     if (t!=nullptr)
     { for (auto it=t->val.begin(); it!=t->val.end(); ++it)
       { s=dynamic_cast<const string_value*>(it->get());
@@ -5752,11 +5764,11 @@ fails to exist (though it may fail to be unique).
 void section_wrapper(eval_level l)
 {
   shared_matrix m=get<matrix_value>();
-  BinaryMap B = BinaryMap(m->val).section();
+  BinaryMap M = BinaryMap(m->val).section();
   own_matrix res = std::make_shared<matrix_value>(
-    int_Matrix(B.n_rows(),B.n_columns()));
-  for (unsigned int j=B.n_columns(); j-->0;)
-    res->val.set_column(j,int_Vector(B.column(j)));
+    int_Matrix(M.n_rows(),M.n_columns()));
+  for (unsigned int j=M.n_columns(); j-->0;)
+    res->val.set_column(j,int_Vector(M.column(j)));
   if (l!=eval_level::no_value)
     push_value(std::move(res));
 }

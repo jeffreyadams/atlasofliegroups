@@ -8562,11 +8562,12 @@ void stored_twisted_full_deform_wrapper(eval_level l)
   }
 }
 
-@ As an experiment, we provide variants of the |full_deform| function, and of
-its twisted counterpart, each with a time-out argument. These functions return a
-value of (the same) union type: if the computation does not finish in the
-allotted time, the return the first (void) variant of the union, and otherwise
-they wrap their result in the second (ordinary) variant of the union.
+@ We provide variants of the |full_deform| function and of its twisted
+counterpart, each with a time-out argument, in the same vein as |branch| above.
+The union type returned is the same as for |branch|: if the computation does not
+finish in the allotted time, the return the first (|void|) variant of the union,
+and otherwise they wrap their result in the second (|K_type_pol_value|) variant
+of the union.
 
 @h "lexer.h" // for |main_hash_table|
 
