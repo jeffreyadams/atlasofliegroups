@@ -1,0 +1,188 @@
+< endo.at {for down_move}
+
+
+{ dualQ.at
+
+  dualQ@Param, the Vogan duality map, built as the mirror image of endo@Param in
+  endo_claude.at; and Q_row@Param, which computes a row of the Q polynomial matrix
+  of G as a single ordinary KL column on the dual side, from a PARTIAL block.
+
+  THE SYMMETRY.  Both endo and dualQ anchored at the bottom of a
+  regular block, where down_move runs out. endo works up from there
+  both in G and in the endoscopic group E. dualQ works up in G and
+  down in the dual group dG (from the top of the dual block). The
+  bottom of the block (in G or E) has a single KGBElt and several
+  lambdas. The top of any regular block (like the dual block in dG)
+  has one lambda and several KGBElts with the same involution.
+
+    in endo, endox(q) is computable from q.x alone, so x is known at every step and
+       the walk supplies lambda.  The search at the anchor is over shifts, which move
+       lambda.  The two valued Cayley is two valued in x, resolved against endox.
+
+    in dualQ, dlambda(q) = dgamma - torus_factor(q.x) is computable from q.x alone,
+       so lambda is known at every step and the walk supplies dx.  The search at the
+       anchor is over torus factor corrections, which move dx.  The two valued Cayley
+       is two valued in lambda, resolved by taking the known dlambda.
+
+  THREE THINGS THAT HAD TO BE RIGHT.
+
+    1. The anchor is the split end, not the compact end.  At the compact end lambda is
+       constant, so dlambda carries no information and distinct parameters collapse to
+       the same dual.
+
+    2. The torus factor correction must be allowed to be HALF integral.
+
+    3. The validity test for a torus factor is the kernel's, not the script's.  Every
+       simple root of the inner class must take an EVEN value on tf*(1+theta); see
+       atlas-types.w.  square_is_central in parameters.at is weaker and admits torus
+       factors that then abort with "Torus factor does not define a valid strong
+       involution".
+
+  The dual infinitesimal character is bgv + k*rho(dGi) with k the smallest ODD k
+  making it regular dominant.  k must be odd so that (k-1)*rho stays in X^*.
+  In every group tested the smallest odd regular k is 1 or 3.
+
+  WHAT IS VERIFIED.  Over SL(3,R), SL(4,R), SU(2,1), SU(2,2), SU(3,2), Sp(6,R),
+  Sp(8,R), SO(4,3), SO(5,4), Spin(4,3), Spin(6,1), Spin(5,2), Spin(7,2), Spin(6,2),
+  G2_s and F4_s, at every dominant gamma built from fundamental weights with
+  denominators up to 2, including singular gamma:
+
+    - sig is injective into a single dual block, and Q[i][j] = P[sig[j]][sig[i]];
+    - Q_row(p) agrees with row p of KL_Q_polynomials of the block, with no nonzero
+      entry falling outside the partial block.
+
+  The five SU(3,2) infinitesimal characters where dualB alone lands in the split dual
+  real form instead of sl(2,H).gl(1,R) are included, and need no special case: the
+  correction search finds the half integral torus factor by itself.
+
+}
+
+{ ------------------------------------------------------- torus factor validity }
+
+{ the library's own test, from atlas-types.w }
+set tf_is_valid (InnerClass ic, mat theta, ratvec tf) = bool:
+   let v = ratvec: tf*(1+theta) in
+   all(for a in ic.simple_roots do is_integer((v*a)/2) od)
+
+{ ------------------------------------------------------------- the block walk }
+
+{ index of an integral simple root that is C- (status 0) or real parity
+  (status 2 or 3); -1 at the top of the block, which is where both maps anchor }
+set up_move (Param q) = int:
+(  let id = integrality_datum(q), x = q.x
+in first(for a@j in id.simple_roots do let stat = status(a,q) in stat < 4 and stat != 1 od)
+)
+
+set at_top_reg (Param q) = bool: up_move(q) < 0 and is_regular(q)
+
+{ ------------------------------------------- the crude dual, and the correction }
+
+{ dualB's dual inner class, dual involution and uncorrected torus factor }
+set dual_crude (Param p) = (InnerClass,mat,ratvec):
+   (dual_inner_class(p), -(p.x.involution).^, p.infinitesimal_character - p.lambda)
+
+{ half integral corrections inside the +1 eigenlattice of the dual involution }
+set dual_steps (mat dtheta) = [ratvec]:
+   let M = eigen_lattice(dtheta,1) in for b in box(4,#M) do ratvec: (M*b)/2 od
+
+{ the corrections admissible at q: valid torus factor, and the right grading, so
+  that a real integral coroot of q is parity exactly when it is noncompact on the
+  dual side }
+set dual_corrections (Param q) = [ratvec]:
+(  let (dGi,dtheta,dtf) = dual_crude(q), theta = q.x.involution
+   then id = integrality_datum(q)
+   then reals = for av in id.poscoroots if av*(theta+1) = null(#av) do av fi od
+   then want = for av in reals do parity(q,av) od
+   then good = [ratvec]:[]
+in for s in dual_steps(dtheta)
+   do if tf_is_valid(dGi,dtheta,dtf+s)
+      then let dx = KGB_elt(dGi,dtheta,dtf+s) then ok = true in
+         for av@i in reals do if (status(av,dx)=3) != want[i] then ok:=false fi od
+      ;  if ok then good := good##[s] fi
+      fi
+   od
+;  good
+)
+
+{ ------------------------------------------------------------- the dual KGB elt }
+
+{
+regular infinitesimal character assumed; see dualQ below for the
+  general case.  Walking down in G (toward split; includes nc imag
+  Cayley) is walking up in the dual (toward discrete series; include
+  real parity Cayley), so the dual Cayley is single valued on KGB
+  elements and the lambda ambiguity is settled by dlambda.
+}
+set dual_x = (Param->KGBElt):
+  rec_fun dx (Param q) KGBElt:
+  ( let j = down_move(q)
+  in if j<0
+     then let (dGi,dtheta,dtf) = dual_crude(q)
+          then sols = dual_corrections(q)
+          then s = ratvec:
+	       if #sols=0
+	       then prints("no dual_x found at ",q);
+	       null(#dtf)
+	       else sols[0]
+	       fi
+       in KGB_elt(dGi,dtheta,dtf+s)
+     else let id = integrality_datum(q)
+       then a = vec: id.simple_roots[j], av = vec: id.simple_coroots[j]
+       in if status(a,q.x)=4
+          then cross(av, dx(cross(a,q)))
+          else Cayley(av, dx(Cayley(a,q))) {down, so  inner is nc imag Cayley, landing at real
+	       		  		   parity; dual has av imag nc, so Cayley on dx is
+					   single-valued.}
+          fi
+     fi
+  )
+
+{ -------------------------------------------------------------- the dual itself }
+
+{ x, lambda and nu of the dual, with the smallest odd regular dominant multiplier }
+set dual_pieces (Param p) = (KGBElt,ratvec,ratvec):
+(  let x = dual_x(p), dGi = dual_inner_class(p)
+   then bgv = base_grading_vector(p.real_form), tf = p.x.torus_factor
+   then rdv = dGi.root_datum, drho = ratvec: rho(dGi)
+   then k = -1
+in for j:20
+   do if k<0
+      then let dg = ratvec: bgv + (2*j+1)*drho
+           then gg = infinitesimal_character(parameter(x, dg-tf, dg))
+        in if all(for av in rdv.poscoroots do av*gg > 0 od) then k:=2*j+1 fi
+      fi
+   od
+;  let dg = ratvec: bgv + k*drho in (x, dg-tf, dg)
+)
+
+set dual_reg (Param p) = Param:
+   assert(@:is_regular(p));
+   let (x,lam,nu) = dual_pieces(p)
+   in parameter(x,lam,nu)
+
+{ general p: the walk needs regular infinitesimal character, so translate first.
+  The dual itself is unchanged by the translation, since dtf = gamma - lambda and
+  dlambda depend on it only through quantities two_rho cancels out of. }
+set dualQ (Param p) = Param:
+(  let tworho = ratvec: p.root_datum.two_rho
+in dual_reg(parameter(p.x, p.lambda + tworho, p.nu + tworho))
+)
+
+{ ------------------------------------- a row of Q, as one KL column on the dual }
+
+{ Q[i][j] = P[sig[j]][sig[i]].  Fixing i at p makes the dual side the single KL
+  column at dualQ(p), so only the downward closure of dualQ(p) is ever built.
+  Returns that partial block and the column; Q_{p,q} is the entry at the index of
+  dualQ(q) in it, and is zero for any q whose dual is absent. }
+set Q_row (Param p) = ([Param],[vec]):
+(  let (dB,M,polys) = partial_KL_block(dualQ(p))
+   then n = #dB
+in (dB, for e@t in dB do polys[M[n-1][t]] od)
+)
+
+{ usage:
+     ../atlasLTO   then   <dualQ_claude.at
+     set p = ...
+     set d = dualQ(p)
+     set (dB,col) = Q_row(p)
+}

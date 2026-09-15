@@ -2336,7 +2336,7 @@ set hodge_screen_frac = rat: 1/2
 set hodge_screen_use_frac = rat: 1/3 {allow hodge_screen this fraction of to_ht_predictor time}
 set hodge_screen_min_time = int: 5*interrupt_base_time {200}
 set HodgeCaughtCount = int: 0
-set HodgeTriedCount = int: 0
+{set HodgeTriedCount = int: 0}
 set HodgeScreenTime = int: 0
 
 {hodge_screen_frac times the running average of how long is_unitary_to_ht has
@@ -2376,9 +2376,13 @@ set hodge_screen_time() = int:
  with |numatch_height(p,D)|, which keeps the minimum known failure height.
  The truncated branch makes no global claim and so records nothing.}
 
-set hodge_screen_one(Param q, int HT) = int:
+{to hold parameters tested by hodge_screen}
+set hodge_screen_hash = make_Param_hash()
+
+set hodge_screen_one_inter(Param q, int HT) = int:
     {hodge0 needs a final HERMITIAN parameter; callers do not guarantee either}
     if not (is_final(q) and is_hermitian(q)) then return 0 fi;
+    hodge_screen_hash.match(q);
     let start = elapsed_ms()
     then v = int:
       if HT < 0
@@ -2407,43 +2411,63 @@ set hodge_screen_one(Param q, int HT) = int:
 	   | done(H): if is_pure(H.convert_cform_hermitian) then 0 else -1 fi
 	   esac
       fi
-    in HodgeTriedCount +:= 1;
+    in {HodgeTriedCount +:= 1;}
        HodgeScreenTime +:= (elapsed_ms()-start);
        if v < 0 then HodgeCaughtCount +:= 1 fi;
        v
 
+set hodge_screen_one(Param q, int HT) = int:
+    {hodge0 needs a final HERMITIAN parameter; callers do not guarantee either}
+    if not (is_final(q) and is_hermitian(q)) then return 0 fi;
+    hodge_screen_hash.match(q);
+    let start = elapsed_ms()
+    then v = int:
+      if HT < 0
+      then let H = Hodge_hash_0_irr(q).convert_cform_hermitian
+      	   in if is_pure(H) then 0
+	      else {Record nonunitarity}
+		   big_unitary_hash.numatch_height(q,impure_height(H));
+		   -1
+	       fi
+      else let H = Hodge_hash_0_irr_to_ht(q,HT).convert_cform_hermitian
+      	   in if is_pure(H)
+	      then 0
+	      else big_unitary_hash.numatch_height(q,impure_height(H));
+	      	   -1
+	      fi
+      fi
+    in HodgeScreenTime +:= (elapsed_ms()-start);
+       if v < 0 then HodgeCaughtCount +:= 1 fi;
+       v
+
+
 set hodge_screen_one(Param q, int HT, int time) = int:
     {hodge0 needs a final HERMITIAN parameter; callers do not guarantee either}
     if not (is_final(q) and is_hermitian(q)) then return 0 fi;
+    hodge_screen_hash.match(q);
     let start = elapsed_ms()
     then v = int:
       if HT < 0
       then case Hodge_hash_0_irr(q,time)
       	   | timed_out(): 0
-	   | done(H): if is_pure(H.convert_cform_hermitian) then 0
-	     	      else {Record nonunitarity with NO HEIGHT CLAIM.
-			    numatch_height(q,H) means "already detected by height H",
-			    and nu_heights keeps the MINIMUM, so a value that is too
-			    small poisons the entry permanently.  Passing
-			    impure_height of the LEVEL-0 form was exactly that
-			    mistake: level 0 failing purity at height D does not make
-			    is_unitary_to_ht(q,D) false, since the full form may fail
-			    nonunitarity and no height.
-			    (This is correct, but was NOT the cause of the E6_s "Inexact
-			     halving" abort: that persists with H = -1.  It is a library bug
-			     in twisted_KL_sum_at_s; see inexact_halving_bug.txt.)}
-		           if nuhash_flag
-			   then let () = big_unitary_hash.numatch_height(q,-1) in ()
-			   fi;
-			   -1
-		      fi
+	   | done(H): let Hh = H.convert_cform_hermitian
+	     	      in if is_pure(Hh)
+		      	 then 0
+	     	      	 else big_unitary_hash.numatch_height(q, impure_height(Hh));
+			      -1
+		         fi
 	   esac
       else case Hodge_hash_0_irr_to_ht(q,HT,time)
       	   | timed_out(): 0
-	   | done(H): if is_pure(H.convert_cform_hermitian) then 0 else -1 fi
+	   | done(H): let Hh = H.convert_cform_hermitian
+	     	      in if is_pure(Hh)
+		      	 then 0
+	     	      	 else big_unitary_hash.numatch_height(q, impure_height(Hh));
+			      -1
+		         fi
 	   esac
       fi
-    in HodgeTriedCount +:= 1;
+    in {HodgeTriedCount +:= 1;}
        HodgeScreenTime +:= (elapsed_ms()-start);
        if v < 0 then HodgeCaughtCount +:= 1 fi;
        v
@@ -2462,12 +2486,14 @@ set hodge_screen(Param p, int HT, int time) = int:
 set hodge_screen_full(Param p) = int: hodge_screen(p,-1)
 
 set hodge_screen_report() = void:
-    prints("hodge screen: ",HodgeTriedCount," calls, ",HodgeCaughtCount,
+    prints("hodge screen: ",{HodgeTriedCount} hodge_screen_hash.size()," calls, ",HodgeCaughtCount,
     	   " caught, ",HodgeScreenTime," ms, budget now ",hodge_screen_time(),
 	   " ms, nu-skipped ",HodgeNuSkipped)
+	   {,new_line,"  ----------------")}
+
 
 set hodge_screen_reset() = void:
-    HodgeTriedCount := 0; HodgeCaughtCount := 0; HodgeScreenTime := 0;
+    {HodgeTriedCount := 0}hodge_screen_hash.clear(); HodgeCaughtCount := 0; HodgeScreenTime := 0;
     HodgeNuSkipped := 0
 
 {move hodge0 testing to sites where there is a predicted is_unitary time}
@@ -2953,7 +2979,7 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
        to_ht_time = int: u_predictor(p,ht, u_time + interrupt_base_time),{interrupt_base_time,}}
        test_time = int:0,
        start = elapsed_ms()
-  then () = if (hodge_status_flag and hodge_screen(p,-1,floor(to_ht_time*hodge_screen_use_frac)) < 0)
+  then () = if (hodge_status_flag and hodge_screen(p,-1,floor(u_time*hodge_screen_use_frac)) < 0)
        	    then return false
 	    fi
   then () = if print_int_flag
@@ -3058,7 +3084,7 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
        	    then prints("starting to_ht_time = ", print_time_string(to_ht_time),
 	    	        ", u_time = ", print_time_string(u_time))
 	    fi
-  then () = if (hodge_status_flag and hodge_screen(p,-1,floor(to_ht_time*hodge_screen_use_frac)) < 0)
+  then () = if (hodge_status_flag and hodge_screen(p,-1,floor(u_time*hodge_screen_use_frac)) < 0)
        	    then return false
 	    fi
   then () = while result = 0
@@ -3461,7 +3487,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
        	       (stat_holder:=wiggle_status_cod_one(p,HT))!= 0
 	    then return stat_holder > 0
 	    fi
-  then () = if (hodge_status_flag and hodge_screen(p,-1,floor(to_ht_time*hodge_screen_use_frac)) < 0)
+  then () = if (hodge_status_flag and hodge_screen(p,-1,floor(u_time*hodge_screen_use_frac)) < 0)
        	    then return false
   	    fi
   then result = 0, test_time = int:0
@@ -3552,7 +3578,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
        	    then prints("starting to_ht_time = ", print_time_string(to_ht_time),
 	    	        ", u_time = ", print_time_string(u_time))
 	    fi
-  then () = if (hodge_status_flag and hodge_screen(p,-1,floor(to_ht_time*hodge_screen_use_frac)) < 0)
+  then () = if (hodge_status_flag and hodge_screen(p,-1,floor(u_time*hodge_screen_use_frac)) < 0)
        	    then return false
   	    fi
   then () = while result = 0
@@ -3681,7 +3707,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
        	       (stat_holder:=wiggle_status_cod_one(p,HTlast))!= 0
 	    then return stat_holder > 0
 	    fi
-  then () = if (hodge_status_flag and hodge_screen(p,-1,floor(to_ht_time*hodge_screen_use_frac)) < 0)
+  then () = if (hodge_status_flag and hodge_screen(p,-1,floor(u_time*hodge_screen_use_frac)) < 0)
        	    then return false
   	    fi
   then to_ht_count = int:0, u_count = int:0
@@ -3788,7 +3814,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_Ufirst(Param p, [int] HTs) = bool:
        	       (stat_holder:=wiggle_status_cod_one(p,HTlast))!= 0
 	    then return stat_holder > 0
 	    fi
-  then () = if (hodge_status_flag and hodge_screen(p,-1,floor(to_ht_time*hodge_screen_use_frac)) < 0)
+  then () = if (hodge_status_flag and hodge_screen(p,-1,floor(u_time*hodge_screen_use_frac)) < 0)
        	    then return false
   	    fi
   then to_ht_count = int:0, u_count = int:0

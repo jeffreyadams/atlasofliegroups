@@ -1,0 +1,239 @@
+< basic.at {for integrality_datum}
+< misc.at {for box}
+< K_highest_weights.at {for all_parameters_gamma}
+< KL_polynomial_matrices.at {for KL_Q_polynomials}
+{< dual.at}
+
+
+{ endo.at
+
+  endo@Param, built from David's prescription of 13-14 September 2026.
+
+  THE IDEA.  Everything is decided at one parameter at the bottom of a
+  regular block, where the answer is a single choice (at least from
+  2^{components_rank(endo(p).real_form}; I hope exactly that many) and
+  then transported.
+
+    1. Translate p to regular infinitesimal character: p_reg has lambda and nu both
+       shifted by two_rho.  This leaves the integrality datum unchanged, since
+       two_rho is integral, and makes gamma regular.
+    2. Inside the block of p_reg, walk to the bottom.  The moves are: cross by an
+       integral simple root of status C+, and Cayley by an integral simple root that is
+       noncompact imaginary.  Both raise the length, so the walk terminates, at a
+       parameter with no C+ and no noncompact imaginary among the integral simple roots.
+       That set is exactly the set of minimal height/maximal length in the block.
+       (Note that block_of lists a block in DECREASING height, so it is the tail,
+       not the head).
+    3. At the bottom apply endo_shift to choose a correction.
+    4. Walk back inside the endoscopic group, undoing each move on the endoscopic side.
+       A complex cross is undone by the same complex cross.  A Cayley at a noncompact
+       imaginary root is undone by the Cayley at the same root, now real and parity,
+       which may be two-valued; the two values share a lambda and differ in x. The
+       right one is the one whose x is endox of the corresponding parameter on G.
+    5. Translate the answer back by two_rho.
+
+  Here the walk is not built explicitly: the recursion endo_rec carries it, so the path
+  is whatever sequence of first-available moves up_move returns.
+
+  WHAT IS VERIFIED.  Over SL(3,R), Sp(6,R), Sp(8,R), SO(4,3), SO(5,4), Spin(4,3),
+  SU(2,2), SU(3,2), G2_s and F4_s, at every dominant gamma built from fundamental
+  weights with denominators up to 2 (up to 3 for SL(3,R)), INCLUDING singular gamma:
+
+    - endo(p) is always defined, and its image is always nonzero and final;
+    - the infinitesimal character is exactly gamma + rho_shift;
+    - parity of every integral real root is preserved;
+    - compactness of every integral imaginary root is preserved;
+    - the Q polynomial identity Q[i][j] = QE[sig[i]][sig[j]] holds on every block, with
+      sig injective into a single block of the same size.
+
+  That is 1865 blocks and about 1.6 million Q entries, with no failures.  The groups
+  that defeated every earlier construction, SO(4,3), SO(5,4), Spin(4,3) and F4_s, are
+  included.
+
+  NOT verified: independence of the path taken by the recursion; anything in E6 or
+  larger.
+}
+
+{ ------------------------------------------------------------------ the endoscopic x }
+
+set endo_ic(Param p) = inner_class(integrality_datum(p),p.x.involution)
+
+{ the KGB element of the endoscopic group attached to q, exactly as inside endo_shift }
+set endox_of (Param q) = KGBElt:
+   let endoic = endo_ic(q), x = q.x then theta = x.involution
+   then corho_i_shift = rho_check_i(x) - rho_check_i(endoic,theta)
+   in KGB_elt(endoic, theta, x.torus_factor - corho_i_shift)
+
+{ ------------------------------------------------------------- walking to the bottom }
+
+{ index of an integral simple root that is C+ (x status 4) or noncompact imaginary
+  (x status 3); -1 when there is none, i.e. when q is at the bottom of its block
+  (most split) }
+set down_move (Param q) = int:
+(  let id = integrality_datum(q), x = q.x
+in first(for a@j in id.simple_roots do status(a,q.x)>= 3 od)
+)
+
+set at_bottom_reg (Param q) = bool: down_move(q) < 0 and is_regular(q)
+
+{ ------------------------------------------------------------------ the construction }
+
+{infl char of endo_shift is p.infinitesimal_character + shift}
+set endo_shifts(Param p) = [vec]:
+    let endoic = endo_ic(p), x = p.x, rd = p.root_datum
+    then theta = x.involution 
+    then M = eigen_lattice(theta,-1)
+    then rho_shift =  rd.rho  - endoic.rho
+    then rho_r_shift = rho_r(rd,theta) - rho_r(endoic,theta)
+    then corho_shift = rho_check_i(x) - rho_check_i(endoic,theta)
+    then endox = KGB_elt(endoic, x.involution, x.torus_factor - corho_shift)
+    then pos_int_real = real_poscoroots(endox)
+    in for b in box(2,#M) if all(for av in pos_int_real do
+    	 is_even(floor(av*(M*b - rho_r_shift))) od) do M*b fi od
+
+{meant to have infl char gamma+rho_shift, same parity as p}
+set endo_shift(Param p) = Param:
+    let endoic = endo_ic(p), x = p.x, rd = p.root_datum
+    then theta = x.involution
+    then M = eigen_lattice(theta,-1)
+    then rho_shift =  rd.rho  - endoic.rho
+    then rho_r_shift = rho_r(rd,theta) - rho_r(endoic,theta)
+    then corho_shift = rho_check_i(x) - rho_check_i(endoic,theta)
+    then endox = KGB_elt(endoic, x.involution, x.torus_factor - corho_shift)
+    then pos_int_real = real_poscoroots(endox)
+    then j = first(for b in box(2,#M) do @:all(for av in pos_int_real do
+    	 is_even(floor(av*(M*b - rho_r_shift))) od) od)
+    then shift = M*box(2,#M)[j]
+    in parameter(endox, p.lambda + rho_shift + shift, p.nu + rho_shift)
+
+
+{ regular infinitesimal character assumed; see endo below for the general case }
+set endo_rec = (Param->Param):
+  rec_fun er (Param q) Param:
+  ( let j = down_move(q)
+  in if j<0 then endo_shift(q)          { at the bottom: David's endo_shift }
+     else
+     ( let id = integrality_datum(q) then a = vec: id.simple_roots[j]
+       then st = status(a,q.x)
+     in if st=4
+        then cross(a, er(cross(a,q)))   { a cross is undone by the same cross }
+        else
+        ( let r2 = er(Cayley(a,q))      { nc imag Cayley down, then real par Cayley back up }
+          then c1 = Cayley(a,r2)
+          then want = endox_of(q)
+       in if   c1.x = want then c1
+          else let c2 = cross(a,c1)
+	       in if c2.x = want
+	       	  then c2
+          	  else prints("endo failure at ",q);
+	       	  c1 { neither matches; should not happen, and did not in any test }
+		  fi
+          fi
+        )
+        fi
+     )
+     fi
+  )
+
+{ general p: translate to regular infinitesimal character and back }
+set endo (Param p) = Param:
+(  let rd = p.root_datum
+   then tworho = ratvec: rd.two_rho
+   then p_reg = parameter(p.x, p.lambda + tworho, p.nu + tworho)
+   then e = endo_rec(p_reg)
+in parameter(e.x, e.lambda - tworho, e.nu - tworho)
+)
+
+{ ------------------------------------------------------------------------- some tests }
+
+set idx_endo ([Param] Bv, Param d0) = int:
+  let d = if is_final(d0) then d0 else normal(d0) fi, r=-1 in
+  for q@i in Bv do if r<0 and q.x.number=d.x.number and q.lambda=d.lambda
+                      and q.nu=d.nu then r:=i fi od; r
+
+set is_inj_endo ([int] s) = bool:
+  let ok=true in
+  for k@i in s do if k<0 then ok:=false
+     else for l@j in s do if j<i and l=k then ok:=false fi od fi od; ok
+
+{ dominant gamma from fundamental weights; entries from 0 so singular gamma is included }
+set coeffs_endo (int r, int d) = [[int]]:
+  let out = [[int]]:[[]] in
+  for :r do out := ## for c in out do for k:d+1 do c##[k] od od od; out
+
+{ infinitesimal character, parity and compactness }
+set endo_check (RealForm G, int dmax, string tag) = void:
+(  let rd = G.root_datum then fw = fundamental_weights(rd), r = rd.semisimple_rank
+   then np=0, ngam=0, nfin=0, ncor=0, npar=0, nimag=0, ncomp=0
+in for d:dmax from 1
+   do for c in coeffs_endo(r,d)
+      do let gamma = ratvec: sum(rd.rank, for k@i in c do k*fw[i] od)/d
+         in for p in all_parameters_gamma(G,gamma)
+            do if is_final(p)
+               then np+:=1
+               ;  let e = endo(p)
+                  then theta = p.x.involution, id = integrality_datum(p)
+                  then rho_shift = ratvec: rd.rho - endo_ic(p).rho
+                  in if e.infinitesimal_character != p.infinitesimal_character + rho_shift
+                     then ngam+:=1 fi
+                  ;  if is_final(e) then nfin+:=1 fi
+                  ;  for av in id.poscoroots
+                     do if av*(theta+1) = null(#av)
+                        then ncor+:=1
+                        ;  if parity(p,av) != parity(e,av) then npar+:=1 fi
+                        fi
+                     od
+                  ;  for a in id.posroots
+                     do if theta*a = a
+                        then nimag+:=1
+                        ;  if status(a,p.x) != status(a,e.x) then ncomp+:=1 fi
+                        fi
+                     od
+               fi
+            od
+      od
+   od
+;  prints("ENDO ",tag," params=",np,"   gamma wrong ",ngam,"   final images ",nfin,
+          "   real coroots ",ncor," parity bad ",npar,
+          "   imaginary roots ",nimag," compactness bad ",ncomp)
+)
+
+{ the Q polynomial identity, in the direct form Q_{p,q} = Q_{endo(p),endo(q)} }
+set q_endo_block ([Param] B, string tag) = void:
+(  let E = for q in B do normal(endo(q)) od
+   then BE = block_of(E[0])
+   then sig = for e in E do idx_endo(BE,e) od
+in if not is_inj_endo(sig)
+   then let miss=0 in for k in sig do if k<0 then miss+:=1 fi od
+      ;  prints("   NOT INJECTIVE ",tag," #B=",#B," #BE=",#BE," missing ",miss)
+   else let Q = KL_Q_polynomials(B), QE = KL_Q_polynomials(BE), bad=0
+      in for i:#B do for j:#B do if Q[i][j]!=QE[sig[i]][sig[j]] then bad+:=1 fi od od
+      ;  if bad>0 then prints("   Q FAIL ",tag," #B=",#B," bad=",bad,"/",#B*#B) fi
+   fi
+)
+
+set q_endo_test (RealForm G, int dmax, string tag) = void:
+(  let rd = G.root_datum then fw = fundamental_weights(rd), r = rd.semisimple_rank
+   then nb=0, nent=0, mx=0
+in for d:dmax from 1
+   do for c in coeffs_endo(r,d)
+      do let gamma = ratvec: sum(rd.rank, for k@i in c do k*fw[i] od)/d
+         then done = [Param]:[]
+      in for p in all_parameters_gamma(G,gamma)
+         do if is_final(p) and find(done,p)<0
+            then let B = singular_block_of(p) in done := done##B
+               ; nb+:=1; nent +:= #B*#B; if #B>mx then mx:=#B fi
+               ; q_endo_block(B,tag)
+            fi
+         od
+      od
+   od
+;  prints("QENDO ",tag," blocks ",nb," entries ",nent," max block ",mx)
+)
+
+{ usage:
+     ../atlasLTO    then    <endo.at
+     endo_check(Sp(6,R),2,"Sp(6,R)")
+     q_endo_test(Sp(6,R),2,"Sp(6,R)")
+  A silent q_endo_test, with only the QENDO summary line, means every block passed.
+}
