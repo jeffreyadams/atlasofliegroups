@@ -2,8 +2,6 @@
 < misc.at {for box}
 < K_highest_weights.at {for all_parameters_gamma}
 < KL_polynomial_matrices.at {for KL_Q_polynomials}
-{< dual.at}
-
 
 { endo.at
 

@@ -12,7 +12,7 @@
 <hodge0.at {for is_unitary_Hodge_0@(Param,int), the level-0 screen}
 <cohom_reductionND.at {for glue_sigs}
 <up_mu.at {for up_mu_hash}
-<Vogan-dual.at {for dual@Param}
+<dualQ.at {for dual@Param}
 <FPP_lambdas.at
 <weak_unip.at {for check_wk_unip}
 <smallQ.at {for theta_stable_data_small}
@@ -6289,7 +6289,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 				fi
 		      then P = finalize(p0)
 		      then KCF = K_type_pol(if to_htB_flag
-					    then composition_series_to_heightB(P,HT)
+					    then composition_series_to_heightQ(P,HT)
 					    elif low_flag
 					    then character_formula_to_ht(P,HT)
 					    else let (below,) = height_split(character_formula(P),HT)
@@ -6342,7 +6342,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 				 then [v##[answer0[j][2], #monomials(P)]]
 				 else let KCF = K_type_pol(
 				      	   if to_htB_flag
-				      	   then composition_series_to_heightB(P,HT)
+				      	   then composition_series_to_heightQ(P,HT)
 					   elif low_flag
 					   then character_formula_to_ht(P,HT)
 					   else let (below,) = height_split(character_formula(P),HT)
@@ -6499,7 +6499,7 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT
 	    then pC = parameter(x,lambda,gamma)
 	    then PC = finalize(pC)
 	    then KCF = if to_htB_flag
-		       then K_type_pol(composition_series_to_heightB(PC,HT))
+		       then K_type_pol(composition_series_to_heightQ(PC,HT))
 		       else K_type_pol(character_formula_to_ht(PC,HT))
 		       fi
 	    in if (not temp_Dirac_best_flag) or (Q(gamma,gamma) <= DiracBestBD)
@@ -6767,7 +6767,7 @@ set localFD_KHashbt_lookDownGEO \
 					      then [actual##midreds##[ LFKH[dim-1][locs[k]][dim+1], #ms]]
 					      else let m = ktp_hash.match(
 						       if to_htB_flag
-						       then K_type_pol(composition_series_to_heightB(P,HT))
+						       then K_type_pol(composition_series_to_heightQ(P,HT))
 						       else K_type_pol(character_formula_to_ht(P,HT))
 						       fi)
 						   in [actual##midreds##[m, #ms]]
@@ -6846,7 +6846,7 @@ set extend_K_characters(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		 then p0 = parameter(x, lambda, nu)
 		 then P = finalize(p0)
 		 then m = ktp_hash.match(if to_htB_flag
-					 then K_type_pol(composition_series_to_heightB(P,HT))
+					 then K_type_pol(composition_series_to_heightQ(P,HT))
 					 else K_type_pol(character_formula_to_ht(P,HT))
 					 fi)
 		 then () = w[d+red_shift+1] := m
@@ -6907,7 +6907,7 @@ set extend_K_characters_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	  then pC = parameter(x,lambda,face_bary(Lvd,verts))
 	  then PC = finalize(pC)
 	  then m = ktp_hash.match(if to_htB_flag
-				  then K_type_pol(composition_series_to_heightB(PC,HT))
+				  then K_type_pol(composition_series_to_heightQ(PC,HT))
 				  else K_type_pol(character_formula_to_ht(PC,HT))
 				  fi)
 	  in m
