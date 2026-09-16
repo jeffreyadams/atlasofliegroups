@@ -117,14 +117,17 @@ Polynomial<C>& Polynomial<C>::operator+= (const Polynomial& q)
 
   // make sure our polynomial has all the coefficients to be modified
   if (q.size() > size())
-    resize(q.size());
+    resize(q.size()); // zero-extend
 
-  const C* src=&*q.d_data.end();
-  C* dst=&d_data[q.size()];
+  auto src = q.d_data.cend();
+  auto dst =   d_data.begin()+q.size(); // a valid iterator thanks to |resize()|
 
-  while (src>&q.d_data[0]) *--dst += *--src;
+  while (src != q.d_data.cbegin())
+    *--dst += *--src;
+
   // set degree
-  adjustSize(); return *this;
+  adjustSize();
+  return *this;
 }
 
 template<typename C>
@@ -132,31 +135,37 @@ Polynomial<C>& Polynomial<C>::operator-= (const Polynomial& q)
 {
   if (q.is_zero())
     return *this;
+
+  // make sure our polynomial has all the coefficients to be modified
   if (q.size() > size())
-    resize(q.size());
+    resize(q.size()); // zero-extend
 
-  const C* src=&*q.d_data.end();
-  C* dst=&d_data[q.size()];
+  auto src = q.d_data.cend();
+  auto dst =   d_data.begin()+q.size(); // a valid iterator thanks to |resize()|
 
-  while (src>&q.d_data[0]) *--dst -= *--src;
+  while (src != q.d_data.cbegin())
+    *--dst -= *--src;
 
-  adjustSize(); return *this;
+  adjustSize();
+  return *this;
 }
 
 template<typename C>
 Polynomial<C>& Polynomial<C>::subtract_from (const Polynomial& p)
 {
   if (p.size() > size())
-    resize(p.size());
+    resize(p.size()); // zero-extend
 
-  C* dst=&*d_data.end();
-  while (dst>&d_data[p.size()])
+  auto dst = d_data.end();
+  while (dst != d_data.begin()+p.size())
   { --dst; *dst= -*dst; } // negate high coefficients
 
-  // now |dst==&d_data[p.size()]|
-  const C* src=&*p.d_data.end();
-  while (dst-->&d_data[0]) { *dst= *--src - *dst; }
+  // continue from where the previous loop stopped
+  auto src = p.d_data.cend();
+  while (src != p.d_data.cbegin())
+  { --dst; *dst= *--src - *dst; }
 
+  assert(dst == d_data.begin());
   adjustSize(); return *this;
 }
 
@@ -165,7 +174,8 @@ Polynomial<C>& Polynomial<C>::operator*= (C c)
 {
   if (c==C(0)) *this=Polynomial();
   else
-    for (C* p=&*d_data.end(); p>&d_data[0]; ) *--p *= c;
+    for (auto p = d_data.end(); p!=d_data.begin(); )
+      *--p *= c;
 
   return *this;
 }
@@ -175,7 +185,7 @@ Polynomial<C>& Polynomial<C>::operator/= (C c)
 {
   if (c==C(0))
     throw std::runtime_error("Polynomial division by 0");
-  for (C* p=&*d_data.end(); p>&d_data[0]; )
+  for (auto p = d_data.end(); p != d_data.begin(); )
     if (*--p%c==C(0))
       *p /= c;
     else
