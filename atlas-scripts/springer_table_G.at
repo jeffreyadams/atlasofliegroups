@@ -68,7 +68,7 @@ in ( ct
      let diagram = O.diagram in
      if =diagram then complex_nilpotent(rd,rd.two_rho_check)
      elif diagram=[2,2] then complex_nilpotent(rd,null(rd.rank))
-     else complex_nilpotent(drd,cowt)
+     else complex_nilpotent(rd,cowt)
      fi
    , (ComplexNilpotent O) int: case O.diagram * form in 3, 1, 5, 4 else 0 esac
    )
