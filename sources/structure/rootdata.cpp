@@ -739,7 +739,7 @@ RootNbr RootSystem::lookup_root(const Byte_vector& v) const
   const bool neg = *it<0;
   auto pr = lookup_posroot(neg ? -v : v);
   return pr==numPosRoots() ? numRoots()
-    : neg ? posRootNbr(pr) : negRootNbr(pr);
+    : neg ? negRootNbr(pr) : posRootNbr(pr);
 }
 
 RootNbr RootSystem::lookup_coroot(const Byte_vector& v) const
@@ -754,7 +754,7 @@ RootNbr RootSystem::lookup_coroot(const Byte_vector& v) const
   const bool neg = *it<0;
   auto pr = lookup_poscoroot(neg ? -v : v);
   return pr==numPosRoots() ? numRoots()
-    : neg ? posRootNbr(pr) : negRootNbr(pr);
+    : neg ? negRootNbr(pr) : posRootNbr(pr);
 }
 
 RootNbr RootSystem::root_add(RootNbr alpha, RootNbr beta) const
@@ -778,6 +778,7 @@ RootNbr RootSystem::coroot_add(RootNbr alpha, RootNbr beta) const
 */
 RootNbrSet RootSystem::long_orthogonalize(const RootNbrSet& rset) const
 {
+  assert(rset.capacity()==numRoots()); // use full root system
   RootNbrSet result = rset;
   for (RootNbrSet::iterator it=result.begin(); it(); ++it)
     for (RootNbrSet::iterator jt=result.begin(); jt!=it; ++jt)
