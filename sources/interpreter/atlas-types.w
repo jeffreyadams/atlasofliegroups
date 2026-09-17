@@ -1675,15 +1675,22 @@ void positive_coroots_wrapper(eval_level l)
 coradical, and for the sum of the coroot lattice and the radical; the latter
 will in fact be used later in a function to built inner classes.
 
+This is a rare (currently unique) occasion where we use the |int_Vector_cref|
+type, which is a class that stores a constant reference to an |int_Vector|. It
+is used here to assemble a sequence of vectors stored in the root datum, with
+the goal of passing them to the |matrix_value| constructor, without first making
+a copy of those vectors (their contents will be copied into the matrix anyway,
+so we are not creating permanent references into the root datum here).
+
 @< Local function definitions @>=
 void root_coradical_wrapper(eval_level l)
 { shared_root_datum rd = get<root_datum_value>();
   if (l==eval_level::no_value)
     return;
 @)
-  std::vector<int_Vector_cref> srl
+  sl_list<int_Vector_cref> srl
     (rd->val.beginSimpleRoot(),rd->val.endSimpleRoot());
-  srl.insert(srl.end(),rd->val.beginCoradical(),rd->val.endCoradical());
+  srl.append(rd->val.beginCoradical(),rd->val.endCoradical());
   push_value(std::make_shared<matrix_value> @|
     (srl.begin(),srl.end(),rd->val.rank()));
 }
@@ -1693,9 +1700,9 @@ void coroot_radical_wrapper(eval_level l)
   if (l==eval_level::no_value)
     return;
 @)
-  std::vector<int_Vector_cref> scl
+  sl_list<int_Vector_cref> scl
     (rd->val.beginSimpleCoroot(),rd->val.endSimpleCoroot());
-  scl.insert(scl.end(),rd->val.beginRadical(),rd->val.endRadical());
+  scl.append(rd->val.beginRadical(),rd->val.endRadical());
   push_value(std::make_shared<matrix_value> @|
     (scl.begin(),scl.end(),rd->val.rank()));
 }
