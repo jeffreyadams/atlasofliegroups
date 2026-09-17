@@ -123,11 +123,8 @@ set K_ss_rk = (RealForm -> int):
 	  fi;
 	  kssrks[n]
 
-{if false, then always use bottom layer when it's called for}
-{set test_bl_flag = false} {true; changed to false AFTER 11/14 commit}
-{DELETED 11/16: accomplish by easy_test_flag:=false and hard_test_flag:=false}
 
-{if true, and test_bl_flag true, then introduce more_shift when appropriate}
+{if true, then introduce more_shift when appropriate}
 set test_more_flag = true
 
 {how close to next_heights(G) the largest more_shift can be; maybe in range (0,1)?}
@@ -180,7 +177,7 @@ set easy_test_flag = true
 {If one_level_frac_flag and x exceeds this fraction of KGB, then make one_level_revert_flag true}
 {set one_level_frac = 2/3}
 
-{if NOT KGB_frac, and height is smaller than this fraction of max height, then switch
+{if NOT KGB_frac_flag, and height is smaller than this fraction of max height, then switch
     from bottom_layer to one_level or hash2}
 set lambda_frac = rat: 2/3
 
