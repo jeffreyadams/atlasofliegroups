@@ -252,12 +252,12 @@ set composition_series_to_heightQ(Param p, int H) = ParamPol:
 set composition_series_to_heightQ(ParamPol P, int H) = ParamPol:
     map(((Param->ParamPol): (Param p): composition_series_to_heightQ(p, H)), P)
 
-{WARNING: HAVE NOT MADE THIS WORK FOR NEGATIVE H!}
 {i,j entry is mult of irr i in (partial block) in standard j; so always i <= j, mat is upper triang}
 {column j is comp series of std #j <-> coeffs of std dj in irrs di}
 set composition_series_mat_to_heightQ(Param p, int H) = mat:
     let Bp = partial_block(p) {block elts q of greater ht (closer to discrete series) than p;
     	     		      things that may occur}
+    then () = if H < 0 then H:=height(Bp[0]) fi
     then BpH_js = for q@j in Bp do if q.height <= H then [j] else [] fi od.##
     then BpH = for j in BpH_js do Bp[j] od, pd = dual(p)
     then dBpH = for q in BpH do {regroup(pd.real_form,}dual(q){)} od {these qd are lower ht than pd}

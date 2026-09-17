@@ -1,5 +1,58 @@
 <hodge_deform.at
 <TWOHEIGHTS.at {for HT}
+
+{---------------------------------------------------------------------------}
+{ hodge0HT_claude.at -- push the height truncation DOWN INTO the recursion.
+
+  hodge0.at:746 records that the _to_ht forms "compute the whole answer and
+  truncate, so they cost what the untruncated ones cost", and anticipates a
+  version where the truncation is pushed down.  This is that experiment.
+
+  THE LEVER.  |reducibility_points_rp(p,HT)| already takes a height bound, and
+  uses it: red_points.at's |test_scr| calls |to_ht_scr_G(G,QL,HT)|, so a wall
+  counts as a reducibility point only when the induced quotient still has a
+  K-type of height <= HT.  hodge0.at always passes -1 and therefore never gets
+  any of this.  At HT = -1 the sharp points barely differ from the dull ones
+  (1% fewer nodes, not worth the cost -- see sharp_rp_flag); at the SMALL HT one
+  actually tests at, they differ enormously:
+
+      p                      ht(p)  dull  sharp(-1)  HT=8  HT=16  HT=24
+      trivial(Sp(8,R))         0     12      12        7      7     10
+      trivial(F4_s)            0     28      28       10     11     16
+      trivial(Spin(8,2))      22      9       5        0      0      0
+
+  A parameter with #rp = 0 returns K_type_pol(p) at once, so the Spin(8,2) row
+  is the whole recursion collapsing.
+
+  WHY IT IS LEGITIMATE.  height(q) is the height of the lowest K-type of q, so
+  every K-type of q has height >= height(q).  A deformation term of height > HT
+  therefore contributes nothing at height <= HT, and neither does anything it
+  goes on to produce.  That is the same fact the existing |to_ht| truncation
+  rests on; here it is applied before the work instead of after.
+
+  WHAT CHANGED.  |HH_ht| holds the height bound the hash is valid for, and
+  |HHinds| asks for |reducibility_points_rp(p,HH_ht)|.  Because the cached
+  answers are only correct up to that bound, the hash must be cleared whenever
+  HH_ht changes -- |Hodge_hash_0_pruned| does that.  Set ht_prune_flag := false
+  to get the old behaviour (HT = -1 everywhere) back.
+
+  THE ANSWERS ARE ONLY VALID UP TO HEIGHT HH_ht.  Do not read the hash, or the
+  KTypePols in it, as the full Hodge_hash_0 answer.                          }
+{---------------------------------------------------------------------------}
+
+set ht_prune_flag = bool: true
+set ht_prune_rp = bool: true    {use HH_ht in reducibility_points_rp}
+set ht_prune_cut = bool: true   {truncate each node's KTypePols to HH_ht}
+set HH_ht = int: -1        {height bound the Hodge_hash_0 hash is valid for}
+
+{ Truncate to the active bound.  Pruning reducibility points makes the answer
+  correct only UP TO HH_ht, so the part above it is garbage; keeping that
+  garbage also trips the is_positive assert in the node.  Cutting it at every
+  node removes both problems and shrinks every KTypePol the recursion carries. }
+set HHcut(KTypePol P) = KTypePol:
+    if ht_prune_flag and ht_prune_cut and HH_ht >= 0 then to_ht(P,HH_ht) else P fi
+
+<red_points.at {for accurate reducibility_points}
 {Lengths along a library block list are monotone non-decreasing, from 0 to at
  most #posroots (David).  length@Param is expensive -- it is a block-theoretic
  quantity, the number of successive ascents possible in the full block, so it
@@ -20,6 +73,51 @@
  The naive loop was the single largest item in hodge0: 5978ms of 15104ms (40%)
  on Sp(10,R) x_open, and at E7_s 8542ms on one block against 1161ms for the
  partial_KL_block that produced it.}
+{ ----------------------------------------------------------------------
+  |easy_block_lengths| -- David's formula.  Same use as |block_lengths|, but it
+  does NOT return length@Param: it returns
+
+      easy(q) = length(q) + c_B ,
+
+  where c_B is a CONSTANT on the block B.  Only differences are ever wanted
+  (all three callers form sgns[i]*sgns[j] = (-1)^(l_i - l_j)), so c_B is
+  invisible; but do not use this where an absolute length is meant.
+
+  Construction.  On a block the infinitesimal character is fixed, hence so is
+  rid = integrality_datum, hence so is its distinguished involution delta_rid.
+  Writing theta = q.x.involution = w . delta_rid with w in W(rid): delta_rid
+  permutes the simple roots of rid and so fixes two_rho, whence
+  theta*two_rho = w*two_rho and |from_dominant| recovers w.  Then
+
+      easy(q) = ( length(w) + rank(theta - 1) ) / 2 .
+
+  The exact form is ( length(w) + rank(theta-1) - rank(delta_rid-1) )/2 plus a
+  block constant; dropping the rank(delta_rid-1) term is what makes c_B carry a
+  fractional part.  So c_B = rank(delta_rid-1)/2 modulo 1 -- a half-integer
+  exactly when rank(delta_rid-1) is odd (e.g. SL(3,R), SL(4,R), where it is 1
+  and every numerator below is odd).  Since that rank is constant on the block,
+  the parity of the numerator is too, so the integer division \2 shifts the
+  whole block equally and differences survive.  The integer part of c_B depends
+  on the block (0 for the principal one; 14 and 6 for the size-1 and size-15
+  F4_s blocks at x_open) and is not needed.
+
+  Why bother: length@Param CONSTRUCTS A PARTIAL BLOCK to read off one integer
+  (repr.cpp:1479 -- make_dominant, lookup, block.length), ~1ms per Param at
+  E7_s.  This builds nothing.  E6_s block: 630ms -> 10ms, 63x.  End to end in
+  |Hodge_hash_0|, identical answers: Spin(5,4) 30%, Sp(8,R) 27%, F4_s 37%,
+  E6_s at mid-depth 35%.  Verified offset-constant on 206 blocks over 9 groups,
+  integral and non-integral gamma, equal and unequal rank.               }
+set easy_block_lengths([Param] B) = [int]:
+    if #B = 0 then []
+    else let rid = integrality_datum(B[0])   {constant on the block}
+         then tr = ratvec: rid.two_rho
+         in for q in B
+            do let th = q.x.involution
+               then (w,) = from_dominant(rid, ratvec: th*tr)
+               in (length(w) + rank(th - id_mat(#th)))\2
+            od
+    fi
+
 set block_lengths([Param] B) = [int]:
     let n = #B in
     if n = 0 then []
@@ -70,6 +168,7 @@ set back_solve(mat P, vec b) = vec:
 
 
 
+
 set is_positive(KTypePol P) = bool:
     let vint = vec: for c@mu in P do int_part(c) od
     then vs = vec: for c@mu in P do s_part(c) od
@@ -102,7 +201,7 @@ set rec_fun Hodge_0A_std(Param p) = KTypePol:
        then Hodge_0A_std(Finalize(p*rp~[0]))
        else let orp = orientation_nr(p)
 	    then (B,Ppol,pols) = partial_KL_block(p)
-	    then sgns = for l in block_lengths(B) do (-1)^l od
+	    then sgns = for l in easy_block_lengths(B) do (-1)^l od
 	    then P = id_mat(#B)
 	    then () = for i:#B - 1
 	    	      do  for j: #B - i - 1 from i+1
@@ -170,7 +269,7 @@ set rec_fun Hodge_0(Param p) = (KTypePol,KTypePol):
 	       in (Hstd,Hstd)
        else let orp = orientation_nr(p) {henceforth p is reducible, rp~[0] = 1}
 	    then (B,Ppol,pols) = partial_KL_block(p)
-	    then sgns = for l in block_lengths(B) do (-1)^l od
+	    then sgns = for l in easy_block_lengths(B) do (-1)^l od
 	    then P = id_mat(#B)
 	    then () = for i:#B - 1
 	    	      do  for j: #B - i - 1 from i+1
@@ -220,6 +319,9 @@ set rec_fun Hodge_0(Param p) = (KTypePol,KTypePol):
 	 fi
 
 set herm_center_flag = true
+
+{Precisely calculate reducibility points. If false, use reducibility_points@Param}
+set sharp_rp_flag = false {true tested 3x slower by claude on F4_s}
 
 {Interruption.  |hodge_interrupt_flag| is checked before the clock so the
  uninterrupted path pays only a boolean test per visit (there are 44774 visits
@@ -307,16 +409,45 @@ set (Hodge_hash_0, Hodge_hash_clear, print_HH_stats, HH_data, Hodge_maybe_0) = (
 (    let hodge_param_hash = make_Param_hash()
     then hodge_Kpol_hash = make_KTypePol_hash()
     then answers = [vec]: []
+    then ans_ht = [int]: []   {bound each answers[] entry was computed to; -1 = full}
     	 {for each entry in hodge_param_hash, indices of hodge_0_std and hodge_0_irr}
     then clearHH() = void:
     	 hodge_param_hash.clear();
 	 hodge_Kpol_hash.clear();
-	 answers:=[]
+	 answers:=[]; ans_ht:=[]
     then HKH_index(int m) = KTypePol:
     	 if m>=0
 	 then hodge_Kpol_hash.index(m)
 	 else -hodge_Kpol_hash.index(-m-1)
 	 fi
+    { Store an answer, recording the bound it is valid to (David's
+      big_unitary_hash convention).  |nold| >= 0 means we are REPLACING a row
+      computed at a lower bound, which is why this cannot stay append-only. }
+    then HHstore(Param q, int nold, vec v) = void:
+        if nold >= 0
+        then answers[nold] := v; ans_ht[nold] := HH_ht
+        else { |match| appends when q is new, but q can already be present: a
+               recursive call made during THIS call can have stored it (which is
+               why an assert that match = size is wrong here).  Both computations
+               ran at the same bound, so they must agree -- check that rather
+               than assume it. }
+             let k = hodge_param_hash.match(q)
+             in if k = #answers
+                then answers #:= v; ans_ht #:= HH_ht
+                else { The stored row may have been computed at a HIGHER bound
+                       and is returned untruncated by the reuse path, so the two
+                       index vectors can legitimately differ ABOVE HH_ht.  What
+                       must hold is agreement at the bound now in force. }
+                     assert(@:let o = answers[k] in
+                              HHcut(HKH_index(o[0])) = HHcut(HKH_index(v[0]))
+                              and HHcut(HKH_index(o[1])) = HHcut(HKH_index(v[1])),
+                            "HHstore: recursive duplicate disagrees below HH_ht");
+                     { keep the more informative row: a higher bound covers more }
+                     if ans_ht[k] >= 0 and (HH_ht < 0 or HH_ht > ans_ht[k])
+                     then answers[k] := v; ans_ht[k] := HH_ht
+                     fi
+                fi
+        fi
     then rec_fun HHinds(Param p) = vec:
      if hodge_check_time() then return (vec: []) fi;
      let N = hodge_param_hash.size()
@@ -324,23 +455,30 @@ set (Hodge_hash_0, Hodge_hash_clear, print_HH_stats, HH_data, Hodge_maybe_0) = (
      	       then p := non_herm_center(p)
 	       fi
      then n = hodge_param_hash.lookup(p)
-     in if n < 0
-    	then let prf = p.real_form, rp = reducibility_points(p), emptyK = null_K_module(p.real_form)
+     then n_use = { a stored answer serves any bound it covers }
+     	  	  if n < 0 then -1
+		  elif ans_ht[n] = -1 then n
+		  elif HH_ht >= 0 and ans_ht[n] >= HH_ht then n
+		  else -1
+		  fi
+     in if n_use < 0
+    	then let prf = p.real_form, emptyK = null_K_module(p.real_form)
+	     then rp = if sharp_rp_flag
+	     	       then reducibility_points_rp(p,
+		       	    	if ht_prune_flag and ht_prune_rp then HH_ht else -1 fi)
+		       else reducibility_points(p)
+		       fi
 	     then delta = prf.distinguished_involution
        	     in if #rp = 0
-       	       	  then let ans = K_type_pol(p)
+       	       	  then let ans = HHcut(K_type_pol(p))
 	       	       then m = hodge_Kpol_hash.match(ans), N = hodge_param_hash.size(), n = -1
-	       	       in n:=hodge_param_hash.match(p);
-		       	  answers#:= (vec: [m,m]);
-			  assert(@:N=n and #answers = N+1);
+	       	       in HHstore(p,n,(vec: [m,m]));
 	       	       	  [m,m]
        	  elif rp~[0] < 1
        	  then let ind = HHinds(Finalize(p*rp~[0]))
 	       	    then () = if hodge_timed_out then return (vec: []) fi
 	       	    then N = hodge_param_hash.size(), n = -1
-	       	    in n:= hodge_param_hash.match(p);
-	       	       answers#:= [ind[0],ind[0]];
-		       assert(@: N = n and #answers = N+1);
+	       	    in HHstore(p,n,(vec: [ind[0],ind[0]]));
 	       	       [ind[0],ind[0]]
        	  else let orp = orientation_nr(p) {henceforth p is reducible}
 	       then () = if hodge_interrupt_flag and hodge_probe_flag and not hodge_timed_out
@@ -364,7 +502,7 @@ set (Hodge_hash_0, Hodge_hash_clear, print_HH_stats, HH_data, Hodge_maybe_0) = (
 		as well as on entry keeps a 500ms budget from overshooting by
 		the whole of the P fill and the solve on top of the block.}
 	       then () = if hodge_check_time() then return (vec: []) fi
-	       then sgns = for l in block_lengths(B) do (-1)^l od
+	       then sgns = for l in easy_block_lengths(B) do (-1)^l od
 	       then P = id_mat(#B)
 	       then () = for i:#B - 1
 	    	       	 do  for j: #B - i - 1 from i+1
@@ -396,30 +534,28 @@ set (Hodge_hash_0, Hodge_hash_clear, print_HH_stats, HH_data, Hodge_maybe_0) = (
 			od)
 	    then hpaux = if #rp = 1 then vec: [-1] else HHinds(Finalize(p*rp~[1])) fi
 	    then () = if hodge_timed_out then return (vec: []) fi
-	    then Hpstd = if #rp = 1
+	    then Hpstd = HHcut(if #rp = 1
 	     	       	 then def + K_type_pol(p)
 			 else hodge_Kpol_hash.index(hpaux[0]) + def
-			 fi
+			 fi)
 	    then N = hodge_param_hash.size()
             in Hstds #:=Hpstd; lower_inds#:=#B-1;
 	       if hodge0_verbose
 	       then prints("at ",p,", def is ",def);
 	       	    prints("graded comp series of p = ",Q); prints("P = ",P)
 	       fi;
-	       let Hpirr = sum(prf, for j@k in lower_inds
+	       let Hpirr = HHcut(sum(prf, for j@k in lower_inds
 				    do if orientation_nr(B[j]) = orp
 				       then P[j,#B-1]*Hstds[k]
 				       else emptyK
 				       fi
-				    od)
+				    od))
 	       then (a,b) = (hodge_Kpol_hash.match(Hpstd), hodge_Kpol_hash.match(Hpirr))
-	       in answers#:=(vec: [a,b]);
-	       	  n:=hodge_param_hash.match(p);
+	       in HHstore(p,n,(vec: [a,b]));
 		  assert(@:is_positive(Hpstd) and is_positive(Hpirr) and is_positive(Hpstd - Hpirr));
-	       	  assert(@:N=n and #answers = N+1);
 	       	  [a,b]
 	 fi{#rp = 0}
-	 else answers[n]
+	 else answers[n_use]
 	 fi {n<0}
     in
     ( (Param -> (KTypePol,KTypePol)): (Param p):
@@ -446,7 +582,6 @@ set (Hodge_hash_0, Hodge_hash_clear, print_HH_stats, HH_data, Hodge_maybe_0) = (
 	  fi
     )
     )
-
 {each delta-fixed final Param p corresponds to two extended
 parameters, with the action of delta differing by -1. atlas picks one,
 called p; the other is s*p. If mu appears with mult m in
@@ -458,14 +593,12 @@ hodge_twisted)/2. On an unfixed Param q, with twist q', the extended
 multiplicity in q+q' is (1+s)*hodge.}
 set = ((Split,KType) (c0,mu0), (Split,KType) (c1,mu1)) = bool:
     c0 = c1 and mu0 = mu1
-
 {assume coeffs are all 1 or s; replace by 1 or -1}
 set s_index(KTypePol H) = KTypePol:
     int_part(H) - s_part(H)
 {sum(, for c@mu in K_type_pol_extended(p,delta)
 				{sum of 2^r LKTs, each with 1 or s}
 		     	      	        do if c = 1 then mu else -mu fi od)}
-
 set (Hodge_twisted_hash_0, Hodge_twisted_hash_clear, print_HTH_stats, HTH_data, Hodge_twisted_maybe_0) = ((Param -> (KTypePol, KTypePol)), ( -> ), ( -> ), ( -> (Param_hash, KTypePol_hash,[vec])), ((Param,int) -> (maybe_KTP,maybe_KTP))):
 (    let hodge_param_hash = make_Param_hash()
     then hodge_Kpol_hash = make_KTypePol_hash()
@@ -495,7 +628,10 @@ set (Hodge_twisted_hash_0, Hodge_twisted_hash_clear, print_HTH_stats, HTH_data, 
 	       fi
      then n = hodge_param_hash.lookup(p)
      in if n < 0
-    	then let rp = reducibility_points(p)
+    	then let rp = if sharp_rp_flag
+	     	      then reducibility_points_rp(p, -1)
+		      else reducibility_points(p)
+		      fi
 	     then emptyK = null_K_module(prf)
        	     in if #rp = 0
        	       	then let ans = s_index(K_type_pol_extended(p,delta))
@@ -792,14 +928,43 @@ set Hodge_extended_hash_0_irr(Param p, int time) = maybe_KTP:
     fi
 
 {--- irr, truncated ---}
+{ |Hodge_hash_0_pruned(p,HT)| -- the to-height answer with the bound pushed
+  into the recursion.  Clears the hash when the bound changes, because cached
+  answers are only valid up to the bound they were computed under. }
+set Hodge_hash_0_pruned(Param p, int HT) = KTypePol:
+    if not is_equal_rank(p.real_form)
+    then { unequal rank goes through Hodge_twisted_hash_0, which this
+           experiment leaves exactly as in hodge0.at: fall back to the old
+           compute-then-truncate path. }
+         to_ht(Hodge_extended_hash_0_irr(p),HT)
+    else { No clearing when the bound changes: ans_ht records the bound each
+           stored row is valid to, so a row computed at a higher bound is
+           reused and truncated, and one computed at a lower bound is
+           recomputed and overwritten. }
+         HH_ht := HT;
+         to_ht(Hodge_hash_0_irr(p), HT)
+    fi
+
+set is_unitary_to_ht_Hodge_0_pruned(Param p, int HT) = bool:
+    is_pure(Hodge_hash_0_pruned(p,HT).convert_cform_hermitian)
+
+{ Both _to_ht forms now push the bound into the recursion when
+  |ht_prune_flag| is set and the group is equal rank; otherwise they are the
+  original compute-then-truncate. }
 set Hodge_hash_0_irr_to_ht(Param p, int HT) = KTypePol:
-    to_ht(if is_equal_rank(p.real_form)
-    	  then Hodge_hash_0_irr(p)
-	  else Hodge_extended_hash_0_irr(p)
-	  fi, HT)
+    if ht_prune_flag and HT >= 0 and is_equal_rank(p.real_form)
+    then Hodge_hash_0_pruned(p,HT)
+    else to_ht(if is_equal_rank(p.real_form)
+    	       then Hodge_hash_0_irr(p)
+	       else Hodge_extended_hash_0_irr(p)
+	       fi, HT)
+    fi
 
 set Hodge_hash_0_irr_to_ht(Param p, int HT, int time) = maybe_KTP:
-    to_ht(Hodge_hash_0_irr(p,time),HT)
+    if ht_prune_flag and HT >= 0 and is_equal_rank(p.real_form)
+    then HH_ht := HT; to_ht(Hodge_hash_0_irr(p,time),HT)
+    else to_ht(Hodge_hash_0_irr(p,time),HT)
+    fi
 
 set Hodge_extended_hash_0_irr_to_ht(Param p, int HT) = KTypePol:
     to_ht(Hodge_extended_hash_0_irr(p),HT)

@@ -9,7 +9,10 @@
 <unity.at {for deform_hts}
 <red_count.at {for red_count@Param}
 <face_classes.at {for coords}
-<hodge0.at {for is_unitary_Hodge_0@(Param,int), the level-0 screen}
+<hodge0.at {for is_unitary_Hodge_0@(Param,int), the level-0 screen.  Its _to_ht
+            forms push the height bound down into the recursion (pruning
+            reducibility points with reducibility_points_rp(p,HT)) instead of
+            computing the whole answer and truncating.}
 <cohom_reductionND.at {for glue_sigs}
 <up_mu.at {for up_mu_hash}
 <dualQ.at {for dual@Param}
@@ -2979,7 +2982,14 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
        to_ht_time = int: u_predictor(p,ht, u_time + interrupt_base_time),{interrupt_base_time,}}
        test_time = int:0,
        start = elapsed_ms()
-  then () = if (hodge_status_flag and hodge_screen(p,-1,floor(u_time*hodge_screen_use_frac)) < 0)
+  then () = if (hodge_status_flag and hodge_screen(p,ht,floor(to_ht_time*hodge_screen_use_frac)) < 0)
+       	    {HT was -1 at all six of these: the screen computed the FULL hodge0
+       	     and discarded everything above the bound.  Each site now passes the
+       	     height that parameter is about to be tested at -- |ht| in the
+       	     is_unitary_test_* forms, |HT| in the is_unitary_to_ht_* forms,
+       	     |HTlast| in the is_unitary_to_hts_* forms.  Sound because impurity
+       	     at ANY height already proves non-unitarity; a smaller bound can only
+       	     catch less, never report a false positive.}
        	    then return false
 	    fi
   then () = if print_int_flag
@@ -3084,7 +3094,7 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
        	    then prints("starting to_ht_time = ", print_time_string(to_ht_time),
 	    	        ", u_time = ", print_time_string(u_time))
 	    fi
-  then () = if (hodge_status_flag and hodge_screen(p,-1,floor(u_time*hodge_screen_use_frac)) < 0)
+  then () = if (hodge_status_flag and hodge_screen(p,ht,floor(to_ht_time*hodge_screen_use_frac)) < 0)
        	    then return false
 	    fi
   then () = while result = 0
@@ -3487,7 +3497,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
        	       (stat_holder:=wiggle_status_cod_one(p,HT))!= 0
 	    then return stat_holder > 0
 	    fi
-  then () = if (hodge_status_flag and hodge_screen(p,-1,floor(u_time*hodge_screen_use_frac)) < 0)
+  then () = if (hodge_status_flag and hodge_screen(p,HT,floor(to_ht_time*hodge_screen_use_frac)) < 0)
        	    then return false
   	    fi
   then result = 0, test_time = int:0
@@ -3578,7 +3588,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
        	    then prints("starting to_ht_time = ", print_time_string(to_ht_time),
 	    	        ", u_time = ", print_time_string(u_time))
 	    fi
-  then () = if (hodge_status_flag and hodge_screen(p,-1,floor(u_time*hodge_screen_use_frac)) < 0)
+  then () = if (hodge_status_flag and hodge_screen(p,HT,floor(to_ht_time*hodge_screen_use_frac)) < 0)
        	    then return false
   	    fi
   then () = while result = 0
@@ -3707,7 +3717,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
        	       (stat_holder:=wiggle_status_cod_one(p,HTlast))!= 0
 	    then return stat_holder > 0
 	    fi
-  then () = if (hodge_status_flag and hodge_screen(p,-1,floor(u_time*hodge_screen_use_frac)) < 0)
+  then () = if (hodge_status_flag and hodge_screen(p,HTfirst,floor(to_ht_time*hodge_screen_use_frac)) < 0)
        	    then return false
   	    fi
   then to_ht_count = int:0, u_count = int:0
@@ -3814,7 +3824,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_Ufirst(Param p, [int] HTs) = bool:
        	       (stat_holder:=wiggle_status_cod_one(p,HTlast))!= 0
 	    then return stat_holder > 0
 	    fi
-  then () = if (hodge_status_flag and hodge_screen(p,-1,floor(u_time*hodge_screen_use_frac)) < 0)
+  then () = if (hodge_status_flag and hodge_screen(p,HTfirst,floor(to_ht_time*hodge_screen_use_frac)) < 0)
        	    then return false
   	    fi
   then to_ht_count = int:0, u_count = int:0

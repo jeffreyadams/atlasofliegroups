@@ -5208,6 +5208,9 @@ reversion is to hash2}
 set one_level_revert_flag = true {false}
 set real_dumb_revert_flag = false
 
+set one_level_bottom_revert_flag = false {if true, go to one_level after vertices and edges}
+set two_bottom_revert_flag = false {if true, go to 2 after vertices and edges}
+
 {assume local faces to dim 1 are recorded in LF, already herm and pos
 on LKTs. This version uses min_bottom_elim instead of
 unitary_to_ht. Because of incorporation of good range nonunitarity proofs in min_bottom_elim,
@@ -5304,7 +5307,7 @@ set local_test_GEO_hash_bottom_layer_interrupt(KGBElt x, ratvec lambda, LocalVer
 		  prints("testing heights = ", Ds, new_line)
 	       fi
     then startDBTcount = DBTcount
-    then LFDKH = if red_count_flag and #LF[1] > 0
+    then LFDKH = if red_count_flag and #LF[1] > 0 {computed to infinite height}
     	       	 then let (eq,CLBF) = localGraphRed(LF)
 		      in localFD_KHash_01_graph(x,lambda,Lvd,pol_hash,LF, eq,CLBF)
 		  else localFD_KHash_01(x, lambda, Lvd, pol_hash, LF)
@@ -5402,6 +5405,14 @@ set local_test_GEO_hash_bottom_layer_interrupt(KGBElt x, ratvec lambda, LocalVer
          let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
 	 {these have had know_lower, min_bottom, and bottom_elim
 	 already applied; so just do is_unitary_test}
+    	 then () = if test_verbose
+    	      	   then prints(for list in LFDKH do #list od, " = ",sum(for list in LFDKH do #list od),
+	      	      	" unitary candidates in ",#eq," equivalence classes.");
+		   	prints("number of tests so far = ",unitary_test_counter.use_count() - UTCstart);
+		   	prints("first do min_bottom test:")
+	           fi
+	 then () = LFDKH := local_testK_hash_min_bottom_layer(x,lambda, Lvd, LFDKH, eq,
+		      gr, CLBF, height(pmin), pol_hash,  Uhash, fancy_tester)
     	 then () = if test_verbose
     	      	   then prints(for list in LFDKH do #list od, " = ",sum(for list in LFDKH do #list od),
 	      	      	" unitary candidates in ",#eq," equivalence classes.");
@@ -5504,6 +5515,14 @@ set local_test_GEO_hash_bottom_layer_step(KGBElt x, ratvec lambda, {VertexData v
          let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
 	 {these have had know_lower, min_bottom, and bottom_elim
 	 already applied; so just do is_unitary_test}
+    	 then () = if test_verbose
+    	      	   then prints(for list in LFDKH do #list od, " = ",sum(for list in LFDKH do #list od),
+	      	      	" unitary candidates in ",#eq," equivalence classes.");
+		   	prints("number of tests so far = ",unitary_test_counter.use_count() - UTCstart);
+		   	prints("first do min_bottom test:")
+	           fi
+	 then () = LFDKH := local_testK_hash_min_bottom_layer(x,lambda, Lvd, LFDKH, eq,
+		      gr, CLBF, height(pmin), pol_hash,  Uhash, fancy_tester)
     	 then () = if test_verbose
     	      	   then prints(for list in LFDKH do #list od, " = ",sum(for list in LFDKH do #list od),
 	      	      	" unitary candidates in ",#eq," equivalence classes.");
@@ -5622,12 +5641,12 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 		   fi
 	      fi
 {Now there are min_bottom_layer K-types, or else more_flag; bl_KHash contains them, LKDatas}
-    then first_ht = min_ht_max
+    then first_ht = min_ht_max, UTCstart = unitary_test_counter.use_count()
     then pmax = pmax(x,lambda,Lvd)
     then gamma = pmax.infinitesimal_character
     then hts = next_heights(pmax, edge_offset+1)
     {next step computes K-characters, possibly using red_count to reduce the number of calcs}
-    then LFDKH = if red_count_flag and #LF[1] > 0
+    then LFDKH = if red_count_flag and #LF[1] > 0 {just to first_ht}
     	       	 then let (eq,CLBF) = localGraphRed(localFD_1Dirac2_red_update(x,lambda, first_ht, Lvd,LF))
 		      in localFD_KHash_01_graph(x,lambda,Lvd,pol_hash,LF, eq,CLBF)
 		 else localFD_KHash_01(x, lambda, Lvd, first_ht {min_ht_max}, pol_hash, LF)
@@ -5642,8 +5661,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 			  for list in LF do #list od);
 		 prints("testing min_bottom height = ", min_ht_max, new_line)
 	       fi;
-   	       let UTCstart = unitary_test_counter.use_count()
-    	       then startDBTcount = DBTcount
+   	       let startDBTcount = DBTcount
    	       then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
     	       {next remove from LFDKH all faces failing min_bottom_factors_elim}
    	       in LFDKH:= local_testK_hash_min_bottom_layer(x,lambda, Lvd, LFDKH, eq,
@@ -5709,6 +5727,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 		     	     od
 		 in ()
 	     fi {more_flag_temp}
+	     {now LFDKH is to ht HK_known}
       then () = LF_more_bl_vec := for list in LFDKH do #list od
       then () = bl_size_hash.match(LF_pre_vec##LF_min_bl_vec##LF_more_bl_vec)
       then () = if test_verbose
@@ -5731,9 +5750,45 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
    then () = min_after_flag := not more_flag_temp
    {then () = prints("leaving bottom_layer; one_level_revert_flag = ",one_level_revert_flag)}
    in {1/0;}
-      if one_level_revert_flag
+      if one_level_bottom_revert_flag
       then local_test_GEO_hash_one_level_end(x, lambda, Lvd, LFDKH, pol_hash, HK_known, Uhash, fancy_tester)
-      else local_test_GEO_hash2_end(x, lambda, Lvd, LFDKH, pol_hash, HK_known, Uhash, fancy_tester)
+      elif two_bottom_revert_flag
+      then local_test_GEO_hash2_end(x, lambda, Lvd, LFDKH, pol_hash, HK_known, Uhash, fancy_tester)
+      else LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LFDKH, 2,
+       	    	     		r + 1, pol_hash);
+    	   let unitary_by_dim = vec: for L in LFDKH do #L od
+    	   then steps = max(r-1,1)
+    	   then start=elapsed_ms()
+    	   then UParams = [Param]:
+           	let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
+	     	then () = if test_verbose
+    	      	     	  then prints(for list in LFDKH do #list od, " = ",
+			       sum(for list in LFDKH do #list od),
+	      	      	       " unitary candidates in ",#eq," equivalence classes.");
+		   	       prints("number of tests so far = ",
+			       		      unitary_test_counter.use_count() - UTCstart);
+		   	       prints("first do min_bottom test:")
+	           	   fi
+	        then () = LFDKH := local_testK_hash_min_bottom_layer(x,lambda, Lvd, LFDKH, eq,
+		      gr, CLBF, HK_known, pol_hash,  Uhash, fancy_tester)
+		then () = LFDKH := extend_K_characters(x,lambda,Lvd,LFDKH,pol_hash)
+		then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
+    	 	then () = if test_verbose
+    	      	     	  then prints(for list in LFDKH do #list od, " = ",
+			       sum(for list in LFDKH do #list od),
+	      	      	       " unitary candidates in ",#eq," equivalence classes.");
+		   	       prints("number of tests so far = ",
+			       unitary_test_counter.use_count() - UTCstart);
+		   	       prints("testing with def level 1")
+	           	   fi
+    	 	in local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, (Param->bool): (Param p) bool:
+			       is_unitary_def_test_big_SIMPLE(p), Uhash)
+    	   then time = elapsed_ms() - start
+    	   then () = if time_verbose
+	   	     then prints("     ", print_time_string(time),
+	      	     " for UParams calculation ", test_string, new_line){;}
+	      	     fi
+   	   in UParams
       fi
 
 set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData Lvd,

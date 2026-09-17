@@ -44,6 +44,7 @@ set range_rp(KGBElt x, ratvec lambda, vec av, rat avbd) = (int, int):
        do (av, range_rp(x,lambda,av))
        od}
 
+{
 {root datum from all coroots restricting to A as multiple of av}
 set Levix_scr(KGBElt x, vec av) = (RealForm,KGBElt):
     let G = x.real_form, theta = x.involution
@@ -67,12 +68,12 @@ set Levix_scr(KGBElt x, vec av) = (RealForm,KGBElt):
      {then tfL = x.torus_factor - G.rho_check + rdL.rho_check}
      then xL = KGB_elt(rdL, theta, x.torus_factor)
     in (real_form(xL),xL)
-
+}
 
 
 {parameter on nonstandard Levi L}
 set pL_scr(KGBElt x, ratvec lambda, vec av, rat t) = Param:
-    let (L,xL) = Levix_scr(x,av), G = x.real_form, theta = x.involution
+    let (L,xL) = Levix(x,av), G = x.real_form, theta = x.involution
     then m = coroot_index(G,av) + #G.posroots, {lambdaL = lambda-rho(G) + rho(L)}
     	 lambda_shift = -rho(G) +rho(L) + rho_C(G,theta) - rho_C(L,theta)
     then a = roots(G)[m], lambdaL = lambda + lambda_shift
@@ -110,18 +111,83 @@ set test_scr(KGBElt x, ratvec lambda, vec av, rat t, int HT) = bool:
        fi
     {to_ht_G(x.real_form, QL,HT).!=}
 
+{ ---------------------------------------------------------------------------
+  Loop-invariant part of |pL_scr|.
+
+  In |pL_scr| everything except the final |parameter(...)| depends only on
+  (x,lambda,av); the argument t enters solely through the factor
+  ((t-shift)/wt).  But |red_points_rp_base| loops over t with (x,lambda,av)
+  FIXED, so |Levix|, both |rho_C|s, rho(G), rho(L), |coroot_index| and
+  roots(G)[m] were all being recomputed on every iteration of that loop.
+  |pL_prep| computes them once per coroot and |test_prep| consumes the result.
+
+  Measured on F4_s, Hodge_hash_0 at the top of the trivial block, with
+  sharp_rp_flag := true: red_points_rp_base 6528ms -> 4661ms (29%), whole run
+  15062ms -> 13228ms.  |reducibility_points_rp| output verified IDENTICAL on
+  115 parameters over Sp(6,R), SL(5,R), Spin(5,4), Sp(8,R), F4_s.
+  Set hoist_flag := false to go back to the per-t path (|test_scr|).
+
+  NB (measured, do not retry): memoising |rho_C| on (rd,theta) LOSES -- F4_s
+  rho_C 1267ms -> 3063ms, 2.4x worse, even at a 99.3% hit rate (730 misses in
+  107782 calls).  Hashing a RootDatum plus a mat costs more than the posroot
+  loop it would replace.  Hoisting is the win; memoising is not.
+  --------------------------------------------------------------------------- }
+set hoist_flag = bool: true
+
+set pL_prep(KGBElt x, ratvec lambda, vec av) = (KGBElt,ratvec,vec,rat,rat):
+    let (L,xL) = Levix(x,av), G = x.real_form, theta = x.involution
+    then m = coroot_index(G,av) + #G.posroots
+    ,    lambda_shift = -rho(G) +rho(L) + rho_C(G,theta) - rho_C(L,theta)
+    then a = roots(G)[m], lambdaL = lambda + lambda_shift
+    then nu1 = (a-theta*a)
+    then wt = av*nu1, shift = av*(lambdaL+theta*lambdaL)/2
+    in (xL,lambdaL,nu1,wt,shift)
+
+set test_prep(RealForm G, (KGBElt,ratvec,vec,rat,rat) prep, rat t, int HT) = bool:
+    let (xL,lambdaL,nu1,wt,shift) = prep
+    then pL = parameter(xL,lambdaL, ((t-shift)/wt)*nu1)
+    then QL = K_type_pol(std_quo_scr(pL))
+    in if HT < 0 then QL.!= else to_ht_scr_G(G,QL,HT).!= fi
+
 set red_points_rp_time = int:0
 
 set red_points_rp_base(KGBElt x, ratvec lambda, vec av, int HT, rat avbd) = [int]:
     let start = elapsed_ms(), (m,M) = range_rp(x,lambda,av, avbd)
-    then ans = for j:M-m+1 from m
-       	       do if test_scr(x,lambda,av,j,HT) {or ((av*thetapl).= and j.=)}
-       	       	  then [j]
-	  	  else []
-	  	  fi
-       	       od.##
+    then ans =
+      if hoist_flag
+      then let G = x.real_form, prep = pL_prep(x,lambda,av)
+           in for j:M-m+1 from m
+              do if test_prep(G,prep,j,HT) then [j] else [] fi
+              od.##
+      else for j:M-m+1 from m
+           do if test_scr(x,lambda,av,j,HT) {or ((av*thetapl).= and j.=)}
+              then [j]
+              else []
+              fi
+           od.##
+      fi
      in red_points_rp_time +:= elapsed_ms() - start;
      	ans
+
+{ The consistency sweeps inside |red_points_rp_avbd| rescan EVERY stored
+  (x,lambda) row on every call, not just the row that call can have modified.
+  They are O(N1) and O(N1*M) with N1 = xl_hash.size() growing monotonically
+  through a run, which made the wrapper quadratic in ACCUMULATED STATE (the
+  same A/B on Spin(8,2) gave 2265ms with the cache pre-filled and 435ms cold --
+  identical work).  Measured on F4_s, Hodge_hash_0 at the top of the trivial
+  block, sharp_rp_flag and hoist_flag both true, clean and serial:
+
+      rp_paranoid_flag   total        red_points_rp_time (real work)
+      true             373092ms       4597ms
+      false             12830ms       4646ms
+
+  29x on the whole run; the sweeps alone are 359685ms = 98% of rp_time, and the
+  real work is unchanged, so it is pure invariant scanning.  They also make any
+  other optimisation in this file unmeasurable: the |pL_prep| hoist's genuine
+  27% appeared as a slight LOSS (374372 -> 380324ms) inside their noise.
+
+  Set this true to restore the full sweeps when hunting a bug. }
+set rp_paranoid_flag = bool: false
 
 set red_points_rp_hash_avbd_time = int:0
 
@@ -186,18 +252,24 @@ set (red_points_rp_avbd, report_rpavbd) = (((KGBElt, ratvec, vec, int, rat) -> [
 	      let N1 = xl_hash.size()
 		in assert(@:(#hts = N1) and (#av_hashes = N1) and
 			 (#avbds = N1));
-		   assert(@:all(for n0:N1 do let M = av_hashes[n0].size()
+		   { row n is the only row this call can have modified, and the
+		     assert above already checks it in O(M).  What follows
+		     re-verifies every OTHER row; see the note at
+		     rp_paranoid_flag for why that is 98% of the time here. }
+		   if rp_paranoid_flag
+		   then assert(@:all(for n0:N1 do let M = av_hashes[n0].size()
 		   		    	   in #avbds[n0] = M and #answers[n0] = M od));
-		   for n0:N1 do for m0:av_hashes[n0].size()
+		        for n0:N1 do for m0:av_hashes[n0].size()
 		       	        do if #answers[n0][m0] != #hts[n0]
 		       	       	   then prints(new_line,"n = ",n0,", m = ",m0);
 		       	    	        prints("hts[n] = ",hts[n0]);
 			    	        prints("answers[n][m] = ",answers[n0][m0])
 				   fi
 		       	        od
-		             od;
-		   assert(@:all(for n0:N1 do let M = av_hashes[n0].size()
+		         od;
+		        assert(@:all(for n0:N1 do let M = av_hashes[n0].size()
 		   		    	   in all(for m0:M do #answers[n0][m0] = #hts[n0] od) od))
+		   fi
 	fi; {now we've updated the stored data}
 	red_points_rp_hash_avbd_time +:= elapsed_ms() - start;
     	answers[n][m][h]
