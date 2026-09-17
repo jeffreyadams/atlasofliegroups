@@ -301,64 +301,65 @@ template<typename C>
 template<typename C>
   void Matrix_base<C>::set_row(index_t i, const Vector<C>& v)
 {
-  assert(v.size()==d_columns);
-  std::copy(&v[0],&v[d_columns],at(i,0));
+  assert(i<n_rows() and v.size()==n_columns());
+  std::copy(v.begin(),v.end(),at(i,0));
 }
 
 // Put |v| in the |j|-th column of the matrix
 template<typename C>
   void Matrix_base<C>::set_column(index_t j, const Vector<C>& v)
 {
-  assert(v.size()==d_rows);
+  assert(j<n_columns() and v.size()==n_rows());
 
-  for (index_t i=0; i<d_rows; ++i)
-    (*this)(i,j)=v[i];
+  for (index_t i=0; i<v.size(); ++i)
+    *at(i,j) = v[i];
 }
 
 // Add |v| as new row to the matrix. Entries being stored by row, this is easy
 template<typename C>
   void Matrix_base<C>::add_row(const Vector<C>& v)
 {
-  assert(v.size()==d_columns);
+  assert(v.size()==n_columns());
 
+  index_t old_rows=d_rows;
   ++d_rows;
-  d_data.resize(d_rows*d_columns,C(0));
+  d_data.resize(static_cast<std::size_t>(d_rows)*d_columns,C(0));
 
-  std::copy(v.begin(),v.end(),at(d_rows-1,0));
+  std::copy(v.begin(),v.end(),at(old_rows,0));
 }
 
 // Add |v| as new column to the matrix. This is harder than adding a row
 template<typename C>
   void Matrix_base<C>::add_column(const Vector<C>& v)
 {
-  assert(v.size()==d_rows);
+  assert(v.size()==n_rows());
 
-  index_t old_col=d_columns;
+  index_t old_columns=d_columns;
   ++d_columns;
-  d_data.resize(d_rows*d_columns,C(0));
+  d_data.resize(static_cast<std::size_t>(d_rows)*d_columns,C(0));
 
   typename Vector<C>::iterator dst=d_data.end(),src=dst-d_rows;
   for (index_t i=d_rows; i-->0;)
   {
     *--dst = v[i];
-    for (index_t j=old_col; j-->0;)
+    for (index_t j=old_columns; j-->0;)
       *--dst = *--src;
   }
 }
 
-// fill |dst| with submatrix starting at offsets |k,l|
+// fill |dst| with our submatrix starting at offsets |k,l|
 template<typename C>
   void Matrix_base<C>::get_block
        (Matrix_base<C>& dst, index_t k, index_t l) const
 {
   const index_t k_end=k+dst.n_rows(), l_end=l+dst.n_columns();
   assert(k_end<=n_rows() and l_end<=n_columns());
-  auto p=dst.at(0,0);
+  auto p = dst.at(0,0);
   for (index_t i=k; i<k_end; ++i)
-    p=std::copy(this->at(i,l),this->at(i,l_end),p);
+    p = std::copy(this->at(i,l),this->at(i,l_end),p);
 }
 
-// fill submatrix starting at offsets |k,l| from |src|
+// fill our submatrix starting at offsets |k,l| from |src|
 template<typename C>
   void Matrix_base<C>::set_block
        (index_t k, index_t l, const Matrix_base<C>& src)
