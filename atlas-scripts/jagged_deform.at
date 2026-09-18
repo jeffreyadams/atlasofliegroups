@@ -650,8 +650,9 @@ set jagged_walk(Param p) = [(Param,int)]:
        ans
 
 {same as full_deform_to_ht(p,HT) = c_form_std(p,HT), computed along a
- jagged path: every reducibility point met is generic on its wall}
-set jagged_deform(Param p, int HT) = KTypePol:
+ jagged path: every reducibility point met is generic on its wall.
+ This is the version without memoisation; see |jagged_deform| below.}
+set jagged_deform_unmemo(Param p, int HT) = KTypePol:
     if not is_final(p) then error("improper parameter") fi;
     {assert(@:is_equal_rank(p.inner_class) and is_simple(p.root_datum),
     	   "jagged_deform: simple and equal rank only (see the note at the end)");}
@@ -670,6 +671,151 @@ set jagged_deform(Param p, int HT) = KTypePol:
 	     ; at_nu0
 	  fi
 	end)(1,p,HT)
+
+{The same, with the recursion memoised.  The result at a node is a
+ function of (node parameter, HT) alone, and the same terms are thrown off
+ again and again by different walls, so the unmemoised recursion recomputes
+ whole subtrees.  Here the UNSCALED result is cached per node parameter and
+ multiplied by the coefficient at the call site.  The cache is fresh for
+ each top-level call, so every entry has the same HT.  Measured 2026-09-18,
+ cold separate processes, identical answers:
+   F4_s, all_parameters_gamma(F4_s,[1,1,0,1])[8] (x=226):
+        958 s -> 22 s; 14873 nodes visited, 2947 distinct
+   F4_s, all_parameters_gamma(F4_s,[1,1,0,1])[9]:   107 s -> 16 s
+   F4_s, parameter(KGB(F4_s,200),rho,rho):         ~400 s -> 20 s
+   F4_s, parameter(KGB(F4_s,150),rho,rho):         17.4 s -> 2.1 s
+ At x=228 in the same list (small walks) the gain is 0-30%.
+ JM_calls counts node visits, JM_base the distinct nodes computed.}
+set JM_calls = 0, JM_base = 0
+set jagged_deform_memo(Param p, int HT) = KTypePol:
+    if not is_final(p) then error("improper parameter") fi;
+    let H = make_Param_hash(), res = [KTypePol]: [],
+        delta = p.real_form.distinguished_involution, empty = null_module(p.real_form)
+    in (rec_fun jag (Param p) KTypePol:
+        begin
+          JM_calls +:= 1;
+          let n = H.size() then k = H.match(p)
+          in if k < n then res[k]
+             else JM_base +:= 1;
+                  res #:= (KTypePol: 0*p.K_type); {placeholder: children append after it}
+                  let at_nu0 = KTypePol: K_type_pol_extended(p,delta)
+                  in if p.nu.!=
+                     then let acc = empty, (q,sgn) = jag_bump_ext(p), go = true in
+                          while go
+                          do let (g,q1,sgn1,terms) = jagged_step(q,sgn,HT)
+                             in go := g; q := q1; sgn := sgn1; acc +:= terms
+                          od
+                        ; for c@r in acc do at_nu0 +:= c*jag(r) od
+                     fi
+                  ; res[k] := at_nu0
+                  ; at_nu0
+             fi
+        end)(p)
+
+set jag_memo_flag = true
+
+{-------------------------------------------------------------------}
+{ a cache lasting across calls                                        }
+{-------------------------------------------------------------------}
+
+{The same memoisation, but the cache persists across calls, since
+ FPP_unitary_hash makes very many deformation calls on closely related
+ parameters, whose walks run through the same nodes.
+
+ Heights, as in big_unitary_hash: each node is stored once, with the
+ LARGEST height to which it is known (HT<0 = no truncation = larger than
+ any height), and a request for a smaller height truncates the stored
+ value.  A request for a larger height recomputes the node and overwrites.
+ Values are stored truncated to their height.  That is legitimate because
+ truncation is linear and the untruncated-top issue (see |jagged_deform|
+ below) is the only thing keeping a node's value from being exactly
+ to_ht(full_deform(node),HT).
+
+ One Param hash serves all real forms: =@(Param,Param) compares real forms
+ by value.  So a stored value could be attached to a value-equal but
+ different RealForm object, and adding it to a KTypePol of the current one
+ would fail with "Real form mismatch".  That seems to happen only for
+ synthetic real forms built by hand from data, so re-anchoring is off by
+ default; if "Real form mismatch" ever traces to this lookup, set
+ jag_regroup_flag := true (it re-anchors every hit, as |regroup| in
+ hermitian.at does).
+
+ Measured 2026-09-18, F4_s, all_parameters_gamma(F4_s,[1,1,0,1])[:20] in
+ sequence at HT=10000, cold separate processes: 156.8 s with a fresh cache
+ per call, 40.4 s with this one (4380 nodes computed instead of 23675).
+
+ JDH_hits counts hits, JDH_computed nodes computed for the first time,
+ JDH_upgrades nodes recomputed to a larger height.  clear_jag_cache()
+ empties it.}
+set jag_cache_flag = true
+set JDH_hash = make_Param_hash()
+set JDH_vals = [KTypePol]: []
+set JDH_hts = [int]: []
+set JDH_hits = 0, JDH_computed = 0, JDH_upgrades = 0
+
+set clear_jag_cache() = void:
+    JDH_hash.clear(); JDH_vals := []; JDH_hts := [];
+    JDH_hits := 0; JDH_computed := 0; JDH_upgrades := 0
+
+{whether a value known to height |have| gives the value to height |want|;
+ have = -1 means untruncated, have = -2 marks a node still being computed}
+set jag_covers(int have, int want) = bool:
+    have = minus_1 or (have >= 0 and want >= 0 and have >= want)
+
+set jag_trunc(KTypePol P, int HT) = KTypePol:
+    if HT < 0 then P else height_split(P,HT).fst fi
+
+{|regroup| from hermitian.at, which is read after this file}
+set jag_regroup_flag = false
+set jag_regroup(RealForm G, KTypePol P) = KTypePol:
+    if jag_regroup_flag
+    then sum(G, for c@q in P do c*K_type(KGB(G,#q.x), q.lambda_minus_rho) od)
+    else P
+    fi
+
+set jagged_deform_cached(Param p, int HT) = KTypePol:
+    if not is_final(p) then error("improper parameter") fi;
+    let delta = p.real_form.distinguished_involution, empty = null_module(p.real_form)
+    in (rec_fun jag (Param p) KTypePol:
+        begin
+          let n = JDH_hash.size() then k = JDH_hash.match(p)
+          in if k < n and jag_covers(JDH_hts[k],HT)
+             then JDH_hits +:= 1;
+                  jag_regroup(p.real_form,
+                              if JDH_hts[k] = HT then JDH_vals[k]
+                              else jag_trunc(JDH_vals[k],HT) fi)
+             else if k = n
+                  then JDH_computed +:= 1;
+                       {placeholders: children append after them}
+                       JDH_vals #:= (KTypePol: 0*p.K_type); JDH_hts #:= minus_1-1
+                  else JDH_upgrades +:= 1
+                  fi;
+                  let at_nu0 = KTypePol: K_type_pol_extended(p,delta)
+                  in if p.nu.!=
+                     then let acc = empty, (q,sgn) = jag_bump_ext(p), go = true in
+                          while go
+                          do let (g,q1,sgn1,terms) = jagged_step(q,sgn,HT)
+                             in go := g; q := q1; sgn := sgn1; acc +:= terms
+                          od
+                        ; for c@r in acc do at_nu0 +:= c*jag(r) od
+                     fi
+                  ; let val = jag_trunc(at_nu0,HT)
+                    in JDH_vals[k] := val; JDH_hts[k] := HT; val
+             fi
+        end)(p)
+
+{Truncation.  |wall_terms| drops every term thrown off above HT, so every
+ node below the top is already truncated; only the top node's own K-types
+ escape.  When height(p) > HT that made jagged_deform(p,HT) return p's own
+ K-types where full_deform_to_ht returns 0 -- and is_unitary_to_ht(p,HT)
+ must be (vacuously) true for such p, as in the wiggle arguments.  So
+ truncate the result once here.}
+set jagged_deform(Param p, int HT) = KTypePol:
+    let r = if jag_cache_flag then jagged_deform_cached(p,HT)
+    	    elif jag_memo_flag then jagged_deform_memo(p,HT)
+	    else jagged_deform_unmemo(p,HT)
+	    fi
+    in if HT < 0 then r else height_split(r,HT).fst fi
 
 {HT<0 means no truncation, so this is the one that equals full_deform(p).
  (Note that a nonnegative HT must be bigger than height(p) to be of any

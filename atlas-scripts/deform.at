@@ -470,8 +470,8 @@ set deformation_scr (Param p, int HT) = (Param,ParamPol): { deformed Param and n
 {whether to use deformation_terms_by_dual in recursive_deform}
 set by_dual_flag = false
 
-{same as full_deform}
-set recursive_deform_scr (Param p, int HT) = KTypePol:
+{same as full_deform; without memoisation, see |recursive_deform_scr| below}
+set recursive_deform_scr_unmemo (Param p, int HT) = KTypePol:
   if d_verbose then prints("recursive_deform to height with:", p) fi;
   if not is_final(p) then error("improper parameter") fi;
   let empty=null_module(real_form(p)) in
@@ -522,6 +522,48 @@ set recursive_deform_scr (Param p, int HT) = KTypePol:
     ; at_nu0
     end
   fi { apply that recursive function to the initial argument: } (1,p,HT)
+
+{The same, with the recursion memoised, as |jagged_deform_memo| in
+ jagged_deform.at: the result at a node is a function of (node parameter,
+ HT), and the deformation terms thrown off at different reducibility points
+ recur heavily, so the unmemoised recursion recomputes whole subtrees.  The
+ UNSCALED result is cached per node parameter (before |alcove_center|) and
+ multiplied by the coefficient at the call site.  Fresh cache per top-level
+ call.  RDS_calls counts node visits, RDS_base distinct nodes computed.}
+set RDS_calls = 0, RDS_base = 0
+set recursive_deform_scr_memo (Param p, int HT) = KTypePol:
+  if not is_final(p) then error("improper parameter") fi;
+  let H = make_Param_hash(), res = [KTypePol]: [], empty=null_module(real_form(p))
+  in (rec_fun full_def_scr (Param p) KTypePol:
+    begin
+      RDS_calls +:= 1;
+      let n = H.size() then k = H.match(p)
+      in if k < n then res[k]
+         else RDS_base +:= 1;
+	      res #:= (KTypePol: 0*p.K_type); {placeholder: children append after it}
+	      p := alcove_center(p);
+	      assert(@:is_standard(p),"non standard parameter in deformation");
+	      let acc=empty, at_nu0=KTypePol: p.K_type in
+	      for factor in reducibility_points_rp(p,HT)
+	      ~ do acc+:=
+		   if by_dual_flag
+		   then deformation_terms_by_dual_scr(Finalize(p*factor),HT)
+		   else deformation_terms_scr(Finalize(p*factor),HT)
+		   fi
+	      od
+	    ; for c@q in acc do at_nu0 +:= c*full_def_scr(q) od
+	    ; res[k] := at_nu0
+	    ; at_nu0
+	 fi
+    end)(p)
+
+set rds_memo_flag = true
+
+set recursive_deform_scr (Param p, int HT) = KTypePol:
+  if rds_memo_flag and not d_verbose
+  then recursive_deform_scr_memo(p,HT)
+  else recursive_deform_scr_unmemo(p,HT)
+  fi
 
 {same as full_deform interruptible}
 set recursive_deform_scr (Param p, int HT, int TIME) = maybe_KTP:
