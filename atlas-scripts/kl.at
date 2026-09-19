@@ -101,8 +101,7 @@ set KL_sum_at_s(Param p) = ParamPol:
     in KL_sum_at_s(p) next charTime +:= elapsed_ms() - start; char_counter.use()
 
 set character_formula (Param p) = ParamPol:
-    let start = elapsed_ms()
-    in s_to_1(KL_sum_at_s(p)) next charTime +:= elapsed_ms()-start
+    s_to_1(KL_sum_at_s(p))
 
 set character_formula (ParamPol P) = ParamPol: map(character_formula@Param,P)
 
@@ -844,7 +843,6 @@ set KL_sum_at_s_to_ht_new(int HT) = (Param p) ParamPol: {should check whether li
 	       	 let (below,) = height_split(KLS,HT)
     	       	 in KL_new_count +:= 1;
 		    charTimeToHt +:= elapsed_ms() - start;
-		    stored_count +:=1;
 		    below
 	       esac
        fi
