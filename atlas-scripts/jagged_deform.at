@@ -654,8 +654,8 @@ set jagged_walk(Param p) = [(Param,int)]:
  This is the version without memoisation; see |jagged_deform| below.}
 set jagged_deform_unmemo(Param p, int HT) = KTypePol:
     if not is_final(p) then error("improper parameter") fi;
-    {assert(@:is_equal_rank(p.inner_class) and is_simple(p.root_datum),
-    	   "jagged_deform: simple and equal rank only (see the note at the end)");}
+    {assert(@:is_simple(p.root_datum),
+    	   "jagged_deform: simple groups only (see the note at the end)");}
     let empty = null_module(p.real_form)
     in (rec_fun jag (Split sc, Param p, int HT) KTypePol:
         begin
@@ -880,27 +880,46 @@ set time_lib(Param p) = void:
     in prints("full_deform ",elapsed_ms()-t0,"ms  ",p)
 
 {-------------------------------------------------------------------}
-{ scope: equal rank                                                   }
+{ scope: simple groups, equal and unequal rank                         }
 {-------------------------------------------------------------------}
 
-{ SIMPLE AND EQUAL RANK ONLY.  Simple because that is FPP_faces_geom's
-  restriction, inherited through |local_vertices|.  Equal rank because
-  this file computes full_deform, which is what the unitarity algorithm
-  uses when delta = 1 (hermitian.at branches on is_equal_rank and calls
-  twisted_full_deform otherwise).  Split E7, E8, F4 and G2 all have
-  delta = 1; split E6 does not.  |jagged_deform| asserts both rather
-  than pretending to cover the rest.
+{ SIMPLE ONLY, EQUAL OR UNEQUAL RANK.
 
-  For unequal rank, |deformation_terms_scr| at the wall has to be
-  replaced by its twisted analogue.  One thing I ran into that may be
-  relevant when that is done: with the untwisted deform, the terms
-  thrown off by a hermitian parameter need not be hermitian -- in
-  SL(3,R), (x=3,lambda=[2,1],nu=[2,1]) throws off
-  (x=2,lambda=[2,1],nu=[3,0]/2), which is not twist-fixed -- and
-  |local_vertices| then has no delta-fixed gamma to work with.
-  Presumably the twisted deform is exactly what keeps the terms on the
-  delta-fixed locus, but I have not checked that.
+  Simple: the walk needs the local face of p to be a simplex (a wall is a
+  facet exactly when all but one vertex lies on it, see |opposite_vert|),
+  and that holds because the alcove of a simple group is a simplex.  For a
+  non-simple group the faces are products of simplices, and this file does
+  not handle them.  Nor should it: the rest of the unitarity code
+  (bottom_layer.at) treats a non-simple L through its simple factors, and
+  that is the intended route.  The restriction comes in through
+  |local_vertices| (FPP_faces_geom.at).  Complex groups such as SL(2,C) and
+  SL(3,C) have a non-simple root datum but are simple as real groups, and
+  they work (checked below); so the commented-out |is_simple(p.root_datum)|
+  assertion in |jagged_deform_unmemo| would be too strict as written.
 
-  Verified against the library full_deform on every parameter at
-  gamma = rho, 2rho, rho/2, 3rho/2 for: SL(2,R), Sp(4,R), Sp(6,R),
-  G2_s, SU(2,1), SU(3,1), SU(2,2), Spin(4,3), SO(3,2). }
+  Unequal rank: handled.  The differences from equal rank are
+   - |wall_terms| uses |twisted_deform| of |finalize_extended(q,delta)|
+     instead of |deform(q)|;
+   - every move that re-expresses the parameter can flip the extended
+     structure, and the walk carries that sign (|jag_shift_flip|,
+     |jag_flip|, |across_wall_ext|, |jag_bump_ext|), charging the
+     transport part and the finalisation part separately;
+   - the upward push in |jag_bump| is symmetrised under delta, so the walk
+     stays on the delta-fixed (hermitian) locus.
+  So jagged_deform(p,HT) computes what full_deform_to_ht(p,HT) computes in
+  equal rank and what twisted_full_deform_to_ht_library(p,HT) computes in
+  unequal rank (hermitian.at branches on is_equal_rank the same way).
+  Split E7, E8, F4 and G2 have delta = 1; split E6 does not.
+
+  Verified against the library:
+   equal rank (full_deform), every parameter at gamma = rho, 2rho,
+     rho/2, 3rho/2: SL(2,R), Sp(4,R), Sp(6,R), G2_s, SU(2,1), SU(3,1),
+     SU(2,2), Spin(4,3), SO(3,2); 12 parameters of F4_s at gamma
+     [1,1,0,1], HT = next_heights(p,4)[3]; 12 parameters of Spin(6,5) at
+     [1,1,0,1,1], HT = next_heights(p,4)[3] and next_heights(p,10)[9];
+   unequal rank (twisted_full_deform, untruncated and to height),
+     2026-09-18: SL(3,R) and SL(4,R) at rho, 3rho/2 and 2rho,
+     SL(5,R), Spin(5,3), SL(2,C), SL(3,C) at rho, all 270 twist-fixed
+     parameters of Spin(5,5) at rho (HT=12), 12 parameters of Spin(5,5)
+     at [1,1,0,1,1] (D = 4 and 10 as above), and 8 parameters of E6_s at
+     the largest x, gamma [1,1,1,0,1,1], HT = next_heights(p,4)[3]. }

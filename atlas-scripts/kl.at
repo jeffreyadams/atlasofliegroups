@@ -102,9 +102,7 @@ set KL_sum_at_s(Param p) = ParamPol:
 
 set character_formula (Param p) = ParamPol:
     let start = elapsed_ms()
-    in s_to_1(KL_sum_at_s(p))
-    {then () = if CF_flag then prints("CF(",p.x.number,",",p.lambda,",",
-       p.nu,"), charTime = ",print_time_string(CharFormTime)) fi}
+    in s_to_1(KL_sum_at_s(p)) next charTime +:= elapsed_ms()-start
 
 set character_formula (ParamPol P) = ParamPol: map(character_formula@Param,P)
 
@@ -134,18 +132,6 @@ set full_block_to_ht(Param p, int HT) = [Param]:
        else break
        fi
     od
-
-{arena for KL_sum_at_s_to_height(p,HT)}
-{set full_block_to_ht_size(Param p, int HT) = int:
-    let tworho = two_rho(p.real_form)
-    in if easy_block_size_flag
-       then let gamma = p.infinitesimal_character + tworho
-    	    then H0 = height(p.x,gamma)+(HT-height(p)
-    	    then x_up_num = first(for x in KGB(p.real_form)[:p.x.number]) {elts closer to 0 than x}
-    	     	      	      	  ~do height(x,gamma)>H0
-
-    let tworho = two_rho(p.real_form)
-    then q0 = parameter(p.x,p.lambda +tworho, p.nu+tworho)}
 
 set full_block_down_size(Param p) = int:
     if easy_full_size_flag
@@ -228,6 +214,7 @@ set red_walls(KGBElt x, ratvec gamma) = int:
 set Levix_baseTIME = int:0
 set LevixTIME = int:0
 
+{SHOULD EXTRACT SIMPLE FACTOR WITH av and just hash that}
 {root datum from all coroots restricting to A as multiple of av}
 set Levix_base(KGBElt x, vec av) = (RealForm,KGBElt):
     let start = elapsed_ms(), G = x.real_form, theta = x.involution
@@ -380,11 +367,6 @@ set red_walls_to_ht(Param p, int HT) = int:
        od;
        answer\1 next rwhTIME:=elapsed_ms() - start
 
-{
-{could refine these to count only parity walls (smaller better answer}
-{set red_walls(Param p) = red_walls(p.x,p.infinitesimal_character)}
-set red_walls_to_ht(Param p, int HT) = red_walls_to_ht(p.x,p.infinitesimal_character,HT)
-}
 
 {gamma meant to be dominant. count reducibility hyperplanes (gamma0,alphav) >0 int,
 (gamma0,theta*alphav) <0 int). Estimates cost of KL_sum_at_s(x,gamma)}
@@ -854,51 +836,32 @@ set KL_sum_at_s_to_ht_new(int HT) = (Param p) ParamPol: {should check whether li
        else let mKLS = stored_KL_sum_at_s(p)
        	    in case mKLS
 	       | none: unstored_count+:=1;
-	       	 	       {if low_char(p,HT) {tested in KL_sum_at_s_to_ht}
-       	       	 	       then} let ans = KL_sum_at_s_to_height(p,HT)
-			    	    in charTimeToHt +:= elapsed_ms() - start;
-				       char_counter_to_ht.use();
-			    	       ans
-       			       {else let (below,) = height_split(KL_sum_at_s(p),HT)
-    	    		    	 in KL_false_low_count+:=1; below
-			    fi}
-	       | some(KLS): stored_count+:=1;
-	       	 	       let (below,) = height_split(KLS,HT)
-    	       	 	       in KL_new_count +:= 1;
-			       	  charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use();
-			          below
+       	       	 let ans = KL_sum_at_s_to_height(p,HT)
+		 in charTimeToHt +:= elapsed_ms() - start;
+		    char_counter_to_ht.use();
+		    ans
+ 	       | some(KLS): stored_count+:=1;
+	       	 let (below,) = height_split(KLS,HT)
+    	       	 in KL_new_count +:= 1;
+		    charTimeToHt +:= elapsed_ms() - start;
+		    stored_count +:=1;
+		    below
 	       esac
        fi
 
 {switch back to true after making invocation depend on low_char}
 set KL_sum_to_ht_new_flag = true {false}
 
-{let caller decide whether to use to_ht}
 {should test that x is pretty big??}
-set KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol: {should check
-    whether library knows KL_sum_at_s, use that}
+set KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol: 
     let start = elapsed_ms()
     in if HT < 0
        then KL_sum_at_s(p)
-       {
-	  else let (below,) = height_split(KL_sum_at_s(p),HT)
-       	       in charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use();
-	       below
-       fi
-       }
-       {elif low_char(p,HT)}
-       	     {KL_sum_to_ht_new_flag true routes through KL_sum_at_s_to_ht_new, which costs a
-             stored_KL_sum_at_s lookup and a SECOND evaluation of low_char on every call.
-             It was false on the March 5 code, where this arm went straight to
-             KL_sum_at_s_to_height; that direct arm is restored here as the false case.}
-       	else if KL_sum_to_ht_new_flag
-       	     then KL_sum_at_s_to_ht_new(HT)(p)
-       	     else char_counter_to_ht.use();
-	     	  KL_sum_at_s_to_height(p,HT) next charTimeToHt +:= elapsed_ms() - start
-       	     fi
-       {else let (below,) = height_split(KL_sum_at_s(p),HT) {this records char_counter}
+       elif low_char(p,HT)
+       then KL_sum_at_s_to_ht_new(HT)(p)
+       else let (below,) = height_split(KL_sum_at_s(p),HT) {this records char_counter, time?}
     	    in KL_false_low_count+:=1;
-	       below}
+	       below
        fi
 
 set KL_new_inter_count = int:0
@@ -923,7 +886,6 @@ set KL_sum_at_s_to_ht_new_inter(int HT) = (Param p,int time) maybe_PP:
 
 {should test that x is pretty big??}
 set KL_sum_at_s_to_ht_inter(int HT) = (Param p,int time) maybe_PP:
-    {if KL_sum_to_ht_new_flag then return KL_sum_at_s_to_ht_new_inter(HT)(p, time) fi;}
     let start = elapsed_ms()
     in if low_char(p,HT)
        then KL_sum_at_s_to_ht_new_inter(HT)(p,time) {in "else" HT >= 0, but we're required to truncate}
@@ -947,13 +909,6 @@ set twisted_KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol:
     	 in height_split(twisted_KL_sum_at_s(p),HT).fst \
 	    next charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use()
     fi
-{    elif low_char(p,HT)
-    then let start = elapsed_ms()
-    	 then (below,) = height_split(twisted_KL_sum_at_s(p),HT)
-    	 in below next charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use()
-    else let (below,) = height_split(twisted_KL_sum_at_s(p),HT)
-    	 in below
-    fi}
 
 {next two never try not to_ht}
 set character_formula_to_height(Param p, int HT) = ParamPol:

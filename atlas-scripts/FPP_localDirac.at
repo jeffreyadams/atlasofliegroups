@@ -5693,7 +5693,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
       elif two_bottom_revert_flag
       then local_test_GEO_hash2_end(x, lambda, Lvd, LFDKH, pol_hash, HK_known, Uhash, fancy_tester)
      elif bottom_then_one_level_flag
-      then LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LFDKH, 2, r + 1, pol_hash);
+      then LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LFDKH, 2, r + 1, HK_known,pol_hash);
            let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
 	   then () = if test_verbose
 	   	     then prints(for list in LFDKH do #list od, " = ",
@@ -5708,7 +5708,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
            in local_test_GEO_hash_one_level_end(x, lambda, Lvd, LFDKH, pol_hash, HK_known,
                         Uhash, fancy_tester)
       else LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LFDKH, 2,
-       	    	     		r + 1, pol_hash);
+       	    	     		r + 1, HK_known, pol_hash);
     	   let unitary_by_dim = vec: for L in LFDKH do #L od
     	   then steps = max(r-1,1)
     	   then start=elapsed_ms()
