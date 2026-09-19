@@ -213,7 +213,6 @@ set red_walls(KGBElt x, ratvec gamma) = int:
 set Levix_baseTIME = int:0
 set LevixTIME = int:0
 
-{SHOULD EXTRACT SIMPLE FACTOR WITH av and just hash that}
 {root datum from all coroots restricting to A as multiple of av}
 set Levix_base(KGBElt x, vec av) = (RealForm,KGBElt):
     let start = elapsed_ms(), G = x.real_form, theta = x.involution
@@ -238,12 +237,13 @@ set Levix_base(KGBElt x, vec av) = (RealForm,KGBElt):
      then xL = KGB_elt(rdL, theta, x.torus_factor)
     in (real_form(xL),xL) next Levix_baseTIME+:= elapsed_ms() - start
 
-set Levix = ((KGBElt, vec)->(RealForm,KGBElt)):
+set (Levix,Levix_report) = (((KGBElt, vec)->(RealForm,KGBElt)),(->)):
     let KGBhash = make_KGBElt_hash()
     then vechashes = [vec_hash]: [] {one for each KGBElt}
     then answers = [[(RealForm,KGBElt)]]: [] {1st index is x, second av}
     {then L = RealForm: GL(1,R), xL = KGBElt:KGB(GL(1,R),0)}
-    in ((KGBElt, vec)->(RealForm,KGBElt)): (KGBElt x, vec av) (RealForm,KGBElt):
+    in (
+    (((KGBElt, vec)->(RealForm,KGBElt)): (KGBElt x, vec av) (RealForm,KGBElt):
     let start = elapsed_ms(), N = KGBhash.size()
     then n = KGBhash.match(x)
     in if n=N
@@ -255,7 +255,78 @@ set Levix = ((KGBElt, vec)->(RealForm,KGBElt)):
        in if j=J
 	  then answers[n]#:= Levix_base(x,av)
 	  fi;
-	  answers[n][j] next LevixTIME +:=elapsed_ms() - start
+	  answers[n][j] next LevixTIME +:=elapsed_ms() - start)
+    ,  @: {Levix_report}
+      prints("Levix is hashing ",sum(for vechash in vechashes do vechash.size() od),
+      	     " pairs(x,av), in time ",print_time_string(LevixTIME))
+       )
+
+set Levix_simp_baseTIME = int:0
+set Levix_simpTIME = int:0
+
+{EXTRACT SIMPLE FACTOR WITH av and just hash that}
+{root datum from all coroots restricting to A as multiple of av.
+Last mat maps weights for G to wts for simple, identity on span of roots in Lsimp; kernel is }
+set Levix_simp_base(KGBElt x, vec av) = (RealForm,KGBElt,vec,mat):
+    let start = elapsed_ms(), G = x.real_form, theta = x.involution
+    then pos_r = G.posroots, pos_co = G.poscoroots, tf = x.torus_factor
+    then av_min_th = av - av*theta
+    then js = for bv@j in pos_co
+    	      do if rank([av_min_th,bv-bv*theta]) <=1
+	      	 then [j]
+		 else []
+		 fi
+	      od.##
+     then two_rho_L = sum(G.rank, for j in js do pos_r[j] od)
+     then min_js = for j in js
+     	  	   do if pos_co[j]*two_rho_L = 2
+		      then [j]
+		      else []
+		      fi
+		   od.##
+     then av_coeffs = required_solution(for j in min_js do pos_co[j] od, av) {write av in terms of simple}
+     then avth_coeffs = required_solution(for j in min_js do pos_co[j] od, av*theta)
+     	  {write av in terms of simple}
+     then min_simp_js = for j@k in min_js if (av_coeffs[k] != 0 or avth_coeffs[k] != 0) do j fi od
+     	  {this is location of rd_simp_L simples among all simples}
+     then min_simp_ks = for j@k in min_js if (av_coeffs[k] != 0 or avth_coeffs[k] != 0) do k fi od
+     	  {this is location of rd_simp_L simples among all simples for minjs}
+     then min_simp_cos = mat: for j@k in min_simp_js do pos_co[j] od {size rk(G) x rk(simp_L)}
+     then M = min_simp_cos.^ {matrix of size rk(simp_L) x rk(G)}
+     then rd_simp_L = root_datum(mat: for j in min_simp_js
+     	  	      		      do for k in min_simp_js do pos_r[j]*pos_co[k] od
+				      od,
+				 id_mat(#min_simp_js))
+     then theta_simp_L = for j in min_simp_js do required_solution(min_simp_cos,pos_co[j]*theta) od.^
+     then tf_simp_L = sum(#min_simp_js, for j@k in min_simp_js
+     	  	      			do (tf*pos_r[j])*rd_simp_L.fundamental_coweights[k]
+					od)
+     then x_simp_L = KGB_elt(rd_simp_L, theta_simp_L, tf_simp_L)
+     then avL_simp = for k in min_simp_ks do av_coeffs[k] od
+    in (real_form(x_simp_L),x_simp_L, avL_simp, M) next Levix_simp_baseTIME+:= elapsed_ms() - start
+
+set (Levix_simp,Levix_simp_report) = (((KGBElt, vec)->(RealForm,KGBElt,vec,mat)),(void -> void)):
+    let KGBhash = make_KGBElt_hash()
+    then vechashes = [vec_hash]: [] {one for each KGBElt}
+    then answers = [[(RealForm,KGBElt,vec,mat)]]: [] {1st index is x, second av}
+    in (
+    (((KGBElt, vec)->(RealForm,KGBElt,vec,mat)): (KGBElt x, vec av) (RealForm,KGBElt,vec,mat):
+    let start = elapsed_ms(), N = KGBhash.size()
+    then n = KGBhash.match(x)
+    in if n=N
+       then vechashes#:=make_vec_hash();
+       	    answers#:= ([(RealForm,KGBElt,vec,mat)]:[])
+       fi;
+       let J = vechashes[n].size()
+       then j = vechashes[n].match(av)
+       in if j=J
+	  then answers[n]#:= Levix_simp_base(x,av)
+	  fi;
+	  answers[n][j] next Levix_simpTIME +:=elapsed_ms() - start)
+      , @: {Levix_simp_report}
+      prints("Levix_simp is hashing ",sum(for vechash in vechashes do vechash.size() od),
+      	     " pairs(x,av), in time ",print_time_string(Levix_simpTIME))
+       )
 
 {one root from each non-real, non-imag pos pair (alpha, theta*alpha)}
 {well-defined up to (1-theta)alpha}
@@ -271,7 +342,8 @@ set rho_C(RootDatum rd, mat theta) = vec:
 
 set pLTIME = int:0
 
-{parameter on nonstandard Levi L}
+{parameter on nonstandard Levi L. Meant to be called only when av = t > 0 int on gamma,
+and av*theta str neg on gamma}
 set pL(KGBElt x, ratvec lambda, vec av, rat t) = Param:
     let start = elapsed_ms(), (L,xL) = Levix(x,av), G = x.real_form, theta = x.involution
     then m = coroot_index(G,av) + #G.posroots, {lambdaL = lambda-rho(G) + rho(L)}
@@ -280,6 +352,16 @@ set pL(KGBElt x, ratvec lambda, vec av, rat t) = Param:
     then nu1 = (a-theta*a)
     then wt = av*nu1, shift = av*(lambdaL+theta*lambdaL)/2
     in parameter(xL,lambdaL, ((t-shift)/wt)*nu1) next pLTIME +:= elapsed_ms() - start
+
+set pL_simp(KGBElt x, ratvec lambda, vec av, rat t) = (Param,mat):
+    let start = elapsed_ms(), (Lsimp,xLsimp,avL,M) = Levix_simp(x,av),
+    	G = x.real_form, theta = x.involution
+    then mL = coroot_index(Lsimp,avL)+#Lsimp.posroots, thetasimp = xLsimp.involution
+    then lambda_shift = M*(-rho(G) + rho_C(G,theta)) +rho(Lsimp)- rho_C(Lsimp,thetasimp)
+    then aL = roots(Lsimp)[mL], lambdaL = M*lambda + lambda_shift
+    then nu1 = (aL- thetasimp*aL)
+    then wt = avL*nu1, shift = avL*(lambdaL+thetasimp*lambdaL)/2
+    in (parameter(xLsimp,lambdaL, ((t-shift)/wt)*nu1),M) next pLTIME +:= elapsed_ms() - start
 
 {
 set pL1 = ((KGBElt, ratvec, vec) -> Param,(KGBElt, ratvec, vec, rat) -> bool):
@@ -291,11 +373,19 @@ set pL1 = ((KGBElt, ratvec, vec) -> Param,(KGBElt, ratvec, vec, rat) -> bool):
 set std_quo(Param p) = ParamPol:
     1*p-character_formula(1*p)
 
+{whether to use the smaller Levi Lsimp in reducibility testing}
+set simp_flag = true
+
 set ind_quoTIME = int:0
 
 set ind_quo(KGBElt x, ratvec lambda, vec av, rat t) = KTypePol:
-    let start = elapsed_ms(), pL = pL(x,lambda,av,t)
-    in K_type_pol(std_quo(pL)) next ind_quoTIME+:= elapsed_ms() - start
+    let start = elapsed_ms()
+    then pL = pL(x,lambda,av,t)
+    in K_type_pol(std_quo(pL))  next ind_quoTIME+:= elapsed_ms() - start
+
+set ind_quo_simp(KGBElt x, ratvec lambda, vec av, rat t) = (KTypePol,mat):
+    let start = elapsed_ms(), (pL_simp,M) = pL_simp(x,lambda,av,t)
+    in (K_type_pol(std_quo(pL_simp)),M) next ind_quoTIME+:= elapsed_ms() - start
 
 set to_ht_G(RealForm G, KTypePol QL, int HT) = KTypePol:
     if HT.< then return QL fi;
@@ -307,11 +397,35 @@ set to_ht_G(RealForm G, KTypePol QL, int HT) = KTypePol:
 	   fi
 	od)
 
+{M is for restricting weights on G to the Levi where QL lives}
+set to_ht_G_simp(RealForm G, ratvec dlambda, KTypePol QL, int HT, mat M) = KTypePol:
+    if HT.< then return QL fi;
+    let J = M.^
+    then lambda0 = dlambda - J*M*dlambda
+    in sum(QL.real_form,
+	for c@tauL in QL
+    	do if dominant(G,lambda0 +J* parameter(tauL).d_lambda)*(G.two_rho_check) <= HT
+	   then c*tauL
+	   else 0*tauL
+	   fi
+	od)
+
 set testTIME = int: 0
 
+set test_simp(KGBElt x, ratvec lambda, vec av, rat t, int HT) = bool:
+    let start = elapsed_ms(), (QL,M) = ind_quo_simp(x,lambda,av,t)
+    in to_ht_G_simp(x.real_form, lambda, QL, HT, M).!= next testTIME +:=elapsed_ms() - start
+
 set test(KGBElt x, ratvec lambda, vec av, rat t, int HT) = bool:
-    let start = elapsed_ms(), QL = ind_quo(x,lambda,av,t)
-    in to_ht_G(x.real_form, QL,HT).!= next testTIME +:=elapsed_ms() - start
+    if simp_flag
+    then return test_simp(x,lambda,av,t,HT)
+    else let start = elapsed_ms(), QL = ind_quo(x,lambda,av,t)
+    	 in to_ht_G(x.real_form, QL,HT).!= next testTIME +:=elapsed_ms() - start
+    fi
+
+set test_simp(KGBElt x, ratvec lambda, vec av, rat t, int HT) = bool:
+    let start = elapsed_ms(), (QL,M) = ind_quo_simp(x,lambda,av,t)
+    in to_ht_G_simp(x.real_form, lambda, QL, HT, M).!= next testTIME +:=elapsed_ms() - start
 
 {END TAKEN FROM STEVE}
 
@@ -386,7 +500,7 @@ set red_walls_int(Param p) = int:
     let start = elapsed_ms(), x = p.x,  gamma = p.infinitesimal_character
     then theta = x.involution, rd = x.root_datum, answer = rat:0
     in for av@j in rd.poscoroots
-       do if is_integer(av*gamma) and av*theta*gamma{_reg} < 0
+       do if is_integer(av*gamma) and av*gamma > 0 and av*theta*gamma < 0
        	  then if is_real(j,x)
 	       then if is_parity(rd.posroots[j],p)
 	       	    then answer+:=1
@@ -408,7 +522,7 @@ set red_walls_to_ht_int(Param p, int HT) = int:
     	answer = rat: 0/1
     then theta = p.x.involution, rd = p.root_datum, gamma=p.infinitesimal_character
     in for av@j in rd.poscoroots
-       do if is_integer(av*gamma) and av*theta*gamma < 0 and
+       do if is_integer(av*gamma) and  av*gamma > 0 and av*theta*gamma < 0 and
        	     test(x,lambda, av, av*gamma,HT)
        	  then answer +:= if (av*(1+theta)).=
 	       	       	  then 1
