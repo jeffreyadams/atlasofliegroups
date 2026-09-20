@@ -1,0 +1,214 @@
+<basic.at { for root data, KGB, invert }
+<hash.at { for make_KGBElt_hash, make_vec_hash }
+<parameters.at { for parameter@(KGBElt,ratvec,ratvec) }
+
+{ ------------------------------------------------------------------------
+  The Levi attached to a reducibility coroot, and the parameter induced from
+  it.  Split out of kl.at so that red_points.at can use it too: everything
+  here is root-datum geometry, with no dependence on character_formula, so it
+  can be loaded before the KL machinery.
+
+  Levix(x,av)      : the Levi L of all coroots restricting to a multiple of av
+  Levix_simp(x,av) : just the simple factor of L containing av, plus the map M
+                     from weights for G to weights for that factor, the
+                     coordinates avL of av there, and rho_C of the full L
+  pL / pL_simp     : the parameter on L, resp. on the simple factor
+  simp_flag        : whether reducibility testing uses the simple factor
+  ------------------------------------------------------------------------ }
+
+{TAKEN FROM STEVE}
+
+set Levix_baseTIME = int:0
+set LevixTIME = int:0
+
+{root datum from all coroots restricting to A as multiple of av}
+set Levix_base(KGBElt x, vec av) = (RealForm,KGBElt):
+    let start = elapsed_ms(), G = x.real_form, theta = x.involution
+    then pos_r = G.posroots, pos_co = G.poscoroots
+    then av_min_th = av - av*theta
+    then js = for bv@j in pos_co
+    	      do if rank([av_min_th,bv-bv*theta]) <=1
+	      	 then [j]
+		 else []
+		 fi
+	      od.##
+     then two_rho_L = sum(G.rank, for j in js do pos_r[j] od)
+     then min_js = for j in js
+     	  	   do if pos_co[j]*two_rho_L = 2
+		      then [j]
+		      else []
+		      fi
+		   od.##
+     then rdL = root_datum(mat: for j in min_js do pos_r[j] od,
+     	      		   mat: for j in min_js do pos_co[j] od, G.prefers_coroots)
+     {then tfL = x.torus_factor - G.rho_check + rdL.rho_check}
+     then xL = KGB_elt(rdL, theta, x.torus_factor)
+    in (real_form(xL),xL) next Levix_baseTIME+:= elapsed_ms() - start
+
+set (Levix,Levix_report) = (((KGBElt, vec)->(RealForm,KGBElt)),(->)):
+    let KGBhash = make_KGBElt_hash()
+    then vechashes = [vec_hash]: [] {one for each KGBElt}
+    then answers = [[(RealForm,KGBElt)]]: [] {1st index is x, second av}
+    {then L = RealForm: GL(1,R), xL = KGBElt:KGB(GL(1,R),0)}
+    in (
+    (((KGBElt, vec)->(RealForm,KGBElt)): (KGBElt x, vec av) (RealForm,KGBElt):
+    let start = elapsed_ms(), N = KGBhash.size()
+    then n = KGBhash.match(x)
+    in if n=N
+       then vechashes#:=make_vec_hash();
+       	    answers#:= ([(RealForm,KGBElt)]:[])
+       fi;
+       let J = vechashes[n].size()
+       then j = vechashes[n].match(av)
+       in if j=J
+	  then answers[n]#:= Levix_base(x,av)
+	  fi;
+	  answers[n][j] next LevixTIME +:=elapsed_ms() - start)
+    ,  @: {Levix_report}
+      prints("Levix is hashing ",sum(for vechash in vechashes do vechash.size() od),
+      	     " pairs(x,av), in time ",print_time_string(LevixTIME))
+       )
+
+set Levix_simp_baseTIME = int:0
+set Levix_simpTIME = int:0
+
+{rho_C for the Levi Levix(x,av), from rd and theta alone (no L constructed): one root from
+each complex pair of positive roots beta with (1-theta)*beta a multiple of (1-theta)*alpha,
+alpha the root for av. Agrees with rho_C(L,theta) on the nose, not just mod (1-theta).}
+set rho_C_Levi(RootDatum rd, mat theta, vec av) = vec:
+    let alpha = rd.posroots[coroot_index(rd,av)]
+    then key = alpha - theta*alpha, zero = null(rd.rank)
+    in sum(rd.rank, for beta@j in rd.posroots
+    	   	    do if rank([key, beta - theta*beta]) <= 1 {beta is a root of L}
+		       then let k = root_index(rd,theta*beta)
+		       	    in if k > j {k=j is imag; k=-j-1 is real}
+			       then beta else zero fi
+		       else zero
+		       fi
+		    od)
+
+{EXTRACT SIMPLE FACTOR WITH av and just hash that}
+{root datum from all coroots restricting to A as multiple of av.
+Last mat maps weights for G to wts for simple, identity on span of roots in Lsimp; kernel is }
+set Levix_simp_base(KGBElt x, vec av) = (RealForm,KGBElt,vec,mat,vec):
+    let start = elapsed_ms(), G = x.real_form, theta = x.involution
+    then pos_r = G.posroots, pos_co = G.poscoroots, tf = x.torus_factor
+    then av_min_th = av - av*theta
+    then js = for bv@j in pos_co
+    	      do if rank([av_min_th,bv-bv*theta]) <=1
+	      	 then [j]
+		 else []
+		 fi
+	      od.##
+     then two_rho_L = sum(G.rank, for j in js do pos_r[j] od)
+     then min_js = for j in js
+     	  	   do if pos_co[j]*two_rho_L = 2
+		      then [j]
+		      else []
+		      fi
+		   od.##
+     then av_coeffs = required_solution(for j in min_js do pos_co[j] od, av) {write av in terms of simple}
+     then avth_coeffs = required_solution(for j in min_js do pos_co[j] od, av*theta)
+     	  {write av in terms of simple}
+     then min_simp_js = for j@k in min_js if (av_coeffs[k] != 0 or avth_coeffs[k] != 0) do j fi od
+     	  {this is location of rd_simp_L simples among all simples}
+     then min_simp_ks = for j@k in min_js if (av_coeffs[k] != 0 or avth_coeffs[k] != 0) do k fi od
+     	  {this is location of rd_simp_L simples among all simples for minjs}
+     then min_simp_cos = mat: for j@k in min_simp_js do pos_co[j] od {size rk(G) x rk(simp_L)}
+     then M = min_simp_cos.^ {matrix of size rk(simp_L) x rk(G)}
+     then rd_simp_L = root_datum(mat: for j in min_simp_js
+     	  	      		      do for k in min_simp_js do pos_r[j]*pos_co[k] od
+				      od,
+				 id_mat(#min_simp_js))
+     then theta_simp_L = for j in min_simp_js do required_solution(min_simp_cos,pos_co[j]*theta) od.^
+     then tf_simp_L = sum(#min_simp_js, for j@k in min_simp_js
+     	  	      			do (tf*pos_r[j])*rd_simp_L.fundamental_coweights[k]
+					od)
+     then x_simp_L = KGB_elt(rd_simp_L, theta_simp_L, tf_simp_L)
+     then avL_simp = for k in min_simp_ks do av_coeffs[k] od
+    in (real_form(x_simp_L),x_simp_L, avL_simp, M, rho_C_Levi(G,theta,av)) \
+       next Levix_simp_baseTIME+:= elapsed_ms() - start
+
+set (Levix_simp,Levix_simp_report) = (((KGBElt, vec)->(RealForm,KGBElt,vec,mat,vec)),(void -> void)):
+    let KGBhash = make_KGBElt_hash()
+    then vechashes = [vec_hash]: [] {one for each KGBElt}
+    then answers = [[(RealForm,KGBElt,vec,mat,vec)]]: [] {1st index is x, second av}
+    in (
+    (((KGBElt, vec)->(RealForm,KGBElt,vec,mat,vec)): (KGBElt x, vec av) (RealForm,KGBElt,vec,mat,vec):
+    let start = elapsed_ms(), N = KGBhash.size()
+    then n = KGBhash.match(x)
+    in if n=N
+       then vechashes#:=make_vec_hash();
+       	    answers#:= ([(RealForm,KGBElt,vec,mat,vec)]:[])
+       fi;
+       let J = vechashes[n].size()
+       then j = vechashes[n].match(av)
+       in if j=J
+	  then answers[n]#:= Levix_simp_base(x,av)
+	  fi;
+	  answers[n][j] next Levix_simpTIME +:=elapsed_ms() - start)
+      , @: {Levix_simp_report}
+      prints("Levix_simp is hashing ",sum(for vechash in vechashes do vechash.size() od),
+      	     " pairs(x,av), in time ",print_time_string(Levix_simpTIME))
+       )
+
+{one root from each non-real, non-imag pos pair (alpha, theta*alpha)}
+{well-defined up to (1-theta)alpha}
+set rho_C(RootDatum rd, mat theta) = vec:
+    let zero = null(rd.rank)
+    in sum(rd.rank, for alpha@j in rd.posroots
+    		    do let k = root_index(rd,theta*alpha)
+		        in if k > j {k=j is imag; k = -j-1 is real}
+		       	   then alpha
+		       	   else zero
+			   fi
+		    od)
+
+set pLTIME = int:0
+
+{parameter on nonstandard Levi L. Meant to be called only when av = t > 0 int on gamma,
+and av*theta str neg on gamma}
+set pL(KGBElt x, ratvec lambda, vec av, rat t) = Param:
+    let start = elapsed_ms(), (L,xL) = Levix(x,av), G = x.real_form, theta = x.involution
+    then m = coroot_index(G,av) + #G.posroots, {lambdaL = lambda-rho(G) + rho(L)}
+    	 lambda_shift = -rho(G) +rho(L) + rho_C(G,theta) - rho_C(L,theta)
+    then a = roots(G)[m], lambdaL = lambda + lambda_shift
+    then nu1 = (a-theta*a)
+    then wt = av*nu1, shift = av*(lambdaL+theta*lambdaL)/2
+    in parameter(xL,lambdaL, ((t-shift)/wt)*nu1) next pLTIME +:= elapsed_ms() - start
+
+set pL_simp(KGBElt x, ratvec lambda, vec av, rat t) = (Param,mat):
+    let start = elapsed_ms(), (Lsimp,xLsimp,avL,M,rho_C_L) = Levix_simp(x,av),
+    	G = x.real_form, theta = x.involution
+    then mL = coroot_index(Lsimp,avL)+#Lsimp.posroots, thetasimp = xLsimp.involution
+    {rho(L) and rho(Lsimp) agree on Lsimp, so M*rho(L) = rho(Lsimp); but rho_C must come
+    from the full Levi L, hashed alongside the rest by Levix_simp}
+    then lambda_shift = M*(-rho(G) + rho_C(G,theta) - rho_C_L) + rho(Lsimp)
+    then aL = roots(Lsimp)[mL], lambdaL = M*lambda + lambda_shift
+    then nu1 = (aL- thetasimp*aL)
+    then wt = avL*nu1, shift = avL*(lambdaL+thetasimp*lambdaL)/2
+    in (parameter(xLsimp,lambdaL, ((t-shift)/wt)*nu1),M) next pLTIME +:= elapsed_ms() - start
+
+{
+set pL1 = ((KGBElt, ratvec, vec) -> Param,(KGBElt, ratvec, vec, rat) -> bool):
+    let answers = make_Param_hash()
+    in ((KGBElt, ratvec, vec)->Param): (KGBElt x, ratvec lambda, vec av) Param:
+       let (L,xL) = Levix(x,av)
+       (
+}
+
+
+{whether to use the smaller Levi Lsimp in reducibility testing}
+set simp_flag = true
+
+{lift from weights for Lsimp back to weights for G: the inverse of M on the span V of the
+Lsimp roots. M^ is NOT that inverse (M*M^ is the Cartan matrix of Lsimp, not the identity),
+so a weight lifted by M^ lands off the true one by an element of ker M. The right lift sends
+the k-th Lsimp coordinate to the k-th fundamental weight of Lsimp written in G coordinates,
+i.e. J = A*C^-1 with A the simple roots of Lsimp and C = M*A its Cartan matrix. Returned as
+(J*d,d) since J is rational.}
+set simp_lift(RootDatum rd, mat M) = (mat,int):
+    let co = M.^ {columns are the simple coroots of Lsimp, in G coordinates}
+    then A = mat: for k:#co do rd.posroots[coroot_index(rd,co[k])] od
+    then (Cinv,d) = invert(M*A)
+    in (A*Cinv,d)
