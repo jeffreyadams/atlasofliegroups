@@ -233,7 +233,7 @@ set deform_script_flag = false
 set deform_rp_flag = false
 
 {use reducibility_points_rp if #reducibility_points > rp_cutoff}
-set some_deform_rp_flag = false
+set some_deform_rp_flag = true
 
 set rp_cutoff = int:20
 

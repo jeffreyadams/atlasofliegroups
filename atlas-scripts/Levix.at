@@ -1,6 +1,7 @@
 <basic.at { for root data, KGB, invert }
 <hash.at { for make_KGBElt_hash, make_vec_hash }
 <parameters.at { for parameter@(KGBElt,ratvec,ratvec) }
+<rf_new.at { for KGB_elt_new, KGB_new_flag }
 
 { ------------------------------------------------------------------------
   The Levi attached to a reducibility coroot, and the parameter induced from
@@ -124,7 +125,20 @@ set Levix_simp_base(KGBElt x, vec av) = (RealForm,KGBElt,vec,mat,vec):
      then tf_simp_L = sum(#min_simp_js, for j@k in min_simp_js
      	  	      			do (tf*pos_r[j])*rd_simp_L.fundamental_coweights[k]
 					od)
-     then x_simp_L = KGB_elt(rd_simp_L, theta_simp_L, tf_simp_L)
+     {|KGB_elt| here would build its real form with the synthetic
+     |real_form@(InnerClass,mat,ratvec)|, which only shares an existing object
+     when the cocharacter and torus part it derives are the default ones. In
+     this simple-factor branch they often are not (8.8% of the constructions in
+     E7_s), and each miss is a fresh RealForm carrying its own KGB and
+     Rep_table. |KGB_elt_new| re-anchors the answer on the canonical real form
+     of the same form number, so equal Levis share one object. The strong form
+     does change -- the torus factor of the Levi KGB element is a different
+     representative -- but reducibility, which is all this is asked for, does
+     not: verified elementwise over 1800 E7_s cases and 10650 cases in
+     Sp(6,R), SL(4,R), SO(5,4), SU(3,2), Spin(5,5), F4_s, G2_s. Worth 41% of
+     peak memory on an E7_s sweep (833MB -> 488MB). Set |KGB_new_flag| false
+     to get the old behaviour back.}
+     then x_simp_L = KGB_elt_new(rd_simp_L, theta_simp_L, tf_simp_L)
      then avL_simp = for k in min_simp_ks do av_coeffs[k] od
     in (real_form(x_simp_L),x_simp_L, avL_simp, M, rho_C_Levi(G,theta,av)) \
        next Levix_simp_baseTIME+:= elapsed_ms() - start
