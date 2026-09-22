@@ -2,6 +2,7 @@
 <count.at { for |char_counter| }
 <parameters.at { for |dual_inner_class| }
 <hash.at {for hashed low function}
+<integrality_hash.at
 <polynomial.at {for eval}
 <translate.at {for translate_param_by}
 <K.at {for parameter@KType}
@@ -10,6 +11,18 @@
   KL_sum_at_s, as this function stores earlier results
   Also (compared to old implementation) no regular/singular case distinction
 }
+
+set integrality_datum(Param p) = RootDatum:
+    if IH_flag
+    then integrality_datum_hash(p)
+    else integrality_datum(p)
+    fi
+
+set integrality_datum(RootDatum rd, ratvec gamma) = RootDatum:
+    if IH_flag
+    then integrality_datum_hash(rd,gamma)
+    else integrality_datum(rd,gamma)
+    fi
 
 {convention: "to_height" always computes with a to height algorithm. "to_ht" may
 choose whether "to height" or "to infinity" algorithm is faster.}
