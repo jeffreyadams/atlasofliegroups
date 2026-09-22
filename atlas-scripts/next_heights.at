@@ -1,0 +1,323 @@
+< hash.at
+< sort.at {for sort_u}
+< K_highest_weights.at {for LKTs}
+< unity.at {for height@(RootDatum,ratvec)}
+
+{to store next_K_type info}
+set NKThash = make_KType_hash()
+
+{size of NKThash; jth entry is indices of next_to_lowests}
+set NKTanswer = [vec]:[]
+
+{size of NKThash; jth entry is some heights above jth hash member}
+set NKThtLists = [vec]:[]
+
+set NKTlookup(KType mu) = int:
+    let N = NKThash.size()
+    then n= NKThash.match(mu)
+    in if n=N
+       then NKTanswer#:=(vec:[]);
+       	    NKThtLists#:=(vec:[])
+       fi;
+       n
+
+set next_height_time = int:0
+
+{all the non-lowest K-types of the tempiric of mu of lowest height}
+{formerly used NTL := big_unitary_hash.K_type_formula{_to_ht}(mu,HT) - mu}
+set next_to_lowest_base(KType mu) = [KType]:
+    let start = elapsed_ms(), HT = height(mu)+1
+    then NTL = null_K_module(mu)
+    then () = while NTL.=
+	      do NTL := K_type_formula(mu,HT) - mu;
+		 HT+:=1
+	      od
+    in monomials(NTL) next next_height_time +:=elapsed_ms() - start
+
+set next_to_lowest_inds(KType mu) = [int]:
+    let n = NKTlookup(mu)
+    in if #NKTanswer[n] = 0
+       then NKTanswer[n]:=(vec: for tau in next_to_lowest_base(mu)
+       	    			do NKTlookup(tau)
+				od)
+       fi;
+       NKTanswer[n]
+
+set next_to_lowests(KType mu) = [KType]:
+       for m in next_to_lowest_inds(mu)
+       do NKThash.index(m)
+       od
+
+set next_to_lowest_short(KType mu) = KType:
+    next_to_lowests(mu)[0]
+
+{creates a list of size D}
+set next_to_lowest_short(KType mu, int D) = [KType]:
+    let mui = mu in for i:D do mui:=next_to_lowest_short(mui) od
+
+{list of (some) KTypes above mus to ht HT, sorted by height}
+{Need all mus of same height; to be applied to LKTs(p)}
+set next_to_lowest([KType] mus,int HT) = [KType]:
+   if HT <= height(mus[0]) then return [] fi;
+    let is = for mu in mus do NKTlookup(mu) od, mu = mus[0]
+    then H0 = height(mus[0]) {always biggest height in to_do}
+    then answer = [[int]]: for h:HT-height(mu)+1 do [] od {indexed by ht - ht(mu) - 1}
+    then to_do = [int]: is {these will be indices of K-types we need to move up from}
+    in while #to_do > 0 and (H0:=max(for j in to_do do height(NKThash.index(j)) od)) < HT
+       do { prints("answer = ",answer,", to_do = ",to_do,", H0 = ",H0);}
+	  let new_to_do = [int]:[]
+       	  in for j in to_do
+	     do let NTL = next_to_lowest_inds(NKThash.index(j))
+	     	then H= height(NKThash.index(NTL[0]))
+		in if H<=HT
+		   then (answer[H-height(mu)-1]##:=NTL).sort_u
+		   fi;
+		   if H<HT
+		   then new_to_do ##:=NTL
+		   fi;
+		   to_do:=new_to_do.sort_u
+	      od
+       od;
+       for m in answer.## do NKThash.index(m) od
+
+set next_to_lowest(KType mu,int HT) = next_to_lowest([mu],HT)
+
+set next_to_lowest(Param p) = [KType]: 
+    let inds = for mu in LKTs(p)
+    	       do next_to_lowest_inds(mu)
+	       od.##.sort_u
+    in for j in inds do NKThash.index(j) od
+
+set next_to_lowest(Param p,int HT) = [KType]:
+    next_to_lowest(LKTs(p),HT) 
+
+{these functions were in unity.at; give useful heights to which to try unitarity}
+
+{. height of a smallest non-lowest K_type of standard with LKT mu .}
+set next_height(KType mu)  = int:
+    height(next_to_lowests(mu)[0])
+
+{if we know p unitary to HT, AND have K-char to GAM(p), next height where something could change}
+{was monomials(branch_std_hash(qKCF,HT_bound))}
+set next_height = ((Param,int,KTypePol) -> int):
+    let start = int:0, q = Param: SL(2,R).trivial
+    then HT_bound = GAM(q) {unitary_to_ht(HT_bound) means is_unitary}
+    then qKCF = K_type_pol(KL_sum_at_s_to_ht(HT_bound)(q))
+    then hts = [int]:[]
+ in ((Param,int,KTypePol) -> int): (Param p, int HT, KTypePol KCF):
+    start:=elapsed_ms();
+    if not p=q
+    then HT_bound := GAM(p); qKCF := to_ht(KCF,HT_bound);
+    	 hts := for tau in monomials(branch(qKCF,HT_bound)) do height(tau) od
+    fi;
+    let j = first(for x in hts do x > HT od)
+    in if j<0
+       then -1
+       else hts[j] {next hts:=hts[j+1:] this messes up repeated calls}
+       fi next next_height_time+:=elapsed_ms()-start
+
+{a height > HT which might be a KType height for p}
+set next_height(Param p, int HT) = int:
+    let ans = HT+1{, start = elapsed_ms()}
+    then list = next_to_lowest(p, ans)
+    in while #list = 0 or height(list~[0]) < HT
+       do ans +:= 1;
+       	  list := next_to_lowest(p,ans)
+       od;
+       {next_height_time+:=elapsed_ms()-start;}
+       ans
+
+{
+called by is_unitary_test_big_SIMPLE_interrupt_Ufirst, is_unitary_test_big_SIMPLE_interrupt
+is_unitary_test_big_SIMPLE_interrupted_Ufirst, is_unitary_test_big_SIMPLE_interrupted,
+is_unitary_next_big_SIMPLE
+}
+
+{. height of a smallest non-lowest K_type of standard p .}
+set next_height(Param p) = int:
+    min(for mu in LKTs(p) do next_height(mu) od)
+
+set heights(KTypePol P) = [int]:
+    for @mu in P do height(mu) od.sort_u
+
+set next_height_timeB = int:0
+set next_height_timeF = int:0
+
+set next_heightsB(KType mu, int D) = [int]:
+    let start = elapsed_ms(), M = 5+height(mu)
+    then P = branch(mu,M)
+    then answer = heights(P)
+    in while #answer < D+1
+       do M+:=5
+	  ; P:= branch{_std_hash}(mu,M)
+	  ; answer:=heights(P)
+       od;
+       answer[1:D+1] next next_height_timeB+:=elapsed_ms()-start
+
+set next_heights(KType mu, int D) = [int]:
+    let m = NKTlookup(mu)
+    then answer = NKThtLists[m]
+    in if #answer < D
+       then let start = elapsed_ms()
+       	    then M = if #answer > 0
+       	    	     then answer~[0]
+		     else height(mu)
+		     fi
+       	    then list = [KType]: []
+    	    in while #answer < D
+       	       do M+:=5;
+	       	  list:= next_to_lowest(mu,M);
+	  	  answer:=for tau in list do height(tau) od.sort_u
+       	       od;
+	       NKThtLists[m]:=answer next next_height_timeF+:=elapsed_ms()-start
+       fi;
+       answer[:D]
+
+{if this produces -1, then the (hermitian) p is automatically unitary}
+{used to be big_unitary_hash.K_type_formula_to_ht(mu, height(p)}
+set next_heightB(Param p) = int:
+    let mu = LKTs(p)[0]
+    then M = K_type_formula(mu, height(p) + height(p.root_datum, p.nu)) - mu
+    in
+    if =M then -1
+    else
+    let tau = first_K_type(M) in height(tau)
+    fi
+
+{sum of the lowest height terms of P}
+set next_taus(KTypePol P) = KTypePol:
+    if P.=
+    then return P
+    else let HT = height(first_K_type(P))
+    	 then (below,) = height_split(P,HT)
+	 in below
+    fi
+{whether to use following function}
+set next_heightC_flag = false
+
+{returns the height of the next K-type > HT, or -1 if none exists}
+set next_heightC_old = ((Param,int) -> int):
+    let p = Param: SL(2,R).trivial
+    then current_height = int: -1
+    then taus_so_far = KTypePol: null_K_module(p.real_form) {meant to be all branch_irr UP TO current height}
+    then KCF = KTypePol: K_type_pol(character_formula(p)) {meant to be K-char(p) MINUS formulas of taus_so_far}
+    then new_taus = KTypePol: null_K_module(p.real_form) {most recent additions to taus_so_far}
+ in ((Param,int) -> int): (Param q, int HT):
+    if not p=q
+    then p:=q;
+    	 prints("about to compute K-char of ",p);
+    	 KCF:=  K_type_pol(character_formula(p));
+	 current_height:=height(q)-1;
+	 taus_so_far:= null_K_module(p.real_form);
+	 new_taus := null_K_module(p.real_form)
+    fi;
+    if taus_so_far.!= and height(taus_so_far) > HT
+    then let (,above) = height_split(taus_so_far,HT)
+    	 in return height(first_K_type(above))
+    fi;
+    while KCF.!= and (taus_so_far.= or height(taus_so_far) <= HT)
+    do prints("current_height = ",current_height, ", new_taus = ",new_taus);
+       new_taus := next_taus(KCF); {nonzero of ht > current height, <=HT}
+       current_height:= height(new_taus);
+       prints("new current_height = ", current_height,", new_taus = ",new_taus);
+       prints("about to correct KCF by new_taus");
+       KCF := KCF - sum(p.real_form, for c@tau in new_taus do c*
+       K_type_formula(tau,-1) od);
+       taus_so_far +:= new_taus
+    od; {now KCF is zero, or starts > HT}
+    if new_taus.=
+    then -1
+    elif height(new_taus) <= HT
+    then -1
+    else height(new_taus)
+    fi
+
+{
+set next_heightC_verbose = false
+
+{returns the height of the next K-type > HT, or -1 if none exists}
+set next_heightC = ((Param,int) -> int):
+    let p = Param: SL(2,R).trivial, start_time = int:0
+    then HT_bound = GAM(p) {to_ht to HT_bound is is_unitary}
+    then current_tau_bound = tensor_p_big(LKTs(p)[0])
+    then current_bound = height(current_tau_bound)
+    then current_height = int: -1
+    then taus_so_far = KTypePol: null_K_module(p.real_form) {meant to be all branch_irr UP TO current height}
+    then KCF = KTypePol: K_type_pol(character_formula_to_ht(1*p,current_bound)) {meant to be K-char(p)
+    	 to current_bound MINUS formulas of taus_so_far}
+	 {need 1*p in case p is not final}
+    then new_taus = KTypePol: null_K_module(p.real_form) {most recent additions to taus_so_far}
+ in ((Param,int) -> int): (Param q, int HT):
+    start_time:=elapsed_ms();
+    if not p=q
+    then {p:=q;}
+    	 HT_bound := GAM(p:=q); {to_ht to HT_bound is is_unitary}
+	 current_tau_bound := tensor_p_big(LKTs(q)[0]);
+	 current_bound := height(current_tau_bound);
+	 if current_bound > HT_bound
+	 then if next_heightC_verbose
+	      then prints("cutting bound from ",current_bound," to ",HT_bound)
+	      fi;
+	      current_bound:=HT_bound
+	 fi;
+    	 if next_heightC_verbose
+	 then prints("about to compute K-char to height ",current_bound) fi;
+    	 KCF:=  K_type_pol(character_formula_to_ht(1*p,current_bound));
+	 current_height:=height(q)-1;
+	 taus_so_far:= null_K_module(q.real_form);
+	 new_taus := null_K_module(q.real_form)
+    fi;
+    if taus_so_far.!= and height(taus_so_far) > HT
+    then let (,above) = height_split(taus_so_far,HT)
+    	 in next_heightC_time+:=elapsed_ms()-start_time;
+	    return height(first_K_type(above))
+    fi;
+    while HT >= current_bound
+    do current_tau_bound:=tensor_p_big(current_tau_bound);
+       current_bound := height(current_tau_bound);
+       if next_heightC_verbose
+       then prints("about to compute K-char to height ",current_bound) fi;
+       KCF := K_type_pol(character_formula_to_ht(1*p,current_bound));
+       if next_heightC_verbose
+       then prints("about to correct KCF by taus_so_far") fi;
+       KCF -:= for c@tau in taus_so_far
+       	       do c*big_unitary_hash.K_type_formula_to_ht(tau,current_bound)
+	       od
+    od;
+    while KCF.!= and (taus_so_far.= or height(taus_so_far) <= HT)
+    do if next_heightC_verbose
+       then prints("current_height = ",current_height, ", new_taus = ",new_taus) fi;
+       new_taus := next_taus(KCF); {nonzero of ht > current height, <=HT}
+       current_height:= height(new_taus);
+       if next_heightC_verbose
+       then prints("new current_height = ", current_height,", new_taus = ",new_taus);
+       	    prints("about to correct KCF by new_taus") fi;
+       KCF := KCF - sum(p.real_form, for c@tau in new_taus do c*
+       big_unitary_hash.K_type_formula_to_ht(tau,current_bound) od);
+       taus_so_far +:= new_taus
+    od; {now KCF is zero, or starts > HT}
+    next_heightC_time+:=elapsed_ms()-start_time;
+    if new_taus.=
+    then -1
+    elif height(new_taus) <= HT
+    then -1
+    else height(new_taus)
+    fi
+
+
+set next_heightC_zero_flag = true
+}
+
+set fine_next_frac = rat: 9/10
+
+set next_heights(Param p, int D) = [int]:
+    if p.x.number > fine_next_frac*KGB_size(p.real_form)
+    then let answer = [int]:[]
+    	 in for mu in LKTs(p) do answer##:= next_heights(mu,D) od
+	    ; return (answer.sort_u)[:D]
+    fi; 
+    {if next_heightC_flag
+    then let p0 = p*0, ht = height(p)
+    	 in for j:D do ht:=next_heightC(p0,ht) od
+    else} for tau in LKTs(p) do next_heights(tau, D) od.##.sort_u[:D]
+    {fi}
