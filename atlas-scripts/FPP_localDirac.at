@@ -2792,7 +2792,9 @@ set one_param_test_min_bottom(Param p, Param_hash Uhash) = [Param]:
        then one_false_counter.use();
        	    one_param_time +:= elapsed_ms() - start;
        	    []
-       else  hash_bottom_layerCounter.use();
+       else if test_string !=  " using local_test_GEO_hash_bottom_layer"
+       	    then hash_bottom_layerCounter.use()
+	    fi;
        	     let elim_min = all(for q in Q do min_bottom_elim_factors(q,p) od)
        	     in LF_min_bl_vec := if elim_min
     	      		    then [1,0]
@@ -2832,7 +2834,9 @@ set one_param_test_min_bottom(Param p) = [Param]:
 set one_param_test_bottom(Param p, [int] Es) = [Param]:
     let start = elapsed_ms(), QG = monomials(finalize(p)),G = p.real_form
     in bl_KHash.clear();
-       hash_bottom_layerCounter.use();
+       if test_string !=  " using local_test_GEO_hash_bottom_layer"
+       	    then hash_bottom_layerCounter.use()
+	    fi;
        let still_here = true
        then (Qmin,) = if small_test_flag
     	 	    then theta_stable_data_small(p)
@@ -2920,7 +2924,9 @@ set one_param_test_all_bottom(Param p, [int] Ds) = [Param]:
        	       	    one_param_time +:= elapsed_ms() - start;
        	    	    []
     		    {then () = prints("Ds = ",Ds)}
-       	       else hash_bottom_layerCounter.use();
+       	       else if test_string !=  " using local_test_GEO_hash_bottom_layer"
+       	       	    then hash_bottom_layerCounter.use()
+	    	    fi;
        	       	    let elim_min = all(for q in Q do min_bottom_elim_factors(q,p) od)
     	    	    in LF_min_bl_vec:= if elim_min
     	      		      then [1,0]
