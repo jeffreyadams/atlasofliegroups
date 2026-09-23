@@ -21,6 +21,7 @@
 <smallQ.at {for theta_stable_data_small}
 <sort.at {for sort_by_height}
 <next_heights.at {for next_height*}
+<integrality_hash.at {for integrality_datum_hash}
 {BREAK HERE?}
 
 {set old_test_interrupt_flag = false}
@@ -1642,7 +1643,7 @@ set is_FPP_unitary_fast(Param p) = int:
 		     then [j]
 		     elif gamma*alphav > 1
 		     then []
-		     else let rdi = integrality_datum(G,gamma)
+		     else let rdi = integrality_datum_hash(G,gamma)
 			  then ji = coroot_index(rdi,alphav)
 			  in if not is_member_sorted(tau(p))(ji)
 			     then []
@@ -2249,7 +2250,7 @@ set is_unitary_hash_big_SIMPLE_Lucas(Param p) = int:
 	if (stat_holder:= status(p,-1)).!= then return stat_holder fi;
     } {#3}
     let gamma = p.infinitesimal_character, rd = p.root_datum, G=p.real_form, start = elapsed_ms()
-    then rdi = integrality_datum(rd,gamma)
+    then rdi = integrality_datum_hash(rd,gamma)
     then alphavs = for alphav@j in rd.simple_coroots
 		  do if gamma*alphav < 1
 		     then [j]
@@ -2295,7 +2296,7 @@ set reduce_frac = 3/2 {NEVER do reduce_testing. This seems better in E7_s. Chang
 set is_unitary_to_ht_hash_big_SIMPLE_Lucas(Param p, int HT) = int:
     if p.x.number < reduce_frac*p.real_form.KGB_size then return 0 fi;
     let gamma = p.infinitesimal_character, rd = p.root_datum, G=p.real_form, start = elapsed_ms()
-    then rdi = integrality_datum(rd,gamma)
+    then rdi = integrality_datum_hash(rd,gamma)
     then alphavs = for alphav@j in G.simple_coroots
 		   do if gamma*alphav < 1
 		      then [j]
@@ -3876,7 +3877,7 @@ set is_FPP_unitary(Param p) = int:
 		     then [j]
 		     elif gamma*alphav > 1
 		     then []
-		     else let rdi = integrality_datum(G,gamma)
+		     else let rdi = integrality_datum_hash(G,gamma)
 			  then ji = coroot_index(rdi,alphav)
 			  in if not is_member_sorted(tau(p))(ji)
 			     then []
@@ -3917,7 +3918,7 @@ set is_FPP_unitary(Param p, (Param -> bool) fancy_tester ) = int:
     if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return -1 fi;
     let G = (p:= herm_center(p)).real_form
     then gamma = p.infinitesimal_character
-    then rdi = integrality_datum(G,gamma)
+    then rdi = integrality_datum_hash(G,gamma)
     then alphavs = for alphav@j in G.simple_coroots
 		  do if gamma*alphav < 1
 		     then [j]
@@ -3966,7 +3967,7 @@ set is_FPP_unitary_to_ht(Param p, int HT) = int:
 		     then [j]
 		     elif gamma*alphav > 1
 		     then []
-		     else let rdi = integrality_datum(G,gamma)
+		     else let rdi = integrality_datum_hash(G,gamma)
 			  then ji = coroot_index(rdi,alphav)
 			  in if not is_member_sorted(tau(p))(ji)
 			     then []

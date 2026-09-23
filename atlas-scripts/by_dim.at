@@ -1,4 +1,5 @@
 <FPP_globalDirac.at
+<integrality_hash.at
 
 {code for sorting Param's by dimension of face, and testing unitarity}
 {Assume candidate unitary reps for G live in Param_hash cand_hash.}
@@ -42,13 +43,13 @@ set prepare(RealForm G, Param_hash cand_hash, Param_hash conf_hash) = void:
     then () = cand_hashes:= for d:D + 1 do make_Param_hash() od
     	 {sort candidates by face dimension}
     then () = for p in cand_hash.list()
-    	      do let d = D - rank((delta+1)*(p.integrality_datum).simple_roots)
+    	      do let d = D - rank((delta+1)*(p.integrality_datum_hash).simple_roots)
    	       	 in void: cand_hashes[d].match(p)
 	      od
     then () = conf_hashes := for d:D + 1 do make_Param_hash() od
     	 {sort known unitary by face dimension}
     in for p in conf_hash.list()
-       do let d = D - rank((delta+1)*(p.integrality_datum).simple_roots)
+       do let d = D - rank((delta+1)*(p.integrality_datum_hash).simple_roots)
    	  in void: conf_hashes[d].match(p)
        od;
        test_prepared:=true

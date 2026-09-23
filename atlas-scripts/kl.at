@@ -12,18 +12,6 @@
   Also (compared to old implementation) no regular/singular case distinction
 }
 
-set integrality_datum(Param p) = RootDatum:
-    if IH_flag
-    then integrality_datum_hash(p)
-    else integrality_datum(p)
-    fi
-
-set integrality_datum(RootDatum rd, ratvec gamma) = RootDatum:
-    if IH_flag
-    then integrality_datum_hash(rd,gamma)
-    else integrality_datum(rd,gamma)
-    fi
-
 {convention: "to_height" always computes with a to height algorithm. "to_ht" may
 choose whether "to height" or "to infinity" algorithm is faster.}
 
@@ -170,7 +158,7 @@ set KL_rate(RealForm G) = rat:
 
 {predicted time in milliseconds to compute KL in block of p}
 set KL_predictor_full(Param p) = int:
-    let rk = semisimple_rank(integrality_datum(p))
+    let rk = semisimple_rank(integrality_datum_hash(p))
     in floor((#full_block(p))^2*3^rk* KL_rate/2^(2*rk+1))
     {next prints("we're in KL_pred_full at ",p)}
 {number of extremal pairs in full block is ROUGHLY: (x,y) so tau(y)\cap tau(x) is empty.
@@ -187,7 +175,7 @@ set KL_predictor_to_ht(Param p, int HT) = int:
 
 {relevant to KL_sum_at_s for p}
 set KL_predictor(Param p) = int:
-    let rk = semisimple_rank(integrality_datum(p))
+    let rk = semisimple_rank(integrality_datum_hash(p))
     in floor((full_block_down_size(p))^2*3^rk*KL_rate/2^(2*rk + 1))
 {next prints("we're in KL_pred at ",p)}
 

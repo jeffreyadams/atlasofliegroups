@@ -11,6 +11,7 @@
 <writeFiles {to write hash tables}
 <simple_factors.at {for simple_factors}
 <red_count.at {for red_count}
+<integrality_hash.at {for integrality_datum_hash}
 
 {functions for calculating FPP face lists, both "globally" (from the
 root datum) and "local" (as relevant to parameters for a single LKT
@@ -593,7 +594,7 @@ set edge_lists_folded(SimpleAffine affd) = [[ratvec]]:
        	  do if v =w then [ratvec]: []
        	     else let (num,den) = %(v-w)
 	       	  in [ratvec]:
-	       	     for x in Weyl_orbit(integrality_datum(affd,v), num) do x/den od
+	       	     for x in Weyl_orbit(integrality_datum_hash(affd,v), num) do x/den od
 	     fi
           od.##
        od
@@ -836,7 +837,7 @@ set beta2(RootDatum rd, ratvec gamma) = (vec,vec):
     let (wtilde,gamma2) = from_fundamental_alcove(rd,gamma)
     then (b,w) = wtilde {w*gamma2 + b = gamma}
     then iw = inverse(w)
-    then irdw = integrality_datum(rd,gamma2)
+    then irdw = integrality_datum_hash(rd,gamma2)
     {this integrality datum is the nice restricted type!}
     then (x3,) = from_dominant(irdw, iw*rd.two_rho)
 {means x3 w^{-1} * rho is dominant for irdw.}

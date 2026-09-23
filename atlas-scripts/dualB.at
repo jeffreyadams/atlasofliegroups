@@ -1,15 +1,87 @@
 < basic.at {for abs}
 < parameters.at {for dual_inner_class}
 < translate.at {for translate_param_by}
+< subgroups.at {for Levi_of_subspace}
+
+
+{the term lambda_minus is meant to be like the torus factor on the dual group. It is only defined up to
+(1-theta)*(X^*). Condition on it is }
+set param_from_minus(KGBElt x, ratvec gamma, ratvec lambda_minus) = Param:
+    let theta = x.involution
+    then lambda = (1+theta)*gamma/2 + lambda_minus
+    in assert(@:((1+theta)*lambda_minus).=);
+       assert (@:(lambda - x.real_form.rho).denom = 1);
+       parameter(x,lambda,gamma)
+
+set param_to_minus(Param p) = (KGBElt, ratvec, ratvec):
+    let theta = p.x.involution, gamma = p.infinitesimal_character
+    in (p.x, gamma, p.lambda - (1+theta)*gamma/2)
+
+{
+tests whether we can make an ABV parameter (y,Lambda) as y = e(lambda_plus)*x, Lambda = flat(lambda).
+Condition is y^2 = e(lambda)
+}
+
+set ABV_param_test(KGBElt x, ratvec lambda, ratvec lambda_plus) = bool:
+    let theta = x.involution
+    in	assert(@: ((1-theta)*lambda_plus).=);
+	(square(x) + (1+theta)*lambda_plus - lambda).denom = 1
+
+set ABV_param(Param p) = (KGBElt, ratvec, ratvec):
+    let dtheta = -(p.x.involution.^), lambda = p.infinitesimal_character
+    then dtf = (1+dtheta)*lambda/2
+    then dG = quasisplit_form(dual_inner_class(p))
+    then dj = first(for y in KGB(dG) do y.involution = dtheta od)
+    then y = KGB(dG,dj)
+    in assert(@: ABV_param_test(y,lambda,dtf));
+       (y,lambda,dtf)
+
+set dualBx(Param p) = KGBElt:
+    let rd = p.root_datum, dGi = dual_inner_class(p), gamma = p.infinitesimal_character, x = p.x
+    then theta = x.involution, rho_shift = rd.rho - dGi.rho
+    then dtheta = -theta.^
+    then dtf = gamma - p.lambda {vanishes on h^theta}
+    in KGB_elt(dGi, dtheta,dtf)
+
+set xq(RootDatum rd, mat theta) = KGBElt:
+    KGB_elt(rd,theta,null(rd.rank))
+
+{
+hope this is always defined and sends (compact, noncompact) to
+(nonparity,parity); but can fail to send (nonparity,parity) to
+(compact, noncompact). Should correct by moving to top of dual block,
+correcting dtf there by a search, which should produce an answer
+unique up to elements of order 2 in the center (of the dual group);
+then moving through block on dual side.
+}
+set dualB(Param p) = Param:
+    let rd = p.root_datum, dGi = dual_inner_class(p), gamma = p.infinitesimal_character, x = p.x
+    then dEq = quasisplit_form(dGi), theta = x.involution, rho_shift = rd.rho - dGi.rho
+    then dtheta = -theta.^, dxq = KGB(dEq,0)
+    then dtf = gamma - p.lambda {vanishes on h^theta}
+    then dx = KGB_elt(dGi, dtheta,dtf)
+    then bgv = base_grading_vector(p.real_form) {square(dx)}
+    then safe_mult = min((for a in dGi.simple_roots do a*bgv od)##[2])
+    then dgamma = bgv + (safe_mult + 1)*rho(dGi)
+    	 {this is meant to be dual infl char. Needs to be dominant, and 1*rho(dGi) wasn't for
+	 p = Spin(6,1).trivial}
+    then dlambda = dgamma - torus_factor(x) {second term lives on dual A}
+    in parameter(dx, dlambda, dgamma)
+
 
 set pos_part(Split s) = int:
     let (a,b) = %s in abs(a+b)
 
 set endo_ic(Param p) = inner_class(integrality_datum(p),p.x.involution)
 
+set Levi_ic(Param p) = InnerClass:
+    let rc = integrality_datum(p), rd = p.root_datum
+    then (,levi) = Levi_of_subspace(rd,kernel(rc.simple_coroots.^))
+    in inner_class(levi, p.x.involution)
+
 {one root from each non-real, non-imag pos pair (alpha, theta*alpha)}
 {well-defined up to (1-theta)alpha}
-{restricts on h^theta to rho - rho_imag}
+{restricts on h^theta to rho - rho_imag. Different choices define SAME CHARACTER of H^\theta}
 set rho_C(RootDatum rd, mat theta) = vec:
     {let zero = null(rd.rank)
     in} sum(rd.rank, for alpha@j in rd.posroots
@@ -72,16 +144,23 @@ set rho_check_minus_C(RootDatum rd, mat theta) = vec:
 {this one was broken on this:
 set p = parameter(E7_s,20530,[-1,-1,1,1,4,0,0]/1,[0,0,0,0,1,0,0]/3)
 }
-{what's the infl char of endo(p)? Maybe gamma + rho - rho(endoic) ?}
-set endoB(Param p) = Param:
-    let endoic = endo_ic(p), x = p.x, rd = p.root_datum
+{infl char of endo(p) =gamma + rho_shift}
+{Should match compact/noncompact status, not parity}
+set endoA(Param p) = Param:
+    let endoic = endo_ic(p), x = p.x, rd = p.root_datum, gamma= p.infinitesimal_character
     then theta = x.involution
     then rho_shift =  rd.rho  - endoic.rho
-    then lambda_shift = rho_shift - rho_C(rd,theta) + rho_C(endoic,theta)
+    then gamma_shift = gamma+rho_shift{, p_reg = parameter(x,p.lambda+2*rd.rho,nu+2*rd.rho)}
+    	 {p_ref has infl char gamma+2*rho, which is regular; _reg embeds block_of(p) in block_of(p_reg)}
+    {then rho_C_shift = rho_C(rd,theta) - rho_C(endoic,theta)} {vanishes if no C+ roots}
+    	 {same as rho_shift on h^\theta}
+    {then rho_minus_C_shift = rho_minus_C(rd,theta) - rho_minus_C(endoic,theta)} {vanishes if no C-}
+    {then rho_r_shift = rho_r(rd,theta) - rho_r(endoic,theta)}
+    {then lambda_shift = p.lambda + rho_shift}
     {on h^theta, this restricts to rho_shift - [rd.rho - rho_i(x)]-[endoic.rho - rho_i(endoic,theta)].
     Third and fifth terms are the same, so get rho_shift - [rd.rho - endoic.rho] = 0,  as we need to
     get infl char gamma for the target.}
-    then nu_shift = rho_r(x)  - rho_r(endoic,theta) + rho_minus_C(rd,theta) - rho_minus_C(endoic,theta)
+    {then nu_shift = rho_minus_C_shift + rho_r_shift} {=rho_shift on h^{-theta}}
     {-rho(rd) + rho(endoic)}
     {lambda_shift changes parities on real coroots by - rho_C(rd,theta) + rho_C(endoic,theta)}
     then corho_shift = rho_check_i(x) - rho_check_i(endoic,theta) {+ rho_check_minus_C(rd,theta) -
@@ -89,71 +168,43 @@ set endoB(Param p) = Param:
     {rho_check_minus_C(rd,theta) - rho_check_minus_C(endoic,theta)}
     {then endgamma = p.infinitesimal_character+rho_shift_r}
     then endox = KGB_elt(endoic, x.involution, x.torus_factor - corho_shift)
-    in parameter(endox, p.lambda + rho_shift {- lambda_shift}, p.nu) 
+    in parameter(endox, p.lambda + rho_shift, p.nu + rho_shift)
 
-{meant for x with no C+}
-set endoC(Param p) = Param:
+{seek ratvec shift making 1) endo_shift defined, 2) infl char is endoic-dominant,
+ and 3) Q poly identity holds}
+{infl char of endo_shift is p.infinitesimal_character + shift}
+set endo_shifts(Param p) = [vec]:
+    let endoic = endo_ic(p), x = p.x, rd = p.root_datum
+    then theta = x.involution 
+    then M = eigen_lattice(theta,-1)
+    then rho_shift =  rd.rho  - endoic.rho
+    then rho_r_shift = rho_r(rd,theta) - rho_r(endoic,theta)
+    then corho_shift = rho_check_i(x) - rho_check_i(endoic,theta)
+    then endox = KGB_elt(endoic, x.involution, x.torus_factor - corho_shift)
+    then pos_int_real = real_poscoroots(endox)
+    in for b in box(2,#M) if all(for av in pos_int_real do
+    	 is_even(floor(av*(M*b - rho_r_shift))) od) do M*b fi od
+
+{meant to have infl char gamma+rho_shift, same parity as p}
+set endo_shift(Param p) = Param:
     let endoic = endo_ic(p), x = p.x, rd = p.root_datum
     then theta = x.involution
+    then M = eigen_lattice(theta,-1)
     then rho_shift =  rd.rho  - endoic.rho
-    then rho_C_shift = rho_C(rd,theta) - rho_C(endoic,theta)
-    then lambda_shift = rho_shift - rho_C(rd,theta) + rho_C(endoic,theta)
-    {on h^theta, this restricts to rho_shift - [rd.rho - rho_i(x)]-[endoic.rho - rho_i(endoic,theta)].
-    Third and fifth terms are the same, so get rho_shift - [rd.rho - endoic.rho] = 0,  as we need to
-    get infl char gamma for the target.}
-    then nu_shift = rho_r(x)  - rho_r(endoic,theta) + rho_minus_C(rd,theta) - rho_minus_C(endoic,theta)
-    {-rho(rd) + rho(endoic)}
-    {lambda_shift changes parities on real coroots by - rho_C(rd,theta) + rho_C(endoic,theta)}
-    then corho_shift = rho_check_i(x) - rho_check_i(endoic,theta) {+ rho_check_minus_C(rd,theta) -
-    	 rho_check_minus_C(endoic,theta)}
-    {rho_check_minus_C(rd,theta) - rho_check_minus_C(endoic,theta)}
-    {then endgamma = p.infinitesimal_character+rho_shift_r}
+    then rho_r_shift = rho_r(rd,theta) - rho_r(endoic,theta)
+    then corho_shift = rho_check_i(x) - rho_check_i(endoic,theta)
     then endox = KGB_elt(endoic, x.involution, x.torus_factor - corho_shift)
-    in parameter(endox, p.lambda + rho_shift - rho_C_shift, p.nu)
+    then pos_int_real = real_poscoroots(endox)
+    then j = first(for b in box(2,#M) do @:all(for av in pos_int_real do
+    	 is_even(floor(av*(M*b - rho_r_shift))) od) od)
+    then shift = M*box(2,#M)[j]
+    in parameter(endox, p.lambda + rho_shift + shift, p.nu + rho_shift)
 
-{meant for x with no C-}
-set endoD(Param p) = Param:
-    let endoic = endo_ic(p), x = p.x, rd = p.root_datum
-    then theta = x.involution
-    then rho_shift =  rd.rho  - endoic.rho
-    then rho_C_shift = rho_C(rd,theta) - rho_C(endoic,theta)
-    then lambda_shift = rho_shift - rho_C(rd,theta) + rho_C(endoic,theta)
-    {on h^theta, this restricts to rho_shift - [rd.rho - rho_i(x)]-[endoic.rho - rho_i(endoic,theta)].
-    Third and fifth terms are the same, so get rho_shift - [rd.rho - endoic.rho] = 0,  as we need to
-    get infl char gamma for the target.}
-    then nu_shift = rho_r(x)  - rho_r(endoic,theta) + rho_minus_C(rd,theta) - rho_minus_C(endoic,theta)
-    {-rho(rd) + rho(endoic)}
-    {lambda_shift changes parities on real coroots by - rho_C(rd,theta) + rho_C(endoic,theta)}
-    then corho_shift = rho_check_i(x) - rho_check_i(endoic,theta) {+ rho_check_minus_C(rd,theta) -
-    	 rho_check_minus_C(endoic,theta)}
-    {rho_check_minus_C(rd,theta) - rho_check_minus_C(endoic,theta)}
-    {then endgamma = p.infinitesimal_character+rho_shift_r}
-    then endox = KGB_elt(endoic, x.involution, x.torus_factor - corho_shift)
-    in parameter(endox, p.lambda + rho_shift - rho_C_shift, p.nu)
 
-{meant for x with no C-}
-set pretendo(Param p) = (KGBElt, ratvec, ratvec):
-    let endoic = endo_ic(p), x = p.x, rd = p.root_datum
-    then theta = x.involution
-    then rho_shift =  rd.rho  - endoic.rho
-    then rho_C_shift = rho_C(rd,theta) - rho_C(endoic,theta)
-    then lambda_shift = rho_shift - rho_C(rd,theta) + rho_C(endoic,theta)
-    {on h^theta, this restricts to rho_shift - [rd.rho - rho_i(x)]-[endoic.rho - rho_i(endoic,theta)].
-    Third and fifth terms are the same, so get rho_shift - [rd.rho - endoic.rho] = 0,  as we need to
-    get infl char gamma for the target.}
-    then nu_shift = rho_r(x)  - rho_r(endoic,theta) + rho_minus_C(rd,theta) - rho_minus_C(endoic,theta)
-    {-rho(rd) + rho(endoic)}
-    {lambda_shift changes parities on real coroots by - rho_C(rd,theta) + rho_C(endoic,theta)}
-    then corho_shift = rho_check_i(x) - rho_check_i(endoic,theta) {+ rho_check_minus_C(rd,theta) -
-    	 rho_check_minus_C(endoic,theta)}
-    {rho_check_minus_C(rd,theta) - rho_check_minus_C(endoic,theta)}
-    {then endgamma = p.infinitesimal_character+rho_shift_r}
-    then endox = KGB_elt(endoic, x.involution, x.torus_factor - corho_shift)
-    in (endox, p.lambda, p.nu)
 
-{note torus_factor(x) = base_grading_vector + vec; vec is more or less torus_bits(x)}
-{on Spin(6,1).trivial, this formula fails: block has five elements, dual block has 4. Cannot
-fix that at chosen infl char. Need infl char half-int on last coord, int on others}
+
+
+{
 set dualB(Param p) = Param:
     let rd = p.root_datum, dGi = dual_inner_class(p), gamma = p.infinitesimal_character, x = p.x
     then endoic = endo_ic(p), theta = x.involution, bgv = base_grading_vector(p.real_form)
@@ -169,8 +220,12 @@ set dualB(Param p) = Param:
     then dlambda = dgamma - torus_factor(x) {second term lives on dual A}
     then dx = KGB_elt(dGi,dtheta,dtf)
     in parameter(dx, dlambda, dgamma)
+}
+
 
 set dual_diffs_time = int:0
+
+{
 {for use in kl.at, picking between KL_sum_at_s(p) and
 KL_sum_at_s_to_ht(p,HT) to decide: whether to prefer
 KL_sum_at_s_to_ht(p,HT): first int corresponds to difficulty of
@@ -184,12 +239,13 @@ set dual_diffs(Param p, int HT) = (int,int):
     then q = lows~[0] {closest to ds contrib to KL_sum_to_ht}
     then qreg = parameter(q.x,q.lambda+tworho, q.nu + tworho)
     in (#partial_block(preg), #partial_block(dualB(qreg))) next dual_diffs_time +:= elapsed_ms() - start
-
+}
 set reg_block(Param p) = (([Param],int),vec):
     p:=first_param(finalize(p));
     let tworho = p.real_form.two_rho, start = elapsed_ms()
     then preg = translate_param_by(p,tworho)
-    in (block(preg),tworho) next dual_diffs_time+:= elapsed_ms() - start
+    in (block(preg),tworho) {next dual_diffs_time+:= elapsed_ms() - start}
+
 
 set short_dual_diffs(Param p, int HT) = (int,int,int):
     let ((B,m),tworho) = reg_block(p), start = elapsed_ms() {m+1 is upper bound for #partial_block(preg)}
@@ -215,11 +271,14 @@ set short_dual_diffs([Param] B, int m, int HT, vec tworho) = (int,int,int):
        (#B,m+1,#B-dq-m) {small m means KL_sum easier, small #B-dq-m means to_ht easier.}
 
 
+
 set dual_mult = int: 128
 {bigger for more to_ht}
 
 {whether to prefer KL_sum_at_s_to_ht (TRUE) or KL_sum (FALSE)} 
 {TRUE means preg very close to the bottom of big block}
+
+
 set low_dual(Param p, int HT) = bool:
     if p.x.number < (1/2)*p.real_form.KGB_size then return false fi;
     let ((B,m),tworho) = reg_block(p)
@@ -227,4 +286,68 @@ set low_dual(Param p, int HT) = bool:
     let (Bsize, D, DHT) = short_dual_diffs(B,m,HT,tworho)
     in dual_mult*DHT < D
 
+
 {add a version for is_unitary??, analogous to low_diff(p,HT) vs low_diff_char(p,HT) in kl.at}
+
+{
+
+suppose (^E G) is an E-group for G ([ABV], Def 4.6) (y,Lambda) is an
+ABV Langlands parameter. We can find a Cartan (^vee H) in (^vee G)
+\subset (^E G), a Borel (^vee B) containing (^vee H), and lambda \in
+(^vee h), so that
+
+1) Lambda is the canonical flat of lambda
+2) y \in N((^vee H) and in nonidentity component of (^vee E), acting on (^vee H)
+   by an automorphism (^vee theta)
+3) y^2 = exp(2\pi i \lambda) = e(Lambda)
+4) lambda is weakly dominant for (^vee B)
+5) if av is a positive root vanishing on lambda, then (^vee theta)(av) is
+   nonnegative on lambda
+6) {some condition about imaginary/real roots??}
+
+This makes y = t sigma(w) delta, with delta the distinguished involution, sigma(w)
+the Tits representative of a Weyl group element w, and t in H. Furthermore
+
+t = e((lambda-(^vee theta)*lambda)/2 + dtf. We want to make y a KGBElt for the
+group vE, as an element of the extended group (^E (^vee E)). So we need to fix
+a class of distinguished involutions in (^E (^vee E)). Factor
+
+(^vee theta) = vw_E * delta_E,
+
+with vw_E in W(^vee E) and delta_E an involution of the based root datum of (^vee E).
+We need to choose an element delta_E of (^L G) that does this. Start by factoring
+
+delta_E = vx * delta,
+
+with vx in W(G) (normalizing E). Then try
+
+delta_{E,0} = (Tits extension of vx)*delta.
+
+I think this element must have square equal to e((1-delta_{E,0})rho_check) =
+e(sum of coroots) (and so has order 2 or 4), and it acts on (^vee H) as required,
+but it need NOT (claude points out) act by +1 on the delta_E-fixed simple roots.
+I don't see how to explicitly to correct to delta_E, and so I don't know how to compute
+(delta_E)^2, which is needed to replace rho_E in the endo_claude.
+
+Once this correction is made, (delta_E)^2 is something e(r_E), with r_E integral for
+(^vee E) but NOT NECESSARILY EQUAL rho_check_E. The definition of endo_claude(p) needs
+not rho_shift but rho - r_E, which changes the integrality requirement on lambda_minus.
+With these adjustments, the formula I suggested for claude_shift ought to work.
+}
+
+{
+Here is an idea. Suppose G is quasisplit. For each twisted involution theta, there is a
+unique KGBElt x(theta) with this involution and torus factor zero. (check this!) Among these,
+there is a unique x(delta) of length zero, attached to the distinguished involution. You can
+move among these special x(theta) by complex cross actions and downward Cayley through simple
+imaginary roots (which are always defined, since for these x the simple imaginary are all
+noncompact). For upward Cayley, when it is double-valued, just one has torus factor zero.}
+
+
+
+{
+Given p = parameter(x,lambda,nu), replace x by x1 = KGB_elt(p.inner_class, p.x.involution,
+ 0*p.lambda). This is a "base" KGBElt in which all simple imaginary roots are noncompact. This gives
+ p1 = parameter(x,lambda,nu), for the quasisplit inner form of G, but with the same infinitesimal character
+ and the same integrality datum.
+ }

@@ -11,18 +11,6 @@
 <jagged_deform.at {for new full_deform}
 <integrality_hash.at
 
-set integrality_datum(Param p) = RootDatum:
-    if IH_flag
-    then integrality_datum_hash(p)
-    else integrality_datum(p)
-    fi
-
-set integrality_datum(RootDatum rd, ratvec gamma) = RootDatum:
-    if IH_flag
-    then integrality_datum_hash(rd,gamma)
-    else integrality_datum(rd,gamma)
-    fi
-
 set deformLookupCounter = make_counter()
 set deformCalcCounter = make_counter()
 set twistedDeformLookupCounter = make_counter()
@@ -1531,7 +1519,7 @@ set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(v
        KL_false_low_count," KL_sum_at_s_to_ht calcs -> new KL_sum_at_s because of low_char");
        prints("KL_sum_at_s_to_ht_new entered ",stored_count+unstored_count," times (",
               stored_count," with the library sum stored, ",unstored_count," without)") fi;
-    if IH_flag then IDH_report() fi;
+    if IDH_flag then IDH_report() fi;
     prints("  ----------------")
     , @: {clear_report_tested_cum}
      tph := 0; tpt := 0; tnh := 0; tnt :=0; oth :=0; otc :=0; ott :=0;
@@ -2434,7 +2422,7 @@ set u_stats_line(Param p, int T) = void:
     then xings = wall_crossings(lam,nu,rd)
     then xingsp = wall_crossings_par(lam,nu,p.lambda,rd)
     then irs = for t in rps
-    	       do nr_of_posroots(integrality_datum(rd, lam + t*nu))
+    	       do nr_of_posroots(integrality_datum_hash(rd, lam + t*nu))
 	       od
     then pbs = for t in rps do #partial_block(parameter(x,p.lambda,t*nu)) od
     then irmax = if #irs = 0 then 0 else max(irs) fi

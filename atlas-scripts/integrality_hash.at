@@ -1,37 +1,46 @@
 < hash.at
 < basic.at {for integrality_datum@Param}
 
-set IH_flag = false
+set IDH_flag = false
 
 set IDH_time = int: 0
 set IDH_call = int: 0
 set IDH_new = int: 0
 
+set INTrd_hash = make_RootDatum_hash()
+set INTgamma_hashes = [ratvec_hash]:[]
+set INTanswer_hash = make_RootDatum_hash()
+set INTanswers = [[int]]:[]
 set (integrality_datum_hash, IDH_report) = (((RootDatum, ratvec) -> RootDatum),(->)):
+    {
     let rd_hash = make_RootDatum_hash()
     then gamma_hashes = [ratvec_hash]: [] {one for each rd in rd_hash}
     then answer_hash = make_RootDatum_hash() { hashing int data}
-    then answers = [[int]]: [] {entry [i,j] is index of
+    }
+    {let INTanswers = [[int]]: []} {entry [i,j] is index of
     	 integrality_datum(rd_hash.index[i],gamma_hashes.index[j]) in answer_hash}
-    in (
+    {in} (
     (((RootDatum, ratvec) -> RootDatum): (RootDatum rd, ratvec gamma):
+    if not IDH_flag
+    then return integrality_datum(rd,gamma)
+    fi;
     IDH_call+:=1;
-    let start = elapsed_ms(), M = rd_hash.size()
-    then m = rd_hash.match(rd)
+    let start = elapsed_ms(), M = INTrd_hash.size()
+    then m = INTrd_hash.match(rd)
     in if m = M
-       then gamma_hashes#:= make_ratvec_hash();
-       	    answers #:=([int]:[])
+       then INTgamma_hashes#:= make_ratvec_hash();
+       	    INTanswers #:=([int]:[])
        fi;
-       let N = gamma_hashes[m].size()
-       then n = gamma_hashes[m].match(gamma%1)
+       let N = INTgamma_hashes[m].size()
+       then n = INTgamma_hashes[m].match(gamma%1)
        in if n=N
        	  then IDH_new +:= 1;
-	       answers[m] #:=answer_hash.match(integrality_datum(rd,gamma))
+	       INTanswers[m] #:=INTanswer_hash.match(integrality_datum(rd,gamma))
 	  fi;
-	  answer_hash.index(answers[m][n]) next IDH_time+:= elapsed_ms() - start
+	  INTanswer_hash.index(INTanswers[m][n]) next IDH_time+:= elapsed_ms() - start
      ),
-     ((->): @:prints("examined ",sum(for hash in gamma_hashes do hash.size() od)," ratvec's for ",
-     		      rd_hash.size()," root data; ",IDH_call," calls, in ",
+     ((->): @:prints("examined ",sum(for hash in INTgamma_hashes do hash.size() od)," ratvec's for ",
+     		      INTrd_hash.size()," root data; ",IDH_call," calls, in ",
 		      print_time_string(IDH_time))
        )
        )

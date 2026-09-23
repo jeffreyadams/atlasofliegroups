@@ -2209,9 +2209,15 @@ set nu (Param p) = ratvec:       let (x,,gamma) =%p in (1-involution(x))*gamma/2
 set Cartan_class (Param p) = CartanClass: Cartan_class(x(p))
 set codimension (Param p) = int: codimension(p.x)
 
+set IDP_time = int:0
+set IDP_count = int:0
+
 { root datum whose coroots are those integral on p.infinitesimal_character }
 set integrality_datum (Param p)= RootDatum:
-  integrality_datum(p.real_form, p.infinitesimal_character)
+  let start = elapsed_ms()
+  in integrality_datum(p.real_form, p.infinitesimal_character) \
+     next IDP_time +:=elapsed_ms() - start; IDP_count+:=1
+
 set integrality_rank (Param p) = int:
   integrality_rank(p.real_form, p.infinitesimal_character)
 
@@ -2339,8 +2345,11 @@ set nonparity_poscoroots (Param p) = mat: { positive real nonparity coroots }
   in columns_with((int i):status(alpha[i],p)=5,real_poscoroots)
 
 set is_descent (int s,Param p) = bool: status(s,p)<4
+
 set tau_bitset (Param p) = (int,(int->bool)):
-  (integrality_rank(p), (int s): is_descent(s,p))
+  let id = integrality_datum(p)
+  in (semisimple_rank(id),(int s): status(root(id,s),p)<4)
+  {(integrality_rank(p), (int s): is_descent(s,p))}
 
 set tau (Param p)            = [int]: list(tau_bitset(p))
 set tau_complement (Param p) = [int]: complement(tau_bitset(p))
