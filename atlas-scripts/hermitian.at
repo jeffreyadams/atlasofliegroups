@@ -1247,6 +1247,7 @@ set was_tested_inter(Param p, int T, int T_target) = void:
     then m = tested_inter_hash.match(p)
     in if m=M
        then tested_inter_times #:= T;
+       	    tested_inter_strings #:=test_string;
        	    tested_inter_counts #:=1
        else tested_inter_times[m] +:= T;
        	    tested_inter_counts[m] +:=1
