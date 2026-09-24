@@ -859,6 +859,9 @@ set min_small_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
 set min_small_bottom_elim_factors(Param p, KTypePol P) = bool:
     min_small_bottom_elim_factors(p, p, P)
 
+set actual_test_count = int:0
+set not_test_count = int:0
+
 {insist that every LKT of p0 is a LQ of p, and that P is K_type_pol of
 character formula of p0 to some height. Need p0 FINAL}
 set min_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
@@ -893,23 +896,33 @@ set min_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
 		  else branch_std(P,DG)
 		  fi
 		  }
+    then ufacs = for j:#derpL0js do false od
     then Lbranches = for derpL0j@j in derpL0js
 	    	     do let sigLj =
 		            if big_unitary_hash.uhash(derLjs[j]).lookup(derpL0j).>=
-			    then let QLj = character_formula_to_ht(derpL0j,DLs[j])
+			    then ufacs[j]:=true;
+			    	 let QLj = character_formula_to_ht(derpL0j,DLs[j])
 				 in K_type_pol(QLj)
 			    elif RF_code
-	    	      	    then big_unitary_hash.sig_entry(derpL0j, DLs[j])
-			    else hermitian_form_irreducible_to_ht_big_SIMPLE(derpL0j,DLs[j])
+	    	      	    then let sig = big_unitary_hash.sig_entry(derpL0j, DLs[j])
+			    	 in ufacs[j]:= is_pure(sig);
+				    sig
+			    else let sig = hermitian_form_irreducible_to_ht_big_SIMPLE(derpL0j,DLs[j])
+			    	 in ufacs[j]:= is_pure(sig);
+				    sig
 		            fi
 			 then posLj = if int_part(sigLj[dermuLjs[j]]) = 0
 			      	      then s*sigLj
 				      else sigLj {this bit makes posLj pos on LKTs}
 				      fi
-			 in branch_std(posLj,DLs[j]) {this lists signature of form on derpL0j on the
+			 in if all(ufacs)
+			    then not_test_count +:=1; return true
+			    else actual_test_count +:=1
+			    fi;
+			    branch_std(posLj,DLs[j]) {this lists signature of form on derpL0j on the
 			    			     bottom layer (Lj\cap K)-types}
 			 od
-    {then () = prints(Lbranches)}
+    then () = if all(ufacs) then prints("Should have escaped, but didn't") fi
     then answers = [(->bool)]: {one function for each LKT mu of p}
     	 for mu in LKTs(p)
     	 do let LKData = minBottomData.entry(mu) {[tau,[dertauLj]]}
@@ -1087,27 +1100,32 @@ set min_bottom_elim_factors(Param p0, Param p, KTypePol P, int HT) = bool:
 		  else branch_std(P,DG)
 		  fi
 		  }
+    then ufacs = for j:#derpL0js do false od
     then Lbranches = for derpL0j@j in derpL0js
 	    	     do let sigLj =
 		            if big_unitary_hash.uhash(derLjs[j]).lookup(derpL0j).>=
-			    then let QLj = character_formula_to_ht(derpL0j,DLs[j])
+			    then ufacs[j]:=true;
+			    let QLj = character_formula_to_ht(derpL0j,DLs[j])
 				 in K_type_pol(QLj)
 			    elif RF_code
-	    	      	    then big_unitary_hash.sig_entry(derpL0j, DLs[j])
-			    else hermitian_form_irreducible_to_ht_big_SIMPLE(derpL0j,DLs[j])
+	    	      	    then let sig = big_unitary_hash.sig_entry(derpL0j, DLs[j])
+			    	 in ufacs[j]:= is_pure(sig);
+				    sig
+			    else let sig = hermitian_form_irreducible_to_ht_big_SIMPLE(derpL0j,DLs[j])
+			    	 in ufacs[j]:= is_pure(sig);
+				    sig
 		            fi
 			 then posLj = if int_part(sigLj[dermuLjs[j]]) = 0
 			      	      then s*sigLj
 				      else sigLj {this bit makes posLj pos on LKTs}
 				      fi
-			 in branch_std(posLj,DLs[j])
-			    {
-			    if branch_hash_flag
-		       	    then big_unitary_hash.branch(posLj,DLs[j])
-			    else branch_std(posLj,DLs[j])
-			    fi
-			    }
+			 in if all(ufacs)
+			    then not_test_count +:=1; return true
+			    else actual_test_count +:=1
+			    fi;
+			    branch_std(posLj,DLs[j])
 			 od
+    then () = if all(ufacs) then prints("Should have escaped, but didn't") fi
     then answers = [(->bool)]: {one function for each LKT mu of p}
     	 for mu in LKTs(p)
     	 do let LKData = minBottomData.entry_to_bd(mu,HT) {[tau,[dertauLj]]}
