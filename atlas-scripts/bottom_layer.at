@@ -864,6 +864,7 @@ set not_test_count = int:0
 
 {insist that every LKT of p0 is a LQ of p, and that P is K_type_pol of
 character formula of p0 to some height. Need p0 FINAL}
+{ NEED MULTS FROM UNITAEY FACTORS IN LBRANCHES: zeros could give false elim}
 set min_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
     if small_test_flag
     then return min_small_bottom_elim_factors(p0,p,P)
@@ -890,50 +891,37 @@ set min_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
     then derxLjs = for derpL0j in derpL0js do derpL0j.x od
     then derLjs = for derpL0j in derpL0js do derpL0j.real_form od
     then  multG = branch_std(P,DG)
-    	  	  {
-		  if branch_hash_flag
-    	  	  then big_unitary_hash.branch(P,DG)
-		  else branch_std(P,DG)
-		  fi
-		  }
-    then ufacs = for j:#derpL0js do false od
-    then Lbranches = for derpL0j@j in derpL0js
-	    	     do let sigLj =
-		            if big_unitary_hash.uhash(derLjs[j]).lookup(derpL0j).>=
-			    then ufacs[j]:=true;
-			    	 let QLj = character_formula_to_ht(derpL0j,DLs[j])
-				 in K_type_pol(QLj)
-			    elif RF_code
-	    	      	    then let sig = big_unitary_hash.sig_entry(derpL0j, DLs[j])
-			    	 in ufacs[j]:= is_pure(sig);
-				    sig
-			    else let sig = hermitian_form_irreducible_to_ht_big_SIMPLE(derpL0j,DLs[j])
-			    	 in ufacs[j]:= is_pure(sig);
-				    sig
-		            fi
-			 then posLj = if int_part(sigLj[dermuLjs[j]]) = 0
-			      	      then s*sigLj
-				      else sigLj {this bit makes posLj pos on LKTs}
+    then nujs = [int]:[] {only keep the nonunitary factors}
+    then Lbranches = [KTypePol]:[] {these will be the signatures of nonunitary factors}
+    then () = for derpL0j@j in derpL0js
+    	 do if big_unitary_hash.nu_height_lookup_int(derpL0j,DLs[j]).<=
+	    {that is, we don't already KNOW derpLj is unitary to height}
+	    then let sig = branch_std(big_unitary_hash.sig_entry(derpL0j, DLs[j]),DLs[j])
+	    	 in if not is_pure(sig)
+		    then nujs#:=j;
+		    	 Lbranches #:= if int_part(sig[dermuLjs[j]]) = 0
+			      	      then s*sig
+				      else sig {this bit makes sig pos on LKT factor}
 				      fi
-			 in if all(ufacs)
-			    then not_test_count +:=1; return true
-			    else actual_test_count +:=1
-			    fi;
-			    branch_std(posLj,DLs[j]) {this lists signature of form on derpL0j on the
-			    			     bottom layer (Lj\cap K)-types}
-			 od
-    then () = if all(ufacs) then prints("Should have escaped, but didn't") fi
+		    fi
+	    fi
+	 od
+    then () = if #nujs = 0
+    	      then not_test_count +:=1; return true
+	      else actual_test_count +:=1
+	      fi
     then answers = [(->bool)]: {one function for each LKT mu of p}
     	 for mu in LKTs(p)
     	 do let LKData = minBottomData.entry(mu) {[tau,[dertauLj]]}
 	    in @: all( [(->bool)]:
 	       	       for (tau,list) in LKData[1:] {one function for each min_bottom K-type tau}
  		       do let coeff = Split: 1 {this will be the bottom layer signature at tau}
-			  then () = for tauLj@j in list
-			       	    do coeff*:= Lbranches[j][tauLj]
+			  then () = for Lbranch@i in Lbranches
+			       	    do coeff*:= Lbranch[list[nujs[i]]]
 			  	    od
-			   {then () = prints("at tau = ",tau,", coeff = ",coeff,", mult = ",multG[tau])}
-		    	   in @bool: int_part(coeff) >= int_part(regroup(tau.real_form, multG)[tau])
+		    	   in @bool: s_part(coeff).= or
+			      	     int_part(regroup(tau.real_form, multG)[tau]).=
+			   {int_part(coeff) >= int_part(regroup(tau.real_form, multG)[tau])}
 	       	        od)
         od
    then answer = all(answers)
@@ -947,7 +935,8 @@ set min_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
    then () = if every_MBEF_flag then prints("  ",answer) fi
    in answer
 
-{signature on min bottom layer K-types. Guaranteed pos on mu}
+{signature on min bottom layer K-types. Guaranteed pos on mu.
+9/24/26: each mult is missing a pos factor coming from the unitary factors of pL.}
 set min_bottom_sig(Param p0) = KTypePol:
     let (Q,pL0) = theta_stable_quasi_data(p0), G = p0.real_form
     then mus = LKTs(p0)
@@ -964,35 +953,29 @@ set min_bottom_sig(Param p0) = KTypePol:
     then derpL0js = derived_factor_params0(pL0) {all height 0}
     then derxLjs = for derpL0j in derpL0js do derpL0j.x od
     then derLjs = for derpL0j in derpL0js do derpL0j.real_form od
-    then Lbranches = for derpL0j@j in derpL0js
-	    	     do let sigLj =
-		            if big_unitary_hash.uhash(derLjs[j]).lookup(derpL0j).>=
-			    then let QLj = character_formula_to_ht(derpL0j,DLs[j])
-				 in K_type_pol(QLj)
-			    elif RF_code
-	    	      	    then big_unitary_hash.sig_entry(derpL0j, DLs[j])
-			    else hermitian_form_irreducible_to_ht_big_SIMPLE(derpL0j,DLs[j])
-		            fi
-			 then posLj = if int_part(sigLj[dermuLjs[j]]) = 0
-			      	      then s*sigLj
-				      else sigLj {this bit makes posLj pos on LKTs}
+    then nujs = [int]:[] {only keep the nonunitary factors}
+    then Lbranches = [KTypePol]:[] {these will be the signatures of nonunitary factors}
+    then () = for derpL0j@j in derpL0js
+    	 do if big_unitary_hash.nu_height_lookup_int(derpL0j,DLs[j]).<=
+	    {that is, we don't already KNOW derpLj is unitary to height}
+	    then let sig = branch_std(big_unitary_hash.sig_entry(derpL0j, DLs[j]),DLs[j])
+	    	 in if not is_pure(sig)
+		    then nujs#:=j;
+		    	 Lbranches #:= if int_part(sig[dermuLjs[j]]) = 0
+			      	      then s*sig
+				      else sig {this bit makes sig pos on LKT factor}
 				      fi
-			 in branch_std(posLj,DLs[j])
-			    {
-			    if branch_hash_flag
-		       	    then big_unitary_hash.branch(posLj,DLs[j])
-			    else branch_std(posLj,DLs[j])
-			    fi
-			    }
-			 od
+		    fi
+	    fi
+	 od
     in sum(G, for mu in mus
     	 do let LKData = minBottomData.entry(mu) {[tau,[dertauLj]]}
 	    in sum(G, for (tau,list) in LKData {one term for each min_bottom K-type tau}
  	       do let coeff = Split: 1 {this will be the bottom layer signature at tau}
-		  then () = for tauLj@j in list
-			    do coeff*:= Lbranches[j][tauLj]
-			    od
-		  in coeff*tau
+	       	  in for Lbranch@i in Lbranches
+		     do coeff*:= Lbranch[list[nujs[i]]]
+		     od;
+		     coeff*tau
 	       od)
           od)
 
@@ -1094,56 +1077,44 @@ set min_bottom_elim_factors(Param p0, Param p, KTypePol P, int HT) = bool:
     then derxLjs = for derpL0j in derpL0js do derpL0j.x od
     then derLjs = for derpL0j in derpL0js do derpL0j.real_form od
     then  multG = branch_std(P,DG)
-    	  	  {
-		  if branch_hash_flag
-    	  	  then big_unitary_hash.branch(P,DG)
-		  else branch_std(P,DG)
-		  fi
-		  }
-    then ufacs = for j:#derpL0js do false od
-    then Lbranches = for derpL0j@j in derpL0js
-	    	     do let sigLj =
-		            if big_unitary_hash.uhash(derLjs[j]).lookup(derpL0j).>=
-			    then ufacs[j]:=true;
-			    let QLj = character_formula_to_ht(derpL0j,DLs[j])
-				 in K_type_pol(QLj)
-			    elif RF_code
-	    	      	    then let sig = big_unitary_hash.sig_entry(derpL0j, DLs[j])
-			    	 in ufacs[j]:= is_pure(sig);
-				    sig
-			    else let sig = hermitian_form_irreducible_to_ht_big_SIMPLE(derpL0j,DLs[j])
-			    	 in ufacs[j]:= is_pure(sig);
-				    sig
-		            fi
-			 then posLj = if int_part(sigLj[dermuLjs[j]]) = 0
-			      	      then s*sigLj
-				      else sigLj {this bit makes posLj pos on LKTs}
+    then nujs = [int]:[] {only keep the nonunitary factors}
+    then Lbranches = [KTypePol]:[] {these will be the signatures of nonunitary factors}
+    then () = for derpL0j@j in derpL0js
+    	 do if big_unitary_hash.nu_height_lookup_int(derpL0j,DLs[j]).<=
+	    {that is, we don't already KNOW derpLj is unitary to height}
+	    then let sig = branch_std(big_unitary_hash.sig_entry(derpL0j, DLs[j]),DLs[j])
+	    	 in if not is_pure(sig)
+		    then nujs#:=j;
+		    	 Lbranches #:= if int_part(sig[dermuLjs[j]]) = 0
+			      	      then s*sig
+				      else sig {this bit makes sig pos on LKT factor}
 				      fi
-			 in if all(ufacs)
-			    then not_test_count +:=1; return true
-			    else actual_test_count +:=1
-			    fi;
-			    branch_std(posLj,DLs[j])
-			 od
-    then () = if all(ufacs) then prints("Should have escaped, but didn't") fi
+		    fi
+	    fi
+	 od
+    then () = if #nujs = 0
+    	      then not_test_count +:=1; return true
+	      else actual_test_count +:=1
+	      fi
     then answers = [(->bool)]: {one function for each LKT mu of p}
     	 for mu in LKTs(p)
     	 do let LKData = minBottomData.entry_to_bd(mu,HT) {[tau,[dertauLj]]}
 	    in @: all( [(->bool)]:
 	       	       for (tau,list) in LKData[1:] {one function for each min_bottom K-type tau}
  		       do let coeff = Split: 1 {this will be the bottom layer signature at tau}
-			  then () = for tauLj@j in list
-			       	    do coeff*:= Lbranches[j][tauLj]
+			  then () = for Lbranch@i in Lbranches
+			       	    do coeff*:= Lbranch[list[nujs[i]]]
 			  	    od
-		    	   in @bool: int_part(coeff) >= int_part(regroup(tau.real_form, multG)[tau])
+		    	   in @bool: s_part(coeff).= or
+			      	     int_part(regroup(tau.real_form, multG)[tau]).=
+			   {int_part(coeff) >= int_part(regroup(tau.real_form, multG)[tau])}
 	       	        od)
         od
    then answer = all(answers)
-	{then () = if not answer then attest_is_unitary(p,answer) fi}
    then () = if not answer
    	     then good_hash.match(p0);
 	     	  big_unitary_hash.numatch_height(p0,DG)
-		  {;prints("adding to mbefCount");}{mbefCount +:=1} fi
+	     fi
    then () = mbefTime +:= elapsed_ms()-start
    then () = if every_MBEF_flag then prints("  ",answer) fi
    in answer
