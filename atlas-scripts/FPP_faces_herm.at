@@ -356,9 +356,9 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 			then () = x_known #:= 0
 			then () = x_partial #:= 0
 			{then () = status_strings #:= []}
-			then () = uhashes #:= make_Param_hash()
-			then () = nuhashes #:= make_Param_hash()
-			then () = phashes #:= make_Param_hash()
+			then () = uhashes #:= make_FPP_Param_hash()
+			then () = nuhashes #:= make_FPP_Param_hash()
+			then () = phashes #:= make_FPP_Param_hash()
 			in ()
 		   fi
 	  then () = assert(@:real_form_hash.size() = #phashes and #phashes = #xl_known
@@ -1602,7 +1602,7 @@ set UHBS_time = int: 0
 
 {assume p = u_to_ht_hash.list()[j], h = u_to_ht_hts[j] gives
 is_unitary_to_ht(p,h) = true}
-set u_to_ht_hash = make_Param_hash()
+set u_to_ht_hash = make_FPP_Param_hash()
 set u_to_ht_hts = [int]:[]
 
 set add_to_u_to_ht(Param p,int h) = void:

@@ -1958,15 +1958,61 @@ set herm_centerNewDumb(Param p) = Param:
     then () = hermCenterNewTime +:= elapsed_ms() - start
     in answer
 
+{barycenter of global_vertices(ic,gamma), memoised on (ic,gamma)}
+set herm_bary_hash_flag = true
+set herm_bary_base(InnerClass ic, ratvec gamma) = ratvec:
+    let list = global_vertices(ic, gamma) in sum(#list[0],list)/#list
+set herm_bary_hash = ((InnerClass, ratvec)->ratvec):
+    {inner classes found by linear search with =, which is nearly free;
+     hash_code@(InnerClass,int) costs about 26 microseconds}
+    let ics = [InnerClass]: []
+    then gamma_hashes = [ratvec_hash]: []
+    then answers = [[ratvec]]: []
+    in ((InnerClass, ratvec)->ratvec): (InnerClass ic, ratvec gamma):
+       let n = first(#ics, (int i) bool: ics[i] = ic)
+       in if n < 0
+       	  then n := #ics; ics #:= ic;
+	       gamma_hashes #:= make_ratvec_hash();
+	       answers #:= ([ratvec]: [])
+	  fi;
+	  let GAM = gamma_hashes[n].size()
+	  then gam = gamma_hashes[n].match(gamma)
+	  in if gam = GAM
+	     then answers[n] #:= herm_bary_base(ic,gamma)
+	     fi;
+	     answers[n][gam]
+
 set herm_center(Param p) = Param:
     if hermCenterOldFlag
     then return(herm_centerOld(p))
     fi;
     let start = elapsed_ms()
-    then list = global_vertices(p.inner_class, p.infinitesimal_character)
-    then answer = parameter(p.x, p.lambda, sum(#list[0],list)/#list)
+    then bary = if herm_bary_hash_flag
+    	 	then herm_bary_hash(p.inner_class, p.infinitesimal_character)
+		else herm_bary_base(p.inner_class, p.infinitesimal_character)
+		fi
+    then answer = parameter(p.x, p.lambda, bary)
     then () = hermCenterNewTime +:= elapsed_ms() - start
     in answer
+
+{A Param_hash for FPP use: every Param is replaced by herm_center(p) before it
+ is stored or looked up, so callers may pass uncentered Params, and all
+ Params with the same (x,lambda) and the same face share one entry. The
+ type is the ordinary Param_hash; list() and index() return centered Params.}
+set make_FPP_Param_hash () = Param_hash:
+    let h = make_Param_hash()
+    in ( h.size
+       , h.capacity
+       , h.grow
+       , ([Param] ps): h.fill(for p in ps do herm_center(p) od)
+       , h.clear
+       , h.list
+       , h.index
+       , (Param p) int: h.match(herm_center(p))
+       , (Param p) bool: h.could_add(herm_center(p))
+       , (Param p) Maybe<int>: h.search(herm_center(p))
+       , h.iterator
+       )
 
 set NHC_count = int: 0
 set NHC_base_count = int: 0

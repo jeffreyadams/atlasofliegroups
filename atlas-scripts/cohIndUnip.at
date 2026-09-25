@@ -342,7 +342,7 @@ set coh_ind_unip_few(KGPElt Q, Param_hash Uhash, ratvec v) = void:
 		      for @q in P
 		      do if is_FPP(G,q.infinitesimal_character)
 			       then if my_unitary_hash_flag
-				       then Uhash.match(herm_center(q))
+				       then Uhash.match(q)
 				       else Uhash.match(q)
 				    fi
 			       else -1
@@ -376,7 +376,7 @@ set coh_ind_unip_most(KGPElt Q, Param_hash Uhash,ratvec v) = void:
 		       	     	and is_FPP(G,P.infinitesimal_character)
 			     then for @q in P
 			     	  do if my_unitary_hash_flag
-				     then Uhash.match(herm_center(q))
+				     then Uhash.match(q)
 				     else Uhash.match(q)
 				     fi
 				  od
@@ -426,7 +426,7 @@ set coh_ind_unip_all(KGPElt Q, Param_hash Uhash,ratvec v) = void:
 				       	then if coh_ind_report_flag
 					     then coh_ind_report#:=(pL,q)
 					     fi;
-					     Uhash.match(herm_center(q))
+					     Uhash.match(q)
 				        else if coh_ind_report_flag
 					     then coh_ind_report#:=(pL,q)
 					     fi;

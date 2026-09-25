@@ -2589,7 +2589,7 @@ if one is going to do a bunch of related is_unitary tests, for ex as in known_un
 set MyFancyTester(Param p) = bool:
     let () = FPP_unitary_hash2([(p.x,p.lambda)], is_unitary_hash_big_SIMPLE@Param)
     {then () = prints("invoked MFT at p = ",p,", real form = ",p.real_form)}
-    in big_unitary_hash.uhash(p.real_form).lookup(herm_center(p)).>=
+    in big_unitary_hash.uhash(p.real_form).lookup(p).>=
 
 set FPP_unitary_hash_real_dumb([(KGBElt, ratvec)] xls) = void:
    if recursive_tester_flag
@@ -2947,7 +2947,7 @@ set theta_induced(RealForm G) = void:
      then () = for maxLthi@i in maxLthis
 	     	  do for pL in cands[i]
 	     	     do for q in monomials(theta_induce_irreducible(pL,G))
-		   	do big_unitary_hash.umatch(herm_center(q))
+		   	do big_unitary_hash.umatch(q)
 			od
 	     	     od
 		  od
@@ -3203,7 +3203,7 @@ set real_induced(RealForm G) = void:
 			    else [Param]: []
 			    fi
 		     	in for qdef in qdeflist
-			   do big_unitary_hash.umatch(herm_center(qdef))
+			   do big_unitary_hash.umatch(qdef)
 			   od {qdef in qdeflist}
        		    od {for q in monommials}
 	     	 od {for pL in cands[i]}
@@ -3398,7 +3398,7 @@ make a rep non-unitary on maxLRi. If induction to G is irreducible, add it.}
 		      	    then let P = real_induce_irreducible(pL,G)
 			    	 {then () = prints("pL = ", pL)}
 		      	    	 in if #P = 1
-				    then big_unitary_hash.numatch(herm_center(first_param(P)))
+				    then big_unitary_hash.numatch(first_param(P))
 				    fi
 			    fi
 		      od {nu}

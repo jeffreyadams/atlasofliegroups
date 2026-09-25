@@ -840,9 +840,7 @@ set min_small_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
 			  fi
 	      fi
     	 {this case can happen in Spin(5,3), p = p = parameter(G,39,[1,1,1,1],[0,1,1,1])}
-    then derpL0js = for derpL0j in derived_factor_params0(pL0) {all height 0}
-    	 	    do herm_center(derpL0j)
-		    od
+    then derpL0js = derived_factor_params0(pL0) {all height 0; big_unitary_hash centers}
     then DLs = minSmallBottomData.L_min_heights(x,lambda)
     then LKDatas = for LKData in minSmallBottomData.entry(x,lambda)
     	 {[tau,[[dertauLj]]}
@@ -917,9 +915,7 @@ set min_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
     then (muL,dermuLjs) = highest_LK_derived(mu,Q)
     then () = assert(@:is_final(pL0),"nonfinal pL0 in min_bottom_elim_factors")
     then () = assert(@:is_hermitian(pL0),"nonherm pL0 in min_bottom_elim_factors")
-    then derpL0js = for derpL0js in derived_factor_params0(pL0) {all height 0}
-    	 	    do herm_center(derpL0js)
-		    od
+    then derpL0js = derived_factor_params0(pL0) {all height 0; big_unitary_hash centers}
     then DLs = for j:#derpL0js
     	       do max(for mui in mus do minBottomData.L_min_heights(mui)[j] od)
 	       od
@@ -1117,15 +1113,11 @@ set min_bottom_elim_factors(Param p0, Param p, KTypePol P, int HT) = bool:
     then (muL,dermuLjs) = highest_LK_derived(mu,Q)
     then () = assert(@:is_final(pL0),"nonfinal pL0 in min_bottom_elim_factors")
     then () = assert(@:is_hermitian(pL0),"nonherm pL0 in min_bottom_elim_factors")
-    then derpL0js = for derpL0j in derived_factor_params0(pL0) {all height 0}
-    	 	    do herm_center(derpL0j)
-		    od
+    then derpL0js = derived_factor_params0(pL0) {all height 0; big_unitary_hash centers}
     then DLs = for j:#derpL0js
     	       do max(for mui in mus do minBottomData.L_min_heights(mui)[j] od)
 	       od
-    then derpL0js = for derpL0j in derived_factor_params0(pL0) {all height 0}
-    	 	    do herm_center(derpL0j)
-		    od
+    then derpL0js = derived_factor_params0(pL0) {all height 0; big_unitary_hash centers}
     then derxLjs = for derpL0j in derpL0js do derpL0j.x od
     then derLjs = for derpL0j in derpL0js do derpL0j.real_form od
     then existNU = false

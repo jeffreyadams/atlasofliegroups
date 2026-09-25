@@ -256,15 +256,23 @@ set make_KTypePol_hash () = Hash<KTypePol>:
    make_hash(hash_code@(KTypePol,int),=@(KTypePol,KTypePol))
 
 
-set hash_code (RootDatum rd, int mod) = int:
-    (   hash_code(vec: rd.simple_roots.##, mod)
-    + 5*hash_code(vec: rd.simple_coroots.##, mod)
-    ) % mod
+{Cheap hash codes for RootDatum, InnerClass (and so RealForm), built from the
+ Lie type; = sorts out values with the same code. Hashing the matrices, as
+ before, cost 13 (RootDatum) and 20 (InnerClass) microseconds per call; these
+ cost about 1 and 3. The scripts mostly hash simple root data, for which the
+ Lie type nearly separates.}
+set Lie_type_code (int rank, LieType t) = int:
+    let code = rank
+    in for (c,r) in simple_factors(t) do code := 31*code + 7*ASCII(c) + r od; code
 
+set hash_code (RootDatum rd, int mod) = int:
+    Lie_type_code(rd.rank, rd.Lie_type) % mod
+
+{trace of the distinguished involution separates inner classes of one type}
 set hash_code (InnerClass ic, int mod) = int:
-    (    hash_code(ic.root_datum,mod)
-    + 11*hash_code(vec: ic.distinguished_involution.##,mod)
-    ) % mod
+    let M = ic.distinguished_involution
+    then tr = for j:#M do M[j,j] od.sum
+    in (Lie_type_code(ic.rank, ic.Lie_type)*17 + tr + ic.rank) % mod
 
 set hash_code (RealForm G, int mod) = int:
     let (bgvn, bgvd) = %base_grading_vector(G)
