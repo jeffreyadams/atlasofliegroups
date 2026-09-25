@@ -2013,7 +2013,8 @@ set u_predictor_to_ht(Param p, int HT, int time) = int:
        	    {if we can finish computing zeroth full_deform, rest are
 	     better estimated from 1}
     then list = {is_unitary runs over terms in KL_sum_at_s_to_ht(p,HT)}
-		for q in monomials(KL_sum_at_s_to_ht(HT)(p))
+    	      	{now omit terms of height HT, since those are free}
+		for q in monomials(KL_sum_at_s_to_ht(HT-1)(p))
 		    if is_fixed(delta,q) do q fi od, rk = delta.n_rows
     then times =  [int]: for q in list do defHashHtTime.time_lookup_to_ht(q,HT) od
     {-2 means unknown. <= -3 means trying to -T-3 failed}
