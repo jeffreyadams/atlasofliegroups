@@ -344,8 +344,8 @@ if deform_script_flag {or secret_pred_flag} then return recursive_deform_scr(p,h
 FDH_count+:=1;
 ( let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p)
   then output = empty_K, def = empty, expiration = start + time, count = 2
-  then () = if height < height(p) then return empty_K.done fi next FDH_time+:= start-elapsed_ms()
-  then () = if height = height(p) then return K_type_pol(p).done fi next FDH_time+:= start-elapsed_ms()
+  then () = if height < height(p) then return empty_K.done fi next FDH_time+:= elapsed_ms()-start
+  then () = if height = height(p) then return K_type_pol(p).done fi next FDH_time+:= elapsed_ms()-start
   then P = empty +
   { snap p down to a reducibility point, or tempered parameter }
   (let rp = if deform_rp_flag
@@ -365,7 +365,7 @@ FDH_count+:=1;
           (let q={first_param(P)} last_param(P)
 	   in if force_interrupt_flag and count > 0 and
 	      	 KL_predictor_full(q) > 10*(expiration - elapsed_ms())
-	      then return timed_out() next FDH_time+:= start-elapsed_ms()
+	      then return timed_out() next FDH_time+:= elapsed_ms()-start
 	      else count-:= 1 fi;
 	   block_deform(q,P next P:=empty,height))
 	  {; prints("after block_deform, used ",print_time_string(elapsed_ms() - start))}
@@ -374,7 +374,7 @@ FDH_count+:=1;
      	       	  ,   pp = for c@m in def if !=nu(m) do (c,m) fi od
   	  in output := (output next output:=empty_K) + kt; P := (P next P:=empty) + pp
        od
-     in return done(output) next FDH_time+:= start-elapsed_ms()
+     in return done(output) next FDH_time+:= elapsed_ms()-start
 )
 
 set twisted_full_deform_to_ht_library(Param p, int HT) = KTypePol:
@@ -384,7 +384,7 @@ set twisted_full_deform_to_ht_library(Param p, int HT) = KTypePol:
        elif HT < height(p) then null_K_module(p.real_form)
        elif HT = height(p) then K_type_pol_extended(p,p.inner_class.distinguished_involution)
        else to_ht(twisted_full_deform(p),HT)
-       fi next FDH_time+:= start-elapsed_ms()
+       fi next FDH_time+:= elapsed_ms()-start
 
 set twisted_full_deform_to_ht_library(Param p, int HT, int time) = maybe_KTP:
     let start = elapsed_ms()
@@ -393,7 +393,7 @@ set twisted_full_deform_to_ht_library(Param p, int HT, int time) = maybe_KTP:
        elif HT < height(p) then null_K_module(p.real_form).done
        elif HT = height(p) then K_type_pol_extended(p,p.inner_class.distinguished_involution).done
        else to_ht(twisted_full_deform(p,time),HT)
-       fi next FDH_time+:= start-elapsed_ms()
+       fi next FDH_time+:= elapsed_ms()-start
 
 {just for full_deform}
 set_type
@@ -484,9 +484,9 @@ set make_deformation_hash_time () = deformation_hash_time:
 	  (FD,i)
   then maybe_add_param(Param p, int time) = (maybe_KTP,int): {full_deform, loc of p in param_hash}
        let I = param_hash.size(), delta = p.inner_class.distinguished_involution
-       then i = param_hash.match(p), start = elapsed_ms()
+       then i = param_hash.match(p), start = elapsed_ms(), c=Split: 1
        in  if i=I or time_list[i] <= -3
-       	   then let rp = reducibility_points(p), c=Split: 1
+       	   then let rp = reducibility_points(p)
 	        in if #rp = 0
 	       	   then mFD := if is_equal_rank(p.real_form)
 		       	       then full_deform_library(p).done
@@ -501,14 +501,13 @@ set make_deformation_hash_time () = deformation_hash_time:
 			    	    c:= d
 			    fi
 		        fi;
-		 {p:= herm_center(Finalize(p*rp~[0])) fi;} {ERROR: need extended}
 	   	       mFD := if is_equal_rank(p.real_form)
 	   	       	      then stored_full_deform(p)
 	   	       	      else stored_twisted_full_deform(p)
 		       	      fi;
        	   	       mFD := case mFD
 	   	       	      |done(FD): start :=-1;
-			    	  	 mFD
+			    	  	 c*mFD
 		       	      |timed_out: start := elapsed_ms();
 	   		    	   	  if is_equal_rank(p.real_form)
 		       	    	   	  then full_deform_library(p,time)
@@ -516,7 +515,7 @@ set make_deformation_hash_time () = deformation_hash_time:
 		       	    	   	  fi
 		       	      esac
 		   fi; {#rp = 0}
-	  	   if i = I
+	  	   if i = I  {CHECK c*}
 	  	   then time_list #:= if start = -2
 		   		      then 0
 				      elif start = -1
@@ -540,7 +539,7 @@ set make_deformation_hash_time () = deformation_hash_time:
 	  else {i < I and time_list[i] >= -1}
 	       mFD := if is_equal_rank(p.real_form)
 	       	      then full_deform_library(p).done
-	       	      else twisted_full_deform_library(p).done
+	       	      else c*twisted_full_deform_library(p).done
 	       	      fi
 
 	  fi;
@@ -641,7 +640,7 @@ set make_deformation_hash_height_time () = deformation_hash_height_time:
        	  then let rp = reducibility_points(p), c=Split: 1
 	       in if #rp = 0
 	       	  then FDH := if is_equal_rank(p.real_form)
-		       	      then full_deform_library(p)
+		       	      then full_deform_to_height_MvL_base(p,HT)
 			      else twisted_full_deform_library(p){These are NOT K_type_pol(p)!}
 			      fi;
 		       start:= -2
@@ -661,11 +660,11 @@ set make_deformation_hash_height_time () = deformation_hash_height_time:
 	       		       case mFDH
 	       	  	       | done(FD): FD_new_count+:=1;
 			       		   start:=-1;
-		    	       		   to_ht(HT)(FD)
+		    	       		   c*to_ht(HT)(FD)
 			       | timed_out: start:=elapsed_ms();
 					    if is_equal_rank(p.real_form)
 		      	       	      	    then full_deform_to_height_MvL_base(p,HT)
-			       		    else twisted_full_deform_to_ht_library(p,HT)
+			       		    else c*twisted_full_deform_to_ht_library(p,HT)
 			       		    fi
 			       esac)
 		   fi; {#rp = 0}
@@ -744,11 +743,11 @@ set make_deformation_hash_height_time () = deformation_hash_height_time:
 		        mFDH:= case mFDH
 	       	  	       | done(FD): FD_new_count+:=1;
 			       	    	   start :=-1;
-		    	       	    	   to_ht(mFDH,HT)
+		    	       	    	   c*to_ht(mFDH,HT)
 			       | timed_out: start := elapsed_ms();
 			       	     	    if is_equal_rank(p.real_form)
 		      	       	     	    then full_deform_to_height_MvL_base(p,HT,time)
-			       	     	    else twisted_full_deform_to_ht_library(p,HT,time)
+			       	     	    else c*twisted_full_deform_to_ht_library(p,HT,time)
 			       	     	    fi
 			 	esac)
 			 {prints("time offered = ",time,", taken = ", elapsed_ms() - start);
@@ -829,10 +828,14 @@ set make_deformation_hash_height_time () = deformation_hash_height_time:
   , ((Param,int) -> KTypePol): {full_deform_to_ht} (Param p, int HT):
     if HT < 0 then return defHashTime.full_deform(p) fi;
     if HT < height(p) then return null_K_module(p.real_form) fi;
+    if HT = height(p) then return if is_equal_rank(p.real_form)
+       	    	      	   	  then K_type_pol(p)
+				  else K_type_pol_extended(p,p.inner_class.distinguished_involution)
+				  fi fi;
     let (FD,) = add_param(p,HT) in FD
   , ((Param,int,int) -> maybe_KTP): {maybe_full_deform_to_ht} (Param p, int HT, int time):
     if HT < 0 then return defHashTime.maybe_full_deform(p,time) fi;
-    if HT < height(p) then return null_K_module(p.real_form).done fi;
+    if HT < height(p) then return null_K_module(p.real_form).done fi; {ADD HT=height case}
     let (mFD,) = maybe_add_param(p,HT,time) in mFD
   , ((Param,int) -> bool): {is_deformed_to_height} (Param p, int HT):
     if HT < 0 then return defHashTime.is_full_deformed(p) fi;
@@ -1802,7 +1805,7 @@ set pred([Param] qlist,[int] some_times, [int] data_inds) = [int]:
     if GAM_HT_EXP + PB_EXP + RP_EXP = 0
     then return(pred_easy(#qlist, some_times, data_inds)) fi;
     let GAM_HTs = GAM_HTs(qlist)
-    then sums1 = sum(data_inds), S0 = sum(for j in data_inds do GAM_HTs[j] od)
+    then sums1 = sum(some_times), S0 = sum(for j in data_inds do GAM_HTs[j] od)
     then  sums0 = (S0.numer + 1)/S0.denom
     in for n in GAM_HTs do ceil((n*sums1)/sums0) od
 
@@ -1811,7 +1814,7 @@ set pred([Param] qlist,[int] some_times, [int] data_inds, int HT) = [int]:
     then return pred_easy(#qlist, some_times, data_inds, HT)
     fi;
     let unnorm_preds = [rat]: GAM_HTs(qlist,HT)
-    then sums1 = sum(data_inds), S0 = sum(for j in data_inds do unnorm_preds[j] od)
+    then sums1 = sum(some_times), S0 = sum(for j in data_inds do unnorm_preds[j] od)
     then  sums0 = (S0.numer + 1)/S0.denom
     in for n in unnorm_preds do ceil((n*sums1)/sums0) od
 
@@ -2014,7 +2017,7 @@ set u_predictor_to_ht(Param p, int HT, int time) = int:
 	     better estimated from 1}
     then list = {is_unitary runs over terms in KL_sum_at_s_to_ht(p,HT)}
     	      	{now omit terms of height HT, since those are free}
-		for q in monomials(KL_sum_at_s_to_ht(HT-1)(p))
+		for q in monomials(KL_sum_at_s_to_ht(max(0,HT-1))(p))
 		    if is_fixed(delta,q) do q fi od, rk = delta.n_rows
     then times =  [int]: for q in list do defHashHtTime.time_lookup_to_ht(q,HT) od
     {-2 means unknown. <= -3 means trying to -T-3 failed}
