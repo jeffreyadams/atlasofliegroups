@@ -28,11 +28,56 @@ set two_rho_u_check(KGPElt Q) = vec:
     two_rho_check(Q.real_form) - two_rho_check(Q.Levi)
 
 {extracts the (u\cap k)-highest L\cap K type tauL. Meant for connected G}
-set highest_LK(KType tau, KGPElt Q) = KType:
+set highest_LK_base(KType tau, KGPElt Q) = KType:
     let L = Q.Levi
     then xL = KGB(L,0)
     then xG = embed_KGB(xL,Q.real_form)
     in K_type((), xL, highest_weight(tau,xG).mu - two_rho_u_cap_s(Q,xG))
+
+{Memo of highest_LK, and of derived_factor_K_types0 of its value, keyed on
+ (tau, Q.S, Q.x.number). Almost all the cost of highest_LK is in
+ highest_weight(tau,xG). On KGB(E7_s)[17000:17200] this took
+ min_bottom_elim_factors from 26.0 to 12.6 sec (395 misses in 1261 calls),
+ with identical answers. highest_LK_memo_flag := false restores the old
+ behaviour; highest_LK_clear() empties the tables.}
+set highest_LK_memo_flag = true
+set highest_LK_keys = make_KType_hash()
+set highest_LK_vals = [[([int],int,KType,bool,[KType])]]: []
+set highest_LK_clear() = void: highest_LK_keys.clear(); highest_LK_vals := []
+
+{(index of tau in highest_LK_keys, position in its list), adding if new}
+set highest_LK_locate(KType tau, KGPElt Q) = (int,int):
+    let N = highest_LK_keys.size(), k = highest_LK_keys.match(tau)
+    then () = if k = N then highest_LK_vals #:= ([([int],int,KType,bool,[KType])]: []) fi
+    then (S,xQ) = Q
+    then i = first(for (S1,n1,,,) in highest_LK_vals[k] do S1 = S and n1 = xQ.number od)
+    in if i.>= then (k,i)
+       else let vals = highest_LK_vals[k]
+            then () = vals #:= (S, xQ.number, highest_LK_base(tau,Q), false, [KType]:[])
+	    then () = highest_LK_vals[k] := vals
+	    in (k,#vals-1)
+       fi
+
+set highest_LK(KType tau, KGPElt Q) = KType:
+    if highest_LK_memo_flag
+    then let (k,i) = highest_LK_locate(tau,Q) then (,,muL,,) = highest_LK_vals[k][i] in muL
+    else highest_LK_base(tau,Q)
+    fi
+
+{(highest_LK(tau,Q), derived_factor_K_types0(highest_LK(tau,Q)))}
+set highest_LK_derived(KType tau, KGPElt Q) = (KType,[KType]):
+    if highest_LK_memo_flag
+    then let (k,i) = highest_LK_locate(tau,Q)
+    	 then (S,n,muL,done,der) = highest_LK_vals[k][i]
+	 in if done then (muL,der)
+	    else let der = derived_factor_K_types0(muL)
+	    	 then vals = highest_LK_vals[k]
+		 then () = vals[i] := (S,n,muL,true,der)
+		 then () = highest_LK_vals[k] := vals
+		 in (muL,der)
+	    fi
+    else let muL = highest_LK_base(tau,Q) in (muL, derived_factor_K_types0(muL))
+    fi
 
 {permutation of the simple roots defined by delta}
 set delta_on_simple(InnerClass ic) = [int]:
@@ -772,6 +817,7 @@ set quitNIH_flag = true
 
 {insist that p0 is a LQ of p, and that P is K_type_pol of
 character formula of p0 to some height. Need p0 FINAL}
+{Argument P is unused.}
 set min_small_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
     let start = elapsed_ms(), (Q,pL) = theta_stable_data_small(p), G = p.real_form,
     	x = p.x, lambda = p.lambda
@@ -782,7 +828,7 @@ set min_small_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
 	      fi
     then DG = minSmallBottomData.G_min_height(x,lambda)
     then mu = LKTs(p0)[0]
-    then muL = highest_LK(mu,Q)
+    then (muL,dermuLjs) = highest_LK_derived(mu,Q)
     then pLis = monomials(1*pL)
     then i0 = first(for pLi in pLis do (K_type_pol(pLi*0))[muL].!= od)
     then pL0 = pLis[i0] {now has LKT muL}
@@ -794,24 +840,22 @@ set min_small_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
 			  fi
 	      fi
     	 {this case can happen in Spin(5,3), p = p = parameter(G,39,[1,1,1,1],[0,1,1,1])}
-    then derpL0js = derived_factor_params0(pL0) {all height 0}
-    then dermuLjs = derived_factor_K_types0(muL)
+    then derpL0js = for derpL0j in derived_factor_params0(pL0) {all height 0}
+    	 	    do herm_center(derpL0j)
+		    od
     then DLs = minSmallBottomData.L_min_heights(x,lambda)
-    then derxLjs = for derpL0j in derpL0js do derpL0j.x od
-    then derLjs = for derpL0j in derpL0js do derpL0j.real_form od
-    {then multG = branch_std(P,DG)}
     then LKDatas = for LKData in minSmallBottomData.entry(x,lambda)
     	 {[tau,[[dertauLj]]}
 		   do let (mui, ) = LKData[0]
 		      in if (K_type_pol(1*(p0*0)))[mui].!=
-		      	 then [LKData]
+		      	 then [LKData] {so one for each LKT(p0)}
 			 else []
 			 fi
 		   od.## {now in bij with LKTs of p0}
     then existNU = false
     then sig = KTypePol: 1*mu
     then Lbranches = for derpL0j@j in derpL0js {indexed by j, factors of L}
-	    	     do if big_unitary_hash.uhash(derLjs[j]).lookup(derpL0j).<=
+	    	     do if big_unitary_hash.ulookup(derpL0j).<=
 			then sig:= branch_std(big_unitary_hash.sig_entry(derpL0j, DLs[j]),DLs[j])
 			else sig:= branch_irr_hash(derpL0j, DLs[j]) {this is the known_unitary}
 			fi;
@@ -829,8 +873,8 @@ set min_small_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
        	    if every_MBEF_flag then prints("  true") fi;
 	    return true
        fi;
-       let answers = [(->bool)]: {one function for each LKT mu of (x,lambda)}
-    	   	   for LKData in LKDatas {mu@i in LKTs(p)}
+       let answers = [(->bool)]: {one function for each LKT mu of p0}
+    	   	   for LKData in LKDatas {mu@i in LKTs(p0)}
 	 	   do @: all( for (,list) in LKData[1:]
 	       	      	      do let coeff = Split: 1 {this will be the bottom layer signature at tau}
 	               	      	 then () = for Lbranch@j in Lbranches
@@ -870,34 +914,38 @@ set min_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
     then mus = LKTs(p0)
     then mu = mus[0]
     then DG = max(for mu in mus do minBottomData.G_min_height(mu) od)
-    then muL = highest_LK(mu,Q)
+    then (muL,dermuLjs) = highest_LK_derived(mu,Q)
     then () = assert(@:is_final(pL0),"nonfinal pL0 in min_bottom_elim_factors")
     then () = assert(@:is_hermitian(pL0),"nonherm pL0 in min_bottom_elim_factors")
     then derpL0js = for derpL0js in derived_factor_params0(pL0) {all height 0}
     	 	    do herm_center(derpL0js)
 		    od
-    then dermuLjs = derived_factor_K_types0(muL)
     then DLs = for j:#derpL0js
     	       do max(for mui in mus do minBottomData.L_min_heights(mui)[j] od)
 	       od
-    then derxLjs = for derpL0j in derpL0js do derpL0j.x od
-    then derLjs = for derpL0j in derpL0js do derpL0j.real_form od
+    {then derxLjs = for derpL0j in derpL0js do derpL0j.x od}
+    {then derLjs = for derpL0j in derpL0js do derpL0j.real_form od}
+    {First pass: signatures only for factors not already known unitary.
+     A known-unitary factor contributes a multiplicity m >= 0 to coeff, so it
+     matters only where the other factors give a nonzero s_part, and then only
+     through whether m = 0. Its branch is computed lazily, at most once.}
+    then nf = #derpL0js
+    then known = [bool]: for j:nf do false od {signature of factor j computed}
+    then Lbranches = [KTypePol]: for j:nf do null_K_module(derpL0js[j].real_form) od
     then existNU = false
-    then sig = KTypePol: 1*mu
-    then Lbranches = for derpL0j@j in derpL0js
+    then () = for derpL0j@j in derpL0js
     	 do if big_unitary_hash.nu_height_lookup_int(derpL0j,DLs[j]).<=
 	    {that is, we don't already KNOW derpLj is unitary to height}
-	    then sig := branch_std(big_unitary_hash.sig_entry(derpL0j, DLs[j]),DLs[j])
-	    else sig:= branch_irr_hash(derpL0j, DLs[j]) {this is the known_unitary}
-	     fi;
-	     if not is_pure(sig)
-	     then existNU:=true
-	     fi;
-	     sig := if int_part(sig[dermuLjs[j]]) = 0
-		    then s*sig
-		    else sig {this bit makes sig pos on LKT factor}
+	    then let sig = branch_std(big_unitary_hash.sig_entry(derpL0j, DLs[j]),DLs[j])
+	    	 in if not is_pure(sig)
+		    then existNU:=true
 		    fi;
-	    sig
+		    known[j] := true;
+		    Lbranches[j] := if int_part(sig[dermuLjs[j]]) = 0
+				    then s*sig
+				    else sig {this bit makes sig pos on LKT factor}
+				    fi
+	    fi
 	 od
      in if not existNU
         then not_test_count+:=1;
@@ -906,19 +954,43 @@ set min_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
 	    return true
 	else actual_test_count+:=1
         fi;
-     	let answers = [(->bool)]: {one function for each LKT mu of p}
-    	 for mu in LKTs(p)
-    	 do let LKData = minBottomData.entry(mu)
-	    in @: all( [(->bool)]:
-	       	       for (,list) in LKData[1:] {one function for each min_bottom K-type tau}
- 		       do let coeff = Split: 1 {this will be the bottom layer signature at tau}
-			  then () = for Lbranch@i in Lbranches
-			       	    do coeff*:= regroup(list[i].real_form,Lbranch)[list[i]]
-			  	    od
-		    	   in @bool: s_part(coeff).= 
-	       	        od)
-          od
-   	  then answer = all(answers)
+	let ubr_done = [bool]: for j:nf do false od {lazy branches of known-unitary factors}
+	then answer = true
+	then () = for mu in LKTs(p0)
+	     do if answer
+	     	then let LKData = minBottomData.entry(mu) {[tau,[dertauLj]]; LKData[0] is mu}
+		     then rfs = for dermuLj in (let (,l) = LKData[0] in l) do dermuLj.real_form od
+		     {regroup once per mu, not once per tau}
+		     then LB = for j:nf
+		     	       do if known[j] then regroup(rfs[j],Lbranches[j]) else Lbranches[j] fi
+			       od
+		     then UB = [KTypePol]: LB, ub_done = [bool]: for j:nf do false od
+		     in for (,list) in LKData[1:] {one test for each min_bottom K-type tau}
+		     	do if answer
+			   then let coeff = Split: 1 {bottom layer signature at tau, known factors}
+			   	then () = for j:nf do if known[j] then coeff*:= LB[j][list[j]] fi od
+				in if s_part(coeff) != 0
+				   then let zero = false
+				   	in for j:nf
+					   do if not known[j] and not zero
+					      then if not ubr_done[j]
+					      	   then Lbranches[j] :=
+						   	branch_irr_hash(derpL0js[j], DLs[j]); {known unitary}
+							ubr_done[j] := true
+						   fi;
+						   if not ub_done[j]
+						   then UB[j] := regroup(rfs[j],Lbranches[j]);
+						   	ub_done[j] := true
+						   fi;
+						   if int_part(UB[j][list[j]]) = 0 then zero := true fi
+					      fi
+					   od;
+					   if not zero then answer := false fi
+				   fi
+			   fi
+			od
+		fi
+	     od
    	  in if not answer
    	     then good_hash.match(p0);
 	     	  big_unitary_hash.numatch_height(p0,DG)
@@ -927,38 +999,37 @@ set min_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
  	     if every_MBEF_flag then prints("  ",answer) fi;
    	     answer
 
-{signature on min bottom layer K-types. Guaranteed pos on mu.
-9/24/26: each mult is missing a pos factor coming from the unitary factors of pL.}
+{signature on min bottom layer K-types. Guaranteed pos on mu.}
 set min_bottom_sig(Param p0) = KTypePol:
     let (Q,pL0) = theta_stable_quasi_data(p0), G = p0.real_form
     then mus = LKTs(p0)
     then mu = mus[0]
     then DG = max(for mu in mus do minBottomData.G_min_height(mu) od)
-    then muL = highest_LK(mu,Q)
+    then (muL,dermuLjs) = highest_LK_derived(mu,Q)
     then () = assert(@:is_final(pL0),"nonfinal pL0 in min_bottom_sig")
     then () = assert(@:is_hermitian(pL0),"nonherm pL0 in min_bottom_sig")
     then derpL0js = derived_factor_params0(pL0) {all height 0}
-    then dermuLjs = derived_factor_K_types0(muL)
     then DLs = for j:#derpL0js
     	       do max(for mui in mus do minBottomData.L_min_heights(mui)[j] od)
 	       od
     then derpL0js = derived_factor_params0(pL0) {all height 0}
-    then derxLjs = for derpL0j in derpL0js do derpL0j.x od
-    then derLjs = for derpL0j in derpL0js do derpL0j.real_form od
-    then nujs = [int]:[] {only keep the nonunitary factors}
-    then Lbranches = [KTypePol]:[] {these will be the signatures of nonunitary factors}
-    then () = for derpL0j@j in derpL0js
+    {then derxLjs = for derpL0j in derpL0js do derpL0j.x od}
+    {then derLjs = for derpL0j in derpL0js do derpL0j.real_form od}
+    then existNU = false
+    then sig = KTypePol: 1*mu
+    then Lbranches = for derpL0j@j in derpL0js
     	 do if big_unitary_hash.nu_height_lookup_int(derpL0j,DLs[j]).<=
 	    {that is, we don't already KNOW derpLj is unitary to height}
-	    then let sig = branch_std(big_unitary_hash.sig_entry(derpL0j, DLs[j]),DLs[j])
-	    	 in if not is_pure(sig)
-		    then nujs#:=j;
-		    	 Lbranches #:= if int_part(sig[dermuLjs[j]]) = 0
-			      	      then s*sig
-				      else sig {this bit makes sig pos on LKT factor}
-				      fi
-		    fi
-	    fi
+	    then sig := branch_std(big_unitary_hash.sig_entry(derpL0j, DLs[j]),DLs[j])
+	    else sig:= branch_irr_hash(derpL0j, DLs[j]) {this is the known_unitary}
+	    fi;
+	    if not is_pure(sig)
+	    then existNU:=true
+	    fi;
+	    if int_part(sig[dermuLjs[j]]) = 0
+	    then sig:=s*sig{this bit makes sig pos on LKT factor}
+	    fi;
+	    sig
 	 od
     in sum(G, for mu in mus
     	 do let LKData = minBottomData.entry(mu) {[tau,[dertauLj]]}
@@ -977,38 +1048,27 @@ set min_bottom_sig(Param p0, int HT) = KTypePol:
     then mus = LKTs(p0)
     then mu = mus[0]
     then DG = max(for mu in mus do minBottomData.G_min_height_to_bd(mu,HT) od)
-    then muL = highest_LK(mu,Q)
+    then (muL,dermuLjs) = highest_LK_derived(mu,Q)
     then () = assert(@:is_final(pL0),"nonfinal pL0 in min_bottom_sig")
     then () = assert(@:is_hermitian(pL0),"nonherm pL0 in min_bottom_sig")
     then derpL0js = derived_factor_params0(pL0) {all height 0}
-    then dermuLjs = derived_factor_K_types0(muL)
     then DLs = for j:#derpL0js
     	       do max(for mui in mus do minBottomData.L_min_heights(mui)[j] od)
 	       od
     then derpL0js = derived_factor_params0(pL0) {all height 0}
     then derxLjs = for derpL0j in derpL0js do derpL0j.x od
     then derLjs = for derpL0j in derpL0js do derpL0j.real_form od
+    then sig = KTypePol: 1*mu
     then Lbranches = for derpL0j@j in derpL0js
-	    	     do let sigLj =
-		            if big_unitary_hash.uhash(derLjs[j]).lookup(derpL0j).>=
-			    then let QLj = character_formula_to_ht(derpL0j,DLs[j])
-				 in K_type_pol(QLj)
-			    elif RF_code
-	    	      	    then big_unitary_hash.sig_entry(derpL0j, DLs[j])
-			    else hermitian_form_irreducible_to_ht_big_SIMPLE(derpL0j,DLs[j])
-		            fi
-			 then posLj = if int_part(sigLj[dermuLjs[j]]) = 0
-			      	      then s*sigLj
-				      else sigLj {this bit makes posLj pos on LKTs}
-				      fi
-			 in branch_std(posLj,DLs[j])
-			    {
-			    if branch_hash_flag
-		       	    then big_unitary_hash.branch(posLj,DLs[j])
-			    else branch_std(posLj,DLs[j])
-			    fi
-			    }
-			 od
+	    	     do if big_unitary_hash.ulookup(derpL0j).<=
+		     	then sig := branch_std(big_unitary_hash.sig_entry(derpL0j, DLs[j]),DLs[j])
+			else sig := branch_irr_hash(derpL0j, DLs[j]) {this is the known_unitary}
+			fi;
+			if int_part(sig[dermuLjs[j]]) = 0
+			then sig:=s*sig {this bit makes posLj pos on LKTs}
+			fi;
+			sig
+		     od
     in sum(G, for mu in mus
     	 do let data = minBottomData.entry_to_bd(mu,HT) {[tau,[dertauLj]]}
 	    in sum(G, for (tau,list) in data {one term for each min_bottom K-type tau}
@@ -1033,17 +1093,14 @@ set min_bottom_elim_factors(Param p0, Param p) = bool:
 	    else max(for mu in LKTs(p0) do minBottomData.G_min_height(mu) od)
 	    fi
     {could figure out max ht needed?}
-    in min_bottom_elim_factors(p0, p,
-       	  if KT_char_hash_flag {hashed: reuse an answer computed to a bigger height}
-	  then char_to_ht_hashed(p0,H)
-	  else K_type_pol(character_formula_to_ht(p0,H))
-	  fi)
+    in min_bottom_elim_factors(p0, p, null_K_module(p0.real_form))
 
 set min_bottom_elim_factors(Param p) = bool:
     min_bottom_elim_factors(p,p)
 
 {insist that every LKT of p0 is a LQ of p, and that P is K_type_pol of
 character formula of p0 to some height. Need p0 FINAL}
+{Argument P is not used}
 set min_bottom_elim_factors(Param p0, Param p, KTypePol P, int HT) = bool:
     if small_test_flag
     then return min_small_bottom_elim_factors(p0,p,P)
@@ -1057,16 +1114,17 @@ set min_bottom_elim_factors(Param p0, Param p, KTypePol P, int HT) = bool:
     then mus = LKTs(p0)
     then mu = mus[0]
     then DG = max(for mu in mus do minBottomData.G_min_height_to_bd(mu,HT) od)
-    then muL = highest_LK(mu,Q)
+    then (muL,dermuLjs) = highest_LK_derived(mu,Q)
     then () = assert(@:is_final(pL0),"nonfinal pL0 in min_bottom_elim_factors")
     then () = assert(@:is_hermitian(pL0),"nonherm pL0 in min_bottom_elim_factors")
-    then derpL0js = derived_factor_params0(pL0) {all height 0}
-    then dermuLjs = derived_factor_K_types0(muL)
+    then derpL0js = for derpL0j in derived_factor_params0(pL0) {all height 0}
+    	 	    do herm_center(derpL0j)
+		    od
     then DLs = for j:#derpL0js
     	       do max(for mui in mus do minBottomData.L_min_heights(mui)[j] od)
 	       od
-    then derpL0js = for derpL0js in derived_factor_params0(pL0) {all height 0}
-    	 	    do herm_center(derpL0js)
+    then derpL0js = for derpL0j in derived_factor_params0(pL0) {all height 0}
+    	 	    do herm_center(derpL0j)
 		    od
     then derxLjs = for derpL0j in derpL0js do derpL0j.x od
     then derLjs = for derpL0j in derpL0js do derpL0j.real_form od
@@ -1124,11 +1182,7 @@ set min_bottom_elim_factors(Param p, KTypePol P,int HT) = bool:
 set min_bottom_elim_factors(Param p0, Param p, int HT) = bool:
     {let startCF = elapsed_ms()}
     {could figure out max ht needed?}
-    min_bottom_elim_factors(p0, p,
-          if KT_char_hash_flag
-	  then char_to_ht_hashed(p0,HT)
-	  else K_type_pol(character_formula_to_ht(p0,HT))
-	  fi, HT)
+    min_bottom_elim_factors(p0, p, null_K_module(p0.real_form),HT)
 
 set min_bottom_elim_factors(Param p, int HT) = bool:
     min_bottom_elim_factors(p,p,HT)
