@@ -4,6 +4,7 @@
 <Weylgroup.at { for |root_reflection| }
 <W_orbit.at { for W@RootDatum }
 <cross_W_orbit.at
+<hash.at { for make_int_hash (W_K memo) }
 
 {full Weyl group W_K of disconnected maximal compact subgroup
 throughout x must be in distinguished fiber, and make 2rho_c G-dominant
@@ -87,7 +88,29 @@ set small_Levi_coroots_K (KGBElt x) = mat:
 set nice_choices_x (RealForm G) = [KGBElt]:
   for x in distinguished_fiber(G) if is_dominant(G,tworho_c(x)) do x fi od
 
-set nice_choice_x (RealForm G) = KGBElt: nice_choices_x(G)[0]
+set nice_choice_x_base (RealForm G) = KGBElt: nice_choices_x(G)[0]
+
+{Memos for nice_choice_x (per real form) and W_K (per real form and x.number);
+ both depend only on those, and were recomputed on every call of
+ R_K_dom_mu_orbit, the main cost of highest_weights@KType. Real forms are found
+ by = in a short list (= is nearly free; hash_code@RealForm is not).
+ W_K_memo_flag := false restores the old behaviour; W_K_clear() empties.}
+set W_K_memo_flag = true
+set W_K_rfs = [RealForm]: []
+set W_K_nice = [KGBElt]: []
+set W_K_xhash = [Hash<int>]: []
+set W_K_vals = [[(RootDatum,[WeylElt])]]: []
+set W_K_clear() = void: W_K_rfs := []; W_K_nice := []; W_K_xhash := []; W_K_vals := []
+set W_K_rf_index (RealForm G) = int:
+    let n = first(#W_K_rfs, (int i) bool: W_K_rfs[i] = G)
+    in if n.>= then n
+       else W_K_rfs #:= G; W_K_nice #:= nice_choice_x_base(G);
+       	    W_K_xhash #:= make_int_hash(); W_K_vals #:= ([(RootDatum,[WeylElt])]: []);
+	    #W_K_rfs - 1
+       fi
+
+set nice_choice_x (RealForm G) = KGBElt:
+    if W_K_memo_flag then W_K_nice[W_K_rf_index(G)] else nice_choice_x_base(G) fi
 
 { W_c_perp, see khatHowe Propsition 4.4 }
 { requirement: x makes 2rho_c G-dominant }
@@ -114,7 +137,16 @@ set R_K_dom (KGBElt x) = [WeylElt]:  {these are elements of W(G,H)}
 { W_K(x)=(W_K(K_0,T_{K_0}), R_K_dom(x)) }
 
 { requirement: x makes 2rho_c G-dominant }
-set W_K (KGBElt x) = (RootDatum,[WeylElt]): (K_root_datum(x),R_K_dom(x))
+set W_K_base (KGBElt x) = (RootDatum,[WeylElt]): (K_root_datum(x),R_K_dom(x))
+set W_K (KGBElt x) = (RootDatum,[WeylElt]):
+    if not W_K_memo_flag then return W_K_base(x) fi;
+    let n = W_K_rf_index(x.real_form)
+    then N = W_K_xhash[n].size(), k = W_K_xhash[n].match(x.number)
+    in if k = N
+       then let v = W_K_base(x), vals = W_K_vals[n]
+       	    in vals #:= v; W_K_vals[n] := vals; v
+       else W_K_vals[n][k]
+       fi
 
 set move_weight (KHighestWeight hw,KGBElt y) = KHighestWeight:
   assert(@:real_form(hw)=real_form(y),"Real form mismatch");

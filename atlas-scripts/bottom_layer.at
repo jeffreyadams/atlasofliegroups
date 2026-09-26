@@ -312,6 +312,40 @@ set use_test_coroots_flag = false
 set mu_level(vec mu) = (vec -> int):
     (vec coroot): coroot*mu
 
+{Memo of K_type(K_highest_weight_from_K0_weight(xcG,tauwt)), used for every
+ bottom layer K-type. K_type@KHighestWeight costs about 12 ms per call and the
+ same K-types recur for many (x,lambda). Keyed on (real form, xcG.number, tauwt);
+ real forms found by = in a short list. K0_K_type_memo_flag := false restores
+ the old behaviour; K0_K_type_clear() empties the tables.}
+set K0_K_type_memo_flag = true
+set K0_K_type_rfs = [RealForm]: []
+set K0_K_type_keys = [vec_hash]: []
+set K0_K_type_vals = [[KType]]: []
+set K0_K_type_clear() = void:
+    K0_K_type_rfs := []; K0_K_type_keys := []; K0_K_type_vals := []
+set K0_K_type(KGBElt xcG, vec tauwt) = KType:
+    if not K0_K_type_memo_flag
+    then return K_type(K_highest_weight_from_K0_weight(xcG, tauwt))
+    fi;
+    let G = xcG.real_form
+    then n = first(#K0_K_type_rfs, (int i) bool: K0_K_type_rfs[i] = G)
+    then () = if n < 0
+    	      then n := #K0_K_type_rfs; K0_K_type_rfs #:= G;
+	      	   K0_K_type_keys #:= make_vec_hash();
+		   K0_K_type_vals #:= ([KType]: [])
+	      fi
+    then key = xcG.number # tauwt
+    then N = K0_K_type_keys[n].size()
+    then k = K0_K_type_keys[n].match(key)
+    in if k = N
+       then let t = K_type(K_highest_weight_from_K0_weight(xcG, tauwt))
+       	    then vals = K0_K_type_vals[n]
+	    then () = vals #:= t
+	    then () = K0_K_type_vals[n] := vals
+	    in t
+       else K0_K_type_vals[n][k]
+       fi
+
 {this time the results are a list of [tau, [dertauLj]. First tau is always mu}
 {used only to create entry in minBottomData}
 set min_bottom_factors(KType mu) = LK_data:
@@ -377,7 +411,7 @@ set min_bottom_factors(KType mu) = LK_data:
 			     	  	     do @bool:(alpha_vee * tauwt).>= od)
 		     	else is_dominant(K0,tauwt)
 			fi
-		     then [(K_type(K_highest_weight_from_K0_weight(xcG, tauwt)), for m@j in B[k] do dertauLs[j][m] od)]
+		     then [(K0_K_type(xcG, tauwt), for m@j in B[k] do dertauLs[j][m] od)]
 		     else []
 		     fi
 		  od.##
@@ -486,7 +520,7 @@ set min_small_bottom_factors(KGBElt x, ratvec lambda) = [LK_data]:
 			     	  	     	 do @bool:(alpha_vee * tauwt).>= od)
 		     	    else is_dominant(K0s[i],tauwt)
 			    fi
-		     	 then [(K_type(K_highest_weight_from_K0_weight(xcGs[i], tauwt)),
+		     	 then [(K0_K_type(xcGs[i], tauwt),
 			      for m@j in Bs[i][k] do dertauLss[i][j][m] od)]
 		     	 else []
 		     	 fi
@@ -815,6 +849,9 @@ character formula of p0 to some height}
 set NIHCOUNT = int: 0
 set quitNIH_flag = true
 
+set actual_test_count = int:0
+set not_test_count = int:0
+
 {insist that p0 is a LQ of p, and that P is K_type_pol of
 character formula of p0 to some height. Need p0 FINAL}
 {Argument P is unused.}
@@ -834,6 +871,7 @@ set min_small_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
     then pL0 = pLis[i0] {now has LKT muL}
     then () = if not is_hermitian(pL0)
     	      then NIHCOUNT +:= 1;
+	      	   mbefTime +:= elapsed_ms()-start;
 	      	   return if quitNIH_flag
 		   	  then true
 			  else is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(p0,DG)
@@ -842,59 +880,92 @@ set min_small_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
     	 {this case can happen in Spin(5,3), p = p = parameter(G,39,[1,1,1,1],[0,1,1,1])}
     then derpL0js = derived_factor_params0(pL0) {all height 0; big_unitary_hash centers}
     then DLs = minSmallBottomData.L_min_heights(x,lambda)
+    then Kp0 = K_type_pol(1*(p0*0))
     then LKDatas = for LKData in minSmallBottomData.entry(x,lambda)
     	 {[tau,[[dertauLj]]}
 		   do let (mui, ) = LKData[0]
-		      in if (K_type_pol(1*(p0*0)))[mui].!=
+		      in if Kp0[mui].!=
 		      	 then [LKData] {so one for each LKT(p0)}
 			 else []
 			 fi
 		   od.## {now in bij with LKTs of p0}
+    {First pass: signatures only for factors not already known unitary.
+     A known-unitary factor contributes a multiplicity m >= 0 to coeff, so it
+     matters only where the other factors give a nonzero s_part, and then only
+     through whether m = 0. Its branch is computed lazily, at most once.
+     Same scheme as min_bottom_elim_factors.}
+    then nf = #derpL0js
+    then known = [bool]: for j:nf do false od {signature of factor j computed}
+    then Lbranches = [KTypePol]: for j:nf do null_K_module(derpL0js[j].real_form) od
     then existNU = false
-    then sig = KTypePol: 1*mu
-    then Lbranches = for derpL0j@j in derpL0js {indexed by j, factors of L}
-	    	     do if big_unitary_hash.ulookup(derpL0j).<=
-			then sig:= branch_std(big_unitary_hash.sig_entry(derpL0j, DLs[j]),DLs[j])
-			else sig:= branch_irr_hash(derpL0j, DLs[j]) {this is the known_unitary}
-			fi;
-			if not is_pure(sig)
-			then existNU :=true
-			fi;
-			sig:= if int_part(sig[dermuLjs[j]]) = 0
-			      then s*sig
-			      else sig {this bit makes sig pos on LKT factor}
-			      fi;
-			sig
-		     od
+    then () = for derpL0j@j in derpL0js
+    	 do if big_unitary_hash.nu_height_lookup_int(derpL0j,DLs[j]).<=
+	    {that is, we don't already KNOW derpLj is unitary to height}
+	    then let sig = branch_std(big_unitary_hash.sig_entry(derpL0j, DLs[j]),DLs[j])
+	    	 in if not is_pure(sig)
+		    then existNU:=true
+		    fi;
+		    known[j] := true;
+		    Lbranches[j] := if int_part(sig[dermuLjs[j]]) = 0
+				    then s*sig
+				    else sig {this bit makes sig pos on LKT factor}
+				    fi
+	    fi
+	 od
     in if not existNU
-       then mbefTime +:= elapsed_ms()-start;
+       then not_test_count+:=1;
+       	    mbefTime +:= elapsed_ms()-start;
        	    if every_MBEF_flag then prints("  true") fi;
 	    return true
+       else actual_test_count+:=1
        fi;
-       let answers = [(->bool)]: {one function for each LKT mu of p0}
-    	   	   for LKData in LKDatas {mu@i in LKTs(p0)}
-	 	   do @: all( for (,list) in LKData[1:]
-	       	      	      do let coeff = Split: 1 {this will be the bottom layer signature at tau}
-	               	      	 then () = for Lbranch@j in Lbranches
-			       	      	   do coeff*:= regroup(list[j].real_form,Lbranch)[list[j]]
-			    	 	   od
-		       		 in @bool: s_part(coeff).=
-		     	      od)
-	 	    od
-   	 then answer = all(answers)
-   	 in if not answer
-      	    then big_unitary_hash.numatch_height(p0,DG);
-	    	 good_hash.match(p0)
-      	    fi;
-   	    mbefTime +:= elapsed_ms()-start;
-   	    if every_MBEF_flag then prints("  ",answer) fi;
-	    answer
+       let ubr_done = [bool]: for j:nf do false od {lazy branches of known-unitary factors}
+       then answer = true
+       then () = for LKData in LKDatas {one for each LKT of p0}
+	     do if answer
+	     	then let rfs = for dermuLj in (let (,l) = LKData[0] in l) do dermuLj.real_form od
+		     {regroup once per LKT, not once per tau}
+		     then LB = for j:nf
+		     	       do if known[j] then regroup(rfs[j],Lbranches[j]) else Lbranches[j] fi
+			       od
+		     then UB = [KTypePol]: LB, ub_done = [bool]: for j:nf do false od
+		     in for (,list) in LKData[1:] {one test for each min_bottom K-type tau}
+		     	do if answer
+			   then let coeff = Split: 1 {bottom layer signature at tau, known factors}
+			   	then () = for j:nf do if known[j] then coeff*:= LB[j][list[j]] fi od
+				in if s_part(coeff) != 0
+				   then let zero = false
+				   	in for j:nf
+					   do if not known[j] and not zero
+					      then if not ubr_done[j]
+					      	   then Lbranches[j] :=
+						   	branch_irr_hash(derpL0js[j], DLs[j]); {known unitary}
+							ubr_done[j] := true
+						   fi;
+						   if not ub_done[j]
+						   then UB[j] := regroup(rfs[j],Lbranches[j]);
+						   	ub_done[j] := true
+						   fi;
+						   if int_part(UB[j][list[j]]) = 0 then zero := true fi
+					      fi
+					   od;
+					   if not zero then answer := false fi
+				   fi
+			   fi
+			od
+		fi
+	     od
+       in if not answer
+      	  then big_unitary_hash.numatch_height(p0,DG);
+	       good_hash.match(p0)
+      	  fi;
+   	  mbefTime +:= elapsed_ms()-start;
+   	  if every_MBEF_flag then prints("  ",answer) fi;
+	  answer
 
 set min_small_bottom_elim_factors(Param p, KTypePol P) = bool:
     min_small_bottom_elim_factors(p, p, P)
 
-set actual_test_count = int:0
-set not_test_count = int:0
 
 {insist that every LKT of p0 is a LQ of p, and that P is K_type_pol of
 character formula of p0 to some height. Need p0 FINAL}
@@ -1574,11 +1645,11 @@ set bottom_K_type_Qs2(KType mu, KGPElt Q, int D_low, int D) = QKL_bottom_data:
     then LKData = for tauwt@k in tauwts
        	 	  do if all( [(->bool)]:for alpha_vee in test_coroots
 			     	  	     do @bool:(alpha_vee * tauwt).>= od)
-		     then let tau = K_type(K_highest_weight_from_K0_weight(x0G, tauwt))
+		     then let tau = K0_K_type(x0G, tauwt)
 		     	  in {if D_low < height(tau)
 			     	and height(tau) <= D
 			     then}
-		     [(K_type(K_highest_weight_from_K0_weight(x0G, tauwt)), for m@j in B[k] do dertauLs[j][m] od)]
+		     [(K0_K_type(x0G, tauwt), for m@j in B[k] do dertauLs[j][m] od)]
 		     	     {else []
 		     	     fi}
 		     else []
