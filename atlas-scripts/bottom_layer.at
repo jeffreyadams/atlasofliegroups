@@ -1304,18 +1304,17 @@ set sort([QKL_bottom_data] data, int Dlow, int Dhigh, KType_hash KHash) = [QKL_b
 
 {insist that p0 is final, p0 is a LQ of p, and that P is K_type_pol of
 character formula of p0 to height at least heights in LKdata}
+{Argument P is unused: bottom layer multiplicities of p0 equal those of the
+ L-side product, so a nonzero s_part is enough (9/26/26).}
 set bottom_elim_factors(Param p0, Param p, QKL_bottom_data (Q, LKdata), KTypePol P) = bool:
-    let start = elapsed_ms(), L = Q.Levi, {answers = for k:#LKdata do false od,}
+    let start = elapsed_ms(), L = Q.Levi,
     	(Qm,pLm) = if small_test_flag
     	 	 then theta_stable_data_small(p)
 		 else theta_stable_quasi_data(p)
 		 fi
-    {then () = if #(Q.S) = p.real_form.semisimple_rank
-    	      then prints("tried to use Q=G in bottom_elim_factors"); error()
-	      fi}
     then () = assert(@:#(Q.S) < p.real_form.semisimple_rank,"tried to use Q=G in bottom_elim_factors")
     then Lm = Qm.Levi, mu = LKTs(p0)[0]
-    then muL = highest_LK(mu,Q), muLm = highest_LK(mu,Qm)
+    then (muL,dermuLjs) = highest_LK_derived(mu,Q), muLm = highest_LK(mu,Qm)
     then pLmis = monomials(1*pLm)
     then i0 = first(for pLmi in pLmis do (K_type_pol(pLmi*0))[muLm].!= od)
     then pLm0 = pLmis[i0] {now has LKT muL}
@@ -1324,72 +1323,71 @@ set bottom_elim_factors(Param p0, Param p, QKL_bottom_data (Q, LKdata), KTypePol
     then () = if not is_hermitian(pL)
     	      then NIHCOUNT +:= 1;
 	      	   if not small_test_flag then prints("bad bef at ",p0) fi;
+		   befmoreTime +:= elapsed_ms()-start;
 	      	   return if quitNIH_flag
 		   	  then true
 			  else is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(p0,D)
-			  {is_unitary_to_ht_big_SIMPLE(p0,D)}
 			  fi
 	      fi
+    then () = if #LKdata = 0 then befmoreTime +:= elapsed_ms()-start; return true fi
     then derpLjs = derived_factor_params0(pL) {one for each derived simple factor derLj}
-    then derxLjs = for derpLj in derpLjs do derpLj.x od
-    then derLjs = for derpLj in derpLjs do derpLj.real_form od
-    then dermuLjs = derived_factor_K_types0(muL)
     then DLs = for j:#derpLjs
        	       do max([height(derpLjs[j])] ## for (, list) in LKdata {one for each j}
        	    	      do height(list[j])
 		      od)
 	       od
-    then Pmult = branch_std(P, D)
-    	       	 {
-		 if branch_hash_flag
-    	       	 then big_unitary_hash.branch(P,D)
-		 else branch_std(P, D)
+    {First pass: signatures only for factors not already known unitary.  A
+     known-unitary factor contributes a multiplicity m >= 0, which matters only
+     where the other factors give a nonzero s_part, and then only through
+     whether m = 0; its branch is computed lazily.  Same scheme as
+     min_bottom_elim_factors.}
+    then nf = #derpLjs
+    then known = [bool]: for j:nf do false od
+    then Lbranches = [KTypePol]: for j:nf do null_K_module(derpLjs[j].real_form) od
+    then existNU = false
+    then () = for derpLj@j in derpLjs
+    	 do if big_unitary_hash.nu_height_lookup_int(derpLj,DLs[j]).<=
+	    then let sig = branch_std(big_unitary_hash.sig_entry(derpLj, DLs[j]),DLs[j])
+	    	 in if not is_pure(sig) then existNU:=true fi;
+		    known[j] := true;
+		    Lbranches[j] := if int_part(sig[dermuLjs[j]]) = 0
+				    then s*sig
+				    else sig {this bit makes sig pos on LKT factor}
+				    fi
+	    fi
+	 od
+    then () = if not existNU then befmoreTime +:= elapsed_ms()-start; return true fi
+    {regroup once per factor, not once per tau}
+    then rfs = let (,l0) = LKdata[0] in for tauLj in l0 do tauLj.real_form od
+    then LB = for j:nf do if known[j] then regroup(rfs[j],Lbranches[j]) else Lbranches[j] fi od
+    then ub_done = [bool]: for j:nf do false od
+    then result = true
+    then () = for (,list) in LKdata
+    	      do if result
+	      	 then let coeff = Split: 1 {bottom layer signature at tau, known factors}
+		      then () = for j:nf do if known[j] then coeff*:= LB[j][list[j]] fi od
+		      in if s_part(coeff) != 0
+		      	 then let zero = false
+			      in for j:nf
+			      	 do if not known[j] and not zero
+				    then if not ub_done[j]
+				    	 then LB[j] := regroup(rfs[j],
+					      	       branch_irr_hash(derpLjs[j], DLs[j])); {known unitary}
+					      ub_done[j] := true
+					 fi;
+					 if int_part(LB[j][list[j]]) = 0 then zero := true fi
+				    fi
+				 od;
+				 if not zero then result := false fi
+			 fi
 		 fi
-		 }
-    then branchLjs = for derpLj@j in derpLjs
-	       	     do let sigLj = KTypePol: {signature for derpLm0j}
-	       	   	    if RF_code
-		   	    then big_unitary_hash.sig_entry(derpLj, DLs[j])
-		   	    else hermitian_form_irreducible_to_ht_big_SIMPLE(derpLj,DLs[j])
-		   	    fi
-			 then posLj = if int_part(sigLj[dermuLjs[j]]) = 0
-			      	      then s*sigLj
-				      else sigLj {this bit makes posLj pos on LKTs}
-				      fi
-			 in branch_std(posLj,DLs[j])
-			    {
-			    if branch_hash_flag
-		       	    then big_unitary_hash.branch(posLj,DLs[j])
-			    else branch_std(posLj,DLs[j])
-			    fi
-			    }
-		     od
-       then result = all( [(->bool)]: {list of functions, one for each bottom layer K-type tau}
-			for(tau,list) in LKdata
-			do let coeff = Split: 1 {this will be the bottom layer signature at tau}
-			   then () = for tauLj@j in list
-			     	     do {prints(branchLjs[j][tauLj]);}
-				     coeff*:= regroup(tauLj.real_form,branchLjs[j])[tauLj]
-			  	     od
-			   {then () = prints("coeff = ",coeff,", Pmult = ",Pmult[tau])}
-			   in @bool: let ans = int_part(coeff) >= int_part(regroup(tau.real_form,Pmult)[tau])
-			      	     then () = if not ans
-				     	       then big_unitary_hash.numatch(p0)
-					       fi
-				     in ans
-			od )
-   	then () = if not result
-	     	  then more_good_hash.match(p0);
-		       big_unitary_hash.numatch_height(p0,D)
-		       {prints("adding to befmoreCount");}
-		       {let MG = more_good_hash.size()
-		       then mG = more_good_hash.match(p0)
-		       in if mG = MG
-		       	  then befmoreCount +:=1
-		     	  fi}
-		   fi
-	then () =  befmoreTime +:= elapsed_ms()-start
-	in result
+	      od
+    then () = if not result
+	      then more_good_hash.match(p0);
+		   big_unitary_hash.numatch_height(p0,D)
+	      fi
+    then () =  befmoreTime +:= elapsed_ms()-start
+    in result
 
 {insist that p0 is final}
 set bottom_elim_factors(Param p0, QKL_bottom_data qkl, KTypePol P) = bool:
@@ -1400,12 +1398,7 @@ factor inducing to p !!!}
 {false guarantees not unitary, but true does not guarantee unitary}
 {LKdata[j] is [(tauj,tauLj)]: tauLj are thes Lj\cap K-types inducing to a bottom layer tauj of p.}
 set bottom_elim_factors(Param p0, Param p, QKL_bottom_data (Q,LKdata)) = bool:
-    let DG = max([height(p)]##for (tau,) in LKdata do height(tau) od)
-    then P = if KT_char_hash_flag {hashed: reuse a stored answer computed to a bigger height}
-    	     then char_to_ht_hashed(p0,DG)
-	     else K_type_pol(character_formula_to_ht(p0,DG))
-	     fi
-    in bottom_elim_factors(p0, p, (Q, LKdata), P)
+    bottom_elim_factors(p0, p, (Q, LKdata), null_K_module(p0.real_form))
 
 set bottom_elim_factors(Param p0, QKL_bottom_data qkl) = bool:
     bottom_elim_factors(p0, p0, qkl)
@@ -1772,9 +1765,7 @@ set bottom_elim_factors_more(Param p0, Param p, [QKL_bottom_data] data)= bool:
     then D = max(for (Q,LKdata) in data
 		 do max(for (tau,) in LKdata do height(tau) od#h)
 		 od#h)
-    then CF = character_formula_to_ht(p0,D)
-     then P = K_type_pol(CF)
-    in  bottom_elim_factors_more(p0, p, data, P)
+    in  bottom_elim_factors_more(p0, p, data, null_K_module(p0.real_form)) {P is not used}
 
 {D is meant to be max(height(tau) for tau in BKT. nQs are the parabolics where bottom layer might help.}
 {nQs is meant to be new_Qs(), P the K-character of p}
@@ -1851,9 +1842,7 @@ set bottom_elim_factors_more(Param p0, Param p, int D, KTypePol P)= bool:
 
 {insist that p0 is final, p0 is a LQ of p}
 set bottom_elim_factors_more(Param p0, Param p, int D_low, int D) = bool:
-    let CF = character_formula_to_ht(p0,D)
-    then P = K_type_pol(CF)
-    in bottom_elim_factors_more(p0, p, D_low, D, P)
+    bottom_elim_factors_more(p0, p, D_low, D, null_K_module(p0.real_form)) {P is not used}
 
 {insist that p0 is final, p0 is a LQ of p}
 set bottom_elim_factors_more(Param p0, Param p, int D) = bool:
