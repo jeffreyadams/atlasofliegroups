@@ -1,10 +1,10 @@
 {Load this file to load all recommended .at files}
 
-{These two must come first when running an atlas built before Marc's
- post-2026-03-31 library changes: asciiTOASCII.at supplies ASCII (renamed from
- ascii in commit 7fc1f10d, so basic.at will not load without it), and branch.at
- supplies the maybe_KTP form of branch that the FPP scripts need.}
-<asciiTOASCII.at
+{branch.at must come first: it supplies the maybe_KTP form of branch that the
+ FPP scripts need (FPP_faces_herm.at), and nothing in all.at loads it.
+ asciiTOASCII.at used to be loaded here too, as a shim supplying ASCII for an
+ atlas built before the ascii -> ASCII rename (commit 7fc1f10d); with a binary
+ built from these sources ASCII is a builtin and the shim itself fails.}
 <branch.at
 
 <basic.at
