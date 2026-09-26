@@ -142,14 +142,24 @@ set ^ = !=@(bool,bool) { simple exclusive or }
 set count (int limit,(int->bool) predicate) = int:
   let c=0 in for i:limit do if predicate(i) then c+:=1 fi od; c
 
+{ These four used to short circuit with |return|, which the interpreter
+  implements by throwing a C++ exception; in a build whose executable carries
+  only DWARF |__eh_frame| and no |__unwind_info| section (all of ours), each
+  throw costs about 0.1ms, and these are among the most frequently called
+  functions there are.  The |while| form below short circuits just as well and
+  throws nothing; it is the shape |last| just underneath already used.
+  Measured on FPP_unitary_hash_one_level: Spin(5,3) 19% faster (together with
+  the same rewrite of the three lazy families below), Spin(4,4) 2%, identical
+  answers.  See also the |last| and |get_first|/|get_last| families, which are
+  still in the throwing form. }
 set all ([bool] p) = bool:
-  for x in p do if not x then return false fi od; true
+  let i=0, l=#p in while i<l and p[i] do i+:=1 od; i=l
 set any ([bool] p) = bool:
-  for x in p do if x then return true fi od; false
+  let i=0, l=#p in while i<l and not p[i] do i+:=1 od; i<l
 set none ([bool] p) = bool:
-  for x in p do if x then return false fi od; true
+  let i=0, l=#p in while i<l and not p[i] do i+:=1 od; i=l
 set first ([bool] p) = int:
-  for x@i in p do if x then return i fi od; -1
+  let i=0, l=#p in while i<l and not p[i] do i+:=1 od; if i<l then i else minus_1 fi
 set last ([bool] p) = int:
   let i=#p-1 in while >=i and not p[i] do i-:=1 od; i
 set count ([bool] p) = int: { count (sum) number of truths in list }
@@ -159,26 +169,26 @@ set XOR ([bool] p) = bool: { exclusive or (sum modulo 2) of all truths in list }
 
 { if evaluating conditions is expensive, procedure them with '@:' and call: }
 set all ([(->bool)] p) = bool:
-  for x in p do if not x() then return false fi od; true
+  let i=0, l=#p in while i<l and p[i]() do i+:=1 od; i=l
 set any ([(->bool)] p) = bool:
-  for x in p do if x() then return true fi od; false
+  let i=0, l=#p in while i<l and not p[i]() do i+:=1 od; i<l
 set none ([(->bool)] p) = bool:
-  for x in p do if x() then return false fi od; true
+  let i=0, l=#p in while i<l and not p[i]() do i+:=1 od; i=l
 set first ([(->bool)] p) = int:
-  for x@i in p do if x() then return i fi od; -1
+  let i=0, l=#p in while i<l and not p[i]() do i+:=1 od; if i<l then i else minus_1 fi
 set last ([(->bool)] p) = int: { this is somewhat more efficient than first }
   let i=#p-1 in while >=i and not p[i]() do i-:=1 od; i
 { there are no lazy versions of |count| and |XOR| }
 
 { if cases to test are produced as predicates of an integer, one can use: }
 set all (int limit,(int->bool) predicate) = bool:
-  for i:limit do if not predicate(i) then return false fi od; true
+  let i=0 in while i<limit and predicate(i) do i+:=1 od; i=limit
 set any (int limit,(int->bool) predicate) = bool:
-  for i:limit do if predicate(i) then return true fi od; false
+  let i=0 in while i<limit and not predicate(i) do i+:=1 od; i<limit
 set none (int limit,(int->bool) predicate) = bool:
-  for i:limit do if predicate(i) then return false fi od; true
+  let i=0 in while i<limit and not predicate(i) do i+:=1 od; i=limit
 set first (int limit,(int->bool) predicate) = int:
-  for i:limit do if predicate(i) then return i fi od; -1
+  let i=0 in while i<limit and not predicate(i) do i+:=1 od; if i<limit then i else minus_1 fi
 set last (int limit,(int->bool) predicate) = int:
   for i:limit ~do if predicate(i) then return i fi od; -1
 
@@ -187,13 +197,13 @@ set last (int limit,(int->bool) predicate) = int:
 }
 any_type T begin
 set all ([T] L,(T->bool) predicate) = bool:
-  for x in L do if not predicate(x) then return false fi od; true
+  let i=0, l=#L in while i<l and predicate(L[i]) do i+:=1 od; i=l
 set any ([T] L,(T->bool) predicate) = bool:
-  for x in L do if predicate(x) then return true fi od; false
+  let i=0, l=#L in while i<l and not predicate(L[i]) do i+:=1 od; i<l
 set none ([T] L,(T->bool) predicate) = bool:
-  for x in L do if predicate(x) then return false fi od; true
+  let i=0, l=#L in while i<l and not predicate(L[i]) do i+:=1 od; i=l
 set first ([T] L,(T->bool) predicate) = int:
-  for x@i in L do if predicate(x) then return i fi od; -1
+  let i=0, l=#L in while i<l and not predicate(L[i]) do i+:=1 od; if i<l then i else minus_1 fi
 set last ([T] L,(T->bool) predicate) = int:
   for x@i in L ~do if predicate(x) then return i fi od; -1
 
@@ -2199,9 +2209,15 @@ set nu (Param p) = ratvec:       let (x,,gamma) =%p in (1-involution(x))*gamma/2
 set Cartan_class (Param p) = CartanClass: Cartan_class(x(p))
 set codimension (Param p) = int: codimension(p.x)
 
+set IDP_time = int:0
+set IDP_count = int:0
+
 { root datum whose coroots are those integral on p.infinitesimal_character }
 set integrality_datum (Param p)= RootDatum:
-  integrality_datum(p.real_form, p.infinitesimal_character)
+  let start = elapsed_ms()
+  in integrality_datum(p.real_form, p.infinitesimal_character) \
+     next IDP_time +:=elapsed_ms() - start; IDP_count+:=1
+
 set integrality_rank (Param p) = int:
   integrality_rank(p.real_form, p.infinitesimal_character)
 
@@ -2329,8 +2345,11 @@ set nonparity_poscoroots (Param p) = mat: { positive real nonparity coroots }
   in columns_with((int i):status(alpha[i],p)=5,real_poscoroots)
 
 set is_descent (int s,Param p) = bool: status(s,p)<4
+
 set tau_bitset (Param p) = (int,(int->bool)):
-  (integrality_rank(p), (int s): is_descent(s,p))
+  let id = integrality_datum(p)
+  in (semisimple_rank(id),(int s): status(root(id,s),p)<4)
+  {(integrality_rank(p), (int s): is_descent(s,p))}
 
 set tau (Param p)            = [int]: list(tau_bitset(p))
 set tau_complement (Param p) = [int]: complement(tau_bitset(p))

@@ -3,6 +3,7 @@
 <basic.at
 <translate.at { for translation functor T@(Param(Pol),ratvec) }
 <kl.at { for |composition_series| }
+<integrality_hash.at {for integrality_datum_hash}
 
 
 { ------------ Cayleys as sums of one or two terms ---------- }
@@ -29,7 +30,7 @@ set Cayley_sum (int k,Param p) = ParamPol:
 set coherent_std (Param p,int s) = ParamPol:
 { we need the |integrality_datum| on the fly since |status(s,p.x)| would wrongly
   interpret |s| as index into full root system. Here use |status@(vec,KGBElt)| }
-  let type=status(p.integrality_datum.simple_roots[s],p.x) in
+  let type=status(p.integrality_datum_hash.simple_roots[s],p.x) in
   if   type=1 { compact imaginary }     then -p
   elif type=3 { non-compact imaginary } then Cayley_sum(s,p)-cross(s,p)
   else        { complex or real }            cross(s,p)

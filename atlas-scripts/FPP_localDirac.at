@@ -1372,39 +1372,17 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
 			      then newStatuses[k] := "T"
 			      elif any(for q in pCdef
 			      do @bool: simple_status(q,HT, is_unitary_to_ht_hash_big_SIMPLE_Lucas).< od)
-
-			      {is_finished(q.x,q.lambda) and (Uhash.lookup(q) = -1) od)}
-			       {this line is wrong: need to check q nonunitary to ht HT. Causes
-			      trouble in G=Sp(4,2), x = KGB(G,184), lambda = [4,3,2,1,1,-1]/1. In this case
-			      HT =70. The  edge [1,3], with midpoint
-			non-normal parameter(x=184,lambda=[4,3,2,1,1,-1]/1,nu=[5,3,0,-3,0,-5]/4)
-			   =final parameter(x=152,lambda=[4,4,2,0,1,-1]/1,nu=[3,5,0,-3,0,-5]/4)
-			    is known nonunitary, but only at height 73. So this line incorrectly labels this C,
-			    which consists of 14 of the fifteen clases here, as nonunitary to ht 70.}
-			      then {prints("nonfinal, k = ",k, ", gr = ",gr);}
-				   newStatuses:= updateNUclassesB(newStatuses, gr, k,"F"); "F"
+				then newStatuses:= updateNUclassesB(newStatuses, gr, k,"F"); "F"
 			      fi {all for q}
 			  elif newStatuses[k] = "?"
 			  then if any(for q in pCdef
 			  do @bool: simple_status(q,HT, is_unitary_to_ht_hash_big_SIMPLE_Lucas) = -1 od)
-
-			  {is_finished(q.x,q.lambda) and (Uhash.lookup(q) = -1) od)}
-			  {this line is wrong: need to check q nonunitary to ht HT. Causes
-			      trouble in G=Sp(4,2), x = KGB(G,184), lambda = [4,3,2,1,1,-1]/1. In this case
-			      HT =70. The  edge [1,3], with midpoint
-			non-normal parameter(x=184,lambda=[4,3,2,1,1,-1]/1,nu=[5,3,0,-3,0,-5]/4)
-			   =final parameter(x=152,lambda=[4,4,2,0,1,-1]/1,nu=[3,5,0,-3,0,-5]/4)
-			    is known nonunitary, but only at height 73. So this line incorrectly labels this C,
-			    which consists of 14 of the fifteen clases here, as nonunitary to ht 70.}
-
-			       then {prints("final, k = ",k, ", gr = ",gr);}
-				    newStatuses := updateNUclassesB(newStatuses, gr, k,"F");
+				then newStatuses := updateNUclassesB(newStatuses, gr, k,"F");
 				    newStatuses[k] := "F"
 			       fi {any}
 			  fi {not is_final}
 		fi {newStatuses[k] = "?"}
 	      od {k:NumClasses}
-    {then () = prints("no test newStatuses = ",newStatuses)}
     then () = if fund_face_verbose {and NumClasses > 100}
     then prints(); prints("start local_testK_hash_min_bottom_layer ", NumClasses,
 		   " equiv classes of faces to dim ",#FVKH-1)
@@ -2079,14 +2057,11 @@ in  if test_verbose
 		   fi
 		 )
 	      od.all
-	   then {prints("class ",m," tested true");}
-		newStatuses[m]:="T"
-	   else {prints("class ",m," tested false");}
-	      newStatuses:= updateNUclassesB(newStatuses, gr, m)
+	   then newStatuses[m]:="T"
+	   else newStatuses:= updateNUclassesB(newStatuses, gr, m)
 	   ;  newStatuses[m] := "F"
 	   fi {all (for p in ps)}
-      {else prints("sorry, NOT testing since newStatuses[m] = ",newStatuses[m])}
-       fi {newStatuses[m] = "?"}
+	fi
     od {m in unknown_ms}
 ;   let unitary_by_dim = vec: null(#LFVH)
     ,   UParams = [Param]:[]
@@ -2653,7 +2628,7 @@ set local_test_wiggle_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 					then let CF = character_formula(pC)
 					     in monomials(composition_series((sum(x.real_form,
 						for j:d+1{v in ratverts}
-						do wiggle(CF, face_bary(Lvd,verts[:j]##verts[:j+1]))
+						do wiggle(CF, face_bary(Lvd,verts[:j]##verts[j+1:]))
 						{(sigma - v)/d)}
 						od))))
 					else []
@@ -2734,10 +2709,6 @@ set local_test_wiggle_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 
 set one_true_counter = make_counter()
 set one_false_counter = make_counter()
-{set hash_real_dumbCounter = make_counter()
-set hash_dumbCounter = make_counter()
-set hash_def_dumbCounter = make_counter()
-set hash_bottom_layerCounter = make_counter()}
 set one_param_time = int: 0
 
 set wiggle_unitary_flag = false
@@ -2821,7 +2792,9 @@ set one_param_test_min_bottom(Param p, Param_hash Uhash) = [Param]:
        then one_false_counter.use();
        	    one_param_time +:= elapsed_ms() - start;
        	    []
-       else  hash_bottom_layerCounter.use();
+       else if test_string !=  " using local_test_GEO_hash_bottom_layer"
+       	    then hash_bottom_layerCounter.use()
+	    fi;
        	     let elim_min = all(for q in Q do min_bottom_elim_factors(q,p) od)
        	     in LF_min_bl_vec := if elim_min
     	      		    then [1,0]
@@ -2860,19 +2833,10 @@ set one_param_test_min_bottom(Param p) = [Param]:
 {assume min_bottom already called, so lookup and FPP_def failed}
 set one_param_test_bottom(Param p, [int] Es) = [Param]:
     let start = elapsed_ms(), QG = monomials(finalize(p)),G = p.real_form
-    {Next statement, to check here whether terms of QG already known, sometimes omitted?}
-    {then stati = for q in Q do status(q,-1) od
-    in if all( for N in stati do N =1 od) then return [p] next one_true_counter.use();
-       	       	     	      	      	       one_param_time +:= elapsed_ms() - start fi;
-       if any (for N in stati do N = -1 od) then return [] next one_false_counter.use();
-       	      	     	      	     	    	 one_param_time +:= elapsed_ms() - start fi;}
-     {then () = if all(for q in QG do big_unitary_hash.ulookup(q).>= od)
-    	      then return [p]
-	      elif any(for q in QG do big_unitary_hash.nulookup(q).>= od)
-	      then return []
-	      fi}
     in bl_KHash.clear();
-       hash_bottom_layerCounter.use();
+       if test_string !=  " using local_test_GEO_hash_bottom_layer"
+       	    then hash_bottom_layerCounter.use()
+	    fi;
        let still_here = true
        then (Qmin,) = if small_test_flag
     	 	    then theta_stable_data_small(p)
@@ -2915,10 +2879,6 @@ set one_param_test_bottom(Param p, [int] Es) = [Param]:
        	      let test = all( [(->bool)]:
 		    	   for q in QG
 			   do @bool: let ans = is_unitary_test_big_SIMPLE_interrupt(q)
-			      {if test_interrupt_flag {up_mu_flag}
-		    	      then is_unitary_test_big_SIMPLE_interrupt(q)
-		    	      else is_unitary_hash_big_SIMPLE(q)
-		    	      fi}
 			      then () = if not ans and more_after_flag
 		            {HERE USE DIRAC ON MORE K-types}
 			      	      	then more_bad_hash.match(q);
@@ -2964,7 +2924,9 @@ set one_param_test_all_bottom(Param p, [int] Ds) = [Param]:
        	       	    one_param_time +:= elapsed_ms() - start;
        	    	    []
     		    {then () = prints("Ds = ",Ds)}
-       	       else hash_bottom_layerCounter.use();
+       	       else if test_string !=  " using local_test_GEO_hash_bottom_layer"
+       	       	    then hash_bottom_layerCounter.use()
+	    	    fi;
        	       	    let elim_min = all(for q in Q do min_bottom_elim_factors(q,p) od)
     	    	    in LF_min_bl_vec:= if elim_min
     	      		      then [1,0]
@@ -3606,7 +3568,7 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, LocalVertexData Lvd, [
 				      then let CF = character_formula(pC)
 					   then pCdef =  monomials(composition_series((sum(x.real_form,
 					   	      for j:#verts
-						      do wiggle(CF, face_bary(Lvd, verts[:j]##verts[j+1:]))
+						      do wiggle(CF, face_bary(Lvd, verts[:j]##verts[:j+1]))
 						      od))))
 							  {proper_face_deformed(pC)}
 				      	        in if any(for q in pCdef
@@ -4205,7 +4167,8 @@ set local_test_GEO_hash2_end(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[Fac
                         " face counts to dim 1: ",for list in LFDKH do #list od)
 			{,"; Dirac_best eliminated ", DBTcount - startDBTcount)} fi
     then Dlast = #hts - 1, Dmid = #hts\2
-    then () = if quick_flag
+    then () = if #LFDKH = 2
+    	      then if quick_flag
     	      then let () = LFDKH := extend_K_characters(x, lambda, Lvd, LFDKH, hts[Dmid], pol_hash)
 	      	   then () = LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LFDKH, 2, r+1, hts[Dmid], pol_hash)
 		   then () = if one_two_reverse_flag
@@ -4250,6 +4213,7 @@ set local_test_GEO_hash2_end(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[Fac
      	     od
      in()
      fi{quick_flag}
+     fi {#LFDKH = 2}
     {now have faces of all dims, to height hts[Dmid] or hts[Dlast]}
     then () = if one_two_reverse_flag
     	      then LFDKH := for list in LFDKH do [vec]: for v in list ~do v od od
@@ -4569,39 +4533,6 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, {VertexData vd,}
 		 then mu_tester(p)
 		 else is_unitary_hash_big_SIMPLE(p)
 		 fi, Uhash)
-    {then UParams = [Param]:
-         if one_ht >=  0
-         then let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
-	      then () = if test_verbose then prints(sum(for list in LFDKH do #list od),
-	      	      	   " unitary candidates in ",#eq," equivalence classes.") fi
-              in local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, (Param->bool):(Param p):
-		      		    if test_interrupt_flag {up_mu_flag}
-				    then mu_tester(p)
-				    elif prefer_to_hts
-		      		    then is_unitary_test_big_SIMPLE(p,hts[ONE+1:])
-				    else is_unitary_test_big_SIMPLE(p,hts[LAST])
-		      		    fi, Uhash)
-		       {NEED PERHAPS TO PUT BOTTOM LAYER BACK}
-          else for list@d in LFDKH
-               do for v in list
-                  ~do let p = parameter(x,lambda, face_bary(Lvd, v[:d+1]))
-		     then () = for  p1 in monomials(finalize(p))
-                      	       do Uhash.match({herm_center(}p1{)});
-                             	  if deform_flag
-			     	  then for q in face_deformed_new(p1)
-                             	       do Uhash.match({herm_center(}q{)})
-				       od
-			     	  fi
-                             	  od
-		     then () = if long_out_flag
-		      	       then let () = ParamsByDim[d] := ParamsByDim[d]#p
-			   	    then () = LFDKHByDim[d] := LFDKHByDim[d]#v
-				    in ()
-			       fi
-		     in p
-                  od
-                od.##
-	 fi}
     then time = elapsed_ms() - start
     then () = if time_verbose
 	      then prints("     ", print_time_string(time),
@@ -4680,20 +4611,16 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
     {then () = prints("depth = ",depth, ", #Shorthts = ",#Shorthts, ", ONE = ",ONE)}
     then one_ht = hts[ONE]
     then tester1 = (Param->bool): (Param p) bool:
-{repl THf 2/22/26} if prefer_to_hts then is_unitary_to_hts_big_SIMPLE_interrupt{_TOHTfirst}(p, hts[:ONE+1])
-	 	  else is_unitary_to_ht_big_SIMPLE_interrupt{_TOHTfirst}(p,one_ht)
+    	 	  if prefer_to_hts then is_unitary_to_hts_big_SIMPLE_interrupt(p, hts[:ONE+1])
+	 	  else is_unitary_to_ht_big_SIMPLE_interrupt(p,one_ht)
 	 	  {to_ht is definitely 2% slower for F4 spherical, 10% slower for Sp(10) spherical}
 	 	  fi
     then start_count = unitary_test_counter.use_count()
     {then () = prints("at (x,lambda) = (",x,",",lambda,"), pol_hash_min.list() is ",pol_hash_min.list())}
     then () = if one_ht > HK_known
-    	      then {let () = prints("lambda = ",lambda,", one_ht = ",one_ht,", HK_known = ",HK_known)}
-	      	   {let () = pol_hash_min.clear()
-	      	   in} LFDKH := extend_K_characters(x,lambda,Lvd,LFDKH,one_ht,pol_hash)
+    	      then LFDKH := extend_K_characters(x,lambda,Lvd,LFDKH,one_ht,pol_hash)
 	      else one_ht:=HK_known
 	      fi
-    {then () = prints("after extend, pol_hash_min.list() is ",pol_hash_min.list())}
-    {to_ht invalidates ICPNU???}
     then ICPNU_flag_hold = ICPNU_flag
     then () = ICPNU_flag :=false
 {eliminate vert/edges not unitary to one_ht}
@@ -4707,9 +4634,9 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
     then () = if test_verbose then prints("unitary to ht ", one_ht,
                         " face counts to dim 1: ",for list in LFDKH do #list od)
 			{,"; Dirac_best eliminated ", DBTcount - startDBTcount)} fi
-
-    then () = if quick_flag
-    	      then let () = LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LFDKH, 2,
+    then () = if #LFDKH = 2
+    	      then if quick_flag
+    	      	   then let () = LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LFDKH, 2,
                                 r + 1, one_ht, pol_hash)
 	           then () = if one_two_reverse_flag
     	      	   	     then LFDKH := for list in LFDKH do [vec]: for v in list ~do v od od
@@ -4724,7 +4651,7 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
 		      	      		" face counts to dim ",r,
 				": ", for list in LFDKH do #list od)
 		      fi
-	      else let D = int:1
+	      	   else let D = int:1
      then () = while (D <= r - 1  ) and
     	      	    (#LFDKH = D + 1) and
 		    (#(LFDKH~[0]) > D+1)
@@ -4744,17 +4671,11 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
 		      do if #eq[j] > 1
 		      	 then [LFDKH[D+1][m]]
 		         else let verts = vec: LFDKH[D+1][m][:D+2]
-			      {should insert Uhash.lookup(p).>=
-			      Actually this has no effect in SO(4,4)}
 			      then ps = monomials(finalize(
 					  parameter(x, lambda,
 					  face_bary(Lvd, verts))))
 					  in if all(for p in ps
-					     	    do tester1(p) {no effect in Spin(4,4)}
-						    {((stat_holder:=status(p, one_ht)) > 0) {G}
-						    {(big_unitary_hash.nu_height_lookup_int(p,one_ht) < 0)
-						       or Uhash.lookup(p).>=}
-						       or (stat_holder = 0 and tester1(p))}
+					     	    do tester1(p) 
 						    od)
 					     then [LFDKH[D+1][m]]
 					     else []
@@ -4774,6 +4695,7 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
      	      od
 	      in ()
 	      fi{quick_flag}
+	    fi {#LFDKH = 2}
     {now LFDKH is everything unitary to ht one_ht}
     then () = ICPNU_flag:= ICPNU_flag_hold
     then unitary_by_dim = vec: for L in LFDKH do #L od
@@ -4839,9 +4761,7 @@ set local_test_GEO_hash_steve_steve_end(KGBElt x, ratvec lambda, LocalVertexData
     then hts = next_heights(p0,edge_offset+1)
     then one_ht = hts[edge_offset]
     then tester1 = (Param->bool): (Param p) bool:
-     	     	  is_unitary_to_hts_big_SIMPLE{_interrupt_TOHTfirst}(p, hts) {rm iTHf 2/23/26}
-	 	  { is_unitary_to_ht_big_SIMPLE(p,one_ht) }
-	 	  {to_ht is definitely 2% slower for F4 spherical, 10% slower for Sp(10) spherical}
+     	     	  is_unitary_to_hts_big_SIMPLE{_interrupt_TOHTfirst}(p, hts) 
     then start_count = unitary_test_counter.use_count()
     {to_ht invalidates ICPNU???}
     then ICPNU_flag_hold = ICPNU_flag
@@ -4891,11 +4811,7 @@ set local_test_GEO_hash_steve_steve_end(KGBElt x, ratvec lambda, LocalVertexData
 					  parameter(x, lambda,
 					  face_bary(Lvd, verts))))
 					  in if all(for p in ps
-					     	    do tester1(p) {no effect in Spin(4,4)}
-						    {(stat_holder:=status(p,one_ht)) > 0}
-						    {big_unitary_hash.nu_height_lookup_int(p,one_ht) < 0
-						       or Uhash.lookup(p).>=}
-						       {or (stat_holder = 0 and tester1(p))}
+					     	    do tester1(p) 
 						    od)
 					     then [LFDKH[D+1][m]]
 					     else []
@@ -5208,6 +5124,37 @@ reversion is to hash2}
 set one_level_revert_flag = true {false}
 set real_dumb_revert_flag = false
 
+set one_level_bottom_revert_flag = false {if true, go to one_level after vertices and edges}
+set two_bottom_revert_flag = false {if true, go to 2 after vertices and edges}
+{The ending of local_test_GEO_hash_bottom_layer below is chosen by the three flags
+ above and this one; the first true one wins, and the default is this one.
+
+ bottom_then_one_level_flag keeps the dim>=2 min_bottom_layer elimination that was
+ introduced on 17 Sep 2026, but hands the survivors to
+ local_test_GEO_hash_one_level_end rather than testing them with the plain
+ is_unitary_def_test_big_SIMPLE.  The point is that one_level_end uses the
+ height-bounded, interruptible is_unitary_to_ht(s)_big_SIMPLE_interrupt AND the
+ fancy_tester argument; dropping those is what cost E7_s about an hour.  Measured
+ 17 Sep 2026 (identical answers on every arm):
+
+   arm:               revert to one_level | stay in bottom_layer | this hybrid
+   E7_s [19000:19030]        240.9s       |       432.7s         |    243.2s
+   E7_s [20600:20630]        239.1s       |       521.4s         |    241.9s
+   E8_s x=220459,
+     lambda=[1,1,1,1,1,1,1,-11]/1
+                      580.8s / 13.6GB     |   97.7s / 5.6GB      | 95.5s / 5.2GB
+
+ The E7 loss is entirely in negative is_unitary tests (the whole-group run went from
+ 21400 in 456s to 40691 in 4865s while the min_bottom_* times got CHEAPER, which is
+ why the bottom_layer statistics do not show it).  The E8 win is entirely in char
+ calcs (471s -> 21s): one_level_end's extend_K_characters(...,one_ht,...) raises
+ K-characters to one_ht for exactly the eight 2-dimensional facets that the dim>=2
+ min_bottom pass kills for free.
+
+ To get the 17 Sep default back, set bottom_then_one_level_flag:=false.
+ To get the pre-17 Sep behaviour, set one_level_bottom_revert_flag:=true.}
+set bottom_then_one_level_flag = true
+
 {assume local faces to dim 1 are recorded in LF, already herm and pos
 on LKTs. This version uses min_bottom_elim instead of
 unitary_to_ht. Because of incorporation of good range nonunitarity proofs in min_bottom_elim,
@@ -5304,7 +5251,7 @@ set local_test_GEO_hash_bottom_layer_interrupt(KGBElt x, ratvec lambda, LocalVer
 		  prints("testing heights = ", Ds, new_line)
 	       fi
     then startDBTcount = DBTcount
-    then LFDKH = if red_count_flag and #LF[1] > 0
+    then LFDKH = if red_count_flag and #LF[1] > 0 {computed to infinite height}
     	       	 then let (eq,CLBF) = localGraphRed(LF)
 		      in localFD_KHash_01_graph(x,lambda,Lvd,pol_hash,LF, eq,CLBF)
 		  else localFD_KHash_01(x, lambda, Lvd, pol_hash, LF)
@@ -5402,6 +5349,14 @@ set local_test_GEO_hash_bottom_layer_interrupt(KGBElt x, ratvec lambda, LocalVer
          let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
 	 {these have had know_lower, min_bottom, and bottom_elim
 	 already applied; so just do is_unitary_test}
+    	 then () = if test_verbose
+    	      	   then prints(for list in LFDKH do #list od, " = ",sum(for list in LFDKH do #list od),
+	      	      	" unitary candidates in ",#eq," equivalence classes.");
+		   	prints("number of tests so far = ",unitary_test_counter.use_count() - UTCstart);
+		   	prints("first do min_bottom test:")
+	           fi
+	 then () = LFDKH := local_testK_hash_min_bottom_layer(x,lambda, Lvd, LFDKH, eq,
+		      gr, CLBF, height(pmin), pol_hash,  Uhash, fancy_tester)
     	 then () = if test_verbose
     	      	   then prints(for list in LFDKH do #list od, " = ",sum(for list in LFDKH do #list od),
 	      	      	" unitary candidates in ",#eq," equivalence classes.");
@@ -5504,6 +5459,14 @@ set local_test_GEO_hash_bottom_layer_step(KGBElt x, ratvec lambda, {VertexData v
          let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
 	 {these have had know_lower, min_bottom, and bottom_elim
 	 already applied; so just do is_unitary_test}
+    	 then () = if test_verbose
+    	      	   then prints(for list in LFDKH do #list od, " = ",sum(for list in LFDKH do #list od),
+	      	      	" unitary candidates in ",#eq," equivalence classes.");
+		   	prints("number of tests so far = ",unitary_test_counter.use_count() - UTCstart);
+		   	prints("first do min_bottom test:")
+	           fi
+	 then () = LFDKH := local_testK_hash_min_bottom_layer(x,lambda, Lvd, LFDKH, eq,
+		      gr, CLBF, height(pmin), pol_hash,  Uhash, fancy_tester)
     	 then () = if test_verbose
     	      	   then prints(for list in LFDKH do #list od, " = ",sum(for list in LFDKH do #list od),
 	      	      	" unitary candidates in ",#eq," equivalence classes.");
@@ -5622,12 +5585,12 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 		   fi
 	      fi
 {Now there are min_bottom_layer K-types, or else more_flag; bl_KHash contains them, LKDatas}
-    then first_ht = min_ht_max
+    then first_ht = min_ht_max, UTCstart = unitary_test_counter.use_count()
     then pmax = pmax(x,lambda,Lvd)
     then gamma = pmax.infinitesimal_character
     then hts = next_heights(pmax, edge_offset+1)
     {next step computes K-characters, possibly using red_count to reduce the number of calcs}
-    then LFDKH = if red_count_flag and #LF[1] > 0
+    then LFDKH = if red_count_flag and #LF[1] > 0 {just to first_ht}
     	       	 then let (eq,CLBF) = localGraphRed(localFD_1Dirac2_red_update(x,lambda, first_ht, Lvd,LF))
 		      in localFD_KHash_01_graph(x,lambda,Lvd,pol_hash,LF, eq,CLBF)
 		 else localFD_KHash_01(x, lambda, Lvd, first_ht {min_ht_max}, pol_hash, LF)
@@ -5642,8 +5605,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 			  for list in LF do #list od);
 		 prints("testing min_bottom height = ", min_ht_max, new_line)
 	       fi;
-   	       let UTCstart = unitary_test_counter.use_count()
-    	       then startDBTcount = DBTcount
+   	       let startDBTcount = DBTcount
    	       then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
     	       {next remove from LFDKH all faces failing min_bottom_factors_elim}
    	       in LFDKH:= local_testK_hash_min_bottom_layer(x,lambda, Lvd, LFDKH, eq,
@@ -5709,6 +5671,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 		     	     od
 		 in ()
 	     fi {more_flag_temp}
+	     {now LFDKH is to ht HK_known}
       then () = LF_more_bl_vec := for list in LFDKH do #list od
       then () = bl_size_hash.match(LF_pre_vec##LF_min_bl_vec##LF_more_bl_vec)
       then () = if test_verbose
@@ -5731,9 +5694,60 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
    then () = min_after_flag := not more_flag_temp
    {then () = prints("leaving bottom_layer; one_level_revert_flag = ",one_level_revert_flag)}
    in {1/0;}
-      if one_level_revert_flag
+      if one_level_bottom_revert_flag
       then local_test_GEO_hash_one_level_end(x, lambda, Lvd, LFDKH, pol_hash, HK_known, Uhash, fancy_tester)
-      else local_test_GEO_hash2_end(x, lambda, Lvd, LFDKH, pol_hash, HK_known, Uhash, fancy_tester)
+      elif two_bottom_revert_flag
+      then local_test_GEO_hash2_end(x, lambda, Lvd, LFDKH, pol_hash, HK_known, Uhash, fancy_tester)
+     elif bottom_then_one_level_flag
+      then LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LFDKH, 2, r + 1, HK_known,pol_hash);
+           let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
+	   then () = if test_verbose
+	   	     then prints(for list in LFDKH do #list od, " = ",
+			  sum(for list in LFDKH do #list od),
+			  " unitary candidates in ",#eq," equivalence classes.");
+			  prints("number of tests so far = ",
+			  	 unitary_test_counter.use_count() - UTCstart);
+			  prints("first do min_bottom test, then the one_level ending:")
+		     fi
+           then () = LFDKH := local_testK_hash_min_bottom_layer(x,lambda, Lvd, LFDKH, eq,
+                        gr, CLBF, HK_known, pol_hash, Uhash, fancy_tester)
+           in local_test_GEO_hash_one_level_end(x, lambda, Lvd, LFDKH, pol_hash, HK_known,
+                        Uhash, fancy_tester)
+      else LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LFDKH, 2,
+       	    	     		r + 1, HK_known, pol_hash);
+    	   let unitary_by_dim = vec: for L in LFDKH do #L od
+    	   then steps = max(r-1,1)
+    	   then start=elapsed_ms()
+    	   then UParams = [Param]:
+           	let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
+	     	then () = if test_verbose
+    	      	     	  then prints(for list in LFDKH do #list od, " = ",
+			       sum(for list in LFDKH do #list od),
+	      	      	       " unitary candidates in ",#eq," equivalence classes.");
+		   	       prints("number of tests so far = ",
+			       		      unitary_test_counter.use_count() - UTCstart);
+		   	       prints("first do min_bottom test:")
+	           	   fi
+	        then () = LFDKH := local_testK_hash_min_bottom_layer(x,lambda, Lvd, LFDKH, eq,
+		      gr, CLBF, HK_known, pol_hash,  Uhash, fancy_tester)
+		then () = LFDKH := extend_K_characters(x,lambda,Lvd,LFDKH,pol_hash)
+		then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
+    	 	then () = if test_verbose
+    	      	     	  then prints(for list in LFDKH do #list od, " = ",
+			       sum(for list in LFDKH do #list od),
+	      	      	       " unitary candidates in ",#eq," equivalence classes.");
+		   	       prints("number of tests so far = ",
+			       unitary_test_counter.use_count() - UTCstart);
+		   	       prints("testing with is_unitary_test_big_SIMPLE_interrupt")
+	           	   fi
+    	 	in local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, (Param->bool): (Param p) bool:
+			       is_unitary_test_big_SIMPLE_interrupt(p,min_ht_max), Uhash)
+    	   then time = elapsed_ms() - start
+    	   then () = if time_verbose
+	   	     then prints("     ", print_time_string(time),
+	      	     " for UParams calculation ", test_string, new_line){;}
+	      	     fi
+   	   in UParams
       fi
 
 set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData Lvd,

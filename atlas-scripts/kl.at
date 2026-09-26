@@ -2,8 +2,8 @@
 <count.at { for |char_counter| }
 <parameters.at { for |dual_inner_class| }
 <hash.at {for hashed low function}
+<integrality_hash.at
 <polynomial.at {for eval}
-<dualB.at {for dualB, low_dual}
 <translate.at {for translate_param_by}
 <K.at {for parameter@KType}
 { KL stuff, including character formulas and composition series
@@ -34,6 +34,8 @@ choose whether "to height" or "to infinity" algorithm is faster.}
 
 { ------------------------------------------------------------------- }
 {seat_belt_on:=false}
+
+set twisted_KL_sum_at_s_library(Param p) = twisted_KL_sum_at_s(p)
 
 {Move the param out where W_int(p)  can act}
 set regularize_new(Param p) = Param:
@@ -100,10 +102,7 @@ set KL_sum_at_s(Param p) = ParamPol:
     in KL_sum_at_s(p) next charTime +:= elapsed_ms() - start; char_counter.use()
 
 set character_formula (Param p) = ParamPol:
-    let start = elapsed_ms()
-    in s_to_1(KL_sum_at_s(p))
-    {then () = if CF_flag then prints("CF(",p.x.number,",",p.lambda,",",
-       p.nu,"), charTime = ",print_time_string(CharFormTime)) fi}
+    s_to_1(KL_sum_at_s(p))
 
 set character_formula (ParamPol P) = ParamPol: map(character_formula@Param,P)
 
@@ -134,18 +133,6 @@ set full_block_to_ht(Param p, int HT) = [Param]:
        fi
     od
 
-{arena for KL_sum_at_s_to_height(p,HT)}
-{set full_block_to_ht_size(Param p, int HT) = int:
-    let tworho = two_rho(p.real_form)
-    in if easy_block_size_flag
-       then let gamma = p.infinitesimal_character + tworho
-    	    then H0 = height(p.x,gamma)+(HT-height(p)
-    	    then x_up_num = first(for x in KGB(p.real_form)[:p.x.number]) {elts closer to 0 than x}
-    	     	      	      	  ~do height(x,gamma)>H0
-
-    let tworho = two_rho(p.real_form)
-    then q0 = parameter(p.x,p.lambda +tworho, p.nu+tworho)}
-
 set full_block_down_size(Param p) = int:
     if easy_full_size_flag
     then p.x.number
@@ -171,7 +158,7 @@ set KL_rate(RealForm G) = rat:
 
 {predicted time in milliseconds to compute KL in block of p}
 set KL_predictor_full(Param p) = int:
-    let rk = semisimple_rank(integrality_datum(p))
+    let rk = semisimple_rank(integrality_datum_hash(p))
     in floor((#full_block(p))^2*3^rk* KL_rate/2^(2*rk+1))
     {next prints("we're in KL_pred_full at ",p)}
 {number of extremal pairs in full block is ROUGHLY: (x,y) so tau(y)\cap tau(x) is empty.
@@ -188,7 +175,7 @@ set KL_predictor_to_ht(Param p, int HT) = int:
 
 {relevant to KL_sum_at_s for p}
 set KL_predictor(Param p) = int:
-    let rk = semisimple_rank(integrality_datum(p))
+    let rk = semisimple_rank(integrality_datum_hash(p))
     in floor((full_block_down_size(p))^2*3^rk*KL_rate/2^(2*rk + 1))
 {next prints("we're in KL_pred at ",p)}
 
@@ -222,81 +209,21 @@ set red_walls(KGBElt x, ratvec gamma) = int:
        od;
        floor(answer)
 
-{TAKEN FROM STEVE}
+<Levix.at { Levix, Levix_simp, rho_C, rho_C_Levi, pL, pL_simp, simp_lift, simp_flag }
 
-set Levix_baseTIME = int:0
-set LevixTIME = int:0
-
-{root datum from all coroots restricting to A as multiple of av}
-set Levix_base(KGBElt x, vec av) = (RealForm,KGBElt):
-    let start = elapsed_ms(), G = x.real_form, theta = x.involution
-    then pos_r = G.posroots, pos_co = G.poscoroots
-    then av_min_th = av - av*theta
-    then js = for bv@j in pos_co
-    	      do if rank([av_min_th,bv-bv*theta]) <=1
-	      	 then [j]
-		 else []
-		 fi
-	      od.##
-     then two_rho_L = sum(G.rank, for j in js do pos_r[j] od)
-     then min_js = for j in js
-     	  	   do if pos_co[j]*two_rho_L = 2
-		      then [j]
-		      else []
-		      fi
-		   od.##
-     then rdL = root_datum(mat: for j in min_js do pos_r[j] od,
-     	      		   mat: for j in min_js do pos_co[j] od, G.prefers_coroots)
-     {then tfL = x.torus_factor - G.rho_check + rdL.rho_check}
-     then xL = KGB_elt(rdL, theta, x.torus_factor)
-    in (real_form(xL),xL) next Levix_baseTIME+:= elapsed_ms() - start
-
-set Levix = ((KGBElt, vec)->(RealForm,KGBElt)):
-    let KGBhash = make_KGBElt_hash()
-    then vechashes = [vec_hash]: [] {one for each KGBElt}
-    then answers = [[(RealForm,KGBElt)]]: [] {1st index is x, second av}
-    {then L = RealForm: GL(1,R), xL = KGBElt:KGB(GL(1,R),0)}
-    in ((KGBElt, vec)->(RealForm,KGBElt)): (KGBElt x, vec av) (RealForm,KGBElt):
-    let start = elapsed_ms(), N = KGBhash.size()
-    then n = KGBhash.match(x)
-    in if n=N
-       then vechashes#:=make_vec_hash();
-       	    answers#:= ([(RealForm,KGBElt)]:[])
-       fi;
-       let J = vechashes[n].size()
-       then j = vechashes[n].match(av)
-       in if j=J
-	  then answers[n]#:= Levix_base(x,av)
-	  fi;
-	  answers[n][j] next LevixTIME +:=elapsed_ms() - start
-
-set pLTIME = int:0
-
-{parameter on nonstandard Levi L}
-set pL(KGBElt x, ratvec lambda, vec av, rat t) = Param:
-    let start = elapsed_ms(), (L,xL) = Levix(x,av), G = x.real_form, theta = x.involution
-    then m = coroot_index(G,av) + #G.posroots, {lambdaL = lambda-rho(G) + rho(L)}
-    	 lambda_shift = -rho(G) +rho(L) + rho_C(G,theta) - rho_C(L,theta)
-    then a = roots(G)[m], lambdaL = lambda + lambda_shift
-    then nu1 = (a-theta*a)
-    then wt = av*nu1, shift = av*(lambdaL+theta*lambdaL)/2
-    in parameter(xL,lambdaL, ((t-shift)/wt)*nu1) next pLTIME +:= elapsed_ms() - start
-
-{
-set pL1 = ((KGBElt, ratvec, vec) -> Param,(KGBElt, ratvec, vec, rat) -> bool):
-    let answers = make_Param_hash()
-    in ((KGBElt, ratvec, vec)->Param): (KGBElt x, ratvec lambda, vec av) Param:
-       let (L,xL) = Levix(x,av)
-       (
-}
 set std_quo(Param p) = ParamPol:
     1*p-character_formula(1*p)
 
 set ind_quoTIME = int:0
 
 set ind_quo(KGBElt x, ratvec lambda, vec av, rat t) = KTypePol:
-    let start = elapsed_ms(), pL = pL(x,lambda,av,t)
-    in K_type_pol(std_quo(pL)) next ind_quoTIME+:= elapsed_ms() - start
+    let start = elapsed_ms()
+    then pL = pL(x,lambda,av,t)
+    in K_type_pol(std_quo(pL))  next ind_quoTIME+:= elapsed_ms() - start
+
+set ind_quo_simp(KGBElt x, ratvec lambda, vec av, rat t) = (KTypePol,mat):
+    let start = elapsed_ms(), (pL_simp,M) = pL_simp(x,lambda,av,t)
+    in (K_type_pol(std_quo(pL_simp)),M) next ind_quoTIME+:= elapsed_ms() - start
 
 set to_ht_G(RealForm G, KTypePol QL, int HT) = KTypePol:
     if HT.< then return QL fi;
@@ -308,11 +235,137 @@ set to_ht_G(RealForm G, KTypePol QL, int HT) = KTypePol:
 	   fi
 	od)
 
+{M is for restricting weights on G to the Levi where QL lives}
+
+set to_ht_G_simp(RealForm G, ratvec dlambda, KTypePol QL, int HT, mat M) = KTypePol:
+    if HT.< then return QL fi;
+    let (J,d) = simp_lift(G,M)
+    then lambda0 = dlambda - (J*(M*dlambda))/d
+    in sum(QL.real_form,
+	for c@tauL in QL
+    	do if dominant(G,lambda0 +(J* parameter(tauL).d_lambda)/d)*(G.two_rho_check) <= HT
+	   then c*tauL
+	   else 0*tauL
+	   fi
+	od)
+
 set testTIME = int: 0
 
+{the uncached form, kept as the definition the cache below must agree with}
+set test_simp_uncached(KGBElt x, ratvec lambda, vec av, rat t, int HT) = bool:
+    let start = elapsed_ms(), (QL,M) = ind_quo_simp(x,lambda,av,t)
+    in to_ht_G_simp(x.real_form, (lambda+x.involution*lambda)/2, QL, HT, M).!= next testTIME +:=elapsed_ms() - start
+
+{The HT dependence of test_simp is only a threshold: either QL is zero, and the test is
+false for every HT, or QL has a lowest G-height H1, and the test is HT>=H1 (HT<0 means no
+truncation at all, so the test is then true). So what gets cached is H1, and one entry
+serves every HT. Two layers: the K-type differentials of QL, which are the expensive part
+and depend on lambda only through M*lambda, and the threshold itself, which is a few
+dominant() calls on top of them.}
+
+{canonical key: %ratvec and %rat are normalised, so equal values give equal keys}
+set simp_key(vec av, ratvec lam, rat t) = vec:
+    let (ln,ld) = %lam, (tn,td) = %t in av ## ln ## [ld,tn,td]
+
+set simp_dl_hits = int:0
+set simp_dl_misses = int:0
+set simp_dlTIME = int:0
+
+{layer 1: the distinct d_lambdas of the K-types of std_quo(pL_simp), in Lsimp coordinates}
+set (simp_dlambdas,simp_dlambdas_report) =
+    (((KGBElt,ratvec,vec,rat)->[ratvec]),(void -> void)):
+    let KGBhash = make_KGBElt_hash()
+    then vechashes = [vec_hash]: [] {one for each KGBElt}
+    then answers = [[[ratvec]]]: [] {1st index is x, second (av,M*lambda,t)}
+    in (
+    (((KGBElt,ratvec,vec,rat)->[ratvec]): (KGBElt x, ratvec lambda, vec av, rat t) [ratvec]:
+    let start = elapsed_ms(), N = KGBhash.size()
+    then n = KGBhash.match(x)
+    in if n=N
+       then vechashes#:=make_vec_hash();
+       	    answers#:= ([[ratvec]]:[])
+       fi;
+       let (,,,M,) = Levix_simp(x,av)
+       then key = simp_key(av,M*lambda,t)
+       then J = vechashes[n].size()
+       then j = vechashes[n].match(key)
+       in if j=J
+	  then simp_dl_misses+:=1;
+	       let (QL,) = ind_quo_simp(x,lambda,av,t)
+	       then dls = [ratvec]: []
+	       in for @tauL in QL
+	       	  do let v = ratvec: parameter(tauL).d_lambda
+		     in if none(#dls,(int i)bool: dls[i]=v) then dls#:=v fi
+		  od;
+		  answers[n]#:= dls
+	  else simp_dl_hits+:=1
+	  fi;
+	  answers[n][j] next simp_dlTIME +:=elapsed_ms() - start)
+    , @: {simp_dlambdas_report}
+      prints("simp_dlambdas is hashing ",sum(for vechash in vechashes do vechash.size() od),
+      	     " triples (av,M*lambda,t), ",simp_dl_hits," hits, ",simp_dl_misses,
+	     " misses, in time ",print_time_string(simp_dlTIME))
+       )
+
+set simp_H1_hits = int:0
+set simp_H1_misses = int:0
+set simp_H1TIME = int:0
+
+{layer 2: the threshold H1, or -1 when QL is zero (heights of K-types are never negative)}
+set (simp_H1,simp_H1_report) = (((KGBElt,ratvec,vec,rat)->rat),(void -> void)):
+    let KGBhash = make_KGBElt_hash()
+    then vechashes = [vec_hash]: [] {one for each KGBElt}
+    then answers = [[rat]]: [] {1st index is x, second (av,lambda,t)}
+    in (
+    (((KGBElt,ratvec,vec,rat)->rat): (KGBElt x, ratvec lambda, vec av, rat t) rat:
+    let start = elapsed_ms(), N = KGBhash.size()
+    then n = KGBhash.match(x)
+    in if n=N
+       then vechashes#:=make_vec_hash();
+       	    answers#:= ([rat]:[])
+       fi;
+       let key = simp_key(av,lambda,t)
+       then J = vechashes[n].size()
+       then j = vechashes[n].match(key)
+       in if j=J
+       	  then simp_H1_misses+:=1;
+	       let dls = simp_dlambdas(x,lambda,av,t)
+	       in if #dls=0
+	       	  then answers[n]#:= (rat: -1)
+		  else let G = x.real_form, (,,,M,) = Levix_simp(x,av)
+		       then (Jl,d) = simp_lift(G,M)
+		       then dlambda = (lambda+x.involution*lambda)/2
+		       then lambda0 = dlambda - (Jl*(M*dlambda))/d
+		       then m = rat: -1
+		       in for v in dls
+		       	  do let h = dominant(G,lambda0+(Jl*v)/d)*(G.two_rho_check)
+			     in if m < 0 or h < m then m := h fi
+			  od;
+			  answers[n]#:= m
+		  fi
+	  else simp_H1_hits+:=1
+	  fi;
+	  answers[n][j] next simp_H1TIME +:=elapsed_ms() - start)
+    , @: {simp_H1_report}
+      prints("simp_H1 is hashing ",sum(for vechash in vechashes do vechash.size() od),
+      	     " triples (av,lambda,t), ",simp_H1_hits," hits, ",simp_H1_misses,
+	     " misses, in time ",print_time_string(simp_H1TIME))
+       )
+
+set test_simp(KGBElt x, ratvec lambda, vec av, rat t, int HT) = bool:
+    let start = elapsed_ms()
+    then H1 = simp_H1(x,lambda,av,t)
+    in (if H1 < 0 then false {QL is zero: false at every HT}
+        elif HT.< then true {no truncation: QL is nonzero}
+	else H1 <= HT
+	fi) next testTIME +:=elapsed_ms() - start
+
 set test(KGBElt x, ratvec lambda, vec av, rat t, int HT) = bool:
-    let start = elapsed_ms(), QL = ind_quo(x,lambda,av,t)
-    in to_ht_G(x.real_form, QL,HT).!= next testTIME +:=elapsed_ms() - start
+    if simp_flag
+    then return test_simp(x,lambda,av,t,HT)
+    else let start = elapsed_ms(), QL = ind_quo(x,lambda,av,t)
+    	 in to_ht_G(x.real_form, QL,HT).!= next testTIME +:=elapsed_ms() - start
+    fi
 
 {END TAKEN FROM STEVE}
 
@@ -367,11 +420,6 @@ set red_walls_to_ht(Param p, int HT) = int:
        od;
        answer\1 next rwhTIME:=elapsed_ms() - start
 
-{
-{could refine these to count only parity walls (smaller better answer}
-{set red_walls(Param p) = red_walls(p.x,p.infinitesimal_character)}
-set red_walls_to_ht(Param p, int HT) = red_walls_to_ht(p.x,p.infinitesimal_character,HT)
-}
 
 {gamma meant to be dominant. count reducibility hyperplanes (gamma0,alphav) >0 int,
 (gamma0,theta*alphav) <0 int). Estimates cost of KL_sum_at_s(x,gamma)}
@@ -392,7 +440,7 @@ set red_walls_int(Param p) = int:
     let start = elapsed_ms(), x = p.x,  gamma = p.infinitesimal_character
     then theta = x.involution, rd = x.root_datum, answer = rat:0
     in for av@j in rd.poscoroots
-       do if is_integer(av*gamma) and av*theta*gamma{_reg} < 0
+       do if is_integer(av*gamma) and av*gamma > 0 and av*theta*gamma < 0
        	  then if is_real(j,x)
 	       then if is_parity(rd.posroots[j],p)
 	       	    then answer+:=1
@@ -414,7 +462,7 @@ set red_walls_to_ht_int(Param p, int HT) = int:
     	answer = rat: 0/1
     then theta = p.x.involution, rd = p.root_datum, gamma=p.infinitesimal_character
     in for av@j in rd.poscoroots
-       do if is_integer(av*gamma) and av*theta*gamma < 0 and
+       do if is_integer(av*gamma) and  av*gamma > 0 and av*theta*gamma < 0 and
        	     test(x,lambda, av, av*gamma,HT)
        	  then answer +:= if (av*(1+theta)).=
 	       	       	  then 1
@@ -800,8 +848,6 @@ set low_char(Param p, int HT) = bool:
     then low_red_char(p,HT)
     elif prefer_quick_char_flag {false 8/4/26; true 4/29/26}
     then low_quick_char(p,HT)
-    elif prefer_dual_flag {default false 4/29/26}
-    then low_dual(p,HT)
     elif prefer_diff_flag
     then low_diff_char(p,HT)
     {elif prefer_strict_KL_flag
@@ -843,51 +889,31 @@ set KL_sum_at_s_to_ht_new(int HT) = (Param p) ParamPol: {should check whether li
        else let mKLS = stored_KL_sum_at_s(p)
        	    in case mKLS
 	       | none: unstored_count+:=1;
-	       	 	       {if low_char(p,HT) {tested in KL_sum_at_s_to_ht}
-       	       	 	       then} let ans = KL_sum_at_s_to_height(p,HT)
-			    	    in charTimeToHt +:= elapsed_ms() - start;
-				       char_counter_to_ht.use();
-			    	       ans
-       			       {else let (below,) = height_split(KL_sum_at_s(p),HT)
-    	    		    	 in KL_false_low_count+:=1; below
-			    fi}
-	       | some(KLS): stored_count+:=1;
-	       	 	       let (below,) = height_split(KLS,HT)
-    	       	 	       in KL_new_count +:= 1;
-			       	  charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use();
-			          below
+       	       	 let ans = KL_sum_at_s_to_height(p,HT)
+		 in charTimeToHt +:= elapsed_ms() - start;
+		    char_counter_to_ht.use();
+		    ans
+ 	       | some(KLS): stored_count+:=1;
+	       	 let (below,) = height_split(KLS,HT)
+    	       	 in KL_new_count +:= 1;
+		    charTimeToHt +:= elapsed_ms() - start;
+		    below
 	       esac
        fi
 
 {switch back to true after making invocation depend on low_char}
 set KL_sum_to_ht_new_flag = true {false}
 
-{let caller decide whether to use to_ht}
 {should test that x is pretty big??}
-set KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol: {should check
-    whether library knows KL_sum_at_s, use that}
+set KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol: 
     let start = elapsed_ms()
     in if HT < 0
        then KL_sum_at_s(p)
-       {
-	  else let (below,) = height_split(KL_sum_at_s(p),HT)
-       	       in charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use();
-	       below
-       fi
-       }
-       {elif low_char(p,HT)}
-       	     {KL_sum_to_ht_new_flag true routes through KL_sum_at_s_to_ht_new, which costs a
-             stored_KL_sum_at_s lookup and a SECOND evaluation of low_char on every call.
-             It was false on the March 5 code, where this arm went straight to
-             KL_sum_at_s_to_height; that direct arm is restored here as the false case.}
-       	else if KL_sum_to_ht_new_flag
-       	     then KL_sum_at_s_to_ht_new(HT)(p)
-       	     else char_counter_to_ht.use();
-	     	  KL_sum_at_s_to_height(p,HT) next charTimeToHt +:= elapsed_ms() - start
-       	     fi
-       {else let (below,) = height_split(KL_sum_at_s(p),HT) {this records char_counter}
+       elif low_char(p,HT)
+       then KL_sum_at_s_to_ht_new(HT)(p)
+       else let (below,) = height_split(KL_sum_at_s(p),HT) {this records char_counter, time?}
     	    in KL_false_low_count+:=1;
-	       below}
+	       below
        fi
 
 set KL_new_inter_count = int:0
@@ -912,7 +938,6 @@ set KL_sum_at_s_to_ht_new_inter(int HT) = (Param p,int time) maybe_PP:
 
 {should test that x is pretty big??}
 set KL_sum_at_s_to_ht_inter(int HT) = (Param p,int time) maybe_PP:
-    {if KL_sum_to_ht_new_flag then return KL_sum_at_s_to_ht_new_inter(HT)(p, time) fi;}
     let start = elapsed_ms()
     in if low_char(p,HT)
        then KL_sum_at_s_to_ht_new_inter(HT)(p,time) {in "else" HT >= 0, but we're required to truncate}
@@ -936,13 +961,6 @@ set twisted_KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol:
     	 in height_split(twisted_KL_sum_at_s(p),HT).fst \
 	    next charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use()
     fi
-{    elif low_char(p,HT)
-    then let start = elapsed_ms()
-    	 then (below,) = height_split(twisted_KL_sum_at_s(p),HT)
-    	 in below next charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use()
-    else let (below,) = height_split(twisted_KL_sum_at_s(p),HT)
-    	 in below
-    fi}
 
 {next two never try not to_ht}
 set character_formula_to_height(Param p, int HT) = ParamPol:
@@ -1067,7 +1085,7 @@ set composition_series_to_height(Param p, int HT) = ParamPol:
     in sum(p.real_form, for q@j in B[:m+1] do if height(q) <= HT then eval(polys[M[m,j]],1)*q else 0*q fi od)
 
 set composition_series_to_height (ParamPol P,int HT) = ParamPol:
-    sum(P.real_form, for c@q in P do composition_series_to_height(q, HT) od)
+    sum(P.real_form, for c@q in P do c*composition_series_to_height(q, HT) od)
 
 set CSB_KGB_char_frac = 9/10
 set CSB_frac = 1/8
@@ -1098,128 +1116,7 @@ set composition_series_to_ht(ParamPol P, int HT) = ParamPol:
      fi
 set composition_series_to_ht (Param p,int H) = ParamPol: composition_series_to_ht(ParamPol: p, H)
 
-{---------------------------}
-{same using dual}
 
-set pos_part(Split s) = int:
-    let (a,b) = %s in abs(a+b)
-
-set endo_ic(Param p) = inner_class(integrality_datum(p),p.x.involution)
-
-{one root from each non-real, non-imag pos pair (alpha, theta*alpha)}
-{well-defined up to (1-theta)alpha}
-set rho_C(RootDatum rd, mat theta) = vec:
-    let zero = null(rd.rank)
-    in sum(rd.rank, for alpha@j in rd.posroots
-    		    do let k = root_index(rd,theta*alpha)
-		        in if k > j {k=j is imag; k = -j-1 is real}
-		       	   then alpha
-		       	   else zero
-			   fi
-		    od)
-
-{one root from each non-real, non-imag pos pair (alpha, -theta*alpha)}
-{well-defined up to (1+theta)alpha}
-set rho_minus_C(RootDatum rd, mat theta) = vec:
-    let zero = null(rd.rank)
-    in sum(rd.rank, for alpha@j in rd.posroots
-    		    do let k = root_index(rd,theta*alpha)
-		        in if -k-1 > j {k=j is imag; k = -j-1 is real}
-		       	   then alpha
-		       	   else zero
-			   fi
-		    od)
-
-set rho_check_C(RootDatum rd, mat theta) = vec:
-    let zero = null(rd.rank)
-    in sum(rd.rank, for alpha@j in rd.posroots
-    		    do let k = root_index(rd,theta*alpha)
-		        in if k > j {k=j is imag; k = -j-1 is real}
-		       	   then rd.poscoroots[j]
-		       	   else zero
-			   fi
-		    od)
-
-set rho_check_minus_C(RootDatum rd, mat theta) = vec:
-    let zero = null(rd.rank)
-    in sum(rd.rank, for alpha@j in rd.posroots
-    		    do let k = root_index(rd,theta*alpha)
-		        in if -k-1 > j {k=j is imag; k = -j-1 is real}
-		       	   then rd.poscoroots[j]
-		       	   else zero
-			   fi
-		    od)
-
-set endo(Param p) = Param:
-    let endoic = endo_ic(p), x = p.x, rd = p.root_datum
-    then theta = x.involution
-    then rho_shift =  rd.rho  - endoic.rho
-    then lambda_shift =  rho_i(x)  - rho_i(endoic,theta) + rho_C(rd,theta) - rho_C(endoic,theta)
-    then nu_shift = p.x.rho_r  - rho_r(endoic,theta) + rho_minus_C(rd,theta) - rho_minus_C(endoic,theta)
-    then corho_shift = rho_check_minus_C(rd,theta) - rho_check_minus_C(endoic,theta)
-    {then endgamma = p.infinitesimal_character+rho_shift_r}
-    then endox = KGB_elt(endoic, x.involution, x.torus_factor - corho_shift)
-    in parameter(endox, p.lambda + lambda_shift, p.nu + nu_shift)
-
-
-{this appears to work even if p is not final, although I'm not sure why}
-{mult of irr q in std p <-> coeff of std pd in char of irr qd}
-{low_diff_char(p,H) is a terrible way to decide whether to use this}
-set composition_series_to_heightB(Param p, int H) = ParamPol:
-    if H.< then return composition_series(p) fi;
-    let start = elapsed_ms()
-    then answer = if lowCSB(p,H)
-    	 	  then let Bp = partial_block(p), H0 = height(p)
-    		       then BpH_js = for q@j in Bp do if q.height <= H
-				     	     	      then [j]
-				     		      else [] fi
-						      od.##
-    		       then BpH = for j in BpH_js do Bp[j] od, dp = dualB(p)
-    		       then dBpH = for q in BpH do dualB(q)
-    	      	       	    	   od {these qd are lower ht than pd}
-    		       then dKLs = for dq in dBpH do KL_sum_at_s(dq) od
-    		       in sum(p.real_form, for dQ@i in dKLs do pos_part(dQ[dp])*BpH[i] od)
-    		  else let (below,) = height_split(composition_series(p),H)
-       	 	       in s_to_1(below)
-    		  fi
-     in CS_time +:= elapsed_ms() - start;
-     	answer
-
-set composition_series_to_heightB(ParamPol P, int H) = ParamPol:
-    map(((Param->ParamPol): (Param p): composition_series_to_heightB(p, H)), P)
-
-{WARNING: HAVE NOT MADE THIS WORK FOR NEGATIVE H!}
-{i,j entry is mult of irr i in (partial block) in standard j; so always i <= j, mat is upper triang}
-{column j is comp series of std #j <-> coeffs of std dj in irrs di}
-set composition_series_mat_to_heightB(Param p, int H) = mat:
-    let Bp = partial_block(p) {block elts q of greater ht (closer to discrete series) than p;
-    	     		      things that may occur}
-    then BpH_js = for q@j in Bp do if q.height <= H then [j] else [] fi od.##
-    then BpH = for j in BpH_js do Bp[j] od, pd = dualB(p)
-    then dBpH = for q in BpH do {regroup(pd.real_form,}dualB(q){)} od {these qd are lower ht than pd}
-    then dKLs = for dq in dBpH do KL_sum_at_s(dq) od
-    then () = for dQi in dKLs do prints( dQi{for dqj in dBpH do pos_part(dQi[dqj]) od}) od {this is row i}
-    then f(int i, int j) = pos_part(dKLs[i][dBpH[j]])
-    in matrix((#dBpH,#dBpH),f)
-
-set character_formula_to_heightB(Param p, int H) = ParamPol:
-   if H.< then return character_formula(p) fi;
-   let Bp = partial_block(p) {block elts q of greater ht (closer to discrete series) than p;
-    	     		      things that may occur}
-   then BpH_js = for q@j in Bp do if q.height <= H then [j] else [] fi od.##
-   then BpH = for j in BpH_js do Bp[j] od, dp = dualB(p)
-   then dBpH = for q in BpH do {regroup(dp.real_form,}dualB(q){)} od {these dq are lower ht than dp}
-   then dKLs = for dq in dBpH do KL_sum_at_s(dq) od {qd plus earlier q'd}
-   then f(int i, int j) = pos_part(dKLs[i][dBpH[j]])
-   then M = matrix((#dBpH,#dBpH),f), ppol = 1*p
-   then pvec = vec: for q in BpH do int_part(ppol[q]) od {e(#BpH, #BpH-1)}
-   then ansvec = solve(M,pvec).requisition
-   in sum(p.real_form, for q@j in BpH do ansvec[j]*q od)
-
-set character_formula_to_heightB(ParamPol P, int H) = ParamPol:
-    map(((Param->ParamPol): (Param p): character_formula_to_heightB(p, H)), P)
-
-{-----------------------------}
 set tabulate_at_1 ([Param] block, (Param->ParamPol) f) = mat:
   for y in block { y determines a column of the result }
   do let fy=f(y) in for x in block do fy[x].s_to_1 od

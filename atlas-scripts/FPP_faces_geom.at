@@ -11,6 +11,7 @@
 <writeFiles {to write hash tables}
 <simple_factors.at {for simple_factors}
 <red_count.at {for red_count}
+<integrality_hash.at {for integrality_datum_hash}
 
 {functions for calculating FPP face lists, both "globally" (from the
 root datum) and "local" (as relevant to parameters for a single LKT
@@ -241,13 +242,44 @@ lattice of G.}
 affine Weyl group to act on delta-fixed weights; and the unique label
 j0 (or -1) for a simple coroot needing to be divided by two to get
 full FPP}
-set cofolded(InnerClass ic) = (RootDatum, mat, int):
+set cofolded_base(InnerClass ic) = (RootDatum, mat, int):
     let (rdB,rdC,M) = cofoldedBOTH(ic.root_datum, ic.distinguished_involution)
     then j0=
 	 first(
 	 for alpha@j in rdB.simple_roots do alpha != rdC.simple_roots[j] od
 	 )
     in (rdB,M,j0)
+
+{|cofolded_base| depends on |ic| ONLY through |ic.root_datum| and
+ |ic.distinguished_involution| (see the body above), and it is expensive:
+ |cofoldedBOTH| computes an eigen_lattice and makes two O(#poscoroots^2)
+ |find| sweeps.  It used to be recomputed on EVERY call, and |global_vertices|
+ -- hence |herm_center| -- calls it once per call for an inner class that is
+ NOT equal rank (the equal rank branch goes to the hashed |face_verts|).
+ That made |herm_center| 20-40x dearer for unequal rank groups, which since
+ May 2026 became the dominant cost there: on Spin(5,5),
+ FPP_unitary_hash_one_level spent 35.2sec of 46.1sec inside |herm_center|.
+ Memoising on (root_datum, distinguished_involution) is exact.  Measured
+ (identical face counts everywhere): Spin(5,5) 46.1sec -> 10.7sec,
+ Spin(5,3) 2.73sec -> 0.72sec, SL(4,R) 152ms -> 83ms; equal rank groups
+ Spin(4,4), Spin(6,4), Spin(5,4), Spin(6,3), Sp(4,R), G2_s unchanged.}
+set cofolded_count = int: 0      {calls}
+set cofolded_base_count = int: 0 {calls that missed the memo}
+set cofolded_keys = [(RootDatum,mat)]: []
+set cofolded_vals = [(RootDatum,mat,int)]: []
+set cofolded(InnerClass ic) = (RootDatum, mat, int):
+    cofolded_count +:= 1;
+    let rd = ic.root_datum, delta = ic.distinguished_involution
+    then n = #cofolded_keys, j = int: -1, i = int: 0
+    then () = while j.< and i<n
+              do let (r,d) = cofolded_keys[i]
+                 in if r=rd and d=delta then j:=i else i+:=1 fi
+              od
+    in if j.>= then cofolded_vals[j]
+       else cofolded_base_count +:= 1;
+            let v = cofolded_base(ic)
+            in cofolded_keys #:= (rd,delta); cofolded_vals #:= v; v
+       fi
 
 {these are the edges of the fundamental parallelepiped}
 set FPP_lines(InnerClass ic) = [ratvec]:
@@ -562,7 +594,7 @@ set edge_lists_folded(SimpleAffine affd) = [[ratvec]]:
        	  do if v =w then [ratvec]: []
        	     else let (num,den) = %(v-w)
 	       	  in [ratvec]:
-	       	     for x in Weyl_orbit(integrality_datum(affd,v), num) do x/den od
+	       	     for x in Weyl_orbit(integrality_datum_hash(affd,v), num) do x/den od
 	     fi
           od.##
        od
@@ -805,7 +837,7 @@ set beta2(RootDatum rd, ratvec gamma) = (vec,vec):
     let (wtilde,gamma2) = from_fundamental_alcove(rd,gamma)
     then (b,w) = wtilde {w*gamma2 + b = gamma}
     then iw = inverse(w)
-    then irdw = integrality_datum(rd,gamma2)
+    then irdw = integrality_datum_hash(rd,gamma2)
     {this integrality datum is the nice restricted type!}
     then (x3,) = from_dominant(irdw, iw*rd.two_rho)
 {means x3 w^{-1} * rho is dominant for irdw.}
@@ -1926,22 +1958,114 @@ set herm_centerNewDumb(Param p) = Param:
     then () = hermCenterNewTime +:= elapsed_ms() - start
     in answer
 
+{barycenter of global_vertices(ic,gamma), memoised on (ic,gamma)}
+set herm_bary_hash_flag = true
+set herm_bary_base(InnerClass ic, ratvec gamma) = ratvec:
+    let list = global_vertices(ic, gamma) in sum(#list[0],list)/#list
+set herm_bary_hash = ((InnerClass, ratvec)->ratvec):
+    {inner classes found by linear search with =, which is nearly free;
+     hash_code@(InnerClass,int) costs about 26 microseconds}
+    let ics = [InnerClass]: []
+    then gamma_hashes = [ratvec_hash]: []
+    then answers = [[ratvec]]: []
+    in ((InnerClass, ratvec)->ratvec): (InnerClass ic, ratvec gamma):
+       let n = first(#ics, (int i) bool: ics[i] = ic)
+       in if n < 0
+       	  then n := #ics; ics #:= ic;
+	       gamma_hashes #:= make_ratvec_hash();
+	       answers #:= ([ratvec]: [])
+	  fi;
+	  let GAM = gamma_hashes[n].size()
+	  then gam = gamma_hashes[n].match(gamma)
+	  in if gam = GAM
+	     then answers[n] #:= herm_bary_base(ic,gamma)
+	     fi;
+	     answers[n][gam]
+
 set herm_center(Param p) = Param:
     if hermCenterOldFlag
     then return(herm_centerOld(p))
     fi;
     let start = elapsed_ms()
-    then list = global_vertices(p.inner_class, p.infinitesimal_character)
-    then answer = parameter(p.x, p.lambda, sum(#list[0],list)/#list)
+    then bary = if herm_bary_hash_flag
+    	 	then herm_bary_hash(p.inner_class, p.infinitesimal_character)
+		else herm_bary_base(p.inner_class, p.infinitesimal_character)
+		fi
+    then answer = parameter(p.x, p.lambda, bary)
     then () = hermCenterNewTime +:= elapsed_ms() - start
     in answer
 
-set non_herm_center(Param p) = Param:
-    let start = elapsed_ms(), rd = p.root_datum, gamma = p.infinitesimal_character
-    then zgamma = gamma -
+{A Param_hash for FPP use: every Param is replaced by herm_center(p) before it
+ is stored or looked up, so callers may pass uncentered Params, and all
+ Params with the same (x,lambda) and the same face share one entry. The
+ type is the ordinary Param_hash; list() and index() return centered Params.}
+set make_FPP_Param_hash () = Param_hash:
+    let h = make_Param_hash()
+    in ( h.size
+       , h.capacity
+       , h.grow
+       , ([Param] ps): h.fill(for p in ps do herm_center(p) od)
+       , h.clear
+       , h.list
+       , h.index
+       , (Param p) int: h.match(herm_center(p))
+       , (Param p) bool: h.could_add(herm_center(p))
+       , (Param p) Maybe<int>: h.search(herm_center(p))
+       , h.iterator
+       )
+
+set NHC_count = int: 0
+set NHC_base_count = int: 0
+
+{The barycenter depends on p only through (root datum, gamma) -- not on x or
+ lambda -- so that part is memoised on the pair, in the same shape as
+ |face_verts| above.  The |parameter(x,lambda,.)| construction at the end
+ cannot be memoised and remains on every call.  Measured on
+ is_unitary_Hodge_0 at x_open(Sp(10,R)), nu=[4,3,2,1,1]: 44774 calls, only
+ 4316 distinct (rd,gamma), and the run went 16387ms -> 15034ms (8.3%, means
+ of three cold runs each, the two groups not overlapping).  Answers verified
+ identical on 1545 parameters of Sp(6,R), SL(4,R), Spin(4,3).}
+set non_herm_bary_base(RootDatum rd, ratvec gamma) = ratvec:
+    NHC_base_count +:= 1;
+    let zgamma = gamma -
     sum(rd.rank, for alphav@j in rd.simple_coroots do (gamma*alphav)*rd.fundamental_weights[j] od)
-    then gamma_bary = sum(rank(rd), for rdf in simple_factors(rd)
+    in sum(rank(rd), for rdf in simple_factors(rd)
     	 do let vertsf = face_verts(rdf,gamma) in sum(rank(rd), vertsf)/#vertsf od) + zgamma
+
+set bary_hash2_flag = true
+set non_herm_bary_hash2(RootDatum rd, ratvec gamma) = ratvec:
+    let verts = face_verts(rd,gamma)
+    in sum(#(verts[0]),verts)/#verts
+
+set non_herm_bary_hash = ((RootDatum, ratvec)->ratvec):
+    let rd_hash = make_RootDatum_hash()
+    then gamma_hashes = [ratvec_hash]: []
+    then bary_hashes = [ratvec_hash]: []
+    then answers = [vec]: []
+    in ((RootDatum, ratvec)->ratvec): (RootDatum rd, ratvec gamma):
+       if bary_hash2_flag then return non_herm_bary_hash2(rd, gamma) fi;
+       NHC_count +:=1;
+       let N = rd_hash.size()
+       then n = rd_hash.match(rd)
+       in if n = N
+       	  then gamma_hashes #:= make_ratvec_hash();
+	       bary_hashes #:= make_ratvec_hash();
+	       answers #:= (vec: [])
+	  fi;
+	  let GAM = gamma_hashes[n].size()
+	  then gam = gamma_hashes[n].match(gamma)
+	  in if gam = GAM
+	     then answers[n] #:= bary_hashes[n].match(non_herm_bary_base(rd,gamma))
+	     fi;
+	     bary_hashes[n].index(answers[n][gam])
+
+set non_herm_center_hash_flag = true
+set non_herm_center(Param p) = Param:
+    let start = elapsed_ms()
+    then gamma_bary = if non_herm_center_hash_flag
+    	 	      then non_herm_bary_hash(p.root_datum, p.infinitesimal_character)
+		      else non_herm_bary_base(p.root_datum, p.infinitesimal_character)
+		      fi
     in parameter(p.x, p.lambda, gamma_bary) next hermCenterNewTime +:= elapsed_ms() - start
 
 

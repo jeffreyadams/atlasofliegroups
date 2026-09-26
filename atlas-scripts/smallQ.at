@@ -1,5 +1,6 @@
 <basic {for root_datum@Param...}
 <K_highest_weights {for LKTs}
+<hash.at {for make_Param_hash (theta_stable_data_small memo)}
 
 set to_no_Cminus_small(Param p) = Param:
     let rd=p.root_datum then {w=id_W(rd),} pnew = p, xnew = p.x, r=rd.semisimple_rank
@@ -48,12 +49,63 @@ set to_no_Cminus_small(Param p) = Param:
 	      od {now pnew.lambda is weakly dominant, no C-}
     in pnew
 
-set theta_stable_data_small(Param p) = (KGPElt, Param):
+set theta_stable_data_small_base(Param p) = (KGPElt, Param):
     let q = to_no_Cminus_small(p)
     then Q = theta_stable_parabolic(q.x)
     then L = Q.Levi, rhou = Q.rho_u
     then qL = parameter(inverse_embed_KGB(q.x,L), q.lambda - rhou, q.nu)
     in (Q,qL)
+
+{the Weyl group element w and the KGB element used by to_no_Cminus_small(p):
+ to_no_Cminus_small(p) = parameter(x1, w*p.lambda, w*p.nu). The choice of
+ reflections depends only on (x,lambda), never on nu.}
+set to_no_Cminus_small_w(KGBElt x, ratvec lambda) = (WeylElt, KGBElt):
+    let rd=x.root_datum then w=id_W(rd), pnew = parameter(x,lambda,0*lambda), xnew = x,
+    	r=rd.semisimple_rank
+    then () = while let s = last(r, (int i)bool:
+    	      	    	    status(i,xnew).= and
+			    ((pnew.d_lambda)*rd.simple_coroots[i]).<)
+		    in s.>=
+ 	      do let changer = W_elt(rd,[s])
+	      	 then () = w:=changer*w
+		 then () = xnew:=cross(changer,xnew)
+		 in pnew:=parameter(xnew, changer*(pnew.lambda), changer*(pnew.nu))
+	      od {now pnew.lambda is weakly dominant}
+    then () = while let s = last(r, (int i)bool:
+    	      	    	    status(i,xnew).= and
+			    ((pnew.d_lambda)*rd.simple_coroots[i]).=)
+		    in s.>=
+ 	      do let changer = W_elt(rd,[s])
+	      	 then () = w:=changer*w
+		 then () = xnew:=cross(changer,xnew)
+		 in pnew:=parameter(xnew, changer*(pnew.lambda), changer*(pnew.nu))
+	      od {now pnew.lambda is weakly dominant, no C-}
+    in (w, xnew)
+
+{Memo of theta_stable_data_small, keyed on parameter(x,lambda,0); only the
+ nu-dependent part is recomputed. Like the theta_stable_quasi_data memo in
+ induction.at, it also keeps the Levi real forms alive, so they are not
+ rebuilt. tsd_small_memo_flag := false restores the old behaviour;
+ tsd_small_clear() empties the tables.}
+set tsd_small_memo_flag = true
+set tsd_small_keys = make_Param_hash()
+set tsd_small_data = [(WeylElt,KGBElt,KGPElt,KGBElt,ratvec)]: []
+set tsd_small_clear() = void: tsd_small_keys.clear(); tsd_small_data := []
+
+set theta_stable_data_small(Param p) = (KGPElt, Param):
+    if not tsd_small_memo_flag then return theta_stable_data_small_base(p) fi;
+    let key = parameter(p.x, p.lambda, 0*p.nu)
+    then N = tsd_small_keys.size()
+    then k = tsd_small_keys.match(key)
+    then () = if k = N
+    	      then let (w,x1) = to_no_Cminus_small_w(p.x, p.lambda)
+	      	   then Q = theta_stable_parabolic(x1)
+		   then L = Q.Levi
+		   in tsd_small_data #:= (w, x1, Q, inverse_embed_KGB(x1,L), Q.rho_u)
+	      fi
+    then (w,x1,Q,xL,rhou) = tsd_small_data[k]
+    then q = parameter(x1, w*p.lambda, w*p.nu)
+    in (Q, parameter(xL, q.lambda - rhou, q.nu))
 
 {same for (x,lambda)}
 set to_no_Cminus_small(KGBElt x, ratvec lambda) = (KGBElt, ratvec):

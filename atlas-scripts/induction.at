@@ -1,4 +1,5 @@
 <basic.at
+<hash.at { for make_Param_hash (theta_stable_quasi_data memo) }
 <parabolics.at
 <kl.at { for |character_formula| }
 <coherent.at
@@ -267,7 +268,7 @@ set theta_stable_data (Param p) = (Parabolic,Param):
    with L quasisplit, and parameter $q_L$ for a fine principal series
    representation
    so that |q| is obtained by cohomological parabolic induction from $q_L$ .}
-set theta_stable_quasi_data (Param q) = (Parabolic,Param):
+set theta_stable_quasi_data_base (Param q) = (Parabolic,Param):
   {assert(is_final(q),"parameter is not final")}
   let (,q1)=q.from_dlambda_dom
   then dlambda1 = d_lambda(q1), x1=q1.x, lambda1=q1.lambda
@@ -276,6 +277,37 @@ set theta_stable_quasi_data (Param q) = (Parabolic,Param):
   then x1_L1=inverse_embed_KGB(x1,L1)
   in
   (Q1, parameter(x1_L1, lambda1-rho(real_form(q1))+rho(L1), q1.nu))
+
+{ Memo of theta_stable_quasi_data. Everything except the nu-dependent part
+  depends only on (x,lambda), so it is stored on the key parameter(x,lambda,0).
+  Besides skipping from_dominant/parabolic_by_wt, keeping the Levi KGB element
+  alive stops the Levi real form from being rebuilt: on
+  FPP_unitary_hash_bottom_layer(KGB(E7_s)[17000:17200]) the 3291 calls went
+  from 3.3 to 0.4 sec (wall 231.5 -> 225.3 sec), identical answers, about 9 MB
+  more memory. tsq_memo_flag := false restores the old behaviour;
+  tsq_clear() empties the tables. }
+set tsq_memo_flag = true
+set tsq_keys = make_Param_hash()
+set tsq_data = [(WeylElt,KGBElt,Parabolic,KGBElt,ratvec)]: []
+set tsq_clear() = void: tsq_keys.clear(); tsq_data := []
+
+set theta_stable_quasi_data (Param q) = (Parabolic,Param):
+  if not tsq_memo_flag then return theta_stable_quasi_data_base(q) fi;
+  let key = parameter(q.x, q.lambda, 0*q.nu)
+  then N = tsq_keys.size()
+  then k = tsq_keys.match(key)
+  then () = if k = N
+            then let (w,) = from_dominant(q.root_datum, q.d_lambda)
+		 then winv = w.inverse
+		 then x1 = cross(winv,q.x)
+		 then q1 = parameter(x1, winv*q.lambda, winv*q.nu)
+		 then Q1 = parabolic_by_wt(d_lambda(q1),x1)
+		 then L1 = Q1.Levi
+		 in tsq_data #:= (winv, x1, Q1, inverse_embed_KGB(x1,L1), rho(L1)-rho(real_form(q1)))
+	    fi
+  then (winv,x1,Q1,x1_L1,shift) = tsq_data[k]
+  then q1 = parameter(x1, winv*q.lambda, winv*q.nu)
+  in (Q1, parameter(x1_L1, q1.lambda+shift, q1.nu))
 
 { As above, but now we shrink L so the Cartan is the maximally split one in L.}
 { DANGER: the image parameter need not be fine!

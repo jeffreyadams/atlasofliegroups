@@ -205,8 +205,22 @@ set highest_weight_one (KType t,KGBElt x_K) = KHighestWeight:
 
 {. All highest weights of a K-type; R-group acts on one KHighestWeight of
    previous function (number of terms is |R(K)/R(K,mu)|). .}
-set highest_weights (KType t) = [KHighestWeight]:
+set highest_weights_base (KType t) = [KHighestWeight]:
   R_K_dom_mu_orbit(highest_weight_one(t))
+
+{Memo of highest_weights@KType, keyed on the KType (hashing a KType is cheap).
+ hw_memo_flag := false restores the old behaviour; hw_clear() empties.}
+set hw_memo_flag = true
+set hw_keys = make_KType_hash()
+set hw_vals = [[KHighestWeight]]: []
+set hw_clear() = void: hw_keys.clear(); hw_vals := []
+set highest_weights (KType t) = [KHighestWeight]:
+  if not hw_memo_flag then return highest_weights_base(t) fi;
+  let N = hw_keys.size(), k = hw_keys.match(t)
+  in if k = N
+     then let v = highest_weights_base(t) in hw_vals #:= v; v
+     else hw_vals[k]
+     fi
 
 {. All highest weights of a K-type w.r.t. x_K. .}
 set highest_weights (KType t,KGBElt x_K) = [KHighestWeight]:
@@ -811,13 +825,55 @@ set K_types_pre(KHighestWeight(,x,v):mu_in, [(mat,int)] wall_projs)= [KType]:
 	     od
    in for j:answer.size() do answer.index(j) od
 
+{first K-type found by the search in K_types@KHighestWeight; the same as
+ K_types(mu_in)[0], but stops at the first match}
+set K_type_first (KHighestWeight(,x,v):mu_in) = KType:
+   let G=real_form(x)
+   then (Q,y,lambda)=AP_parabolic_LKT(mu_in)
+   then lambdaL = lambda -rho_u(Q), L = Q.Levi
+   then xL1 = KGB(L)~[0]
+   then pLs = all_parameters_x_gamma(xL1,lambdaL)
+   then i = 0, found = false, answer = K_type(x, null(#v))
+   then () = while not found and i < #pLs
+   	     do let pL = pLs[i]
+	     	then tau = K_type(embed_KGB(pL.x,G), pL.lambda_minus_rho)
+	     	in if highest_weight(tau,x) = mu_in then found := true; answer := tau fi;
+		   i +:= 1
+	     od
+   in assert(@:found,"no K-type found for this KHighestWeight"); answer
+
+{Memo of K_type@KHighestWeight when seat_belt_on is false (so the uniqueness
+ assert would be skipped anyway, and the answer is the first K-type found).
+ Keyed on (real form, x.number, mu); real forms found by = in a short list.
+ K_type_hw_memo_flag := false restores the old behaviour.}
+set K_type_hw_memo_flag = true
+set K_type_hw_rfs = [RealForm]: []
+set K_type_hw_keys = [Hash<vec>]: []
+set K_type_hw_vals = [[KType]]: []
+set K_type_hw_clear() = void: K_type_hw_rfs := []; K_type_hw_keys := []; K_type_hw_vals := []
+
 {. K_type with given KHighestWeight if unique (otherwise error). .}
 set K_type (KHighestWeight khwt) = KType:
-  let ktypes=K_types(khwt) in
-  assert(@:#ktypes=1,
-      ##["more than one K-type maps to this KHighestWeight;", new_line,
-       "use K_types to get them all"]);
-  ktypes[0]
+  if seat_belt_on or not K_type_hw_memo_flag or old_K_type_flag or DV_K_type_flag
+  then let ktypes=K_types(khwt) in
+       assert(@:#ktypes=1,
+           ##["more than one K-type maps to this KHighestWeight;", new_line,
+            "use K_types to get them all"]);
+       return ktypes[0]
+  fi;
+  let (,x,mu) = khwt, G = khwt.x.real_form
+  then n = first(#K_type_hw_rfs, (int i) bool: K_type_hw_rfs[i] = G)
+  then () = if n < 0
+  	    then n := #K_type_hw_rfs; K_type_hw_rfs #:= G;
+	    	 K_type_hw_keys #:= make_vec_hash(); K_type_hw_vals #:= ([KType]: [])
+	    fi
+  then key = x.number # mu
+  then N = K_type_hw_keys[n].size(), k = K_type_hw_keys[n].match(key)
+  in if k = N
+     then let t = K_type_first(khwt), vals = K_type_hw_vals[n]
+     	  in vals #:= t; K_type_hw_vals[n] := vals; t
+     else K_type_hw_vals[n][k]
+     fi
 
 {-----------------KHighestWeight to K0_param --------------------------}
 
