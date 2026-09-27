@@ -6,6 +6,21 @@ and the atlas-scripts code over several months, the part that is NOT visible fro
 reading any one file. Performance-tuning results are left out; this covers how
 things work, where they break, and how to debug them.
 
+HOW TO CONTRIBUTE (every Claude session and person on these branches)
+- Add only GENERAL, VERIFIED knowledge: how atlas and the scripts behave, traps,
+  debugging recipes. Timings and flag experiments go in their own dated files,
+  with at most a one-line pointer here.
+- Tag each new entry: (date, machine or person, how verified: commit, repro,
+  what was run). Unconfirmed ideas go under "SUSPECTED" at the end, or nowhere.
+- If an entry is wrong or out of date, correct or delete it in place. Do not
+  append a second entry that contradicts it.
+- Size budget: 30 KB. If an addition would exceed it, condense first.
+- One copy only, on to_ht_branch_alt; related branches pick it up from there.
+- Commit changes to this file separately, touching nothing else, with a short
+  message, so conflicts stay easy to resolve.
+- David, or a session he asks, reviews `git log -p ATLAS_NOTES_FOR_CLAUDE.txt`
+  every week or two for duplicates, contradictions, and unverified claims.
+
 Paths below are relative to atlas-scripts/. Line numbers drift; search by name.
 Laptop specifics (binary ../atlasLTO, macOS, case-insensitive filesystem) are marked.
 
