@@ -250,10 +250,26 @@ Cases already found
 ---------------------------------------
 - Get from whoever saw the failure: exact commit, binary, every flag set (seat
   belt first), preload files, the input list, and the back_trace output.
-- Run benchmarks strictly serially; two concurrent atlas runs inflate each other
-  about 10%. Include a no-op control arm; do not report effects smaller than the
-  gap between control replicates. Check `ps` for David's own long jobs and never
-  kill them.
+- Concurrency depends on the machine. (27 Sep 2026, Utah box, Claude; replicate
+  runs in bl_gate_work/NOTES.txt on that machine.)
+  - On the 14-core laptop, run benchmarks strictly serially: two concurrent atlas
+    runs seemed to inflate each other, perhaps 10% (not carefully measured).
+  - On a large shared machine, concurrent runs are fine if the arms being compared
+    run SIDE BY SIDE, at the same time and under the same load. Example: the Utah
+    box, 4 x Xeon 8260L = 96 cores / 192 threads, ~6 TB, other users present.
+    - Compare ratios within a simultaneous pair, not absolute times across batches.
+    - Stay within David's caps there: 1/5 of the cores, 1/3 of free memory.
+    - Measured on that box with 10-19 concurrent atlas jobs:
+        replicate of a 100-x E8_s run in the same batch: 4672 s vs 4708 s (0.8%)
+        the same arm in two batches under different load: 277 vs 248 min (~11%)
+        one expensive x in three runs: 2058-2666 s (single-x times are noisy)
+  - Either way: include a no-op control arm; do not report effects smaller than the
+    gap between control replicates.
+- Check `ps` for David's own long jobs and never kill them. On Linux, never use
+  `pkill -f`/`pgrep -f` with a pattern that also occurs in your own command line:
+  it kills the calling shell. Identify atlas jobs by process name and stdin file
+  instead (readlink /proc/PID/fd/0). (27 Sep 2026, Utah box, Claude; happened
+  three times.)
 - To test old script commits with the current binary:
   `git worktree add --detach <dir> <commit>`. Before about April 2026, scripts call
   `ascii`, which the binary now calls `ASCII`: load a shim with
