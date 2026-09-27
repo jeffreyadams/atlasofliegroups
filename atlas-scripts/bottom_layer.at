@@ -60,7 +60,9 @@ set highest_LK_locate(KType tau, KGPElt Q) = (int,int):
 
 set highest_LK(KType tau, KGPElt Q) = KType:
     if highest_LK_memo_flag
-    then let (k,i) = highest_LK_locate(tau,Q) then (,,muL,,) = highest_LK_vals[k][i] in muL
+    then let (k,i) = highest_LK_locate(tau,Q)
+    	 then (,,muL,,) = highest_LK_vals[k][i]
+	 in regroup(Q.Levi,muL)
     else highest_LK_base(tau,Q)
     fi
 

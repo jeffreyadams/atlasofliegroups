@@ -165,6 +165,14 @@ set predictor_h_count = int:0
 
 set regroup_flag = true
 
+{take a KType _apparently_ attached to G and make it _actually_ attached
+to G. Need this to use looked-up KTypes.}
+set regroup(RealForm G, KType tau) = KType:
+    if regroup_flag
+    then K_type(KGB(G,tau.x.number), tau.lambda_minus_rho)
+    else tau
+    fi
+
 {take a KTypePol _apparently_ attached to G and make it _actually_ attached
 to G. Need this to use looked-up deformations.}
 set regroup(RealForm G, KTypePol P) = KTypePol:
@@ -175,10 +183,13 @@ set regroup(RealForm G, KTypePol P) = KTypePol:
     fi
 
 set regroup(RealForm G, maybe_KTP P) = maybe_KTP:
-    case P
-    |timed_out(): timed_out()
-    |done(Q): regroup(Q.real_form,Q).done
-    esac
+    if regroup_flag
+    then case P
+    	 |timed_out(): timed_out()
+    	 |done(Q): regroup(G,Q).done
+    	 esac
+    else P
+    fi
 
 set regroup(RealForm G, Param p) = Param:
     if regroup_flag
