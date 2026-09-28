@@ -2977,7 +2977,7 @@ set theta_induced(RealForm G) = void:
 {simple derived factors of all theta-stable Levis of G}
 set SDLF(RealForm G) = [RealForm]:
     let answers = for j: G.semisimple_rank do make_RealForm_hash() od
-    then () = for L in Ls(G) {these are PROPER Levis of theta-stable parabolics}
+    then () = for L in Ls(G)[1:] {these are PROPER Levis of theta-stable parabolics}
     	      do for Lj in derived_simple_factorsRF(L) {~ to put the small L first}
 	      	 do answers[rank(Lj)].match(Lj)
 	    	 od
@@ -3027,7 +3027,7 @@ set QRs(RealForm G) = [KGPElt]:
        do parabolic_by_wt(wt,xo)
        od
 
-{simple derived factors of all real Levis of G}
+{All Levis of real parabolics of G}
 set LRs(RealForm G) = [RealForm]:
     let Q_Rs = QRs(G)
     in if #Q_Rs = 1 then []
@@ -3039,7 +3039,7 @@ set LRs(RealForm G) = [RealForm]:
 {simple derived factors of all real Levis of G}
 set SDLRF(RealForm G) = [RealForm]:
     let answer = make_RealForm_hash()
-    then () = for LR in LRs(G) {these are PROPER Levis of real parabolics}
+    then () = for LR in LRs(G)[1:] {these are PROPER Levis of real parabolics}
     	      ~do for LRk in derived_simple_factorsRF(LR) {tilde to put small LR first}
 	      	  do answer.match(LRk)
 	    	  od
@@ -3051,12 +3051,12 @@ set SDLRF(RealForm G) = [RealForm]:
 {simple derived factors of all proper real and theta-stable Levis of G}
 set SDLALL(RealForm G) = [RealForm]:
     let answer = make_RealForm_hash()
-    then () = for L in Ls(G) {these are PROPER Levis of theta-stable parabolics}
+    then () = for L in Ls(G)[1:] {these are PROPER Levis of theta-stable parabolics}
     	      ~do for Lj in derived_simple_factorsRF(L) {~ to put the small L first}
 	      	  do answer.match(Lj)
 	    	  od
 	      	od
-    then () = for LR in LRs(G) {these are PROPER Levis of real parabolics}
+    then () = for LR in LRs(G)[1:] {these are PROPER Levis of real parabolics}
     	      ~do for LRk in derived_simple_factorsRF(LR) {tilde to put small LR first}
 	      	  do answer.match(LRk)
 	    	  od
