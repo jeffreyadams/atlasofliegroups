@@ -196,7 +196,7 @@ set bl_more_min_rank = 8
 {returning "true" means bottom layer ought to be used}
 {start messing again 11/5/25. This version  sets more_shift to be zero
 unless x.number >= (KGB_size)*start_more_KGB_frac, and L(x,lambda) is not maximal.}
-set hard_test_bl(KGBElt x, ratvec lambda) = bool:
+set hard_test_bl_old(KGBElt x, ratvec lambda) = bool:
     let G = x.real_form
     then rk = G.semisimple_rank
     in if rk < bl_rank_min then return false fi;
@@ -224,6 +224,7 @@ set hard_test_bl(KGBElt x, ratvec lambda) = bool:
        test_bl_time +:= elapsed_ms() - start;
        true
 
+
 set easy_test_bl(KGBElt x) = bool:
     let G = x.real_form
     then N = KGB_size(G), n = x.number, r = semisimple_rank(G)
@@ -240,6 +241,41 @@ set easy_test_bl(KGBElt x) = bool:
        else more_shift(0);
        	    true
        fi
+
+set more_calc_flag = true {if false, then use 16 for more_shift in E8_q}
+set more_int= int:2 {needs to be at least 1: how far into next_heights}
+set hard_test_bl_old_flag = false
+set gate8_split_len_ol = 10
+    {E8_s: one_level below this length(x) (len 8: bl 1.50x; len 10: 0.30x)}
+set gate8_len_ol = 12
+    {E8_q: one_level below this length(x)}
+set gate8_len_more = 20
+    {E8_q: more_shift only from this length(x)}
+set gate8_more = 16
+    {E8_q: amount of more_shift (most_more(G) = 25 was worse)}
+set gate8_drop = 3
+    {E8_q: bottom_layer iff L.semisimple_rank <= rank(G) - gate8_drop}
+
+set hard_test_bl(KGBElt x, ratvec lambda) = bool:
+    if hard_test_bl_old_flag then return hard_test_bl_old(x,lambda) fi;
+    let G = x.real_form then rk = G.semisimple_rank
+    in if rk < 8 then return easy_test_bl(x) fi;
+       if G.split_rank = rk
+       then more_shift(0); return length(x) >= gate8_split_len_ol
+       fi; {from now on E8_q}
+       if length(x) < gate8_len_ol then more_shift(0); return false fi;
+       let (Q,) = theta_stable_quasi_data(parameter(x,lambda,0*lambda))
+       in if Q.Levi.semisimple_rank <= rk - gate8_drop
+          then more_shift(if length(x) < gate8_len_more
+	       		  then 0
+			  elif more_calc_flag
+			  then let p0 = parameter(x,lambda,0*lambda)
+			       in next_heights(p0, more_int)[more_int-1] -
+			       	  height(p0)
+			  else gate8_more
+			  fi); true
+          else more_shift(0); false
+          fi
 
 {whether to adjust edge_offset}
 set test_edge_flag = true
