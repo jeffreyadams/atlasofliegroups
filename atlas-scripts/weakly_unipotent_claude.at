@@ -1,0 +1,416 @@
+<weakly_unipotent_LMB.at {for candidates_dominant, star_action, is_weakly_unipotent_fast}
+<hash.at {for make_int_list_hash, make_ratvec_hash, make_RootDatum_hash, make_Param_hash}
+<induction.at {for theta_stable_quasi_data, is_weakly_fair}
+<FPP_faces_herm.at {for big_unitary_hash, is_unitary_hash_big_SIMPLE}
+
+{ Fast weakly unipotent tests (Claude, 2026-09-28).
+
+  is_weakly_unipotent_claude(RootDatum G, ratvec lambda) = bool
+     Same answer as is_weakly_unipotent_fast@(RootDatum,ratvec) in weakly_unipotent_LMB.at,
+     20x faster before memoization. Checked on 2861 cases: 281 (type,lambda) pairs from the
+     derived factors in FPP_unitary_hash_bottom_layer(KGB(E7_s)[17000:17200]) (rebuilt as
+     simply_connected(LieType), so the simple-root labeling may differ from the factor's own),
+     and A2,B2,G2,A3,B3,C3,A4,D4,B4,C4,F4 (simply connected) at all sum a_i omega_i / d with
+     d = 1..4, 0 <= a_i <= 3 (rank <= 3) or <= 2 (rank 4). Also identical per-call answers on
+     the actual derived factors in that E7_s range.
+     1. No Params. filter_by_translation_split translates the maximal-ideal parameter p (at
+	gamma = dominant(rd_int,lambda)) to each candidate gamma'. Every candidate is dominant
+	for the integrality datum rd_int, and tau of p pushed to the regular chamber is exactly
+	the simple integral roots nonsingular for gamma. So the translate to gamma' is zero iff
+	some simple integral root alpha has <gamma',alpha^vee> = 0 and <gamma,alpha^vee> != 0.
+	Checked against the Param computation on all 24138 candidates of the E7_s range above.
+	The assert below re-checks dominance on every candidate (only when seat_belt_on).
+     2. Lazy: stop at the first candidate that is not killed (answer false).
+     3. Direct enumeration of the dominant candidates (no compositions_le + filter), a hashed
+	star-orbit for W/W(lambda), and a memo on (RootDatum,lambda).
+
+  is_weakly_unipotent_claude(Param q) = bool
+     The infinitesimal character of q is weakly unipotent (above) and Ann(q) is the maximal
+     primitive ideal, i.e. GK_dim(q) = GK_dim_maximal_ideal(q.root_datum,
+     q.infinitesimal_character). Memoized on q. Cheap tests first: tau(q) must be all
+     nonsingular simple integral roots (rejects without GK); if gamma is integrally regular
+     that already suffices. A further shortcut (tau_suffices, see its definition) is controlled
+     by tau_suffices_flag. Otherwise GK_dim_claude (block-memoized GK_dim) is compared with
+     a memoized GK_dim_maximal_ideal. wuq_validate_flag := true runs the GK test in every
+     case and asserts that the shortcuts agree.
+
+  GK_dim_claude(Param p) = int
+     Same as GK_dim@Param (checked on 1221 parameters of 9 real forms at 7 infinitesimal
+     characters each), but the W-cells of a block are computed once and every surviving
+     Param of the block is recorded; GK dimension per cell on demand.
+
+  In FPP_unitary_hash_bottom_layer(KGB(E7_s)[17000:17200]), testing every derived factor of
+  every min_bottom_elim_factors call (1466 calls): 205 s with weakly_unipotent_LMB.at plus
+  an unmemoized GK test, 20 s with is_weakly_unipotent_claude@Param; identical answers.
+  Counters: wuc_hits/wuc_misses, wuq_count, wuq_time, gk_parts. Memos never cleared
+  automatically: wuc_clear(), wuq_clear(), gkb_clear().
+}
+
+
+{ W/W(lambda) coset representatives: same orbit as star_W_orbit@(RootDatum,ratvec), but
+  membership by hash instead of a linear search. Returns [WeylElt], identity first. }
+set W_mod_W_int_claude(RootDatum G, ratvec v) = [WeylElt]:
+    let H = make_ratvec_hash(), words = [[int]]: [[]], S = G.ss_rank, i = 0
+    in H.match(v);
+       while i < #words
+       do let w = words[i], u = H.index(i)
+	  in for s:S
+	     do let su = star_action(G,s,u)
+		in if H.could_add(su) then words #:= [s]##w fi
+	     od;
+	  i +:= 1
+       od;
+       for w in words do W_elt(G,w) od
+
+{ all ratvecs z with z_i >= 0, z_i - Y_i integral, and sum z_i weights_i < total;
+  the same set as tuples_weighted(X,weights,Y) when total = X*weights.
+  Calls f on each; stops and returns false as soon as f returns false. }
+set for_tuples_weighted(rat total, ratvec weights, ratvec Y, ([rat]->bool) f) = bool:
+    let n = #weights then rem = [rat]: for y in Y do y-floor(y) od
+    then z = rem
+    then rec_fun go(int i, rat budget) = bool: {budget = total - sum_{j<i} z_j w_j}
+	 if i = n
+	 then f(z)
+	 else let k = 0, ok = true
+	      in while ok and (rem[i]+k)*weights[i] < budget
+		 do z[i] := rem[i]+k;
+		    ok := go(i+1, budget - z[i]*weights[i]);
+		    k +:= 1
+		 od;
+		 ok
+	 fi
+    in go(0, total)
+
+set wuc_hits = int: 0
+set wuc_misses = int: 0
+set wuc_rd_hash = make_RootDatum_hash()
+set wuc_keys = make_int_list_hash()
+set wuc_vals = [bool]: []
+set wuc_clear() = void:
+    wuc_rd_hash := make_RootDatum_hash(); wuc_keys := make_int_list_hash(); wuc_vals := [];
+    wuc_hits := 0; wuc_misses := 0
+
+set is_weakly_unipotent_claude_base(RootDatum G, ratvec lambda) = bool:
+    if G.ss_rank = 0 then return true fi;
+    let rd_int = integrality_datum(G,lambda)
+    then n = rd_int.semisimple_rank, sc = rd_int.simple_coroots
+    then lam = dominant(rd_int,lambda)
+    then g = for j:n do lam*sc[j] od
+    then F = fundamental_weights(G), C = simple_coroots(G), FC = fundamental_coweights(G)
+    then X = for c in C do lambda*c od
+    then weights = for f in F do f*G.rho_check od
+    then total = X*weights
+    in all(W_mod_W_int_claude(G,lambda), {all@([T],(T->bool)) exits early}
+	   (WeylElt w) bool:
+	   let winv = w.inverse, Y = for c in C do (w*lambda)*c od
+	   in for_tuples_weighted(total, weights, Y,
+	      ([rat] Z) bool:
+	      let y = winv*sum(#F[0], for z@i in Z do z*F[i] od)
+	      in if not all(for f in FC do let r = f*(y-lambda) in r = floor(r) od)
+		 then true {not in lambda + root lattice: not a candidate}
+		 else let gp = for j:n do y*sc[j] od
+		      in assert(@:all(for v in gp do v >= 0 od),
+				"is_weakly_unipotent_claude: candidate not W_int-dominant");
+			 any(for j:n do gp[j] = 0 and g[j] != 0 od) {killed}
+		 fi))
+
+set is_weakly_unipotent_claude(RootDatum G, ratvec lambda) = bool:
+    let (num,den) = %lambda
+    then key = [wuc_rd_hash.match(G)] ## num ## [den]
+    then M = wuc_keys.size() then m = wuc_keys.match(key)
+    in if m = M
+       then wuc_misses +:= 1; wuc_vals #:= is_weakly_unipotent_claude_base(G,lambda)
+       else wuc_hits +:= 1
+       fi;
+       wuc_vals[m]
+
+{ character tables memoized on RootDatum }
+set ct_hash = make_RootDatum_hash()
+set ct_vals = [CharacterTable]: []
+set character_table_memo(RootDatum rd) = CharacterTable:
+    let M = ct_hash.size() then m = ct_hash.match(rd)
+    in if m = M then ct_vals #:= character_table(rd) fi; ct_vals[m]
+
+{ GK_dim_maximal_ideal memoized on (RootDatum, gamma) }
+set gkm_keys = make_int_list_hash()
+set gkm_vals = [int]: []
+set GK_dim_maximal_ideal_memo(RootDatum rd, ratvec gamma) = int:
+    let (num,den) = %gamma
+    then key = [wuc_rd_hash.match(rd)] ## num ## [den]
+    then M = gkm_keys.size() then m = gkm_keys.match(key)
+    in if m = M
+       then {as GK_dim_maximal_ideal@(RootDatum,ratvec), with memoized character tables}
+	    let rd_int = integrality_datum(rd,gamma)
+	    then ct_int = character_table_memo(rd_int)
+	    then rd_singular = singular_root_datum(rd,gamma)
+	    then ct_singular = if rd_singular = rd_int then ct_int else character_table_memo(rd_singular) fi
+	    in gkm_vals #:= GK_dim_maximal_ideal(rd,ct_int,ct_singular,gamma)
+       fi; gkm_vals[m]
+
+{ Necessary condition for Ann(q) to be the maximal primitive ideal: tau(q) is the set of
+  simple roots of the integrality datum that are nonsingular for the infinitesimal
+  character. (Ann(q) = J_max iff GK_dim(q) = GK_dim_maximal_ideal, since primitive ideals
+  of equal GK dimension are incomparable.) }
+set tau_is_max(Param q) = bool:
+    let gamma = q.infinitesimal_character, id = integrality_datum(q)
+    in tau(q) = for av@j in id.simple_coroots if gamma*av != 0 do j fi od
+
+{ gamma regular for the integrality datum? Then tau(q) = all simple integral roots already
+  means Ann(q) = J_max (primitive ideals <-> W_int, tau = descent set, only w_0 has all). }
+set is_int_regular(Param q) = bool:
+    let gamma = q.infinitesimal_character
+    in all(for av in integrality_datum(q).simple_coroots do gamma*av != 0 od)
+
+{ David's shortcut. S = simple roots of the integrality datum that are nonsingular for gamma,
+  L_S the Levi of the integrality datum they generate. If
+     GK_dim_maximal_ideal(gamma) = #posroots(G) - #posroots(L_S),
+  then tau(q) = S forces Ann(q) = J_max.
+  Validated (wuq_validate_flag): 68 uses, 0 failures on all parameters of Sp(4,R), SL(3,R), G2_s,
+  SO(4,3), Sp(6,R), SU(2,1), SU(3,2) at 8 infinitesimal characters each (some nonintegral);
+  15 uses, 0 failures on the derived factors in FPP_unitary_hash_bottom_layer(KGB(E7_s)
+  [17000:17200]). No measurable time saving there (the GK work it skips was cheap). }
+set tau_suffices_flag = true
+set tau_suffices_integral_only = false {restrict the shortcut to integral gamma}
+set tau_suffices(Param q, int D) = bool:
+    let rd = q.root_datum, gamma = q.infinitesimal_character
+    then id = integrality_datum(rd,gamma)
+    then S = for av@j in id.simple_coroots if gamma*av != 0 do j fi od
+    in (not tau_suffices_integral_only or id.nr_of_posroots = rd.nr_of_posroots) and
+       (D = rd.nr_of_posroots - sub_datum(id,S).nr_of_posroots)
+
+{ wuq_validate_flag := true: always run the GK test, and record (not stop on) every case
+  where a shortcut disagrees with it, in wuq_fail. Uses no assert, so it works with
+  seat_belt_on := false. }
+set wuq_validate_flag = false
+set wuq_fail = [(string,Param)]: []
+set wuq_time = [int]: [0,0,0,0] {ms in: infl char test, tau, GK_dim_maximal_ideal, GK_dim}
+set wuq_count = [int]: [0,0,0,0,0,0]
+    {new q, infl char false, tau false, GK false, integrally regular + tau (no GK), tau_suffices + tau (no GK)}
+
+set gk_parts = [int]: [0,0,0] {ms: block + W cells, character_table, special character}
+
+{ GK dimension memoized for a whole block: the first time a Param of a block is seen, its
+  W-cells are computed and every Param of the block is recorded with (block cell number);
+  the GK dimension of a cell (from its special representation) is computed on demand. }
+set gkb_params = make_Param_hash()
+set gkb_cell = [int]: []   {for each Param in gkb_params: global cell number}
+set gkb_cells = [WCell]: []
+set gkb_npos = [int]: []   {per global cell: #posroots of the Param's root datum}
+set gkb_gk = [int]: []     {per global cell: GK dim, or -1 if not yet computed}
+set gkb_origin = [Param]: [] {for each Param in gkb_params: the Param whose block registered it}
+set gkb_clear() = void:
+    gkb_params := make_Param_hash(); gkb_cell := []; gkb_cells := []; gkb_npos := []; gkb_gk := []; gkb_origin := []
+
+set GK_dim_claude(Param p) = int:
+    let q = Finalize(p) then M = gkb_params.size() then m = gkb_params.match(q)
+    in if m = M
+       then {new block. W_cells numbers the FULL block (at a regular infinitesimal character);
+	     block(q) lists only the elements surviving at gamma, built the same way as the
+	     full list returned by block_Hasse(q). A survivor's own number z has full[z] equal
+	     to it. To be safe against a non-surviving z giving an equal Param (not seen so far),
+	     a survivor is registered only if its Param occurs exactly once in the full list;
+	     that occurrence is then its own z. Any others get their own block computation if
+	     they are ever asked for.}
+	    let t = elapsed_ms() then (params,idx) = block(q) then (full,) = block_Hasse(q)
+	    then (vertex,cells) = vertex_and_W_cells(q)
+	    then () = gk_parts[0] +:= elapsed_ms()-t
+	    then () = assert(@:params[idx] = q and full[vertex] = q,
+			     "GK_dim_claude: block/W_cells numbering mismatch")
+	    then fh = make_Param_hash(), fcount = [int]: [], fz = [int]: []
+	    then () = for r@z in full
+		      do let j = fh.match(r)
+			 in if j = #fcount then fcount #:= 1; fz #:= z else fcount[j] +:= 1 fi
+		      od
+	    then z_of = [int]: {full-block number of each survivor, or -1 if ambiguous}
+		 for r in params do let j = fh.match(r) in if fcount[j] = 1 then fz[j] else -1 fi od
+	    then () = z_of[idx] := vertex
+	    then offset = #gkb_cells, npos = #posroots(q.root_datum)
+	    then cell_of = [int]: for i:#full do -1 od
+	    in for cell@c in cells
+	       do gkb_cells #:= cell; gkb_npos #:= npos; gkb_gk #:= -1;
+		  for l in cell.labels do cell_of[l] := offset+c od
+	       od;
+	       {q itself was entered (as number m = #gkb_cell) by the match above}
+	       gkb_cell #:= cell_of[vertex]; gkb_origin #:= q;
+	       {register the other surviving Params of the block whose number is unambiguous}
+	       for r@i in params
+	       do if z_of[i] >= 0
+		  then let j = gkb_params.match(r)
+		       in if j = #gkb_cell then gkb_cell #:= cell_of[z_of[i]]; gkb_origin #:= q
+			  elif j < #gkb_cell then () {already known}
+			  else error("GK_dim_claude: hash out of step")
+			  fi
+		  fi
+	       od
+       fi;
+       let c = gkb_cell[m]
+       in if gkb_gk[c] < 0
+	  then let t = elapsed_ms() then cell = gkb_cells[c] then ct = character_table_memo(cell.root_datum)
+	       then () = gk_parts[1] +:= elapsed_ms()-t; t := elapsed_ms()
+	       then d = ct.degree(ct.special_character_inefficient(cell))
+	       then () = gk_parts[2] +:= elapsed_ms()-t
+	       in gkb_gk[c] := gkb_npos[c] - d
+	  fi;
+	  gkb_gk[c]
+
+{ The combined test used on derived factor params: the infinitesimal character of q is
+  weakly unipotent, and Ann(q) is the maximal primitive ideal (GK_dim(q) =
+  GK_dim_maximal_ideal). Memoized on q. }
+set wuq_hash = make_Param_hash()
+set wuq_vals = [bool]: []
+set wuq_clear() = void: wuq_hash := make_Param_hash(); wuq_vals := []
+
+set is_weakly_unipotent_claude_base(Param q) = bool:
+    let rd = q.root_datum, gamma = q.infinitesimal_character, t = elapsed_ms()
+    {the infinitesimal character test sees only the roots and <gamma,alpha^vee>: do it on the
+     simply connected derived datum, so it also applies to reductive (e.g. Levi) q}
+    then wu = is_weakly_unipotent_claude(simply_connected(rd),
+				ratvec: for av in rd.simple_coroots do gamma*av od)
+    then () = wuq_time[0] +:= elapsed_ms()-t
+    in wuq_count[0] +:= 1;
+       if not wu then wuq_count[1] +:= 1; return false fi;
+       let t = elapsed_ms() then tm = tau_is_max(q)
+       then () = wuq_time[1] +:= elapsed_ms()-t
+       in if not tm and not wuq_validate_flag then wuq_count[2] +:= 1; return false fi;
+          let reg = tm and is_int_regular(q)
+          in if reg and not wuq_validate_flag then wuq_count[4] +:= 1; return true fi;
+             let t = elapsed_ms() then D = GK_dim_maximal_ideal_memo(rd,gamma)
+             then () = wuq_time[2] +:= elapsed_ms()-t
+             then ts = tm and (tau_suffices_flag or wuq_validate_flag) and tau_suffices(q,D)
+             in if ts and not wuq_validate_flag then wuq_count[5] +:= 1; return true fi;
+                let t = elapsed_ms() then gkq = GK_dim_claude(q) then gk = gkq = D
+                then () = wuq_time[3] +:= elapsed_ms()-t
+                then () = if wuq_validate_flag
+                          then let g0 = GK_dim(q)
+                               in if g0 != gkq
+                                  then let m = gkb_params.match(Finalize(q)) then o = gkb_origin[m]
+                                       in prints("GK MISMATCH q=",q," rf=",q.real_form," Finalize(q)=",Finalize(q),
+                                                 " GK_dim_claude=",gkq," GK_dim=",g0,
+                                                 " registered by ",o," rf=",o.real_form,
+                                                 " same rf ",o.real_form=q.real_form, " origin GK_dim=",GK_dim(o));
+                                          error("GK_dim_claude mismatch")
+                                  fi
+                          fi
+                in if not tm and gk then wuq_fail #:= ("tau_is_max false, GK maximal",q) fi;
+                   if reg and not gk then wuq_fail #:= ("regular, tau_is_max, GK not maximal",q) fi;
+                   if ts and not gk
+                   then wuq_fail #:= ("tau_suffices ("+(if integrality_datum(q).nr_of_posroots = rd.nr_of_posroots
+                                      then "integral" else "nonintegral" fi)+"), tau_is_max, GK not maximal",q)
+                   fi;
+                   if not tm then wuq_count[2] +:= 1
+                   elif reg then wuq_count[4] +:= 1
+                   elif ts then wuq_count[5] +:= 1
+                   elif not gk then wuq_count[3] +:= 1
+                   fi;
+                   tm and gk
+
+set is_weakly_unipotent_claude(Param q) = bool:
+    let M = wuq_hash.size() then m = wuq_hash.match(q)
+    in if m = M then wuq_vals #:= is_weakly_unipotent_claude_base(q) fi;
+       wuq_vals[m]
+
+{ Unitarity from weakly fair cohomological induction.
+  1: unitary, -1: nonunitary, 0: don't know.
+  p is cohomologically induced from pL (theta_stable_quasi_data), L a proper theta-stable Levi.
+  If the induction is weakly fair and pL is weakly unipotent (is_weakly_unipotent_claude@Param:
+  weakly unipotent infinitesimal character for L and Ann(pL) the maximal primitive ideal), then
+  coh_ind_p = theta_induce_irreducible(pL) is a sum of irreducibles sum_i m_i p_i with p_1 = p,
+  m_1 = 1, carrying the nondegenerate hermitian form sig induced from the form sigL on pL
+  (glued from the simple derived factors of pL).
+    coh_ind_p = 1*p:            p is unitary iff sig is pure (1 / -1).
+    otherwise, sig pure:        every p_i is unitary (1; only p is recorded, by umatch).
+    otherwise, sig not pure:    don't know (0).
+  Weak fairness is automatic for hermitian p, so it is only asserted (seat_belt_on).
+  Connected G only (as for bottom_layer): glue_sigs fails for disconnected L ("more than one
+  K-type maps to this KHighestWeight"), e.g. SO(3,2), p = parameter(KGB(SO(3,2),3),[3,1]/2,[0,1]/2).
+  Validated against is_unitary on all parameters of Sp(4,R), SU(2,1), SL(3,R), G2_s, Sp(6,R),
+  SU(3,1), SU(2,2), Sp(4,2), Spin(4,3), Spin(5,2), SL(4,R), SU(3,2) at 8 infinitesimal
+  characters each: 648 answers 1 and 182 answers -1, none wrong; weakly fair assert never fired. }
+set icc_count = [int]: [0,0,0,0,0,0,0,0,0,0,0]
+    {calls, not hermitian, height 0, L = G, (unused), pL not weakly unipotent,
+     irreducible + pure (1), irreducible + not pure (-1), reducible + pure (1),
+     reducible + not pure (0), timed out (0)}
+set icc_time = int: 0
+set icc_steps = [int]: [0,0,0,0] {ms in: factor signatures, glue_sigs, theta_induce_K, irreducibility test}
+
+{ Common first part: (k,ans,pL). k >= 0 means decided: count in icc_count[k], answer ans.
+  k = -1 means continue with pL (hermitian, height > 0, L proper, pL weakly unipotent). }
+set icc_prefix(Param p) = (int,int,Param):
+    if not is_hermitian(p) then return (1,-1,p) fi;
+    if p.height = 0 then return (2,0,p) fi;
+    let (,pL) = theta_stable_quasi_data(p), G = p.real_form
+    in if pL.real_form.semisimple_rank = G.semisimple_rank then return (3,0,pL) fi;
+       {p hermitian forces weak fairness (David): equal rank, z(l) has no split part; unequal
+	rank, pL is hermitian too, so gamma vanishes on the split part of z(l)}
+       assert(@:is_weakly_fair(pL,G),"is_unitary_coh_ind_claude: hermitian p but pL not weakly fair");
+       if not is_weakly_unipotent_claude(pL) then return (5,0,pL) fi;
+       (-1,0,pL)
+
+{ Common last part, given the signatures on the simple derived factors of pL. (k,ans) as above.
+  Irreducibility of the induced module: it contains p with multiplicity 1, so it is 1*p iff its
+  expansion in standard modules (theta_induce_irreducible_as_sum_of_standards: character formula
+  of pL on L, induced) equals character_formula(p). This avoids composition_series on G
+  (E7_s x=12610 example: 0.7 s instead of 321 s). No composition series is computed: when the
+  induced module is reducible and the form is pure, only p itself is recorded as unitary.
+  icc_cheap_irred_flag := false: decide irreducibility with theta_induce_irreducible (slow). }
+set icc_cheap_irred_flag = true
+set icc_finish(Param p, Param pL, [KTypePol] dersigs) = (int,int):
+    let G = p.real_form, t = elapsed_ms()
+    then sigL = glue_sigs(dersigs,LKTs(pL)[0])
+    then () = icc_steps[1] +:= elapsed_ms()-t; t := elapsed_ms()
+    then sig = theta_induce_K(sigL,G)
+    then () = icc_steps[2] +:= elapsed_ms()-t; t := elapsed_ms()
+    then pure = is_pure(sig)
+    then coh_ind_p() = ParamPol:
+	 let cip = theta_induce_irreducible(1*pL,G)
+	 in assert(@:first_param(cip) = p,
+		   "is_unitary_coh_ind_claude: first_param(theta_induce_irreducible(pL)) != p");
+	    cip
+    then irreducible =
+	 if icc_cheap_irred_flag
+	 then theta_induce_irreducible_as_sum_of_standards(pL,G) = character_formula(p)
+	 else coh_ind_p() = 1*p
+	 fi
+    then () = icc_steps[3] +:= elapsed_ms()-t
+    in if irreducible
+       then if pure then big_unitary_hash.umatch(p); (6,1)
+	    else big_unitary_hash.numatch(p); (7,-1)
+	    fi
+       elif pure
+       then {all constituents are unitary; for now record only p (David, 28 Sep 2026)}
+	    big_unitary_hash.umatch(p); (8,1)
+       else (9,0)
+       fi
+
+set is_unitary_coh_ind_claude(Param p) = int:
+    let start = elapsed_ms()
+    then done((int,int) (k,ans)) = int: icc_count[k] +:= 1; icc_time +:= elapsed_ms()-start; ans
+    then (k,ans,pL) = (icc_count[0] +:= 1; icc_prefix(p))
+    in if k >= 0 then return done(k,ans) fi;
+       let t = elapsed_ms()
+       then dersigs = for derpL in derived_factor_params0(pL)
+		      do hermitian_form_irreducible_big_SIMPLE(derpL) od
+       then () = icc_steps[0] +:= elapsed_ms()-t
+       in done(icc_finish(p,pL,dersigs))
+
+{ Interruptible version, as is_unitary_hash_big_SIMPLE@(Param,int): 1 unitary, -1 nonunitary,
+  0 don't know or timed out. For now the factor signatures come from
+  hermitian_form_irreducible@(Param,int) with the time remaining (eventually: a
+  hermitian_form_irreducible_big_SIMPLE@(Param,int) in FPP_faces_herm.at). glue_sigs,
+  theta_induce_K and theta_induce_irreducible are not interruptible. }
+set is_unitary_coh_ind_claude(Param p, int time) = int:
+    let start = elapsed_ms()
+    then done((int,int) (k,ans)) = int: icc_count[k] +:= 1; icc_time +:= elapsed_ms()-start; ans
+    then (k,ans,pL) = (icc_count[0] +:= 1; icc_prefix(p))
+    in if k >= 0 then return done(k,ans) fi;
+       let t = elapsed_ms(), dersigs = [KTypePol]: []
+       in for derpL in derived_factor_params0(pL)
+	  do let remaining = time - (elapsed_ms() - start)
+	     in if remaining <= 0 then return done(10,0) fi;
+		case hermitian_form_irreducible(derpL,remaining)
+		| timed_out: return done(10,0)
+		| done(r): dersigs #:= r
+		esac
+	  od;
+	  icc_steps[0] +:= elapsed_ms()-t;
+	  done(icc_finish(p,pL,dersigs))
