@@ -159,19 +159,10 @@ if #list=0 then true else
 let (good,bad)=filter_by_translation_complex_integral(G,lambda,list) in
 #bad=0 fi
 
-
-
-
-
-
-
-
 {major time suck is manipulating parameters for COMPLEX group. Functions below attempt to speed things up by translating reps of split form of integrality datum}
-
 
 {returns a parameter for the split form of the integrality datum
 having infl char gamma and maximal primitive ideal}
-
 set max_ideal_param(RootDatum rd, ratvec gamma) = Param:
     let startTime = elapsed_ms()
     then rd_int = integrality_datum(rd,gamma)
@@ -179,26 +170,18 @@ set max_ideal_param(RootDatum rd, ratvec gamma) = Param:
     then rd_int_sc = rd_int.simply_connected
     then G_int_sc = rd_int_sc.split_form, rho_int_sc = rd_int_sc.rho
     then x = x_open(G_int_sc)
-    then () = gamma:= sum(rd_int.semisimple_rank, for xi@j in rd_int_sc.fundamental_weights
+    then () = gamma:= sum(rd_int_sc.rank, for xi@j in rd_int_sc.fundamental_weights
 	 	 		  do (gamma*rd_int.simple_coroots[j])*xi
 				  od)
     then D = GK_dim_maximal_ideal(rd_int_sc,gamma)
-    then tau = for j:G_int_sc.rank
-    	       do let m = gamma*G_int_sc.simple_coroots[j]
-	       	  in if m > 0 and m\2 = 0
-	       	     then [j]
-		     else []
-		     fi
-	       od.##
-    then rest = complement(G_int_sc.semisimple_rank,tau)
-    then first_lambda = rho_int_sc + sum(G_int_sc.rank, for j in tau
-    	 	      		      do G_int_sc.fundamental_weights[j]
-				      od)
-    then () = for b in box(2,#rest)
-    	      do let lambda = rho_int_sc+ sum(G_int_sc.rank,
-	      	     	    for j@k in b do j*G_int_sc.fundamental_weights[rest[k]] od)
+    then tau_target = for av@j in rd_int_sc.simple_coroots
+    	 	      if (gamma*av).!= do j fi
+		      od
+    then () = for b in box(2,G_int_sc.semisimple_rank)
+    	      do let lambda = sum(rd_int_sc.rank,
+	      	     	    for j@k in b do j*rd_int_sc.fundamental_weights[k] od)
 	      	 then p = first_param(finalize(parameter(x, lambda, gamma)))
-	      	 in if GK_dim(p) = D
+	      	 in if tau(p) = tau_target and GK_dim(p) = D
 		    then prints("time required was ",
 		    print_time_string(elapsed_ms() - startTime)); return p
 		    fi
@@ -212,19 +195,17 @@ set max_ideal_param(RootDatum rd, ratvec gamma) = Param:
 
 
 set filter_by_translation_split(RootDatum G, ratvec lambda, [ratvec] list) = ([ratvec],[ratvec]):
-let G_int=integrality_datum(G,lambda) then
-p = max_ideal_param(G,lambda) then
-G_int_sc = p.real_form then
+let rd_int=integrality_datum(G,lambda) then
+p = max_ideal_param(rd_int,lambda) then
+rd_int_sc = p.root_datum then
 good=[ratvec]:[] then
 bad= [ratvec]:[]  in
 for gamma in list do
-	let gamma_prime=sum(G_int.semisimple_rank, for xi@j in G_int_sc.fundamental_weights
-                                  do (gamma*G_int.simple_coroots[j])*xi
+	let gamma_prime=sum(rd_int_sc.rank, for xi@j in rd_int_sc.fundamental_weights
+                                  do (gamma*rd_int.simple_coroots[j])*xi
                                   od)
 	in if is_killed(p,gamma_prime) then good#:=gamma else bad#:=gamma fi od;
 (good,bad)
-            
-
 
 
 set is_weakly_unipotent_fast(RootDatum G, ratvec lambda) = bool:

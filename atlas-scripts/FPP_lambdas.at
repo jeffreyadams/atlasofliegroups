@@ -422,7 +422,28 @@ set Lvd(KGBElt x, ratvec lambda) = LocalVertexData:
     then lamthlam = ratvec_as_vec((1+theta)*lambda)
     in LPm_table.Lvd(ic,theta,lamthlam)
 
-{this is the list of all possible lambda + theta*lambda for ic and theta}
+{extract all vertices taking values in [a,A) on highest coroot}
+{If G is complex, then maybe a-1 needs to be a-2?}
+set slice_Lvd(LocalVertexData Lvd, RootDatum rd, int a, int A) = LocalVertexData:
+    let bv = sum(highest_coroots(rd))
+    then list = for v in Lvd.list[:Lvd.pair_start]
+       do let ht = v*bv
+    	  in if a-1 <= ht and ht <= A
+	     then [v]
+	     else []
+	     fi
+       od.##
+    then spair_start = #list
+    in list ##:= for v in list[Lvd.pair_start:]
+       	      	 do let ht = v*bv
+    	    	    in if a <= ht and ht <A
+	       	       then [v]
+	       	       else []
+	       	       fi
+       	 	 od.##;
+       (list, index_in(list), spair_start)
+
+{this is the list of all possib Lle lambda + theta*lambda for ic and theta}
 set FPP_lamthlams(InnerClass ic, mat theta) = [vec]:
     LPm_table.lamthlams(ic,theta)
 

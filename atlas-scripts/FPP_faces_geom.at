@@ -1852,6 +1852,12 @@ set global_vertices(InnerClass ic, ratvec gamma) = FaceVerts:
     	 in M*face_verts(Affd, gamma0)
     fi
 
+set thetaAct2(KGBElt x, ratvec lambda, LocalVertexData Lvd) = PermOrderTwo:
+    let start = elapsed_ms(), ic = x.inner_class
+    then vlookup = index_in(FPP_vertices(ic)), list = Lvd.list, ps = Lvd.pair_start
+    in (for v in list[:ps] do vlookup(v) od,
+       for w in list[ps:] do let vs = global_vertices(ic,w) in (vlookup(vs[0]),vlookup(vs[1])) od)
+
 {only works for rd simple}
 set non_herm_global_vertices(RootDatum rd, ratvec gamma) = FaceVerts:
     face_verts(rd, gamma)
