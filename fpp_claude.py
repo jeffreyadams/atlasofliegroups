@@ -139,8 +139,12 @@ PRESETS = {
         aux_files=["edges_F4_E6_E7.at", "coh_ind_E7_centered2PlusE6.at"],
         stall_seconds=1800.0,
     ),
-    # E8 presets: the reference init files do not exist yet.  Sizes are first
-    # guesses to be re-tuned from the E7_s numbers once a real run is possible.
+    # E8 presets: both reference inits are tracked now (e8qinitreference.at
+    # 7.96 MB, e8sinitreference.at 21.1 MB).  e8q has really run -- see
+    # E8q_PLAN.md -- so its sizes are measured; the e8s sizes are still guesses
+    # to be re-tuned from the E7_s numbers.  e8s needs no aux file, but e8q's
+    # edges_F_E.at is 985 MB and stays out of git, and the path below is
+    # absolute and machine-specific: off euphrates, point it at your own copy.
     # Measured 2026-08-25: 5,926,140 pairs (none finished), KGB size 67,110,
     # mean 88 lambda per x.  Sampled cost 2.1 s/pair over 1600 random pairs, so
     # roughly 3500 core-hours.  Reference init loads in 13 s; the edges file
