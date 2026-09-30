@@ -2652,7 +2652,7 @@ def build_config(argv):
                         "machine-wide (default 32).  Absorbing costs 44 s alone "
                         "but 1430 s when all 784 do it together, so this cap is "
                         "what makes sharing affordable")
-    p.add_argument("--stop-at-remaining", type=int, default=0,
+    p.add_argument("--stop-at-remaining", type=int, default=None,
                    help="stop gracefully once this many pairs are still "
                         "outstanding, instead of waiting for the last few.  On "
                         "E8_q the final 200 pairs cost 8h19m of a 19h27m run "
@@ -2783,7 +2783,10 @@ def build_config(argv):
         share=a.share,
         share_cap_mb=a.share_cap_mb,
         share_concurrency=a.share_concurrency,
-        stop_at_remaining=(a.stop_at_remaining if a.stop_at_remaining
+        # explicit flag wins, including an explicit 0 to disable a preset's
+        # floor -- which is what a --keep-init run finishing a handful of
+        # stragglers needs, since the preset's 200 would fire immediately
+        stop_at_remaining=(a.stop_at_remaining if a.stop_at_remaining is not None
                            else pick(None, "stop_at_remaining", 0)),
     )
 
