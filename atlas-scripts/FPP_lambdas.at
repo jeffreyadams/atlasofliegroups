@@ -422,28 +422,61 @@ set Lvd(KGBElt x, ratvec lambda) = LocalVertexData:
     then lamthlam = ratvec_as_vec((1+theta)*lambda)
     in LPm_table.Lvd(ic,theta,lamthlam)
 
-{extract all vertices taking values in [a,A) on highest coroot}
-{If G is complex, then maybe a-1 needs to be a-2?}
+{extract all vertices taking values in [a- (#highest coroots -1),A] on bv = sum of highest coroots.
+Range of values taken by bv on fundamental simplex is [0,#highest_coroots]. So an arbitrary
+simplex can hit that many heights; need the shift in a to assure each simplex lies in one slice.}
 set slice_Lvd(LocalVertexData Lvd, RootDatum rd, int a, int A) = LocalVertexData:
     let bv = sum(highest_coroots(rd))
+    then () = a +:= 1 - #highest_coroots(rd)
     then list = for v in Lvd.list[:Lvd.pair_start]
        do let ht = v*bv
-    	  in if a-1 <= ht and ht <= A
+    	  in if a <= ht and ht <= A
 	     then [v]
 	     else []
 	     fi
        od.##
     then spair_start = #list
-    in list ##:= for v in list[Lvd.pair_start:]
+    in list ##:= for v in Lvd.list[Lvd.pair_start:]
        	      	 do let ht = v*bv
-    	    	    in if a <= ht and ht <A
+    	    	    in if a <= ht and ht <= A
 	       	       then [v]
 	       	       else []
 	       	       fi
        	 	 od.##;
        (list, index_in(list), spair_start)
 
-{this is the list of all possib Lle lambda + theta*lambda for ic and theta}
+set slice_Lvd_Perm2(Lvd_Perm2 (Lvd,Perm2), RootDatum rd, int a, int A) = Lvd_Perm2:
+    let bv = sum(highest_coroots(rd))
+    then () = a +:= 1 - #highest_coroots(rd)
+    then sl_fixed = vec:[], sl_trans = [(int,int)]:[]
+    then old_fixed_list = Lvd.list[:Lvd.pair_start], old_fixed = Perm2.fixed
+    then old_trans_list = Lvd.list[Lvd.pair_start:], old_trans = Perm2.trans
+    then sl_fixed_list = [ratvec]:
+    	 for v@j in old_fixed_list
+	 do let ht = v*bv
+    	    in if a <= ht and ht <= A
+	       then sl_fixed #:= old_fixed[j];
+		    [v]
+	       else []
+	       fi
+	 od.##
+    then sl_trans_list = [ratvec]:
+    	 for v@k in old_trans_list
+	 do let ht = v*bv
+    	    in if a <= ht and ht <= A
+	       then sl_trans #:= old_trans[k];
+		    [v]
+	       else []
+	       fi
+	 od.##
+     then sl_list = sl_fixed_list##sl_trans_list, sl_pair_start=#sl_fixed_list
+     in ((sl_list, index_in(sl_list), sl_pair_start),(sl_fixed,sl_trans))
+
+set slice_Lvd_Perm2(KGBElt x, ratvec lambda, int a, int A) = Lvd_Perm2:
+    let LP2 = LPm_table.LPm_entry(x.inner_class, x.involution, ((1+x.involution)*lambda).numer)
+    in slice_Lvd_Perm2(LP2, x.root_datum, a, A)
+
+{this is the list of all possible lambda + theta*lambda for ic and theta}
 set FPP_lamthlams(InnerClass ic, mat theta) = [vec]:
     LPm_table.lamthlams(ic,theta)
 

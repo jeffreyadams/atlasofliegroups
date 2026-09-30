@@ -1761,11 +1761,11 @@ set LGTH_flag = false
 {assume all terms in qlist same inf char}
 set GAM_HTs_easy(int N) = [rat]:
     {let blq = bit_length(N) in}
-    let pred_end = 1/N in
+    let pred_end = 1/max(N,1) in
     for j:N do (1 + (pred_end-1)*j/N)^LIN_EXP {* (blq - bit_length(j) +1)^BL_EXP}/(j+J_SHIFT)^INVJ_EXP od
 
 set GAM_HTs_easy(int N, int HT) = [rat]:
-    let pred_end = 1/N in
+    let pred_end = 1/max(N,1) in
     for j:N do (1 + (pred_end-1)*(j/N))^LIN_EXP_HT od
 
 set GAM_HTs_LGTH([Param] qlist) = [rat]:

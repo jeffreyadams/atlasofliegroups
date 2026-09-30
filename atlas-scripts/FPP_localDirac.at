@@ -3648,32 +3648,28 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     (Param->bool) fancy_tester) = [Param]:
     let DiracBD = DiracBD(x,lambda), G=x.real_form
     then rhocheck = G.rho_check
-    then LF = {if by_zero_flag and height(parameter(x,lambda,0*lambda)) > 0
-    	      then} localFD_1Dirac2_by_zero(x,lambda, Lvd, Perm2)
-	      {else localFD_1Dirac2(x,lambda,Lvd,Perm2)
-	      fi}
-    in local_test_GEO_hash_dumb(x, lambda, {vd,} Lvd, LF, pol_hash, Uhash, fancy_tester)
+    then LF = localFD_1Dirac2_by_zero(x,lambda, Lvd, Perm2)
+    in local_test_GEO_hash_dumb(x, lambda, Lvd, LF, pol_hash, Uhash, fancy_tester )
 
 set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, LocalVertexData Lvd, (vec,[(int,int)]) Perm2,
     KTypePol_hash pol_hash, Param_hash Uhash, (Param->bool) fancy_tester) = [Param]:
     let DiracBD = DiracBD(x,lambda), G=x.real_form
     then rhocheck = G.rho_check
-    then LF = {if by_zero_flag and height(parameter(x,lambda,0*lambda)) > 0
-    	      then} localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2)
-	      {else localFD_1Dirac2(x, lambda, Lvd, Perm2)
-	      fi}
+    then LF = localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2)
     {imposes Dirac, herm, pos on LKTs for vertices and edges}
     in local_test_GEO_hash_dumb(x, lambda, {vd,} Lvd, LF, pol_hash, Uhash,fancy_tester)
+
+set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, int a, int A) = [Param]:
+    let (sl_Lvd, sl_Perm2) = slice_Lvd_Perm2(x,lambda,a,A)
+    in local_test_GEO_hash_dumb(x,lambda,sl_Lvd, sl_Perm2, pol_hash, big_unitary_hash.uhash(x.real_form),
+    is_unitary_hash_big_SIMPLE@Param)
 
 set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, KTypePol_hash pol_hash, Param_hash Uhash,
     (Param->bool) fancy_tester) = [Param]:
     let G = x.real_form
     then FEL = LPm_table.flippable_edge_lookup(G)
     then (Lvd, Perm2) = localFD_Lvd2(x, lambda, FEL)
-    then LF = {if by_zero_flag and height(parameter(x,lambda,0*lambda)) > 0
-    	      then} localFD_1Dirac2_by_zero(x,lambda, Lvd, Perm2)
-	      {else localFD_1Dirac2(x,lambda, Lvd, Perm2)
-	      fi}
+    then LF =  localFD_1Dirac2_by_zero(x,lambda, Lvd, Perm2)
     	{computes edges and verts, imposing hermitian and Dirac}
     in local_test_GEO_hash_dumb(x, lambda, {vd,} Lvd, LF, pol_hash, Uhash, fancy_tester)
 
@@ -3715,7 +3711,7 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, {VertexData vd,} LocalV
     then () = long_out_flag:=false {to allow using local_test_hash without recording Params}
     then edge_offset_temp = edge_offset, ht0 = height(parameter(x,lambda,0*lambda)),
     	 G = x.real_form
-    then () = if edge_offset = -1
+    then () = if edge_offset = 0
     	      then edge_offset_temp := r\2 {3 seems best for F4}
 	      fi
     {then test_levels = for d:max(r+1,2) do (d*edge_skip*stretcher)\1 + edge_offset_temp od}
@@ -3860,7 +3856,7 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVert
 	     	   return local_test_GEO_hash_dumb(x, lambda, Lvd, LF, pol_hash, Uhash, fancy_tester)
 		   {use real_dumb if real_flag, def_dumb if def_flag}
 	      fi
-    then edge_offset_temp = edge_offset
+    then edge_offset_temp = max(edge_offset,1)
     then () = if edge_offset = -1
     	      then edge_offset_temp := r\2 {3 seems best for F4}
 	      fi
@@ -3896,6 +3892,11 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     (vec,[(int,int)]) Perm2, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     let LF = localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2)
     in local_test_GEO_hash(x, lambda, Lvd, LF, pol_hash, Uhash)
+
+set local_test_GEO_hash(KGBElt x, ratvec lambda, int a, int A) = [Param]:
+    let (sl_Lvd, sl_Perm2) = slice_Lvd_Perm2(x,lambda,a,A)
+    then LF = localFD_1Dirac2_by_zero(x, lambda, sl_Lvd, sl_Perm2)
+    in local_test_GEO_hash(x, lambda, sl_Lvd, LF, pol_hash, big_unitary_hash.uhash(x.real_form))
 
 set local_test_GEO_hash(KGBElt x, ratvec lambda, VertexData vd, LocalVertexData Lvd,
     (vec,[(int,int)]) Perm2, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
@@ -4117,7 +4118,7 @@ set local_test_GEO_hash2_end(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[Fac
 		     in Shorthts[:d0] ## for j:depth-d0 do Shorthts~[0] + j+1 od
     {then () = test_string:= " using local_test_GEO_hash2end"}
     {then  () = hash2Counter.use()}
-    then D0 = edge_offset
+    then D0 = max(edge_offset,1)
     then ht0 = hts[edge_offset]
     then tester1 = (Param->bool): (Param p) bool:
      	     	  if prefer_to_hts then is_unitary_to_hts_big_SIMPLE_interrupt{_TOHTfirst}(p, hts[:D0+1]) {added THf 2/23/26}
@@ -4235,10 +4236,10 @@ set local_test_GEO_hash2(KGBElt x, ratvec lambda, LocalVertexData Lvd, (vec,[(in
 
 
 {Compute 0 and 1 faces, ensuring hermitian, pos on LKTs, pass to previous}
-set local_test_GEO_hash2(KGBElt x, ratvec lambda, VertexData vd, LocalVertexData Lvd,
+set local_test_GEO_hash2(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     (vec,[(int,int)]) Perm2, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     let LF = localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2)
-    in local_test_GEO_hash2(x, lambda, {vd,} Lvd, LF, pol_hash, Uhash)
+    in local_test_GEO_hash2(x, lambda, Lvd, LF, pol_hash, Uhash)
 
 set local_test_GEO_hash2(KGBElt x, ratvec lambda,
     KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
@@ -4247,12 +4248,18 @@ set local_test_GEO_hash2(KGBElt x, ratvec lambda,
     then (Lvd, Perm2) = localFD_Lvd2(x, lambda, {vd,} FEL)
     then LF = localFD_1Dirac2_by_zero(x,lambda, Lvd, Perm2)
     	{computes edges and verts, imposing hermitian and Dirac}
-    in local_test_GEO_hash2(x, lambda, {vd,} Lvd, LF, pol_hash, Uhash)
+    in local_test_GEO_hash2(x, lambda, Lvd, LF, pol_hash, Uhash)
 
 set local_test_GEO2(KGBElt x, ratvec lambda) = [Param]:
     let Uhash = big_unitary_hash.uhash(x.real_form), G = x.real_form
     then () = unipotents_to_hash(x.real_form,Uhash)
-    in local_test_GEO_hash2(x,lambda,{vd,} pol_hash, Uhash)
+    in local_test_GEO_hash2(x,lambda, pol_hash, Uhash)
+
+set local_test_GEO2(KGBElt x, ratvec lambda, int a, int A) = [Param]:
+    let Uhash = big_unitary_hash.uhash(x.real_form)
+    then (sl_Lvd, sl_Perm2) = slice_Lvd_Perm2(x,lambda,a,A)
+    then LF = localFD_1Dirac2_by_zero(x, lambda, sl_Lvd, sl_Perm2)
+    in local_test_GEO_hash2(x,lambda, sl_Lvd, LF, pol_hash, Uhash)
 
 {difficulty at which to revert to local_test_GEO_hash on each vertex.
 0 to 100 make sense: higher means revert MORE often}
@@ -4314,17 +4321,17 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda,
 	      	   	  {use def_dumb if def_flag}
 	      fi
     then r = rank(thetaMinus)
-    then ZERO = if step_flag
+    then ZERO = if step_flag {default false}
     	      	then if zero_level = -1
 		     then 0
     	       	     else zero_level
 		     fi
 		else -1
 	        fi
-
+    then () = edge_offset:=max(edge_offset,1)
     then ONE = edge_offset
     { then () = prints("ONE = ",ONE) }
-     then Shorthts = if short_hts_flag
+     then Shorthts = if short_hts_flag {default false}
     	 	    then short_hts(pmax)
 		    else next_heights(pmax,ONE+1)
 		    fi
@@ -4354,7 +4361,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda,
     then () = one_level_xl_hash.match(x,lambda)
     then zero_ht = if step_flag
     	 	   then hts[ZERO]
-		   else 0
+		   else hts[0]
 		   fi
     then one_ht = hts[ONE]
     then () =  if test_verbose then prints("face counts to dim 1: ",
@@ -4518,9 +4525,14 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 {JUST CALCULATE FIRST TWO LEVELS}
 set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     (vec,[(int,int)]) Perm2, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
-    let G = x.real_form, thetaMinus = x.involution - 1
-    then LF = localFD_1Dirac2_by_zero(x,lambda, Lvd, Perm2)
+    let LF = localFD_1Dirac2_by_zero(x,lambda, Lvd, Perm2)
     in local_test_GEO_hash_one_level(x, lambda, Lvd, LF, pol_hash, Uhash)
+
+set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, int a, int A) = [Param]:
+    let (sl_Lvd, sl_Perm2) = slice_Lvd_Perm2(x,lambda,a,A)
+    then LF = localFD_1Dirac2_by_zero(x, lambda, sl_Lvd, sl_Perm2)
+    in local_test_GEO_hash_one_level(x,lambda,sl_Lvd, LF, pol_hash,
+       big_unitary_hash.uhash(x.real_form))
 
 set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, KTypePol_hash pol_hash,
     Param_hash Uhash) = [Param]:
@@ -4535,7 +4547,7 @@ set local_test_GEO_one_level(KGBElt x, ratvec lambda) = [Param]:
     let G = x.real_form
     then Uhash = big_unitary_hash.uhash(x.real_form), pol_hash = make_KTypePol_hash()
     then () = unipotents_to_hash(x.real_form,Uhash)
-    in local_test_GEO_hash_one_level(x,lambda,{vd,} pol_hash, Uhash)
+    in local_test_GEO_hash_one_level(x,lambda, pol_hash, Uhash)
 
 {to be called by bottom_layer after bottom layer arguments. Hash has K-chars to height HK_known}
 set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]] LFDKH,
@@ -5331,6 +5343,18 @@ set local_test_GEO_hash_bottom_layer_interrupt(KGBElt x, ratvec lambda, LocalVer
     local_test_GEO_hash_bottom_layer_interrupt(x, lambda, Lvd, LF, pol_hash, Uhash,
     is_unitary_hash_big_SIMPLE@Param)
 
+set local_test_GEO_hash_bottom_layer_interrupt(KGBElt x, ratvec lambda, LocalVertexData Lvd,
+    (vec,[(int,int)]) Perm2, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
+    let LF = localFD_1Dirac2_by_zero(x,lambda, Lvd, Perm2)
+    in local_test_GEO_hash_bottom_layer_interrupt(x, lambda, Lvd, LF, pol_hash, Uhash,
+    is_unitary_hash_big_SIMPLE@Param)
+
+set local_test_GEO_hash_bottom_layer_interrupt(KGBElt x, ratvec lambda, int a, int A) = [Param]:
+    let (sl_Lvd, sl_Perm2) = slice_Lvd_Perm2(x,lambda,a,A)
+    then LF = localFD_1Dirac2_by_zero(x, lambda, sl_Lvd, sl_Perm2)
+    in local_test_GEO_hash_bottom_layer_interrupt(x, lambda, sl_Lvd, LF, pol_hash, big_unitary_hash.uhash(x.real_form))
+
+
 {assume local faces to dim 1 are recorded in LF, already herm and pos
 on LKTs. This version uses min_bottom_elim instead of
 unitary_to_ht. Because of incorporation of good range nonunitarity proofs in min_bottom_elim,
@@ -5440,6 +5464,18 @@ set local_test_GEO_hash_bottom_layer_step(KGBElt x, ratvec lambda, LocalVertexDa
     [[FaceVertsKHash]] LFDKH, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     local_test_GEO_hash_bottom_layer_step(x, lambda, Lvd, LFDKH, pol_hash, Uhash,
     			is_unitary_hash_big_SIMPLE@Param)
+
+set local_test_GEO_hash_bottom_layer_step(KGBElt x, ratvec lambda, LocalVertexData Lvd,
+    (vec,[(int,int)]) Perm2, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
+    let LF = localFD_1Dirac2_by_zero(x,lambda, Lvd, Perm2)
+    in local_test_GEO_hash_bottom_layer_step(x, lambda, Lvd, LF, pol_hash, Uhash,
+    			is_unitary_hash_big_SIMPLE@Param)
+
+set local_test_GEO_hash_bottom_layer_step(KGBElt x, ratvec lambda, int a, int A) = [Param]:
+    let (sl_Lvd, sl_Perm2) = slice_Lvd_Perm2(x,lambda,a,A)
+    then LF = localFD_1Dirac2_by_zero(x, lambda, sl_Lvd, sl_Perm2)
+    in local_test_GEO_hash_bottom_layer_step(x, lambda, sl_Lvd, LF, pol_hash,
+    big_unitary_hash.uhash(x.real_form))
 
 {assume local faces to dim 1 are recorded in LF, already herm and pos
 on LKTs. This version uses min_bottom_elim instead of
@@ -5709,14 +5745,18 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData Lv
 local_test_GEO_hash_bottom_layer(x, lambda, Lvd, LF, pol_hash, Uhash,
 is_unitary_hash_big_SIMPLE@Param)
 
+set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData Lvd,
+(vec,[(int,int)]) Perm2, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
+
+   let LF = localFD_1Dirac2_by_zero(x,lambda, Lvd, Perm2)
+   in local_test_GEO_hash_bottom_layer(x, lambda, Lvd, LF, pol_hash, Uhash,
+      is_unitary_hash_big_SIMPLE@Param)
+
 set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,} LocalVertexData Lvd,
     (vec,[(int,int)]) Perm2, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     let G = x.real_form, thetaMinus = x.involution - 1
-    then LF = {if by_zero_flag and height(parameter(x,lambda,0*lambda)) > 0
-    	      then} localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2)
+    then LF = localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2)
 	      {impose Dirac}
-	      {else localFD_1Dirac2(x, lambda, Lvd, Perm2)
-	      fi}
     in local_test_GEO_hash_bottom_layer(x, lambda, Lvd, LF, pol_hash, Uhash)
 
 set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData Lvd,
@@ -5740,6 +5780,11 @@ set local_test_GEO_bottom_layer(KGBElt x, ratvec lambda) = [Param]:
     then Uhash = big_unitary_hash.uhash(x.real_form), pol_hash = make_KTypePol_hash()
     then () = unipotents_to_hash(x.real_form,Uhash)
     in local_test_GEO_hash_bottom_layer(x,lambda, {vd,} pol_hash, Uhash)
+
+set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, int a, int A) = [Param]:
+    let (sl_Lvd, sl_Perm2) = slice_Lvd_Perm2(x,lambda,a,A)
+    then LF = localFD_1Dirac2_by_zero(x, lambda, sl_Lvd, sl_Perm2)
+    in local_test_GEO_hash_bottom_layer(x, lambda, sl_Lvd, LF, pol_hash, big_unitary_hash.uhash(x.real_form))
 
 set spherical_general(RealForm G, (KGBElt, ratvec->[Param]) local) = [Param]:
     let start = elapsed_ms()
