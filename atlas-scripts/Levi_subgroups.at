@@ -62,11 +62,51 @@ set is_Levi ((RootDatum,[int]) (rd,simples):args) = bool:
 )
 
 { a root datum can be formed from |Levi_info|, or simple (co)root index list }
-set Levi_datum = sub_datum@(RootDatum,(int->bool)) { defined in basic.at }
+set Levi_datum = sub_datum@LeviInfo { defined in basic.at }
 set Levi_datum ((RootDatum,[int])pair) = RootDatum:
    pair.Levi_info.Levi_datum { convert to |LeviInfo| before calling |sub_datum }
 
 set Levi_datum (WeylElt w) = RootDatum: w.Levi_info.Levi_datum
+
+{ restrict some operations from Weylgroup.at to only use Levi reflections }
+set from_no_Cminus (KGBElt x,[int] Levi_gens) = (WeylElt,KGBElt):
+(  let rd=root_datum(x)
+   then w=id_W(rd)
+in while
+      let is_complex_descent =
+	  let theta=involution(x) { capture current value of |x| }
+	  then is_complex = is_complex(theta) in
+	  (vec alpha) bool: is_complex(alpha) and is_posroot(rd,theta*alpha)
+      then s = last(Levi_gens, (int i)bool: root(rd,i).is_complex_descent)
+   in s>=0
+   do w:=w#s; x:=cross(s,x)
+   od
+; (w,x)
+)
+set from_no_Cplus (KGBElt x,[int] Levi_gens) = (WeylElt,KGBElt):
+(  let rd=root_datum(x)
+   then w=id_W(rd)
+in while
+      let is_complex_ascent =
+	  let theta=involution(x) { capture current value of |x| }
+	  then is_complex = is_complex(theta) in
+	  (vec alpha) bool: is_complex(alpha) and is_negroot(rd,theta*alpha)
+      then s = last(Levi_gens, (int i)bool: root(rd,i).is_complex_ascent)
+   in s>=0
+   do w:=w#s; x:=cross(s,x)
+   od
+; (w,x)
+)
+
+{ the same for parameters }
+set from_no_Cminus (Param p,[int] Levi_gens) = (WeylElt, Param):
+  let (w,x0)=from_no_Cminus(p.x, Levi_gens) then w1=w.inverse
+  in (w,parameter(x0,w1*p.lambda,w1*p.nu))
+
+set from_no_Cplus (Param p,[int] Levi_gens) = (WeylElt, Param):
+  let (w,x0)=from_no_Cplus(p.x, Levi_gens) then w1=w.inverse
+  in (w,parameter(x0,w1*p.lambda,w1*p.nu))
+
 
 { It turns out that Levi subsystems (whether or not standard) are conjugate in
   $W$ if and only if their |two_rho| weights are in the same $W$-orbit.

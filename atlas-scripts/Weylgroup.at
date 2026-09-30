@@ -104,9 +104,10 @@ set is_relatively_elliptic (WeylElt w) = bool:
 }
 set from_no_Cminus (KGBElt x) = (WeylElt,KGBElt):
   let rd=x.root_datum then w=id_W(rd), r=rd.semisimple_rank in
-  while let s = last(r, (int i)bool: =status(i,x) { complex descent } ) in s>=0
+  while let s = last(r, (int i)bool: status(i,x)=0 { complex descent } ) in s>=0
   do w:=w#s; x:=cross(s,x) od; (w,x)
 
+{ the same, but ascending through complex descents until no C+ roots are left }
 set from_no_Cplus (KGBElt x) = (WeylElt,KGBElt):
   let rd=x.root_datum then w=id_W(rd), r=rd.semisimple_rank in
   while let s = last(r, (int i)bool: status(i,x)=4 { complex ascent } ) in s>=0

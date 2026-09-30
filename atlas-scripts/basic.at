@@ -415,7 +415,7 @@ set bitwise_intersection ([int] ns) = int:
 set bitwise_union ([int] ns) = int:
    let a=0 in for n in ns do a OR:= n od; a
 
-
+{ lookup functions, in a fixed list, by linear search }
 set is_member   = ([int]->(int->bool)): is_member(=@(int,int))
 set isnt_member = ([int]->(int->bool)): isnt_member(=@(int,int))
 
