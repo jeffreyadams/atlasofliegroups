@@ -105,21 +105,22 @@ set ind_cand_params(Param p) = [[Param]]:
     {then () = prints("p1.nu = ",p1.nu,", pL1.nu = ",pL1.nu,", qL1.nu = ",qL1.nu)}
     then theta1 = qL1.x.involution
     then Ws = Weyl_orbit_ws(L1, qL1.nu.numer)
-    then Ws = if is_split(L1.inner_class.adjoint)
-    	      then Ws
-	      else for w in Ws
-	      	   do if theta1*matrix(w) = matrix(w)*theta1
-	      	      then [w]
-		      else []
-		      fi
-		   od.##
-	      fi
+    {the orbit itself, as columns in the same order as Ws; nu_orb[i] = Ws[i]*qL1.nu.numer}
+    then nu_orb = Weyl_orbit(L1, qL1.nu.numer), nu_den = qL1.nu.denom
+    then ids = [int]:
+    	 if is_split(L1.inner_class.adjoint)
+	 then for i:#Ws do i od
+	 else for w@i in Ws
+	      do if theta1*matrix(w) = matrix(w)*theta1 then [i] else [] fi
+	      od.##
+	 fi
     then xo = x_open(G), (y2,p2) = from_no_Cplus(q1) {real induction}
     then yinv2 = y2.inverse {goes from q1 to p2}
-    then temp_hash = make_Param_hash()
-    then () = for w in Ws
-    	      do temp_hash.match(parameter(p2.x, yinv2*(w*(q1.lambda - G.rho)) + G.rho {need change in rho_C?} ,yinv2*(w*q1.nu)))
-	      od
+    {The W-orbit can be as large as W (23040 for D6), so the filter below is one matrix
+     product per L2, and matrix(w) and a Param are made only for the w that pass it. They
+     are the Params parameter(p2.x, yinv2*(w*(q1.lambda - G.rho)) + G.rho, yinv2*(w*q1.nu)),
+     for w in Ws (need change in rho_C?).}
+    then nu2_orb = yinv2*nu_orb {columns: numerators of yinv2*(w*q1.nu), denominator nu_den}
     then theta2 = p2.x.involution
     then a_cowts = [vec]:
     	 for xi in G.fundamental_coweights
@@ -142,27 +143,46 @@ set ind_cand_params(Param p) = [[Param]]:
     then tempL_hashes = for P2 in P2s do make_Param_hash() od
     then L2s = for P2 in P2s do P2.Levi od
     then xL2s = for L2 in L2s do inverse_embed_KGB(p2.x,L2) od
+    then lam_shift = q1.lambda - G.rho, shiftG = rho_C(G,theta2)
     then () =  for L2@j in L2s
-       	       do for p2w in temp_hash.list()
-	       	  do if (P2_max_cowts[j]*p2w.nu).= {requirement for hermitian on L2}
-		     then tempL_hashes[j].match(parameter(xL2s[j], p2w.lambda - rho(G) +
-		     	  rho_C(G,theta2) + rho(L2) - rho_C(L2,theta2), p2w.nu))
-		     fi
-	  	  od
+       	       do let tauN = P2_max_cowts[j]*nu2_orb
+		  {requirement for hermitian on L2 is tau*nu = 0; tau is -theta2
+		   anti-invariant, so testing before parameter() projects nu is the same test}
+		  then shift = shiftG + rho(L2) - rho_C(L2,theta2)
+		  {Keep only nu dominant for the real roots of L2 at xL2s[j]: nu's in one orbit
+		   of the real Weyl group of L2 finalize to the same Param (tested, not proved).
+		   On real coroots the lambda part of the infinitesimal character pairs to 0, so
+		   this is dominance of the infinitesimal character on the real roots.}
+		  then isr = is_real(xL2s[j])
+		  then real_cors = columns_with((int k): isr(L2.posroots[k]), L2.poscoroots)
+		  then realN = if n_columns(real_cors) = 0 then null(0,n_columns(nu2_orb))
+		  	       else ^real_cors*nu2_orb fi
+		  in for i in ids
+		     do if tauN[i]=0 and all(for c in realN[i] do c >= 0 od)
+			then let M = yinv2*matrix(Ws[i])
+			     in tempL_hashes[j].match(parameter(xL2s[j],
+				M*lam_shift + shift, nu2_orb[i]/nu_den))
+			fi
+		     od
        	       od
+    {(hermitian and p in the induced standard) for each final q2Lw seen: different w
+     often finalize to the same q2Lw}
+    then test_hash = make_Param_hash(), test_vals = [bool]: []
+    then good(Param q2Lw) = bool:
+    	 let n = test_hash.size() then m = test_hash.match(q2Lw)
+	 in if m = n
+	    then test_vals #:= {is_hermitian(q2Lw}
+	    	 	      equivalent(q2Lw,twist(q2Lw)) and
+		       	      real_induce_standard(1*q2Lw,G)[p].!=
+	    fi; test_vals[m]
     in for tempL_hash@j in tempL_hashes
-       do for p2Lw in tempL_hash.list()
+       do let cand_hash = make_Param_hash()
+       	  then () = for p2Lw in tempL_hash.list()
        	  do let q2Lws = monomials(finalize(p2Lw))
-	     then k = first(for q2Lw in q2Lws
-		       	    do {is_hermitian(q2Lw}
-			       equivalent(q2Lw,twist(q2Lw)) and
-		       	 	  real_induce_standard(1*q2Lw,G)[p].!=
-			    od)
-	     in if k.>=
-		then [q2Lws[k]]
-		else []
-		fi
-	  od.## {this is a list of final Hermitian Param's on L2s[j] inducing to p}
+	     then k = first(for q2Lw in q2Lws do good(q2Lw) od)
+	     in if k.>= then cand_hash.match(q2Lws[k]) fi
+	  od
+	  in cand_hash.list() {distinct final Hermitian Param's on L2s[j] inducing to p}
        od
 
 {D stands for "derived." For each final Hermitian pL inducing to p found by ind_cand_params,

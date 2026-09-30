@@ -333,6 +333,16 @@ set icc_count = [int]: [0,0,0,0,0,0,0,0,0,0,0]
 set icc_time = int: 0
 set icc_steps = [int]: [0,0,0,0] {ms in: factor signatures, glue_sigs, theta_induce_K, irreducibility test}
 
+{ Weak unipotence of pL: as a whole (default), or each simple derived factor separately
+  (icc_wu_by_factor_flag). icc_wu_compare_flag computes the other one too and counts
+  icc_wu_compare[whole + 2*factorwise] (as bits); the pL where they differ go to icc_wu_differ. }
+set icc_wu_by_factor_flag = false
+set icc_wu_compare_flag = false
+set icc_wu_compare = [int]: [0,0,0,0]
+set icc_wu_differ = [Param]: []
+set wu_by_factor(Param pL) = bool:
+    all(for f in derived_factor_params0(pL) do @bool: is_weakly_unipotent_claude(f) od)
+
 { Common first part: (k,ans,pL). k >= 0 means decided: count in icc_count[k], answer ans.
   k = -1 means continue with pL (hermitian, height > 0, L proper, pL weakly unipotent). }
 set icc_prefix(Param p) = (int,int,Param):
@@ -343,7 +353,13 @@ set icc_prefix(Param p) = (int,int,Param):
        {p hermitian forces weak fairness (David): equal rank, z(l) has no split part; unequal
 	rank, pL is hermitian too, so gamma vanishes on the split part of z(l)}
        assert(@:is_weakly_fair(pL,G),"is_unitary_coh_ind_claude: hermitian p but pL not weakly fair");
-       if not is_weakly_unipotent_claude(pL) then return (5,0,pL) fi;
+       let wu = if icc_wu_by_factor_flag then wu_by_factor(pL) else is_weakly_unipotent_claude(pL) fi
+       in if icc_wu_compare_flag
+	  then let wf = if icc_wu_by_factor_flag then is_weakly_unipotent_claude(pL) else wu_by_factor(pL) fi
+	       in icc_wu_compare[if wu then 1 else 0 fi + if wf then 2 else 0 fi] +:= 1;
+		  if wu != wf then icc_wu_differ #:= pL fi
+	  fi;
+	  if not wu then return (5,0,pL) fi;
        (-1,0,pL)
 
 { Common last part, given the signatures on the simple derived factors of pL. (k,ans) as above.
