@@ -1072,10 +1072,10 @@ set local_testK_hash_know_lower(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		  {then () = prints("d = ",d,", pC = ",pC)}
 		  then ps = monomials(pC)
 		  then () = if not is_final(pC)
-			    then if all(for q in ps do @bool: is_finished(q.x, q.lambda) and
+			    then if all(for q in ps do @bool: is_finished_step(q) and
 							     (Uhash.lookup(q) >= 0) od)
 				 then newStatuses[k] := "T"
-				 elif any(for q in ps do @bool: is_finished(q.x,q.lambda) and
+				 elif any(for q in ps do @bool: is_finished_step(q) and
 					 (Uhash.lookup(q) = -1) od)
 				 then {prints("nonfinal, k = ",k, ", gr = ",gr);}
 				      newStatuses:= updateNUclassesB(newStatuses, gr, k,"F");
@@ -1123,12 +1123,12 @@ set local_testK_hash_know_lower(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		      fi{still NEWUk}
 {
 			and not is_final(pC) and all(for q in ps
-						 do @bool: is_finished(q.x,q.lambda)
+						 do @bool: is_finished_step(q)
 						    and Uhash.lookup(q).>=
 						 od)
 		     then newStatuses[k]:="T"
 		     elif any(for q in ps
-			      do @bool: is_finished(q.x,q.lambda)
+			      do @bool: is_finished_step(q)
 					    and (Uhash.lookup(q) = -1)
 			      od) or
 			  any(for q in ps
@@ -1359,7 +1359,7 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
 				fi {wiggle_flag1}
 		      then pCdef = monomials(pC)
 		      in if newStatuses[k] = "?" and not is_final(pC)
-			 then if all(for q in pCdef do @bool: is_finished(q.x, q.lambda) and
+			 then if all(for q in pCdef do @bool: is_finished_step(q) and
 							     (Uhash.lookup(q) >= 0) od)
 			      then newStatuses[k] := "T"
 			      elif any(for q in pCdef
@@ -2503,15 +2503,15 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 				    else monomials(finalize(pC))
 				    fi {is_final(pC)}
 		       in if not is_final(pC)
-			  then if all(for q in pCdef do @bool: is_finished(q.x,q.lambda) and
+			  then if all(for q in pCdef do @bool: is_finished_step(q) and
 					       (Uhash.lookup(q) >= 0) od)
 			       then newStatuses[k] := "T"
-			       elif any(for q in pCdef do @bool: is_finished(q.x,q.lambda) and
+			       elif any(for q in pCdef do @bool: is_finished_step(q) and
 						 (Uhash.lookup(q) = -1) od)
 			       then newStatuses:= updateNUclassesB(newStatuses, gr, k); "F"
 			       fi {all (for q}
 			  else {now pC is final, and pCdef consists of wiggled Params with smaller x}
-			       if any(for q in pCdef do @bool:  is_finished(q.x,q.lambda) and
+			       if any(for q in pCdef do @bool:  is_finished_step(q) and
 					       (Uhash.lookup(q) = -1) od)
 			       then newStatuses := updateNUclassesB(newStatuses, gr, k);
 					 newStatuses[k] := "F"
@@ -2628,15 +2628,15 @@ set local_test_wiggle_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 				   else monomials(finalize(pC))
 				   fi {is_final}
 		      in if not is_final(pC)
-			 then if all(for q in pCdef do @bool: is_finished(q.x,q.lambda) and
+			 then if all(for q in pCdef do @bool: is_finished_step(q) and
 					       (Uhash.lookup(q) >= 0) od)
 			      then newStatuses[k] := "T"
-			      elif any(for q in pCdef do @bool: is_finished(q.x,q.lambda) and
+			      elif any(for q in pCdef do @bool: is_finished_step(q) and
 						 (Uhash.lookup(q) = -1) od)
 			      then newStatuses:= updateNUclassesB(newStatuses, gr, k); "F"
 			      fi
 			 else {now pC is final, and pCdef consists of wiggled Params}
-			      if any(for q in pCdef do @bool: is_finished(q.x,q.lambda)
+			      if any(for q in pCdef do @bool: is_finished_step(q)
 								    and (Uhash.lookup(q) = -1) od)
 				 then newStatuses := updateNUclassesB(newStatuses, gr, k); newStatuses[k] := "F"
 				    fi
@@ -3080,7 +3080,7 @@ set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, {VertexData vd,} Loca
 					  parameter(x, lambda,
 					  face_bary(Lvd, verts))))
 			      then test = if any(for p in ps
-                                                 do is_finished(p.x, p.lambda){p.x.# < known_to} and
+                                                 do is_finished_step(p){p.x.# < known_to} and
 						      	 	Uhash.lookup(p) = -1
                                                  od)
                                           then false
@@ -3250,7 +3250,7 @@ set local_test_GEO_hash_else_dumb(KGBElt x, ratvec lambda, {VertexData vd,} Loca
 					  parameter(x, lambda,
 					  face_bary(Lvd, verts))))
 		              then test = if any(for p in ps
-					       	 do is_finished(p.x, p.lambda) and
+					       	 do is_finished_step(p) and
 						      	 Uhash.lookup(p) = -1
 						 od)
 					  then false
@@ -3543,10 +3543,10 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, LocalVertexData Lvd, [
 			      {should insert Uhash.lookup(p).>=
 			      Actually this has no effect in SO(4,4)}
 			      in if not is_final(pC)
-				 then if any(for q in ps do @bool:  is_finished(q.x,q.lambda) and
+				 then if any(for q in ps do @bool:  is_finished_step(q) and
 				      	      	      (Uhash.lookup(q) = -1) od)
 				      then []
-				      else if all(for q in ps do @bool:  is_finished(q.x,q.lambda) and
+				      else if all(for q in ps do @bool:  is_finished_step(q) and
 					   	   	   (Uhash.lookup(q) >= 0) od)
 				      	    then [LFDKH[D+1][m]]
 				      	    else if all(for q in ps do @bool: tester(q) od)
@@ -3564,7 +3564,7 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, LocalVertexData Lvd, [
 						      od))))
 							  {proper_face_deformed(pC)}
 				      	        in if any(for q in pCdef
-						      	  do @bool: ( is_finished(q.x,q.lambda) and
+						      	  do @bool: ( is_finished_step(q) and
 							    (Uhash.lookup(q) = -1))
 							  od)
 						   then []

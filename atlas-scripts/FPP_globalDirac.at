@@ -48,6 +48,49 @@ set global_step(int a, int A) = void:
 global_step_flag:= 0 <= a and a<A;
 if global_step_flag then global_a:=a; global_A:=A fi
 
+{STEPS. With global_step_flag, record the unit steps global_a..global_A-1 as done instead of
+finishing. steps_needed(x,lambda) is the set of unit steps that together contain every face of the
+FULL Lvd(x,lambda): if its vertices have heights in [hmin,hmax] on bv = sum of highest coroots,
+steps floor(hmin)..max(ceil(hmax)-1,floor(hmin)), clipped to top-1. Once those are done, (x,lambda)
+is finished outright.}
+set steps_needed(KGBElt x, ratvec lambda) = int:
+    let top = big_unitary_hash.step_top(x.real_form)
+    then (Lvd,) = LPm_table.LPm_entry(x.inner_class, x.involution, ratvec_as_vec((1+x.involution)*lambda))
+    in if top = 0 or #Lvd.list = 0
+       then 0
+       else let bv = sum(highest_coroots(x.root_datum))
+       	    then hs = for v in Lvd.list do v*bv od
+	    then lo = min(for h in hs do floor(h) od), hi = max(for h in hs do ceil(h) od) - 1
+	    then hi1 = min(max(hi,lo),top-1), lo1 = min(lo,top-1)
+	    in to_bitset([hi1+1]) - to_bitset([lo1])
+       fi
+set step_complete(KGBElt x, ratvec lambda, int pos) = bool:
+    let need = steps_needed(x,lambda) in AND(need, big_unitary_hash.steps_known(x,pos)) = need
+
+set finish_g_pos(KGBElt x, int pos) = void:
+    if global_step_flag
+    then big_unitary_hash.finish_step(x,to_bitset([pos]),global_a,global_A);
+    	 if step_complete(x,FPP_lambdas(x)[pos],pos) then big_unitary_hash.finish(x,to_bitset([pos])) fi
+    else big_unitary_hash.finish(x,to_bitset([pos]))
+    fi
+set finish_g(KGBElt x, ratvec lambda) = void:
+    if global_step_flag
+    then let pos = position(x,lambda)
+    	 in if pos.>= then finish_g_pos(x,pos) fi
+    else finish(x,lambda)
+    fi
+{all lambda at x done}
+set finishx_g(KGBElt x, int full_M) = void:
+    if global_step_flag
+    then big_unitary_hash.finishx_step(x,global_a,global_A);
+    	 let done = for lambda@pos in FPP_lambdas(x) do step_complete(x,lambda,pos) od
+	 in if all(done)
+	    then big_unitary_hash.finish(x, full_M); big_unitary_hash.finishx(x)
+	    else big_unitary_hash.finish(x, to_bitset(for d@pos in done do if d then [pos] else [] fi od.##))
+	    fi
+    else big_unitary_hash.finish(x, full_M); big_unitary_hash.finishx(x)
+    fi
+
 set ULoud() = void:
     test_interrupt_verbose:=true
 
@@ -594,9 +637,7 @@ then coh_ind_unip_few(G,Uhash)}
 				    if FPP_report_flag and every_lambda_flag
 		   		    then prints("Matching (",x,",",lambda,") with previously computed")
 				    fi;
-				    if not global_step_flag
-				    then finish(x,lambda)
-				    fi
+				    finish_g(x,lambda)
 				fi
 		     then (xcont,lambdacont) = contragredient(x,lambda)
 		     then () = if tw.< and is_finished(xcont,lambdacont)
@@ -609,9 +650,7 @@ then coh_ind_unip_few(G,Uhash)}
 		   		    then prints("Contragredient of (",x,",",lambda,") was previously computed")
 				    fi;
 				    tw:=0;
-				    if not global_step_flag
-				    then finish(x,lambda)
-				    fi
+				    finish_g(x,lambda)
 			       fi
 	      	     in if tw.< {still have work to do close 482}
 		     	then FPP_def_adjust(x);
@@ -667,9 +706,7 @@ then coh_ind_unip_few(G,Uhash)}
 			  			        DTcount - startDTcount)
 	      		   			   fi
 		 			 in if (not revert_steve_flag) and (#LF = 0 or #LF[0]=0) {close 480}
-		    			    then if not global_step_flag
-					    	 then finish(x,lambda)
-						 fi;
+		    			    then finish_g(x,lambda);
 		    	 		    	 none_count +:=1; ()
 		     			    else if every_lambda_deets_flag
 			 		    	 then face_verbose := old_face_verbose;
@@ -688,9 +725,7 @@ then coh_ind_unip_few(G,Uhash)}
 			      	       		      else local(x, lambda, Lvd, LF, pol_hash, Uhash,
 						      fancy_tester)
 				       		      fi
-			  			   in if not global_step_flag
-						      then finish(x,lambda)
-						      fi;
+			  			   in finish_g(x,lambda);
 			  			      answerCards[k] := #answer;
 			  			      if Uparamhash_flag
 			       	    		      then for p in answer do Uparamhash.match(p) od
@@ -872,10 +907,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 	       	       	  then Uhash.match(parameter(x, p.lambda, p.nu))
 	       	    	  fi
 	    	       od;
-		       if not global_step_flag
-		       then big_unitary_hash.finish(x, full_M); {mark as done all lambdas for x}
-	   	       	    big_unitary_hash.finishx(x)
-		       fi
+		       finishx_g(x,full_M)
 		   fi
 	 then xcont_cand = contragredient(x)
 	 then xcont = if xcont_cand != x and is_member_bitset(xcont_cand.number, known_x) and not skipx
@@ -901,10 +933,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 		       	    then Uhash.match(contragredient(p))
 		    	    fi
 		       	 od;
-			 if not global_step_flag
-		         then big_unitary_hash.finish(x,full_M); {mark as done all lambdas for x}
-		       	      big_unitary_hash.finishx(x)
-			 fi
+			 finishx_g(x,full_M)
 		     fi
 	  then () = if {C} skipx = false
 	       	    then FPP_def_adjust(x);
@@ -951,9 +980,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 					      	 then Uparamhash.match(contragredient(p))
 			    		    	 fi
 			 		       od;
-					       if not global_step_flag
-		    	 	               then big_unitary_hash.finish(xW,to_bitset([index]))
-					       fi;
+					       finish_g_pos(xW,index);
 					       {mark as done this lambda for xW}
 			            	       for p in Uhash.list()
 	      	       		    	       do if p.x = xW and p.lambda = lambdacont
@@ -998,9 +1025,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 	      		   			    	 fi
 			 		   in if (not revert_steve_flag) and (#LF = 0 or #LF[0] = 0)
 					      then none_count +:=1;
-					      	   if not global_step_flag
-						   then finish(x, lambda)
-						   fi; []
+					      	   finish_g(x,lambda); []
 			    		      else let answer =
 						       if revert_steve_flag
 			      	       		       then edge_offset:=2{1};
@@ -1016,9 +1041,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 				 	   		     	  test_verbose := old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
 				 	   		     fi
  			 	 		   then () = templambdatimes [index] := elapsed_ms() - startlambda
-			 	 		   in if not global_step_flag
-						      then finish(xW,lambdaW)
-						      fi;
+			 	 		   in finish_g(xW,lambdaW);
 						      if every_lambda_flag and FPP_report_flag
 				    		      then prints("  ",print_time_string(templambdatimes[index]),
 			   	    	 	      	   " = time for (x,lambda) = (", xW.number, ",",index," = ",
@@ -1072,10 +1095,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 			 report_tested_cum("for x=#"+to_string(x.number),"running totals");
 			 if hodge_status_flag then hodge_screen_report() fi
                      fi
-	   in if not global_step_flag
-	      then big_unitary_hash.finish(x, full_M); {mark as done all lambdas for x}
-	   	   big_unitary_hash.finishx(x) {mark as done all lambdas for x}
-	      fi
+	   in finishx_g(x,full_M)
 	   fi {C}
 	   in ()
 	 fi
@@ -1247,9 +1267,7 @@ then coh_ind_unip_few(G,Uhash)}
 				    if FPP_report_flag and every_lambda_flag
 		   		    then prints("Matching (",x,",",lambda,") with previously computed")
 				    fi;
-				    if not global_step_flag
-				    then finish(x,lambda)
-				    fi
+				    finish_g(x,lambda)
 				fi
 		     then (xcont,lambdacont) = contragredient(x,lambda)
 		     then () = if tw.< and is_finished(xcont,lambdacont)
@@ -1262,9 +1280,7 @@ then coh_ind_unip_few(G,Uhash)}
 		   		    then prints("Contragredient of (",x,",",lambda,") was previously computed")
 				    fi;
 				    tw:=0;
-				    if not global_step_flag
-				    then finish(x,lambda)
-				    fi
+				    finish_g(x,lambda)
 			       fi
 	      	     in if tw.< {still have work to do}
 		     	then FPP_def_adjust(x);
@@ -1293,9 +1309,7 @@ then coh_ind_unip_few(G,Uhash)}
 		      then []
 		      else local_test_GEO_hash_steve(x, lambda, Lvd, Uhash, fancy_tester)
 		      fi
-		 then () = if not global_step_flag
-			   then finish(x,lambda)
-			   fi
+		 then () = finish_g(x,lambda)
 		 then () = if #UParams = 0
 		      	   then none_count +:=1
 			   fi
@@ -1485,10 +1499,7 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 	       	       	  then Uhash.match(parameter(x, p.lambda, p.nu))
 	       	    	  fi
 	    	       od;
-	    	       if not global_step_flag
-		       then big_unitary_hash.finish(x, full_M); {mark as done all lambdas for x}
-	   	       	    big_unitary_hash.finishx(x)
-		       fi
+	    	       finishx_g(x,full_M)
 		   fi
 	 then xcont_cand = contragredient(x)
 	 then xcont = if xcont_cand != x and is_member_bitset(xcont_cand.number, known_x) and not skipx
@@ -1514,10 +1525,7 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 		       	    then Uhash.match(contragredient(p))
 		    	    fi
 		       	 od;
-		         if not global_step_flag
-			 then big_unitary_hash.finish(x,full_M); {mark as done all lambdas for x}
-		       	      big_unitary_hash.finishx(x)
-			 fi
+		         finishx_g(x,full_M)
 		     fi
 	  then () = if {C} skipx = false
 	       	    then FPP_def_adjust(x);
@@ -1561,9 +1569,7 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 					      	 then Uparamhash.match(contragredient(p))
 			    		    	 fi
 			 		       od;
-		    	 	               if not global_step_flag
-					       then big_unitary_hash.finish(xW,to_bitset([index]))
-					       fi;
+		    	 	               finish_g_pos(xW,index);
 					       {mark as done this lambda for xW}
 			            	       for p in Uhash.list()
 	      	       		    	       do if p.x = xW and p.lambda = lambdacont
@@ -1593,9 +1599,7 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 						    then []
 						    else local_test_GEO_hash_steve(x, lambda, Lvd, Uhash, fancy_tester)
 						    fi
-					       then () = if not global_step_flag
-					       	       	 then finish(x,lambda)
-							 fi
+					       then () = finish_g(x,lambda)
 					       then () = if #UParams = 0
 		      	   		       	       	 then none_count +:=1
 			   				 fi
@@ -1668,10 +1672,7 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 			 if hodge_status_flag then hodge_screen_report() fi;
 			 report_steve_graph()
                      fi
-	   in if not global_step_flag
-	      then big_unitary_hash.finish(x, full_M); {mark as done all lambdas for x}
-	      	   big_unitary_hash.finishx(x)
-	      fi {mark as done all lambdas for x}
+	   in finishx_g(x,full_M) {mark as done all lambdas for x}
 	   fi {C}
 	   in ()
 	 fi
@@ -1999,10 +2000,7 @@ fancy_tester) = void:
 				     if FPP_report_flag and every_lambda_flag
 		   		     then prints("Matching (",x,",",lambda,") with previously computed")
 				     fi;
-				     if not global_step_flag
-				     then finish(x_sc,lambda_sc);
-				     	  finish(x,lambda)
-				     fi
+				     finish_g(x_sc,lambda_sc); finish_g(x,lambda)
 				fi
 		      then (xcont,lambdacont) = contragredient(x_sc,lambda_sc)
 		      then () = if tw.< and is_finished(xcont,lambdacont)
@@ -2021,10 +2019,7 @@ fancy_tester) = void:
 		   		     then prints("Contragredient of (",x,",",lambda,") was previously computed")
 				     fi;
 				     tw:=0;
-				     if not global_step_flag
-				     then finish(x_sc,lambda_sc);
-				     	  finish(x,lambda)
-				     fi
+				     finish_g(x_sc,lambda_sc); finish_g(x,lambda)
 			         fi
 	      	     in if tw.< {still have work to do close 1836; here 1908}
 		     	then FPP_def_adjust(x_sc);
@@ -2100,18 +2095,14 @@ fancy_tester) = void:
 				       else local_test_GEO_hash2(x_sc, lambda_sc, Lvd,
 				       	    	LF, pol_hash, Uhash, fancy_tester)
 				       fi
-			 then () = if not global_step_flag
-			      	   then finish(x_sc, lambda_sc)
-				   fi
+			 then () = finish_g(x_sc,lambda_sc)
 			 then () = if disconn_flag
 			      	   then for psc in Uhash.list()[CUH:]
 				   	do for p in sc_descends(psc, G, M)
 					   do UhashG.match(p)
 					   od
 					od;
-				   if not global_step_flag
-				   then finish(x,lambda)
-				   fi
+				   finish_g(x,lambda)
 				   fi
 			 then () = answerCards[k] := #answer
 			 then () = if Uparamhash_flag
@@ -2376,10 +2367,8 @@ this for a long time, leading to wrong answers for PSU(2,2).}
 	       	       	  then Uhash.match(parameter(x, p.lambda, p.nu))
 	       	    	  fi
 	    	       od;
-	    	       if not global_step_flag
-		       then big_unitary_hash.finish(x, full_N1); {mark as done all lambdas for x}
-	   	       	    big_unitary_hash.finishx(x)
-		       fi
+	    	       big_unitary_hash.finish(x, full_N1); {mark as done all lambdas for x}
+		       big_unitary_hash.finishx(x)
 		   fi {xtwist != x}
 	 then xcont_cand = contragredient(x)
 	 then xcont = if xcont_cand != x and is_member_bitset(xcont_cand.number, known_x) and not skipx
@@ -2405,10 +2394,7 @@ this for a long time, leading to wrong answers for PSU(2,2).}
 		       	    then UhashG.match(contragredient(p))
 		    	    fi
 		       	 od;
-		         if not global_step_flag
-			 then big_unitary_hash.finish(x,full_N1); {mark as done all lambdas for x}
-		       	      big_unitary_hash.finishx(x)
-			 fi
+		         finishx_g(x,full_N1)
 		     fi
 	 then () = if {C} skipx = false
 	 then FPP_def_adjust(x_sc);
@@ -2501,18 +2487,14 @@ this for a long time, leading to wrong answers for PSU(2,2).}
 				      else local_test_GEO_hash2(x_sc, lambda_sc, Lvd,
 				      	   LF, pol_hash, Uhash, fancy_tester)
 				      fi
-			       then () = if not global_step_flag
-			       	       	 then finish(x_sc,lambda_sc)
-					 fi
+			       then () = finish_g(x_sc,lambda_sc)
 			       then () = if disconn_flag
 	   	     	       	       	 then for psc in Uhash.list()[CUH:]
 		     	       	    	      do for p in sc_descends(psc, G, M)
 			     	       	      	 do UhashG.match(p)
 			     	       	      	 od
 			  	    	      od;
-					      if not global_step_flag
-					      then finish(x,lambda)
-					      fi
+					      finish_g(x,lambda)
 		     			  fi
 			       then () = tempanswerCards[index] := #answer
  			 	 then () = templambdatimes [index] := elapsed_ms() - startlambda
@@ -2582,10 +2564,7 @@ this for a long time, leading to wrong answers for PSU(2,2).}
 			   report_tested_cum("for x=#"+to_string(x.number),"running totals");
 			   if hodge_status_flag then hodge_screen_report() fi
                      fi {every_KGB_flag}
-	   in if not global_step_flag
-	      then big_unitary_hash.finish(x, full_N1); {mark as done all lambdas for x}
-	      	   big_unitary_hash.finishx(x)
-	      fi
+	   in finishx_g(x,full_N1)
 	   fi {C}
            in ()
 {
