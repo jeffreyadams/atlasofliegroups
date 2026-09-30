@@ -374,12 +374,15 @@ set icc_finish(Param p, Param pL, [KTypePol] dersigs) = (int,int):
     then () = icc_steps[3] +:= elapsed_ms()-t
     in if irreducible
        then if pure then big_unitary_hash.umatch(p); (6,1)
-	    else big_unitary_hash.numatch(p); (7,-1)
+	    else {sig is the form on p: record the height where it first becomes indefinite}
+		 big_unitary_hash.numatch_height(p,impure_height(sig)); (7,-1)
 	    fi
        elif pure
        then {all constituents are unitary; for now record only p (David, 28 Sep 2026)}
 	    big_unitary_hash.umatch(p); (8,1)
-       else (9,0)
+       else {sig is the sum of the forms on the constituents, so each (p among them) is
+	     definite on the K-types below the first height H where sig is indefinite (David)}
+	    let H = impure_height(sig) in if H > 0 then add_to_u_to_ht(p,H-1) fi; (9,0)
        fi
 
 set is_unitary_coh_ind_claude(Param p) = int:
@@ -414,3 +417,36 @@ set is_unitary_coh_ind_claude(Param p, int time) = int:
 	  od;
 	  icc_steps[0] +:= elapsed_ms()-t;
 	  done(icc_finish(p,pL,dersigs))
+
+{ is_unitary_coh_ind_claude as the last test in status (FPP_faces_herm.at): on when
+  status_last_flag := true. Memoized on p (status passes herm_center(p)). +1 is used at every HT;
+  -1 only for HT < 0 (nonunitary does not mean nonunitary to HT). icc_status_all_ht := false
+  runs it only for HT < 0 calls. }
+set icc_status_all_ht = true
+set icc_status_hash = make_Param_hash()
+set icc_status_vals = [int]: []
+set icc_status_count = [int]: [0,0,0,0] {calls, computed, answered +1, answered -1}
+set icc_status_time = int: 0
+set icc_status_clear() = void: icc_status_hash := make_Param_hash(); icc_status_vals := []
+
+set icc_status(Param p, int HT) = int:
+    if HT >= 0 and not icc_status_all_ht then return 0 fi;
+    let M = icc_status_hash.size() then m = icc_status_hash.match(p)
+    in icc_status_count[0] +:= 1;
+       if m = M
+       then {reserve the slot first: icc calls status on the factors of pL, which re-enters here}
+	    icc_status_vals #:= 0;
+	    let t = elapsed_ms() then a = is_unitary_coh_ind_claude(p)
+	    in icc_status_time +:= elapsed_ms()-t; icc_status_count[1] +:= 1; icc_status_vals[m] := a
+       fi;
+       let a = icc_status_vals[m]
+       in if a > 0 then icc_status_count[2] +:= 1; 1
+	  elif a < 0 and HT < 0 then icc_status_count[3] +:= 1; -1
+	  else 0
+	  fi
+
+status_last_tests := [icc_status@(Param,int)]
+
+set icc_status_report() = void:
+    prints("icc in status: [calls, computed, +1, -1] ",icc_status_count," ms ",icc_status_time,
+	   " icc_count ",icc_count," icc_steps ",icc_steps)

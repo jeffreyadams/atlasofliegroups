@@ -2233,13 +2233,24 @@ set hodge_screen_reset() = void:
     {HodgeTriedCount := 0}hodge_screen_hash.clear(); HodgeCaughtCount := 0; HodgeScreenTime := 0;
     HodgeNuSkipped := 0
 
+{status_last_tests: (gated) last tests, run in order only when the cheaper tests in simple_status
+ give 0. Off unless status_last_flag. Same convention as status: 1 unitary to HT, -1 nonunitary
+ to HT, 0 don't know; p is hermitian and herm_center'ed. A list, because a global of function type
+ would be an overloaded function, not an assignable variable. weakly_unipotent_claude.at installs
+ the cohomological induction test (is_unitary_coh_ind_claude, memoized).}
+set status_last_flag = false
+set status_last_tests = [(Param,int->int)]: []
+
 {move hodge0 testing to sites where there is a predicted is_unitary time}
 set status(Param p, int HT) = int:
     if not is_hermitian(p) then return -1 fi;
     p:= herm_center(p);
     if wiggle_status_cod_one_flag then return wiggle_status_cod_one(p,HT) fi;
     if wiggle_status_all_flag then return wiggle_status_all(p,HT) fi;
-    simple_status(p,HT)
+    let st = simple_status(p,HT)
+    in if st = 0 and status_last_flag
+       then for test in status_last_tests do let a = test(p,HT) in if a != 0 then return a fi od
+       fi; st
     {let st = simple_status(p,HT)
     {the screen is a COMPUTATION, so it runs only after the cheap lookups in
      simple_status have come back "not known"}
