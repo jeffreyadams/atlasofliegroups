@@ -403,8 +403,6 @@ set concatenate(KGBElt x, ratvec lambda, [(WeylElt, (LocalVertexData, [[vec]]))]
 set blob_data(KGBElt x, ratvec lambda) = (LocalVertexData, [[vec]]):
     concatenate(x, lambda, wLFs(x,lambda))
 
-set pol_hash = make_KTypePol_hash()
-
 set blobCounter = int: 0
 
 {0 means bottom_layer, 1 means hash_one_level, 2 means hash2}

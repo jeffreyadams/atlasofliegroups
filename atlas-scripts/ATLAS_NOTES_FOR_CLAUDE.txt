@@ -1,0 +1,290 @@
+ATLAS NOTES FOR CLAUDE
+======================
+From the Claude session on David Vogan's laptop, 27 Sep 2026, for Claude sessions on
+other machines. It collects what that session learned about the atlas interpreter
+and the atlas-scripts code over several months, the part that is NOT visible from
+reading any one file. Performance-tuning results are left out; this covers how
+things work, where they break, and how to debug them.
+
+HOW TO CONTRIBUTE (every Claude session and person on these branches)
+- Add only GENERAL, VERIFIED knowledge: how atlas and the scripts behave, traps,
+  debugging recipes. Timings and flag experiments go in their own dated files,
+  with at most a one-line pointer here.
+- Tag each new entry: (date, machine or person, how verified: commit, repro,
+  what was run). Unconfirmed ideas go under "SUSPECTED" at the end, or nowhere.
+- If an entry is wrong or out of date, correct or delete it in place. Do not
+  append a second entry that contradicts it.
+- Size budget: 30 KB. If an addition would exceed it, condense first.
+- One copy only, on to_ht_branch_alt; related branches pick it up from there.
+- Commit changes to this file separately, touching nothing else, with a short
+  message, so conflicts stay easy to resolve.
+- David, or a session he asks, reviews `git log -p ATLAS_NOTES_FOR_CLAUDE.txt`
+  every week or two for duplicates, contradictions, and unverified claims.
+
+Paths below are relative to atlas-scripts/. Line numbers drift; search by name.
+Laptop specifics (binary ../atlasLTO, macOS, case-insensitive filesystem) are marked.
+
+
+1. VOCABULARY AND GROUND RULES
+------------------------------
+- "Library" means the C++ built-ins (Marc van Leeuwen's code; very reliable;
+  changing it means asking Marc). Everything in atlas-scripts/*.at is "scripts",
+  written by various people, and fair game to modify, including basic.at, hash.at,
+  K_highest_weights.at. Say "built-in" or "script", never "library", for .at code.
+- C++ source: ../sources/interpreter/atlas-types.w (value types, the real-form
+  checks, the built-in wrappers), axis.h/axis.w (evaluator).
+- `atlas-functions.help` finds functions by purpose. It is stale in places:
+  `%@LieType` no longer exists (use simple_factors(LieType)), and the char-code
+  built-in is ASCII, not ascii.
+- Do not make unrequested edits to David's working tree. Work on copies (for
+  example in a scratch dir that comes first on --path) and hand over patches.
+- Never give a function meant to be kept a generic name (f, truncate, chk) with
+  common argument types: a later definition with the same name and types REPLACES
+  it in the overload table, while callers already bound keep the old one. The
+  result is silently inconsistent.
+
+
+2. REAL FORMS: VALUE EQUALITY VERSUS OBJECT IDENTITY  (the big one)
+-------------------------------------------------------------------
+Most "Real form mismatch" errors come from this section.
+
+How RealForm objects exist
+- RealForm, InnerClass and RootDatum values are hash-consed through weak_ptr
+  tables: real_form(ic,f) returns the SAME object every time while any reference
+  lives. When the last reference dies, the object goes, taking its cached KGB and
+  its Rep_table (KL data) with it; rebuilding starts cold.
+- The synthetic `real_form(InnerClass,mat,ratvec)` (used by Levi in parabolics.at,
+  by theta_stable_quasi_data, by derived-factor code, and by every preload file's
+  `set G_temp = real_form(IC_saved, DI_saved, ...)`) falls back to the shared
+  object ONLY if its cocharacter and torus part equal the defaults. Otherwise it
+  makes a brand-new object per call, with its own KGB and Rep_table. Whether you
+  get sharing depends on the data; do not assume either way.
+- So Levi subgroups, derived simple factors of Levis, and preload real forms are
+  routinely DIFFERENT OBJECTS that are EQUAL IN VALUE to other real forms around.
+
+What the built-ins check
+- `=` on RealForm: pointer equality first, then value equality (inner class
+  address + grading + torus part). Two distinct objects can compare `=`.
+- `=` on Param/KType: compares real forms BY VALUE. Hash tables built with
+  make_Param_hash/make_KType_hash (hash.at) therefore also match by value.
+- Subscripting P[mu] (KTypePol by KType; ParamPol by Param): value equality
+  is enough.
+- ADDING (+, -, sum, +:= on KTypePol or ParamPol, adding terms): requires the
+  IDENTICAL object. Errors: "Real form mismatch when adding two K_types",
+  "... when adding two modules", "... adding terms to a K_type", etc.
+
+The consequence
+- Any memo or hash that returns a stored Param, KType, KTypePol, KHighestWeight
+  (anything carrying a KGBElt) can hand back a value on an older, value-equal
+  object. It works until the result is ADDED to something built on the caller's
+  object, which can be far from the memo.
+- The fix is always to re-attach to the caller's real form on retrieval:
+    regroup(G, P)   for KTypePol  (hermitian.at: rebuilds each term over G)
+    regroup(G, p)   for Param     (= parameter(G, p.x.number, p.lambda, p.nu))
+    regroup(G, mP)  for maybe_KTP (its done() branch ignored G until ad52bdd3)
+    K_type(KGB(G, t.x.number), t.lambda_minus_rho)          for a KType
+    ((), KGB(G, x.number), mu)                               for a KHighestWeight
+  Re-attaching is cheap: KGB(G,n) is a lookup. Measured no cost on E7_s.
+- big_unitary_hash (FPP_faces_herm.at) stores everything per real-form NUMBER
+  (add_real_form / real_form_hash, matched by value) and hands results back over
+  its CANONICAL object, real_form_hash.index(rfnum), which is whichever
+  value-equal object registered first (often a preload's G_temp). Its internal
+  regroup calls to the caller's G are mostly commented out, so CALLERS must
+  regroup. Examples: sig_entry, branch, K_type_formula, branch_std (which goes
+  through big_unitary_hash.branch when my_branch_flag is true).
+- Comparing Params from different constructions: match on
+  (x.number, lambda, nu), not `=`; `find([Param],Param)` can return -1 for a
+  value-equal Param from another inner-class construction (for example dualB).
+- Levix.at shows the constructive fix: build via KGB(real_form(ic, form_number(rf)),
+  x.number) so that equal Levis share one hash-consed object.
+
+Cases already found
+- paramRep.at Talphabetas (July 2026): closure hash returned Params over an old
+  Levi; failed on the SECOND run of the same command. Fixed with regroup.
+- E8_q, 27 Sep 2026: K_type@KHighestWeight and highest_weights@KType memos
+  (K_highest_weights.at, commit 399e5b27) matched real forms with `=`. Crash in
+  bottom_elim_factors_more -> theta_induce_signature_to_ht ->
+  hermitian_form_irreducible_to_ht_big -> glue_sigs -> sum -> +. Fixed in
+  15c77f8d by re-attaching on every hit. The error surfaced in bottom_layer
+  code but the bug was in K_highest_weights.at.
+
+
+3. seat_belt_on CHANGES WHICH CODE RUNS
+---------------------------------------
+- `seat_belt_on` (basic.at, default true) gates every script-level assert.
+  Production runs set `seat_belt_on := false`, sometimes for large speedups
+  (expensive asserts).
+- It ALSO switches on code paths: the K_type@KHighestWeight memo is active only
+  when seat_belt_on is false. A bug can therefore appear only with seat belts off.
+  The laptop session spent several E8_q runs failing to reproduce the crash above
+  because its tests left seat_belt_on true.
+- Rule: reproduce with EXACTLY the flags of the failing run, seat_belt_on first.
+  Ask for the full flag settings before trying to reproduce.
+
+
+4. DEBUGGING A RUNTIME ERROR
+---------------------------
+- After any error, `back_trace` (a [string]) holds the call chain with source
+  positions AND local variable values, including the offending Param. Print it
+  right after the failing command. It is far faster than instrumenting.
+- An error aborts the command but the session survives. You can interrogate state
+  afterwards in the same session (call the failing function directly, look at
+  hashes) and diff against a fresh session.
+- For "Real form mismatch": walk back up the call chain from the failing + to
+  the nearest memo, hash lookup or stored table that produced one operand. Then
+  toggle memo flags off one at a time (K_type_hw_memo_flag, hw_memo_flag,
+  highest_LK_memo_flag, regroup_flag, ...) and see which one makes the crash go
+  away. The bug usually lives in a file other than the one that crashed.
+- Nondeterminism across identical calls: suspect a module-level mutable hash
+  that a memoised path (maybe only on a cache miss) clears or overwrites while
+  another caller is using it (paramRep.at pHashOut, July 2026). Suspect wall-clock
+  gates too: the FPP drivers have time budgets, so identical input can take
+  different paths (#one_level 42 vs 36 on identical E6_s input). Confirm any
+  "it went away" at least twice.
+- Known library-side bug: twisted_KL_sum_at_s can return wrong coefficients
+  late in a run (E6_s "Inexact halving" in hermitian.at's
+  twisted_c_form_irreducible_contributions). Minimal repro: E6_s, run
+  FPP_unitary_hash_one_level on KGB elements 359, 373, 391 with
+  hodge_status_flag := true; then twisted_KL_sum_at_s(parameter(G,448,[3,8,1,-5,1,3]/1,[3,8,1,-6,1,3]/4))
+  gives (1,1,2,-2) instead of (1,1,-1,1). Once an ext_block.cpp tune_signs
+  assertion fired. Reported to Marc. If you see "Inexact halving", it is probably this.
+- Vogan duality: `dual@(Param,InnerClass)` in Vogan-dual.at is a FAILED earlier
+  attempt (wrong permutations; "no solution mod 2" aborts). Use dualQ.at / endo.at.
+
+
+5. INTERPRETER QUIRKS
+---------------------
+- Files named on the command line load QUIETLY: prints and ERROR MESSAGES are
+  suppressed. A run can die silently. To see output, feed commands on stdin:
+    atlas FPP_globalDirac.at < commands.in
+  or include with `<file.at` inside stdin input.
+- `< /path/with-hyphens/x.at` is a syntax error (the lexer reads `-` as minus).
+  Use --path=DIR plus `<x.at`. --path directories are searched before the current
+  directory, in order, so a stale copy in a scratch dir silently shadows the real
+  file (symptom: file "read completely" but its functions are undefined).
+- Top-level reassignment: `seat_belt_on := false` (no `set`). Several globals in
+  one command: `set A=int:0, B=int:0`. `set f = <function-valued expr>` defines an
+  overloaded FUNCTION, not a variable, so `f := ...` later fails; for a
+  switchable hook use an int/bool variable.
+- A line containing a failing expression aborts entirely, so
+  `f(x); prints("DONE")` on one line prints DONE only if f succeeded.
+- Appending an empty vec to a growable [vec] with #:= can throw "Implicit
+  conversion to matrix for an empty set of vectors". Idiom: append
+  (vec: for x in e do x od).
+- `return` is implemented as a C++ throw: about 0.1 ms each on the laptop's macOS
+  builds, which have no compact unwind info. basic.at's all/any/none/first were
+  rewritten with while loops for this reason. Heavy `return` use in hot loops
+  costs real time.
+- Built-in wrappers often skip the computation when the value is discarded. A
+  timing loop `for g in gs do f(g) od` can time NOTHING; consume the result
+  (s +:= f(g).something).
+- Overload resolution binds at definition time for callers already defined:
+  redefining a function with the same signature replaces the table entry, but it
+  is easy to end up with callers on different versions. (Redefining is_finished
+  to always return false did not get a finished pair rerun; the cause wasn't
+  investigated. Use clearG, section 6.)
+
+
+6. STATE THAT PERSISTS ACROSS A RUN
+-----------------------------------
+- big_unitary_hash (FPP_faces_herm.at): per real form number it holds uhash
+  (known unitary), nuhash (known nonunitary), phash, K-type and KTypePol hashes,
+  branches, signatures with heights, x_known / xl_known (FINISHED bits),
+  x_partial. `big_unitary_hash.clearG(G)` empties all of these for G, finished
+  bits included.
+- Finished bits: FPP_unitary_hash_* skip any (x,lambda) with is_finished(x,lambda)
+  true. A second run of the same pair in one session does nothing, and preload
+  files usually mark everything below their x as finished. To rerun: clearG(G)
+  and refill what you want known.
+- Simulating warmth at any x (David's recipe):
+    set ul = for p in big_unitary_hash.uhash(G).list() if p.x.number < X do p fi od
+    set nul = for p in big_unitary_hash.nuhash(G).list() if p.x.number < X do p fi od
+    big_unitary_hash.clearG(G)
+    big_unitary_hash.uhash(G).fill(ul); big_unitary_hash.nuhash(G).fill(nul)
+  Use the file with NONunitary results when the question involves status(q,-1) < 0.
+- Script-level memos that survive between commands: highest_LK_vals
+  (bottom_layer.at), K_type_hw_* and hw_* (K_highest_weights.at), defHashTime /
+  defHashHtTime (deformation, hermitian.at), Hodge hashes (hodge0.at), herm_center
+  barycenter memo, integrality hash, and the library's own Rep_table per real
+  form object. Each has a flag or a clear function near its definition.
+- Isolating one expensive (x,lambda) from a long sweep does not reproduce it: deep
+  in a sweep the hashes are full; alone it pays for everything (one E8_s lambda
+  went from 580 s in the sweep to 35 GB and was killed when run alone). Compare
+  only with identical prefixes.
+- Preload files are data plus `big_unitary_hash.long_match(parameter(G_temp,...),j)`
+  lines over a synthetic G_temp (see section 2: G_temp may become the canonical
+  object for that real form). Spin(p,q), p,q <= 6: load spinUnipReps.at instead
+  of FPP_globalDirac.at. E7_s: coh_ind_E7_newPlusE6.at; params_to_openE7(_small).at.
+  E8: edges_F_E.at (1.2 GB; makes some E8_q runs 4x faster) plus the E8*CohInd*.at
+  files.
+
+
+7. FPP DRIVER MAP (where the flags act)
+---------------------------------------
+- FPP_unitary_hash_bottom_layer (FPP_globalDirac.at) loops over (x,lambda). Per
+  pair: is_finished skip; test_no_unitary; localFD_1Dirac2_by_zero builds local
+  faces (often most of the time); then one of local_test_GEO_hash_steve /
+  _bottom_layer / _one_level / _hash2, chosen by revert_steve_flag,
+  local_test_bl_flag (hard_test_bl or easy_test_bl), one_level_revert_flag.
+- easy_test_bl/hard_test_bl also SET more_shift (via more_shift(n) ->
+  more_shift_level) per x: most_more(G) = (ssrank-3)^2 between start_more_KGB_frac
+  and end_more_KGB_frac of KGB, else 0. Calling more_shift(20) at top level is
+  overridden by them unless the gates are disabled (for example
+  easy_test_flag := false).
+- more_shift_level > 0 enables bottom_elim_factors_more (bottom_layer.at) through
+  one_param_test_all_bottom and local_testK_hash_bottom_layer_more
+  (FPP_localDirac.at). That path reaches max_Qps / max_goodness, the
+  theta_induce_signature_to_ht "wk_good" branch (glue_sigs), and
+  bottom_elim_factors on derived simple factors of Levis, where most of the
+  synthetic real forms live.
+- To force bottom_layer plus more_shift at every x (the Utah repro):
+    seat_belt_on := false
+    bl_rank_min := 1; bl_KGB_frac_flag := false
+    start_more_KGB_frac := 0; end_more_KGB_frac := 1
+- Report counters (FPP_report_flag, every_lambda_flag, every_lambda_deets_flag)
+  print per-pair and cumulative time breakdowns: localFD_1Dirac2*, is_unitary,
+  char calcs, min_bottom/bottom_elim_factors(_more), #bottom_layer/#one_level/...
+
+
+8. REPRODUCTION AND MEASUREMENT HYGIENE
+---------------------------------------
+- Get from whoever saw the failure: exact commit, binary, every flag set (seat
+  belt first), preload files, the input list, and the back_trace output.
+- Concurrency depends on the machine. (27 Sep 2026, Utah box, Claude; replicate
+  runs in bl_gate_work/NOTES.txt on that machine.)
+  - On the 14-core laptop, run benchmarks strictly serially: two concurrent atlas
+    runs seemed to inflate each other, perhaps 10% (not carefully measured).
+  - On a large shared machine, concurrent runs are fine if the arms being compared
+    run SIDE BY SIDE, at the same time and under the same load. Example: the Utah
+    box, 4 x Xeon 8260L = 96 cores / 192 threads, ~6 TB, other users present.
+    - Compare ratios within a simultaneous pair, not absolute times across batches.
+    - Stay within David's caps there: 1/5 of the cores, 1/3 of free memory.
+    - Measured on that box with 10-19 concurrent atlas jobs:
+        replicate of a 100-x E8_s run in the same batch: 4672 s vs 4708 s (0.8%)
+        the same arm in two batches under different load: 277 vs 248 min (~11%)
+        one expensive x in three runs: 2058-2666 s (single-x times are noisy)
+  - Either way: include a no-op control arm; do not report effects smaller than the
+    gap between control replicates.
+- Check `ps` for David's own long jobs and never kill them. On Linux, never use
+  `pkill -f`/`pgrep -f` with a pattern that also occurs in your own command line:
+  it kills the calling shell. Identify atlas jobs by process name and stdin file
+  instead (readlink /proc/PID/fd/0). (27 Sep 2026, Utah box, Claude; happened
+  three times.)
+- To test old script commits with the current binary:
+  `git worktree add --detach <dir> <commit>`. Before about April 2026, scripts call
+  `ascii`, which the binary now calls `ASCII`: load a shim with
+  set ascii(int n) = ASCII(n) and set ascii(string s) = ASCII(s).
+- Case: git records hodge0.at (lowercase); the laptop's disk shows Hodge0.at
+  because macOS is case-insensitive. Keep includes lowercase. On Linux, fine as is.
+- Long runs (laptop harness): background tasks get killed after about 27 min; use
+  nohup ... & disown. Watch RSS continuously; E8 runs reach 6-35 GB.
+
+
+9. ONE-PARAGRAPH SUMMARY
+------------------------
+If an atlas run fails in code you are studying, the cause is often elsewhere:
+a memo or hash in another file that returned an object on a value-equal but
+different real form (section 2), a code path that exists only under
+seat_belt_on := false (section 3), or persistent hash state from earlier in the
+run (section 6). Get back_trace, walk up to the nearest memo, toggle memo flags,
+and re-attach retrieved objects to the caller's real form.

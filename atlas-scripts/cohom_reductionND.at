@@ -396,9 +396,12 @@ set glue_K_types(RealForm G, [KType] muis, KType mu0) = KType:
 
 {??? this fails with gamma = projection on center of infinitesimal character for G ???  }
 {take signatures on each derived simple factor of G and glue them into a signature on G}
-{the K-type mu0 on G  meant to differ from everything in the image by a sum of roots}
+{the K-type mu0 on G  meant to differ from everything in the image by
+a sum of roots}
+{ONLY WORKS FOR G CONNECTED!}
 set glue_sigs([KTypePol] sigs, KType mu0) = KTypePol:
     let G = mu0.real_form
+    then () = assert(@:components_rank(G).=)
     then x0 = KGB(G,0), dermu0s = derived_factor_K_types0(mu0)
     then dfwis = derived_factor_weight_inclusions(G), derx0s = derived_factor_KGBs0(x0)
     then shift = highest_weight(mu0,x0).mu - (sum(G.rank, for dermu0@j in dermu0s

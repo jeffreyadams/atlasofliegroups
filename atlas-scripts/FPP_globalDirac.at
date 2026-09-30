@@ -38,6 +38,59 @@ set kill_for_big_uTime() = void:
     then prints("I can't live...if living is without U")
     fi
 
+{Whether just to examine infinitesimal characters in the band gamma*bv \in [a,A]}
+
+set global_step_flag=false
+set global_a = int:0
+set global_A = int:31
+
+set global_step(int a, int A) = void:
+global_step_flag:= 0 <= a and a<A;
+if global_step_flag then global_a:=a; global_A:=A fi
+
+{STEPS. With global_step_flag, record the unit steps global_a..global_A-1 as done instead of
+finishing. steps_needed(x,lambda) is the set of unit steps that together contain every face of the
+FULL Lvd(x,lambda): if its vertices have heights in [hmin,hmax] on bv = sum of highest coroots,
+steps floor(hmin)..max(ceil(hmax)-1,floor(hmin)), clipped to top-1. Once those are done, (x,lambda)
+is finished outright.}
+set steps_needed(KGBElt x, ratvec lambda) = int:
+    let top = big_unitary_hash.step_top(x.real_form)
+    then (Lvd,) = LPm_table.LPm_entry(x.inner_class, x.involution, ratvec_as_vec((1+x.involution)*lambda))
+    in if top = 0 or #Lvd.list = 0
+       then 0
+       else let bv = sum(highest_coroots(x.root_datum))
+       	    then hs = for v in Lvd.list do v*bv od
+	    then lo = min(for h in hs do floor(h) od), hi = max(for h in hs do ceil(h) od) - 1
+	    then hi1 = min(max(hi,lo),top-1), lo1 = min(lo,top-1)
+	    in to_bitset([hi1+1]) - to_bitset([lo1])
+       fi
+set step_complete(KGBElt x, ratvec lambda, int pos) = bool:
+    let need = steps_needed(x,lambda) in AND(need, big_unitary_hash.steps_known(x,pos)) = need
+
+set finish_g_pos(KGBElt x, int pos) = void:
+    if global_step_flag
+    then big_unitary_hash.finish_step(x,to_bitset([pos]),global_a,global_A);
+    	 if step_complete(x,FPP_lambdas(x)[pos],pos) then big_unitary_hash.finish(x,to_bitset([pos])) fi
+    else big_unitary_hash.finish(x,to_bitset([pos]))
+    fi
+set finish_g(KGBElt x, ratvec lambda) = void:
+    if global_step_flag
+    then let pos = position(x,lambda)
+    	 in if pos.>= then finish_g_pos(x,pos) fi
+    else finish(x,lambda)
+    fi
+{all lambda at x done}
+set finishx_g(KGBElt x, int full_M) = void:
+    if global_step_flag
+    then big_unitary_hash.finishx_step(x,global_a,global_A);
+    	 let done = for lambda@pos in FPP_lambdas(x) do step_complete(x,lambda,pos) od
+	 in if all(done)
+	    then big_unitary_hash.finish(x, full_M); big_unitary_hash.finishx(x)
+	    else big_unitary_hash.finish(x, to_bitset(for d@pos in done do if d then [pos] else [] fi od.##))
+	    fi
+    else big_unitary_hash.finish(x, full_M); big_unitary_hash.finishx(x)
+    fi
+
 set ULoud() = void:
     test_interrupt_verbose:=true
 
@@ -196,7 +249,7 @@ set bl_more_min_rank = 8
 {returning "true" means bottom layer ought to be used}
 {start messing again 11/5/25. This version  sets more_shift to be zero
 unless x.number >= (KGB_size)*start_more_KGB_frac, and L(x,lambda) is not maximal.}
-set hard_test_bl(KGBElt x, ratvec lambda) = bool:
+set hard_test_bl_old(KGBElt x, ratvec lambda) = bool:
     let G = x.real_form
     then rk = G.semisimple_rank
     in if rk < bl_rank_min then return false fi;
@@ -224,6 +277,7 @@ set hard_test_bl(KGBElt x, ratvec lambda) = bool:
        test_bl_time +:= elapsed_ms() - start;
        true
 
+
 set easy_test_bl(KGBElt x) = bool:
     let G = x.real_form
     then N = KGB_size(G), n = x.number, r = semisimple_rank(G)
@@ -240,6 +294,41 @@ set easy_test_bl(KGBElt x) = bool:
        else more_shift(0);
        	    true
        fi
+
+set more_calc_flag = true {if false, then use 16 for more_shift in E8_q}
+set more_int= int:2 {needs to be at least 1: how far into next_heights}
+set hard_test_bl_old_flag = false
+set gate8_split_len_ol = 10
+    {E8_s: one_level below this length(x) (len 8: bl 1.50x; len 10: 0.30x)}
+set gate8_len_ol = 12
+    {E8_q: one_level below this length(x)}
+set gate8_len_more = 20
+    {E8_q: more_shift only from this length(x)}
+set gate8_more = 16
+    {E8_q: amount of more_shift (most_more(G) = 25 was worse)}
+set gate8_drop = 3
+    {E8_q: bottom_layer iff L.semisimple_rank <= rank(G) - gate8_drop}
+
+set hard_test_bl(KGBElt x, ratvec lambda) = bool:
+    if hard_test_bl_old_flag then return hard_test_bl_old(x,lambda) fi;
+    let G = x.real_form then rk = G.semisimple_rank
+    in if rk < 8 then return easy_test_bl(x) fi;
+       if G.split_rank = rk
+       then more_shift(0); return length(x) >= gate8_split_len_ol
+       fi; {from now on E8_q}
+       if length(x) < gate8_len_ol then more_shift(0); return false fi;
+       let (Q,) = theta_stable_quasi_data(parameter(x,lambda,0*lambda))
+       in if Q.Levi.semisimple_rank <= rk - gate8_drop
+          then more_shift(if length(x) < gate8_len_more
+	       		  then 0
+			  elif more_calc_flag
+			  then let p0 = parameter(x,lambda,0*lambda)
+			       in next_heights(p0, more_int)[more_int-1] -
+			       	  height(p0)
+			  else gate8_more
+			  fi); true
+          else more_shift(0); false
+          fi
 
 {whether to adjust edge_offset}
 set test_edge_flag = true
@@ -548,7 +637,7 @@ then coh_ind_unip_few(G,Uhash)}
 				    if FPP_report_flag and every_lambda_flag
 		   		    then prints("Matching (",x,",",lambda,") with previously computed")
 				    fi;
-				    finish(x,lambda)
+				    finish_g(x,lambda)
 				fi
 		     then (xcont,lambdacont) = contragredient(x,lambda)
 		     then () = if tw.< and is_finished(xcont,lambdacont)
@@ -561,7 +650,7 @@ then coh_ind_unip_few(G,Uhash)}
 		   		    then prints("Contragredient of (",x,",",lambda,") was previously computed")
 				    fi;
 				    tw:=0;
-				    finish(x,lambda)
+				    finish_g(x,lambda)
 			       fi
 	      	     in if tw.< {still have work to do close 482}
 		     	then FPP_def_adjust(x);
@@ -582,7 +671,11 @@ then coh_ind_unip_few(G,Uhash)}
 		 		then p0 = parameter(x,lambda,zeroNu)
 		 	{then () = prints("time before LPmss[",k,"] = ",
 			      print_time_string(elapsed_ms() - start))}
-		 	      	then (Lvd, Perm2) = LPmss[k]
+				then (Lvd, Perm2) =
+				     if global_step_flag
+				     then slice_Lvd_Perm2(LPmss[k],G,global_a,global_A)
+				     else LPmss[k]
+				     fi
 		 		then () = if every_lambda_flag and FPP_report_flag
       	      	   	      	     	  then prints("     start #", k,
 					       " = (",x,",",lambda,"), Uhash.size() = ",
@@ -613,7 +706,7 @@ then coh_ind_unip_few(G,Uhash)}
 			  			        DTcount - startDTcount)
 	      		   			   fi
 		 			 in if (not revert_steve_flag) and (#LF = 0 or #LF[0]=0) {close 480}
-		    			    then finish(x,lambda);
+		    			    then finish_g(x,lambda);
 		    	 		    	 none_count +:=1; ()
 		     			    else if every_lambda_deets_flag
 			 		    	 then face_verbose := old_face_verbose;
@@ -632,7 +725,7 @@ then coh_ind_unip_few(G,Uhash)}
 			      	       		      else local(x, lambda, Lvd, LF, pol_hash, Uhash,
 						      fancy_tester)
 				       		      fi
-			  			   in finish(x,lambda);
+			  			   in finish_g(x,lambda);
 			  			      answerCards[k] := #answer;
 			  			      if Uparamhash_flag
 			       	    		      then for p in answer do Uparamhash.match(p) od
@@ -814,8 +907,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 	       	       	  then Uhash.match(parameter(x, p.lambda, p.nu))
 	       	    	  fi
 	    	       od;
-	    	       big_unitary_hash.finish(x, full_M); {mark as done all lambdas for x}
-	   	       big_unitary_hash.finishx(x)
+		       finishx_g(x,full_M)
 		   fi
 	 then xcont_cand = contragredient(x)
 	 then xcont = if xcont_cand != x and is_member_bitset(xcont_cand.number, known_x) and not skipx
@@ -841,8 +933,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 		       	    then Uhash.match(contragredient(p))
 		    	    fi
 		       	 od;
-		         big_unitary_hash.finish(x,full_M); {mark as done all lambdas for x}
-		       	 big_unitary_hash.finishx(x)
+			 finishx_g(x,full_M)
 		     fi
 	  then () = if {C} skipx = false
 	       	    then FPP_def_adjust(x);
@@ -889,7 +980,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 					      	 then Uparamhash.match(contragredient(p))
 			    		    	 fi
 			 		       od;
-		    	 	               big_unitary_hash.finish(xW,to_bitset([index]));
+					       finish_g_pos(xW,index);
 					       {mark as done this lambda for xW}
 			            	       for p in Uhash.list()
 	      	       		    	       do if p.x = xW and p.lambda = lambdacont
@@ -900,6 +991,9 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 		      		      	       then (Lvd, Perm2) = if FPP_def_flag
 					       	    	  	   then deform_trim(LPm_table.LPm_entry(
 						G,xW.involution,lamthlam),xW,lambdaW)
+								   elif global_step_flag
+								   then slice_Lvd_Perm2(LPm_table.LPm_entry(
+						G,xW.involution,lamthlam),G,global_a,global_A)
 								   else LPm_table.LPm_entry(
 						G,xW.involution,lamthlam)
 								   fi
@@ -931,7 +1025,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 	      		   			    	 fi
 			 		   in if (not revert_steve_flag) and (#LF = 0 or #LF[0] = 0)
 					      then none_count +:=1;
-					      	   finish(x, lambda); []
+					      	   finish_g(x,lambda); []
 			    		      else let answer =
 						       if revert_steve_flag
 			      	       		       then edge_offset:=2{1};
@@ -947,7 +1041,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 				 	   		     	  test_verbose := old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
 				 	   		     fi
  			 	 		   then () = templambdatimes [index] := elapsed_ms() - startlambda
-			 	 		   in finish(xW,lambdaW);
+			 	 		   in finish_g(xW,lambdaW);
 						      if every_lambda_flag and FPP_report_flag
 				    		      then prints("  ",print_time_string(templambdatimes[index]),
 			   	    	 	      	   " = time for (x,lambda) = (", xW.number, ",",index," = ",
@@ -1001,8 +1095,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 			 report_tested_cum("for x=#"+to_string(x.number),"running totals");
 			 if hodge_status_flag then hodge_screen_report() fi
                      fi
-	   then () = big_unitary_hash.finish(x, full_M) {mark as done all lambdas for x}
-	   in big_unitary_hash.finishx(x) {mark as done all lambdas for x}
+	   in finishx_g(x,full_M)
 	   fi {C}
 	   in ()
 	 fi
@@ -1174,7 +1267,7 @@ then coh_ind_unip_few(G,Uhash)}
 				    if FPP_report_flag and every_lambda_flag
 		   		    then prints("Matching (",x,",",lambda,") with previously computed")
 				    fi;
-				    finish(x,lambda)
+				    finish_g(x,lambda)
 				fi
 		     then (xcont,lambdacont) = contragredient(x,lambda)
 		     then () = if tw.< and is_finished(xcont,lambdacont)
@@ -1187,7 +1280,7 @@ then coh_ind_unip_few(G,Uhash)}
 		   		    then prints("Contragredient of (",x,",",lambda,") was previously computed")
 				    fi;
 				    tw:=0;
-				    finish(x,lambda)
+				    finish_g(x,lambda)
 			       fi
 	      	     in if tw.< {still have work to do}
 		     	then FPP_def_adjust(x);
@@ -1198,7 +1291,11 @@ then coh_ind_unip_few(G,Uhash)}
 				   startminxl = good_hash.size(), startmorexl = more_good_hash.size()
 		 then p0 = parameter(x,lambda,zeroNu)
 		 {then () = prints("time before LPmss[",k,"] = ",print_time_string(elapsed_ms() - start))}
-		 then (Lvd, Perm2) = LPmss[k]
+		 then (Lvd, Perm2) =
+		      if global_step_flag
+		      then slice_Lvd_Perm2(LPmss[k],G,global_a,global_A)
+		      else LPmss[k]
+		      fi
 		 then () = if every_lambda_flag and FPP_report_flag
       	      	   	      then prints("     start #", k, " = (",x,",",lambda,"), Uhash.size() = ",
 			      Uhash.size(), ", runtime = ", print_time_string(elapsed_ms() - start),
@@ -1212,7 +1309,7 @@ then coh_ind_unip_few(G,Uhash)}
 		      then []
 		      else local_test_GEO_hash_steve(x, lambda, Lvd, Uhash, fancy_tester)
 		      fi
-		 then () = finish(x,lambda)
+		 then () = finish_g(x,lambda)
 		 then () = if #UParams = 0
 		      	   then none_count +:=1
 			   fi
@@ -1402,8 +1499,7 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 	       	       	  then Uhash.match(parameter(x, p.lambda, p.nu))
 	       	    	  fi
 	    	       od;
-	    	       big_unitary_hash.finish(x, full_M); {mark as done all lambdas for x}
-	   	       big_unitary_hash.finishx(x)
+	    	       finishx_g(x,full_M)
 		   fi
 	 then xcont_cand = contragredient(x)
 	 then xcont = if xcont_cand != x and is_member_bitset(xcont_cand.number, known_x) and not skipx
@@ -1429,8 +1525,7 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 		       	    then Uhash.match(contragredient(p))
 		    	    fi
 		       	 od;
-		         big_unitary_hash.finish(x,full_M); {mark as done all lambdas for x}
-		       	 big_unitary_hash.finishx(x)
+		         finishx_g(x,full_M)
 		     fi
 	  then () = if {C} skipx = false
 	       	    then FPP_def_adjust(x);
@@ -1474,7 +1569,7 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 					      	 then Uparamhash.match(contragredient(p))
 			    		    	 fi
 			 		       od;
-		    	 	               big_unitary_hash.finish(xW,to_bitset([index]));
+		    	 	               finish_g_pos(xW,index);
 					       {mark as done this lambda for xW}
 			            	       for p in Uhash.list()
 	      	       		    	       do if p.x = xW and p.lambda = lambdacont
@@ -1485,6 +1580,10 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 		      		      	       then (Lvd, Perm2) = if FPP_def_flag
 					       	    	  	   then deform_trim(LPm_table.LPm_entry(G,
 								   	xW.involution,lamthlam),x,lambda)
+								   elif global_step_flag
+		      						   then slice_Lvd_Perm2(LPm_table.LPm_entry(G,
+								   	xW.involution,lamthlam), G,
+									global_a,global_A)
 								   else LPm_table.LPm_entry(G, xW.involution,lamthlam)
 								   fi
 		      		      	       then  startlambda = elapsed_ms(), startUhash = Uhash.size(),
@@ -1500,7 +1599,7 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 						    then []
 						    else local_test_GEO_hash_steve(x, lambda, Lvd, Uhash, fancy_tester)
 						    fi
-					       then () = finish(x,lambda)
+					       then () = finish_g(x,lambda)
 					       then () = if #UParams = 0
 		      	   		       	       	 then none_count +:=1
 			   				 fi
@@ -1573,8 +1672,7 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 			 if hodge_status_flag then hodge_screen_report() fi;
 			 report_steve_graph()
                      fi
-	   then () = big_unitary_hash.finish(x, full_M) {mark as done all lambdas for x}
-	   in big_unitary_hash.finishx(x) {mark as done all lambdas for x}
+	   in finishx_g(x,full_M) {mark as done all lambdas for x}
 	   fi {C}
 	   in ()
 	 fi
@@ -1782,23 +1880,10 @@ fancy_tester) = void:
     then xlambdas_sc = if disconn_flag
     	      	       then for (x,lambda) in xlambdas
 		       	    do let (xt,lambdat) = (inverse_embed_KGB2(x, Gsc, M), M*lambda)
-			       {then () = if is_finished(x,lambda)
-			       	       	 then finish(xt,lambdat)
-					 fi}
 			       in (xt,lambdat)
 			    od
 		       else xlambdas
 	      	       fi
-    {then () = if disconn_flag
-    	      then for (x,lambda) in list_all_finished(G)
-	      	   do let (xt,lambdat) = (inverse_embed_KGB2(x, Gsc, M), M*lambda)
-	      	      in for p in big_unitary_hash.uhash(G).list()
-		      	 if p.x = x and p.lambda = lambda
-			 do big_unitary_hash.match(parameter(xt,lambdat,M*p.nu))
-			 fi od;
-			 finish(xt,lambda)
-	      	   od
-	       fi} {expensive and not needed??}
     then Uhash = if disconn_flag {this will hold the unitary reps on Gsc}
     	      	 then big_unitary_hash.uhash(Gsc) {make_Param_hash()}
 		 {this is for unitary reps of Gsc that factor to G}
@@ -1915,8 +2000,7 @@ fancy_tester) = void:
 				     if FPP_report_flag and every_lambda_flag
 		   		     then prints("Matching (",x,",",lambda,") with previously computed")
 				     fi;
-				     finish(x_sc,lambda_sc);
-				     finish(x,lambda)
+				     finish_g(x_sc,lambda_sc); finish_g(x,lambda)
 				fi
 		      then (xcont,lambdacont) = contragredient(x_sc,lambda_sc)
 		      then () = if tw.< and is_finished(xcont,lambdacont)
@@ -1935,8 +2019,7 @@ fancy_tester) = void:
 		   		     then prints("Contragredient of (",x,",",lambda,") was previously computed")
 				     fi;
 				     tw:=0;
-				     finish(x_sc,lambda_sc);
-				     finish(x,lambda)
+				     finish_g(x_sc,lambda_sc); finish_g(x,lambda)
 			         fi
 	      	     in if tw.< {still have work to do close 1836; here 1908}
 		     	then FPP_def_adjust(x_sc);
@@ -1957,7 +2040,11 @@ fancy_tester) = void:
 				   startCTime = charTime, startCTHTime = charTimeToHt,
 				   startmorebad = more_bad_hash.size()
 				   {startUparamhash = Uparamhash.size(),} 
-		 		 then (Lvd, Perm2) = LPmss[k] {already lives on Gsc}
+		 		 then (Lvd, Perm2) =
+				      if global_step_flag
+		      		      then slice_Lvd_Perm2(LPmss[k],Gsc,global_a,global_A)
+		      		      else LPmss[k]
+		      		      fi {already lives on Gsc}
 		 		 then () = if every_lambda_flag and FPP_report_flag
       	      	   	      then prints("     start #", k, " = (",x,",",lambda,"), Uhash.size() = ",
 			      UhashG.size(), ", runtime = ", print_time_string(elapsed_ms() - start),
@@ -1984,7 +2071,7 @@ fancy_tester) = void:
 			   	       " to find [",#LF[0],",",#LF[1],"] verts and edges; Dirac eliminated ",
 				       DTcount - startDTcount)
 	      		   	   fi
-		 in if (not revert_steve_flag) and (#LF = 0 or #LF[0] = 0)
+		 in if (not revert_steve_flag) and (not global_step_flag) and (#LF = 0 or #LF[0] = 0)
 		    then let () = finish(x_sc, lambda_sc)
 		    	 then ()= none_count +:= 1
 			 in if disconn_flag
@@ -2008,14 +2095,14 @@ fancy_tester) = void:
 				       else local_test_GEO_hash2(x_sc, lambda_sc, Lvd,
 				       	    	LF, pol_hash, Uhash, fancy_tester)
 				       fi
-			 then () = finish(x_sc, lambda_sc)
+			 then () = finish_g(x_sc,lambda_sc)
 			 then () = if disconn_flag
 			      	   then for psc in Uhash.list()[CUH:]
 				   	do for p in sc_descends(psc, G, M)
 					   do UhashG.match(p)
 					   od
 					od;
-				   finish(x,lambda)
+				   finish_g(x,lambda)
 				   fi
 			 then () = answerCards[k] := #answer
 			 then () = if Uparamhash_flag
@@ -2281,7 +2368,7 @@ this for a long time, leading to wrong answers for PSU(2,2).}
 	       	    	  fi
 	    	       od;
 	    	       big_unitary_hash.finish(x, full_N1); {mark as done all lambdas for x}
-	   	       big_unitary_hash.finishx(x)
+		       big_unitary_hash.finishx(x)
 		   fi {xtwist != x}
 	 then xcont_cand = contragredient(x)
 	 then xcont = if xcont_cand != x and is_member_bitset(xcont_cand.number, known_x) and not skipx
@@ -2307,8 +2394,7 @@ this for a long time, leading to wrong answers for PSU(2,2).}
 		       	    then UhashG.match(contragredient(p))
 		    	    fi
 		       	 od;
-		         big_unitary_hash.finish(x,full_N1); {mark as done all lambdas for x}
-		       	 big_unitary_hash.finishx(x)
+		         finishx_g(x,full_N1)
 		     fi
 	 then () = if {C} skipx = false
 	 then FPP_def_adjust(x_sc);
@@ -2333,7 +2419,11 @@ this for a long time, leading to wrong answers for PSU(2,2).}
 	      	   do let lambda_sc = lambdas_sc[index]
 		      then lamthlam = ((1+x_sc.involution)*lambda_sc).numer
 		      then (Lvd, Perm2) = if FPP_def_flag
-		      	   	  	   then deform_trim(LPm_table.LPm_entry(Gsc,x_sc.involution,lamthlam),x_sc,lambda_sc)
+		      	   	  	   then deform_trim(LPm_table.LPm_entry(Gsc,x_sc.involution,
+					   	lamthlam),x_sc,lambda_sc)
+					   elif  global_step_flag
+		      			   then slice_Lvd_Perm2(LPm_table.LPm_entry(G,
+						x_sc.involution,lamthlam), G, global_a,global_A)
 		      	   	  	   else LPm_table.LPm_entry(Gsc,x_sc.involution,lamthlam)
 					   fi
 		      {error before 4.28.26 was that Perm2 was never lifted to its (different!)
@@ -2375,7 +2465,7 @@ this for a long time, leading to wrong answers for PSU(2,2).}
 				" to find [",#LF[0],",",#LF[1],"] verts and edges; Dirac eliminated ",
 				DTcount - startDTcount)
 	      		   	fi
-		       in if not revert_steve_flag and (#LF = 0 or #LF[0] = 0)
+		       in if not revert_steve_flag and (not global_step_flag) and (#LF = 0 or #LF[0] = 0)
 			  then none_count+:=1;
 			       finish(x,lambda); []
 			  else let answer = [Param]:
@@ -2397,14 +2487,14 @@ this for a long time, leading to wrong answers for PSU(2,2).}
 				      else local_test_GEO_hash2(x_sc, lambda_sc, Lvd,
 				      	   LF, pol_hash, Uhash, fancy_tester)
 				      fi
-			       then () = finish(x_sc,lambda_sc)
+			       then () = finish_g(x_sc,lambda_sc)
 			       then () = if disconn_flag
 	   	     	       	       	 then for psc in Uhash.list()[CUH:]
 		     	       	    	      do for p in sc_descends(psc, G, M)
 			     	       	      	 do UhashG.match(p)
 			     	       	      	 od
 			  	    	      od;
-					      finish(x,lambda)
+					      finish_g(x,lambda)
 		     			  fi
 			       then () = tempanswerCards[index] := #answer
  			 	 then () = templambdatimes [index] := elapsed_ms() - startlambda
@@ -2474,8 +2564,7 @@ this for a long time, leading to wrong answers for PSU(2,2).}
 			   report_tested_cum("for x=#"+to_string(x.number),"running totals");
 			   if hodge_status_flag then hodge_screen_report() fi
                      fi {every_KGB_flag}
-	   then () = big_unitary_hash.finish(x, full_N1) {mark as done all lambdas for x}
-	   in big_unitary_hash.finishx(x)
+	   in finishx_g(x,full_N1)
 	   fi {C}
            in ()
 {
@@ -2941,7 +3030,7 @@ set theta_induced(RealForm G) = void:
 {simple derived factors of all theta-stable Levis of G}
 set SDLF(RealForm G) = [RealForm]:
     let answers = for j: G.semisimple_rank do make_RealForm_hash() od
-    then () = for L in Ls(G) {these are PROPER Levis of theta-stable parabolics}
+    then () = for L in Ls(G)[1:] {these are PROPER Levis of theta-stable parabolics}
     	      do for Lj in derived_simple_factorsRF(L) {~ to put the small L first}
 	      	 do answers[rank(Lj)].match(Lj)
 	    	 od
@@ -2991,7 +3080,7 @@ set QRs(RealForm G) = [KGPElt]:
        do parabolic_by_wt(wt,xo)
        od
 
-{simple derived factors of all real Levis of G}
+{All Levis of real parabolics of G}
 set LRs(RealForm G) = [RealForm]:
     let Q_Rs = QRs(G)
     in if #Q_Rs = 1 then []
@@ -3003,7 +3092,7 @@ set LRs(RealForm G) = [RealForm]:
 {simple derived factors of all real Levis of G}
 set SDLRF(RealForm G) = [RealForm]:
     let answer = make_RealForm_hash()
-    then () = for LR in LRs(G) {these are PROPER Levis of real parabolics}
+    then () = for LR in LRs(G)[1:] {these are PROPER Levis of real parabolics}
     	      ~do for LRk in derived_simple_factorsRF(LR) {tilde to put small LR first}
 	      	  do answer.match(LRk)
 	    	  od
@@ -3015,12 +3104,12 @@ set SDLRF(RealForm G) = [RealForm]:
 {simple derived factors of all proper real and theta-stable Levis of G}
 set SDLALL(RealForm G) = [RealForm]:
     let answer = make_RealForm_hash()
-    then () = for L in Ls(G) {these are PROPER Levis of theta-stable parabolics}
+    then () = for L in Ls(G)[1:] {these are PROPER Levis of theta-stable parabolics}
     	      ~do for Lj in derived_simple_factorsRF(L) {~ to put the small L first}
 	      	  do answer.match(Lj)
 	    	  od
 	      	od
-    then () = for LR in LRs(G) {these are PROPER Levis of real parabolics}
+    then () = for LR in LRs(G)[1:] {these are PROPER Levis of real parabolics}
     	      ~do for LRk in derived_simple_factorsRF(LR) {tilde to put small LR first}
 	      	  do answer.match(LRk)
 	    	  od

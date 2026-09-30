@@ -165,6 +165,14 @@ set predictor_h_count = int:0
 
 set regroup_flag = true
 
+{take a KType _apparently_ attached to G and make it _actually_ attached
+to G. Need this to use looked-up KTypes.}
+set regroup(RealForm G, KType tau) = KType:
+    if regroup_flag
+    then K_type(KGB(G,tau.x.number), tau.lambda_minus_rho)
+    else tau
+    fi
+
 {take a KTypePol _apparently_ attached to G and make it _actually_ attached
 to G. Need this to use looked-up deformations.}
 set regroup(RealForm G, KTypePol P) = KTypePol:
@@ -175,10 +183,13 @@ set regroup(RealForm G, KTypePol P) = KTypePol:
     fi
 
 set regroup(RealForm G, maybe_KTP P) = maybe_KTP:
-    case P
-    |timed_out(): timed_out()
-    |done(Q): regroup(Q.real_form,Q).done
-    esac
+    if regroup_flag
+    then case P
+    	 |timed_out(): timed_out()
+    	 |done(Q): regroup(G,Q).done
+    	 esac
+    else P
+    fi
 
 set regroup(RealForm G, Param p) = Param:
     if regroup_flag
@@ -1750,11 +1761,11 @@ set LGTH_flag = false
 {assume all terms in qlist same inf char}
 set GAM_HTs_easy(int N) = [rat]:
     {let blq = bit_length(N) in}
-    let pred_end = 1/N in
+    let pred_end = 1/max(N,1) in
     for j:N do (1 + (pred_end-1)*j/N)^LIN_EXP {* (blq - bit_length(j) +1)^BL_EXP}/(j+J_SHIFT)^INVJ_EXP od
 
 set GAM_HTs_easy(int N, int HT) = [rat]:
-    let pred_end = 1/N in
+    let pred_end = 1/max(N,1) in
     for j:N do (1 + (pred_end-1)*(j/N))^LIN_EXP_HT od
 
 set GAM_HTs_LGTH([Param] qlist) = [rat]:

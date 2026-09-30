@@ -219,7 +219,8 @@ set highest_weights (KType t) = [KHighestWeight]:
   let N = hw_keys.size(), k = hw_keys.match(t)
   in if k = N
      then let v = highest_weights_base(t) in hw_vals #:= v; v
-     else hw_vals[k]
+     else let G = t.real_form {re-attach: stored weights may live on an =, not identical, G}
+     	  in for (,x,mu) in hw_vals[k] do KHighestWeight: ((),KGB(G,x.number),mu) od
      fi
 
 {. All highest weights of a K-type w.r.t. x_K. .}
@@ -845,6 +846,9 @@ set K_type_first (KHighestWeight(,x,v):mu_in) = KType:
 {Memo of K_type@KHighestWeight when seat_belt_on is false (so the uniqueness
  assert would be skipped anyway, and the answer is the first K-type found).
  Keyed on (real form, x.number, mu); real forms found by = in a short list.
+ = on RealForm compares values, so a hit is re-attached to the caller's G:
+ built-in KTypePol addition needs the identical real form object (9/27/26,
+ "Real form mismatch when adding two K_types" in E8_q glue_sigs).
  K_type_hw_memo_flag := false restores the old behaviour.}
 set K_type_hw_memo_flag = true
 set K_type_hw_rfs = [RealForm]: []
@@ -872,7 +876,8 @@ set K_type (KHighestWeight khwt) = KType:
   in if k = N
      then let t = K_type_first(khwt), vals = K_type_hw_vals[n]
      	  in vals #:= t; K_type_hw_vals[n] := vals; t
-     else K_type_hw_vals[n][k]
+     else let t = K_type_hw_vals[n][k] {re-attach: stored t may live on an =, not identical, G}
+     	  in K_type(KGB(G,t.x.number), t.lambda_minus_rho)
      fi
 
 {-----------------KHighestWeight to K0_param --------------------------}

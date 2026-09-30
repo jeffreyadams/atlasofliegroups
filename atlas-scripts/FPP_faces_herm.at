@@ -221,6 +221,20 @@ set_type
   , ((KGBElt, ratvec) -> ) writexlam_no_G {output data for one x,lambda; without writing G}
   , ((KGBElt, ratvec) -> string ) writexlam_no_G_string {output data for one x,lambda; wit-hout writing G}
   , (RealForm, [int] -> ) set_xl_sizes {set xl_sizes(RealForm)=[int]}
+{STEPS: unit step n (0 <= n < step_top(G)) is the strip [n,n+1] of bv = sum of highest coroots,
+ as run by global_step(n,n+1). A job global_step(a,A) completes steps a,...,A-1.}
+  , (RealForm -> int) step_top {number of unit steps = bv*rho}
+  , (RealForm -> [int]) x_step_known {for each step n, bitmap of x with every lambda done on step n}
+  , ((KGBElt,int,int,int) -> ) finish_step {(x,M,a,A): M bitmap of lambda positions at x;
+    	       	   	      		  mark steps a..A-1 done; promote to finish when all steps done}
+  , ((KGBElt,int,int) -> ) finishx_step {(x,a,A): mark steps a..A-1 done for all lambda at x;
+    	       	   	 	      promote to finishx when all steps done}
+  , ((RealForm,int,int) -> ) finishxmap_step {(G,n,M): OR x-bitmap M into step n (for loading)}
+  , ((RealForm,int,int,int) -> ) finish_step_num {(G,x_num,pos,S): OR step bitmap S into
+    		      	      	 		   (x_num,pos) (for loading)}
+  , ((KGBElt,int) -> int) steps_known {(x,pos): bitmap of steps done for (x,FPP_lambdas(x)[pos])}
+  , ((RealForm,int,int) -> ) writeGrange_steps {step data for KGB(G)[low,high]}
+  , (([KGBElt,ratvec]) -> ) writexlams_steps {step data for a list of (x,lambda)}
 )
 ]
 
@@ -289,6 +303,10 @@ set jeff_sizes_flag = false
 {whether to write known NONUNITARY reps as well as unitary with writeG}
 set write_nu_flag = true
 
+{true once any step (global_step) data has been recorded or loaded; lets is_finished_step
+ return at once in ordinary runs}
+set any_step_data = false
+
 set make_big_unitary_hash() = big_unitary_hash_table:
 (   let real_form_hash = make_RealForm_hash()
     then uhashes = [Param_hash]: [] {one for each real form}
@@ -324,6 +342,14 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     then xl_known = [[int]]: [] {one bitmap of known (x,lambda) for each real form and x}
     then x_known = [int]: [] {one bitmap of known x for each real form}
     then x_partial = [int]: [] {one bitmap of partially known x for each real form}
+    then step_tops = [int]: [] {one per real form: number of unit steps, bv*rho}
+    then x_step_known = [[int]]: [] {one per real form: for each step, bitmap of x done on that step}
+    then xl_step_keys = [Hash<vec>]: [] {one per real form: keys [x_num,pos] of (x,lambda) with
+    	 	      	 	    	some step done, x not done on that step}
+    then xl_step_vals = [[int]]: [] {one per real form: step bitmap for each key}
+    then step_mask(int i, int a, int A) = int: {bits a..A-1, clipped to [0,step_tops[i])}
+	 let lo = max(a,0), hi = min(A,step_tops[i])
+	 in if hi <= lo then 0 else to_bitset([hi]) - to_bitset([lo]) fi
     then clearBUH() = void:
 	 let () = real_form_hash.clear()
 	 then () = uhashes := []
@@ -344,6 +370,10 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 then () = xl_known := []
 	 then () = x_known := []
 	 then () = x_partial := []
+	 then () = step_tops := []
+	 then () = x_step_known := []
+	 then () = xl_step_keys := []
+	 then () = xl_step_vals := []
 	 in ()
     then add_real_form(RealForm rf) = int:
 	 let I = real_form_hash.size()
@@ -365,6 +395,11 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 			then () = xl_known #:= empty {null(KGB_size(rf))}
 			then () = x_known #:= 0
 			then () = x_partial #:= 0
+			then top = floor(sum(rf.rank,rf.highest_coroots)*rf.rho)
+			then () = step_tops #:= top
+			then () = x_step_known #:= for :top do 0 od
+			then () = xl_step_keys #:= make_vec_hash()
+			then () = xl_step_vals #:= null_list
 			{then () = status_strings #:= []}
 			then () = uhashes #:= make_FPP_Param_hash()
 			then () = nuhashes #:= make_FPP_Param_hash()
@@ -904,7 +939,10 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		 {prints("i = ",i, ", x_partial = ",x_partial);}
 		 x_partial[i] := 0;
 		 xl_known[i] := nullint(KGB_size(rf));
-		 x_known[i] := 0
+		 x_known[i] := 0;
+		 x_step_known[i] := for :step_tops[i] do 0 od;
+		 xl_step_keys[i].clear();
+		 xl_step_vals[i] := []
 	    fi
       then numatch_height(Param p,int H) = int:
       let i = add_real_form(p.real_form)
@@ -1532,6 +1570,115 @@ some lambdas for that x might be finished.}
          fi;
        let ()=prints("cs: ", xl_sizes[i]) in 
        xl_sizes_cumulative[i]:=cumulate_forward(xl_sizes[i])
+    , (RealForm -> int): {step_top} (RealForm G) int: step_tops[add_real_form(G)]
+    , (RealForm -> [int]): {x_step_known} (RealForm G) [int]: x_step_known[add_real_form(G)]
+    , ((KGBElt,int,int,int) -> ): {finish_step} (KGBElt x, int M, int a, int A):
+      any_step_data := true;
+      let start = elapsed_ms()
+      then i = add_real_form(x.real_form)
+      then S = step_mask(i,a,A), full = to_bitset([step_tops[i]]) - 1
+      then keys = xl_step_keys[i], vals = [int]: xl_step_vals[i]
+      then newly_done = 0
+      then () = for pos in set_bit_positions(M)
+		do let N = keys.size() then k = keys.match(vec:[x.number,pos])
+		   in if k = N then vals #:= S else vals[k] OR:= S fi;
+		   if vals[k] = full then newly_done OR:= to_bitset([pos]) fi
+		od
+      then () = xl_step_vals[i] := vals
+      then () = if newly_done.!= {promote: every step done for these lambda}
+		then let xl_knowni = [int]: xl_known[i]
+		     in xl_knowni[x.number] OR:= newly_done; xl_known[i] := xl_knowni
+		fi
+      in finish_time +:= elapsed_ms() - start
+    , ((KGBElt,int,int) -> ): {finishx_step} (KGBElt x, int a, int A):
+      any_step_data := true;
+      let i = add_real_form(x.real_form)
+      then S = step_mask(i,a,A), bit = to_bitset([x.number])
+      then list = [int]: x_step_known[i]
+      then () = for n in set_bit_positions(S) do list[n] OR:= bit od
+      then () = x_step_known[i] := list
+      in if all(for M in list do is_member_bitset(x.number,M) od) {promote}
+	 then let xl_knowni = [int]: xl_known[i]
+	      in xl_knowni[x.number] := to_bitset([#FPP_lambdas(x)]) - 1; xl_known[i] := xl_knowni;
+		 x_known[i] OR:= bit; x_partial[i] OR:= bit
+	 fi
+    , ((RealForm,int,int) -> ): {finishxmap_step} (RealForm G, int n, int M):
+      any_step_data := true;
+      let i = add_real_form(G)
+      then list = [int]: x_step_known[i]
+      then () = list[n] OR:= M
+      then () = x_step_known[i] := list
+      then all_steps = if #list = 0 then 0 else list[0] fi
+      then () = for L in list do all_steps := AND(all_steps,L) od
+      in x_known[i] OR:= all_steps {promote x done on every step}
+    , ((RealForm,int,int,int) -> ): {finish_step_num} (RealForm G, int x_num, int pos, int S):
+      any_step_data := true;
+      let i = add_real_form(G)
+      then full = to_bitset([step_tops[i]]) - 1
+      then keys = xl_step_keys[i], vals = [int]: xl_step_vals[i]
+      then N = keys.size() then k = keys.match(vec:[x_num,pos])
+      then () = if k = N then vals #:= S else vals[k] OR:= S fi
+      then () = xl_step_vals[i] := vals
+      in if vals[k] = full
+	 then let xl_knowni = [int]: xl_known[i]
+	      in xl_knowni[x_num] OR:= to_bitset([pos]); xl_known[i] := xl_knowni
+	 fi
+    , ((KGBElt,int) -> int): {steps_known} (KGBElt x, int pos) int:
+      let i = add_real_form(x.real_form)
+      then full = to_bitset([step_tops[i]]) - 1
+      in if is_member_bitset(x.number,x_known[i]) or is_member_bitset(pos,xl_known[i][x.number])
+	 then full
+	 else let k = xl_step_keys[i].lookup(vec:[x.number,pos])
+	      then S = if k < 0 then 0 else xl_step_vals[i][k] fi
+	      in OR(S, to_bitset(for M@n in x_step_known[i]
+				 do if is_member_bitset(x.number,M) then [n] else [] fi od.##))
+	 fi
+    , ((RealForm,int,int) -> ): {writeGrange_steps} (RealForm G, int low, int high):
+      let i = add_real_form(G)
+      then Gname = "G_temp"
+      then range = 2^high - 2^low
+      then donemap = AND(x_known[i], range)
+      in write_real_form(G,Gname);
+	 for M@n in x_step_known[i]
+	 do let Mr = AND(M,range) then Mnew = Mr - AND(Mr,donemap) {skip x already finished}
+	    in if Mnew.!=
+	       then let l = set_bit_positions(Mnew)
+		    in if #l < 1000
+		       then prints("void: big_unitary_hash.finishxmap_step(",Gname,",",n,",to_bitset(",l,"))")
+		       else prints("void: big_unitary_hash.finishxmap_step(",Gname,",",n,",",Mnew,")")
+		       fi
+	       fi
+	 od;
+	 for key@k in xl_step_keys[i].list()
+	 do let xnum = key[0], pos = key[1]
+	    in if low <= xnum and xnum < high and not is_member_bitset(xnum,x_known[i])
+		  and not is_member_bitset(pos,xl_known[i][xnum])
+	       then let xsteps = to_bitset(for M@n in x_step_known[i]
+				 do if is_member_bitset(xnum,M) then [n] else [] fi od.##)
+		    then S = xl_step_vals[i][k] then Snew = S - AND(S,xsteps)
+		    in if Snew.!=
+		       then prints("void: big_unitary_hash.finish_step_num(",Gname,",",xnum,",",pos,",",Snew,")")
+		       fi
+	       fi
+	 od
+    , (([KGBElt,ratvec]) -> ): {writexlams_steps} ([(KGBElt,ratvec)] xls):
+      if #xls = 0 then return () fi;
+      let (x0,) = xls[0]
+      then G = x0.real_form
+      then i = add_real_form(G)
+      then Gname = "G_temp"
+      in write_real_form(G,Gname);
+	 for (x,lambda) in xls
+	 do let pos = position(x,lambda)
+	    in if pos.>= and not is_member_bitset(x.number,x_known[i])
+		  and not is_member_bitset(pos,xl_known[i][x.number])
+	       then let k = xl_step_keys[i].lookup(vec:[x.number,pos])
+		    in if k.>= and xl_step_vals[i][k].!=
+		       then prints("void: big_unitary_hash.finish_step_num(",Gname,",",x.number,",",pos,",",
+				   xl_step_vals[i][k],")")
+		       fi
+	       fi
+	 od
     )
     )
 
@@ -1624,6 +1771,29 @@ set is_finished(KGBElt x, ratvec lambda) = bool:
 	       else false
 	       fi
        fi next is_finished_time +:= elapsed_ms() - start
+
+{p is settled if (p.x,p.lambda) is finished, or if some completed unit step n contains the
+closed face through gamma = infinitesimal character of p. Step n (global_step(n,n+1)) handles
+exactly the faces whose vertices lie in [n-(k-1),n+1] on bv = sum of the k highest coroots.
+With c_j = beta_j*gamma for the highest coroots beta_j, the minimal face through gamma lies in
+[L,U], L = sum floor(c_j), U = sum ceil(c_j); so step n contains it iff U-1 <= n <= L+k-1.}
+set is_finished_step(Param p) = bool:
+    if is_finished(p.x,p.lambda) then return true fi;
+    if not any_step_data then return false fi;
+    let G = p.real_form
+    then top = big_unitary_hash.step_top(G)
+    in if top = 0 then return false fi;
+    let gamma = p.infinitesimal_character
+    in if not is_dominant(G,gamma) then return false fi;
+    let pos = FPP_lam_table.position(p.x,p.lambda)
+    in if pos < 0 then return false fi;
+    let S = big_unitary_hash.steps_known(p.x,pos)
+    in if S = 0 then return false fi;
+    let hc = G.highest_coroots
+    then cs = for b in hc do b*gamma od
+    then L = sum(for c in cs do floor(c) od), U = sum(for c in cs do ceil(c) od)
+    then lo = max(U-1,0), hi = min(L+#hc-1,top-1)
+    in any(for n:hi+1-lo do is_member_bitset(lo+n,S) od)
 
 {requires G is in big_unitary_hash and cumulative_sizes is set}
 set is_finished(RealForm G,[int] cumulative_sizes,int j)=bool:
@@ -1734,7 +1904,7 @@ set simple_status(Param p, int HT) = int:
     	   then -1
     	   elif is_known_u_to_ht(p,HT)
     	   then status_ucount+:=1; 1
-    	   elif is_finished(p.x, p.lambda) and HT < 0
+    	   elif is_finished_step(p) and HT < 0
     	   then -1 {otherwise we'd have found it in ulookup}
 	   elif HT < 0 then is_FPP_unitary_fast(p)
      	   else 0 {is_FPP_unitary_fast(p) {WRONG!}}
@@ -1761,7 +1931,7 @@ set simple_status(Param p, int HT, (Param -> int) tester) = int:
     	   then -1
     	   elif is_known_u_to_ht(p,HT)
     	   then status_ucount+:=1; 1
-    	   elif is_finished(p.x, p.lambda) and HT < 0
+    	   elif is_finished_step(p) and HT < 0
     	   then -1 {otherwise we'd have found it in ulookup}
      	   else tester(p)
     	   fi;
@@ -1784,7 +1954,7 @@ set simple_status(Param p, int HT, ((Param,int) -> int) tester) = int:
     	   then -1
     	   elif is_known_u_to_ht(p,HT)
     	   then status_ucount+:=1; 1
-    	   elif is_finished(p.x, p.lambda) and HT < 0
+    	   elif is_finished_step(p) and HT < 0
     	   then -1 {otherwise we'd have found it in ulookup}
      	   else tester(p,HT)
     	   fi;
@@ -2118,13 +2288,24 @@ set hodge_screen_reset() = void:
     {HodgeTriedCount := 0}hodge_screen_hash.clear(); HodgeCaughtCount := 0; HodgeScreenTime := 0;
     HodgeNuSkipped := 0
 
+{status_last_tests: (gated) last tests, run in order only when the cheaper tests in simple_status
+ give 0. Off unless status_last_flag. Same convention as status: 1 unitary to HT, -1 nonunitary
+ to HT, 0 don't know; p is hermitian and herm_center'ed. A list, because a global of function type
+ would be an overloaded function, not an assignable variable. weakly_unipotent_claude.at installs
+ the cohomological induction test (is_unitary_coh_ind_claude, memoized).}
+set status_last_flag = false
+set status_last_tests = [(Param,int->int)]: []
+
 {move hodge0 testing to sites where there is a predicted is_unitary time}
 set status(Param p, int HT) = int:
     if not is_hermitian(p) then return -1 fi;
     p:= herm_center(p);
     if wiggle_status_cod_one_flag then return wiggle_status_cod_one(p,HT) fi;
     if wiggle_status_all_flag then return wiggle_status_all(p,HT) fi;
-    simple_status(p,HT)
+    let st = simple_status(p,HT)
+    in if st = 0 and status_last_flag
+       then for test in status_last_tests do let a = test(p,HT) in if a != 0 then return a fi od
+       fi; st
     {let st = simple_status(p,HT)
     {the screen is a COMPUTATION, so it runs only after the cheap lookups in
      simple_status have come back "not known"}
