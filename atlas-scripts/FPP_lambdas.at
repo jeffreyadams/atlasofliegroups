@@ -314,6 +314,20 @@ set real_ind_irr_suff(Param p0, vec tau) = bool:
 	       (av*gamma)*(av*theta*gamma) < 0
 	    od)
 
+{The same, to height HT (HT < 0: no truncation): a coroot outside M' counts only if the
+ reducibility quotient it controls has K-types of height <= HT (test@(KGBElt,ratvec,vec,rat,int)
+ in kl.at, as in red_walls_to_ht_int). The coroot is oriented so that its value on gamma is > 0.
+ Meant to imply that Ind(J(pM')) and J(p0) agree on K-types of height <= HT (to be checked).}
+set real_ind_irr_suff(Param p0, vec tau, int HT) = bool:
+    if HT < 0 then return real_ind_irr_suff(p0,tau) fi;
+    let rd = p0.root_datum, theta = p0.x.involution, gamma = p0.infinitesimal_character,
+    	x = p0.x, lambda = p0.lambda
+    in none(for av@j in rd.poscoroots
+    	    do tau*rd.posroots[j] != 0 and is_integer(av*gamma) and
+	       (av*gamma)*(av*theta*gamma) < 0 and
+	       (let c = if av*gamma > 0 then av else av*theta fi in test(x,lambda,c,c*gamma,HT))
+	    od)
+
 {D stands for "derived." For each final Hermitian pL inducing to p found by ind_cand_params,
 take derived factors [dpL]; so pL is unitary if and only if all dpL are.}
 {This function is used in function is_u_ind}

@@ -313,9 +313,10 @@ set any_step_data = false
  a truncation). Off unless real_ind_form_flag; the hook (real_ind_form, defined after
  is_unitary_hash_big_SIMPLE) returns [] when it does not apply.}
 set real_ind_form_flag = false
-set real_ind_form_hook = [(Param->[KTypePol])]: []
-set real_ind_form_of(Param p) = [KTypePol]:
-    if real_ind_form_flag and #real_ind_form_hook > 0 then real_ind_form_hook[0](p) else [] fi
+set real_ind_form_hook = [(Param,int->[KTypePol])]: []
+{[form of p to height D] (D < 0: full form) if real induction gives it, else []}
+set real_ind_form_of(Param p, int D) = [KTypePol]:
+    if real_ind_form_flag and #real_ind_form_hook > 0 then real_ind_form_hook[0](p,D) else [] fi
 
 set make_big_unitary_hash() = big_unitary_hash_table:
 (   let real_form_hash = make_RealForm_hash()
@@ -602,7 +603,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	then () = if pnum = PNUM {haven't computed with p before}
 		  then let sig = if uhashes[rfnum].lookup(p).>=
 				 then K_type_pol(character_formula(p))
-				 else let r = real_ind_form_of(p)
+				 else let r = real_ind_form_of(p,-1)
 				      in if #r > 0 then r[0] else hermitian_form_irreducible(p) fi
 				 fi
 		       then sig_ind = K_type_pol_hashes[rfnum].match(sig)
@@ -658,7 +659,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 in (rfnum, pnum, sigs[rfnum][pnum])
    then add_param(Param p, int D) = (int, int, int): {add a param, form to ht D; assume D >= ht(p)}
    	if D < 0 then return add_param_inf(p) fi; {henceforth D>=0}
-	if #real_ind_form_of(p) > 0 then return add_param_inf(p) fi; {full form known cheaply}
+	if #real_ind_form_of(p,-1) > 0 then return add_param_inf(p) fi; {full form known cheaply}
 	let  rfnum = add_real_form(p.real_form)
 	then rf = real_form_hash.index(rfnum)
 	then PNUM = phashes[rfnum].size()
@@ -677,7 +678,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
      	  			  then HF_false_low_count+:=1;
 				       hermitian_form_irreducible_to_ht(p,D)}
 				  else {hermitian_form_irreducible_cut(p,D)}
-				       hermitian_form_irreducible_to_ht(p,D)
+				       let r = real_ind_form_of(p,D)
+				       in if #r > 0 then r[0] else hermitian_form_irreducible_to_ht(p,D) fi
 				  fi
 		  then N = nuhashes[rfnum].size()
 		  then H = impure_height(sigD)
@@ -715,7 +717,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 					then HF_false_low_count+:=1;
 					     hermitian_form_irreducible_to_ht(p,D)}
 					else {hermitian_form_irreducible_cut(p,D)}
-					     hermitian_form_irreducible_to_ht(p,D)
+					     let r = real_ind_form_of(p,D)
+					     in if #r > 0 then r[0] else hermitian_form_irreducible_to_ht(p,D) fi
 					fi
 			    then N = nuhashes[rfnum].size(), H = impure_height(sigD)
 			    then () = if H = -1
@@ -745,7 +748,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 in (rfnum, pnum, sigs[rfnum][pnum])
     then add_param_inf_interrupt(Param p, int time) = (int, int, int,bool): {add a param, full herm form;
     	 			       	  false if not finished}
-	if #real_ind_form_of(p) > 0 then let (a,b,c) = add_param_inf(p) in return (a,b,c,true) fi;
+	if #real_ind_form_of(p,-1) > 0 then let (a,b,c) = add_param_inf(p) in return (a,b,c,true) fi;
 	let  rfnum = add_real_form(p.real_form)
 	then PNUM = phashes[rfnum].size(), rf = real_form_hash.index(rfnum)
 	{then () = p := regroup(rf, herm_center(p))}
@@ -821,7 +824,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     then add_param_interrupt(Param p, int D, int time) = (int, int, int,bool): {add a param, form to ht D;
     	 			      	  assume D >= ht(p); false if not finished}
 	if D < 0 then return add_param_inf_interrupt(p,time) fi;
-	if #real_ind_form_of(p) > 0 then let (a,b,c) = add_param_inf(p) in return (a,b,c,true) fi;
+	if #real_ind_form_of(p,-1) > 0 then let (a,b,c) = add_param_inf(p) in return (a,b,c,true) fi;
+	if #real_ind_form_of(p,D) > 0 then let (a,b,c) = add_param(p,D) in return (a,b,c,true) fi;
 	let  rfnum = add_real_form(p.real_form)
 	then rf = real_form_hash.index(rfnum)
 	then PNUM = phashes[rfnum].size()
@@ -2340,39 +2344,68 @@ set real_ind_report() = void:
 
 set real_ind_tests := [real_ind_status@(Param,int)]
 
-{real_ind_form: see real_ind_form_hook. Memoized on herm_center(p). The form on M' comes from
- hermitian_form_irreducible on M' itself, so Params and forms on M' (derived group usually not
- simple) go into the FPP hashes; preferable eventually: forms of the simple derived factors of
- pM', glued (needs glue_sigs for disconnected M'). See the note at herm_center.}
+{real_ind_form: see real_ind_form_hook. Memoized on herm_center(p). Candidates (q,tau) on maximal
+ real Levis M' from ind_cand_params_lin_tau; irreducibility only from David's sufficient criteria
+ real_ind_irr_suff (full, or to height D), no composition series. If some candidate passes the
+ full criterion, the full form of p is real_induce_standard(form of q, G) (checked exact, 905
+ cases); otherwise, for a query to height D, to_ht of that induced form for a candidate passing
+ the criterion to height D (checked exact, 1317 cases). Induced forms are computed lazily.
+ The form on M' comes from hermitian_form_irreducible on M' itself, so Params and forms on M'
+ (derived group usually not simple) go into the FPP hashes; preferable eventually: forms of the
+ simple derived factors of pM', glued (needs glue_sigs for disconnected M'). See the note at
+ herm_center.}
 set real_ind_form_hash = make_Param_hash()
-set real_ind_form_vals = [[KTypePol]]: []
-set real_ind_form_count = [int]: [0,0,0] {computed, irreducible found, hermitian}
-set real_ind_form_time = [int]: [0,0,0] {ms in: ind_cand_params_lin, irreducibility, form on M'}
-set real_ind_form_clear() = void: real_ind_form_hash := make_Param_hash(); real_ind_form_vals := []
-set real_ind_form(Param p) = [KTypePol]:
+set ri_p0 = [Param]: []
+set ri_pairs = [[(Param,vec)]]: []
+set ri_full = [int]: [] {index of a candidate passing the full criterion, or -1}
+set ri_forms = [[[KTypePol]]]: [] {per candidate: [] if not computed yet, else [induced form]}
+set real_ind_form_count = [int]: [0,0,0,0,0,0]
+    {params examined, with candidates, full criterion, full answers, to_ht answers, induced forms}
+set real_ind_form_time = [int]: [0,0,0,0] {ms in: candidates, full criterion, to_ht criterion, forms}
+set real_ind_form_clear() = void:
+    real_ind_form_hash := make_Param_hash(); ri_p0 := []; ri_pairs := []; ri_full := []; ri_forms := []
+set real_ind_entry(Param p) = int:
     let p = herm_center(p) then i = real_ind_form_hash.lookup(p)
-    in if i >= 0 then real_ind_form_vals[i]
+    in if i >= 0 then i
        else real_ind_form_count[0] +:= 1;
-	    let G = p.real_form, t0 = elapsed_ms()
-	    then cands = ##ind_cand_params_lin(p)
+	    let t0 = elapsed_ms() then (p0,pairs) = ind_cand_params_lin_tau(p)
 	    then t1 = elapsed_ms()
-	    then k = first(for q in cands do real_induce_irreducible(q,G) = 1*p od)
-	    then t2 = elapsed_ms()
-	    then v = [KTypePol]:
-		 if k < 0 then []
-		 else real_ind_form_count[1] +:= 1;
-		      [real_induce_standard(hermitian_form_irreducible(cands[k]),G)]
-		 fi
-	    in real_ind_form_time[0] +:= t1-t0; real_ind_form_time[1] +:= t2-t1;
-	       real_ind_form_time[2] +:= elapsed_ms()-t2;
-	       {may recurse into big_unitary_hash: match only afterwards}
-	       real_ind_form_hash.match(p); real_ind_form_vals #:= v; v
+	    then full = first(for (,tau) in pairs do real_ind_irr_suff(p0,tau) od)
+	    in real_ind_form_time[0] +:= t1-t0; real_ind_form_time[1] +:= elapsed_ms()-t1;
+	       if #pairs > 0 then real_ind_form_count[1] +:= 1 fi;
+	       if full >= 0 then real_ind_form_count[2] +:= 1 fi;
+	       ri_p0 #:= p0; ri_pairs #:= pairs; ri_full #:= full;
+	       ri_forms #:= for pair in pairs do [KTypePol]: [] od;
+	       real_ind_form_hash.match(p)
        fi
-set real_ind_form_hook := [real_ind_form@Param]
+set real_ind_induced(int i, int k) = KTypePol:
+    let fs = ri_forms[i] in
+    if #fs[k] > 0 then fs[k][0]
+    else let t = elapsed_ms(), (q,) = ri_pairs[i][k], G = ri_p0[i].real_form
+	 then F = real_induce_standard(hermitian_form_irreducible(q),G) {may recurse}
+	 then fs = ri_forms[i]
+	 in fs[k] := [F]; ri_forms[i] := fs;
+	    real_ind_form_count[5] +:= 1; real_ind_form_time[3] +:= elapsed_ms()-t; F
+    fi
+set real_ind_form(Param p, int D) = [KTypePol]:
+    let i = real_ind_entry(p)
+    in if ri_full[i] >= 0 then real_ind_form_count[3] +:= 1; [real_ind_induced(i,ri_full[i])]
+       elif D < 0 or #ri_pairs[i] = 0 then []
+       else let t = elapsed_ms()
+	    then k = first(for (,tau) in ri_pairs[i] do real_ind_irr_suff(ri_p0[i],tau,D) od)
+	    in real_ind_form_time[2] +:= elapsed_ms()-t;
+	       if k < 0 then []
+	       else real_ind_form_count[4] +:= 1; [to_ht(real_ind_induced(i,k),D)]
+	       fi
+       fi
+set real_ind_form_hook := [real_ind_form@(Param,int)]
 set real_ind_form_report() = void:
-    prints("real_ind_form: ",real_ind_form_count[0]," computed, ",real_ind_form_count[1],
-	   " irreducibly induced; ms in ind_cand_params_lin ",real_ind_form_time[0],
-	   ", irreducibility ",real_ind_form_time[1],", form on M' ",real_ind_form_time[2])
+    prints("real_ind_form: ",real_ind_form_count[0]," params, ",real_ind_form_count[1],
+	   " with candidates, ",real_ind_form_count[2]," pass full criterion; answers full ",
+	   real_ind_form_count[3],", to_ht ",real_ind_form_count[4],"; induced forms ",
+	   real_ind_form_count[5],"; ms in candidates ",real_ind_form_time[0],", full criterion ",
+	   real_ind_form_time[1],", to_ht criterion ",real_ind_form_time[2],", forms ",
+	   real_ind_form_time[3])
 
 {1 means unitary, -1 nonunitary, 0 interrupted}
 set is_unitary_hash_big_SIMPLE(Param p, int TIME) = int:
