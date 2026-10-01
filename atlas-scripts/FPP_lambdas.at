@@ -210,9 +210,11 @@ set conj_cowt_dominant(Param p, vec tau) = (Param,vec):
 	     nu := r*nu; x := cross(s,x); tau := tau*r
        od; (parameter(x,lam,nu),tau)
 set icp_lin_check = true {check real_induce_standard(pM',G) = p}
+set icp_lin_time = [int]: [0,0,0,0] {ms in: setup, search, lines (Levi and pM'), checks}
 set icp_lin_K = 1     {max number of maximal Levis M' (lines tau) to collect}
 set icp_lin_b = 1     {branching: number of best choices tried at each step}
 set icp_lin_nodes = 200 {cap on search nodes}
+set icp_lin_maxdepth = -1 {at most this many roots to reach nu; negative d means dim a + d}
 {(p0, [(q,tau)]): as ind_cand_params_lin, also giving p0 = to_no_Cplus(p) and for each candidate q
  on M' the coweight tau (coordinates of p0) whose centralizer is M'}
 set ind_cand_params_lin_tau(Param p) = (Param,[(Param,vec)]):
@@ -233,17 +235,24 @@ set ind_cand_params_lin_tau(Param p) = (Param,[(Param,vec)]):
 	     	  	   	   in if v[i] > 0 then [v] else [-v] fi
 	     fi
 	  od.##).no_reps
+    then t_setup = elapsed_ms()
     then perp([ratvec] E, ratvec v) = ratvec:
     	 let u = v in for e in E do u -:= (Q(v,e)/Q(e,e))*e od; u
     {depth first search for sets of dim a - 1 independent restricted roots with nu in their
      span, branching over the icp_lin_b best choices at each step (best: largest projection of
      the residual of nu on the new direction; once the residual is 0, any independent root
      extends); stop after icp_lin_K distinct lines tau, or icp_lin_nodes nodes}
+    then () = if #res = 0 then return (p0,[]) fi
+    {vectorized scoring: row i of RA is res[i]*A, so RA*v lists Q(res[i],v); N[i] is the squared
+     norm of the component of res[i] orthogonal to the directions E chosen so far (0: in their span)}
+    then RA = ^(mat: for alpha in res do alpha od)*A
+    then N0 = [rat]: for alpha in res do Q(alpha,alpha) od
+    then max_depth = min(if icp_lin_maxdepth < 0 then dim_a + icp_lin_maxdepth else icp_lin_maxdepth fi, dim_a - 1)
     then lines = [vec]: [], nodes = 0
-    then stack = [([vec],[ratvec],ratvec)]: [([vec]:[],[ratvec]:[],ratvec: p0.nu)]
+    then stack = [([vec],[ratvec],ratvec,[rat])]: [([vec]:[],[ratvec]:[],ratvec: p0.nu,N0)]
     then () =
 	 while #stack > 0 and #lines < icp_lin_K and nodes < icp_lin_nodes
-	 do let (chosen,E,r) = stack~[0] in stack := stack[:#stack-1]; nodes +:= 1;
+	 do let (chosen,E,r,N) = stack~[0] in stack := stack[:#stack-1]; nodes +:= 1;
 	    if #chosen = dim_a - 1
 	    then if r = 0*r
 		 then let C = if #chosen = 0 then 1+theta
@@ -256,28 +265,34 @@ set ind_cand_params_lin_tau(Param p) = (Param,[(Param,vec)]):
 		      then tau = if tau[i] < 0 then -tau else tau fi
 		      in if find(lines,tau) < 0 then lines #:= tau fi
 		 fi
-	    else let scored = [(int,rat,ratvec)]:
-		     for alpha@i in res
-		     do let u = perp(E,alpha) in
-			if u = 0*u then []
-			elif r = 0*r then [(i,rat:1,u)]
-			else let c = Q(u,r) in if c = 0 then [] else [(i,c*c/Q(u,u),u)] fi
-			fi
-		     od.##
-		 then picks = [(int,rat,ratvec)]: []
+	    elif r != 0*r and #chosen >= max_depth then () {nu not reached within max_depth roots}
+	    else let rzero = r = 0*r
+		 then c = if rzero then null(#res) else RA*r fi
+		 then scored = [(int,rat)]:
+		      for n@i in N
+		      do if n = 0 then []
+			 elif rzero then [(i,rat:1)]
+			 elif c[i] = 0 then []
+			 else [(i,c[i]*c[i]/n)]
+			 fi
+		      od.##
+		 then picks = [int]: []
 		 then () = for k:min(icp_lin_b,#scored)
 			   do let j = -1, best = rat: -1
-			      in for (i,sc,)@jj in scored
-				 do if sc > best and none(for (i2,,) in picks do i2 = i od)
+			      in for (i,sc)@jj in scored
+				 do if sc > best and none(for i2 in picks do i2 = i od)
 				    then j := jj; best := sc fi
-				 od; picks #:= scored[j]
+				 od; let (i,) = scored[j] in picks #:= i
 			   od
-		 in for (i,,u) in picks ~do {best one pushed last, so popped first}
-		       let rn = if r = 0*r then r else r - (Q(r,u)/Q(u,u))*u fi
-		       in stack #:= (chosen # res[i], E # u, rn)
+		 in for i in picks ~do {best one pushed last, so popped first}
+		       let u = perp(E,res[i]) then quu = Q(u,u) then d = RA*u
+		       then Nn = [rat]: for n@j in N do n - d[j]*d[j]/quu od
+		       then rn = if rzero then r else r - (Q(r,u)/quu)*u fi
+		       in stack #:= (chosen # res[i], E # u, rn, Nn)
 		    od
 	    fi
 	 od
+    then t_search = elapsed_ms()
     then () = if #lines > 0 then icp_lin_count[1] +:= 1 fi
     then cands = make_Param_hash(), pairs = [(Param,vec)]: []
     then () =
@@ -289,9 +304,11 @@ set ind_cand_params_lin_tau(Param p) = (Param,[(Param,vec)]):
 	    then xL = inverse_embed_KGB(x1,L), theta1 = x1.involution
 	    then shift = rho_r(x1)-rho_r(xL)+(1-theta1)*(rho_S(x1)-rho_S(xL))
 	    then pL = parameter(xL, lam1 - shift, nu1)
+	    then tc = elapsed_ms()
 	    then () = if icp_lin_check and not equivalent(real_induce_standard(pL,G),p)
 		      then icp_lin_count[3] +:= 1
 		      fi
+	    then () = icp_lin_time[3] +:= elapsed_ms() - tc
 	    then qs = monomials(finalize(pL))
 	    then k = first(for q in qs do equivalent(q,twist(q)) od)
 	    in if k < 0 then icp_lin_count[4] +:= 1
@@ -299,6 +316,8 @@ set ind_cand_params_lin_tau(Param p) = (Param,[(Param,vec)]):
 	       	    let n = cands.size() in if cands.match(qs[k]) = n then pairs #:= (qs[k],tau) fi
 	       fi
 	 od
+    then t_end = elapsed_ms()
+    then () = icp_lin_time[1] +:= t_search - t_setup; icp_lin_time[2] +:= t_end - t_search
     in (p0,pairs)
 set ind_cand_params_lin(Param p) = [[Param]]:
     let (,pairs) = ind_cand_params_lin_tau(p)

@@ -5302,6 +5302,52 @@ set FD12bzTTTime = int:0
 {whether to eliminate known nonunitary vertices from localFD_1Dirac2}
 set bz_nu_flag = false
 
+{real_ind_vertex: screen for the vertices of localFD_1Dirac2_by_zero (David). If a vertex
+ parameter q is irreducibly induced (real_ind_irr_suff, full criterion) from pM' on a maximal real
+ Levi M', then q is unitary iff pM' is, iff every simple derived factor of pM' is (decided by
+ is_unitary_hash_big_SIMPLE on those factors). The verdict is recorded in big_unitary_hash
+ (umatch / numatch) and nonunitary vertices are dropped. Candidates use icp_lin_K/b at the values
+ below (1,1: cheapest search). Memoized on herm_center(q).}
+set real_ind_vertex_flag = false
+set real_ind_vertex_K = 1, real_ind_vertex_b = 1, real_ind_vertex_maxdepth = -1
+set real_ind_vertex_hash = make_Param_hash()
+set real_ind_vertex_vals = [int]: []
+set real_ind_vertex_count = [int]: [0,0,0,0,0] {examined, with candidates, irreducible, unitary, nonunitary}
+set real_ind_vertex_time = [int]: [0,0] {ms in: candidates and criterion, factor unitarity}
+set real_ind_vertex_caught = int: 0 {vertices dropped}
+set real_ind_vertex_status(Param q) = int:
+    let q = herm_center(q) then i = real_ind_vertex_hash.lookup(q)
+    in if i >= 0 then real_ind_vertex_vals[i]
+       else real_ind_vertex_count[0] +:= 1;
+	    let t0 = elapsed_ms(), (K0,b0,d0,c0) = (icp_lin_K,icp_lin_b,icp_lin_maxdepth,icp_lin_check)
+	    then () = icp_lin_K := real_ind_vertex_K; icp_lin_b := real_ind_vertex_b;
+		      icp_lin_maxdepth := real_ind_vertex_maxdepth; icp_lin_check := false
+	    then (p0,pairs) = ind_cand_params_lin_tau(q)
+	    then () = icp_lin_K := K0; icp_lin_b := b0; icp_lin_maxdepth := d0; icp_lin_check := c0
+	    then k = first(for (,tau) in pairs do real_ind_irr_suff(p0,tau) od)
+	    then t1 = elapsed_ms()
+	    then v = if k < 0 then 0
+		     else let (pM,) = pairs[k]
+			  in if all(for dp in derived_factor_params0(pM)
+				    do @bool: is_unitary_hash_big_SIMPLE(dp) od)
+			     then 1 else -1 fi
+		     fi
+	    in real_ind_vertex_time[0] +:= t1-t0; real_ind_vertex_time[1] +:= elapsed_ms()-t1;
+	       if #pairs > 0 then real_ind_vertex_count[1] +:= 1 fi;
+	       if k >= 0 then real_ind_vertex_count[2] +:= 1 fi;
+	       if v > 0 then real_ind_vertex_count[3] +:= 1; big_unitary_hash.umatch(q)
+	       elif v < 0 then real_ind_vertex_count[4] +:= 1; big_unitary_hash.numatch(q)
+	       else 0 fi;
+	       {factor tests may recurse: match only afterwards}
+	       real_ind_vertex_hash.match(q); real_ind_vertex_vals #:= v; v
+       fi
+set real_ind_vertex_report() = void:
+    prints("real_ind_vertex: ",real_ind_vertex_count[0]," params, ",real_ind_vertex_count[1],
+	   " with candidates, ",real_ind_vertex_count[2]," irreducibly induced: ",
+	   real_ind_vertex_count[3]," unitary, ",real_ind_vertex_count[4]," nonunitary; ",
+	   real_ind_vertex_caught," vertices dropped; ms in candidates/criterion ",
+	   real_ind_vertex_time[0],", factor unitarity ",real_ind_vertex_time[1])
+
 {edge-finding tests are performed by (Test B) for vertex set smaller than BoundB,}
 {NOT ANY MORE: A1 is always slower than C, by quite a bit?}
      {(Test A1) for vertex sets smaller than BoundA1,}
@@ -5379,6 +5425,9 @@ set localFD_1Dirac2_by_zero\
 		calls (1932 vs 1565) and 1.5-2x the FDcount ([11271,28653] vs [7627,14445])
 		for an IDENTICAL answer (6485 known / 6331 found FPP-unitary faces).}
 	       then []
+	       elif real_ind_vertex_flag and
+		    any(for q in monomials(finalize(p)) do real_ind_vertex_status(q) < 0 od)
+	       then real_ind_vertex_caught +:= 1; []
 	       elif FPP_def_flag and not FPP_def_test_wk_final(p)
 	       then []
 	       elif FD_wiggle_flag and any(for q in monomials(finalize(p)) do wiggle_status_all(q,-1)<0 od)
