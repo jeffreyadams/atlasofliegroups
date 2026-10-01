@@ -307,6 +307,16 @@ set write_nu_flag = true
  return at once in ordinary runs}
 set any_step_data = false
 
+{real_ind_form_hook: when big_unitary_hash must compute the hermitian form of p, first try
+ real induction: if p is irreducibly induced from a hermitian pM' (ind_cand_params_lin), the form
+ of p is real_induce_standard(form of pM', G), and the full form is stored (so any to_ht query is
+ a truncation). Off unless real_ind_form_flag; the hook (real_ind_form, defined after
+ is_unitary_hash_big_SIMPLE) returns [] when it does not apply.}
+set real_ind_form_flag = false
+set real_ind_form_hook = [(Param->[KTypePol])]: []
+set real_ind_form_of(Param p) = [KTypePol]:
+    if real_ind_form_flag and #real_ind_form_hook > 0 then real_ind_form_hook[0](p) else [] fi
+
 set make_big_unitary_hash() = big_unitary_hash_table:
 (   let real_form_hash = make_RealForm_hash()
     then uhashes = [Param_hash]: [] {one for each real form}
@@ -592,7 +602,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	then () = if pnum = PNUM {haven't computed with p before}
 		  then let sig = if uhashes[rfnum].lookup(p).>=
 				 then K_type_pol(character_formula(p))
-				 else hermitian_form_irreducible(p) {insert computation from good?}
+				 else let r = real_ind_form_of(p)
+				      in if #r > 0 then r[0] else hermitian_form_irreducible(p) fi
 				 fi
 		       then sig_ind = K_type_pol_hashes[rfnum].match(sig)
 		       then () = sigs[rfnum] #:= sig_ind
@@ -647,6 +658,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 in (rfnum, pnum, sigs[rfnum][pnum])
    then add_param(Param p, int D) = (int, int, int): {add a param, form to ht D; assume D >= ht(p)}
    	if D < 0 then return add_param_inf(p) fi; {henceforth D>=0}
+	if #real_ind_form_of(p) > 0 then return add_param_inf(p) fi; {full form known cheaply}
 	let  rfnum = add_real_form(p.real_form)
 	then rf = real_form_hash.index(rfnum)
 	then PNUM = phashes[rfnum].size()
@@ -733,6 +745,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 in (rfnum, pnum, sigs[rfnum][pnum])
     then add_param_inf_interrupt(Param p, int time) = (int, int, int,bool): {add a param, full herm form;
     	 			       	  false if not finished}
+	if #real_ind_form_of(p) > 0 then let (a,b,c) = add_param_inf(p) in return (a,b,c,true) fi;
 	let  rfnum = add_real_form(p.real_form)
 	then PNUM = phashes[rfnum].size(), rf = real_form_hash.index(rfnum)
 	{then () = p := regroup(rf, herm_center(p))}
@@ -808,6 +821,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     then add_param_interrupt(Param p, int D, int time) = (int, int, int,bool): {add a param, form to ht D;
     	 			      	  assume D >= ht(p); false if not finished}
 	if D < 0 then return add_param_inf_interrupt(p,time) fi;
+	if #real_ind_form_of(p) > 0 then let (a,b,c) = add_param_inf(p) in return (a,b,c,true) fi;
 	let  rfnum = add_real_form(p.real_form)
 	then rf = real_form_hash.index(rfnum)
 	then PNUM = phashes[rfnum].size()
@@ -2241,6 +2255,12 @@ set hodge_screen_reset() = void:
 set status_last_flag = false
 set status_last_tests = [(Param,int->int)]: []
 
+{real_ind_tests: the real induction test real_ind_status (defined below, after
+ is_unitary_hash_big_SIMPLE, which it uses), gated separately by real_ind_flag and run in
+ status before status_last_tests. A list for the same reason as status_last_tests.}
+set real_ind_flag = false
+set real_ind_tests = [(Param,int->int)]: []
+
 {move hodge0 testing to sites where there is a predicted is_unitary time}
 set status(Param p, int HT) = int:
     if not is_hermitian(p) then return -1 fi;
@@ -2248,7 +2268,10 @@ set status(Param p, int HT) = int:
     if wiggle_status_cod_one_flag then return wiggle_status_cod_one(p,HT) fi;
     if wiggle_status_all_flag then return wiggle_status_all(p,HT) fi;
     let st = simple_status(p,HT)
-    in if st = 0 and status_last_flag
+    in if st = 0 and real_ind_flag
+       then for test in real_ind_tests do let a = test(p,HT) in if a != 0 then return a fi od
+       fi;
+       if st = 0 and status_last_flag
        then for test in status_last_tests do let a = test(p,HT) in if a != 0 then return a fi od
        fi; st
     {let st = simple_status(p,HT)
@@ -2270,6 +2293,83 @@ set is_unitary_hash_big_SIMPLE(Param p) = bool:
        then stat_holder > 0 {#x}
        else is_pure(big_unitary_hash.sig_entry(p,-1))
        fi
+
+{real_ind_status: if p = Ind(pL) is IRREDUCIBLE for one of the hermitian candidates pL from
+ ind_cand_params (nu = 0 on the split center of L), then p is unitary iff pL is, iff every
+ derived factor of pL is. Unitarity to height HT does not follow, so -1 is returned only for
+ HT < 0. Off unless real_ind_flag; run in status after simple_status gives 0.}
+set real_ind_hash = make_Param_hash()
+set real_ind_vals = [int]: [] {full unitarity: 1, -1, or 0 (no irreducible candidate)}
+set real_ind_count = [int]: [0,0,0,0,0] {calls, computed, irreducible found, answered 1, answered -1}
+set real_ind_time = [int]: [0,0,0] {ms in: ind_cand_params, irreducibility, factor tests}
+set real_ind_clear() = void: real_ind_hash := make_Param_hash(); real_ind_vals := []
+set real_ind_lin_flag = true {candidates from ind_cand_params_lin (linear algebra) rather than
+    ind_cand_params (W-orbit search: hopeless for E7, |W| ~ 2.9e6)}
+set real_ind_unitarity(Param p) = int:
+    let G = p.real_form, t0 = elapsed_ms()
+    then cands = ##(if real_ind_lin_flag then ind_cand_params_lin(p) else ind_cand_params(p) fi)
+    then t1 = elapsed_ms()
+    then k = first(for pL in cands do real_induce_irreducible(pL,G) = 1*p od)
+    then t2 = elapsed_ms()
+    in real_ind_time[0] +:= t1-t0; real_ind_time[1] +:= t2-t1;
+       if k < 0 then 0
+       else real_ind_count[2] +:= 1;
+       	    let ans = if all(for dpL in derived_factor_params0(cands[k])
+	    	      	     do @bool: is_unitary_hash_big_SIMPLE(dpL) od)
+		      then 1 else -1 fi
+	    in real_ind_time[2] +:= elapsed_ms()-t2; ans
+       fi
+{p hermitian and herm_center'ed}
+set real_ind_status(Param p, int HT) = int:
+    real_ind_count[0] +:= 1;
+    let i = real_ind_hash.lookup(p)
+    then u = if i >= 0 then real_ind_vals[i]
+    	     else real_ind_count[1] +:= 1;
+	     	  let v = real_ind_unitarity(p) {may recurse into status: match only afterwards}
+		  in real_ind_hash.match(p); real_ind_vals #:= v; v
+	     fi
+    in if u > 0 then real_ind_count[3] +:= 1; 1
+       elif u < 0 and HT < 0 then real_ind_count[4] +:= 1; -1
+       else 0
+       fi
+set real_ind_report() = void:
+    prints("real_ind: ",real_ind_count[0]," calls, ",real_ind_count[1]," computed, ",
+    	   real_ind_count[2]," irreducible, answered 1: ",real_ind_count[3],", -1: ",
+	   real_ind_count[4],"; ms in ind_cand_params ",real_ind_time[0],", irreducibility ",
+	   real_ind_time[1],", factor tests ",real_ind_time[2])
+
+set real_ind_tests := [real_ind_status@(Param,int)]
+
+{real_ind_form: see real_ind_form_hook. Memoized on herm_center(p).}
+set real_ind_form_hash = make_Param_hash()
+set real_ind_form_vals = [[KTypePol]]: []
+set real_ind_form_count = [int]: [0,0,0] {computed, irreducible found, hermitian}
+set real_ind_form_time = [int]: [0,0,0] {ms in: ind_cand_params_lin, irreducibility, form on M'}
+set real_ind_form_clear() = void: real_ind_form_hash := make_Param_hash(); real_ind_form_vals := []
+set real_ind_form(Param p) = [KTypePol]:
+    let p = herm_center(p) then i = real_ind_form_hash.lookup(p)
+    in if i >= 0 then real_ind_form_vals[i]
+       else real_ind_form_count[0] +:= 1;
+	    let G = p.real_form, t0 = elapsed_ms()
+	    then cands = ##ind_cand_params_lin(p)
+	    then t1 = elapsed_ms()
+	    then k = first(for q in cands do real_induce_irreducible(q,G) = 1*p od)
+	    then t2 = elapsed_ms()
+	    then v = [KTypePol]:
+		 if k < 0 then []
+		 else real_ind_form_count[1] +:= 1;
+		      [real_induce_standard(hermitian_form_irreducible(cands[k]),G)]
+		 fi
+	    in real_ind_form_time[0] +:= t1-t0; real_ind_form_time[1] +:= t2-t1;
+	       real_ind_form_time[2] +:= elapsed_ms()-t2;
+	       {may recurse into big_unitary_hash: match only afterwards}
+	       real_ind_form_hash.match(p); real_ind_form_vals #:= v; v
+       fi
+set real_ind_form_hook := [real_ind_form@Param]
+set real_ind_form_report() = void:
+    prints("real_ind_form: ",real_ind_form_count[0]," computed, ",real_ind_form_count[1],
+	   " irreducibly induced; ms in ind_cand_params_lin ",real_ind_form_time[0],
+	   ", irreducibility ",real_ind_form_time[1],", form on M' ",real_ind_form_time[2])
 
 {1 means unitary, -1 nonunitary, 0 interrupted}
 set is_unitary_hash_big_SIMPLE(Param p, int TIME) = int:

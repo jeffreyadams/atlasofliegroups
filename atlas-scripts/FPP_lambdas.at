@@ -185,6 +185,135 @@ set ind_cand_params(Param p) = [[Param]]:
 	  in cand_hash.list() {distinct final Hermitian Param's on L2s[j] inducing to p}
        od
 
+{Linear algebra replacement for the W-orbit search in ind_cand_params (David's construction).
+ After to_no_Cplus, a = (-1)-eigenspace of theta_x is the split part of the center of the Levi M of
+ the cuspidal real parabolic of p, and nu lies in a*. Choose linearly independent restricted
+ roots alpha_1,..,alpha_k (k <= dim a - 1) with nu in their span, greedily: each step takes the
+ restricted root whose component orthogonal (for the invariant form, positive definite on a*) to
+ the alphas already chosen best reduces the residual of nu, and subtracts that projection. If
+ the residual vanishes, extend to dim a - 1 independent alphas; the roots whose restrictions lie
+ in their span form a maximal Levi M' of a real parabolic containing M, with nu trivial on the
+ split center of M'. pM' is p restricted to M', so real_induce_standard(pM',G) = p. Returns
+ [[pM']] when some constituent of finalize(pM') is hermitian (that one), else [].
+ Greedy, so it may miss candidates that the W-orbit search finds.}
+set icp_lin_count = [int]: [0,0,0,0,0,0] {calls, nu in span, hermitian found, restriction check failed,
+    not hermitian, conjugation not equivalent}
+{Equivalent parameter in which the coweight tau (in the -1 eigenspace of theta_x, so zero on
+ imaginary roots) becomes dominant: simple reflections s with tau*alpha_s < 0, acting on (x,lambda,nu)
+ linearly if alpha_s is complex, by the affine reflection through rho on lambda if real.}
+set conj_cowt_dominant(Param p, vec tau) = (Param,vec):
+    let rd = p.root_datum, x = p.x, lam = p.lambda, nu = p.nu, rho = p.root_datum.rho
+    in while let s = first(rd.semisimple_rank, (int i) bool: tau*rd.simple_roots[i] < 0) in s >= 0
+       do let r = reflection(rd,rd.simple_roots[s]), st = status(s,x)
+       	  in assert(st = 0 or st = 2 or st = 4, "conj_cowt_dominant: imaginary root");
+	     if st = 2 {real} then lam := r*(lam-rho)+rho else lam := r*lam fi;
+	     nu := r*nu; x := cross(s,x); tau := tau*r
+       od; (parameter(x,lam,nu),tau)
+set icp_lin_check = true {check real_induce_standard(pM',G) = p}
+set icp_lin_K = 1     {max number of maximal Levis M' (lines tau) to collect}
+set icp_lin_b = 1     {branching: number of best choices tried at each step}
+set icp_lin_nodes = 200 {cap on search nodes}
+{(p0, [(q,tau)]): as ind_cand_params_lin, also giving p0 = to_no_Cplus(p) and for each candidate q
+ on M' the coweight tau (coordinates of p0) whose centralizer is M'}
+set ind_cand_params_lin_tau(Param p) = (Param,[(Param,vec)]):
+    icp_lin_count[0] +:= 1;
+    if not equivalent(p,twist(p)) then return (p,[]) fi;
+    let G = p.real_form, rd = p.root_datum
+    then p0 = to_no_Cplus(p)
+    then x0 = p0.x, theta = p0.x.involution
+    then dim_a = rank(1-theta)
+    then () = if dim_a = 0 then return (p0,[]) fi
+    then A = rd.invariant_form_matrix
+    then Q(ratvec v, ratvec w) = rat: v*A*w
+    {restricted roots, doubled to stay integral, one of each +-pair}
+    then res = [vec]:
+    	 (for beta in rd.posroots
+	  do let v = beta - theta*beta
+	     in if =v then [] else let i = first(for c in v do c != 0 od)
+	     	  	   	   in if v[i] > 0 then [v] else [-v] fi
+	     fi
+	  od.##).no_reps
+    then perp([ratvec] E, ratvec v) = ratvec:
+    	 let u = v in for e in E do u -:= (Q(v,e)/Q(e,e))*e od; u
+    {depth first search for sets of dim a - 1 independent restricted roots with nu in their
+     span, branching over the icp_lin_b best choices at each step (best: largest projection of
+     the residual of nu on the new direction; once the residual is 0, any independent root
+     extends); stop after icp_lin_K distinct lines tau, or icp_lin_nodes nodes}
+    then lines = [vec]: [], nodes = 0
+    then stack = [([vec],[ratvec],ratvec)]: [([vec]:[],[ratvec]:[],ratvec: p0.nu)]
+    then () =
+	 while #stack > 0 and #lines < icp_lin_K and nodes < icp_lin_nodes
+	 do let (chosen,E,r) = stack~[0] in stack := stack[:#stack-1]; nodes +:= 1;
+	    if #chosen = dim_a - 1
+	    then if r = 0*r
+		 then let C = if #chosen = 0 then 1+theta
+			      else (1+theta) ## (mat: for alpha in chosen do alpha od) fi
+		      then K = kernel(^C)
+		      then () = assert(n_columns(K) = 1,
+				       "ind_cand_params_lin: split center of M' not a line")
+		      then tau = K[0]
+		      then i = first(for c in tau do c != 0 od)
+		      then tau = if tau[i] < 0 then -tau else tau fi
+		      in if find(lines,tau) < 0 then lines #:= tau fi
+		 fi
+	    else let scored = [(int,rat,ratvec)]:
+		     for alpha@i in res
+		     do let u = perp(E,alpha) in
+			if u = 0*u then []
+			elif r = 0*r then [(i,rat:1,u)]
+			else let c = Q(u,r) in if c = 0 then [] else [(i,c*c/Q(u,u),u)] fi
+			fi
+		     od.##
+		 then picks = [(int,rat,ratvec)]: []
+		 then () = for k:min(icp_lin_b,#scored)
+			   do let j = -1, best = rat: -1
+			      in for (i,sc,)@jj in scored
+				 do if sc > best and none(for (i2,,) in picks do i2 = i od)
+				    then j := jj; best := sc fi
+				 od; picks #:= scored[j]
+			   od
+		 in for (i,,u) in picks ~do {best one pushed last, so popped first}
+		       let rn = if r = 0*r then r else r - (Q(r,u)/Q(u,u))*u fi
+		       in stack #:= (chosen # res[i], E # u, rn)
+		    od
+	    fi
+	 od
+    then () = if #lines > 0 then icp_lin_count[1] +:= 1 fi
+    then cands = make_Param_hash(), pairs = [(Param,vec)]: []
+    then () =
+    	 for tau in lines
+	 do let (p1,tau_dom) = conj_cowt_dominant(p0,tau)
+	    then x1 = p1.x, lam1 = p1.lambda, nu1 = p1.nu
+	    then () = if icp_lin_check and not equivalent(p1,p0) then icp_lin_count[5] +:= 1 fi
+	    then L = Levi(parabolic_by_cwt(tau_dom,x1))
+	    then xL = inverse_embed_KGB(x1,L), theta1 = x1.involution
+	    then shift = rho_r(x1)-rho_r(xL)+(1-theta1)*(rho_S(x1)-rho_S(xL))
+	    then pL = parameter(xL, lam1 - shift, nu1)
+	    then () = if icp_lin_check and not equivalent(real_induce_standard(pL,G),p)
+		      then icp_lin_count[3] +:= 1
+		      fi
+	    then qs = monomials(finalize(pL))
+	    then k = first(for q in qs do equivalent(q,twist(q)) od)
+	    in if k < 0 then icp_lin_count[4] +:= 1
+	       else icp_lin_count[2] +:= 1;
+	       	    let n = cands.size() in if cands.match(qs[k]) = n then pairs #:= (qs[k],tau) fi
+	       fi
+	 od
+    in (p0,pairs)
+set ind_cand_params_lin(Param p) = [[Param]]:
+    let (,pairs) = ind_cand_params_lin_tau(p)
+    in if #pairs = 0 then [] else [for (q,) in pairs do q od] fi
+
+{David's sufficient condition for irreducibility of Ind_{M'}^G(J(q)) = J(p0) (to be checked): no
+ positive coroot av outside M' (tau*root /= 0) with av*gamma, av*theta*gamma integers of strictly
+ opposite sign; gamma, theta from p0, tau in the coordinates of p0}
+set real_ind_irr_suff(Param p0, vec tau) = bool:
+    let rd = p0.root_datum, theta = p0.x.involution, gamma = p0.infinitesimal_character
+    in none(for av@j in rd.poscoroots
+    	    do tau*rd.posroots[j] != 0 and is_integer(av*gamma) and
+	       (av*gamma)*(av*theta*gamma) < 0
+	    od)
+
 {D stands for "derived." For each final Hermitian pL inducing to p found by ind_cand_params,
 take derived factors [dpL]; so pL is unitary if and only if all dpL are.}
 {This function is used in function is_u_ind}
