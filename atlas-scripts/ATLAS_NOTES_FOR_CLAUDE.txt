@@ -204,9 +204,16 @@ Cases already found
   Use the file with NONunitary results when the question involves status(q,-1) < 0.
 - Script-level memos that survive between commands: highest_LK_vals
   (bottom_layer.at), K_type_hw_* and hw_* (K_highest_weights.at), defHashTime /
-  defHashHtTime (deformation, hermitian.at), Hodge hashes (hodge0.at), herm_center
-  barycenter memo, integrality hash, and the library's own Rep_table per real
+  defHashHtTime (deformation, hermitian.at), Hodge hashes (hodge0.at), herm_bary_hash
+  (used only by herm_center_bary), integrality hash, and the library's own Rep_table per real
   form object. Each has a flag or a clear function near its definition.
+- herm_center (FPP_faces_geom.at) is the built-in alcove_center since b393a68e; the old
+  barycenter version is herm_center_bary. They agree in equal rank; in unequal rank they
+  differ but pick compatible points of the same facet, so FPP hashes (which apply
+  herm_center on match/lookup/fill) stay consistent and preloads recenter on load.
+  alcove_center works for any reductive G, so FPP hashes may hold Params on real Levis.
+  (1 Oct 2026, laptop, Claude: 7518 equal-rank params identical; Spin(5,3), Spin(5,5),
+  Spin(7,5), Spin(6,6), E6_s runs with identical counts.)
 - Isolating one expensive (x,lambda) from a long sweep does not reproduce it: deep
   in a sweep the hashes are full; alone it pays for everything (one E8_s lambda
   went from 580 s in the sweep to 35 GB and was killed when run alone). Compare
@@ -270,6 +277,8 @@ Cases already found
   it kills the calling shell. Identify atlas jobs by process name and stdin file
   instead (readlink /proc/PID/fd/0). (27 Sep 2026, Utah box, Claude; happened
   three times.)
+- Real-induction hooks (real_ind_vertex_flag, real_ind_form_flag), results through rank 7
+  and how to test in rank 8: REAL_INDUCTION_RANK8_TEST.txt.
 - To test old script commits with the current binary:
   `git worktree add --detach <dir> <commit>`. Before about April 2026, scripts call
   `ascii`, which the binary now calls `ASCII`: load a shim with
