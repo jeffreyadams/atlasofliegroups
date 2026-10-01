@@ -15,7 +15,7 @@ HOW TO CONTRIBUTE (every Claude session and person on these branches)
 - If an entry is wrong or out of date, correct or delete it in place. Do not
   append a second entry that contradicts it.
 - Size budget: 30 KB. If an addition would exceed it, condense first.
-- One copy only, on to_ht_branch_alt; related branches pick it up from there.
+- One copy only, on fpp_unitary (formerly to_ht_branch_alt); related branches pick it up from there.
 - Commit changes to this file separately, touching nothing else, with a short
   message, so conflicts stay easy to resolve.
 - David, or a session he asks, reviews `git log -p ATLAS_NOTES_FOR_CLAUDE.txt`
