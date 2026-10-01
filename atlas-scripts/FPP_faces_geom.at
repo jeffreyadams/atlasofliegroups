@@ -1995,6 +1995,11 @@ set herm_bary_hash = ((InnerClass, ratvec)->ratvec):
 {herm_center is now the built-in alcove_center: the same as the old barycenter version
  (herm_center_bary) in equal rank, and in unequal rank another canonical hermitian point of the
  same facet, compatible with it (each is constant on the other's output)}
+{Unlike herm_center_bary, alcove_center works for any reductive G, so FPP hashes may (and for now
+ do) hold Params and forms on G whose derived group is not simple, e.g. real Levis M' reached by
+ real_ind_form (FPP_faces_herm.at). It would be preferable to hash only the simple derived
+ factors (much less to store, and is_unitary etc. are decided on factors), once signatures on the
+ factors can be glued into one on M'; glue_sigs (cohom_reductionND.at) handles connected M' only.}
 set herm_center_bary(Param p) = Param:
     if hermCenterOldFlag
     then return(herm_centerOld(p))

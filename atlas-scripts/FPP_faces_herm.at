@@ -2340,7 +2340,10 @@ set real_ind_report() = void:
 
 set real_ind_tests := [real_ind_status@(Param,int)]
 
-{real_ind_form: see real_ind_form_hook. Memoized on herm_center(p).}
+{real_ind_form: see real_ind_form_hook. Memoized on herm_center(p). The form on M' comes from
+ hermitian_form_irreducible on M' itself, so Params and forms on M' (derived group usually not
+ simple) go into the FPP hashes; preferable eventually: forms of the simple derived factors of
+ pM', glued (needs glue_sigs for disconnected M'). See the note at herm_center.}
 set real_ind_form_hash = make_Param_hash()
 set real_ind_form_vals = [[KTypePol]]: []
 set real_ind_form_count = [int]: [0,0,0] {computed, irreducible found, hermitian}
