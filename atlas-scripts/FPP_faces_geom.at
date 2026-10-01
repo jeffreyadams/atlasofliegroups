@@ -1992,7 +1992,10 @@ set herm_bary_hash = ((InnerClass, ratvec)->ratvec):
 	     fi;
 	     answers[n][gam]
 
-set herm_center(Param p) = Param:
+{herm_center is now the built-in alcove_center: the same as the old barycenter version
+ (herm_center_bary) in equal rank, and in unequal rank another canonical hermitian point of the
+ same facet, compatible with it (each is constant on the other's output)}
+set herm_center_bary(Param p) = Param:
     if hermCenterOldFlag
     then return(herm_centerOld(p))
     fi;
@@ -2004,6 +2007,10 @@ set herm_center(Param p) = Param:
     then answer = parameter(p.x, p.lambda, bary)
     then () = hermCenterNewTime +:= elapsed_ms() - start
     in answer
+
+set herm_center_alcove_flag = true
+set herm_center(Param p) = Param:
+    if herm_center_alcove_flag then alcove_center(p) else herm_center_bary(p) fi
 
 {A Param_hash for FPP use: every Param is replaced by herm_center(p) before it
  is stored or looked up, so callers may pass uncentered Params, and all

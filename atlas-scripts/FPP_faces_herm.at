@@ -585,9 +585,9 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	let  rfnum = add_real_form(p.real_form)
 	then PNUM = phashes[rfnum].size(), rf = real_form_hash.index(rfnum)
 	{then () = p := regroup(rf, herm_center(p))}
-	then list = global_vertices(rf, p.infinitesimal_character)
+	then pc = herm_center(p) {was the barycenter of global_vertices, inline}
 	{then phc = herm_center(p)}
-	then () = p:=parameter(rf, p.x.number, p.lambda, sum(#list[0],list)/#list)
+	then () = p:=parameter(rf, p.x.number, p.lambda, pc.nu)
 	then pnum = phashes[rfnum].match(p)
 	then () = if pnum = PNUM {haven't computed with p before}
 		  then let sig = if uhashes[rfnum].lookup(p).>=
@@ -651,9 +651,9 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	then rf = real_form_hash.index(rfnum)
 	then PNUM = phashes[rfnum].size()
 	{then () = p:=regroup(rf,herm_center(p))}
-	then list = global_vertices(rf, p.infinitesimal_character)
+	then pc = herm_center(p) {was the barycenter of global_vertices, inline}
 	{then phc = herm_center(p)}
-	then () = p:=parameter(rf, p.x.number, p.lambda, sum(#list[0],list)/#list)
+	then () = p:=parameter(rf, p.x.number, p.lambda, pc.nu)
 	then pnum = phashes[rfnum].match(p)
 	then () = if pnum = PNUM {haven't computed with p before}
 		  then let sigD = if uhashes[rfnum].lookup(p).>=
@@ -736,9 +736,9 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	let  rfnum = add_real_form(p.real_form)
 	then PNUM = phashes[rfnum].size(), rf = real_form_hash.index(rfnum)
 	{then () = p := regroup(rf, herm_center(p))}
-	then list = global_vertices(rf, p.infinitesimal_character)
+	then pc = herm_center(p) {was the barycenter of global_vertices, inline}
 	{then phc = herm_center(p)}
-	then () = p:=parameter(rf, p.x.number, p.lambda, sum(#list[0],list)/#list)
+	then () = p:=parameter(rf, p.x.number, p.lambda, pc.nu)
 	then pnum = phashes[rfnum].lookup(p) {MATCH WAS WRONG!}
 	then () = if pnum = -1 {haven't computed with p before}
 		  then let m_sig = if uhashes[rfnum].lookup(p).>=
@@ -812,9 +812,9 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	then rf = real_form_hash.index(rfnum)
 	then PNUM = phashes[rfnum].size()
 	{then () = p:=regroup(rf,herm_center(p))}
-	then list = global_vertices(rf, p.infinitesimal_character)
+	then pc = herm_center(p) {was the barycenter of global_vertices, inline}
 	{then phc = herm_center(p)}
-	then () = p:=parameter(rf, p.x.number, p.lambda, sum(#list[0],list)/#list)
+	then () = p:=parameter(rf, p.x.number, p.lambda, pc.nu)
 	then pnum = phashes[rfnum].lookup(p)
 	then () = if pnum = -1 {haven't computed with p before}
 		  then if print_int_flag
