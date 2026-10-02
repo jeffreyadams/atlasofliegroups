@@ -2818,6 +2818,18 @@ in favor of u. Increasing try_ht_factor allows more to_ht tests.}
 {try_ht_factor*to_ht_factor should be at least 1 to avoid loops?}
 set try_ht_factor = rat: 3/4 {3/4} {3/4} {3/2} {chosen to make x_open for E7_s OK} {lowered to 1/2 5/30/26}
 
+{Prediction of the next to_ht test time in the routing loops, after a test that took test_time ms.
+ rule 0 (1 Oct 2026): max(u_predictor_to_ht(p,ht), 3/2*test_time). u_predictor_to_ht overestimates
+ by 3-20x on E8_q x=66989 parameters, so the max is almost always the predictor; on one of them it
+ triggered a fruitless 142-156 s is_unitary attempt (total 236-257 s).
+ rule 2 (default): 3/2*test_time, i.e. experience only. Same E8_q parameter: 23 s, same answer;
+ neutral on Spin(6,6) (whole group), E7_s KGB[20886:20892], the other E8_q parameter.}
+set to_ht_pred_rule = 2
+set next_to_ht_time(Param p, int ht, int test_time) = int:
+    if to_ht_pred_rule = 0 then max(u_predictor_to_ht(p,ht), (3*test_time)\2)
+    else (3*test_time)\2
+    fi
+
 {"step" is how many steps up in to_ht list to start}
 set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
   if skip_routing(p.real_form) then return is_unitary_hash_big_SIMPLE(p) fi;
@@ -2910,7 +2922,7 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
 			     ht:= next_height(p,ht);
 			     if ht < 0 then result:=1; big_unitary_hash.umatch(p); break fi
 			 fi{result.>};
-			 to_ht_time:=max(u_predictor_to_ht(p,ht),3*test_time\2);
+			 to_ht_time:=next_to_ht_time(p,ht,test_time);
 			 if print_int_flag
 			 then prints("  Predicted to_ht_time for ht = ",ht," is ",
 			      print_time_string(to_ht_time), " at total time ",
@@ -2982,7 +2994,7 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
 			     ht:= next_height(p,ht);
 			     if ht < 0 then result:=1; break fi {there was no greater height to test to!}
 			fi;
-			to_ht_time := max(u_predictor_to_ht(p,ht), (3*test_time)\2);
+			to_ht_time := next_to_ht_time(p,ht,test_time);
 			if print_int_flag
 			then prints("  Predicted to_ht_time for ht = ",ht," is ",
 			     print_time_string(to_ht_time))
@@ -3152,7 +3164,7 @@ set is_unitary_test_big_SIMPLE_interrupted_Ufirst(Param p, int time) = int:
 	       	   elif result.> {got a useless result from to_ht}
 	       	   then ht:= next_height(p,ht);
 		   	if ht < 0 then break fi;
-			to_ht_time := max(u_predictor_to_ht(p,ht{,interrupt_base_time\2}), (3*test_time)\2);
+			to_ht_time := next_to_ht_time(p,ht,test_time);
 			result := 0;
 			if print_int_flag
 			then prints("  Predicted to_ht_time now ",print_time_string(to_ht_time))
@@ -3226,7 +3238,7 @@ set is_unitary_test_big_SIMPLE_interrupted(Param p, int time) = int:
 	       	       then ht:= next_height(p,ht);
 		       	    if ht < 0 then return 1 fi; {no greater height to test}
 		       	    result:=0;
-		       	    to_ht_time := max(u_predictor_to_ht(p,ht), (3*test_time)\2)
+		       	    to_ht_time := next_to_ht_time(p,ht,test_time)
 		  fi {result.<}
 	       fi; {A} { to_ht_time <= try_ht_factor*u_time}
 	       if{B}  u_time <= try_u_factor * to_ht_time 
@@ -3388,7 +3400,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
 		       elif result.<
 		       then break
 		       else u_time := u_predictor(p);
-		       	    to_ht_time:=max(u_predictor_to_ht(p,HT), (3*test_time)\2);
+		       	    to_ht_time:=next_to_ht_time(p,HT,test_time);
 		       	    if print_int_flag
 			    then prints("  (u_time,to_ht_time) now (", print_time_string(u_time),",",
 			    	 print_time_string(to_ht_time),")")
@@ -3411,7 +3423,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
 		       then add_to_u_to_ht(p,HT)
 		       else {(u_time, to_ht_time) := adjust_to_ht_over_u(p,HT);}
 		       	    u_time := u_predictor(p);
-		       	    to_ht_time:=max(u_predictor_to_ht(p,HT), (3*test_time)\2);
+		       	    to_ht_time:=next_to_ht_time(p,HT,test_time);
 			    if print_int_flag
 			    then prints("  (u_time,to_ht_time) now (", print_time_string(u_time),",",
 			    	 print_time_string(to_ht_time),")")
@@ -3478,7 +3490,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
 		       	    break
 		       else {(u_time,to_ht_time): = adjust_to_ht_over_u(p,HT);}
 		       	    u_time := u_predictor(p);
-			    to_ht_time:=max(u_predictor_to_ht(p,HT), 3*test_time\2);
+			    to_ht_time:=next_to_ht_time(p,HT,test_time);
 			    if print_int_flag
 			    then prints("  (u_time,to_ht_time) now (", print_time_string(u_time),",",
 			    	 print_time_string(to_ht_time),")")
@@ -3625,7 +3637,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
 			elif result.<
 	       	        then big_unitary_hash.numatch_height(p,HT);
 			     break
-			else to_ht_time:=max(u_predictor_to_ht(p,HT), 3*test_time\2);
+			else to_ht_time:=next_to_ht_time(p,HT,test_time);
 			     if print_int_flag
 			     then prints("  Predicted to_ht_time now ",print_time_string(to_ht_time))
 			     fi
@@ -3755,7 +3767,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_Ufirst(Param p, [int] HTs) = bool:
 			elif result.<
 	       	        then big_unitary_hash.numatch_height(p,HT);
 			     break
-			else to_ht_time:=max(u_predictor_to_ht(p,HT), 3*test_time\2);
+			else to_ht_time:=next_to_ht_time(p,HT,test_time);
 			     if print_int_flag
 			     then prints("  Predicted to_ht_time now ",print_time_string(to_ht_time))
 			     fi
