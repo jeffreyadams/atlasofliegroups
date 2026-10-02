@@ -2027,6 +2027,21 @@ u_predictor_to_ht_old(p, HT, 10*interrupt_base_time)
 
 set min_ht_trials = 1
 
+{history_pred_flag: in u_predictor_to_ht, predict a term from its own recorded deformation time
+ at the largest lower height (defHashHtTime), scaled by the squared ratio of gaps HT-height+1.
+ One height step ahead this was within x1.26 (median), x2.9 (p90) on 188 steps of terms >= 50 ms
+ (E7_s, E8_q, Spin(6,6)); exponents 1..4 gave p90 x4.3, x2.9, x2.9, x4.2.}
+set history_pred_flag = false
+set hist_term_pred(Param q, int HT, int fallback) = int:
+    let j = defHashHtTime.param_lookup(q)
+    in if j < 0 then fallback
+       else let hs = defHashHtTime.heights_index(j), ts = defHashHtTime.times_index(j), best = -1
+	    in for h@i in hs do if h < HT and ts[i] > 0 and (best < 0 or h > hs[best]) then best := i fi od;
+	       if best < 0 then fallback
+	       else let g1 = HT - height(q) + 1, g0 = hs[best] - height(q) + 1
+		    in if g0 <= 0 then fallback else ceil(ts[best]*(g1/g0)^2) fi
+	       fi
+       fi
 set u_predictor_to_ht(Param p, int HT, int time) = int:
     if u_predictor_old_flag then return u_predictor_to_ht_old(p,HT,time) fi;
     if HT < 0 then return u_predictor(p) fi;
@@ -2079,7 +2094,12 @@ set u_predictor_to_ht(Param p, int HT, int time) = int:
 		       od.##
      then N = #list, data_n = #data_inds, un = #unknown_indices
      then pred_list = pred(list, data_times,data_inds,HT)
-     then pred = if from_scratch_flag
+     {history: a term q already deformed to a lower height h (time T_h > 0) is predicted as
+      T_h*((HT-ht(q)+1)/(h-ht(q)+1))^2; others keep the sampled estimate}
+     then hist_list = [int]: for j:#list do hist_term_pred(list[j],HT,pred_list[j]) od
+     then hist_pred = sum(for j in unknown_indices do hist_list[j] od) + ((#list-#unknown_indices+10)*interrupt_base_time)\10
+     then pred = if history_pred_flag and not from_scratch_flag and not no_margin_flag then hist_pred
+	    elif from_scratch_flag
        	    	    then sum(pred_list) {+ interrupt_base_time}
 		    elif no_margin_flag
 		    then sum(for j in unknown_indices do pred_list[j] od)
@@ -2106,7 +2126,8 @@ set u_predictor_to_ht(Param p, int HT, int time) = int:
 	 predictor_h_time+:= elapsed_ms() - start_pred;
 	 predictor_h_times#:=(elapsed_ms() - start_pred, time);
 	 predictor_h_count+:=1;
-	 if pred_log_flag then prints("PREDLOG ",p.root_datum.rank," ",p," HT=",HT," pred=",pred) fi;
+	 if pred_log_flag then prints("PREDLOG ",p.root_datum.rank," ",p," HT=",HT," pred=",pred," hist=",hist_pred," sampled=",
+	    sum(for j in unknown_indices do pred_list[j] od) + ((#list-#unknown_indices+10)*interrupt_base_time)\10) fi;
 	 pred
 
 {predicted time in milliseconds to complete is_unitary{to_ht}(p,{HT})}
