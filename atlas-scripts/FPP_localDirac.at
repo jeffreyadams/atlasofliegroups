@@ -1540,29 +1540,18 @@ set add_datas(Param p, KGPElt Qmin, [int] Ds) =
     then answer = [(KGPElt,[(KType,[KType])])]: []
     then () = if #Ds <= 1 then return (answer, Es) fi
     then () = for j:#Ds - 1 from 1
-	      do let datas = {if Qs2_flag {[(KGPElt,[(KType,[KType])])]}
-			     then for mu in LKTs(p)
-				  do if Qs2B_flag
-				     then bottom_factors(bottom_K_type_Qs2B(mu,Qmin,height(p),Ds[j]))
-				     else for (Q,pL) in max_Qps(p)
-					  do bottom_K_type_Qs2(mu,Q,height(p),Ds[j])
-					  od
-				     fi
-				  od.##
-			     else} bottom_factors(bottom_K_type_Qs(p,Qmin,height(p), Ds[j]))
-			     {fi} {Qs2_flag}
+	      do let datas = for p0 in monomials(finalize(p))
+	      	     	     do bottom_factors(bottom_K_type_Qs(p0,Qmin,height(p), Ds[j]))
+			     od.##
 		 then new_datas = for (Q,list) in datas
-				  do {if Q = Qmin  {SLOW!!!}
-				     then []
-				     else [}(Q, for (tau,local) in list
+				  do (Q, for (tau,local) in list
 					 do let M = bl_KHash.size()
 					    in if bl_KHash.match(tau) = M
 					       then [(tau,local)]
 					       else []
 					       fi
-					 od.##){]
-				      fi}
-				  od{.##}
+					 od.##)
+				  od
 		 in if bl_KHash.size() > old_size {we found some new bottom layer K-types}
 		    then Es:= Ds[j:];
 			 answer:=new_datas;
@@ -5244,17 +5233,9 @@ set local_test_GEO_hash_bottom_layer_interrupt(KGBElt x, ratvec lambda, LocalVer
    then MU = big_unitary_hash.branch(K_type_pol(pmin), Ds~[0])
    {then MU = K_type_pol(character_formula(}
    then datass =  for j:{bl_step_count} #Ds - 1 from 1
-   	       	  do let datas = {if Qs2_flag
-		     	       	 then for mu in LKTs(pmin)
-				      do if Qs2B_flag
-		     	       	      	 then bottom_factors(bottom_K_type_Qs2B(mu,Q0, Ds[j-1], Ds[j]))
-					 else for Q in max_Qs(Q0)
-					      do bottom_K_type_Qs2(mu,Q, Ds[j-1], Ds[j])
-					      od
-					 fi {Qs2B_flag}
-				       od.##
-		  		 else} bottom_factors(bottom_K_type_Qs(pmin, Q0, Ds[j-1], Ds[j]{, MU}))
-				 {fi} {Qs2_flag}
+   	       	  do let datas = for p0 in monomials(finalize(pmin))
+		     	       	 do bottom_factors(bottom_K_type_Qs(p0, Q0, Ds[j-1], Ds[j]))
+				 od.##
 		     {then () = prints("j = ",j,", card(datas) = ", card(datas),", datas = ",datas, new_line)}
 		     in if max_ht(datas) > height(pmin) {card(datas) > 0}
 		     	then newDs #:= Ds[j];
@@ -5272,7 +5253,7 @@ set local_test_GEO_hash_bottom_layer_interrupt(KGBElt x, ratvec lambda, LocalVer
    then () = if #newDs > 0
    	     then let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
    	     	  then () = LFDKH := local_testK_hash_bottom_layer_more(x,lambda, Lvd, LFDKH, eq,
-		      gr, CLBF, {maxQs,} datass, pol_hash, Uhash)
+		      gr, CLBF, datass, pol_hash, Uhash)
    		  then () = if test_verbose then prints("unitary on bottom layer to ",newDs~[0],
 		   	   " face counts to dim 1: ",for list in LFDKH do
 			     #list od)
