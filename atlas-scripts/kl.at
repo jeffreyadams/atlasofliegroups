@@ -369,16 +369,30 @@ set test(KGBElt x, ratvec lambda, vec av, rat t, int HT) = bool:
 
 {END TAKEN FROM STEVE}
 
+{Parity of a real root without a Cayley transform. For a real root alpha (coroot av) at p.x with
+ av*gamma integral: alpha is parity for p iff av*gamma + av*p.lambda + av*rho_r(p.x) is odd
+ (rr = rho_r(p.x), passed in so callers compute it once). Agreed with is_parity@(vec,Param) on all
+ 3264 integral real roots tested (Sp(4,R), SL(3,R), G2_s, SO(4,3), SU(2,2), Sp(6,R)); is_parity
+ builds Cayley(alpha,p), which was 9% of an E7_s x_open run. Checked against is_parity under
+ seat_belt_on. parity_fast_flag := false restores is_parity.}
+set parity_fast_flag = true
+set is_parity_fast(Param p, vec alpha, vec av, ratvec rr) = bool:
+    if not parity_fast_flag then is_parity(alpha,p)
+    else let s = av*p.infinitesimal_character + av*p.lambda + av*rr
+	 then ans = is_integer(s) and floor(s) % 2 = 1
+	 in assert(@:ans = is_parity(alpha,p),"is_parity_fast disagrees with is_parity"); ans
+    fi
+
 set rwTIME = int:0
 
 set red_walls(Param p) = int:
     let start = elapsed_ms(), theta = p.x.involution, rd = p.root_datum, gamma=p.infinitesimal_character 
-    then p0 = p*0, answer = rat:0
+    then p0 = p*0, answer = rat:0, rr = rho_r(p.x)
     in for av@j in rd.poscoroots
        do let pos = floor(av*gamma), neg = ceil(av*theta*gamma)
        	  in if pos >=1 and neg <= -1
        	     then answer+:= if (av+av*theta).= {forces pos=neg}
-	     	  	    then if is_parity(rd.posroots[j], p0)
+	     	  	    then if is_parity_fast(p0,rd.posroots[j],av,rr)
 			    	 then pos\2
 			         else (pos+1)\2
 				 fi
@@ -438,11 +452,11 @@ set rwiTIME = int:0
 
 set red_walls_int(Param p) = int:
     let start = elapsed_ms(), x = p.x,  gamma = p.infinitesimal_character
-    then theta = x.involution, rd = x.root_datum, answer = rat:0
+    then theta = x.involution, rd = x.root_datum, answer = rat:0, rr = rho_r(x)
     in for av@j in rd.poscoroots
        do if is_integer(av*gamma) and av*gamma > 0 and av*theta*gamma < 0
        	  then if is_real(j,x)
-	       then if is_parity(rd.posroots[j],p)
+	       then if is_parity_fast(p,rd.posroots[j],av,rr)
 	       	    then answer+:=1
 		    fi
 	       else answer +:= 1/2

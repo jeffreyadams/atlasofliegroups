@@ -136,13 +136,13 @@ set local_red_coroots(Param p) = [vec]:
 
 set local_red_aff_coroots(Param p) = [AffineCoroot]:
     let theta = p.x.involution, gamma = p.infinitesimal_character,
-    	rd = p.root_datum, p0 = p*0, answer = [AffineCoroot]: []
+    	rd = p.root_datum, p0 = p*0, answer = [AffineCoroot]: [], rr = rho_r(p.x)
     in for av@j in rd.poscoroots
        do let pos = floor(av*gamma), neg = ceil(av*theta*gamma)
        	  in if (pos >= 1 and neg <= -1)
        	     then answer##:=
 	     	  if (av+av*theta).=
-	       	  then if is_parity(rd.posroots[j],p0)
+	       	  then if is_parity_fast(p0,rd.posroots[j],av,rr)
 	       	       then for m:pos\2
 	       	       	    do (av,2*(m+1))
 		       	    od
@@ -168,13 +168,13 @@ set is_red(Param p, AffineCoroot (av,n), int HT) = bool:
 {these are the affine coroots related to reducibility}
 set local_red_aff_coroots(Param p, int HT) = [AffineCoroot]:
     let x = p.x, lambda = p.lambda, p0 = p*0, answer = [AffineCoroot]: []
-    then theta = x.involution, gamma = p.infinitesimal_character, rd = p.root_datum
+    then theta = x.involution, gamma = p.infinitesimal_character, rd = p.root_datum, rr = rho_r(x)
     in for av@j in rd.poscoroots
        do let pos = floor(av*gamma), neg = ceil(av*theta*gamma)
        	  in if (pos >= 1 and neg <= -1)
        	     then answer##:=
 	       	  if (av+av*theta).=
-	       	  then if is_parity(rd.posroots[j],p0)
+	       	  then if is_parity_fast(p0,rd.posroots[j],av,rr)
 	       	       then for m:pos\2
 	       	    	    if test(x,lambda,av,2*(m+1),HT)
 		    	    do (av,2*(m+1))
