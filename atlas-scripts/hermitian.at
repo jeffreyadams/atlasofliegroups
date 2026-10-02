@@ -1313,7 +1313,11 @@ set was_tested_inter(Param p, int T, int T_target) = void:
        	    tested_inter_counts[m] +:=1
        fi
 
+{pred_log_flag: log every u_predictor_to_ht call (PREDLOG) and every completed to_ht test
+ (TESTLOG), to compare predictions with actual times offline (join on param and HT).}
+set pred_log_flag = false
 set was_tested_to_ht(Param p,int N, int T, bool ans) = void:
+    if pred_log_flag then prints("TESTLOG ",p.root_datum.rank," ",p," HT=",N," T=",T," ans=",ans) fi;
     if drain_plug_flag and T > drain_plug_time
     then prints(p," took ",print_time_string(T)," to test is_unitary_to_ht ", N,
     	 	 " = ",ans)
@@ -2102,6 +2106,7 @@ set u_predictor_to_ht(Param p, int HT, int time) = int:
 	 predictor_h_time+:= elapsed_ms() - start_pred;
 	 predictor_h_times#:=(elapsed_ms() - start_pred, time);
 	 predictor_h_count+:=1;
+	 if pred_log_flag then prints("PREDLOG ",p.root_datum.rank," ",p," HT=",HT," pred=",pred) fi;
 	 pred
 
 {predicted time in milliseconds to complete is_unitary{to_ht}(p,{HT})}
