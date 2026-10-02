@@ -2910,7 +2910,7 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
 			     ht:= next_height(p,ht);
 			     if ht < 0 then result:=1; big_unitary_hash.umatch(p); break fi
 			 fi{result.>};
-			 to_ht_time:=max(u_predictor_to_ht(p,ht),3*to_ht_time\2);
+			 to_ht_time:=max(u_predictor_to_ht(p,ht),3*test_time\2);
 			 if print_int_flag
 			 then prints("  Predicted to_ht_time for ht = ",ht," is ",
 			      print_time_string(to_ht_time), " at total time ",
@@ -2982,7 +2982,7 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
 			     ht:= next_height(p,ht);
 			     if ht < 0 then result:=1; break fi {there was no greater height to test to!}
 			fi;
-			to_ht_time := max(u_predictor_to_ht(p,ht{,interrupt_base_time\2}), (3*to_ht_time)\2);
+			to_ht_time := max(u_predictor_to_ht(p,ht), (3*test_time)\2);
 			if print_int_flag
 			then prints("  Predicted to_ht_time for ht = ",ht," is ",
 			     print_time_string(to_ht_time))
@@ -3152,7 +3152,7 @@ set is_unitary_test_big_SIMPLE_interrupted_Ufirst(Param p, int time) = int:
 	       	   elif result.> {got a useless result from to_ht}
 	       	   then ht:= next_height(p,ht);
 		   	if ht < 0 then break fi;
-			to_ht_time := max(u_predictor_to_ht(p,ht{,interrupt_base_time\2}), (3*to_ht_time)\2);
+			to_ht_time := max(u_predictor_to_ht(p,ht{,interrupt_base_time\2}), (3*test_time)\2);
 			result := 0;
 			if print_int_flag
 			then prints("  Predicted to_ht_time now ",print_time_string(to_ht_time))
@@ -3226,7 +3226,7 @@ set is_unitary_test_big_SIMPLE_interrupted(Param p, int time) = int:
 	       	       then ht:= next_height(p,ht);
 		       	    if ht < 0 then return 1 fi; {no greater height to test}
 		       	    result:=0;
-		       	    to_ht_time := max(u_predictor_to_ht(p,ht), (3*to_ht_time)\2)
+		       	    to_ht_time := max(u_predictor_to_ht(p,ht), (3*test_time)\2)
 		  fi {result.<}
 	       fi; {A} { to_ht_time <= try_ht_factor*u_time}
 	       if{B}  u_time <= try_u_factor * to_ht_time 
@@ -3388,7 +3388,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
 		       elif result.<
 		       then break
 		       else u_time := u_predictor(p);
-		       	    to_ht_time:=max(u_predictor_to_ht(p,HT), (3*to_ht_time)\2);
+		       	    to_ht_time:=max(u_predictor_to_ht(p,HT), (3*test_time)\2);
 		       	    if print_int_flag
 			    then prints("  (u_time,to_ht_time) now (", print_time_string(u_time),",",
 			    	 print_time_string(to_ht_time),")")
@@ -3411,7 +3411,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
 		       then add_to_u_to_ht(p,HT)
 		       else {(u_time, to_ht_time) := adjust_to_ht_over_u(p,HT);}
 		       	    u_time := u_predictor(p);
-		       	    to_ht_time:=max(u_predictor_to_ht(p,HT), (3*to_ht_time)\2);
+		       	    to_ht_time:=max(u_predictor_to_ht(p,HT), (3*test_time)\2);
 			    if print_int_flag
 			    then prints("  (u_time,to_ht_time) now (", print_time_string(u_time),",",
 			    	 print_time_string(to_ht_time),")")
@@ -3478,7 +3478,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
 		       	    break
 		       else {(u_time,to_ht_time): = adjust_to_ht_over_u(p,HT);}
 		       	    u_time := u_predictor(p);
-			    to_ht_time:=max(u_predictor_to_ht(p,HT), 3*to_ht_time\2);
+			    to_ht_time:=max(u_predictor_to_ht(p,HT), 3*test_time\2);
 			    if print_int_flag
 			    then prints("  (u_time,to_ht_time) now (", print_time_string(u_time),",",
 			    	 print_time_string(to_ht_time),")")
@@ -3625,7 +3625,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
 			elif result.<
 	       	        then big_unitary_hash.numatch_height(p,HT);
 			     break
-			else to_ht_time:=max(u_predictor_to_ht(p,HT), 3*to_ht_time\2);
+			else to_ht_time:=max(u_predictor_to_ht(p,HT), 3*test_time\2);
 			     if print_int_flag
 			     then prints("  Predicted to_ht_time now ",print_time_string(to_ht_time))
 			     fi
@@ -3755,7 +3755,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_Ufirst(Param p, [int] HTs) = bool:
 			elif result.<
 	       	        then big_unitary_hash.numatch_height(p,HT);
 			     break
-			else to_ht_time:=max(u_predictor_to_ht(p,HT), 3*to_ht_time\2);
+			else to_ht_time:=max(u_predictor_to_ht(p,HT), 3*test_time\2);
 			     if print_int_flag
 			     then prints("  Predicted to_ht_time now ",print_time_string(to_ht_time))
 			     fi
