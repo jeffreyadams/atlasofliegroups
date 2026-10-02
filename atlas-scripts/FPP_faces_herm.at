@@ -2830,6 +2830,51 @@ set next_to_ht_time(Param p, int ht, int test_time) = int:
     else (3*test_time)\2
     fi
 
+{Next height for a to_ht test in the routing loops, after a successful test at ht (-1: J(p) has
+ no K-type of height in (ht,top_ht], so p is unitary).
+ rule 0: next_height(p,ht), a height that may carry a K-type of the STANDARD module: many of
+   these carry no K-type of J(p), and the to_ht test there repeats the previous answer.
+ rule 2: the smallest height > ht of a K-type of J(p), from branch_irr_hash(p,D), D growing
+   geometrically from next_height(p,ht) to top_ht. The branch is cached for the current p
+   (largest D so far, K-type heights up to D) and extended only when needed.
+ E8_q x=66989, nu=[6,-2,-2,2,0,0,2,3]: rule 0 tests 23 heights (407 s); rule 2 tests only 274,
+ 285, 308 (250 s with the gate below). Geometric skipping of next_height (tried) can land on
+ one very expensive height (686 s) and loses.}
+set to_ht_step_rule = 2
+set step_branch_min_factor = rat: 5/2 {rule 2 only once the last to_ht test took at least
+    step_branch_min_factor*interrupt_base_time ms (290 ms on David's laptop). Gate 300 ms:
+    E8_q param 249.8 s (ungated 254.7, rule 0 406.6), Spin(6,6) whole group 210.7 s (rule 0
+    206.7, ungated 232.3: its many few-ms tests made branching cost 25 s). A 1000 ms gate lost
+    most of the E8_q gain (350 s): branching late skips the cheap early branches that fill the
+    K_type formula store which branch_irr_hash keeps for later, larger D.}
+set nth_cache_p = [Param]: []
+set nth_cache_D = int: -1
+set nth_cache_hts = [int]: []
+set step_branch_time = int: 0
+set next_test_height(Param p, int ht, int top_ht, int last_test_ms) = int:
+    if to_ht_step_rule != 2 or last_test_ms < floor(step_branch_min_factor*interrupt_base_time)
+    then next_height(p,ht)
+    else let t = elapsed_ms()
+	 then cached = #nth_cache_p > 0 and p = nth_cache_p[0]
+	 then () = if not cached then nth_cache_p := [p]; nth_cache_D := -1; nth_cache_hts := [] fi
+	 then above(int D) = [int]: for h in nth_cache_hts do if h > ht and h <= D then [h] else [] fi od.##
+	 then ans = if #above(nth_cache_D) > 0 then min(above(nth_cache_D)) else -2 fi
+	 {small steps: each extension reuses the K_type formulas that branch_irr_hash stores, so
+	  growing D gradually is cheap; a big first jump (D = 2*ht - height(p)) took the E8_q
+	  param to 715 s}
+	 then D = max(nth_cache_D, min(next_height(p,ht),top_ht))
+	 in while ans = -2
+	    do if D > nth_cache_D
+	       then nth_cache_hts := (for c@mu in branch_irr_hash(p,D) do height(mu) od).sort.no_reps;
+		    nth_cache_D := D
+	       fi;
+	       if #above(D) > 0 then ans := min(above(D))
+	       elif D >= top_ht then ans := -1
+	       else D := min(top_ht, ht + 2*(D-ht))
+	       fi
+	    od; step_branch_time +:= elapsed_ms()-t; ans
+    fi
+
 {"step" is how many steps up in to_ht list to start}
 set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
   if skip_routing(p.real_form) then return is_unitary_hash_big_SIMPLE(p) fi;
@@ -2919,7 +2964,7 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
 			     else result:=0;
 			     	  add_to_u_to_ht(p,ht)
 			     fi;
-			     ht:= next_height(p,ht);
+			     ht:= next_test_height(p,ht,top_ht,test_time);
 			     if ht < 0 then result:=1; big_unitary_hash.umatch(p); break fi
 			 fi{result.>};
 			 to_ht_time:=next_to_ht_time(p,ht,test_time);
@@ -2991,7 +3036,7 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
 		     	if result.> {got a (useless) positive result at ht; move up} 
 			then result:=0;
 			     add_to_u_to_ht(p,ht);
-			     ht:= next_height(p,ht);
+			     ht:= next_test_height(p,ht,top_ht,test_time);
 			     if ht < 0 then result:=1; break fi {there was no greater height to test to!}
 			fi;
 			to_ht_time := next_to_ht_time(p,ht,test_time);
@@ -3162,7 +3207,7 @@ set is_unitary_test_big_SIMPLE_interrupted_Ufirst(Param p, int time) = int:
 		   then big_unitary_hash.umatch(p);
 		   	break
 	       	   elif result.> {got a useless result from to_ht}
-	       	   then ht:= next_height(p,ht);
+	       	   then ht:= next_test_height(p,ht,top_ht,test_time);
 		   	if ht < 0 then break fi;
 			to_ht_time := next_to_ht_time(p,ht,test_time);
 			result := 0;
@@ -3235,7 +3280,7 @@ set is_unitary_test_big_SIMPLE_interrupted(Param p, int time) = int:
 		       then big_unitary_hash.umatch(p);
 		       	    break
 		       elif result.> {got a useless result}
-	       	       then ht:= next_height(p,ht);
+	       	       then ht:= next_test_height(p,ht,top_ht,test_time);
 		       	    if ht < 0 then return 1 fi; {no greater height to test}
 		       	    result:=0;
 		       	    to_ht_time := next_to_ht_time(p,ht,test_time)
