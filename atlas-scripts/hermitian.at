@@ -145,8 +145,14 @@ set hash_steveCounter = make_counter()
 
 {initial time to give interruptible command}
 set interrupt_base_time = int: {150}
-let start = elapsed_ms()
-then CF = KL_sum_at_s(E6_q.trivial)
+{time a KL computation for a FRESH copy of E6_q (new root datum, hence new KGB/block/KL
+ tables), so that reloading this file re-measures instead of timing a cache hit (the old
+ KL_sum_at_s(E6_q.trivial) gave ~2 instead of ~116 on a reload); ~58 ms on David's laptop}
+let rd = E6_q.root_datum
+then G = quasisplit_form(inner_class(root_datum(rd.simple_roots,rd.simple_coroots),
+				     E6_q.inner_class.distinguished_involution))
+then start = elapsed_ms()
+then CF = KL_sum_at_s(trivial(G))
 in 2*(elapsed_ms() - start)
 {changed from 100 to 150 5/5/26}
 {was 200 before 7/24/25; sometimes 500...}
