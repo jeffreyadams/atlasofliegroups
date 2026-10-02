@@ -199,8 +199,12 @@ Cases already found
 - Simulating warmth at any x (David's recipe):
     set ul = for p in big_unitary_hash.uhash(G).list() if p.x.number < X do p fi od
     set nul = for p in big_unitary_hash.nuhash(G).list() if p.x.number < X do p fi od
+    set nuh = [int]: for p in nul do big_unitary_hash.nu_height_lookup(p) od
     big_unitary_hash.clearG(G)
-    big_unitary_hash.uhash(G).fill(ul); big_unitary_hash.nuhash(G).fill(nul)
+    big_unitary_hash.uhash(G).fill(ul); big_unitary_hash.numatches_height(nul,nuh)
+  Do NOT fill nuhash(G) directly: nu_heights must stay parallel to it, and the first
+  nu_height_lookup_int then fails with "index ... out of range in nu_heights[i][n]".
+  (2 Oct 2026, laptop, Claude: reproduced and fixed on E7_s below x=20886.)
   Use the file with NONunitary results when the question involves status(q,-1) < 0.
 - Script-level memos that survive between commands: highest_LK_vals
   (bottom_layer.at), K_type_hw_* and hw_* (K_highest_weights.at), defHashTime /
