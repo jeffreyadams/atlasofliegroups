@@ -837,6 +837,7 @@ StandardRepr Rep_context::sr
   return sr_gamma(srm.x_part,lambda_rho,gamma);
 } // |Rep_context::sr|
 
+// factors in (0,1] for which scaling $\nu$ might give reducibility, increasing
 RatNumList Rep_context::reducibility_points(const StandardRepr& z) const
 {
   const RootDatum& rd = root_datum();
@@ -846,58 +847,107 @@ RatNumList Rep_context::reducibility_points(const StandardRepr& z) const
 
   const RatWeight& gamma = z.gamma();
   const Ratvec_Numer_t& numer = gamma.numerator();
-  const arithmetic::Numer_t d = gamma.denominator();
-  const Weight lam_rho = lambda_rho(z);
+  const arithmetic::Numer_t f = gamma.denominator();
+
+/* Each real or complex descent coroot may give reducibility, under similar but
+   slightly distinct conditions. In both cases the coroot considered can only
+   cause reducibility if has integer evaluation on the $\gamma$ value of the
+   deformed parameter, which may lead to an arithmetic progression of rational
+   factors to be associated to the coroot; at the end we will compute the union
+   of these progressions. There are however additional conditions, leading us to
+   list fewer rational factors than those singled out by the previous sentence.
+
+   In case of a real root, the scalar multiple of $\nu$ with evaluation $\pm1$
+   at the coroot, if it exists, only gives a half-stride of the progression,
+   because the parity condition alternates between successive points, and only
+   when it holds is there potential reducibility associated to the coroot. In
+   this case we shall contribute a the full intersection of (0,1] with an
+   arithmetic progression, starting either at a whole stride or a half-stride.
+
+   In the case of a complex complex root $\alpha$, with $\theta$ image $\beta$,
+   the condition for reducibility is that the evaluation of the associated
+   coroots at the infinitesimal character of the deformed parameter are both
+   integer, non-zero, and of opposite signs. These evaluations are equal when
+   $\nu=0$, and a multiple of $1/2$. Also the evaluations of both coroots at any
+   multiple of $\nu$ are opposite numbers, so here the scalar multiple of $\nu$
+   with evaluation $\pm1$ at the coroots, if it exists, gives a full stride of
+   the progression. We must then however first advance (from $0$ upwards) to the
+   factor that makes one of the evaluations zero, which happens after an integer
+   number of half-strides depending on the evaluation at $\nu=0$, with the first
+   point of the arithmetic progression being a full stride after that.
+*/
 
   const RootNbrSet pos_real = i_tab.real_roots(i_x) & rd.posroot_set();
-  const Weight two_rho_real = rd.twoRho(pos_real);
+  const Weight lam_rho = lambda_rho(z); // needed to compute parity conditions
+  const Weight two_rho_real = rd.twoRho(pos_real); // likewise
 
-  // we shall associate to certain numbers $num>0$ a strict lower bound $lwb$
-  // for which we shall then later form fractions $(d/num)*k$ for $k>lwb$
-  typedef std::map<long,long> table;
+/* As a representation of an arithmetic progressions to be generated, we store
+   for each a value |den|, which encodes the stride length (the half-stride will
+   be $f/den$), and an associated lower bound |lwb|, limiting points generated
+   to those whose number |k| of half-strides has |k>lwb|. Finally we record for
+   each progression its "phase", namely the parity of |k| for which to generate
+   reducibility points. For real roots we always have |lwb==0|, while for
+   complex roots the parity of |lwb| matches the phase of the progression.
 
-  // because of the parity condition, distinguish cases with even and odd $k$
-  table odds,evens; // name indicates the parity that $k$ will have
+   To avoid redundant generation, we suppress storage for progressions already
+   contained in another one present. These must have the same stride and the
+   same phase, so for each combination we record the minimal |lwb| encountered.
 
-  for (RootNbrSet::iterator it=pos_real.begin(); it(); ++it)
+   Since we see no easy to compute upper bound for the values of |den|, we store
+   our representation of a collection of arithmetic progressions in two tables
+   of type |std::map|, one for each phase, mapping each |den| to the associated
+   minimal |lwb| value.
+ */
+  using progressions_list = std::map<long,long>;
+  progressions_list evens,odds; // name indicates the parity that $k$ will have
+
+  for (RootNbr alpha : pos_real)
   {
-    arithmetic::Numer_t num =
-      rd.coroot(*it).dot(numer); // now $\<\alpha^v,\nu>=num/d$ (real $\alpha$)
-    if (num!=0)
+    arithmetic::Numer_t den = //value for which $f/den$ gives a half-stride
+      rd.coroot(alpha).dot(numer); // now $\<\alpha^v,\nu>=den/d$ (real $\alpha$)
+    if (den!=0) // coroots vanishing on |gamma| and |nu| give no reducibility
     {
-      long lam_alpha = lam_rho.dot(rd.coroot(*it))+rd.colevel(*it);
-      bool do_odd = (lam_alpha+two_rho_real.dot(rd.coroot(*it))/2)%2 ==0;
-      (do_odd ? odds : evens).insert(std::make_pair(std::abs(num),0));
+      long lam_alpha = lam_rho.dot(rd.coroot(alpha))+rd.colevel(alpha);
+      bool phase = (lam_alpha+two_rho_real.dot(rd.coroot(alpha))/2)%2 ==0;
+      (phase ? odds : evens).insert(std::make_pair(std::abs(den),0));
+      // if insertion fails, |lwb=0| is already recorded for |den|, so skip
     }
   }
 
   RootNbrSet pos_complex = i_tab.complex_roots(i_x) & rd.posroot_set();
-  for (RootNbrSet::iterator it=pos_complex.begin(); it(); ++it)
+  for (RootNbr alpha : pos_complex)
   {
-    RootNbr alpha=*it, beta=theta[alpha];
+    RootNbr beta=theta[alpha];
     arithmetic::Numer_t vala = rd.coroot(alpha).dot(numer);
     arithmetic::Numer_t valb = rd.coroot(beta).dot(numer);
-    arithmetic::Numer_t num = vala - valb; // $2\<\alpha^v,\nu>=num/d$ (complex)
-    if (num!=0)
-    {
-      assert((vala+valb)%d==0); // since $\<a+b,\gamma>=\<a+b,\lambda>$
-      long lwb =std::abs(vala+valb)/d;
-      std::pair<table::iterator,bool> trial = // try insert |lwb| as |num| value
-	(lwb%2==0 ? evens : odds).insert(std::make_pair(std::abs(num),lwb));
-      if (not trial.second and lwb<trial.first->second)
-	trial.first->second=lwb; // if not new, maybe lower the old bound value
-    }
+    if (vala==0 or valb==0 or (vala>0)==(valb>0)) // signs are not opposite
+      continue; // then there will be no reducibility for these coroots on (0,1]
+    arithmetic::Numer_t den = vala - valb; // $2\<\alpha^v,\nu>=den/f$ (complex)
+    assert(den!=0); // since |vala| and |valb| now have opposite signs
+    assert((vala+valb)%f==0); // since $\<a+b,\gamma>=\<a+b,\lambda>\in\Z$
+    // both coroots have equal evaluations at $\gamma-\nu$ (end of deformation)
+    // each of those evaluations is |(vala+valb)/(2*f)|, a multiple of $1/2$
+    // the |abs| of that multiple gives the number of half-strides to advance:
+    long lwb =std::abs(vala+valb)/f; // one evaluation is 0 at $lwb*(f/den)$
+    std::pair<progressions_list::iterator,bool> trial = // try insertion
+      (lwb%2==0 ? evens : odds).insert(std::make_pair(std::abs(den),lwb));
+    if (not trial.second and lwb<trial.first->second)
+      trial.first->second=lwb; // if not new, maybe lower the old bound value
   }
 
   std::set<RatNum> fracs;
 
-  for (table::iterator it= evens.begin(); it!=evens.end(); ++it)
-    for (long s= d*(it->second+2); s<=it->first; s+=2*d)
-      fracs.insert(RatNum(s,it->first));
+  for (const auto& pair : evens)
+  { long den = pair.first; long lwb= pair.second;
+    for (long k = f*(lwb+2); k<=den; k+=2*f)
+      fracs.insert(RatNum(k,den));
+  }
 
-  for (table::iterator it= odds.begin(); it!=odds.end(); ++it)
-    for (long s= it->second==0 ? d : d*(it->second+2); s<=it->first; s+=2*d)
-      fracs.insert(RatNum(s,it->first));
+  for (const auto& pair : odds)
+  { long den = pair.first; long lwb= pair.second;
+    for (long k = lwb==0 ? f : f*(lwb+2); k<=den; k+=2*f)
+      fracs.insert(RatNum(k,den));
+  }
 
   return RatNumList(fracs.begin(),fracs.end());
 } // |Rep_context::reducibility_points|
