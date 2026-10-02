@@ -2013,9 +2013,19 @@ set herm_center_bary(Param p) = Param:
     then () = hermCenterNewTime +:= elapsed_ms() - start
     in answer
 
-set herm_center_alcove_flag = true
+set herm_center_alcove_flag = true {alcove_center works for any G, including real and theta-stable Levis (needed to memoize their Params); herm_center_bary needs a simple derived group}
+{One-entry cache: herm_center is called several times in a row on the same, already centered
+ Param (status -> simple_status -> each FPP hash lookup re-centers). If p equals the last result,
+ return p itself: the same value as recomputing, on p's own RealForm object (never hand back a
+ Param on another value-equal RealForm object). Hits ~61% of calls on Spin(5,5), Spin(5,6);
+ E7_s status 346 -> 299 microsec per call with alcove_center (Oct 2026).}
+set hc_cache_flag = true
+set hc_last = [Param]: []
 set herm_center(Param p) = Param:
-    if herm_center_alcove_flag then alcove_center(p) else herm_center_bary(p) fi
+    if hc_cache_flag and #hc_last > 0 and p = hc_last[0] then p {no return: it is a C++ throw}
+    else let c = if herm_center_alcove_flag then alcove_center(p) else herm_center_bary(p) fi
+	 in if hc_cache_flag then hc_last := [c] fi; c
+    fi
 
 {A Param_hash for FPP use: every Param is replaced by herm_center(p) before it
  is stored or looked up, so callers may pass uncentered Params, and all
