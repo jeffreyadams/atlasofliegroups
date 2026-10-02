@@ -86,122 +86,6 @@ set delta_on_simple(InnerClass ic) = [int]:
     let r = ic.semisimple_rank, SR = ic.simple_roots, delta = ic.distinguished_involution
     in for i:r do first(for j:r do SR[i] = delta*SR[j] od) od
 
-{
-{version of to_no_Cminus@Param that seeks to keep d_lambda as dominant as possible}
-set to_no_Cminus_small(Param p) = Param:
-    let rd=p.root_datum then {w=id_W(rd),} pnew = p, xnew = p.x, r=rd.semisimple_rank
-    then mus = LKTs(p)
-    then DOS = delta_on_simple(p.real_form)
-    then () = while let s = last(r, (int i)bool:
-    	      	    	    status(i,xnew).= and
-			    ((pnew.d_lambda)*rd.simple_coroots[i]).<)
-		    {then () = prints("s = ",s)}
-		    in s.>=
- 	      do let sword = [s] {let s1 = DOS[s]
-	      	 then sword = [s][int]:
-		      if s1 = s
-		      then [s]
-		      elif ((rd.simple_coroots[s])*(rd.simple_roots[s1])).= and
-		      {W_elt(rd, [s,s1]) = W_elt(rd, [s1,s]) and}
-		      	   length(cross(s1,cross(s,xnew))) < length(xnew)
-		      then [s,s1]
-		      else [s]
-		      fi}
-		 then changer = W_elt(rd,sword)
-	      	 {then () = w:=w*changer}
-		 then () = xnew:=cross(changer,xnew)
-		 then () = pnew:=parameter(xnew, changer*(pnew.lambda), changer*(pnew.nu))
-		 in assert(@:LKTs(pnew)[0] = mus[0],"trouble!")
-	      od {now pnew.lambda is weakly dominant}
-    then () = while let s = last(r, (int i)bool:
-    	      	    	    status(i,xnew).= and
-			    ((pnew.d_lambda)*rd.simple_coroots[i]).=)
-		    {then () = prints("s = ",s)}
-		    in s.>=
- 	      do let sword = [s] {s1 = DOS[s]
-	      	 then sword = [int]:
-		      if s1 = s
-		      then [s]
-		      elif ((rd.simple_coroots[s])*(rd.simple_roots[s1])).= and
-		      {W_elt(rd, [s,s1]) = W_elt(rd, [s1,s]) and}
-		      	   length(cross(s1,cross(s,xnew))) < length(xnew)
-		      then [s,s1]
-		      else [s]
-		      fi}
-		 then changer = W_elt(rd,sword)
-	      	 {then () = w:=w*changer}
-		 then () = xnew:=cross(changer,xnew)
-		 in pnew:=parameter(xnew, changer*(pnew.lambda), changer*(pnew.nu))
-	      od {now pnew.lambda is weakly dominant, no C-}
-    in pnew
-
-{same for (x,lambda)}
-set to_no_Cminus_small(KGBElt x, ratvec lambda) = (KGBElt, ratvec):
-    let rd=x.root_datum then {w=id_W(rd),} xnew = x, lambdanew = lambda, r=rd.semisimple_rank
-    then DOS = delta_on_simple(x.real_form)
-    then () = while let s = last(r, (int i)bool:
-    	      	    	    status(i,xnew).= and
-			    (((1+xnew.involution)*lambdanew)*rd.simple_coroots[i]).<)
-		    {then () = prints("s = ",s)}
-		    in s.>=
- 	      do let sword = [s] {s1 = DOS[s]
-	      	 then sword = [int]:
-		      if s1 = s
-		      then [s]
-		      elif ((rd.simple_coroots[s])*(rd.simple_roots[s1])).= and
-		      {W_elt(rd, [s,s1]) = W_elt(rd, [s1,s]) and}
-		      	   length(cross(s1,cross(s,xnew))) < length(xnew)
-		      then [s,s1]
-		      else [s]
-		      fi}
-		 then changer = W_elt(rd,sword)
-	      	 {then () = w:=w*changer}
-		 then () = xnew:=cross(changer,xnew)
-		 then () = lambdanew := changer*lambdanew
-		 in () {prints("xnew = ", xnew, ", lambdanew = ",lambdanew)}
-	      od {now lambdanew is weakly dominant}
-    then () = while let s = last(r, (int i)bool:
-    	      	    	    status(i,xnew).= and
-			    (((1+xnew.involution)*lambdanew)*rd.simple_coroots[i]).=)
-		    {then () = prints("s = ",s)}
-		    in s.>=
- 	      do let sword = [s] {s1 = DOS[s]
-	      	 then sword = [int]:
-		      if s1 = s
-		      then [s]
-		      elif ((rd.simple_coroots[s])*(rd.simple_roots[s1])).= and
-		      {W_elt(rd, [s,s1]) = W_elt(rd, [s1,s]) and}
-		      	   length(cross(s1,cross(s,xnew))) < length(xnew)
-		      then [s,s1]
-		      else [s]
-		      fi}
-		 then changer = W_elt(rd,sword)
-	      	 {then () = w:=w*changer}
-		 then () = xnew:=cross(changer,xnew)
-		 then () = lambdanew := changer*lambdanew
-		 in () {prints("xnew = ", xnew, ", lambdanew = ",lambdanew)}
-	      od {now lambdanew is weakly dominant, no C-}
-    in (xnew,lambdanew)
-
-set theta_stable_data_small(Param p) = (KGPElt, Param):
-    let q = to_no_Cminus_small(p)
-    then Q = theta_stable_parabolic(q.x)
-    then L = Q.Levi, rhou = Q.rho_u
-    then qL = parameter(inverse_embed_KGB(q.x,L), q.lambda - rhou, q.nu)
-    in (Q,qL)
-
-{mu is meant to be a LKT of p; result is (p0, Q, pL0), with p0 summand of p*0 and pL0
-summand of pL}
-set theta_stable_data_small_long(Param p, KType mu) = (Param, KGPElt, Param):
-    let q = to_no_Cminus_small(p)
-    then Q = theta_stable_parabolic(q.x), G = p.real_form
-    then L = Q.Levi, rhou = Q.rho_u
-    then qL = parameter(inverse_embed_KGB(q.x,L), q.lambda - rhou, q.nu)
-    then qLs = monomials(qL*0)
-    then qs = for qLi in qLs do theta_induce_standard(qLi, G) od
-    then i0 = first(for q in qs do q.!= and LKT(first_param(q)) = mu od)
-    in (first_param(qs[i0]),Q,qLs[i0])
-}
 
 set NH_factor = rat: 1/2 {3/8 failed to catch the non-unitary vertex
 at (KGB element #19200,[  2,  1,  1,  2, -1,  1,  2 ]/1) in E7_s}
@@ -1496,6 +1380,7 @@ set bottom_K_type_Qs(KGBElt x, ratvec lambda, int D_low, int D) = [QK_bottom_dat
 set bottom_K_type_Qs(KType mu, int D_low, int D) = [QK_bottom_data]:
     bottom_K_type_Qs(mu.x, mu.lambda, D_low, D)
 
+{get bottom layer K-types of p of height in (D_low,D)}
 set bottom_K_type_Qs(Param p, KGPElt Qmin, int D_low, int D) = [QK_bottom_data]:
     let G = p.real_form,  Lmin = Qmin.Levi, Smin = Qmin.S
     then Proj = projection_to_K_matrix(G), start = elapsed_ms()
@@ -1530,7 +1415,7 @@ set bottom_K_type_Qs(Param p, KGPElt Qmin, int D_low, int D) = [QK_bottom_data]:
 	 fi
     then xcLmin = KGB(Lmin,0)
     then xcG = embed_KGB(xcLmin, G)
-    then M = big_unitary_hash.branch(K_type_pol(p),D)
+    then M = {big_unitary_hash.}branch_irr_hash({K_type_pol(}p{)},D) {K-types of p to height D}
     then mu = LKTs(p)[0]
     then too_many_taus = monomials(M - to_ht(M,D_low)) {now all tau have height in desired range}
     {then () = prints("D = ",D,", D_low = ",D_low," TMT = ",too_many_taus)}

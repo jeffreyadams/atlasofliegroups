@@ -2836,20 +2836,6 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
   then () = p := herm_center(p)
   then result = 0, mu = LKTs(p)[0], ht = height(p)
   then taus = next_to_lowest_short(mu,step)
-  {[KType]:[]}
-  {then tau_bd = KType:mu}
-  {then ht = int: height(p) {(tau_bd)}}
-  {
-  then () = {if next_heightC_flag
-       	    then for j:step
-	    	 do ht := next_heightC(p,ht)
-		 od
-       	    else} taus := {next_taus(p,step)}
-	    	       	  next_to_lowest(p);
-	    	 tau_bd := taus~[0];
-  		{ ht := height(tau_bd)
-	    fi;}
-}
   then ht = min(GAM,height(taus~[0]))
   then () = if ht < 0 {p is finite-dimensional; we're in FPP, so 1-diml}
        	    then return true

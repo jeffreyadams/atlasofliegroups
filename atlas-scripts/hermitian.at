@@ -2601,19 +2601,10 @@ set c_form_irreducible (Param p,int time) = maybe_KTP:
       for c@q in KL_sum_at_s(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
    then list = monomials(oriented_KL_sum)
    then unknown_indices = for q@j in list if defHashTime.time_lookup(q) < 0 do j fi od
-   in {if #list = 0 then return null_K_module(p.real_form).done fi;}
-      {
-      if #unknown_indices > 0
-      then dummy := full_deform(list[unknown_indices~[0]], time);
-      	   if #unknown_indices > 2
-	   then dummy := full_deform(list[unknown_indices[#unknown_indices\2]], time)
-	   fi
-      fi;
-      }
-      if #unknown_indices >= 16
-      then dummy := for j:4 do full_deform(list[unknown_indices~[j]], time) od
+   in if #unknown_indices >= 16
+      then dummy := for j:4 do full_deform(list[unknown_indices~[j]], time\4) od
       elif #unknown_indices >= 4
-      then dummy := for j:2 do full_deform(list[unknown_indices~[j]], time) od
+      then dummy := for j:2 do full_deform(list[unknown_indices~[j]], time\2) od
       elif #unknown_indices >= 1
       then dummy := [full_deform(list[unknown_indices~[0]], time)]
       fi;

@@ -1,6 +1,6 @@
 REAL INDUCTION IN FPP: HOW TO TEST IN RANK 8
 ============================================
-(1 Oct 2026, David's laptop, Claude. Code: to_ht_branch_alt commits d569309d, 4478c707,
+(1 Oct 2026, David's laptop, Claude. Code: fpp_unitary commits d569309d, 4478c707,
 a33d48a3, 0ba1be2c. For a Claude session on a big machine.)
 
 WHAT THE CODE DOES
