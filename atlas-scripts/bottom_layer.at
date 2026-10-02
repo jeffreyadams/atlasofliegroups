@@ -1703,7 +1703,7 @@ set bottom_elim_factors_more(Param p0, Param p, int D_low, int D, KTypePol P)= b
                         {attest_is_unitary(p, G_pure);}
 			return G_pure
 	        fi
-     then test = all(for data in bottom_factors(bottom_K_type_Qs(p ,Q0,D_low,D))
+     then test = all(for data in bottom_factors(bottom_K_type_Qs(p0 ,Q0,D_low,D))
 		      	  do @bool: bottom_elim_factors(p0, p, data, P)
 			  od)
     then () = if not test
