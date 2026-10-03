@@ -190,6 +190,13 @@ set adjust_frac = rat:  2/3
 {turn predictor by default back ON 2/18/26. Needs OFF for steve? done 2/19/26}
 {on is a problem in E8_q from 45000 to 50000?; so change default to 5/6 2/19/26}
 {well, try to address by making u_predictor faster; so back to 2/3}
+{rank 8 (semisimple rank >= 8): 1/7, from E8_q slices on the current race code (3 Oct 2026):
+ predictor on is 16% faster at length 14, ~50% at lengths 20 and 23, a tie at 26; x 9457 is where
+ length 12 starts. The 30 Sep measurement favouring off predates the race fixes. Untested on E8_s.
+ NB a manual adjust_frac:= no longer affects rank 8 groups: set adjust_frac_rank8 instead.}
+set adjust_frac_rank8 = rat: 1/7
+set adjust_frac_for(RealForm G) = rat:
+    if semisimple_rank(G) >= 8 then adjust_frac_rank8 else adjust_frac fi
 
 {if more_KGB_frac_flag and x between these fractions of KGB, use more}
 set start_more_KGB_frac = rat: 4/5
@@ -599,7 +606,7 @@ then coh_ind_unip_few(G,Uhash)}
     then () = for (x,lambda)@k in xlambdasW
     	      do {xlambdasW}
 	      	FPP_def_adjust(x);
-	      	predictor_flag:= x.number > adjust_frac*KGB_size(G);
+	      	predictor_flag:= x.number > adjust_frac_for(G)*KGB_size(G);
 	      	test_next(x);
 		test_edge(x);
 	      	if twist(x) != x {close 482}
@@ -866,7 +873,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 	    #FPP_lambdas(x) >= 2^(rank(G) - 1)
 	 then every_lambda_flag:=true
 	 fi;}
-	 predictor_flag:= x.number > adjust_frac*KGB_size(G);
+	 predictor_flag:= x.number > adjust_frac_for(G)*KGB_size(G);
 	 test_next(x);
 	 test_edge(x);
 	 if twist(x) != x
@@ -1229,7 +1236,7 @@ then coh_ind_unip_few(G,Uhash)}
     then () = for (x,lambda)@k in xlambdasW
     	      do {xlambdasW}
 		test_next(x);
-		predictor_flag:= x.number > adjust_frac*KGB_size(G);
+		predictor_flag:= x.number > adjust_frac_for(G)*KGB_size(G);
 	      {restoring this made some E7_s on x_open 25% faster, but still 3x slower
 	       than hash2. Did not test thoroughly.}
 	      	if twist(x) != x
@@ -1451,7 +1458,7 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 	       fi
     then () = for x@j in xs
     	      do {xs}
-	 predictor_flag:= x.number > adjust_frac*KGB_size(G);
+	 predictor_flag:= x.number > adjust_frac_for(G)*KGB_size(G);
 	 {restoring this made some E7_s on x_open 25% faster, but still 3x slower than hash2.
 	  Did not test thoroughly.}
 	 {if every_KGB_flag and (not every_lambda_flag) and
@@ -1948,7 +1955,7 @@ fancy_tester) = void:
     	      do {xlambdas}
 	      let (x_sc,lambda_sc) = xlambdas_sc[k]
 	      in
-	        predictor_flag:= x_sc.number > adjust_frac*KGB_size(Gsc);
+	        predictor_flag:= x_sc.number > adjust_frac_for(Gsc)*KGB_size(Gsc);
 		{if low_char_per_x_flag
 		then low_char_flag := not (x_sc.number > diff_KGB_char_frac*KGB_size(Gsc))
 		fi;}
@@ -2319,7 +2326,7 @@ this for a long time, leading to wrong answers for PSU(2,2).}
 	    #FPP_lambdas(x) >= 2^(rank(G) - 1)
 	 then every_lambda_flag:=true
 	 fi;}
-	 predictor_flag:= x_sc.number > adjust_frac*KGB_size(Gsc);
+	 predictor_flag:= x_sc.number > adjust_frac_for(Gsc)*KGB_size(Gsc);
 		{if low_char_per_x_flag
 		then low_char_flag := not (x_sc.number > diff_KGB_char_frac*KGB_size(Gsc))
 		fi;}
