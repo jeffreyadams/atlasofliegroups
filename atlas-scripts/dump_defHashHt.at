@@ -1,0 +1,84 @@
+{ Dump the contents of defHashHtTime (hermitian.at) to a file of atlas commands.
+
+  At the end of a run, in the same session:
+
+     <dump_defHashHt.at
+     > E7s_defHashHt.at dump_defHashHtTime()
+
+  (plain file name: `>` chokes on hyphenated paths.)
+
+  The dump file defines nothing itself: every line calls a dhd_* function, so
+  it is read by first loading a file defining those (defHashHt_load.at, which
+  can also check the dump against the live hash, in the same session).
+
+  Lines of the dump, in order:
+    dhd_begin(#params,#pols,#real_forms)
+    dhd_add_real_form(real_form(...))                 once per real form
+    dhd_pol_start(rf) dhd_pol_terms(vec:...)* dhd_pol_end()   once per KTypePol,
+        in pol_hash order; each term is int_part, s_part, x number, lambda_rho
+    dhd_param(parameter(dhd_rf(rf),x,lambda,nu), pol index, heights, times,
+              trial height, trial time)               once per Param, in
+        param_hash order; pol index is -1 if the deformation never finished
+    dhd_end()
+  Real forms are numbered from 0 in order of first appearance.
+}
+
+{ no <hermitian.at here: reloading it would replace the live defHashHtTime with an empty one }
+
+set dhd_terms_per_line = 200
+
+set dhd_mat_string(mat M) = string:
+  "mat:" + to_string(for col in M do col od)
+
+set dhd_write_real_form (RealForm G) = void:
+  prints("void: dhd_add_real_form(real_form(inner_class(root_datum("
+	, dhd_mat_string(G.simple_roots), ",", dhd_mat_string(G.simple_coroots)
+	, ",", G.prefers_coroots, "),", dhd_mat_string(G.distinguished_involution)
+	, "),", dhd_mat_string(G.distinguished_involution)
+	, ",", KGB(G,0).torus_factor, "))")
+
+{ the same construction done in this session, to check it gives back G }
+set dhd_rebuild (RealForm G) = RealForm:
+  let rd = root_datum(G.simple_roots, G.simple_coroots, G.prefers_coroots)
+  then ic = inner_class(rd, G.distinguished_involution)
+  in real_form(ic, G.distinguished_involution, KGB(G,0).torus_factor)
+
+set dhd_flat (KTypePol P) = [int]:
+  ##(for c@t in P do [int_part(c), s_part(c), t.x.number] ## t.lambda_rho od)
+
+set dump_defHashHtTime () = void:
+( let D = defHashHtTime
+  then N = D.size(), ph = D.ParamHash(), polh = D.PolHash()
+  then pols = polh.list()
+  then heights = D.heightsList(), times = D.timesList(), pl = D.polList()
+  then rfh = make_RealForm_hash()
+  then prf = for j:N do rfh.match(ph.index(j).real_form) od
+  then kprf = for P in pols do rfh.match(P.real_form) od
+  then rfs = rfh.list()
+  in for G@i in rfs
+     do if dhd_rebuild(G) != G
+	then error("real form ", i, " does not rebuild to itself; dump would be wrong")
+	fi
+     od;
+     prints("{ defHashHtTime dump: ", N, " params, ", #pols, " KTypePols, "
+	   , #rfs, " real forms }");
+     prints("void: dhd_begin(", N, ",", #pols, ",", #rfs, ")");
+     for G in rfs do dhd_write_real_form(G) od;
+     for P@k in pols
+     do let flat = dhd_flat(P), w = 3 + P.real_form.rank
+	then step = w * dhd_terms_per_line
+	in prints("void: dhd_pol_start(", kprf[k], ")");
+	   for a:(#flat + step - 1) \ step
+	   do prints("void: dhd_pol_terms(vec:", flat[a*step:min(#flat,(a+1)*step)], ")")
+	   od;
+	   prints("void: dhd_pol_end()")
+     od;
+     for j:N
+     do let p = ph.index(j)
+	in prints("void: dhd_param(parameter(dhd_rf(", prf[j], "),", p.x.number
+		 , ",", p.lambda, ",", p.nu, "),", pl[j]
+		 , ",vec:", heights[j], ",vec:", times[j]
+		 , ",", D.trial_height(j), ",", D.trial_time(j), ")")
+     od;
+     prints("void: dhd_end()")
+)

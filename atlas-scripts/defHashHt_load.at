@@ -1,0 +1,116 @@
+{ Read a dump written by dump_defHashHtTime() (dump_defHashHt.at).
+
+  To CHECK a dump, in the session that wrote it:
+     <defHashHt_load.at
+     <E7s_defHashHt.at          { fills the dhd_* lists below }
+     dhd_check()                { compares them with the live defHashHtTime }
+
+  To INSTALL a dump into defHashHtTime, in a fresh session (hermitian.at loaded):
+     <defHashHt_load.at
+     dhd_install := true
+     dhd_targets := [E7_s]      { session real forms to use in place of rebuilt ones }
+     <E7s_defHashHt.at
+  Each finished entry goes in through defHashHtTime.load_known at its largest
+  height, with time -1 (known, time unknown), so u_predictor_to_ht treats it as
+  known and takes no timing data from it.  Recorded times and failed trials in
+  the dump are ignored, and entries that never finished are skipped: all of
+  those depend on the state of the run that wrote them.
+
+  Dumped real forms equal (by value) to one in dhd_targets are replaced by that
+  object, so Params and KTypePols are built on the session's own real form.
+}
+
+{ no <hermitian.at here: reloading it would replace the live defHashHtTime with an empty one }
+
+set dhd_N = int: 0
+set dhd_rfs = [RealForm]: []
+set dhd_pols = [KTypePol]: []
+set dhd_params = [Param]: []
+set dhd_pol_index = vec: []
+set dhd_heights = [vec]: []
+set dhd_times = [vec]: []
+set dhd_trial_heights = vec: []
+set dhd_trial_times = vec: []
+set dhd_cur_rf = int: 0
+set dhd_cur_terms = [vec]: []
+set dhd_install = false
+set dhd_targets = [RealForm]: []
+set dhd_loaded = int: 0
+set dhd_skipped = int: 0
+
+set dhd_begin (int N, int npols, int nrfs) = void:
+  dhd_N := N; dhd_rfs := []; dhd_pols := []; dhd_params := [];
+  dhd_pol_index := []; dhd_heights := []; dhd_times := [];
+  dhd_trial_heights := []; dhd_trial_times := []; dhd_loaded := 0; dhd_skipped := 0;
+  if dhd_install
+  then defHashHtTime.ParamHash().grow(N); defHashHtTime.PolHash().grow(npols)
+  fi
+
+set dhd_add_real_form (RealForm G) = void:
+  let k = first(for H in dhd_targets do H = G od)
+  in dhd_rfs #:= if k < 0 then G else dhd_targets[k] fi
+
+set dhd_rf (int i) = RealForm: dhd_rfs[i]
+
+set dhd_pol_start (int rf) = void: dhd_cur_rf := rf; dhd_cur_terms := []
+
+set dhd_pol_terms (vec v) = void: dhd_cur_terms #:= v
+
+set dhd_pol_end () = void:
+  let G = dhd_rfs[dhd_cur_rf]
+  then w = 3 + G.rank, flat = vec: ##dhd_cur_terms
+  then P = null_K_module(G)
+  in for i:#flat\w
+     do let t = flat[i*w:(i+1)*w]
+	in P +:= (t[0]+s*t[1])*K_type(KGB(G,t[2]),t[3:])
+     od;
+     dhd_pols #:= P
+
+set dhd_param (Param p, int pol, vec heights, vec times, int trial_ht, int trial_time) = void:
+  if dhd_install
+  then dhd_N -:= 1; { count params seen, without storing them }
+       if pol >= 0 and #heights > 0
+       then defHashHtTime.load_known(p, dhd_pols[pol], heights~[0]); dhd_loaded +:= 1
+       else dhd_skipped +:= 1
+       fi
+  else dhd_params #:= p; dhd_pol_index #:= pol; dhd_heights #:= heights;
+       dhd_times #:= times; dhd_trial_heights #:= trial_ht;
+       dhd_trial_times #:= trial_time
+  fi
+
+set dhd_end () = void:
+  if dhd_install
+  then if dhd_N != 0 then error("dump truncated: ", dhd_N, " params missing") fi;
+       dhd_pols := []; { now held in defHashHtTime's pol_hash }
+       prints("installed ", dhd_loaded, " deformations in defHashHtTime (", dhd_skipped
+	     , " unfinished entries skipped); defHashHtTime.size() = ", defHashHtTime.size())
+  else if #dhd_params != dhd_N then error("dump truncated: ",#dhd_params," of ",dhd_N," params") fi;
+       prints("read ", #dhd_params, " params, ", #dhd_pols, " KTypePols, ", #dhd_rfs, " real forms")
+  fi
+
+{ compare what was read with the live defHashHtTime; pols compared as term
+  data, since they live on pointer-distinct real forms }
+set dhd_flat_check (KTypePol P) = [int]:
+  ##(for c@t in P do [int_part(c), s_part(c), t.x.number] ## t.lambda_rho od)
+
+set dhd_check () = bool:
+( let D = defHashHtTime, bad = 0
+  then ph = D.ParamHash(), pols = D.PolHash().list()
+  in if D.size() != #dhd_params then prints("param count differs: live ", D.size(), ", read ", #dhd_params); bad +:= 1 fi;
+     if #pols != #dhd_pols then prints("pol count differs: live ", #pols, ", read ", #dhd_pols); bad +:= 1 fi;
+     if bad = 0
+     then for P@k in pols
+	  do if dhd_flat_check(P) != dhd_flat_check(dhd_pols[k]) then prints("pol ", k, " differs"); bad +:= 1 fi
+	  od;
+	  for j:D.size()
+	  do if ph.index(j) != dhd_params[j] then prints("param ", j, " differs"); bad +:= 1
+	     elif D.polList()[j] != dhd_pol_index[j] or D.heightsList()[j] != dhd_heights[j]
+		  or D.timesList()[j] != dhd_times[j]
+		  or D.trial_height(j) != dhd_trial_heights[j] or D.trial_time(j) != dhd_trial_times[j]
+	     then prints("bookkeeping for param ", j, " differs"); bad +:= 1
+	     fi
+	  od
+     fi;
+     prints(if bad = 0 then "dump matches defHashHtTime" else bad.to_string + " differences" fi);
+     bad = 0
+)

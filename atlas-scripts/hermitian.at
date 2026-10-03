@@ -479,16 +479,16 @@ set make_deformation_hash_time () = deformation_hash_time:
 		   fi; {#rp = 0}
 	      	   if i = I
 	      	   then time_list #:= if start = -2
-		   		      then 0
+		   		      then -1
 				      elif start = -1
-	       	       		      then 0
+	       	       		      then -1
 		  		      else elapsed_ms() - start
 				      fi
 	      	   else {time_list[i] <= -3}
 	      	   	time_list[i]:= if start = -2
-				       then 0
+				       then -1
 				       elif start = -1
-		   		       then 0
+		   		       then -1
 				       else (elapsed_ms()- start) - (time_list[i] + 3)
 				       fi
 		   fi {i=I}
@@ -534,9 +534,9 @@ set make_deformation_hash_time () = deformation_hash_time:
 		   fi; {#rp = 0}
 	  	   if i = I  {CHECK c*}
 	  	   then time_list #:= if start = -2
-		   		      then 0
+		   		      then -1
 				      elif start = -1
-	       	       	       	      then 0
+	       	       	       	      then -1
 		  	     	      else case mFD
 			     	   	   |done(FD): elapsed_ms() - start
 				  	   |timed_out: (start - elapsed_ms()) - 3
@@ -544,9 +544,9 @@ set make_deformation_hash_time () = deformation_hash_time:
 			     	      fi
 	  	   else {time_list[i] <= -3; we prevously tried full_deform, timed out}
 	       	    	 time_list[i] := if start = -2
-			 	      	 then 0
+			 	      	 then -1
 					 elif start = -1
-	       	       	       	     	 then 0
+	       	       	       	     	 then -1
 		  	       	     	 else case mFD
 			     	     	      |done(FD): elapsed_ms() - start - (time_list[i] + 3)
 				    	      |timed_out(): time_list[i] - (elapsed_ms() - start)
@@ -599,7 +599,7 @@ set_type
 						       a possible response.  <= -3
     		    	 		   means we tried for (minus) this time+3 but did not complete.}
   , ((Param,int) -> int) time_lookup_to_ht {time taken for full deform to ht of p if known with time,
-    		    	 		    else 0 if stored,
+    		    	 		    else -1 if stored but time not known,
 					    else -2 if completely unknown,
 					    else -T-3 if we failed with time T}
   , (Param -> int) param_lookup {index of p in list}
@@ -617,6 +617,8 @@ set_type
   , ( -> [vec]) timesList {list of times for ParamHash}
   , ( -> vec) polList {locations in PolHash of deformations to max height}
   , ( -> KTypePol_hash) PolHash {holding full_deform_to_ht's}
+  , ((Param,KTypePol,int) -> ) load_known {record FD as full_deform_to_ht(p,HT), from a dump
+    			      		  (defHashHt_load.at); time recorded as -1: known, time unknown}
   )
 ]
 
@@ -687,16 +689,16 @@ set make_deformation_hash_height_time () = deformation_hash_height_time:
 		   fi; {#rp = 0}
 	       	   if i = I {new Param}
 	       	   then times_list #:= (vec: if start = -2
-		   		       	     then [0]
+		   		       	     then [-1]
 					     elif start = -1
-		       		      	     then [0]
+		       		      	     then [-1]
 					     else [elapsed_ms() - start]
 					     fi);
 	       	       pol_list #:=pol_hash.match(FDH);
 	       	       heights_list #:= (vec: [HT]); {henceforth heights_list[i]~[0] < HT}
 		       trial_time_list #:= -1;
 		       trial_height_list #:= -1
-		  else times_list[i]#:= elapsed_ms() - start; {known Param, prev unfinished at HT}
+		  else times_list[i]#:= if start < 0 then -1 else elapsed_ms() - start fi; {known Param, prev unfinished at HT}
 		       pol_list[i]:=pol_hash.match(FDH);
 		       heights_list[i]#:=HT
 		  fi;
@@ -773,9 +775,9 @@ set make_deformation_hash_height_time () = deformation_hash_height_time:
 	       	    if i = I
 	       	    then case mFDH
 		    	 | done(FDH): times_list#:= (vec: if start = -2
-			   	      		    	  then [0]
+			   	      		    	  then [-1]
 							  elif start = -1 {means stored full deform worked}
-			   	      		    	  then [0]
+			   	      		    	  then [-1]
 							  else [elapsed_ms() - start]
 							  fi);
 			      	      pol_list #:= pol_hash.match(FDH);
@@ -790,9 +792,9 @@ set make_deformation_hash_height_time () = deformation_hash_height_time:
 			 esac
 		    else case mFDH {known p, HT not prev finished}
 		    	 | done(FDH): times_list[i]#:= if start = -2
-			   	      		       then 0
+			   	      		       then -1
 						       elif start = -1
-			   	      		       then 0
+			   	      		       then -1
 						       else (elapsed_ms() - start)
 						       fi;
 			   	      pol_list[i] := pol_hash.match(FDH);
@@ -868,6 +870,20 @@ set make_deformation_hash_height_time () = deformation_hash_height_time:
   , ( -> [vec]): {timesList} @[vec]: times_list
   , ( -> vec): {polList} @vec: pol_list
   , ( -> KTypePol_hash): {PolHash} @KTypePol_hash: pol_hash
+  , ((Param,KTypePol,int) -> ): {load_known} (Param p, KTypePol FD, int HT):
+    let I = param_hash.size()
+    then i = param_hash.match(p)
+    in if i = I
+       then pol_list #:= pol_hash.match(FD);
+	    heights_list #:= (vec: [HT]);
+	    times_list #:= (vec: [-1]);
+	    trial_time_list #:= -1;
+	    trial_height_list #:= -1
+       elif #heights_list[i] = 0 or heights_list[i]~[0] < HT
+       then pol_list[i] := pol_hash.match(FD);
+	    heights_list[i] #:= HT;
+	    times_list[i] #:= -1
+       fi
   )
   )
 
@@ -1688,20 +1704,20 @@ set u_predictor_old(Param p, int time) = int:
     {will do full_deform on each term in list}
     then times = [int]: for q in list do defHashTime.time_lookup(q) od
     {have we computed full_deform? time needed if yes, -1 if no}
-    then unknown_indices = [int]: for T@j in times if T < 0 do j fi od
+    then unknown_indices = [int]: for T@j in times if T <= -2 do j fi od
     then num_filled_unknown = int: 0
     then () = if #unknown_indices > 0 {there are unknown full_deforms; work on one}
     	      then let j = unknown_indices[(#unknown_indices)\3] {this is a tough one}
 		   then q = list[j]
 	      	   then RT = defHashTime.time_record_bounded(q,(2*time)\3 + interrupt_base_time)
-		   in if RT >= 0 then num_filled_unknown+:=1 else didnt_finish_u_count +:= 1 fi;
+		   in if RT >= -1 then num_filled_unknown+:=1 else didnt_finish_u_count +:= 1 fi;
 		      times[j] := RT
 	      fi
     then () = if #unknown_indices > 1 {there are unknown full_deforms; work on one}
     	      then let j = unknown_indices[(2*#unknown_indices)\3] {this is an easier one}
 		   then q = list[j]
 	      	   then RT = defHashTime.time_record_bounded(q,time\3 + interrupt_base_time)
-		   in if RT >= 0 then num_filled_unknown+:=1 else didnt_finish_u_count +:= 1 fi;
+		   in if RT >= -1 then num_filled_unknown+:=1 else didnt_finish_u_count +:= 1 fi;
 		      times[j] := RT
 	      fi
     then est_times = for T in times if T != -1 do if T<0 then -5*T else T+1 fi fi od
@@ -1712,7 +1728,7 @@ set u_predictor_old(Param p, int time) = int:
 		     prints("(#terms,#unknown,#estimated) = (N,un,ne) = (",N,",",un,",",ne,
 		     	    "), estimated times = ",est_times)
        fi; {DANGER: IBT/40 insuff to do lookups! Need to get something at runtime.}
-       let ans = un*max(est_times) + ((N-un)*interrupt_base_time)\10
+       let ans = un*max(est_times#0) + ((N-un)*interrupt_base_time)\10
        	   {change \10 to \2 4/7/26}
        	   {un full deforms to compute} {tried dividing un*max by 1, 10}
        	   in if predictor_verbose
@@ -1900,9 +1916,9 @@ set u_predictor(Param p, int time) = int:
 		    then break
 		    fi;
 		    let RT = defHashTime.time_record_bounded(q,time_test)
-		    in if RT >= 0
+		    in if RT >= -1
 		       then unknown_indices:=delete(unknown_indices,ind);
-		       	    found_time+:=RT
+		       	    found_time+:=max(RT,0)
 		       else didnt_finish_u_count +:= 1
 		       fi;
 		       times[j] := RT;
@@ -1973,14 +1989,14 @@ set u_predictor_to_ht_old(Param p, int HT, int time) = int:
 		       for q in monomials(KL_sum_at_s_to_ht(HT)(p))
 		       if is_fixed(delta,q) do q fi od, rk = delta.n_rows
 	    then times =  [int]: for q in list do defHashHtTime.time_lookup_to_ht(q,HT) od
-    	    then unknown_indices = [int]: for T@j in times if T < 0 do j fi od
+    	    then unknown_indices = [int]: for T@j in times if T <= -2 do j fi od
     	    then num_filled_unknown = int: 0, un = #unknown_indices
     	    then () = if un > 0 {there are unknown full_deforms; work on one}
     	      	      then let j = unknown_indices[0]
 		      	   {for low HT, zeroth term can be only non-trivial one}
 	      	      	   then q = list[j]
 	      	      	   then RT = defHashHtTime.time_record_to_ht_bounded(q,HT,time{(2*time)\3 +1})
-		      	    in if RT >= 0
+		      	    in if RT >= -1
 			       then num_filled_unknown+:=1; if j=0 then est_start:=1 fi
 			       else didnt_finish_ht_count +:= 1
 			       fi;
@@ -1990,7 +2006,7 @@ set u_predictor_to_ht_old(Param p, int HT, int time) = int:
     	      	      then let j = unknown_indices[1]
 	      	      	   then q = list[j]
 	      	      	   then RT = defHashHtTime.time_record_to_ht_bounded(q,HT,time\3 +1)
-		      	    in if RT >= 0 then num_filled_unknown+:=1
+		      	    in if RT >= -1 then num_filled_unknown+:=1
 			       else didnt_finish_ht_count +:= 1
 			       fi;
 			       times[j] := RT
@@ -2010,7 +2026,7 @@ set u_predictor_to_ht_old(Param p, int HT, int time) = int:
 			  elif #est_times > 1
 			  then (un-1)*max(est_times[1:]) + est_times[0] +
 			       ((N-un)*interrupt_base_time)\10
-			  else un*max(est_times) + ((N-un)*interrupt_base_time)\10
+			  else un*max(est_times#0) + ((N-un)*interrupt_base_time)\10
 			  fi
 	       in if predictor_verbose
 		  then prints("prediction ",print_time_string(ans), " in time ",
@@ -2073,9 +2089,9 @@ set u_predictor_to_ht(Param p, int HT, int time) = int:
 				   fi
 		 in if elapsed_ms() < expiration or do_one_flag
 		    then let RT = defHashHtTime.time_record_to_ht_bounded(q,HT, time_test)
-		    	 in if RT >= 0
+		    	 in if RT >= -1
 		       	    then unknown_indices:=delete(unknown_indices,ind);
-			    	 INFO +:= RT
+			    	 INFO +:= max(RT,0)
 		       	    else didnt_finish_ht_count +:= 1
 		       	    fi;
 			    do_one_flag:=false;
@@ -2632,7 +2648,7 @@ set c_form_irreducible (Param p,int time) = maybe_KTP:
    then oriented_KL_sum = ParamPol: null_module(p) +
       for c@q in KL_sum_at_s(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
    then list = monomials(oriented_KL_sum)
-   then unknown_indices = for q@j in list if defHashTime.time_lookup(q) < 0 do j fi od
+   then unknown_indices = for q@j in list if defHashTime.time_lookup(q) <= -2 do j fi od
    in if #unknown_indices >= 16
       then dummy := for j:4 do full_deform(list[unknown_indices~[j]], time\4) od
       elif #unknown_indices >= 4
@@ -2662,7 +2678,7 @@ set c_form_irreducible_cut (Param p,int HT, int time) = maybe_KTP:
    then oriented_KL_sum = ParamPol: null_module(p) +
       for c@q in KL_sum_at_s_to_ht(HT)(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
    then list = monomials(oriented_KL_sum)
-   then unknown_indices = for q@j in list if defHashHtTime.time_lookup_to_ht(q,HT) < 0 do j fi od
+   then unknown_indices = for q@j in list if defHashHtTime.time_lookup_to_ht(q,HT) <= -2 do j fi od
    in if #unknown_indices > 0
       then dummy := full_deform_to_ht(list[unknown_indices~[0]],HT, time);
 	   if #unknown_indices > 2 then dummy := full_deform_to_ht(list[unknown_indices[#unknown_indices\2]],HT, time) fi
@@ -2688,7 +2704,7 @@ set twisted_c_form_irreducible_unnormalized (Param p,int time) = maybe_KTP:
 ( let (fixed,unfixed)=twisted_c_form_irreducible_contributions(p)
   , expiration = elapsed_ms() + time, dummy = K_type_pol(p).done
   then list = monomials(fixed)
-  then unknown_indices = for q@j in list if defHashTime.time_lookup(q) < 0 do j fi od
+  then unknown_indices = for q@j in list if defHashTime.time_lookup(q) <= -2 do j fi od
   in if #unknown_indices > 0
      then dummy:= twisted_full_deform(list[unknown_indices~[0]],time)
      {
