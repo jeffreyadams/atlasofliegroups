@@ -213,6 +213,16 @@ returns. It must be declared |extern "C"|.
 extern "C" void sigint_handler (int)
 @+{@; atlas::interpreter::interrupt_flag=1; }
 
+@ The history function of GNU \.{readline} returns |void|, while the one in
+the \.{libedit} library (the \.{readline} replacement shipped with macOS)
+returns |int|. We pass a wrapper with the type |BufferedInput| expects, so that
+either library can be used.
+
+@< Definitions of global namespace functions @>=
+#ifndef NREADLINE
+extern "C" void atlas_add_history (const char* line) @+{@; add_history(line); }
+#endif
+
 @ Here are some header files which need to be included for this main program.
 As we discussed above, the inclusion of header files for the readline
 libraries is made dependent on the flag |NREADLINE|. In case the flag is set,
@@ -236,6 +246,7 @@ not being defined.
 #ifdef NREADLINE
 #define readline nullptr
 #define add_history nullptr
+#define atlas_add_history nullptr
 #define clear_history()
 #else
 #include <readline/readline.h>
@@ -327,7 +338,7 @@ int main(int argc, char** argv)
   @< Handle command line arguments @>
 @/BufferedInput input_buffer(do_prompting ? "atlas> " : nullptr
                             ,use_readline ? readline : nullptr
-			    ,use_readline ? add_history : nullptr);
+			    ,use_readline ? atlas_add_history : nullptr);
   main_input_buffer= &input_buffer;
 @/Lexical_analyser ana(input_buffer,hash,keywords,prim_names); lex=&ana;
   @< Prepare the lexical analyser |ana| after construction and before use @>
