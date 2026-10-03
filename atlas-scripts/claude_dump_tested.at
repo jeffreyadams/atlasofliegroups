@@ -1,0 +1,8 @@
+{one line per is_unitary / to_ht test that ran: kind, x, height(p), HT, ms}
+set dump_tested() = void:
+  for q@i in tested_pos_hash.list() do prints("T pos -1 ", q.x.number, " ", height(q), " ", tested_pos_times[i]) od;
+  for q@i in tested_neg_hash.list() do prints("T neg -1 ", q.x.number, " ", height(q), " ", tested_neg_times[i]) od;
+  for q@i in tested_inter_hash.list() do prints("T int -1 ", q.x.number, " ", height(q), " ", tested_inter_times[i]) od;
+  for j:#tested_pos_to_ht_hashes do for q@i in tested_pos_to_ht_hashes[j].list() do prints("T pos ", height(q)+j, " ", q.x.number, " ", height(q), " ", tested_pos_to_ht_times[j][i]) od od;
+  for j:#tested_neg_to_ht_hashes do for q@i in tested_neg_to_ht_hashes[j].list() do prints("T neg ", height(q)+j, " ", q.x.number, " ", height(q), " ", tested_neg_to_ht_times[j][i]) od od;
+  for j:#tested_inter_to_ht_hashes do for q@i in tested_inter_to_ht_hashes[j].list() do prints("T int ", height(q)+j, " ", q.x.number, " ", height(q), " ", tested_inter_to_ht_times[j][i]) od od

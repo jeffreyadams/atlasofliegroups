@@ -1,0 +1,40 @@
+{ Warm start for E7_s at x = 20000: everything params_to_openE7.at knows about
+  x < 20000, and nothing about x >= 20000 (except the coh_ind preload).
+
+  Load AFTER the usual files, e.g.
+     ../atlasLTO FPP_globalDirac.at edges_F4_E6_E7.at coh_ind_E7_centered2PlusE6.at
+     <warmE7s_to20000.at
+     FPP_unitary_hash_bottom_layer(KGB(E7_s)[20000:])
+
+  It loads params_to_openE7.at (all x <= 20924), then keeps
+    - unitary Params with x < warm_cutoff, plus every coh_ind Param already loaded,
+    - nonunitary Params with x < warm_cutoff, with their recorded heights,
+    - "finished" marks for x < warm_cutoff only.
+  Takes about 2 minutes. }
+
+set warm_cutoff = 20000
+set warm_G = E7_s
+set warm_coh = big_unitary_hash.uhash(warm_G).list() { coh_ind Params, all x }
+
+<params_to_openE7.at
+
+set warm_keep = [Param]:
+  ( (for p in big_unitary_hash.uhash(warm_G).list() if p.x.number < warm_cutoff do p fi od)
+  ## (for p in warm_coh if p.x.number >= warm_cutoff do p fi od) )
+set warm_nul = [Param]:
+  for p in big_unitary_hash.nuhash(warm_G).list() if p.x.number < warm_cutoff do p fi od
+set warm_nuh = [int]: for p in warm_nul do big_unitary_hash.nu_height_lookup(p) od
+
+big_unitary_hash.clearG(warm_G)
+big_unitary_hash.uhash(warm_G).fill(warm_keep)
+big_unitary_hash.numatches_height(warm_nul, warm_nuh)
+big_unitary_hash.finishxmap(warm_G, 2^warm_cutoff - 1)
+
+{ free the temporary lists }
+warm_keep := []
+warm_nul := []
+warm_nuh := []
+warm_coh := []
+
+prints("warmE7s_to20000: uhash ", big_unitary_hash.uhash(warm_G).size(),
+       ", nuhash ", big_unitary_hash.nuhash(warm_G).size(), ", x < ", warm_cutoff, " finished")
