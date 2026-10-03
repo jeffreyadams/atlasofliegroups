@@ -118,7 +118,7 @@ namespace rootdata {
 struct RootSystem::root_compare
 {
   root_compare() {}
-  bool operator()(const Byte_vector& alpha, const Byte_vector& beta)
+  bool operator()(const Byte_vector& alpha, const Byte_vector& beta) const
   {
     int d;
     for (unsigned int i=alpha.size(); i-->0;)
