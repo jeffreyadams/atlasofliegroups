@@ -1884,11 +1884,33 @@ set no_margin_flag = false
 
 set uGAM_flag = false {was true; changed 5/21/26}
 
+{UKL gate, semisimple rank >= ukl_gate_rank only: u_predictor starts with KL_sum_at_s(p), which
+ can cost enormous time and memory in rank 8.  If the library has not stored that sum and
+ KL_predictor(p) >= time\4, skip it and return max(worst_so_far_u(p), UKL_mult*KL_predictor(p)).
+ That estimate must be LARGE: the full form computes the same KL sum with no time limit
+ (c_form_irreducible starts with KL_sum_at_s), so it is a lower bound for is_unitary, and a small
+ estimate would only move the blow-up into the race's first is_unitary attempt.  A large one
+ steers the race to to_ht, which uses stored or timed KL sums.  KL_predictor is calibrated on
+ E6_s (KL_rate) and untested in rank 8.  ukl_gate_count counts refusals.}
+set UKL_mult = int: 10
+set ukl_gate_rank = int: 8
+set ukl_gate_count = int: 0
+
 {predicted time in milliseconds to complete is_unitary(p)}
 set u_predictor(Param p, int time) = int:
     if u_predictor_old_flag then return u_predictor_old(p,time) fi;
     if not predictor_flag
     then return max(worst_so_far_u(p),interrupt_base_time\4) {change \10 to \5 4/5/26 remove 4/17/26}
+    fi;
+    if semisimple_rank(p.real_form) >= ukl_gate_rank
+    then case stored_KL_sum_at_s(p)
+    	 | none: let kp = KL_predictor(p)
+	 	 in if kp >= time\4
+		    then ukl_gate_count +:= 1;
+		    	 return max(worst_so_far_u(p), UKL_mult*kp)
+		    fi
+	 | some(KLS): ()
+	 esac
     fi;
     let delta = p.real_form.distinguished_involution, start_pred = elapsed_ms(),
     	expiration = elapsed_ms() + time
