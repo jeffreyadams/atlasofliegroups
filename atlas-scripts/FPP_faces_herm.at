@@ -3590,6 +3590,14 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
 set low_u_flag = true
 
 {remove unneeded _pick from name 6/6/26}
+{low_def_u_full_flag: with the predictor on, is_unitary_to_ht(s)_big_SIMPLE_interrupt answer a
+ to-height question by computing the FULL form (uninterruptible) and truncating it whenever
+ low_def_u says so.  false skips that shortcut and sends those cases to the race.  The counters
+ record how often the shortcut ran and its time (ms), cached full forms included.}
+set low_def_u_full_flag = true
+set low_def_u_full_count = int: 0
+set low_def_u_full_ms = int: 0
+
 set is_unitary_to_ht_big_SIMPLE_interrupt(Param p, int HT) = bool:
        if (stat_holder:= simple_status(p,HT, is_unitary_to_ht_hash_big_SIMPLE_Lucas)).!=
        then stat_holder > 0
@@ -3606,8 +3614,10 @@ set is_unitary_to_ht_big_SIMPLE_interrupt(Param p, int HT) = bool:
 		 fi
        elif low_def_ht(p,HT) {henceforth predictor is available}
 	    then is_pure(big_unitary_hash.sig_entry(p,HT))
-       elif low_def_u(p,HT)
-	    then is_pure(to_ht(big_unitary_hash.sig_entry(p,-1),HT))
+       elif low_def_u_full_flag and low_def_u(p,HT)
+	    then let t = elapsed_ms()
+	    	 in is_pure(to_ht(big_unitary_hash.sig_entry(p,-1),HT))
+		    next low_def_u_full_count +:= 1; low_def_u_full_ms +:= elapsed_ms() - t
        elif Ufirst_flag
        then is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(p, HT)
        else is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(p, HT)
@@ -3853,10 +3863,12 @@ set is_unitary_to_hts_big_SIMPLE_interrupt(Param p, [int] HTs) = bool:
 	    	 all(for HT in HTs
 	    	     do @bool: is_pure(big_unitary_hash.sig_entry(p,HT))
 		     od) next if print_int_flag then prints("ending all HTs") fi
-       elif low_def_u(p,HTfirst)
+       elif low_def_u_full_flag and low_def_u(p,HTfirst)
 	    then if print_int_flag then prints("starting is_u") fi;
-	    is_pure(to_ht(big_unitary_hash.sig_entry(p,-1),HTlast)) \
-	    next if print_int_flag then prints("ending is_u") fi
+	    let t = elapsed_ms()
+	    in is_pure(to_ht(big_unitary_hash.sig_entry(p,-1),HTlast)) \
+	    next if print_int_flag then prints("ending is_u") fi;
+	    	 low_def_u_full_count +:= 1; low_def_u_full_ms +:= elapsed_ms() - t
        elif Ufirst_flag
        then is_unitary_to_hts_big_SIMPLE_interrupt_Ufirst(p, HTs)
        else is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(p, HTs)
@@ -4098,7 +4110,7 @@ set wiggle_is_unitary_all(Param p) = int:
 set is_unitary_test_big_SIMPLE(Param p, int N) = bool:
     {if (stat_holder:=status(p,N)).!= then return stat_holder > 0 fi;}{F}
     if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
-    if N < height(p) then return is_unitary_hash_big_SIMPLE(p) fi;
+    if N < height(p) then return is_unitary_test_big_SIMPLE_interrupt(p,1) fi;
     let G = p.real_form
     then FPP_flag = is_FPP(G,p.infinitesimal_character)
     then () = if not FPP_flag
@@ -4107,13 +4119,13 @@ set is_unitary_test_big_SIMPLE(Param p, int N) = bool:
     in let P = big_unitary_hash.sig_entry(p,N)
        in if not is_pure(P)
 	  then false
-	  else is_unitary_hash_big_SIMPLE(p)
+	  else is_unitary_test_big_SIMPLE_interrupt(p,1) {the race, not a bare full form}
 	  fi
 
 {ONLY for G simple}
 { like previous, with list of heights }
 set is_unitary_test_big_SIMPLE (Param p, [int] Ns) = bool:
-  if #Ns = 0 then return is_unitary_hash_big_SIMPLE(p) fi;
+  if #Ns = 0 then return is_unitary_test_big_SIMPLE_interrupt(p,1) fi;
   if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
   {if (stat_holder:=status(p,Ns~[0])).!= then return stat_holder > 0 fi;} {#15}
   {nothing Spin(4,4)}
@@ -4127,7 +4139,9 @@ set is_unitary_test_big_SIMPLE (Param p, [int] Ns) = bool:
 	then return false
 	fi
      od;
-     is_unitary_hash_big_SIMPLE(p)
+     {the race, starting #Ns K-type steps up (as in is_unitary_test_big_SIMPLE_interrupt(p,[int]));
+      heights already in Ns are answered from the stored forms}
+     is_unitary_test_big_SIMPLE_interrupt(p,#Ns)
 
 set is_unitary_test_big(Param p, int N) = bool:
   if (not is_hermitian(p)) then return false fi;
