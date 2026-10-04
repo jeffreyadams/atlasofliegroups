@@ -3138,6 +3138,13 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, [int] hts) = bool:
 	    {fi}
    in is_unitary_test_big_SIMPLE_interrupt(p, N)
 
+
+{whether the races (is_unitary*_big_SIMPLE_interrupt*, 5 call sites) try wiggle_status_cod_one
+ when min(u_time,to_ht_time) > stat_factor*rank*interrupt_base_time.  OFF 4 Oct 2026: on E8_q
+ (big Claude, mode 0 warm slices) one call at x 37007 took 204s and returned 0; turning it off took
+ length 16 371.5 -> 152.5s and length 24 374.4 -> 153.8s, same unitary params; never helped there.
+ The call is not interruptible.  Separate from wiggle_status_cod_one_flag, which governs status.}
+set wiggle_cod_one_race_flag = false
 {How bad things have to be before using wiggle_status inside is_unitary}
 set stat_factor = rat: 3/1 {was 8; change 5/21/26}
 
@@ -3165,7 +3172,7 @@ set is_unitary_test_big_SIMPLE_interrupted_Ufirst(Param p, int time) = int:
   then () = ht := next_height(p,ht);
        	    if ht < 0 then return 1 fi
   then (u_time, to_ht_time) = adjust_to_ht_over_u(p,ht), test_time = int:0
-  then () = if predictor_flag and min(u_time,to_ht_time) > stat_factor*G.rank*interrupt_base_time and
+  then () = if wiggle_cod_one_race_flag and predictor_flag and min(u_time,to_ht_time) > stat_factor*G.rank*interrupt_base_time and
        	       (stat_holder:=wiggle_status_cod_one(p,-1)).!=
 	    then return stat_holder
 	    fi
@@ -3255,7 +3262,7 @@ set is_unitary_test_big_SIMPLE_interrupted(Param p, int time) = int:
   then () = ht := next_height(p,ht);
        	    if ht < 0 then return 1 fi {no heights to test, so unitary}
   then (u_time, to_ht_time) = adjust_to_ht_over_u(p,ht), test_time = int:0
-  then () = if predictor_flag and min(u_time,to_ht_time) > stat_factor*G.rank*interrupt_base_time and
+  then () = if wiggle_cod_one_race_flag and predictor_flag and min(u_time,to_ht_time) > stat_factor*G.rank*interrupt_base_time and
        	       (stat_holder:=wiggle_status_cod_one(p,-1)).!=
 	    then return stat_holder
 	    fi
@@ -3417,7 +3424,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
 	    fi
   then () = p := herm_center(p)
   then (u_time,to_ht_time) = adjust_to_ht_over_u(p,HT)
-  then () = if min(u_time,to_ht_time) > stat_factor*G.rank * interrupt_base_time and
+  then () = if wiggle_cod_one_race_flag and min(u_time,to_ht_time) > stat_factor*G.rank * interrupt_base_time and
        	       (stat_holder:=wiggle_status_cod_one(p,HT))!= 0
 	    then return stat_holder > 0
 	    fi
@@ -3647,7 +3654,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
   then () = p := herm_center(p)
   then result = 0, HTfirst = HTs[0], HTlast = HTs~[0]
   then (u_time,to_ht_time) = adjust_to_ht_over_u(p,HTfirst), test_time = int:0
-  then () = if predictor_flag and min(u_time,to_ht_time) > stat_factor*G.rank * interrupt_base_time and
+  then () = if wiggle_cod_one_race_flag and predictor_flag and min(u_time,to_ht_time) > stat_factor*G.rank * interrupt_base_time and
        	       (stat_holder:=wiggle_status_cod_one(p,HTlast))!= 0
 	    then return stat_holder > 0
 	    fi
@@ -3754,7 +3761,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_Ufirst(Param p, [int] HTs) = bool:
   then () = p := herm_center(p)
   then result = 0, HTfirst = HTs[0], HTlast = HTs~[0]
   then (u_time,to_ht_time) = adjust_to_ht_over_u(p,HTfirst), test_time = int:0
-  then () = if predictor_flag and min(u_time,to_ht_time) > stat_factor*G.rank * interrupt_base_time and
+  then () = if wiggle_cod_one_race_flag and predictor_flag and min(u_time,to_ht_time) > stat_factor*G.rank * interrupt_base_time and
        	       (stat_holder:=wiggle_status_cod_one(p,HTlast))!= 0
 	    then return stat_holder > 0
 	    fi
