@@ -358,6 +358,7 @@ set full_deform_to_height_MvL_base(Param p, int height, int time) = maybe_KTP:
 if height < 0 then return full_deform_library(p,time) fi;
 if full_deform_old_flag then return full_deform_to_height_MvL_old(p,height,time) fi;
 if deform_script_flag {or secret_pred_flag} then return recursive_deform_scr(p,height,time) fi;
+if not low_char(p,height) then return to_ht(full_deform_library(p,time),height) fi;
 FDH_count+:=1;
 ( let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p)
   then output = empty_K, def = empty, expiration = start + time, count = 2
@@ -382,9 +383,10 @@ FDH_count+:=1;
           (let q={first_param(P)} last_param(P)
 	   in if force_interrupt_flag and count > 0 and
 	      	 KL_predictor_full(q) > 10*(expiration - elapsed_ms())
-	      then return timed_out() next FDH_time+:= elapsed_ms()-start
-	      else count-:= 1 fi;
-	   block_deform(q,P next P:=empty,height))
+	      then FDH_time+:= elapsed_ms()-start;
+	      	   return timed_out()
+	      else count -:= 1 fi;
+	      	   block_deform(q,P next P:=empty,height))
 	  {; prints("after block_deform, used ",print_time_string(elapsed_ms() - start))}
   	  ; if elapsed_ms() > expiration then return timed_out() fi
   	  ;  let kt = for c@m in def if  =nu(m) do (c,m.K_type) fi od
@@ -1863,16 +1865,16 @@ set u_predictor_old_flag = false
 set from_scratch_flag = false
 
 {what mult of interrupt_base_time to use for u_predictor}
-set uIBT_factor = rat: 1/2
+set uIBT_factor = rat: 1
 
 {what mult of interrupt_base_time to use for u_predictor_to_ht}
-set uIBT_HT_factor = rat: 1/8
+set uIBT_HT_factor = rat: 1/2
 
 {what mult of IBT for use in data lookups for u_predictor; was 5 before 5/23/26}
-set u_test_factor = rat: 1/4
+set u_test_factor = rat: 1
 
 {what mult of IBT for use in data lookups for u_to_ht_predictor; was 1/10 before 5/23/26}
-set uht_test_factor = rat: 1/16
+set uht_test_factor = rat: 1/4
 
 {how many full_deforms to look at to estimate time}
 set num_trials = int: 2
