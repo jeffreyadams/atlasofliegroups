@@ -307,20 +307,27 @@ set FDH_time = int:0
 set jagH_count = int:0
 set jagH_time = int:0
 
-{repeating this is NOT useful: library seems NOT to remember partial info}
-{worst cases for block_deform appear to be low(p) = (N,n,N+m) where n and m are relatively small and N big.}
-set full_deform_to_height_MvL_base(Param p, int height) = KTypePol:
-if height < 0 then return full_deform_library(p) fi;
-if full_deform_old_flag then return full_deform_to_height_MvL_old(p,height) fi;
-if deform_script_flag then return recursive_deform_scr(p,height) fi;
-if jag_flag and p.x.number > jag_KGB_frac*KGB_size(p.real_form) {and red_walls(p) > red_NUM}
-then jagH_count +:=1;
-     let start = elapsed_ms()
-     then answer = jagged_deform(p,height)
-     in jagH_time +:= elapsed_ms()-start;
-        return answer
-fi;
-if not low_char(p,height) then return to_ht(full_deform_library(p),height) fi;
+{Whether full_deform_to_height_MvL_base should compute the library's FULL deformation of p
+ and truncate it, rather than block_deform only to the requested height.  Added because in
+ E8_s block_deform on some small-x (Levi) parameters is terribly expensive; but gating it on
+ low_char (cf312849) sent most E7_s calls above x ~ 15000 to full deformations: to_ht tests
+ 851 -> 5467sec, memory 6 -> 46 GB.  low_char is a KL-sum predicate, unrelated to this choice.
+   deform_full_mode 0: never (block_deform always; the code before 581af154)
+                    1: not low_char(p,height) (581af154/cf312849)
+                    2: p.x.number < deform_full_frac*KGB_size(p.real_form)
+ Mode 2's frac is a GUESS pending deform_measure data (Oct 4 2026).}
+set deform_full_mode = int: 2
+set deform_full_frac = rat: 1/4
+set deform_full_count = int: 0
+set deform_full_gate(Param p, int height) = bool:
+    let ans = if deform_full_mode = 0 then false
+    	      elif deform_full_mode = 1 then not low_char(p,height)
+	      else p.x.number < deform_full_frac*KGB_size(p.real_form)
+	      fi
+    in if ans then deform_full_count +:= 1 fi; ans
+
+{snap p down to a reducibility point and block_deform to height; height > height(p)}
+set deform_to_ht_block(Param p, int height) = KTypePol:
 FDH_count+:=1;
 (    let !empty_K=null_K_module(p.real_form), !empty=null_module(p), start = elapsed_ms()
      then output = empty_K, def = empty
@@ -348,6 +355,73 @@ FDH_count+:=1;
        in output next FDH_time+:=elapsed_ms() - start
       {esac}
       )
+
+{Measurement mode: when deform_measure_flag, every deform_measure_every-th call to
+ full_deform_to_height_MvL_base (either version) with height > height(p) times BOTH paths:
+ block_deform first, then full_deform_library(p) capped at max(deform_measure_cap_min,
+ deform_measure_cap_mult*block time).  Order is fixed, so the full path may profit from
+ blocks warmed by block_deform; and a full deform once computed is stored by the library,
+ changing later calls.  The answer returned is always the block one; a finished full one is
+ compared with it (deform_mismatch).  One row of deform_log per measured call:
+   [ss rank, x.number, KGB_size, height-height(p), #reducibility_points(p),
+    low_char(p,height) (0/1), full deform already stored (0/1; -1 = p not final), gate mode 2 says full (0/1),
+    block ms, full ms (negative = timed out after that many ms)] }
+set deform_measure_flag = false
+set deform_measure_every = int: 1
+set deform_measure_cap_min = int: 5000
+set deform_measure_cap_mult = int: 20
+set deform_measure_calls = int: 0
+set deform_mismatch = int: 0
+set deform_log = [[int]]: []
+set deform_measure(Param p, int height) = KTypePol:
+    let G = p.real_form
+    then rec = [int]:
+    	 [ semisimple_rank(G), p.x.number, KGB_size(G), height - height(p)
+	 , #reducibility_points(p), if low_char(p,height) then 1 else 0 fi
+	 , if not is_final(p) then -1 else case stored_full_deform(p) | done(SF): 1 | timed_out(): 0 esac fi
+	 , if p.x.number < deform_full_frac*KGB_size(G) then 1 else 0 fi ]
+    then t0 = elapsed_ms()
+    then B = deform_to_ht_block(p,height)
+    then tb = elapsed_ms() - t0
+    then t1 = elapsed_ms()
+    then mF = full_deform_library(p, max(deform_measure_cap_min, deform_measure_cap_mult*tb))
+    then tf = elapsed_ms() - t1
+    in case mF
+       | done(F): if !=(to_ht(F,height) - B) then deform_mismatch +:= 1 fi;
+       		  deform_log #:= rec ## [tb,tf]
+       | timed_out(): deform_log #:= rec ## [tb,-tf]
+       esac; B
+
+{whether this call to full_deform_to_height_MvL_base is measured}
+set deform_measure_now() = bool:
+    deform_measure_flag and
+    (deform_measure_calls +:= 1; deform_measure_calls % deform_measure_every = 0)
+
+{write deform_log as an atlas file defining deform_log_data}
+set dump_deform_log() = void:
+    prints("set deform_log_data = [[int]]: [");
+    for r@i in deform_log
+    do prints(if i=0 then "  " else ", " fi, r) od;
+    prints("]")
+
+{repeating this is NOT useful: library seems NOT to remember partial info}
+{worst cases for block_deform appear to be low(p) = (N,n,N+m) where n and m are relatively small and N big.}
+set full_deform_to_height_MvL_base(Param p, int height) = KTypePol:
+if height < 0 then return full_deform_library(p) fi;
+if full_deform_old_flag then return full_deform_to_height_MvL_old(p,height) fi;
+if deform_script_flag then return recursive_deform_scr(p,height) fi;
+if jag_flag and p.x.number > jag_KGB_frac*KGB_size(p.real_form) {and red_walls(p) > red_NUM}
+then jagH_count +:=1;
+     let start = elapsed_ms()
+     then answer = jagged_deform(p,height)
+     in jagH_time +:= elapsed_ms()-start;
+        return answer
+fi;
+if height < height(p) then return null_K_module(p.real_form) fi;
+if height = height(p) then return K_type_pol(p) fi;
+if deform_measure_now() then return deform_measure(p,height) fi;
+if deform_full_gate(p,height) then return to_ht(full_deform_library(p),height) fi;
+deform_to_ht_block(p,height)
 {whether to use script_deform in interrupted u_predictor_to_ht}
 set secret_pred_flag = false
 
@@ -359,7 +433,15 @@ set full_deform_to_height_MvL_base(Param p, int height, int time) = maybe_KTP:
 if height < 0 then return full_deform_library(p,time) fi;
 if full_deform_old_flag then return full_deform_to_height_MvL_old(p,height,time) fi;
 if deform_script_flag {or secret_pred_flag} then return recursive_deform_scr(p,height,time) fi;
-if not low_char(p,height) then return to_ht(full_deform_library(p,time),height) fi;
+if height < height(p) then return null_K_module(p.real_form).done fi;
+if height = height(p) then return K_type_pol(p).done fi;
+if deform_measure_now() then return deform_measure(p,height).done fi;
+if deform_full_gate(p,height)
+then return case full_deform_library(p,time)
+	    | done(F): to_ht(F,height).done
+	    | timed_out(): timed_out()
+	    esac
+fi;
 FDH_count+:=1;
 ( let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p)
   then output = empty_K, def = empty, expiration = start + time, count = 2
