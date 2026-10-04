@@ -2080,11 +2080,26 @@ set hist_term_pred(Param q, int HT, int fallback) = int:
 		    in if g0 <= 0 then fallback else ceil(ts[best]*(g1/g0)^2) fi
 	       fi
        fi
+
+set UKLH_mult = int: 10
+set uklh_gate_rank = int: 8
+set uklh_gate_count = int: 0
+
 set u_predictor_to_ht(Param p, int HT, int time) = int:
     if u_predictor_old_flag then return u_predictor_to_ht_old(p,HT,time) fi;
     if HT < 0 then return u_predictor(p) fi;
     if not predictor_flag
     then return max(interrupt_base_time\4, worst_so_far(p,HT)) {back to \10 4/17}
+    fi;
+    if semisimple_rank(p.real_form) >= ukl_gate_rank
+    then case stored_KL_sum_at_s(p)
+    	 | none: let kph = KL_predictor_to_ht(p,HT)
+	 	 in if kph >= time\4
+		    then uklh_gate_count +:= 1;
+		    	 return max(worst_so_far_ht(p,HT), UKLH_mult*kph)
+		    fi
+	 | some(KLS): ()
+	 esac
     fi;
     let delta = p.real_form.distinguished_involution, expiration = elapsed_ms() + time, start_pred = elapsed_ms()
        	    {if we can finish computing zeroth full_deform, rest are
