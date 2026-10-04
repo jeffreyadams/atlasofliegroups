@@ -797,7 +797,7 @@ set incident_edges(Param p) = [ratvec]:
     in assert(@:m >=0, "sorry, nu is not a local vertex");
        if m <Lvd.pair_start
        then let mglob = Perm2.fixed[m]
-       	    then cands = FPP_edges_by_zero(G)[mglob]
+       	    then cands = FPP_edges_by_zero_unsorted(G)[mglob]
     	    in for v in cands
        	       do if is_member_sorted(Perm2.fixed[m:])(v[1])
        	       	  then [Lvd.list[locate_sorted(Perm2.fixed,v[1])]]
@@ -811,7 +811,7 @@ set incident_edges(Param p) = [ratvec]:
 	        od.##
        else {m >= pair_start}
        	    let (mglob0,) = Perm2.trans[m-Lvd.pair_start]
-	    then cands = FPP_edges_by_zero(G)[mglob0]
+	    then cands = FPP_edges_by_zero_unsorted(G)[mglob0]
 	    then mends = for (n0,) in Perm2.trans[m-Lvd.pair_start:] do n0 od
 	    in for v in cands
        	       do if is_member_sorted(mends)(v[1])
