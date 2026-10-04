@@ -156,6 +156,7 @@ set KL_rate(RealForm G) = rat:
     {then  (,m,,) = KL_block(G.trivial)} {size of G block above trivial}
     in (elapsed_ms() - start)*2^(2*G.semisimple_rank+1)/(m^2*3^(G.semisimple_rank))
 
+{
 {predicted time in milliseconds to compute KL in block of p}
 set KL_predictor_full(Param p) = int:
     let rk = semisimple_rank(integrality_datum_hash(p))
@@ -164,20 +165,22 @@ set KL_predictor_full(Param p) = int:
 {number of extremal pairs in full block is ROUGHLY: (x,y) so tau(y)\cap tau(x) is empty.
 Number of pairs of [bool] with ANSWER IS 3^rank.}
 
+{relevant to KL_sum_at_s for p}
+set KL_predictor(Param p) = int:
+    let rk = semisimple_rank(integrality_datum_hash(p))
+    in floor((full_block_down_size(p))^2*3^rk*KL_rate/2^(2*rk + 1))
+
 {this one is relevant to KL_sum_at_s_to_height, I think?}
 {predicted time in milliseconds to compute KL to height HT in block of p}
 {typically applied near principal series, where all tau invts large; so (3/4)^rk factor is not justified}
 {Extra factof of 4 is unexplained heuristic; undo rate heuristic}
 set KL_predictor_to_ht(Param p, int HT) = int:
+    if not low_char(p,HT)
+    then KL_predictor(p)
     {let rk = semisimple_rank(integrality_datum(p))}
-    floor((#full_block_to_ht(p,HT))^2 * {3^rk*}KL_rate/2{/2^({2*rk+}1)})
-{next prints("we're in KL_pred_up at ",p)}
-
-{relevant to KL_sum_at_s for p}
-set KL_predictor(Param p) = int:
-    let rk = semisimple_rank(integrality_datum_hash(p))
-    in floor((full_block_down_size(p))^2*3^rk*KL_rate/2^(2*rk + 1))
-{next prints("we're in KL_pred at ",p)}
+    else floor((#full_block_to_ht(p,HT))^2 * {3^rk*}KL_rate/2{/2^({2*rk+}1)})
+    fi
+}
 
 set lowp_count= int:0
 set lowp_time = int:0
@@ -868,6 +871,30 @@ set low_char(Param p, int HT) = bool:
     then strict_low_KL_char(p,HT)}
     else false{ALWAYS truncate to KL_sum}
     fi next low_char_time +:= elapsed_ms() - start; low_char_count+:=1
+
+{predicted time in milliseconds to compute KL in block of p}
+set KL_predictor_full(Param p) = int:
+    let rk = semisimple_rank(integrality_datum_hash(p))
+    in floor((#full_block(p))^2*3^rk* KL_rate/2^(2*rk+1))
+    {next prints("we're in KL_pred_full at ",p)}
+{number of extremal pairs in full block is ROUGHLY: (x,y) so tau(y)\cap tau(x) is empty.
+Number of pairs of [bool] with ANSWER IS 3^rank.}
+
+{relevant to KL_sum_at_s for p}
+set KL_predictor(Param p) = int:
+    let rk = semisimple_rank(integrality_datum_hash(p))
+    in floor((full_block_down_size(p))^2*3^rk*KL_rate/2^(2*rk + 1))
+
+{this one is relevant to KL_sum_at_s_to_height, I think?}
+{predicted time in milliseconds to compute KL to height HT in block of p}
+{typically applied near principal series, where all tau invts large; so (3/4)^rk factor is not justified}
+{Extra factof of 4 is unexplained heuristic; undo rate heuristic}
+set KL_predictor_to_ht(Param p, int HT) = int:
+    if not low_char(p,HT)
+    then KL_predictor(p)
+    {let rk = semisimple_rank(integrality_datum(p))}
+    else floor((#full_block_to_ht(p,HT))^2 * {3^rk*}KL_rate/2{/2^({2*rk+}1)})
+    fi
 
 set to_ht (KTypePol P,int N) = KTypePol:
   if N<0 then return P fi;

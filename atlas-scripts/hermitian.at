@@ -2091,7 +2091,7 @@ set u_predictor_to_ht(Param p, int HT, int time) = int:
     if not predictor_flag
     then return max(interrupt_base_time\4, worst_so_far(p,HT)) {back to \10 4/17}
     fi;
-    if semisimple_rank(p.real_form) >= ukl_gate_rank
+    if semisimple_rank(p.real_form) >= uklh_gate_rank
     then case stored_KL_sum_at_s(p)
     	 | none: let kph = KL_predictor_to_ht(p,HT)
 	 	 in if kph >= time\4
@@ -2122,7 +2122,6 @@ set u_predictor_to_ht(Param p, int HT, int time) = int:
 		 then time_test =  if do_one_flag
 		      		   then ceil(uht_test_factor*interrupt_base_time) - 2*(times[j])
 				   else expiration - elapsed_ms()
-				   {interrupt_base_time - 2*times[j]}
 				   fi
 		 in if elapsed_ms() < expiration or do_one_flag
 		    then let RT = defHashHtTime.time_record_to_ht_bounded(q,HT, time_test)
@@ -2134,14 +2133,12 @@ set u_predictor_to_ht(Param p, int HT, int time) = int:
 			    do_one_flag:=false;
 		       	    times[j] := RT;
 			    num_trials-:=1
-			 {else start_look+:=1 {can't help last unknown index, so go to previous}}
 		    fi
 	       od
      then data_inds = [int]:[]
      then data_times = for T@j in times
     	 	       do if T <= -3 then data_inds#:=j; [-2*(T+3)]
 			  elif T>=0 then data_inds#:=j; [T]
-			  {elif T=-1 then data_inds#:=j; [0]}{should be impossible}
 			  else []
 			  fi
 		       od.##
