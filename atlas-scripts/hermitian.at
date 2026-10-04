@@ -315,9 +315,11 @@ set jagH_time = int:0
    deform_full_mode 0: never (block_deform always; the code before 581af154)
                     1: not low_char(p,height) (581af154/cf312849)
                     2: p.x.number < deform_full_frac*KGB_size(p.real_form)
- Mode 2's frac is a GUESS pending deform_measure data (Oct 4 2026).}
+ Mode 2's frac: 1/5 is an interim value (Oct 4 2026).  On every call measured (E7_s [20000:20200],
+ E8_q lengths 16-29) it fires once (rank 1, x=0, 0ms either way), i.e. acts as mode 0, which won there; 1/4 fired on E8_q rank-8
+ calls at x/KGB 0.21-0.25 where full lost (e.g. 0.37 vs 3.48sec).  Reset after E8_s measurements.}
 set deform_full_mode = int: 2
-set deform_full_frac = rat: 1/4
+set deform_full_frac = rat: 1/5
 set deform_full_count = int: 0
 set deform_full_gate(Param p, int height) = bool:
     let ans = if deform_full_mode = 0 then false
