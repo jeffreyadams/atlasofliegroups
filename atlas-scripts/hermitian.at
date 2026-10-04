@@ -320,6 +320,7 @@ then jagH_count +:=1;
      in jagH_time +:= elapsed_ms()-start;
         return answer
 fi;
+if not low_char(p,height) then return to_ht(full_deform_library(p),height) fi;
 FDH_count+:=1;
 (    let !empty_K=null_K_module(p.real_form), !empty=null_module(p), start = elapsed_ms()
      then output = empty_K, def = empty
@@ -1865,16 +1866,16 @@ set u_predictor_old_flag = false
 set from_scratch_flag = false
 
 {what mult of interrupt_base_time to use for u_predictor}
-set uIBT_factor = rat: 1
+set uIBT_factor = rat: 1/2
 
 {what mult of interrupt_base_time to use for u_predictor_to_ht}
-set uIBT_HT_factor = rat: 1/2
+set uIBT_HT_factor = rat: 1/8
 
 {what mult of IBT for use in data lookups for u_predictor; was 5 before 5/23/26}
-set u_test_factor = rat: 1
+set u_test_factor = rat: 1/4
 
 {what mult of IBT for use in data lookups for u_to_ht_predictor; was 1/10 before 5/23/26}
-set uht_test_factor = rat: 1/4
+set uht_test_factor = rat: 1/16
 
 {how many full_deforms to look at to estimate time}
 set num_trials = int: 2
