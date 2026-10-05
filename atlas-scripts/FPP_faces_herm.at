@@ -2415,13 +2415,26 @@ set is_unitary_hash_big_SIMPLE(Param p, int TIME) = int:
        else is_pure(big_unitary_hash.sig_entry_interrupt(p,-1,TIME))
        fi
 
-{race wrappers: record the race's decision in race_ctx (hermitian.at) around an is_unitary attempt}
+{race wrappers: record the race's decision in race_ctx (hermitian.at) around an is_unitary attempt.
+ With race_log_flag, every decision of the races (is_unitary attempt or to_ht test) is also logged:
+ race_log entry (p, [site, branch (0 is_unitary, 1 to_ht), ht, u_time, to_ht_time, budget,
+ actual ms, result (1 yes, -1 no, 0 interrupted; for site 5/6 is_unitary 1 = form finished)])}
+set race_log_flag = false
+set race_log = [(Param,[int])]: []
+set race_log_add(Param p, [int] v) = void: if race_log_flag then race_log #:= (p,v) fi
+set dump_race_log() = void:
+    for (p,v) in race_log do prints("RL ", v, " ", p.x.number, " ", height(p), " ", p) od
 set race_u(int site, int ht, int u_time, int to_ht_time, int test_time, Param p, int budget) = int:
     race_ctx := [site, ht, u_time, to_ht_time, budget, test_time];
-    is_unitary_hash_big_SIMPLE(p, budget) next race_ctx := []
+    let t = elapsed_ms() then r = is_unitary_hash_big_SIMPLE(p, budget)
+    in race_ctx := []; race_log_add(p, [site,0,ht,u_time,to_ht_time,budget,elapsed_ms()-t,r]); r
 set race_sig(int site, int ht, int u_time, int to_ht_time, int test_time, Param p, int budget) = maybe_KTP:
     race_ctx := [site, ht, u_time, to_ht_time, budget, test_time];
-    big_unitary_hash.sig_entry_interrupt(p, -1, budget) next race_ctx := []
+    let t = elapsed_ms() then r = big_unitary_hash.sig_entry_interrupt(p, -1, budget)
+    in race_ctx := [];
+       race_log_add(p, [site,0,ht,u_time,to_ht_time,budget,elapsed_ms()-t,
+       		       case r | done(F): 1 | timed_out(): 0 esac]);
+       r
 
 
 set HOWMANY = int:0
@@ -2833,10 +2846,12 @@ set try_ht_factor = rat: 3/4 {3/4} {3/4} {3/2} {chosen to make x_open for E7_s O
  rule 2 (default): 3/2*test_time, i.e. experience only. Same E8_q parameter: 23 s, same answer;
  neutral on Spin(6,6) (whole group), E7_s KGB[20886:20892], the other E8_q parameter.}
 set to_ht_pred_rule = 2
+{floored at 1 ms: a previous test under 1 ms gave 0, hence a to_ht budget of 0 and a certain
+ interruption (seen in the race log, x_open, Oct 5 2026)}
 set next_to_ht_time(Param p, int ht, int test_time) = int:
-    if to_ht_pred_rule = 0 then max(u_predictor_to_ht(p,ht), (3*test_time)\2)
-    else (3*test_time)\2
-    fi
+    max(1, if to_ht_pred_rule = 0 then max(u_predictor_to_ht(p,ht), (3*test_time)\2)
+	   else (3*test_time)\2
+	   fi)
 
 {Next height for a to_ht test in the routing loops, after a successful test at ht (-1: J(p) has
  no K-type of height in (ht,top_ht], so p is unitary).
@@ -2884,6 +2899,11 @@ set next_test_height(Param p, int ht, int top_ht, int last_test_ms) = int:
     fi
 
 {"step" is how many steps up in to_ht list to start}
+{to_ht branch of the races, logged like race_u when race_log_flag}
+set race_h(int site, int ht, int u_time, int to_ht_time, Param p, int budget) = int:
+    let t = elapsed_ms() then r = is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,budget)
+    in race_log_add(p, [site,1,ht,u_time,to_ht_time,budget,elapsed_ms()-t,r]); r
+
 set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
   if skip_routing(p.real_form) then return is_unitary_hash_big_SIMPLE(p) fi;
   {if old_test_interrupt_flag then return is_unitary_test_big_SIMPLE_interrupt_old(p,step) fi;}
@@ -2953,7 +2973,7 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
 	       	       	then prints("Starting is_unitary_to_ht ",ht," at time ",
 			     print_time_string(elapsed_ms() - start))
 			fi;
-		     	result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,floor(to_ht_factor*to_ht_time));
+		     	result := race_h(1,ht,u_time,to_ht_time,p,floor(to_ht_factor*to_ht_time));
 	       	    	test_time:=elapsed_ms() - start_to_ht;
 	       		if print_int_flag
 	       	       	then prints("result ", result, " from to_ht ",ht,", in time ",
@@ -3032,7 +3052,7 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
   then () = while result = 0
        	    do if{A} u_time > try_u_factor * to_ht_time
 	       then let start_to_ht = elapsed_ms()
-	       	    in 	result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,floor(to_ht_factor*to_ht_time));
+	       	    in 	result := race_h(2,ht,u_time,to_ht_time,p,floor(to_ht_factor*to_ht_time));
 	       	    	test_time:=elapsed_ms() - start_to_ht;
 	       		if print_int_flag
 			then prints("result ", result, " from to_ht ",ht,", in time ",
@@ -3208,7 +3228,7 @@ set is_unitary_test_big_SIMPLE_interrupted_Ufirst(Param p, int time) = int:
 	       fi; {A} {u_time <= try_u_factor * to_ht_time}
 	       if{B} to_ht_time <= try_ht_factor*u_time 
 	       then let start_to_ht = elapsed_ms()
-		    in result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,floor(to_ht_factor*to_ht_time));
+		    in result := race_h(3,ht,u_time,to_ht_time,p,floor(to_ht_factor*to_ht_time));
 	       	       test_time:=elapsed_ms() - start_to_ht;
 	       	       if print_int_flag
 	       	       then prints("result ", result, " from to_ht ",ht,", in time ",
@@ -3281,7 +3301,7 @@ set is_unitary_test_big_SIMPLE_interrupted(Param p, int time) = int:
   then () = while result = 0 and elapsed_ms() - start < time
        	    do if{A} to_ht_time <= try_ht_factor*u_time
 	       then let start_to_ht = elapsed_ms()
-	       	    in result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,floor(to_ht_factor*to_ht_time));
+	       	    in result := race_h(4,ht,u_time,to_ht_time,p,floor(to_ht_factor*to_ht_time));
 	       	       test_time:=elapsed_ms() - start_to_ht;
 	       	       if print_int_flag
 	       	       then prints("result ", result, " from to_ht ",ht,", in time ",
@@ -3469,7 +3489,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
 	       fi; {A} {u_time <= try_u_factor * to_ht_time }
 	       if{B} to_ht_time <= try_ht_factor*u_time
 	       then let start_to_ht = elapsed_ms()
-		    in result := is_unitary_to_ht_big_SIMPLE_interrupt(p,HT,floor(to_ht_factor*to_ht_time));
+		    in result := race_h(5,HT,u_time,to_ht_time,p,floor(to_ht_factor*to_ht_time));
 	       	       test_time:=elapsed_ms() - start_to_ht;
 	       	       if print_int_flag
 	       	       then prints("result ", result, " from to_ht ",HT,", in time ",
@@ -3533,7 +3553,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
   then () = while result = 0
        	    do if{A}  to_ht_time <= try_ht_factor*u_time
 	       then let start_to_ht = elapsed_ms()
-	       	    then () = result:=is_unitary_to_ht_big_SIMPLE_interrupt(p,HT,floor(to_ht_factor*to_ht_time));
+	       	    then () = result:=race_h(6,HT,u_time,to_ht_time,p,floor(to_ht_factor*to_ht_time));
 		    	      to_ht_count+:=1;
 	       	              test_time:=elapsed_ms() - start_to_ht;
 	       	    	      if print_int_flag
@@ -3681,7 +3701,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
 		       then prints("starting is_unitary_to_ht_big_SIMPLE_interrupt(p,",HT,",",
 		       	    floor(to_ht_factor*to_ht_time),")")
 		       fi;
-		       result := is_unitary_to_ht_big_SIMPLE_interrupt(p,HT,floor(to_ht_factor*to_ht_time));
+		       result := race_h(7,HT,u_time,to_ht_time,p,floor(to_ht_factor*to_ht_time));
 			      to_ht_count+:=1;
 	       		      test_time:=elapsed_ms() - start_to_ht;
 	       	       if print_int_flag
@@ -3810,7 +3830,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_Ufirst(Param p, [int] HTs) = bool:
 		       then prints("starting is_unitary_to_ht_big_SIMPLE_interrupt(p,",HT,",",
 		       	    floor(to_ht_factor*to_ht_time),")")
 		       fi;
-		       result := is_unitary_to_ht_big_SIMPLE_interrupt(p,HT,floor(to_ht_factor*to_ht_time));
+		       result := race_h(8,HT,u_time,to_ht_time,p,floor(to_ht_factor*to_ht_time));
 			      to_ht_count+:=1;
 	       		      test_time:=elapsed_ms() - start_to_ht;
 	       	       if print_int_flag
@@ -3890,6 +3910,8 @@ set is_unitary_to_hts_big_SIMPLE_interrupt(Param p, [int] HTs) = bool:
 
 {This was in FPP_lambdas.at; moved here to use recording is_unitary tests}
 {1 means unitary, -1 nonunitary, 0 no test}
+
+
 set ind_test(Param p) = int:
     let icp = ind_cand_params(p).##, G = p.real_form
     then () = for pL in icp

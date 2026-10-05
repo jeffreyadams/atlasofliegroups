@@ -6,3 +6,13 @@ set dump_tested() = void:
   for j:#tested_pos_to_ht_hashes do for q@i in tested_pos_to_ht_hashes[j].list() do prints("T pos ", height(q)+j, " ", q.x.number, " ", height(q), " ", tested_pos_to_ht_times[j][i]) od od;
   for j:#tested_neg_to_ht_hashes do for q@i in tested_neg_to_ht_hashes[j].list() do prints("T neg ", height(q)+j, " ", q.x.number, " ", height(q), " ", tested_neg_to_ht_times[j][i]) od od;
   for j:#tested_inter_to_ht_hashes do for q@i in tested_inter_to_ht_hashes[j].list() do prints("T int ", height(q)+j, " ", q.x.number, " ", height(q), " ", tested_inter_to_ht_times[j][i]) od od
+
+{same, with the whole Param on each line (so tests of one parameter can be followed across
+ heights): kind, HT (-1 = is_unitary), ms, Param}
+set dump_tested_full() = void:
+  for q@i in tested_pos_hash.list() do prints("TF pos -1 ", tested_pos_times[i], " ", q) od;
+  for q@i in tested_neg_hash.list() do prints("TF neg -1 ", tested_neg_times[i], " ", q) od;
+  for q@i in tested_inter_hash.list() do prints("TF int -1 ", tested_inter_times[i], " ", q) od;
+  for j:#tested_pos_to_ht_hashes do for q@i in tested_pos_to_ht_hashes[j].list() do prints("TF pos ", height(q)+j, " ", tested_pos_to_ht_times[j][i], " ", q) od od;
+  for j:#tested_neg_to_ht_hashes do for q@i in tested_neg_to_ht_hashes[j].list() do prints("TF neg ", height(q)+j, " ", tested_neg_to_ht_times[j][i], " ", q) od od;
+  for j:#tested_inter_to_ht_hashes do for q@i in tested_inter_to_ht_hashes[j].list() do prints("TF int ", height(q)+j, " ", tested_inter_to_ht_times[j][i], " ", q) od od
