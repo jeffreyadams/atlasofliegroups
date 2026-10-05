@@ -2415,6 +2415,14 @@ set is_unitary_hash_big_SIMPLE(Param p, int TIME) = int:
        else is_pure(big_unitary_hash.sig_entry_interrupt(p,-1,TIME))
        fi
 
+{race wrappers: record the race's decision in race_ctx (hermitian.at) around an is_unitary attempt}
+set race_u(int site, int ht, int u_time, int to_ht_time, int test_time, Param p, int budget) = int:
+    race_ctx := [site, ht, u_time, to_ht_time, budget, test_time];
+    is_unitary_hash_big_SIMPLE(p, budget) next race_ctx := []
+set race_sig(int site, int ht, int u_time, int to_ht_time, int test_time, Param p, int budget) = maybe_KTP:
+    race_ctx := [site, ht, u_time, to_ht_time, budget, test_time];
+    big_unitary_hash.sig_entry_interrupt(p, -1, budget) next race_ctx := []
+
 
 set HOWMANY = int:0
 
@@ -2468,7 +2476,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt(Param p, int HT, int time) = int:
   if (stat_holder:=simple_status(p,HT)).!=
   then return stat_holder fi; {A} {save 400/7200 in Spin(4,4))}
   if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return -1 fi;
-  if HT.< then return is_unitary_hash_big_SIMPLE(p,time) fi;
+  if HT.< then return race_u(0,HT,-1,-1,-1,p,time) fi;
   if HT < height(p) then return 1 fi;
   let G = p.real_form
   then FPP_flag = is_FPP(G,p.infinitesimal_character)
@@ -2924,7 +2932,7 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
        	    do if{A} u_time <= try_u_factor*to_ht_time
 	       then u_count+:=1;
 	       	    let start_u = elapsed_ms()
-	       	    then () = result := is_unitary_hash_big_SIMPLE(p, floor(u_factor*u_time))
+	       	    then () = result := race_u(1,ht,u_time,to_ht_time,test_time,p,floor(u_factor*u_time))
 		    in test_time:= elapsed_ms() - start_u;
 		       if print_int_flag
 		       then prints("result ",result," from is_unitary, in time ",
@@ -3047,7 +3055,7 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
 	        fi{A};  {try_u_factor * to_ht_time}
 		if{B} u_time <= try_u_factor * to_ht_time
 		then let startu = elapsed_ms()
-		     then () = result := is_unitary_hash_big_SIMPLE(p, floor(u_factor*u_time))
+		     then () = result := race_u(2,ht,u_time,to_ht_time,test_time,p,floor(u_factor*u_time))
 		     in test_time:= elapsed_ms() - startu;
 		     	if print_int_flag {and result != 0}
 		        then prints("result ",result," from is_unitary, in time ",
@@ -3183,7 +3191,7 @@ set is_unitary_test_big_SIMPLE_interrupted_Ufirst(Param p, int time) = int:
   then () = while result = 0 and elapsed_ms() - start < time
        	    do if{A} u_time <= try_u_factor * to_ht_time {floor(u_factor*u_time) < 2*floor(to_ht_factor*to_ht_time)}
 	       then let start_u = elapsed_ms()
-	       	     in result := is_unitary_hash_big_SIMPLE(p, floor(u_factor*u_time));
+	       	     in result := race_u(3,ht,u_time,to_ht_time,test_time,p,floor(u_factor*u_time));
 		       	 test_time:= elapsed_ms() - start_u;
 	       		 if print_int_flag
 		       	 then prints("result ",result," from is_unitary, in time ",
@@ -3295,7 +3303,7 @@ set is_unitary_test_big_SIMPLE_interrupted(Param p, int time) = int:
 	       fi; {A} { to_ht_time <= try_ht_factor*u_time}
 	       if{B}  u_time <= try_u_factor * to_ht_time 
 	       then let start_u = elapsed_ms()
-	       then () = result := is_unitary_hash_big_SIMPLE(p, floor(u_factor*u_time));
+	       then () = result := race_u(4,ht,u_time,to_ht_time,test_time,p,floor(u_factor*u_time));
 		       	 test_time:= elapsed_ms() - start_u;
 	       		 if print_int_flag
 		       	 then prints("result ",result," from is_unitary, in time ",
@@ -3439,7 +3447,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
   then () = while result = 0
        	    do if{A} u_time <= try_u_factor * to_ht_time
 	       then let start_u = elapsed_ms()
-	       	    then form = big_unitary_hash.sig_entry_interrupt(p,-1,floor(u_factor*u_time))
+	       	    then form = race_sig(5,HT,u_time,to_ht_time,test_time,p,floor(u_factor*u_time))
 		    in result := is_pure(to_ht(form,HT));
 		       test_time:= elapsed_ms() - start_u;
 	       	       if print_int_flag
@@ -3551,8 +3559,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
 	       fi{A}; { to_ht_time <= try_ht_factor*u_time }
 	       if{C}  u_time <= try_u_factor * to_ht_time
 	       then let start_u = elapsed_ms()
-	       	    then form = big_unitary_hash.sig_entry_interrupt{hermitian_form_irreducible}
-		    	 (p, -1, floor(u_factor*u_time))
+	       	    then form = race_sig(6,HT,u_time,to_ht_time,test_time,p,floor(u_factor*u_time))
 		    then () = result := is_pure(to_ht(form,HT));
 		       	      test_time:= elapsed_ms() - start_u;
 	       		 if print_int_flag

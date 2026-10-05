@@ -307,6 +307,48 @@ set FDH_time = int:0
 set jagH_count = int:0
 set jagH_time = int:0
 
+{To-height deformation cost model (Oct 4 2026), used by u_predictor_to_ht when th_model_flag.
+ Predicted time of full_deform_to_ht(q,HT) = scale * th_weight(q,HT), with
+   th_weight = 2^((HT-height(q))/5) * 1000 * (#reducibility_points(q)+1)
+ (cost doubles every ~5 units of height gap: Spin(6,4) 4.9, Spin(6,6) 5.3, E7_s rank-6 Levis 5.3;
+ the #rp factor matters on E7_s itself).  The scale comes from, in order: this parameter's timed
+ terms (if they total >= th_min_data_ms); a running ratio sum(T)/sum(weight) over every completed
+ deformation to height of a real form of about the same size (th_record, keyed like u_time_index
+ by log_2 KGB_size), once it has th_min_count entries; else th_fallback_scale (fits gave
+ 1/4000-1/37000).  The old position-based curve (GAM_HTs_easy(N,HT)) put a fixed 85x head/tail
+ ratio on 18 terms and gave E7_s x_open p3 at HT 27 10-92sec against an actual 2.0sec.}
+set th_model_flag = false
+set TH_REM = [int]: [1000,1149,1320,1516,1741] {1000*2^(r/5)}
+set th_weight(Param q, int HT) = int:
+    let g = max(HT - height(q), 0) in 2^(g\5) * TH_REM[g%5] * (#reducibility_points(q) + 1)
+set th_num_keys = int: 20
+set th_sumT = [int]: null(th_num_keys)
+set th_sumW = [int]: null(th_num_keys)
+set th_count = [int]: null(th_num_keys)
+set th_index(RealForm G) = int: min(max(set_bit_positions(G.KGB_size)), th_num_keys-1)
+set th_record(Param q, int HT, int T) = void:
+    let i = th_index(q.real_form)
+    in th_sumT[i] +:= T; th_sumW[i] +:= th_weight(q,HT); th_count[i] +:= 1
+set th_min_count = int: 20
+set th_min_data_ms = int: 20
+{fallback scale is 1/th_fallback_den ms per unit of weight.  All of this is done in (unlimited)
+ int arithmetic: the weights and their sums are far too large for rat (bounded numerator and
+ denominator, overflow unchecked).}
+set th_fallback_den = int: 10000
+set th_scale_source = [int]: [0,0,0] {how often the scale came from data, running ratio, fallback}
+set th_pred([Param] qlist, [int] some_times, [int] data_inds, int HT) = [int]:
+    if #qlist = 0 then return [] fi;
+    let W = [int]: for q in qlist do th_weight(q,HT) od
+    then i = th_index(qlist[0].real_form)
+    then dT = sum(some_times), dW = sum(for j in data_inds do W[j] od)
+    then (sT,sW) = (int,int):
+    	 if dT >= th_min_data_ms and dW > 0 then th_scale_source[0] +:= 1; (dT,dW)
+	 elif th_count[i] >= th_min_count and th_sumW[i] > 0
+	 then th_scale_source[1] +:= 1; (th_sumT[i],th_sumW[i])
+	 else th_scale_source[2] +:= 1; (1,th_fallback_den)
+	 fi
+    in for w in W do (w*sT + sW - 1)\sW od {ceil(w*sT/sW), in ints}
+
 {Whether full_deform_to_height_MvL_base should compute the library's FULL deformation of p
  and truncate it, rather than block_deform only to the requested height.  Added because in
  E8_s block_deform on some small-x (Levi) parameters is terribly expensive; but gating it on
@@ -328,6 +370,18 @@ set deform_full_gate(Param p, int height) = bool:
 	      fi
     in if ans then deform_full_count +:= 1 fi; ans
 
+{Per-step version of the same choice (Oct 4 2026).  block_deform(q,..) builds the FULL block of q
+ and fills its whole dual KL table, however small the height gap; full_deform(q) uses only the
+ partial block below q.  So inside the loop below, a term q at small x is peeled off and deformed
+ alone by full_deform.  E8_q, cold, laptop: p at x 37009 (to 332) 12.1 -> 3.5 s, x 18003 (to 550)
+ 12.7 -> 6.7 s, same answers; the blowups were inner steps at x 712/714 (partial block 28-205,
+ block_deform 2.7-8.6 s).  Uses deform_full_frac.}
+set deform_step_full_flag = false
+set deform_step_full_count = int: 0
+set deform_step_full_ms = int: 0
+set deform_step_full(Param q) = bool:
+    deform_step_full_flag and q.x.number < deform_full_frac*KGB_size(q.real_form)
+
 {snap p down to a reducibility point and block_deform to height; height > height(p)}
 set deform_to_ht_block(Param p, int height) = KTypePol:
 FDH_count+:=1;
@@ -348,11 +402,18 @@ FDH_count+:=1;
        in if =#rp then output +:= p.K_type; [] else [p*rp~[0]] fi)
        	  then () = while >#P
        	    do {prints("At A, q = ",first_param(P), ", height = ",height,", #P = ",#P);}
-	       set (def,P) :=
-               (let q= {first_param(P)} last_param(P) in block_deform(q,P next P:=empty,height))
+	       let q= {first_param(P)} last_param(P) in
+	       if deform_step_full(q)
+	       then let c = P[q], t = elapsed_ms()
+	       	    in output := (output next output:=empty_K) + c*to_ht(full_deform_library(q),height);
+		       P := (P next P:=empty) - c*q;
+		       deform_step_full_count +:= 1; deform_step_full_ms +:= elapsed_ms() - t
+	       else
+	       set (def,P) := block_deform(q,P next P:=empty,height)
   	       ; let kt = for c@m in def if  =nu(m) do (c,m.K_type) fi od
      	       	  ,   pp = for c@m in def if !=nu(m) do (c,m) fi od
   	      in output := (output next output:=empty_K) + kt; P := (P next P:=empty) + pp
+	       fi
   	    od
        in output next FDH_time+:=elapsed_ms() - start
       {esac}
@@ -421,9 +482,12 @@ then jagH_count +:=1;
 fi;
 if height < height(p) then return null_K_module(p.real_form) fi;
 if height = height(p) then return K_type_pol(p) fi;
-if deform_measure_now() then return deform_measure(p,height) fi;
-if deform_full_gate(p,height) then return to_ht(full_deform_library(p),height) fi;
-deform_to_ht_block(p,height)
+let t = elapsed_ms()
+then r = if deform_measure_now() then deform_measure(p,height)
+	 elif deform_full_gate(p,height) then to_ht(full_deform_library(p),height)
+	 else deform_to_ht_block(p,height)
+	 fi
+in th_record(p,height,elapsed_ms()-t); r
 {whether to use script_deform in interrupted u_predictor_to_ht}
 set secret_pred_flag = false
 
@@ -431,7 +495,7 @@ set secret_pred_flag = false
 set force_interrupt_flag = false
 
 {alternative is recursive_deform_scr(p) or (p,HT) or (p,HT,time)}
-set full_deform_to_height_MvL_base(Param p, int height, int time) = maybe_KTP:
+set full_deform_to_height_MvL_base_untracked(Param p, int height, int time) = maybe_KTP:
 if height < 0 then return full_deform_library(p,time) fi;
 if full_deform_old_flag then return full_deform_to_height_MvL_old(p,height,time) fi;
 if deform_script_flag {or secret_pred_flag} then return recursive_deform_scr(p,height,time) fi;
@@ -464,9 +528,18 @@ FDH_count+:=1;
      then () = while >#P
        do {prints("entering while, used ",print_time_string(elapsed_ms() - start));
           prints("At B, q = ",first_param(P), ", height = ",height,", #P = ",#P);}
+	  let q={first_param(P)} last_param(P) in
+	  if deform_step_full(q)
+	  then let c = P[q], t = elapsed_ms()
+	       in case full_deform_library(q, max(expiration - elapsed_ms(),1))
+	       	  | done(F): output := (output next output:=empty_K) + c*to_ht(F,height);
+		    	     P := (P next P:=empty) - c*q;
+		    	     deform_step_full_count +:= 1; deform_step_full_ms +:= elapsed_ms() - t
+		  | timed_out(): FDH_time+:= elapsed_ms()-start; return timed_out()
+		  esac
+	  else
 	  set (def,P) :=
-          (let q={first_param(P)} last_param(P)
-	   in if force_interrupt_flag and count > 0 and
+          (if force_interrupt_flag and count > 0 and
 	      	 KL_predictor_full(q) > 10*(expiration - elapsed_ms())
 	      then FDH_time+:= elapsed_ms()-start;
 	      	   return timed_out()
@@ -477,9 +550,18 @@ FDH_count+:=1;
   	  ;  let kt = for c@m in def if  =nu(m) do (c,m.K_type) fi od
      	       	  ,   pp = for c@m in def if !=nu(m) do (c,m) fi od
   	  in output := (output next output:=empty_K) + kt; P := (P next P:=empty) + pp
+	  fi
        od
      in return done(output) next FDH_time+:= elapsed_ms()-start
 )
+
+{same, recording completed non-trivial deformations for the th_ cost model}
+set full_deform_to_height_MvL_base(Param p, int height, int time) = maybe_KTP:
+    if height <= height(p) or height < 0
+    then full_deform_to_height_MvL_base_untracked(p,height,time)
+    else let t = elapsed_ms() then r = full_deform_to_height_MvL_base_untracked(p,height,time)
+    	 in case r | done(F): th_record(p,height,elapsed_ms()-t) | timed_out(): () esac; r
+    fi
 
 set twisted_full_deform_to_ht_library(Param p, int HT) = KTypePol:
     let start = elapsed_ms()
@@ -1375,7 +1457,23 @@ set was_tested(Param p, int T, bool ans) = void:
 	    fi
     fi
 
+{Race-decision recorder (Oct 4 2026).  The races set race_ctx just before giving is_unitary a
+ budget (race_u / race_sig in FPP_faces_herm.at); every interrupted is_unitary appends
+ (p, T, race_ctx) to inter_log, with race_ctx =
+   [site, ht, u_time, to_ht_time, budget, test_time of the previous test]
+ site: 0 is_unitary_to_ht_big_SIMPLE_interrupt with HT<0; 1 ..._interrupt_Ufirst(p,step);
+ 2 ..._interrupt(p,step); 3 ..._interrupted_Ufirst(p,time); 4 ..._interrupted(p,time);
+ 5 is_unitary_to_ht_..._Ufirst(p,HT); 6 is_unitary_to_ht_..._TOHTfirst(p,HT).
+ Empty race_ctx: the interrupted call did not come from a race.  report_inter_log() prints it.}
+set race_ctx = [int]: []
+set inter_log = [(Param,int,[int])]: []
+set report_inter_log() = void:
+    prints("inter_log: [site, ht, u_time, to_ht_time, budget, prev test_time] for ", #inter_log,
+    	   " interrupted is_unitary");
+    for (p,T,c) in inter_log do prints("  ", T, " ms  ", c, "  ", p) od
+
 set was_tested_inter(Param p, int T) = void:
+    inter_log #:= (p, T, race_ctx);
     if drain_plug_flag and T > drain_plug_time
     then prints(p," took ",print_time_string(T)," for interrupted is_unitary")
     fi;
@@ -1392,6 +1490,7 @@ set was_tested_inter(Param p, int T) = void:
 
 {keep track of whether interruption ran too long}
 set was_tested_inter(Param p, int T, int T_target) = void:
+    inter_log #:= (p, T, race_ctx);
     if drain_plug_flag and T > drain_plug_time
     then prints(p," took ",print_time_string(T)," for interrupted is_unitary")
     fi;
@@ -1934,6 +2033,7 @@ set pred([Param] qlist,[int] some_times, [int] data_inds) = [int]:
     in for n in GAM_HTs do ceil((n*sums1)/sums0) od
 
 set pred([Param] qlist,[int] some_times, [int] data_inds, int HT) = [int]:
+    if th_model_flag then return th_pred(qlist, some_times, data_inds, HT) fi;
     if GAM_HT_EXP + PB_EXP + RP_EXP + HTht_EXP = 0
     then return pred_easy(#qlist, some_times, data_inds, HT)
     fi;
