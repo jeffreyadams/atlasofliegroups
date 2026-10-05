@@ -193,8 +193,14 @@ set adjust_frac = rat:  2/3
 {rank 8 (semisimple rank >= 8): 1/7, from E8_q slices on the current race code (3 Oct 2026):
  predictor on is 16% faster at length 14, ~50% at lengths 20 and 23, a tie at 26; x 9457 is where
  length 12 starts. The 30 Sep measurement favouring off predates the race fixes. Untested on E8_s.
- NB a manual adjust_frac:= no longer affects rank 8 groups: set adjust_frac_rank8 instead.}
-set adjust_frac_rank8 = rat: 1/7
+ NB a manual adjust_frac:= no longer affects rank 8 groups: set adjust_frac_rank8 instead.
+ 1/6 from 5 Oct 2026, for E8_s (big Claude, run1 at 1/4): with the predictor off below x 80051, 114
+ to_ht tests over 1 h (350 h) fell in x 64129-79011 (lengths 19-20, 75.7 and 110.7 s/x against
+ 16-21 s/x at lengths 15-18); with the predictor on, six of them took 1.3-49 s, same answers.
+ 1/6 switches on at x ~53,400 (start of length 18), a length before the first slow test; below
+ that the predictor still cost 1.5-2x in slices.  E8_q ran well at 1/7 (run5); 1/6 moves its
+ switch from x ~9,590 to ~11,190.}
+set adjust_frac_rank8 = rat: 1/6
 set adjust_frac_for(RealForm G) = rat:
     if semisimple_rank(G) >= 8 then adjust_frac_rank8 else adjust_frac fi
 
