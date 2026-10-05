@@ -1414,8 +1414,26 @@ set report_u_times() = void:
     od
 
 {set cSp = int:0}
+{number of positive to_ht tests p has had (each settled nothing), for the step-dependent race
+ threshold tuf(p) in FPP_faces_herm.at}
+set to_ht_steps_done(Param p) = int:
+    #for H in tested_pos_to_ht_hashes if H.lookup(p) >= 0 do 1 fi od
+
+{per-term overhead of a completed is_unitary, for u_head: running sums of test time and number of
+ terms in KL_sum_at_s(p), by size class (th_index); only tests whose KL sum is stored are counted}
+set uh_sumT = [int]: null(th_num_keys)
+set uh_sumN = [int]: null(th_num_keys)
+set uh_count = [int]: null(th_num_keys)
+set uh_record(Param p, int T) = void:
+    case stored_KL_sum_at_s(p)
+    | none: ()
+    | some(K): let i = th_index(p.real_form)
+    	       in uh_sumT[i] +:= T; uh_sumN[i] +:= #K; uh_count[i] +:= 1
+    esac
+
 set was_tested(Param p, int T, bool ans) = void:
     record_u_time(p.real_form, T);
+    uh_record(p, T);
     {let () = if p = parameter(Sp(6,R),8,[2,1,1],[1,-1,0]/2)
     	     then cSp+:=1; 1/(cSp-4)
 	     else 1/1
@@ -1463,7 +1481,8 @@ set was_tested(Param p, int T, bool ans) = void:
    [site, ht, u_time, to_ht_time, budget, test_time of the previous test]
  site: 0 is_unitary_to_ht_big_SIMPLE_interrupt with HT<0; 1 ..._interrupt_Ufirst(p,step);
  2 ..._interrupt(p,step); 3 ..._interrupted_Ufirst(p,time); 4 ..._interrupted(p,time);
- 5 is_unitary_to_ht_..._Ufirst(p,HT); 6 is_unitary_to_ht_..._TOHTfirst(p,HT).
+ 5 is_unitary_to_ht_..._Ufirst(p,HT); 6 is_unitary_to_ht_..._TOHTfirst(p,HT);
+ 7, 8 the to_hts (list of heights) TOHTfirst / Ufirst races (to_ht branch, race log only).
  Empty race_ctx: the interrupted call did not come from a race.  report_inter_log() prints it.}
 set race_ctx = [int]: []
 set inter_log = [(Param,int,[int])]: []
@@ -2083,6 +2102,79 @@ set UKL_mult = int: 10
 set ukl_gate_rank = int: 8
 set ukl_gate_count = int: 0
 
+{Head-first u_predictor (Oct 4 2026; overhead term added after an x_open run where, with most
+ head terms stored, predictions near 0 sent the race to is_unitary instead of cheap to_ht tests:
+ 297 s against 242 s), used when u_head_flag.  Measured per-term costs of a full
+ is_unitary (every term of KL_sum_at_s(p) timed, in list order): the cost is a SPIKE at the first
+ member(s) of a family of terms near the head of the list, later members reusing the library's
+ stored sub-deformations; 75-85% of terms take 0 ms.  E8_q x 37007: 157 terms, 5.6 of 5.7 s in
+ p itself; E7_s x_open nu=[0,1,1,0,1,0,1]: 2522 terms, 193 of 214 s in term 11.  So sampling the
+ tail (as u_predictor does) measures nothing, and the position curve gave 12-15x too much cold
+ and >8x too little warm.  Here:
+   - sample unknown terms from the HEAD, at most u_head_terms per call, by timed full_deform
+     (defHashTime.time_record_bounded); a term that failed before gets at least as much time as
+     it already had, so repeated calls double its bound and resume the stored partial work;
+   - predict (new test): u_head_lb_mult * (time already tried) for each failed term,
+     plus a per-term overhead for EVERY term (running ratio of completed is_unitary time to
+     #KL_sum_at_s(p), by size class, once th_min_count tests; before that u_head_tail_us
+     microseconds per term), plus (from_scratch_flag only)
+     the recorded times of finished terms;
+   - never predict less than the time already spent on interrupted is_unitary of p
+     (tested_inter_times), so after an interrupted attempt the next budget grows.}
+set u_head_flag = false
+{u_head_lazy_flag: sample head terms only while u_head_sampling is set, i.e. when a race has chosen
+ is_unitary (race_u / race_sig in FPP_faces_herm.at); a sampled prediction that reverses the race's
+ choice is kept as a floor for p (u_head_set_floor), so the race's next u_predictor(p) sees it.}
+set u_head_lazy_flag = false
+set u_head_sampling = false
+set u_head_floor_hash = make_Param_hash()
+set u_head_floors = [int]: []
+set u_head_set_floor(Param p, int T) = void:
+    let n = u_head_floor_hash.size() then i = u_head_floor_hash.match(p)
+    in if i = n then u_head_floors #:= T else u_head_floors[i] := max(u_head_floors[i],T) fi
+set u_head_get_floor(Param p) = int:
+    let i = u_head_floor_hash.lookup(p) in if i >= 0 then u_head_floors[i] else 0 fi
+set u_head_declined = int: 0
+set u_head_terms = int: 3
+set u_head_lb_mult = int: 2
+set u_head_tail_us = int: 2000
+set u_head_count = int: 0
+set u_head(Param p, int time) = int:
+    let delta = p.real_form.distinguished_involution, start = elapsed_ms()
+    then expiration = start + time
+    then list = for q in monomials(KL_sum_at_s(p)) if is_fixed(delta,q) do q fi od
+    then times = [int]: for q in list do defHashTime.time_lookup(q) od
+    then sampled = 0, j = 0
+    then nterms = if u_head_lazy_flag and not u_head_sampling then 0 else u_head_terms fi
+    then () = while j < #list and sampled < nterms and elapsed_ms() < expiration
+    	      do if times[j] <= -2
+	      	 then let tried = if times[j] <= -3 then -(times[j]+3) else 0 fi
+		      then RT = defHashTime.time_record_bounded(list[j], max(max(expiration - elapsed_ms(), tried),1))
+		      in times[j] := RT; sampled +:= 1;
+		      	 if RT <= -3 then j := #list fi {a term timed out: stop sampling}
+		 fi;
+		 j +:= 1
+	      od
+    then failed = sum(for T in times if T <= -3 do -(T+3) fi od)
+    then untried = #for T in times if T = -2 do T fi od
+    then finished = sum(for T in times if T >= 0 do T fi od)
+    then inter = let i = tested_inter_hash.lookup(p) in if i >= 0 then tested_inter_times[i] else 0 fi
+    then k = th_index(p.real_form)
+    then overhead = {per-term cost of a complete test, for ALL terms, learned from completed tests}
+    	 if uh_count[k] >= th_min_count and uh_sumN[k] > 0
+	 then (#list*uh_sumT[k] + uh_sumN[k] - 1)\uh_sumN[k]
+	 else (#list*u_head_tail_us)\1000
+	 fi
+    then pred = max(max(u_head_lb_mult*failed + overhead
+    	      	    + if from_scratch_flag then finished else 0 fi, inter), u_head_get_floor(p))
+    in u_head_count +:= 1;
+       if predictor_verbose
+       then prints("u_head ", p, ": ", #list, " terms, sampled ", sampled, ", failed ", failed,
+       	    	   " ms, untried ", untried, ", finished ", finished, " ms, interrupted is_unitary ",
+		   inter, " ms -> ", pred, " ms (in ", elapsed_ms()-start, " ms)")
+       fi;
+       pred
+
 {predicted time in milliseconds to complete is_unitary(p)}
 set u_predictor(Param p, int time) = int:
     if u_predictor_old_flag then return u_predictor_old(p,time) fi;
@@ -2098,6 +2190,12 @@ set u_predictor(Param p, int time) = int:
 		    fi
 	 | some(KLS): ()
 	 esac
+    fi;
+    if u_head_flag
+    then let t = elapsed_ms() then r = u_head(p,time)
+    	 in predictor_time +:= elapsed_ms()-t; predictor_count +:= 1;
+	    predictor_u_time +:= elapsed_ms()-t; predictor_u_count +:= 1;
+	    return r
     fi;
     let delta = p.real_form.distinguished_involution, start_pred = elapsed_ms(),
     	expiration = elapsed_ms() + time
