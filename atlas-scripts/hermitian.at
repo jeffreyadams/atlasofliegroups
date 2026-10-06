@@ -382,6 +382,26 @@ set deform_step_full_ms = int: 0
 set deform_step_full(Param q) = bool:
     deform_step_full_flag and q.x.number < deform_full_frac*KGB_size(q.real_form)
 
+{Size of the largest regular block block_deform(q,..) can build: the big block of the integral
+ inner class of q (David's proxy, Oct 5 2026).}
+set deform_block_size(Param q) = int:
+    let m = block_sizes(inner_class(integrality_datum(q),q.x.involution))
+    in m[n_rows(m)-1,n_columns(m)-1]
+
+{Per-step jagged_deform (Oct 5 2026).  In the loops below, a term q whose deform_block_size is at
+ least deform_step_jag_min_block (in rank >= deform_step_jag_min_rank) is deformed alone by
+ jagged_deform_to_ht instead of block_deform, whose matrices on such a block take hours and tens
+ of GB.  Example: E8_s, x=73226, HT 593 throws off a term at x=39383 whose integral system is E8
+ (big block 453060).  The 6 slow E8_s to_ht params of run1: hours -> 9-29 s, same answers.}
+set deform_step_jag_flag = true
+set deform_step_jag_min_rank = 8
+set deform_step_jag_min_block = int: 100000
+set deform_step_jag_count = int: 0
+set deform_step_jag_ms = int: 0
+set deform_step_jag(Param q) = bool:
+    deform_step_jag_flag and semisimple_rank(q.real_form) >= deform_step_jag_min_rank and
+    deform_block_size(q) >= deform_step_jag_min_block
+
 {snap p down to a reducibility point and block_deform to height; height > height(p)}
 set deform_to_ht_block(Param p, int height) = KTypePol:
 FDH_count+:=1;
@@ -408,6 +428,11 @@ FDH_count+:=1;
 	       	    in output := (output next output:=empty_K) + c*to_ht(full_deform_library(q),height);
 		       P := (P next P:=empty) - c*q;
 		       deform_step_full_count +:= 1; deform_step_full_ms +:= elapsed_ms() - t
+	       elif deform_step_jag(q)
+	       then let c = P[q], t = elapsed_ms()
+	       	    in output := (output next output:=empty_K) + c*jagged_deform_to_ht(q,height);
+		       P := (P next P:=empty) - c*q;
+		       deform_step_jag_count +:= 1; deform_step_jag_ms +:= elapsed_ms() - t
 	       else
 	       set (def,P) := block_deform(q,P next P:=empty,height)
   	       ; let kt = for c@m in def if  =nu(m) do (c,m.K_type) fi od
@@ -467,40 +492,6 @@ set dump_deform_log() = void:
     do prints(if i=0 then "  " else ", " fi, r) od;
     prints("]")
 
-{Automatic jagged_deform for to-height deformations whose block_deform is a risk (Oct 5 2026).
- block_deform(q,..) builds q's whole block and fills its dual KL table; when the integral root
- system at q has FULL rank that block is huge (E8_s: the 453060 big block when it is E8; also
- E7xA1, D8, E6xA2, A3xD5), cost hours and tens of GB, and cannot be interrupted.  All 72 slow E8_s
- to_ht tests of big Claude's run1 (p1..p6 and SLOW_PARAMS_E8s_run1_predictor_on.txt) have a
- full-rank integral system at p or at one of its reducibility points (where the deformation
- loop puts its terms); jagged_deform settled every one in 0.1-22 s and <1.1 GB, with the run1
- answer on all 52 that run1 finished.  jagged_deform is usually much slower than the library,
- so the gate looks only at groups of semisimple rank >= jag_gate_min_rank.
-   jag_gate_mode 0: never;  1: full-rank integral system at p or at a reducibility point of p}
-set jag_gate_mode = int: 1
-set jag_gate_min_rank = int: 8
-set jag_gate_count = int: 0
-set jag_gate_ms = int: 0
-set jag_gate(Param p, int height) = bool:
-    if jag_gate_mode = 0 then return false fi;
-    let r = semisimple_rank(p.real_form)
-    in if r < jag_gate_min_rank then return false fi;
-       if integrality_rank(p) = r then return true fi;
-       for t in reducibility_points(p) do if integrality_rank(p*t) = r then return true fi od;
-       false
-
-set jagged_deform_gated(Param p, int height) = KTypePol:
-    let start = elapsed_ms()
-    then answer = jagged_deform_to_ht(p,height)
-    in jag_gate_count +:= 1; jag_gate_ms +:= elapsed_ms() - start; answer
-
-set jag_gate_timed_out = int: 0
-set jagged_deform_gated(Param p, int height, int time) = maybe_KTP:
-    let start = elapsed_ms()
-    then answer = jagged_deform_to_ht(p,height,time)
-    in jag_gate_count +:= 1; jag_gate_ms +:= elapsed_ms() - start;
-       case answer | timed_out: jag_gate_timed_out +:= 1 | done: () esac; answer
-
 {repeating this is NOT useful: library seems NOT to remember partial info}
 {worst cases for block_deform appear to be low(p) = (N,n,N+m) where n and m are relatively small and N big.}
 set full_deform_to_height_MvL_base(Param p, int height) = KTypePol:
@@ -516,7 +507,6 @@ then jagH_count +:=1;
 fi;
 if height < height(p) then return null_K_module(p.real_form) fi;
 if height = height(p) then return K_type_pol(p) fi;
-if jag_gate(p,height) then return jagged_deform_gated(p,height) fi;
 let t = elapsed_ms()
 then r = if deform_measure_now() then deform_measure(p,height)
 	 elif deform_full_gate(p,height) then to_ht(full_deform_library(p),height)
@@ -536,8 +526,6 @@ if full_deform_old_flag then return full_deform_to_height_MvL_old(p,height,time)
 if deform_script_flag {or secret_pred_flag} then return recursive_deform_scr(p,height,time) fi;
 if height < height(p) then return null_K_module(p.real_form).done fi;
 if height = height(p) then return K_type_pol(p).done fi;
-{the timed jagged_deform_to_ht watches the clock at every node and wall step}
-if jag_gate(p,height) then return jagged_deform_gated(p,height,time) fi;
 if deform_measure_now() then return deform_measure(p,height).done fi;
 if deform_full_gate(p,height)
 then return case full_deform_library(p,time)
@@ -572,6 +560,14 @@ FDH_count+:=1;
 	       	  | done(F): output := (output next output:=empty_K) + c*to_ht(F,height);
 		    	     P := (P next P:=empty) - c*q;
 		    	     deform_step_full_count +:= 1; deform_step_full_ms +:= elapsed_ms() - t
+		  | timed_out(): FDH_time+:= elapsed_ms()-start; return timed_out()
+		  esac
+	  elif deform_step_jag(q)
+	  then let c = P[q], t = elapsed_ms()
+	       in case jagged_deform_to_ht(q, height, max(expiration - elapsed_ms(),1))
+	       	  | done(F): output := (output next output:=empty_K) + c*F;
+		    	     P := (P next P:=empty) - c*q;
+		    	     deform_step_jag_count +:= 1; deform_step_jag_ms +:= elapsed_ms() - t
 		  | timed_out(): FDH_time+:= elapsed_ms()-start; return timed_out()
 		  esac
 	  else
