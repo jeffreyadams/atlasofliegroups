@@ -467,6 +467,33 @@ set dump_deform_log() = void:
     do prints(if i=0 then "  " else ", " fi, r) od;
     prints("]")
 
+{Automatic jagged_deform for to-height deformations whose block_deform is a risk (Oct 5 2026).
+ block_deform(q,..) builds q's whole block and fills its dual KL table; when the integral root
+ system at q has FULL rank that block is huge (E8_s: the 453060 big block when it is E8; also
+ E7xA1, D8, E6xA2, A3xD5), cost hours and tens of GB, and cannot be interrupted.  All 72 slow E8_s
+ to_ht tests of big Claude's run1 (p1..p6 and SLOW_PARAMS_E8s_run1_predictor_on.txt) have a
+ full-rank integral system at p or at one of its reducibility points (where the deformation
+ loop puts its terms); jagged_deform settled every one in 0.1-22 s and <1.1 GB, with the run1
+ answer on all 52 that run1 finished.  jagged_deform is usually much slower than the library,
+ so the gate looks only at groups of semisimple rank >= jag_gate_min_rank.
+   jag_gate_mode 0: never;  1: full-rank integral system at p or at a reducibility point of p}
+set jag_gate_mode = int: 1
+set jag_gate_min_rank = int: 8
+set jag_gate_count = int: 0
+set jag_gate_ms = int: 0
+set jag_gate(Param p, int height) = bool:
+    if jag_gate_mode = 0 then return false fi;
+    let r = semisimple_rank(p.real_form)
+    in if r < jag_gate_min_rank then return false fi;
+       if integrality_rank(p) = r then return true fi;
+       for t in reducibility_points(p) do if integrality_rank(p*t) = r then return true fi od;
+       false
+
+set jagged_deform_gated(Param p, int height) = KTypePol:
+    let start = elapsed_ms()
+    then answer = jagged_deform(p,height)
+    in jag_gate_count +:= 1; jag_gate_ms +:= elapsed_ms() - start; answer
+
 {repeating this is NOT useful: library seems NOT to remember partial info}
 {worst cases for block_deform appear to be low(p) = (N,n,N+m) where n and m are relatively small and N big.}
 set full_deform_to_height_MvL_base(Param p, int height) = KTypePol:
@@ -482,6 +509,7 @@ then jagH_count +:=1;
 fi;
 if height < height(p) then return null_K_module(p.real_form) fi;
 if height = height(p) then return K_type_pol(p) fi;
+if jag_gate(p,height) then return jagged_deform_gated(p,height) fi;
 let t = elapsed_ms()
 then r = if deform_measure_now() then deform_measure(p,height)
 	 elif deform_full_gate(p,height) then to_ht(full_deform_library(p),height)
@@ -501,6 +529,9 @@ if full_deform_old_flag then return full_deform_to_height_MvL_old(p,height,time)
 if deform_script_flag {or secret_pred_flag} then return recursive_deform_scr(p,height,time) fi;
 if height < height(p) then return null_K_module(p.real_form).done fi;
 if height = height(p) then return K_type_pol(p).done fi;
+{jagged_deform does not watch the clock; it is here because the block_deform it replaces only
+ looks at the clock between blocks, which in these cases come hours late}
+if jag_gate(p,height) then return jagged_deform_gated(p,height).done fi;
 if deform_measure_now() then return deform_measure(p,height).done fi;
 if deform_full_gate(p,height)
 then return case full_deform_library(p,time)
