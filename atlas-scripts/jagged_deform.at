@@ -686,6 +686,19 @@ set jagged_deform_unmemo(Param p, int HT) = KTypePol:
    F4_s, parameter(KGB(F4_s,150),rho,rho):         17.4 s -> 2.1 s
  At x=228 in the same list (small walks) the gain is 0-30%.
  JM_calls counts node visits, JM_base the distinct nodes computed.}
+{Deadline for the timed versions (jagged_deform@(Param,int time) and
+ jagged_deform_to_ht@(Param,int,int)).  jag_deadline < 0 means none.  The
+ memo and cached recursions test jag_out_of_time() at every node and every
+ wall step; once it is true, every node returns 0 at once, nothing more is
+ stored in the cross-call cache, and the timed caller returns timed_out().
+ What is not interrupted: one library |deform| at a wall, and one
+ K_type_pol_extended; both are small per call.}
+set jag_deadline = minus_1
+set jag_timed_out = false
+set jag_out_of_time() = bool:
+    jag_timed_out or
+    (jag_deadline >= 0 and elapsed_ms() > jag_deadline and (jag_timed_out := true; true))
+
 set JM_calls = 0, JM_base = 0
 set jagged_deform_memo(Param p, int HT) = KTypePol:
     if not is_final(p) then error("improper parameter") fi;
@@ -696,12 +709,13 @@ set jagged_deform_memo(Param p, int HT) = KTypePol:
           JM_calls +:= 1;
           let n = H.size() then k = H.match(p)
           in if k < n then res[k]
+	     elif jag_out_of_time() then 0*p.K_type
              else JM_base +:= 1;
                   res #:= (KTypePol: 0*p.K_type); {placeholder: children append after it}
                   let at_nu0 = KTypePol: K_type_pol_extended(p,delta)
                   in if p.nu.!=
                      then let acc = empty, (q,sgn) = jag_bump_ext(p), go = true in
-                          while go
+                          while go and not jag_out_of_time()
                           do let (g,q1,sgn1,terms) = jagged_step(q,sgn,HT)
                              in go := g; q := q1; sgn := sgn1; acc +:= terms
                           od
@@ -784,6 +798,11 @@ set jagged_deform_cached(Param p, int HT) = KTypePol:
                   jag_regroup(p.real_form,
                               if JDH_hts[k] = HT then JDH_vals[k]
                               else jag_trunc(JDH_vals[k],HT) fi)
+	     elif jag_out_of_time()
+	     then {match has already entered p in the hash: keep JDH_vals/JDH_hts aligned
+	     	   with a "not known" placeholder (height -2), which later calls recompute}
+	     	  if k = n then JDH_vals #:= (KTypePol: 0*p.K_type); JDH_hts #:= minus_1-1 fi;
+		  0*p.K_type
              else if k = n
                   then JDH_computed +:= 1;
                        {placeholders: children append after them}
@@ -793,24 +812,31 @@ set jagged_deform_cached(Param p, int HT) = KTypePol:
                   let at_nu0 = KTypePol: K_type_pol_extended(p,delta)
                   in if p.nu.!=
                      then let acc = empty, (q,sgn) = jag_bump_ext(p), go = true in
-                          while go
+                          while go and not jag_out_of_time()
                           do let (g,q1,sgn1,terms) = jagged_step(q,sgn,HT)
                              in go := g; q := q1; sgn := sgn1; acc +:= terms
                           od
                         ; for c@r in acc do at_nu0 +:= c*jag(r) od
                      fi
                   ; let val = jag_trunc(at_nu0,HT)
-                    in JDH_vals[k] := val; JDH_hts[k] := HT; val
+                    in {an interrupted node keeps its placeholder (new) or old value (upgrade)}
+		       if not jag_timed_out then JDH_vals[k] := val; JDH_hts[k] := HT fi; val
              fi
         end)(p)
 
 {Truncation.  |wall_terms| drops every term thrown off above HT, so every
  node below the top is already truncated; only the top node's own K-types
- escape.  When height(p) > HT that made jagged_deform(p,HT) return p's own
+ escape.  When height(p) > HT that made jagged_deform_to_ht(p,HT) return p's own
  K-types where full_deform_to_ht returns 0 -- and is_unitary_to_ht(p,HT)
  must be (vacuously) true for such p, as in the wiggle arguments.  So
- truncate the result once here.}
-set jagged_deform(Param p, int HT) = KTypePol:
+ truncate the result once here.
+ Names (Oct 5 2026), as for the library deformations:
+   jagged_deform(Param)                    = full_deform(p)
+   jagged_deform_to_ht(Param,int HT)       = full_deform_to_ht(p,HT)
+   jagged_deform(Param,int time)           interruptible, maybe_KTP
+   jagged_deform_to_ht(Param,int HT,int time)  interruptible, maybe_KTP
+ CAUTION: jagged_deform@(Param,int) used to be the to-height version; its int is now a TIME.}
+set jagged_deform_to_ht(Param p, int HT) = KTypePol:
     let r = if jag_cache_flag then jagged_deform_cached(p,HT)
     	    elif jag_memo_flag then jagged_deform_memo(p,HT)
 	    else jagged_deform_unmemo(p,HT)
@@ -819,9 +845,27 @@ set jagged_deform(Param p, int HT) = KTypePol:
 
 {HT<0 means no truncation, so this is the one that equals full_deform(p).
  (Note that a nonnegative HT must be bigger than height(p) to be of any
- use: jagged_deform(p,p.height) throws away almost everything, exactly
+ use: jagged_deform_to_ht(p,p.height) throws away almost everything, exactly
  like recursive_deform_scr(p,p.height).)}
-set jagged_deform(Param p) = KTypePol: jagged_deform(p,-1)
+set jagged_deform(Param p) = KTypePol: jagged_deform_to_ht(p,-1)
+
+{Interruptible versions: timed_out() if not finished within |time| ms (checked between nodes
+ and wall steps, so the overshoot is one library |deform| or so).  They use the cross-call cache
+ when jag_cache_flag, else the per-call memo (jagged_deform_unmemo has no deadline checks).
+ A deadline already running (nested call) is kept if it is earlier.}
+set jagged_deform_to_ht(Param p, int HT, int time) = maybe_KTP:
+    let (old_deadline, old_timed_out) = (jag_deadline, jag_timed_out)
+    then new_deadline = elapsed_ms() + max(time,0)
+    in jag_deadline := if old_deadline >= 0 then min(old_deadline,new_deadline) else new_deadline fi;
+       jag_timed_out := false;
+       let r = if jag_cache_flag then jagged_deform_cached(p,HT) else jagged_deform_memo(p,HT) fi
+       then out = jag_timed_out
+       in jag_deadline := old_deadline; jag_timed_out := old_timed_out; {outer call tests its own deadline}
+       	  if out then timed_out()
+	  else (if HT < 0 then r else height_split(r,HT).fst fi).done
+	  fi
+
+set jagged_deform(Param p, int time) = maybe_KTP: jagged_deform_to_ht(p,-1,time)
 
 {-------------------------------------------------------------------}
 { testing                                                             }
@@ -833,7 +877,7 @@ set jagged_deform(Param p) = KTypePol: jagged_deform(p,-1)
  deformation_terms_by_dual_scr@(Param,int) has), so HT=-1 would make it
  discard everything.  For the untruncated check use test_jagged_full.}
 set test_jagged(Param p, int HT) = bool:
-    let a = jagged_deform(p,HT), b = recursive_deform_scr(p,HT)
+    let a = jagged_deform_to_ht(p,HT), b = recursive_deform_scr(p,HT)
     then ok = a = b
     in if not ok
        then prints("MISMATCH at ",p); prints("jagged: ",a); prints("recur:  ",b)
@@ -866,7 +910,7 @@ set test_jagged(RealForm G, ratvec gamma) = bool:
  what the first one computed.}
 set time_jagged(Param p, int HT) = void:
     let t0 = elapsed_ms()
-    then a = jagged_deform(p,HT)
+    then a = jagged_deform_to_ht(p,HT)
     in prints("jagged ",elapsed_ms()-t0,"ms  ",p)
 
 set time_old(Param p, int HT) = void:
@@ -906,7 +950,7 @@ set time_lib(Param p) = void:
      transport part and the finalisation part separately;
    - the upward push in |jag_bump| is symmetrised under delta, so the walk
      stays on the delta-fixed (hermitian) locus.
-  So jagged_deform(p,HT) computes what full_deform_to_ht(p,HT) computes in
+  So jagged_deform_to_ht(p,HT) computes what full_deform_to_ht(p,HT) computes in
   equal rank and what twisted_full_deform_to_ht_library(p,HT) computes in
   unequal rank (hermitian.at branches on is_equal_rank the same way).
   Split E7, E8, F4 and G2 have delta = 1; split E6 does not.

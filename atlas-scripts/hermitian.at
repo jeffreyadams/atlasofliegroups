@@ -491,8 +491,15 @@ set jag_gate(Param p, int height) = bool:
 
 set jagged_deform_gated(Param p, int height) = KTypePol:
     let start = elapsed_ms()
-    then answer = jagged_deform(p,height)
+    then answer = jagged_deform_to_ht(p,height)
     in jag_gate_count +:= 1; jag_gate_ms +:= elapsed_ms() - start; answer
+
+set jag_gate_timed_out = int: 0
+set jagged_deform_gated(Param p, int height, int time) = maybe_KTP:
+    let start = elapsed_ms()
+    then answer = jagged_deform_to_ht(p,height,time)
+    in jag_gate_count +:= 1; jag_gate_ms +:= elapsed_ms() - start;
+       case answer | timed_out: jag_gate_timed_out +:= 1 | done: () esac; answer
 
 {repeating this is NOT useful: library seems NOT to remember partial info}
 {worst cases for block_deform appear to be low(p) = (N,n,N+m) where n and m are relatively small and N big.}
@@ -503,7 +510,7 @@ if deform_script_flag then return recursive_deform_scr(p,height) fi;
 if jag_flag and p.x.number > jag_KGB_frac*KGB_size(p.real_form) {and red_walls(p) > red_NUM}
 then jagH_count +:=1;
      let start = elapsed_ms()
-     then answer = jagged_deform(p,height)
+     then answer = jagged_deform_to_ht(p,height)
      in jagH_time +:= elapsed_ms()-start;
         return answer
 fi;
@@ -529,9 +536,8 @@ if full_deform_old_flag then return full_deform_to_height_MvL_old(p,height,time)
 if deform_script_flag {or secret_pred_flag} then return recursive_deform_scr(p,height,time) fi;
 if height < height(p) then return null_K_module(p.real_form).done fi;
 if height = height(p) then return K_type_pol(p).done fi;
-{jagged_deform does not watch the clock; it is here because the block_deform it replaces only
- looks at the clock between blocks, which in these cases come hours late}
-if jag_gate(p,height) then return jagged_deform_gated(p,height).done fi;
+{the timed jagged_deform_to_ht watches the clock at every node and wall step}
+if jag_gate(p,height) then return jagged_deform_gated(p,height,time) fi;
 if deform_measure_now() then return deform_measure(p,height).done fi;
 if deform_full_gate(p,height)
 then return case full_deform_library(p,time)
