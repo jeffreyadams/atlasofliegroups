@@ -708,6 +708,7 @@ length: (KGBElt->int): length of the element within its KGB set
 status: (int,KGBElt->int): status of root (by index) on KGB element, scale 0..4
   Encoding 0: Complex descent, 1: imaginary compact, 2: real,
   3: imaginary non-compact, 4: Complex ascent
+  The root number can range over the whole root system, positive and negative
 cross: (int,KGBElt->KGBElt): cross action for (posrootnr,KGB element)
   Returns result of cross action by root reflection of the given KGB element
 Cayley: (int,KGBElt->KGBElt): Cayley transform for (posrootnr,KGB element)
@@ -760,9 +761,9 @@ index (Block,KGBElt,KGBElt->int): index in block, from KGB, dual KGB components
   needed, block(real_form(x),dual_real_form(real_form(y))) computes the block
 dual: (Block->Block): dual block, with real form and dual real form swapped
 status: (int,Block,int->int): status at a block element of a simple reflection
-  For s the index of a reflection, and i the index of an element of block b,
-  status(s,b,i) gives according to the codes 0:C-, 1:ic, 2:r1, 3:r2,  4:C+,
-  5: rn, 6:i1, 7:i2. Note that the descents s have status(b,i,s)<4
+  For s the index of a simple reflection, and i the index of an element of
+  block b, status(s,b,i) gives according to the codes 0:C-, 1:ic, 2:r1, 3:r2,
+  4:C+, 5: rn, 6:i1, 7:i2. Note that the descents s have status(b,i,s)<4
 
 operators =, != : (Split->bool): test split integer against Split:(0,0)
 operators =, != : (Split,Split->bool): equality/inequality of split integers

@@ -4664,10 +4664,10 @@ inline RootNbr get_reflection_index(int root_index, RootNbr n_posroots)
 @)
 void KGB_cross_wrapper(eval_level l)
 { own_KGB_elt x = get_own<KGB_elt_value>();
+  int n = get<int_value>()->int_val();
   const KGB& kgb=x->rf->kgb();
   const RootDatum& rd = kgb.root_datum();
-  RootNbr alpha =
-    get_reflection_index(get<int_value>()->int_val(),rd.numPosRoots());
+  RootNbr alpha = get_reflection_index(n,rd.numPosRoots());
   if (l==eval_level::no_value)
     return;
 @)
@@ -4680,10 +4680,10 @@ void KGB_cross_wrapper(eval_level l)
 @)
 void KGB_Cayley_wrapper(eval_level l)
 { own_KGB_elt x = get_own<KGB_elt_value>();
+  int n = get<int_value>()->int_val();
   const KGB& kgb=x->rf->kgb();
   const RootDatum& rd = kgb.root_datum();
-  RootNbr alpha =
-    get_reflection_index(get<int_value>()->int_val(),rd.numPosRoots());
+  RootNbr alpha = get_reflection_index(n,rd.numPosRoots());
   if (l==eval_level::no_value)
     return;
 @)
@@ -4713,10 +4713,10 @@ defined if |v==3|.
 @< Local function def...@>=
 void KGB_status_wrapper(eval_level l)
 { shared_KGB_elt x = get<KGB_elt_value>();
+  int n = get<int_value>()->int_val();
   const KGB& kgb=x->rf->kgb();
   const RootDatum& rd = kgb.root_datum();
-  RootNbr alpha =
-    get_reflection_index(get<int_value>()->int_val(),rd.numPosRoots());
+  RootNbr alpha = get_reflection_index(n,rd.numPosRoots());
   if (l==eval_level::no_value)
     return;
 @)
@@ -4728,8 +4728,8 @@ void KGB_status_wrapper(eval_level l)
   }
   else
   {
-    alpha = rd.posRootNbr(alpha); // convert to general root number
-    unsigned stat=kgb::status(kgb,x->val,alpha);
+    alpha = rd.posRootNbr(alpha); // convert to internal root number
+    unsigned stat = kgb::status(kgb,x->val,alpha); // this can handle any root
     if (stat==0) // $\alpha$ is a complex root, check if it is an ascent
     {
       RootNbr theta_alpha = kgb.innerClass().involution_table().

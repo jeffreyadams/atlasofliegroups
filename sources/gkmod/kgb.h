@@ -153,10 +153,12 @@ class KGB_base
   const WeightInvolution & involution_matrix(KGBElt x) const
   { return ic.involution_table().matrix(inv_nr(x)); }
 
-
+  // set of simple generators for which have a link to a shorter KGG element
   const DescentSet& descent(KGBElt x) const { return info[x].desc; }
+  // whether simple generator |s| allows descending to a shorter KGG element
   bool isDescent(weyl::Generator s, KGBElt x) const
     { return descent(x).test(s); }
+
   const gradings::Status& status(KGBElt x) const { return info[x].status; }
   gradings::Status::Value status(weyl::Generator s, KGBElt x) const
    { return status(x)[s]; }

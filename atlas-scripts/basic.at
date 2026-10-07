@@ -1910,7 +1910,7 @@ set cross (KGBElt x,WeylElt w) = KGBElt:
   assert(@:w.root_datum=x.root_datum);
   for s in w.word do x:=cross(s,x) od; x
 
-set status (vec alpha,KGBElt x) = int: status(root_index(real_form(x),alpha),x)
+set status (vec alpha,KGBElt x) = int: status(root_index(x.root_datum,alpha),x)
 
 set cross (vec alpha,KGBElt x) = KGBElt:
   cross(root_index(root_datum(x),alpha),x)
