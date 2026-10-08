@@ -1739,7 +1739,7 @@ set local_test_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 			     od
 		   in KUKU_flag:=true
 	       fi
-     then () = if KNU_flag or #LFVH > 2
+     then () = if (KNU_flag or #LFVH > 2) and not ht_bound_track_on {its hits carry no height}
 	       then let knownNonUnitaries = known_non_unitaries(x, lambda, Lvd, LFVH)
 	       in for list@d in knownNonUnitaries
 		  do for j in list
@@ -1953,7 +1953,7 @@ in
        od
     ;  KUKU_flag:=true
     fi
-;   if KNU_flag or #LFVH > 2
+;   if (KNU_flag or #LFVH > 2) and not ht_bound_track_on {its hits carry no height}
     then let knownNonUnitaries = known_non_unitaries(x, lambda, Lvd, LFVH)
     in for list@d in knownNonUnitaries
        do for j in list
@@ -2120,7 +2120,7 @@ in
        od
     ; KUKU_flag:=true
     fi
-;   if KNU_flag or #LFVH > 2
+;   if (KNU_flag or #LFVH > 2) and not ht_bound_track_on {its hits carry no height}
     then let knownNonUnitaries = known_non_unitaries(x, lambda, Lvd, LFVH)
     in for list@d in knownNonUnitaries
        do for j in list
@@ -2291,7 +2291,7 @@ set local_test_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 			     od
 		   in KUKU_flag:=true
 	       fi
-     then () = if KNU_flag or #LFVH > 2
+     then () = if (KNU_flag or #LFVH > 2) and not ht_bound_track_on {its hits carry no height}
 	       then let knownNonUnitaries = known_non_unitaries(x, lambda, Lvd, LFVH)
 	       in for list@d in knownNonUnitaries
 		  do for j in list
@@ -4271,6 +4271,12 @@ to have last_level \ge one_level}
 set last_level = int: -1
 
 set one_level_xl_hash = make_xlambda_hash()
+
+{ht_bound_track_on: one remaining vertex p is tested in full; if it fails, note the height}
+set ht_bound_one_param(Param p) = [Param]:
+    let ans = one_param_test_dumb(p, monomials(finalize(p)), elapsed_ms())
+    in if #ans = 0 then ht_bound_audit(p) fi;
+       ans
 {set hash_one_levelCounter = make_counter()}
 
 {assume local faces to dim 1 are recorded in LF, already herm and pos on LKTs}
@@ -4292,7 +4298,9 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda,
     then () = min_after_flag:=false
     then () = if 1*pmin = zero_pol then return [] fi
     then () = if {TINY CASE} #LF[0]=1
-    	      then if mix_flag
+    	      then if ht_bound_track_on
+	      	   then return ht_bound_one_param(parameter(x,lambda,Lvd.list[LF[0][0][0]]))
+		   elif mix_flag
 	      	   then return one_param_test_min_bottom(parameter(x,lambda,Lvd.list[LF[0][0][0]]),
 		   	       {[height(pmin) + more_shift_level],} Uhash)
 		   else return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]))
@@ -4384,7 +4392,8 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda,
     	             then ((eq,gr),IUCL,CLBF) = localGraphK(ans, pol_hash, zero_ht)
               	     {then () = prints("at hts[edge_offset], #eq = ", #eq)}
     	      	     then () = ans := local_testK_hash(x,lambda, Lvd, ans, eq,
-		      			gr, CLBF, tester0, zero_ht, Uhash, fancy_tester)
+		      			gr, CLBF, ht_bound_wrap_if(tester0,zero_ht), zero_ht, Uhash,
+					fancy_tester)
 	     	     {now we've tested verts and edges to hts[ZERO]}
     		     then () = if test_verbose then prints("unitary to ht ",zero_ht,
 		   	       	  " face counts to dim 1: ",for list in ans do #list od);
@@ -4406,6 +4415,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda,
 	 	   else is_unitary_to_ht_big_SIMPLE_interrupt{_TOHTfirst}(p,one_ht)
 		   fi {to_ht is definitely 2% slower for F4 spherical,
 		       10% slower for Sp(10) spherical}
+    then tester1 = ht_bound_wrap_if(tester1,one_ht)
     then () = if one_two_reverse_flag
     	      then LFDKH := for list in LFDKH do [vec]: for v in list ~do v od od
 	      fi
@@ -4493,11 +4503,13 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda,
     then mu_tester(Param p) = bool: is_unitary_test_big_SIMPLE_interrupt(p, ONE{,hts[ONE+1:]})
     {then () = if test_verbose then prints("one_ht = ",one_ht) fi}
     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
-    then UParams = local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, (Param->bool): (Param p):
+    then final_tester = (Param->bool): (Param p):
 		 if test_interrupt_flag {up_mu_flag}
 		 then mu_tester(p)
 		 else is_unitary_hash_big_SIMPLE(p)
-		 fi, Uhash)
+		 fi
+    then UParams = local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF,
+    	 ht_bound_wrap_full_if(final_tester), Uhash)
     then time = elapsed_ms() - start
     then () = if time_verbose
 	      then prints("     ", print_time_string(time),

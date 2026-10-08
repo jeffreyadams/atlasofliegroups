@@ -89,6 +89,7 @@ set delta_on_simple(InnerClass ic) = [int]:
 
 set NH_factor = rat: 1/2 {3/8 failed to catch the non-unitary vertex
 at (KGB element #19200,[  2,  1,  1,  2, -1,  1,  2 ]/1) in E7_s}
+
 {meant to be applied to quasisplit simple L}
 set next_heights = (RealForm -> int):
     let ichash = make_InnerClass_hash()
@@ -108,6 +109,40 @@ set next_heights = (RealForm -> int):
     	    	     fi
 	    in nhs[i]
        fi
+
+{false for pre 10/7/26 defn}
+set next_heights_new_flag = true
+
+set next_heights_new(KType mu) = int:
+    if not height(mu) = 0
+    then 0
+    else let G = mu.real_form
+    	 then SFs = simple_factors(Lie_type(G)) {list of (name,rk)}
+    	 {then derGs = derived_simple_factorsRF(G)}
+    	 in sum(for (name,rk) in SFs
+	    	do if name = "C" then 4*rk-5
+		   elif name = "B" then rk*(rk+1)\2
+		   elif name = "A" then 2*rk - 1 {never looked at SU}
+		   elif name = "D" then 4*rk -7 {haven't measured, or looked at Spin(rk+1,rk-1)}
+		   elif name = "G" then 4 {can't occur}
+		   elif name = "F" then 22 {can't occur}
+		   elif name = "E"
+		   then if rk = 7
+		   	then if dimension(mu) = 1 then 49 else 38 fi
+		   	elif rk = 6
+			then if is_split(G)
+			     then 22
+			     elif dimension(mu) = 1
+			     then 24
+			     else 22
+			     fi
+			else 10 {shouldn't come here; E8 can't occur.}
+			fi
+		   else 10
+		   fi
+		od)
+     fi
+
 {these types are tied to a particular set mus of LKTs; but can be used with any p with LKTs(p) \subest mus}
 set_type LK_data = [(KType,[KType])] {for each bottom layer tau, list [dertauLj] of corr derLKj-types}
 set_type QK_bottom_data = (KGPElt Q, [KType] list) {intent is that list consists of K-types tau that are Q-bottom layer}
@@ -242,7 +277,14 @@ set min_bottom_factors(KType mu) = LK_data:
     then dermuLs = derived_factor_K_types0(muL) {each dermuLj is on a simple derived derLj}
     then derLs = derived_simple_factorsRF(L)
     then derProjKinvs = for derL in derLs do right_inverse(projection_to_K_matrix(derL)) od
-    then DLjs = for derLj in derLs do next_heights(derLj) od
+    then DLjs = if next_heights_new_flag
+    	      	then for muLj in dermuLs
+    	      	     do next_heights_new(muLj)
+		     od
+		else for derLj in derLs
+		     do next_heights(derLj)
+		     od
+	        fi
     then xcL = {KGB(L,0)} natural_KGB_elt(muL) {inverse_embed_KGB(xcG,L)}
     then xcG = embed_KGB(xcL,G) {natural_KGB_elt(mu)} {this is needed to make shifts for L equal to shifts for G}
     then derxcLs = derived_factor_KGBs0(xcL)
@@ -570,8 +612,11 @@ set make_min_small_bottom_data () = min_small_bottom_data:
 					       od)
 		      then (,list) = mbfs[0][0]
 		      in Lheights #:= (vec: for dertauL in list
-		      	 	     do next_heights(dertauL.real_form)
-				     od)
+		      	 	      	    do if next_heights_new_flag
+					       then next_heights_new(dertauL)
+					       else next_heights(dertauL.real_form)
+					       fi
+					    od)
 		 fi
         then () = assert(@:#bottom_data = xl_hash.size(),"min_small_bottom_data damaged")
 	then () = assert(@:#heights = #bottom_data,"min_small_bottom_data damaged")

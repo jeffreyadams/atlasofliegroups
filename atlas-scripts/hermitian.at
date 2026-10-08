@@ -143,20 +143,6 @@ set hash_one_levelCounter = make_counter()
 set hash_bottom_layerCounter = make_counter()
 set hash_steveCounter = make_counter()
 
-{initial time to give interruptible command}
-set interrupt_base_time = int: {150}
-{time a KL computation for a FRESH copy of E6_q (new root datum, hence new KGB/block/KL
- tables), so that reloading this file re-measures instead of timing a cache hit (the old
- KL_sum_at_s(E6_q.trivial) gave ~2 instead of ~116 on a reload); ~58 ms on David's laptop}
-let rd = E6_q.root_datum
-then G = quasisplit_form(inner_class(root_datum(rd.simple_roots,rd.simple_coroots),
-				     E6_q.inner_class.distinguished_involution))
-then start = elapsed_ms()
-then CF = KL_sum_at_s(trivial(G))
-in 2*(elapsed_ms() - start)
-{changed from 100 to 150 5/5/26}
-{was 200 before 7/24/25; sometimes 500...}
-
 {to record time spent in is_unitary, is_unitary_to_ht, etc.}
 set unitaryTime = int: 0
 
@@ -403,9 +389,53 @@ set deform_step_jag_min_rank = 8
 set deform_step_jag_min_block = int: 100000
 set deform_step_jag_count = int: 0
 set deform_step_jag_ms = int: 0
+set jag_measuring = false
 set deform_step_jag(Param q) = bool:
-    deform_step_jag_flag and semisimple_rank(q.real_form) >= deform_step_jag_min_rank and
+    deform_step_jag_flag and not jag_measuring and semisimple_rank(q.real_form) >= deform_step_jag_min_rank and
     deform_block_size(q) >= deform_step_jag_min_block
+
+{Measurement mode for the per-step gate (Oct 2026): when jag_measure_flag, every term q for which
+ deform_step_jag(q) holds is deformed by jagged_deform_to_ht (the answer used), then by
+ full_deform_library(q) (capped at jag_measure_cap_ms), then, only if jag_measure_block_flag, by
+ deform_to_ht_block(q,height) (NOT interruptible: hours and 100+ GB on an E8-integral term).  Each
+ term prints one line as soon as it is done (so a killed job loses nothing):
+   JAGM [ss rank, x, KGB_size, height-height(q), length(q), deform_block_size(q), #partial_block(q),
+         jag ms, full ms (negative = capped), block ms (-1 = not run),
+         full differs from jag (0/1; -1 = capped), block differs from jag (0/1; -1 = not run)]
+ Later measurements profit from caches warmed by earlier ones (jag, then full, then block, on a
+ term; and across terms).  In the timed loop a jag that times out is not measured.}
+set jag_measure_flag = false
+{forward reference to deform_to_ht_block, which is defined later and calls jag_measure}
+set jag_block_box = [(Param,int->KTypePol)]: [(Param q,int h) KTypePol: null_K_module(q.real_form)]
+set jag_measure_block_flag = false
+set jag_measure_cap_ms = int: 600000
+set jag_mismatch = int: 0
+set jag_measure(Param q, int height, int time) = maybe_KTP:
+    let t0 = elapsed_ms()
+    then rj = jagged_deform_to_ht(q,height,time)
+    then tj = elapsed_ms() - t0
+    in case rj
+       | timed_out(): timed_out()
+       | done(J):
+         let t1 = elapsed_ms()
+         then rf = full_deform_library(q,jag_measure_cap_ms)
+         then tf = elapsed_ms() - t1
+         then df = case rf | done(F): if =(to_ht(F,height) - J) then 0 else 1 fi | timed_out(): -1 esac
+         then t2 = elapsed_ms()
+         then (tb,db) = if jag_measure_block_flag
+                        then jag_measuring := true;
+                             let B = jag_block_box[0](q,height)
+                             in jag_measuring := false;
+                                (elapsed_ms() - t2, if =(B - J) then 0 else 1 fi)
+                        else (-1,-1) fi
+         in jag_mismatch +:= (if df = 1 then 1 else 0 fi) + (if db = 1 then 1 else 0 fi);
+            prints("JAGM ", [ semisimple_rank(q.real_form), q.x.number, KGB_size(q.real_form)
+	    	  , height - height(q), length(q), deform_block_size(q), #partial_block(q), tj
+		  , if df = -1 then -tf else tf fi, tb, df, db ]);
+            J.done
+       esac
+set jag_measure(Param q, int height) = KTypePol:
+    case jag_measure(q,height,1000000000) | done(J): J | timed_out(): null_K_module(q.real_form) esac
 
 {snap p down to a reducibility point and block_deform to height; height > height(p)}
 set deform_to_ht_block(Param p, int height) = KTypePol:
@@ -436,7 +466,8 @@ FDH_count+:=1;
 	       elif deform_step_jag(q)
 	       then let c = P[q], t = elapsed_ms()
 	       	    in output := (output next output:=empty_K) +
-		       c*(if jag_gate_mode = 2 then to_ht(full_deform_library(q),height)
+		       c*(if jag_measure_flag then jag_measure(q,height)
+		          elif jag_gate_mode = 2 then to_ht(full_deform_library(q),height)
 		          else jagged_deform_to_ht(q,height) fi);
 		       P := (P next P:=empty) - c*q;
 		       deform_step_jag_count +:= 1; deform_step_jag_ms +:= elapsed_ms() - t
@@ -450,6 +481,7 @@ FDH_count+:=1;
        in output next FDH_time+:=elapsed_ms() - start
       {esac}
       )
+jag_block_box := [deform_to_ht_block]
 
 {Measurement mode: when deform_measure_flag, every deform_measure_every-th call to
  full_deform_to_height_MvL_base (either version) with height > height(p) times BOTH paths:
@@ -503,6 +535,7 @@ set dump_deform_log() = void:
 {worst cases for block_deform appear to be low(p) = (N,n,N+m) where n and m are relatively small and N big.}
 set full_deform_to_height_MvL_base(Param p, int height) = KTypePol:
 if height < 0 then return full_deform_library(p) fi;
+if height = height(p) then return K_type_pol(p) fi;
 if full_deform_old_flag then return full_deform_to_height_MvL_old(p,height) fi;
 if deform_script_flag then return recursive_deform_scr(p,height) fi;
 if jag_flag and p.x.number > jag_KGB_frac*KGB_size(p.real_form) {and red_walls(p) > red_NUM}
@@ -512,8 +545,6 @@ then jagH_count +:=1;
      in jagH_time +:= elapsed_ms()-start;
         return answer
 fi;
-if height < height(p) then return null_K_module(p.real_form) fi;
-if height = height(p) then return K_type_pol(p) fi;
 let t = elapsed_ms()
 then r = if deform_measure_now() then deform_measure(p,height)
 	 elif deform_full_gate(p,height) then to_ht(full_deform_library(p),height)
@@ -572,7 +603,8 @@ FDH_count+:=1;
 	  elif deform_step_jag(q)
 	  then let c = P[q], t = elapsed_ms()
 	       in case (let rem = max(expiration - elapsed_ms(),1)
-	       	       in if jag_gate_mode = 2
+	       	       in if jag_measure_flag then jag_measure(q,height,rem)
+		       	  elif jag_gate_mode = 2
 		       	  then case full_deform_library(q,rem)
 			       | done(F): to_ht(F,height).done
 			       | timed_out(): timed_out()

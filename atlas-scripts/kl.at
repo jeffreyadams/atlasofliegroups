@@ -35,6 +35,20 @@ choose whether "to height" or "to infinity" algorithm is faster.}
 { ------------------------------------------------------------------- }
 {seat_belt_on:=false}
 
+{initial time to give interruptible command}
+set interrupt_base_time = int: {150}
+{time a KL computation for a FRESH copy of E6_q (new root datum, hence new KGB/block/KL
+ tables), so that reloading this file re-measures instead of timing a cache hit (the old
+ KL_sum_at_s(E6_q.trivial) gave ~2 instead of ~116 on a reload); ~58 ms on David's laptop}
+let rd = E6_q.root_datum
+then G = quasisplit_form(inner_class(root_datum(rd.simple_roots,rd.simple_coroots),
+				     E6_q.inner_class.distinguished_involution))
+then start = elapsed_ms()
+then CF = KL_sum_at_s(trivial(G))
+in 2*(elapsed_ms() - start)
+{changed from 100 to 150 5/5/26}
+{was 200 before 7/24/25; sometimes 500...}
+
 set twisted_KL_sum_at_s_library(Param p) = twisted_KL_sum_at_s(p)
 
 {Move the param out where W_int(p)  can act}
@@ -917,6 +931,23 @@ set to_ht (int N) = (KTypePol->KTypePol): (KTypePol P):
   else let (below,)=height_split(P,N) in below
   fi
 
+set KL_sum_at_s_race_flag = true
+
+set KL_sum_at_s_to_height_race(int HT) = (Param p) ParamPol:
+    let start = elapsed_ms(), htp = height(p)
+    in if HT < 0 then KL_sum_at_s(p)
+       elif HT < htp then 0*p
+       elif HT = htp then 1*p
+       else let limit = min(charTimeToHt\max(char_counter_to_ht.use_count(),1) + 5*interrupt_base_time,
+       	    	      	    100*interrupt_base_time)
+       	    then mKLs = KL_sum_at_s_to_height(p,HT,limit)
+	    in case mKLs
+	       | none: let (ans,) = height_split(KL_sum_at_s(p),HT)
+		       in ans
+	       | some(ans): ans
+	       esac
+	fi
+
 set KL_new_count = int:0
 set KL_false_low_count = int:0
 
@@ -930,7 +961,10 @@ set KL_sum_at_s_to_ht_new(int HT) = (Param p) ParamPol: {should check whether li
        else let mKLS = stored_KL_sum_at_s(p)
        	    in case mKLS
 	       | none: unstored_count+:=1;
-       	       	 let ans = KL_sum_at_s_to_height(p,HT)
+       	       	 let ans = if KL_sum_at_s_race_flag
+		     	   then KL_sum_at_s_to_height_race(HT)(p)
+			   else KL_sum_at_s_to_height(p,HT)
+			   fi
 		 in charTimeToHt +:= elapsed_ms() - start;
 		    char_counter_to_ht.use();
 		    ans

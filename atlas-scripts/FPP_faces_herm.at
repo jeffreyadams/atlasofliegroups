@@ -1315,6 +1315,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		 fi
 	  in write_real_form(rf,Gname);
 	     prints("set j = big_unitary_hash.rf_number(",Gname,")");
+	     if #plist>0 then prints("void: big_unitary_hash.uhash(",Gname,").grow(",#plist,")") fi;
 	     for p in plist
 	     do let xnum = p.x.number
 		in prints("void: big_unitary_hash.long_match(parameter(",Gname,",",xnum,",",p.lambda,",",p.nu,"),j)")
@@ -1466,6 +1467,7 @@ some lambdas for that x might be finished.}
       then Ns = xl_known[i]
       in write_real_form(G,Gname);
 	 prints("set j = big_unitary_hash.rf_number(",Gname,")");
+	 if #plist>0 then prints("void: big_unitary_hash.uhash(",Gname,").grow(",#plist,")") fi;
 	 for p in plist
 	 do prints("void: big_unitary_hash.long_match(parameter(G_temp,",
 	    p.x.number,",",p.lambda,",",p.nu,"),j)")
@@ -4680,6 +4682,167 @@ set known_unitaries(Param_hash UhashLocal, LocalVertexData Lvd,
 	 od
      in out
 
+{---- ht_bound(x,lambda): a height certifying every nonunitary candidate (Oct 2026) ------------
+ If ht_bound_track_flag, FPP_unitary_hash_one_level([(x,lambda)]) also computes ht_bound(x,lambda), hashed in
+ ht_bound_xl_hash/ht_bound_xl_vals (ht_bound = -1 if no value has been computed).  It runs with all Dirac and
+ FPP_def (deformation) tests off, because those give no height at which nonunitarity shows.  The
+ estimate ht_bound_est starts at height(p0), p0 = parameter(x,lambda,0), and every elimination of a
+ candidate raises it to max(ht_bound_est,IMPHT), where IMPHT is the impurity height of the signature
+ of the failing monomial q (impure_height of big_unitary_hash.sig_entry(q,h), h the height of the
+ failed test, or of the full signature after a failed full test).  IMPHT <= h, and is_unitary_to_ht(q,IMPHT)
+ is false.  If the signature is pure (the test used another argument) h itself is used.
+   - a to-height test that fails at h: ht_bound_wrap_if, ht_bound_fail_note;
+     known_status and known_non_unitaries note ht_bound_fail_one for the monomial they found;
+   - a full test that fails: ht_bound_audit (every nonunitary monomial of the candidate);
+   - a lowest K-type failure (only if fewer_reducible_unitary_flag is false): height(q).
+ Whenever the estimate is raised by a signature, the final hermitian monomial q responsible is kept
+ as the EXAMPLE of impurity height = bound; ht_bound_example(x,lambda) returns [q] when
+ ht_bound(x,lambda) > height(p0), else [].  (q is a final monomial of the eliminated candidate; its
+ own x, lambda need not equal the key.)  dump_ht_bounds writes everything to a file.
+ Nonunitarity to h implies nonunitarity to every h' >= h, and the nonunitary set is open, so
+ nonunitary faces eliminated because a subface failed (updateNUclassesB) need no further note.
+ CAVEAT: a candidate is eliminated by ONE failing monomial q of finalize(p) (min IMPHT over its
+ failing monomials), not every nonunitary monomial.}
+set ht_bound_track_flag = false
+set ht_bound_track_on = false {true only while FPP_unitary_hash_one_level_ht_bound runs one (x,lambda)}
+set ht_bound_est = int: -1
+set ht_bound_ex_cur = [Param]: [] {example for ht_bound_est, or empty}
+set ht_bound_debug_flag = false {print each note that raises ht_bound_est}
+set ht_bound_note(int h) = void: {no example}
+    if ht_bound_track_on and h > ht_bound_est
+    then if ht_bound_debug_flag then prints("ht_bound_note: ",ht_bound_est," -> ",h) fi;
+    	 ht_bound_est := h; ht_bound_ex_cur := []
+    fi
+set ht_bound_note(int h, Param q) = void:
+    if ht_bound_track_on and h > ht_bound_est
+    then if ht_bound_debug_flag then prints("ht_bound_note: ",ht_bound_est," -> ",h," example ",q) fi;
+    	 ht_bound_est := h; ht_bound_ex_cur := [q]
+    fi
+
+set ht_bound_xl_hash = make_xlambda_hash()
+set ht_bound_xl_vals = [int]: []
+set ht_bound_ex_vals = [[Param]]: []
+set ht_bound(KGBElt x, ratvec lambda) = int:
+    let i = ht_bound_xl_hash.lookup(x,lambda) in if i < 0 then -1 else ht_bound_xl_vals[i] fi
+set ht_bound_example(KGBElt x, ratvec lambda) = [Param]:
+    let i = ht_bound_xl_hash.lookup(x,lambda) in if i < 0 then [] else ht_bound_ex_vals[i] fi
+set ht_bound_store(KGBElt x, ratvec lambda, int h, [Param] ex) = void:
+    let n = ht_bound_xl_hash.size(), i = ht_bound_xl_hash.match(x,lambda)
+    in if i = n then ht_bound_xl_vals #:= h; ht_bound_ex_vals #:= ex
+       else ht_bound_xl_vals[i] := h; ht_bound_ex_vals[i] := ex fi
+set ht_bound_store(KGBElt x, ratvec lambda, int h) = void: ht_bound_store(x,lambda,h,[])
+set ht_bound_clear() = void:
+    ht_bound_xl_hash := make_xlambda_hash(); ht_bound_xl_vals := []; ht_bound_ex_vals := []
+
+{impurity height of the signature of the hermitian Param q to height h (h < 0: full); -1 if the
+ signature is pure or q is not hermitian}
+set ht_bound_imp(Param q, int h) = int:
+    let q = herm_center(q)
+    in if not is_hermitian(q) then -1
+       else impure_height(big_unitary_hash.sig_entry(q, if h >= GAM(q) then -1 else h fi))
+       fi
+
+{q failed a test to height h (h < 0: full).  Note IMPHT with q as example; if the signature is
+ pure, the test height h (GAM(q) for a full test) with no example.}
+set ht_bound_fail_one(Param q, int h) = void:
+    if ht_bound_track_on and is_hermitian(q)
+    then let ih = ht_bound_imp(q,h)
+    	 in if ih >= 0 then ht_bound_note(ih,q)
+	    else ht_bound_note(if h >= 0 then h else GAM(q) fi)
+	    fi
+    fi
+
+{candidate p failed a to-height test at h: the smallest IMPHT among its failing monomials}
+set ht_bound_fail_note(Param p, int h) = void:
+    if ht_bound_track_on
+    then let cands = [(int,Param)]:
+    	      for q in monomials(finalize(p))
+    	      do if is_hermitian(q)
+	      	 then let ih = ht_bound_imp(q,h) in if ih >= 0 then [(ih,q)] else [] fi
+		 else []
+		 fi
+	      od.##
+	 in if #cands = 0 then ht_bound_note(h)
+	    else let mn = min(for (i,) in cands do i od)
+	    	 then k = first(for (i,) in cands do i = mn od)
+		 then (,q) = cands[k]
+		 in ht_bound_note(mn,q)
+	    fi
+    fi
+
+{p was just found nonunitary by a FULL test: note IMPHT of each nonunitary monomial}
+set ht_bound_audit(Param p) = void:
+    if ht_bound_track_on
+    then let () = for q in monomials(finalize(p))
+       	 	  do if is_hermitian(q) {nonhermitian: nonunitary at every height, no signature}
+		        and not is_unitary_hash_big_SIMPLE(q)
+		     then ht_bound_fail_one(q,-1)
+		     fi od
+	 in ()
+    fi
+
+{lowest K-type positivity failed for p}
+set ht_bound_note_LKT(Param p) = void:
+    if ht_bound_track_on
+    then let () = for q in monomials(finalize(p))
+       	 	  do if not is_pos_on_LKTs(q) then ht_bound_note(height(q)) fi od
+	 in ()
+    fi
+
+{tester answers is_unitary_to_ht(.,h), or h = top of the heights it was asked about}
+set ht_bound_wrap_if((Param->bool) tester, int h) = (Param->bool):
+    if ht_bound_track_on
+    then (Param p) bool: if tester(p) then true
+    	 else if ht_bound_debug_flag then prints("ht_bound_wrap_if h=",h," failed p=",p) fi;
+	      ht_bound_fail_note(p,h); false fi
+    else tester
+    fi
+
+{tester is a full unitarity test}
+set ht_bound_wrap_full_if((Param->bool) tester) = (Param->bool):
+    if ht_bound_track_on
+    then (Param p) bool: if tester(p) then true
+    	 else if ht_bound_debug_flag then prints("ht_bound_wrap_full_if failed p=",p) fi; ht_bound_audit(p); false fi
+    else tester
+    fi
+
+{ ---- dump / load of ht_bound ------------------------------------------------------------
+ ">file dump_ht_bounds(G)" (or dump_ht_bounds() for all real forms present) writes an atlas file:
+ the real form as G_temp, then one line per (x,lambda):
+   void: ht_bound_set(G_temp,x,lambda,bound[,example])
+ preceded by a comment with height(p0).  example is a final hermitian parameter of impurity
+ height = bound, present only when bound > height(p0).  Loading the file refills the hash.}
+set ht_bound_set(RealForm G, int xnum, ratvec lambda, int h) = void:
+    ht_bound_store(KGB(G,xnum),lambda,h)
+set ht_bound_set(RealForm G, int xnum, ratvec lambda, int h, Param ex) = void:
+    ht_bound_store(KGB(G,xnum),lambda,h,[ex])
+set ht_bound_entries(RealForm G) = [int]:
+    sort_by((int i) int: ht_bound_xl_hash.index(i).x.number)(
+    	 for i:ht_bound_xl_hash.size() do if ht_bound_xl_hash.index(i).x.real_form = G then [i] else [] fi od.##)
+set dump_ht_bounds(RealForm G) = void:
+    let Gname = "G_temp"
+    in write_real_form(G,Gname);
+       prints("{ht_bound(x,lambda): void: ht_bound_set(G_temp,x,lambda,bound[,example])");
+       prints(" example = final hermitian Param of impurity height = bound; only if bound > height(p0)}");
+       for i in ht_bound_entries(G)
+       do let (x,lambda) = ht_bound_xl_hash.index(i)
+       	  then h = ht_bound_xl_vals[i], ex = ht_bound_ex_vals[i]
+	  then h0 = height(parameter(x,lambda,0*lambda))
+	  in prints("{x=",x.number,", lambda=",lambda,", ht_bound=",h,", height(p0)=",h0,"}");
+	     prints("void: ht_bound_set(",Gname,",",x.number,",",lambda,",",h,
+	     	    if #ex > 0 and h > h0
+		    then ",parameter("+Gname+","+to_string(ex[0].x.number)+","+to_string(ex[0].lambda)+","+to_string(ex[0].nu)+")"
+		    else ""
+		    fi,")")
+       od
+set dump_ht_bounds() = void:
+    let forms = [RealForm]: []
+    then () = for i:ht_bound_xl_hash.size()
+    	      do let G = ht_bound_xl_hash.index(i).x.real_form
+	      	 in if none(for F in forms do F = G od) then forms #:= G fi
+	      od
+    in for G in forms do dump_ht_bounds(G) od
+
 {whether to use deformation in looking for evidence that a Param is not unitary}
 {TRUE fails in E6_q one_level at x = 723, lambda = [1,1,0,1,1,1]/1}
 set wiggle_flag = false
@@ -4881,18 +5044,20 @@ set known_non_unitaries(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		do parameter(x,lambda,face_bary(Lvd, v[:d+1]))
 		od
 	     od
-    in for d:#LFDKH
+    then ans = for d:#LFDKH
        do for p@j in ps[d]
 	  do let qs = monomials(finalize(p))
 	     in if any(for q in qs
 		       do @bool: {status(p,HT) < 0} {save 2200 tests in Spin(4,4)}
 		       	  big_unitary_hash.nu_height_lookup_int(q,HT) < 0
+			  and (ht_bound_fail_one(q,HT); true)
 		       od)
 		then [j]
 		else []
 		fi
 	  od.##
        od
+    in ans
 
 {wiggle is quite slow without a height bound, so for now just don't do it here}
 {list locations in LFDKH of reps known to be non-unitary}
@@ -4937,7 +5102,10 @@ set known_status(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	     	then Ulist[d]#:=j
 		fi;
 		if NU
-		then NUlist[d]#:=j
+		then NUlist[d]#:=j;
+		     for q@i in qs do if stats[i] < 0 then ht_bound_fail_one(q,HT) fi od;
+		     if ht_bound_debug_flag and ht_bound_track_on
+		     then prints("known_status NU: HT=",HT," d=",d," p=",p," stats=",stats) fi
 		fi
 	   od
        od;
@@ -5516,6 +5684,7 @@ set localFD_1Dirac2_by_zero\
 		      fi
 	      fi
     then () = bz_nu_flag := (let p0 = parameter(x,lambda,0*lambda) in first_param(p0).x != p0.x)
+			     and not ht_bound_track_on {status(q,-1) gives no height}
     {Removing SLOWED E7_s a lot: factor of 2 by 19000?  The old gate here was
      (height(parameter(x,lambda,0*lambda)) > 0), which is BACKWARDS at x_open of a split
      group: there every lambda has height 0, so the scan was switched off for all of them.
@@ -5539,7 +5708,7 @@ set localFD_1Dirac2_by_zero\
 	       elif not (fewer_reducible_unitary_flag or all(for q in monomials(finalize(p))
 			    do @bool: is_pos_on_LKTs(q)
 			    od))
-	       then []
+	       then ht_bound_note_LKT(p); []
 	       elif bz_nu_flag and any(for q in qs do @bool: status(q,-1) < 0 od)
 	       {The conjunct (qs[0].x != x) was here from 8/27/26 (commit 480ce90b) until
 		8/27/26.  It was a mistake: it copied the bz_nu_flag gate above, which asks
@@ -5696,7 +5865,7 @@ set localFD_1Dirac2_by_zero\
 	       if not (fewer_reducible_unitary_flag or all(for q in monomials(p)
 			    do @bool: is_pos_on_LKTs(q)
 			    od))
-	       then []
+	       then ht_bound_note_LKT(p); []
 	       elif FPP_def_edge_flag and not FPP_def_test_wk_final(p)
 	       then []
 	       elif red_count_flag
