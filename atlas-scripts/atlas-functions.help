@@ -708,6 +708,7 @@ length: (KGBElt->int): length of the element within its KGB set
 status: (int,KGBElt->int): status of root (by index) on KGB element, scale 0..4
   Encoding 0: Complex descent, 1: imaginary compact, 2: real,
   3: imaginary non-compact, 4: Complex ascent
+  The root number can range over the whole root system, positive and negative
 cross: (int,KGBElt->KGBElt): cross action for (posrootnr,KGB element)
   Returns result of cross action by root reflection of the given KGB element
 Cayley: (int,KGBElt->KGBElt): Cayley transform for (posrootnr,KGB element)
@@ -760,9 +761,9 @@ index (Block,KGBElt,KGBElt->int): index in block, from KGB, dual KGB components
   needed, block(real_form(x),dual_real_form(real_form(y))) computes the block
 dual: (Block->Block): dual block, with real form and dual real form swapped
 status: (int,Block,int->int): status at a block element of a simple reflection
-  For s the index of a reflection, and i the index of an element of block b,
-  status(s,b,i) gives according to the codes 0:C-, 1:ic, 2:r1, 3:r2,  4:C+,
-  5: rn, 6:i1, 7:i2. Note that the descents s have status(b,i,s)<4
+  For s the index of a simple reflection, and i the index of an element of
+  block b, status(s,b,i) gives according to the codes 0:C-, 1:ic, 2:r1, 3:r2,
+  4:C+, 5: rn, 6:i1, 7:i2. Note that the descents s have status(b,i,s)<4
 
 operators =, != : (Split->bool): test split integer against Split:(0,0)
 operators =, != : (Split,Split->bool): equality/inequality of split integers
@@ -948,7 +949,20 @@ twist: (Param->Param): twist the parameter by the distinguished involution
 twist: (Param,mat->Param): twist the parameter by the given external involution
 orientation_nr: (Param->int): the orientation number
 reducibility_points: (Param->[rat]): the 0<t<=1 with I(x,lambda,t\nu) reducible
+  The values listed, in strictly increasing order, are those for which there is
+  a real or complex coroot having nonzero integer evaluation on the
+  infinitesimal character of the deformed parameter, and that defines a (real
+  parity or complex) descent at that parameter; this is a necessary (but not
+  sufficient) condition for that coroot to cause reducibility at the
+  deformation. Imaginary roots, which do not change status during the
+  deformation, are entirely ignored. The parameter is not required to have
+  dominant infinitesimal character, either initially or after deformation (but
+  in the actual deformation computation, parameters will be converted to final
+  before computing deformation terms).
 operator * : (Param,rat->Param): scale component nu by given rational factor
+  Multiplying a parameter by a factor t scales the $\nu$ component of the
+  parameter by t, while leaving the x and $\lambda$ components unchanged; the
+  effect on the infinitesimal character is subtracting $(1-t)\nu$ from it.
 
 print_block: (Param->): print block for the given parameter
   The block is specially generated, with no attempts to use any tabled block,
@@ -1077,9 +1091,9 @@ operator * : (ParamPol,rat->ParamPol): scale nu in each term, and renormalize
   parameters are when incorporated into a ParamPol; this is the renormalization
 
 deform: (Param->ParamPol): compute deformation terms when nu decreases
-  The non-integral block for the parameter and its KL polynomials are
-  computed, from which the deformation terms involving other members of the
-  block are computed. They are returned as a formal sum of parameters with
+  The block for the parameter (for its integrality root system) and its KL
+  polynomials are computed, and from them the deformation terms involving other
+  members of the block. They are returned as a formal sum of parameters with
   split integer coefficients, which are in fact integer multiples of (1-s).
 twisted_deform: (Param->ParamPol): inner class twisted deformation terms
   This is like deform, but uses the twisted KL polynomials (for the inner class

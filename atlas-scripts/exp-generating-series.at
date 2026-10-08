@@ -115,7 +115,8 @@ set count_permutations_with_cycles ([int] L) = inf_list:
    let prod = series_1
 in for l in L
    do prod := exp_multiply(prod,series((int n)int:
-      { compute coefficient of $X^n/n!$ in $\exp({X^l\over l})$ : }
+      { number of permutations of |n| of cycle type (l,l,l,...l) ($n\l$ parts)
+        which is the coefficient of $X^n/n!$ in $\exp({X^l\over l})$ : }
       let (q,r)=n\%l in if =r else 0 then
         { $n! / (l^q*q!)$: product of numbers in [1,n] not divisible by $l$ }
 	for i:q do for j:l-1 from 1 do l*i+j od.product od.product

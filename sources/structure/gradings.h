@@ -126,7 +126,7 @@ class Status
 struct GradingCompare
 // : public std::binary_function<const Grading& , const Grading& , bool>
 {
-  bool operator() (const Grading&, const Grading&);
+  bool operator() (const Grading&, const Grading&) const;
 };
 
 } // |namespace gradings|

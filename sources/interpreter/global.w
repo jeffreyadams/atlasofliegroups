@@ -3439,7 +3439,7 @@ back into the world of integers.
 
 void int_inverse_wrapper(eval_level l)
 { shared_int i=get<int_value>();
-  if (i->val==0)
+  if (i->val.is_zero())
     throw runtime_error("Inverse of zero");
   if (l!=eval_level::no_value)
     push_value(std::make_shared<rat_value>
@@ -3502,7 +3502,7 @@ void rat_times_int_wrapper(eval_level l)
 void rat_divide_int_wrapper(eval_level l)
 { shared_int i=get<int_value>();
   own_rat q=get_own<rat_value>();
-  if (i==0)
+  if (i->val.is_zero())
     throw runtime_error("Rational division by zero");
   if (l!=eval_level::no_value)
   {@;
@@ -3523,7 +3523,7 @@ void rat_quotient_int_wrapper(eval_level l)
 void rat_modulo_int_wrapper(eval_level l)
 { shared_int i=get<int_value>();
   own_rat q=get_own<rat_value>();
-  if (i==0)
+  if (i->val.is_zero())
     throw runtime_error("Rational modulo zero");
   if (l!=eval_level::no_value)
   {@;

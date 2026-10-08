@@ -206,8 +206,10 @@ public:
   {
     I p=begin;
     for (index_t j=0; j<d_columns; ++j,++p)
-      for (index_t i=0; i<d_rows; ++i)
-	(*this)(i,j) = (*p)[i];
+    { auto it = p->begin();
+      for (index_t i=0; i<d_rows; ++i,++it)
+	*at(i,j) = *it;
+    }
   }
 
 
@@ -217,24 +219,33 @@ public:
   index_t n_rows() const { return d_rows; }
   index_t n_columns() const { return d_columns; }
 
-  const C& operator() (index_t i,index_t j) const
-   { return d_data[static_cast<std::size_t>(i)*d_columns+j]; }
+  const C& operator() (index_t i,index_t j) const { return *at(i,j); }
 
   void get_row(Vector<C>&, index_t) const;
   void get_column(Vector<C>&, index_t) const;
 
-  Vector<C> row(index_t i) const { return Vector<C>(at(i,0),at(i+1,0)); }
+  Vector<C> row(index_t i) const
+  { assert(i<n_rows());
+    return Vector<C>(at(i,0),at(i+1,0)); // copy contiguous memory range
+  }
   std::vector<Vector<C> > rows() const;
   Vector<C> column(index_t j) const
-    { Vector<C> c; get_column(c,j); return c; }
+  {
+    assert(j<n_columns());
+    Vector<C> c; get_column(c,j); return c;
+  }
   std::vector<Vector<C> > columns() const;
 
   Vector<C> partial_row(index_t i, index_t j, index_t l) const
-    { return Vector<C>(at(i,j),at(i,l)); }
+  {
+    assert(i<n_rows() and j<=l and l<=n_columns());
+    return Vector<C>(at(i,j),at(i,l));
+  }
   Vector<C> partial_column(index_t j, index_t i, index_t k) const
-  { Vector<C> result(k-i);
-    for (auto it=result.begin(); it!=result.end(); ++it)
-      *it = (*this)(i++,j);
+  { assert(j<n_columns() and i<=k and k<=n_rows());
+    Vector<C> result(k-i);
+    for (auto& entry : result)
+      entry = *at(i++,j);
     return result;
   }
 
@@ -244,8 +255,7 @@ public:
   bool is_zero() const; // whether all entries are zero
   bool isEmpty() const { return d_data.size() == 0; }
 // manipulators
-  C& operator() (index_t i, index_t j)
-   { return d_data[static_cast<std::size_t>(i)*d_columns+j]; }
+  C& operator() (index_t i, index_t j) { return *at(i,j); }
 
   void set_row(index_t,const Vector<C>&);
   void set_column(index_t,const Vector<C>&);
@@ -263,8 +273,11 @@ public:
   void clear() { d_rows=d_columns=0; d_data.clear(); }
 
  protected: // not |private| because |PID_Matrix<C>::block| uses them
-  const C* at (size_t i,size_t j) const { return &operator()(i,j); }
-  C* at (size_t i,size_t j)             { return &operator()(i,j); }
+  // be careful to use |size_t| arithmetic in multiplying |index_t| values
+  const C* at (size_t i,size_t j) const
+  { return d_data.data()+static_cast<std::size_t>(i)*d_columns+j; }
+  C* at (size_t i,size_t j)
+  { return d_data.data()+static_cast<std::size_t>(i)*d_columns+j; }
 }; // |template<typename C> class Matrix_base|
 
 template<typename C> class Matrix : public Matrix_base<C>
@@ -401,12 +414,16 @@ public:
 template<typename C> class Vector_cref
   : public std::reference_wrapper<Vector<C> const>
 {
-  typedef std::reference_wrapper<Vector<C> const>  base;
+  using base = std::reference_wrapper<Vector<C> const>;
 public:
   using base::base; // inherit all constructors
   Vector_cref (const Vector_cref& v) = default;
 
   C operator[] (std::size_t i) const { return base::get()[i]; }
+  typename Vector<C>::const_iterator
+    begin() const { return base::get().begin(); }
+  typename Vector<C>::const_iterator
+    end() const { return base::get().end(); }
 }; // |class Vector_cref|
 
 // instantiations of templated free functions and methods

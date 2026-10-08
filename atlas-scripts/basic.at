@@ -415,7 +415,7 @@ set bitwise_intersection ([int] ns) = int:
 set bitwise_union ([int] ns) = int:
    let a=0 in for n in ns do a OR:= n od; a
 
-
+{ lookup functions, in a fixed list, by linear search }
 set is_member   = ([int]->(int->bool)): is_member(=@(int,int))
 set isnt_member = ([int]->(int->bool)): isnt_member(=@(int,int))
 
@@ -1918,7 +1918,7 @@ set cross (KGBElt x,WeylElt w) = KGBElt:
   assert(@:w.root_datum=x.root_datum);
   for s in w.word do x:=cross(s,x) od; x
 
-set status (vec alpha,KGBElt x) = int: status(root_index(real_form(x),alpha),x)
+set status (vec alpha,KGBElt x) = int: status(root_index(x.root_datum,alpha),x)
 
 set cross (vec alpha,KGBElt x) = KGBElt:
   cross(root_index(root_datum(x),alpha),x)

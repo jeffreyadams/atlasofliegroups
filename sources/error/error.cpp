@@ -22,7 +22,7 @@ namespace error {
 
   This prints a short message and returns.
 */
-void InputError::operator() (const char* mess)
+void InputError::operator() (const char* mess) const
 {
   std::cerr << mess << std::endl;
   return;
@@ -34,7 +34,7 @@ void InputError::operator() (const char* mess)
 
   This prints a short message and returns.
 */
-void OutputError::operator() (const char* mess)
+void OutputError::operator() (const char* mess) const
 {
   std::cerr << mess << std::endl;
   return;
@@ -46,7 +46,7 @@ void OutputError::operator() (const char* mess)
 
   This prints a short message and returns.
 */
-void NumericOverflow::operator() (const char* mess)
+void NumericOverflow::operator() (const char* mess) const
 {
   std::cerr << mess << std::endl;
   return;

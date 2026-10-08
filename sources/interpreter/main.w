@@ -213,6 +213,24 @@ returns. It must be declared |extern "C"|.
 extern "C" void sigint_handler (int)
 @+{@; atlas::interpreter::interrupt_flag=1; }
 
+@ While the |add_history| function of GNU \.{readline} officially
+returns~|void|, some operating systems (looking at you macOS) find it opportune
+to ship a replacement for \.{readline} (a rebranded version of \.{libedit}) that
+does have a function |add_history|, but which returns~|int|; the very important
+information it wants to return is always the value~$0$. If we would call this
+function directly, the spurious result value would be ignored, but we pass the
+function pointer to the |BufferedInput| constructor, where return type matters.
+In order to adapt painlessly (for the user) to this state of affairs, we define
+our own function that just forwards to |add_history|, but which returns~|void|
+independently of how |add_history| was declared, so that its function pointer
+can be passed to and stored in |BufferedInput| regardless of which library is
+used.
+
+@< Definitions of global namespace functions @>=
+#ifndef NREADLINE
+extern "C" void call_add_history (const char* line) @+{@; add_history(line); }
+#endif
+
 @ Here are some header files which need to be included for this main program.
 As we discussed above, the inclusion of header files for the readline
 libraries is made dependent on the flag |NREADLINE|. In case the flag is set,
@@ -235,7 +253,7 @@ not being defined.
 @< Conditionally include some header files @>=
 #ifdef NREADLINE
 #define readline nullptr
-#define add_history nullptr
+#define call_add_history nullptr
 #define clear_history()
 #else
 #include <readline/readline.h>
@@ -327,7 +345,7 @@ int main(int argc, char** argv)
   @< Handle command line arguments @>
 @/BufferedInput input_buffer(do_prompting ? "atlas> " : nullptr
                             ,use_readline ? readline : nullptr
-			    ,use_readline ? add_history : nullptr);
+			    ,use_readline ? call_add_history : nullptr);
   main_input_buffer= &input_buffer;
 @/Lexical_analyser ana(input_buffer,hash,keywords,prim_names); lex=&ana;
   @< Prepare the lexical analyser |ana| after construction and before use @>
@@ -737,7 +755,9 @@ functions (in our case |do_completion| defined below), it is too late to
 adjust the |text| it selected to be completed.
 
 @< Local static data @>=
+#ifndef NREADLINE
 char lexical_break_chars[] = " \t\n=<>+-*/\\%,;:.()[]{}#!?$@@\"|~";
+#endif
 
 @ The above function |id_completion_func| will not be plugged directly into
 the readline completion mechanism, but instead we provide an alternative
