@@ -868,9 +868,29 @@ set low_char_time = int: 0
 set low_char_count = int: 0
 
 {whether to consider replacing KL_sum_to_ht with KL_sum}
+{KL block gate (big Claude, Oct 8 2026).  KL_sum_at_s_to_height(p,HT) fills every element of
+ height <= HT of p's WHOLE integral block, while KL_sum_at_s(p) needs only the part below p.  In
+ rank 8 with a huge block the to-height call loses badly: E8_s x=220459 lambda [1,1,1,1,1,1,1,-7]
+ nu [2,2,0,0,2,0,2,-13]/2 (block 453060): KL_sum_at_s 9 s; to height 380/403/426: 948/1591/2510 s,
+ 11/16/24 GB (height(p) = 377).  So low_char is false (use the full sum) when the big block of p's
+ integral inner class has at least kl_block_gate_min elements in rank >= kl_block_gate_min_rank.
+ Tests (01f527ea + this gate): same answers; E8_q lengths 20/36 and E8_s x 85850 unchanged in time;
+ E8_s x=220459 lambda #832: 1.75 h / 11 GB (without: > 2.5 h / 38 GB).}
+set kl_block_gate_flag = true
+set kl_block_gate_min_rank = 8
+set kl_block_gate_min = int: 100000
+set kl_block_gate_count = int: 0
+set kl_block_size(Param p) = int:
+    let m = block_sizes(inner_class(integrality_datum(p),p.x.involution))
+    in m[n_rows(m)-1,n_columns(m)-1]
+set kl_block_gate(Param p) = bool:
+    kl_block_gate_flag and semisimple_rank(p.real_form) >= kl_block_gate_min_rank and
+    kl_block_size(p) >= kl_block_gate_min
+
 set low_char(Param p, int HT) = bool:
     let start=elapsed_ms() in
     if (HT < 0 or p.x.number < diff_KGB_char_frac*KGB_size(p.real_form)) then return false
+    elif kl_block_gate(p) then kl_block_gate_count +:= 1; return false
     elif not low_char_flag
     then return true {ALWAYS do to_height}
     elif prefer_KL_char_flag
