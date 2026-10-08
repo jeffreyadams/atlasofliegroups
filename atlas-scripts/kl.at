@@ -170,32 +170,6 @@ set KL_rate(RealForm G) = rat:
     {then  (,m,,) = KL_block(G.trivial)} {size of G block above trivial}
     in (elapsed_ms() - start)*2^(2*G.semisimple_rank+1)/(m^2*3^(G.semisimple_rank))
 
-{
-{predicted time in milliseconds to compute KL in block of p}
-set KL_predictor_full(Param p) = int:
-    let rk = semisimple_rank(integrality_datum_hash(p))
-    in floor((#full_block(p))^2*3^rk* KL_rate/2^(2*rk+1))
-    {next prints("we're in KL_pred_full at ",p)}
-{number of extremal pairs in full block is ROUGHLY: (x,y) so tau(y)\cap tau(x) is empty.
-Number of pairs of [bool] with ANSWER IS 3^rank.}
-
-{relevant to KL_sum_at_s for p}
-set KL_predictor(Param p) = int:
-    let rk = semisimple_rank(integrality_datum_hash(p))
-    in floor((full_block_down_size(p))^2*3^rk*KL_rate/2^(2*rk + 1))
-
-{this one is relevant to KL_sum_at_s_to_height, I think?}
-{predicted time in milliseconds to compute KL to height HT in block of p}
-{typically applied near principal series, where all tau invts large; so (3/4)^rk factor is not justified}
-{Extra factof of 4 is unexplained heuristic; undo rate heuristic}
-set KL_predictor_to_ht(Param p, int HT) = int:
-    if not low_char(p,HT)
-    then KL_predictor(p)
-    {let rk = semisimple_rank(integrality_datum(p))}
-    else floor((#full_block_to_ht(p,HT))^2 * {3^rk*}KL_rate/2{/2^({2*rk+}1)})
-    fi
-}
-
 set lowp_count= int:0
 set lowp_time = int:0
 {for predicting whether to_ht or is_unitary is faster}
@@ -682,11 +656,37 @@ set low_diff_char(Param p, int HT) = bool: {false {ALWAYS use KL_sum_at_s}}
     in low_diff_char_mult*red_walls_to_ht_int(p,HT) < red_walls_int(p)\
        next low_diff_char_time +:= (elapsed_ms() - start)
 
+{predicted time in milliseconds to compute KL in block of p}
+set KL_predictor_full(Param p) = int:
+    let rk = semisimple_rank(integrality_datum_hash(p))
+    in floor((#full_block(p))^2*3^rk* KL_rate/2^(2*rk+1))
+    {next prints("we're in KL_pred_full at ",p)}
+{number of extremal pairs in full block is ROUGHLY: (x,y) so tau(y)\cap tau(x) is empty.
+Number of pairs of [bool] with ANSWER IS 3^rank.}
+
+{relevant to KL_sum_at_s for p}
+set KL_predictor(Param p) = int:
+    let rk = semisimple_rank(integrality_datum_hash(p))
+    in floor((full_block_down_size(p))^2*3^rk*KL_rate/2^(2*rk + 1))
+
+{this one is relevant to KL_sum_at_s_to_height, I think?}
+{predicted time in milliseconds to compute KL to height HT in block of p}
+{typically applied near principal series, where all tau invts large; so (3/4)^rk factor is not justified}
+{Extra factof of 4 is unexplained heuristic; undo rate heuristic}
+set KL_predictor_to_ht(Param p, int HT) = int:
+    {if not low_char(p,HT)
+    then KL_predictor(p)
+    {let rk = semisimple_rank(integrality_datum(p))}
+    else} floor((#full_block_to_ht(p,HT))^2 * {3^rk*}KL_rate/2{/2^({2*rk+}1)})
+    {fi}
+
 set low_KL_char(Param p, int HT) = bool:
     {prints("we're in low_KL_char at ",p);}
+    KL_predictor_to_ht(p,HT) < KL_predictor(p)
+{
     p.x.number > diff_KGB_char_frac*KGB_size(p.real_form) and
     (let (T,TH) = dual_partial_block_sizes(p,HT) in TH*KL_char_mult < T)
-    {KL_predictor_to_ht(p,HT) < KL_predictor(p)}
+}
 
 set quick_frac = rat: 1/6 {1/10: 406 seconds for E7 ht 27} {change from 1/5 8/8/26}
 
@@ -886,6 +886,7 @@ set low_char(Param p, int HT) = bool:
     else false{ALWAYS truncate to KL_sum}
     fi next low_char_time +:= elapsed_ms() - start; low_char_count+:=1
 
+{
 {predicted time in milliseconds to compute KL in block of p}
 set KL_predictor_full(Param p) = int:
     let rk = semisimple_rank(integrality_datum_hash(p))
@@ -909,6 +910,7 @@ set KL_predictor_to_ht(Param p, int HT) = int:
     {let rk = semisimple_rank(integrality_datum(p))}
     else floor((#full_block_to_ht(p,HT))^2 * {3^rk*}KL_rate/2{/2^({2*rk+}1)})
     fi
+}
 
 set to_ht (KTypePol P,int N) = KTypePol:
   if N<0 then return P fi;
@@ -931,23 +933,6 @@ set to_ht (int N) = (KTypePol->KTypePol): (KTypePol P):
   else let (below,)=height_split(P,N) in below
   fi
 
-set KL_sum_at_s_race_flag = true
-
-set KL_sum_at_s_to_height_race(int HT) = (Param p) ParamPol:
-    let start = elapsed_ms(), htp = height(p)
-    in if HT < 0 then KL_sum_at_s(p)
-       elif HT < htp then 0*p
-       elif HT = htp then 1*p
-       else let limit = min(charTimeToHt\max(char_counter_to_ht.use_count(),1) + 5*interrupt_base_time,
-       	    	      	    100*interrupt_base_time)
-       	    then mKLs = KL_sum_at_s_to_height(p,HT,limit)
-	    in case mKLs
-	       | none: let (ans,) = height_split(KL_sum_at_s(p),HT)
-		       in ans
-	       | some(ans): ans
-	       esac
-	fi
-
 set KL_new_count = int:0
 set KL_false_low_count = int:0
 
@@ -961,10 +946,7 @@ set KL_sum_at_s_to_ht_new(int HT) = (Param p) ParamPol: {should check whether li
        else let mKLS = stored_KL_sum_at_s(p)
        	    in case mKLS
 	       | none: unstored_count+:=1;
-       	       	 let ans = if KL_sum_at_s_race_flag
-		     	   then KL_sum_at_s_to_height_race(HT)(p)
-			   else KL_sum_at_s_to_height(p,HT)
-			   fi
+       	       	 let ans = KL_sum_at_s_to_height(p,HT)
 		 in charTimeToHt +:= elapsed_ms() - start;
 		    char_counter_to_ht.use();
 		    ans
