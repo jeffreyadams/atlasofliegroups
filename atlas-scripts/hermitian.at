@@ -379,11 +379,9 @@ set deform_block_size(Param q) = int:
  jagged_deform_to_ht instead of block_deform, whose matrices on such a block take hours and tens
  of GB.  Example: E8_s, x=73226, HT 593 throws off a term at x=39383 whose integral system is E8
  (big block 453060).  The 6 slow E8_s to_ht params of run1: hours -> 9-29 s, same answers.
-   jag_gate_mode 1: such a term is deformed by jagged_deform_to_ht;
-                 2: by to_ht(full_deform_library(q),height) instead (full_deform uses only the
-                    partial block below q, so it avoids the huge block_deform without jagged_deform's
-                    overhead; untested).  The flag deform_step_jag_flag switches the whole gate off.}
-set jag_gate_mode = int: 1
+ The flag deform_step_jag_flag switches the whole gate off.  (A jag_gate_mode 2, using
+ to_ht(full_deform_library(q),height) instead of jagged_deform_to_ht, was removed Oct 8 2026: on asimov
+ E8_q length 20: 2642 -> 180915 s, length 36: 3490 -> 5407 s, E8_s x 85850: 1330 -> 1659 s.)}
 set deform_step_jag_flag = true
 set deform_step_jag_min_rank = 8
 set deform_step_jag_min_block = int: 100000
@@ -467,7 +465,6 @@ FDH_count+:=1;
 	       then let c = P[q], t = elapsed_ms()
 	       	    in output := (output next output:=empty_K) +
 		       c*(if jag_measure_flag then jag_measure(q,height)
-		          elif jag_gate_mode = 2 then to_ht(full_deform_library(q),height)
 		          else jagged_deform_to_ht(q,height) fi);
 		       P := (P next P:=empty) - c*q;
 		       deform_step_jag_count +:= 1; deform_step_jag_ms +:= elapsed_ms() - t
@@ -604,11 +601,6 @@ FDH_count+:=1;
 	  then let c = P[q], t = elapsed_ms()
 	       in case (let rem = max(expiration - elapsed_ms(),1)
 	       	       in if jag_measure_flag then jag_measure(q,height,rem)
-		       	  elif jag_gate_mode = 2
-		       	  then case full_deform_library(q,rem)
-			       | done(F): to_ht(F,height).done
-			       | timed_out(): timed_out()
-			       esac
 			  else jagged_deform_to_ht(q,height,rem) fi)
 	       	  | done(F): output := (output next output:=empty_K) + c*F;
 		    	     P := (P next P:=empty) - c*q;
