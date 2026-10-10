@@ -56,9 +56,17 @@ set sort(RealForm G, LocalVertexData Lvd, [[FaceVertsKHash]] LFDKH, int tail) = 
     if #LFDKH = 0 or #LFDKH[0]=0 then return LFDKH fi;
     if sort_LFD_flag
        then let tworhocheck = G.two_rho_check
+	    {the key is 1000*height of face_bary(Lvd,v): a weighted average of vertex heights
+	     (indices >= Lvd.pair_start count twice), so take the vertex heights once (Oct 10 2026:
+	     E8_s x=229906, 151301 edges: sort 7.2 s -> 5.4 s, identical order)}
+	    then h = [rat]: for g in Lvd.list do g*tworhocheck od
+	    then ps = if hermCenterOldFlag then #Lvd.list else Lvd.pair_start fi
 	    then f(vec v) = int:
-		 let (num,den) = %((face_bary(Lvd,v[:#v - tail])*tworhocheck)*1000)
-		 in num\den
+		 let w = v[:#v - tail]
+		 then num = sum(for j in w do h[j] od) + sum(for j in w do if j >= ps then h[j] else 0/1 fi od)
+		 then den = #w + count(for j in w do j >= ps od)
+		 then (n,d) = %(num*1000/den)
+		 in n\d
 	    in for LFDKHd@d in LFDKH do sort_by(f)(LFDKHd) od
        else LFDKH
        fi
@@ -5780,8 +5788,11 @@ set localFD_1Dirac2_by_zero\
     then f = #FixedList, f0 = #Perm2.fixed
     then TranList = [int]: for v in LF0[f:] do v[0] od
     then Llookup = is_member_sorted(FixedList##TranList)
-    then Glookup = {is_member_sorted(for j in FixedList do Perm2.fixed[j] od)}
-		   to_bitset(for j in FixedList do Perm2.fixed[j] od)
+    then Glookup = [bool]: {membership of global vertex numbers in the fixed local list, as a
+	 bool array: the big-integer bitset with is_member_bitset cost ~30 microseconds per test
+	 (E8_s x=229906: 1.04 million tests, 32 s; with the array 0.7 s; Oct 10 2026)}
+	 let m = for i:#FPP_vertices(G) do false od
+	 in for j in FixedList do m[Perm2.fixed[j]] := true od; m
     then {E = sum(for list in FPP_edges_by_zero_unsorted(G) do #list od),}
 	 Fverts = FPP_vertices(G)
     then F = #Fverts
@@ -5805,7 +5816,7 @@ set localFD_1Dirac2_by_zero\
 		    {in E7 spherical, C is seven times faster than B}
 		    {SO OMIT A1}
 		       do for w@m in FPPEBZ[Perm2.fixed[j]]
-			  do if is_member_bitset(w[1],Glookup) {Glookup(w[0]) and Glookup(w[1])}
+			  do if Glookup[w[1]] {Glookup(w[0]) and Glookup(w[1])}
 			     then [[j, Lvd.lookup(Fverts[w[1]])]] {SEEMS FASTER THAN A1}
 			     else []
 			     fi
