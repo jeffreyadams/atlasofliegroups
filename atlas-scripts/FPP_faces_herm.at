@@ -1729,11 +1729,13 @@ set is_finished(KGBElt x, ratvec lambda) = bool:
     {then () = prints("Mx_known = ",Mx_known,", Mx_partial = ",Mx_partial,", M = ",M)}
     in if is_member_bitset(x.number,M)
        then true
-       else let pos = FPP_lam_table.position(x,lambda)
-	    in if pos.>=
-	       then let Mx = big_unitary_hash.xl_known(x.real_form)[x.number]
-		    in is_member_bitset(pos,Mx)
-	       else false
+       else let Mx = big_unitary_hash.xl_known(x.real_form)[x.number]
+	    {if no lambda at x is known finished, the answer is false: skip the position lookup,
+	     which builds FPP_lambdas(x) and dominated status() in cold runs (Oct 10 2026:
+	     E8_s x=229906, 12458 vertex monomials, 59 s of 80 s)}
+	    in if Mx = 0 then false
+	       else let pos = FPP_lam_table.position(x,lambda)
+		    in pos.>= and is_member_bitset(pos,Mx)
 	       fi
        fi next is_finished_time +:= elapsed_ms() - start
 
