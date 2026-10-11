@@ -1398,12 +1398,7 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
 		  then ps = monomials(finalize(pC))
 		  then test = if all(for p in ps do @bool:Uhash.lookup(p).>= od)
 			      then true
-			      elif not all(for p in ps
-					   do @bool: if #ps = 1
-						     then min_bottom_elim_factors(p,pC,pol_hash.index(FVKH[d][j][d+red_shift+1]))
-						     else min_bottom_elim_factors(p,pC)
-						     fi
-					   od)
+			      elif not all(for p in ps do @bool: min_bottom_elim_factors(p) od)
 				then false
 			      else true
 			      fi
@@ -1495,12 +1490,7 @@ set local_testK_hash_bottom_layer_more(KGBElt x, ratvec lambda, LocalVertexData 
 		     then ps = monomials(finalize(pC))
 		     then test = if all(for p in ps do @bool:big_unitary_hash.ulookup(p).>= od)
 				 then true
-				 elif #ps = 1 {otherwise the K-char is wrong!}{)}
-				 then bottom_elim_factors_more(ps[0], pC, datas,
-				      pol_hash.index(FVKH[d][j][d+red_shift+1]))
-				 else all(for p in ps
-				       do @bool: bottom_elim_factors_more(p, pC, datas)
-				       od)
+				 else all(for p in ps do @bool: bottom_elim_factors_more(p, datas) od)
 				 fi
 		     in if not test
 			then newStatuses:= updateNUclassesB(newStatuses, gr, k,"F"); newStatuses[k] := "F"
@@ -1634,24 +1624,14 @@ set local_testK_hash_bottom_layer_more_step(KGBElt x, ratvec lambda, LocalVertex
 		  then testDs = Ds
 		  then test = if all(for p in ps do @bool:Uhash.lookup(p).>= od)
 			      then true
-			      elif #ps = 1 {otherwise the K-char is wrong!}{)}
-				then let still_here = bottom_elim_factors_more(ps[0], pC,
-							  datas, pol_hash.index(FVKH[d][j][d+red_shift+1]))
-				     then () = if still_here
-					       then still_here := bottom_elim_factors_more(ps[0],pC,datasNEW,
-							     pol_hash.index(FVKH[d][j][d+red_shift+1]))
-					       fi
-				     in still_here
-				else let still_here = all(for p in ps
-						    do bottom_elim_factors_more(p, pC, datas)
-						    od)
-				     then () = if still_here
-					      then still_here := all(for p in ps
-							     do @bool: bottom_elim_factors_more(p, pC, datas)
+			      else let still_here = all(for p in ps do @bool: bottom_elim_factors_more(p, datas) od)
+				   then () = if still_here
+					     then still_here := all(for p in ps
+							     do @bool: bottom_elim_factors_more(p, datasNEW)
 							     od)
-					      fi
-				    in still_here
-				 fi
+					     fi
+				   in still_here
+			      fi
 		  in if not test
 		     then newStatuses:= updateNUclassesB(newStatuses, gr, k,"F"); newStatuses[k] := "F"
 		     else newStatuses[k] := "T"
@@ -2538,13 +2518,10 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		     then () = if more_verbose then prints("testing parameter ",p) fi
 		     then ps = monomials(finalize(p))
 		     then () = if more_flag or mix_flag
-			       then elim_more:= if #ps = 1
-						then bottom_elim_factors_more(ps[0], p, datas, pol_hash.index(LFVH[d][j][d+red_shift+1]))
-						else all(for p1 in ps
-							 do Uhash.lookup(p1).>= or {this can produce "isn't LKT message"}
-							 bottom_elim_factors_more(p1, p, datas)
-							 od)
-						 fi
+			       then elim_more:= all(for p1 in ps
+						    do Uhash.lookup(p1).>= or {this can produce "isn't LKT message"}
+						       bottom_elim_factors_more(p1, datas)
+						    od)
 				fi
 		      in if not elim_more
 			 then false {we got rid of p by bottom layer}
@@ -2776,7 +2753,7 @@ set one_param_test_min_bottom(Param p, Param_hash Uhash) = [Param]:
        else if test_string !=  " using local_test_GEO_hash_bottom_layer"
        	    then hash_bottom_layerCounter.use()
 	    fi;
-       	     let elim_min = all(for q in Q do min_bottom_elim_factors(q,p) od)
+       	     let elim_min = all(for q in Q do min_bottom_elim_factors(q) od)
        	     in LF_min_bl_vec := if elim_min
     	      		    then [1,0]
 			    else [0,0]
@@ -2819,21 +2796,17 @@ set one_param_test_bottom(Param p, [int] Es) = [Param]:
        	    then hash_bottom_layerCounter.use()
 	    fi;
        let still_here = true
-       then (Qmin,) = if small_test_flag
-    	 	    then theta_stable_data_small(p)
-		    else theta_stable_quasi_data(p)
-		    fi
+       then (Qmin,) = theta_stable_quasi_data(p)
        in if #Es > 1
        	  then if more_verbose then prints("start one_param_test_bottom with p = ",p, ", Es = ",Es) fi;
-	       let Ps = for q in QG do K_type_pol(character_formula(q)) od
-	       in while still_here and #Es > 1
+	       while still_here and #Es > 1
 		  do let old_size = bl_KHash.size()
 		     then (datasNEW, EsNEW) = add_datas(p, Qmin, Es)
 		     in if bl_KHash.size() > old_size
 			then Es:= EsNEW;
 		   	still_here := all(for q@i in QG
 					  do @bool:
-					     let ans = bottom_elim_factors_more(q, p, datasNEW, Ps[i])
+					     let ans = bottom_elim_factors_more(q, datasNEW)
 					     in if not ans
 						then if more_verbose
 		then prints("finish one_param_test_bottom with Es = ",Es) fi;
@@ -2908,7 +2881,7 @@ set one_param_test_all_bottom(Param p, [int] Ds) = [Param]:
        	       else if test_string !=  " using local_test_GEO_hash_bottom_layer"
        	       	    then hash_bottom_layerCounter.use()
 	    	    fi;
-       	       	    let elim_min = all(for q in Q do min_bottom_elim_factors(q,p) od)
+       	       	    let elim_min = all(for q in Q do min_bottom_elim_factors(q) od)
     	    	    in LF_min_bl_vec:= if elim_min
     	      		      then [1,0]
 			      else [0,0]
@@ -2922,11 +2895,10 @@ set one_param_test_all_bottom(Param p, [int] Ds) = [Param]:
     		   	    then Es = (if #Ds > 1 then Ds else height(p)#Ds fi).sort_u
     		    	    in if #Es > 1
        	      	       	       then if more_verbose then prints("start more with p = ",p, ", Es = ",Es) fi;
-	    	       	       	    let Ps = for q in Q do K_type_pol(character_formula{_to_height}(q{, Es~[0]})) od
-       	    	   	    	    then still_here = true
+	    	       	       	    let still_here = true
 		      	    	    in still_here := all(for {D@j in Ds[1:]} j:#Es-1 from 1
 					       	  do all(for q@i in Q
-						      	 do @bool: bottom_elim_factors_more(q, p, Es[j-1],Es[j], Ps[i])
+						      	 do @bool: bottom_elim_factors_more(q, Es[j-1],Es[j])
 						   	 od)
 					          od);
 		   	    			  elim_more:= still_here
@@ -5145,10 +5117,7 @@ set local_test_GEO_hash_bottom_layer_interrupt(KGBElt x, ratvec lambda, LocalVer
     then ht = height(parameter(x,lambda,0*lambda))
     then r = rank(thetaMinus)
     then pmin = parameter(x, lambda, Lvd.list[LF[0][0][0]] )
-    then (Q0, pminL0) =  if small_test_flag
-    	 	      	 then theta_stable_data_small(pmin)
-		   	 else theta_stable_quasi_data(pmin)
-		   	 fi
+    then (Q0, pminL0) =  theta_stable_quasi_data(pmin)
     then L0 = Q0.Levi
     then () = if L0=G {fine K-type in quasisplit G}
     	      then if one_level_revert_flag
@@ -5174,12 +5143,9 @@ set local_test_GEO_hash_bottom_layer_interrupt(KGBElt x, ratvec lambda, LocalVer
     	      then let () = Uhash.match(first_param(finalize(pmin)))
 	      	   in return [pmin]
 	      fi
-    then DG0 = if small_test_flag
-    	       then minSmallBottomData.G_min_height(x,lambda)
-	       else max(for mu in LKTs(pmin)
+    then DG0 = max(for mu in LKTs(pmin)
     	       	    	do minBottomData.G_min_height(mu)
 		   	od)
-	       fi
     then Ds = for j:bl_step_count+1 do let H = height(pmin) + j*bl_step_size
     	      	  		       in if H > FPP_max_ht then {prints("too big H = ",H,", x = ",x.number,
 				       	  ", lambda = ",lambda);} break fi;
@@ -5375,17 +5341,11 @@ set local_test_GEO_hash_bottom_layer_step(KGBElt x, ratvec lambda, {VertexData v
     {then htFrac = ht/FPP_max_ht}
      then r = rank(thetaMinus)
     then pmin = parameter(x, lambda, Lvd.list[LFDKH[0][0][0]] )
-    then (Q0, pminL0) = if small_test_flag
-    	 	      	then theta_stable_data_small(pmin)
-		   	else theta_stable_quasi_data(pmin)
-		   	fi
+    then (Q0, pminL0) = theta_stable_quasi_data(pmin)
     then L0 = Q0.Levi
-    then DG0 = if small_test_flag
-    	       then minSmallBottomData.G_min_height(x,lambda)
-	       else max(for mu in LKTs(pmin)
+    then DG0 = max(for mu in LKTs(pmin)
     	       	    	do minBottomData.G_min_height(mu)
 		   	od)
-	       fi
     then Ds = for j:bl_step_count+1 do let H = ht + j*bl_step_size
     	      	  		       in if H > FPP_max_ht then {prints("too big H = ",H,", x = ",x.number,
 				       	  ", lambda = ",lambda);} break fi;
@@ -5496,10 +5456,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
     then () = if 1*parameter(x,lambda,0*lambda) = zero_pol then return [] fi
     then ht = height(parameter(x,lambda,0*lambda))
         then pmin = parameter(x, lambda, Lvd.list[LF[0][0][0]] )
-    then (Q0, pminL0) = if small_test_flag
-    	 	      	then theta_stable_data_small(pmin)
-		   	else theta_stable_quasi_data(pmin)
-		   	fi
+    then (Q0, pminL0) = theta_stable_quasi_data(pmin)
     then L0 = Q0.Levi
     then () = if L0=G {fine K-type in quasisplit G}
     	      then if one_level_revert_flag
@@ -5539,12 +5496,9 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 	      fi
     {then () = prints("Got past one_param_test_bottom")}
     then () = LF_pre_vec := for list in LF do #list od
-    then LKDatas = if small_test_flag {[LK_data]}
-    	 	   then minSmallBottomData.entry(x,lambda)
-		   else for mu in LKTs(pmin)
+    then LKDatas = for mu in LKTs(pmin)
 			do minBottomData.entry(mu)
 			od
-		   fi
     then () = bl_KHash.clear()
     then () = for list in LKDatas do for (tau,) in list do bl_KHash.match(tau) od od
     then min_ht_max = max((for tau in bl_KHash.list() do height(tau) od)#ht)

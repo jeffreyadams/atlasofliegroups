@@ -2211,10 +2211,7 @@ fancy_tester) = void:
     			 in if every_lambda_flag and FPP_report_flag
 	      		    then prints("  ",print_time_string(xlambdatimes[k]),
 			   	" = time for (x,lambda) #",k, " = (", xnums[k],",",xlambdas[k],"), ht = ",
-				  height(parameter(x,lambda,0*lambda)), ", L = ", let (Q,) =
-				  if small_test_flag then theta_stable_data_small(parameter(x,lambda,0*lambda))
-				  else theta_stable_quasi_data(parameter(x,lambda,0*lambda))
-				  fi in Q.Levi.Lie_type,
+				  height(parameter(x,lambda,0*lambda)), ", L = ", let (Q,) = theta_stable_quasi_data(parameter(x,lambda,0*lambda)) in Q.Levi.Lie_type,
 				  ",",test_string);
 			         prints("    #LF = ", for L in LF do #L od, "; #unitary params = ", answerCards[k],
 				 ", #new unitary = ", UhashG.size() - oldUhashG,
@@ -2265,14 +2262,8 @@ fancy_tester) = void:
        	       then prints(new_line,"Total time = ", print_time_string(current-start),
        	      "; max time = ",print_time_string(xlambdatimes[longest]),
 	      " for (x,lambda) = (",  xlambdas[longest], {",", lambdas[longest],}")");
-       	    if small_test_flag
-	    then prints("Time spent in is_unitary = ",print_time_string(unitaryTime),
-	    ", #unitarity tests = ",
-       		unitary_test_counter.use_count() - oldUcounter, ", #(x,lambda) studied = ",
-		minSmallBottomData.size())
-	    else prints("Time spent in is_unitary = ",print_time_string(unitaryTime), ", #unitarity tests = ",
-       		unitary_test_counter.use_count() - oldUcounter, ", #K-types studied = ", minBottomData.size())
-	    fi;
+	    prints("Time spent in is_unitary = ",print_time_string(unitaryTime), ", #unitarity tests = ",
+       		unitary_test_counter.use_count() - oldUcounter, ", #K-types studied = ", minBottomData.size());
 	    prints("Time spent in char calcs = ",print_time_string(charTime),
 	           " for ", char_counter.use_count() - oldCcounter," calcs",
 		   " time in char_to_ht calcs = ",print_time_string(charTimeToHt),
@@ -2593,10 +2584,7 @@ this for a long time, leading to wrong answers for PSU(2,2).}
 			 	 in if every_lambda_flag and FPP_report_flag
 				    then prints("  ",print_time_string(templambdatimes[index]),
 			   	    " = time for (x,lambda) = (", x.number, ", #",index," = ",lambda, "), ht = ",
-				    height(parameter(x,lambda,0*lambda)),", L = ", let (Q,) =
-				    if small_test_flag then theta_stable_data_small(parameter(x,lambda,0*lambda))
-				    else theta_stable_quasi_data(parameter(x,lambda,0*lambda))
-				    fi in Q.Levi.Lie_type, ",",test_string);
+				    height(parameter(x,lambda,0*lambda)),", L = ", let (Q,) = theta_stable_quasi_data(parameter(x,lambda,0*lambda)) in Q.Levi.Lie_type, ",",test_string);
 				         {if more_flag or bl_step_flag
 					 then} prints("    #LF = ", for L in LF do #L od, ", #unitary params = ",
 					      	tempanswerCards[index], ", #new unitary = ", Uhash.size() - startUhash,
@@ -2673,12 +2661,8 @@ this for a long time, leading to wrong answers for PSU(2,2).}
        	    prints("Total time = ", print_time_string(current-start),
               "; max time = ",print_time_string(times[longest]),
               " for KGBElt ",xs[longest].number);
-	    if small_test_flag
-	    then prints("Time spent in is_unitary = ",print_time_string(unitaryTime - oldUtime), ", #unitarity tests = ",
-       		unitary_test_counter.use_count() - oldUcounter, ", #(x,lambda) studied = ", minSmallBottomData.size())
-	    else prints("Time spent in is_unitary = ",print_time_string(unitaryTime - oldUtime), ", #unitarity tests = ",
-       		unitary_test_counter.use_count() - oldUcounter, ", #K-types studied = ", minBottomData.size())
-	    fi;
+	    prints("Time spent in is_unitary = ",print_time_string(unitaryTime - oldUtime), ", #unitarity tests = ",
+       		unitary_test_counter.use_count() - oldUcounter, ", #K-types studied = ", minBottomData.size());
 	    prints("Time spent in char calcs = ", print_time_string(charTime-oldcharTime), ", number of char calcs = ",
 	        char_counter.use_count() - oldCcounter,
 	      ", time spent in red_count = ",  print_time_string(red_count_time));
