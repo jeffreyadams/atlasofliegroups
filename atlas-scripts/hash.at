@@ -43,15 +43,20 @@ set triv_hash_info =  HashInfo<int>: { make |int| into a "hashable" type }
 set_type Hash<T> =
   ( (   -> int) size
   , (   -> int) capacity
-  , ([T]->    ) fill
   , (   ->    ) clear
   , (   -> [T]) list
   , (int->T   ) index
-  , (T  ->int ) match
-  , (T  ->bool) could_add { like |match|, but returns whether it was new }
+  , (T  ->bool,int) acquire { sequence number, and whether it was new }
   , (T  ->Maybe<int> ) search
-  , (   ->Iterator<T>) iterator
   )!
+
+{ with additional functions
+  (Hash<T>->([T] -> ))   fill
+  (Hash<T>->(T  ->bool)) could_add
+  (Hash<T>->(T  ->int))  match
+  (Hash<T>->(T  ->int))  lookup
+  (Hash<T>->(   ->Iterator<T>) iterator
+}
 
 { And here is the implementation, in the form of the |make_hash| constructor }
 any_type T begin
@@ -60,7 +65,7 @@ set make_hash (HashInfo<T> (hash_code,eq)) = Hash<T>:
    then seq_nbrs = [empty,empty]
    then max_fill() = 2*#seq_nbrs\3
    then clear() = void: seq_nbrs := [empty,empty]; values:=[]
-   , locate(T x) = (int,bool):
+   , locate(T x) = (int,bool): { find slot for |x|, and whether it is empty }
      let  capacity=#seq_nbrs
      then code = hash_code(x,capacity)
      then i=seq_nbrs[code]
@@ -95,23 +100,24 @@ set make_hash (HashInfo<T> (hash_code,eq)) = Hash<T>:
       )
 in ( { (   -> int) size     } @: #values
    , { (   -> int) capacity } @: #seq_nbrs
-   , { ([T]->    ) fill	    }
-     ([T] list)void: for item in list do acquire(item) od
    , { (   ->    ) clear    } clear
    , { (   -> [T]) list	    } @[T]: values
    , { (int->T   ) index    } (int i)T: values[i]
-   , { (T  ->int ) match    }  (T x)int:  acquire(x).snd
-   , { (T  ->bool) could_add } (T x)bool: acquire(x).fst
+   , { (T  ->bool,int ) acquire } acquire
    , { (T  ->Maybe<int> ) search   }
      (T x): let (i,new)=locate(x) in if new then none() else some(seq_nbrs[i]) fi
-   , { (   ->Iterator<T>) iterator }
-     @Iterator<T>: let i=0 in
-                   (@Maybe<T>: if i<#values then some(values[i]) else none() fi
-		   ,@void: i +:= 1
-		   )
    )
 
-set lookup(Hash<T> table) = (T x)int:
+set fill (Hash<T> table) = ([T] list)void:
+   for item in list do table.acquire(item) od
+set could_add (Hash<T> table) = (T x) bool: table.acquire(x).fst
+set match     (Hash<T> table) = (T x) int:  table.acquire(x).snd
+set iterator  (Hash<T> table) = @Iterator<T>: let i=0 in
+   ( @Maybe<T>: if i<table.size() then some(table.index(i)) else none() fi
+   , @void: i +:= 1
+   )
+
+set lookup(Hash<T> table) = (T x) int:
    case table.search(x) | none: -1 | some(i): i esac
 
 { efficient orbit generation; client seeds |hash| with initial element(s) first }
