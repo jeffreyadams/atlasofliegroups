@@ -1742,7 +1742,7 @@ set is_finished(KGBElt x, ratvec lambda) = bool:
 	     which builds FPP_lambdas(x) and dominated status() in cold runs (Oct 10 2026:
 	     E8_s x=229906, 12458 vertex monomials, 59 s of 80 s)}
 	    in if Mx = 0 then false
-	       else let pos = FPP_lam_table.position(x,lambda)
+	       else let pos = position(x,lambda) {same numbering as finish; FPP_lam_table.position indexes the FULL lambda list, finish uses the short one (a8dd4d1b)}
 		    in pos.>= and is_member_bitset(pos,Mx)
 	       fi
        fi next is_finished_time +:= elapsed_ms() - start
@@ -1760,7 +1760,7 @@ set is_finished_step(Param p) = bool:
     in if top = 0 then return false fi;
     let gamma = p.infinitesimal_character
     in if not is_dominant(G,gamma) then return false fi;
-    let pos = FPP_lam_table.position(p.x,p.lambda)
+    let pos = position(p.x,p.lambda)
     in if pos < 0 then return false fi;
     let S = big_unitary_hash.steps_known(p.x,pos)
     in if S = 0 then return false fi;
