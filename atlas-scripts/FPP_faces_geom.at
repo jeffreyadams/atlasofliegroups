@@ -1067,11 +1067,19 @@ set febzu_report() = void:
     prints("# inner classes = ",ichashezu.size(), ", # edge lists = ",#FPPebzu,", # edges = ",
     	      sum(for list in FPPebzu do #list od))
 
-{assume temp_list already created}
+{assume temp_list and absorb_w already created; runs of equal-length vecs
+ are written as chunks of one flat vec each (one command per chunk loads ~2x
+ faster than one per vec)}
 set write_vecs_new([vec] list) = void:
     begin prints("void:temp_list:=([vec]:[])");
-	  for v in list
-	  do prints("void:temp_list #:= (vec:",v,")") {put list into temp_list}
+	  let i = 0 in
+	  while i < #list
+	  do let w = #list[i], j = i in
+	     while j < #list and j < i+4000 and #list[j] = w do j +:= 1 od;
+	     if w = 0 then for k:j-i do prints("void:temp_list #:= (vec:[])") od
+	     else prints("void:absorb_w(",w,",vec:",##list[i:j],")")
+	     fi;
+	     i := j
           od
     end
 
@@ -1123,6 +1131,7 @@ set write_FPP_edges_hash_new() = void:
    then () = assert(@:#list_ic = #FPPebzu,"Sizes of ichashezu and FPPebzu don't match")
    then () = write_ic_list(list_ic,"ebzu_ics")
    then () = prints("set ebzu_FVIs = [[[vec]]]: [], temp_lists = [[vec]]: [], temp_list =  [vec]: []")
+   then () = prints("set absorb_w(int w, vec v) = void: temp_list ##:= (for i:#v\w do vec: v[i*w:(i+1)*w] od)")
    then () = write_vecsss_new(FPPebzu)
    in prints("for ic@j in ebzu_ics do append_to_febzu(ic, ebzu_FVIs[j]) od")
 
