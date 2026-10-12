@@ -947,17 +947,17 @@ set warmup(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [[FaceVertsInde
 	     elif all(for b in statsH do b > 0 od)
 	     then steve_hash_small.umatch(gamma);
 		  [v]
+	     {Oct 11 2026: drop a vertex when some constituent q of finalize(vertex) has
+	      is_FPP_unitary(q) < 0 (sound: 'all constituents unitary' is closed in nu), but do NOT
+	      numatch it: numatch declares gamma nonunitary TO HT, while is_FPP_unitary(q) < 0 says
+	      J(q) fails at some height, perhaps above HT.  A numatch here needs a to-HT test
+	      (status(q,HT) or simple_status(q,HT), as in the first branch).  With the numatch,
+	      Spin(7,5) x_open lambda [1,2,1,1,1,1] found 16 faces instead of 30 (one_level 30);
+	      drop without numatch finds 30.}
 	     elif (DMB_statsH := for q in qs do is_FPP_unitary(q) od;
 	     	   any(for m in DMB_statsH do m < 0 od))
-       	     then steve_hash_small.numatch(gamma);
-	     	  []
-	     elif all(for m in DMB_statsH do m > 0 od)
-	     then steve_hash_small.umatch(gamma);
-		  [v]
-	     elif (DMB_stats := for q in qs do is_FPP_unitary(q) od;
-	     	   any(for m in DMB_stats do m < 0 od))
 	     then []
-	     elif all(for m in DMB_stats do m > 0 od)
+	     elif all(for m in DMB_statsH do m > 0 od)
 	     then steve_hash_small.umatch(gamma);
 		  [v]
 	     elif (stats := for q in qs do status(q,-1) od;
@@ -981,6 +981,10 @@ set cold_and_warm_flag = false
 
 set FD_1_sort_flag = true {change from false 6/1/26}
 
+{whether localFD_1SteveU starts from the vertices surviving localFD_vertices_by_zero (the cheap
+ eliminations that localFD_1Dirac2_by_zero uses) instead of all of Lvd.list}
+set steve_by_zero_flag = false {Oct 11 2026: Spin(6,6) x_open eliminates nothing there; no gain}
+
 {takes x, lambda, HT, Lvd and computes local vertices, imposing
 hermitian, pos on LKTs, pos to HT, and Dirac.}
 set localFD_1SteveU\
@@ -999,7 +1003,11 @@ set localFD_1SteveU\
 	then} (0,0,0)
 	{else steve_hash.indices(x, lambda, HT)
 	fi}
-    then LF00 = [FaceVertsIndex]: for j:#Lvd.list do [j] od
+    then LF00 = [FaceVertsIndex]:
+    	 if steve_by_zero_flag
+	 then for v in localFD_vertices_by_zero(x,lambda,HT,Lvd) do [v[0]] od
+	 else for j:#Lvd.list do [j] od
+	 fi
     then () = if FD_1_sort_flag
     	      then LF00 := sort(G,Lvd,[LF00])[0] {puts in INCREASING order by Q(gamma,gamma)}
 	      fi
@@ -1438,6 +1446,7 @@ set localFD_2SteveU\
 	      od
     then () = for p in nucand_list
     	      do if p.x = x and p.lambda = lambda
+		      and big_unitary_hash.nu_height_lookup_int(p,HT) < 0 {numatch means nonunitary TO HT}
 		 then steve_hash_small.numatch(p.infinitesimal_character)
 		 fi
 	      od
@@ -1915,6 +1924,7 @@ set show_steve_flag = false
 set first_offset = int:0
 
 {get verts, edges to hts[edge_offset] to feed one_level_end, with Kchar and #LQs}
+set steve_vgraph_flag = 0 {TEMP experiment: 1 = vertex graph test at H0, 2 = at H1 directly}
 set localFD_Steve2(KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2) =
     ([[FaceVertsKHash]],int):
     let start = elapsed_ms(), p0 = parameter(x,lambda,0*lambda)
@@ -1927,20 +1937,32 @@ set localFD_Steve2(KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Pe
     then () = if fund_face_verbose
     	      then prints("orig vert count = ", #(Lvd.list))
 	      fi
-    then LF0 = localFD_1SteveU(x,lambda,H0,Lvd)
+    then LF0 = if steve_vgraph_flag = 0 then localFD_1SteveU(x,lambda,H0,Lvd)
+    	       elif steve_vgraph_flag = 1 or steve_vgraph_flag = 3 then localFD_1SteveU_graph(x,lambda,H0,Lvd)
+	       else (extra_coord_flag:=true; localFD_1SteveU_graph(x,lambda,hts[edge_offset],Lvd))
+	       fi
     then () = if (#LF0).=
     	      then return ([[],[]],H0)
 	      fi
     then () = if fund_face_verbose
-    	      then prints("LF0 min-unitary to height ",H0," = ",#LF0)
+    	      then prints("LF0 min-unitary to height ",H0," = ",#LF0, " at ",print_time_string(elapsed_ms() - start))
 	      fi
     then () = extra_coord_flag :=true
     then H1 = hts[edge_offset]
-    then () = if H1 > H0 {first_offset}
+    then () = if H1 > H0 and steve_vgraph_flag = 3
+    	      then steve_hash_small.reset_with_ht(x,lambda,H1);
+	      	   LF0 := warmup(x,lambda,H1,Lvd,[LF0])[0];
+		   LF0 := local_test_graph_steve(x,lambda,Lvd,
+		   	  for v in LF0 do v ## Kchar_vec(x,lambda,H1,face_bary(Lvd,v)) od, H1, true);
+		   {the graph test enters locations without statuses; reset_with_ht does nothing
+		    when (x,lambda,HT) is unchanged, so change HT and back to really clear}
+		   steve_hash_small.reset_with_ht(x,lambda,H1+1);
+		   steve_hash_small.reset_with_ht(x,lambda,H1)
+	      elif H1 > H0 and steve_vgraph_flag != 2 {first_offset}
     	      then LF0:= test_Steve(x,lambda,H1,Lvd,[LF0])[0]
 	      fi
     then () = if fund_face_verbose
-    	      then prints("LF0 to height ",H1," = ",#LF0)
+    	      then prints("LF0 to height ",H1," = ",#LF0, " at ",print_time_string(elapsed_ms() - start))
 	      fi
     then LF = [LF0,  localFD_2SteveU(x,lambda,H1,Lvd,Perm2,LF0)]
     then () = if fund_face_verbose

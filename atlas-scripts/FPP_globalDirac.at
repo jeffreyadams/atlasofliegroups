@@ -1259,6 +1259,7 @@ then coh_ind_unip_few(G,Uhash)}
     then () = for (x,lambda)@k in xlambdasW
     	      do {xlambdasW}
 		test_next(x);
+		test_edge(x);
 		predictor_flag:= x.number > adjust_frac_for(G)*KGB_size(G);
 	      {restoring this made some E7_s on x_open 25% faster, but still 3x slower
 	       than hash2. Did not test thoroughly.}
@@ -1491,6 +1492,7 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 	 then every_lambda_flag:=true
 	 fi;}
 	 test_next(x);
+	 test_edge(x);
 	 if twist(x) != x
 	 then big_unitary_hash.finishx(x)
 	 else

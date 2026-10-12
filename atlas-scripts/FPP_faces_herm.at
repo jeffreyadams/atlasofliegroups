@@ -5690,17 +5690,16 @@ vertex "belongs" (either "is" or "is vertex of the edge")}
 
 {If red_count_flag, add an extra coordinate recording red_count(p, next_heights[edge_offset])}
 {if FPP_def_flag, impose FPP_def_test}
-set localFD_1Dirac2_by_zero\
-  ( KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, PermOrderTwo Perm2) =
-    [[FaceVertsIndex]]:
-(   if fund_face_verbose
-    then prints(new_line,"start localFD_1Dirac2_by_zero")
-    fi;
-    let G = x.real_form, start = elapsed_ms(), trans_hash = make_vec_hash(), stats = [int]:[],
+{the cheap vertex eliminations of localFD_1Dirac2_by_zero, as a function of its own so that
+ localFD_1SteveU can use them: Dirac bound, pos on LKTs, known-nonunitary monomials, etc.
+ Returns the candidate vertices in the order of Lvd.list (not sorted).}
+set localFD_vertices_by_zero\
+  ( KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd) =
+    [FaceVertsIndex]:
+(   let G = x.real_form, start = elapsed_ms(), stats = [int]:[],
     	statsH = [int]:[], DMB_stats = [int]:[], DMB_statsH = [int]:[]
-    then () = for (m,n) in Perm2.trans do trans_hash.match([m,n]) od
     then Q = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
-    then DiracBD = 0/1, start = elapsed_ms()
+    then DiracBD = 0/1
     then () = if Dirac_local_flag
 	      then let bd = DiracBD(x,lambda)
 		   then QG = {Dirac_easy_hash.invt_form(G)} invariant_form(G)
@@ -5768,6 +5767,19 @@ set localFD_1Dirac2_by_zero\
 	       else [[j]]
 	       fi
 	 od.## {list of j for which vertex j is a candidate}
+    in LF0
+)
+
+set localFD_1Dirac2_by_zero\
+  ( KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, PermOrderTwo Perm2) =
+    [[FaceVertsIndex]]:
+(   if fund_face_verbose
+    then prints(new_line,"start localFD_1Dirac2_by_zero")
+    fi;
+    let G = x.real_form, start = elapsed_ms(), trans_hash = make_vec_hash(), stats = [int]:[],
+    	statsH = [int]:[], DMB_stats = [int]:[], DMB_statsH = [int]:[]
+    then () = for (m,n) in Perm2.trans do trans_hash.match([m,n]) od
+    then LF0 = localFD_vertices_by_zero(x,lambda,HT,Lvd)
     {then () = if time_verbose
 	      then prints("for LF0, time is ",print_time_string(elapsed_ms() - start))
 	      fi}
