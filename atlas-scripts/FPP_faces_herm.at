@@ -6537,7 +6537,6 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 	 fi
     {then () = prints("starting LF0 = ",LF[0]); prints("starting LF1 = ",LF[1])}
     {then () = if to_htB_flag then LF[0] :=~LF[0] fi}
-    then low_step = int:20, low_flag = false {true}
     then answer0 = for v@k in LF[0]
 		   ~do if k%(max(#LF[0]\10,2))=0 and fund_face_verbose {E7_s sph: 3 times slower without tilde}
 		      then prints("calculating K-character on vertex ",k,
@@ -6551,16 +6550,13 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 		      fi;
 		      let gamma = Lvd.list[v[0]]
 		      then p0 = parameter(x, lambda, gamma)
-		      then () = if k%low_step = 0
-		      	      	then low_flag :=low_char(p0,HT)
-				fi
 		      then P = finalize(p0)
 		      then KCF = K_type_pol(if to_htB_flag
 					    then composition_series_to_heightQ(P,HT)
-					    elif low_flag
-					    then character_formula_to_ht(P,HT)
-					    else let (below,) = height_split(character_formula(P),HT)
-					    	 in below
+					    else character_formula_to_ht(P,HT) {per KL term: low_char decides to-height or truncated full
+					         sum for each term (Oct 11 2026); the full character_formula(P) was used for all
+					         terms whenever low_char(p0,HT) failed for the batch vertex p0: E8_s x=305000, one
+					         term at x=295655 needed hours in KL_sum_at_s}
 					    fi)
 		      then m = ktp_hash.match(KCF)
 		      in if (Q(gamma,gamma) > DiracBestBD)
@@ -6582,7 +6578,6 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 			     do v[:1]
 			     od)
      {then () = if to_htB_flag then LF[1] :=~LF[1] fi}
-    then low_flag = false
     then answer1 = [vec]: for v@k in LF[1]
 		  ~do if k%(max(#LF[1]\10,2))=0 and fund_face_verbose {E7_s spherical: 20% slower without tilde}
 		      then prints("calculating K-character on edge ",k,
@@ -6599,9 +6594,6 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 			 then []
 			 else let nu = face_bary(Lvd,v[:2])
 			      then p0 = parameter(x, lambda, nu)
-			      then () = if k%low_step = 0
-		      	      	      	then low_flag :=low_char(p0,HT)
-					fi
 			      then P = finalize(p0)
 			      in if red_count_flag and answer0[i][1] = v[2] {red_counts match}
 				 then [v##[answer0[i][2],#monomials(P)]]
@@ -6610,10 +6602,10 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 				 else let KCF = K_type_pol(
 				      	   if to_htB_flag
 				      	   then composition_series_to_heightQ(P,HT)
-					   elif low_flag
-					   then character_formula_to_ht(P,HT)
-					   else let (below,) = height_split(character_formula(P),HT)
-					    	 in below
+					   else character_formula_to_ht(P,HT) {per KL term: low_char decides to-height or truncated full
+					        sum for each term (Oct 11 2026); the full character_formula(P) was used for all
+					        terms whenever low_char(p0,HT) failed for the batch vertex p0: E8_s x=305000, one
+					        term at x=295655 needed hours in KL_sum_at_s}
 					   fi)
 				      then m = ktp_hash.match(KCF)
 		      		      in if (Q(nu,nu) > DiracBestBD)
