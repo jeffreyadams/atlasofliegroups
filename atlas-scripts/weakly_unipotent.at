@@ -215,7 +215,10 @@ set wuq_clear() = void: wuq_hash := make_Param_hash(); wuq_vals := []
 set is_weakly_unipotent_base(Param q) = bool:
     let rd = q.root_datum, gamma = q.infinitesimal_character, t = elapsed_ms()
     {the infinitesimal character test sees only the roots and <gamma,alpha^vee>: do it on the
-     simply connected derived datum, so it also applies to reductive (e.g. Levi) q}
+     simply connected derived datum, so it also applies to reductive (e.g. Levi) q.
+     This translates by the whole weight lattice of the simply connected cover. The applications
+     need only translation by weights of G itself (a smaller lattice, so a less restrictive test);
+     one could restrict to those, but David expects that to buy nothing in the end, so we don't.}
     then wu = is_weakly_unipotent_claude(simply_connected(rd),
 				ratvec: for av in rd.simple_coroots do gamma*av od)
     then () = wuq_time[0] +:= elapsed_ms()-t
