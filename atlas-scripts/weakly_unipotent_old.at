@@ -1,0 +1,73 @@
+<basic.at {for fundamental_weights, all_words}
+<Weylgroup.at {for invariant_form}
+<translate.at {for T_param}
+<kl.at {for character_formula}
+
+{ is_weakly_unipotent_old(Param p) = bool: the direct test, kept to explain the fast one.
+
+  p is weakly unipotent if no composition factor of p tensor F (F finite-dimensional) has
+  infinitesimal character strictly shorter than gamma = p.infinitesimal_character. By Zuckerman,
+     p tensor F = sum_nu m_F(nu) Theta(gamma+nu)     (nu the weights of F),
+  Theta the coherent family through p. So the test is: Theta(mu) = 0 for every mu in gamma + X^*
+  with |mu| < |gamma|. That is what this function checks, mu by mu.
+
+  Theta is built from the character formula of p at the REGULAR point gamma+2rho, then translated.
+  (The first version used character_formula(p) at gamma itself. When gamma is singular, that is a
+  coherent family through p, but not the right one: at non-dominant points it can be nonzero where
+  the right one vanishes. Example: Sp(6,R), p = parameter(KGB(G,38),[3,3,0],[1,1,0]),
+  Theta([0,1,0]) = -Theta([1,0,0]) != 0, so p was wrongly reported as not weakly unipotent.)
+
+  The candidates mu = gamma + sum C_i omega_i lie in a box: C_i = <mu-gamma,alpha_i^vee> and
+  |<mu,alpha_i^vee>| <= 2|mu|/|alpha_i| < 2|gamma|/|alpha_i|. (The first version got per-coordinate
+  bounds from a minimum over all of W, which divided by zero, e.g. in SL(4,R); it also translated
+  by fundamental weights that are not weights of G, e.g. in SO(4,3).) Only mu - gamma in X^*(G).
+
+  Why it is slow. The candidates are ALL points of gamma + X^* in the ball, i.e. for each
+  integrally dominant short mu its whole W_int-orbit, and each needs a translation of the
+  regular character formula of p (as long as the block). Evaluating at one point per orbit
+  is not enough: Sp(4,R) at [1,1] has Theta([1,0]) = 0 but Theta([0,1]) != 0. The fast test
+  (is_weakly_unipotent_claude, weakly_unipotent.at) replaces the whole orbit by one
+  character-table computation: Theta vanishes on the W_int-orbit of mu iff the trivial
+  representation of W_mu does not occur in the special W_int-representation of J_max
+  (prohibited_singular_data, check_mu in weakly_unipotent_max_ideal.at).
+  On all unipotent_representations (same answers everywhere), is_weakly_unipotent@Param (fast
+  test plus the check that Ann(p) is maximal) versus this:
+      Sp(4,R) 23 ms vs 2 ms,  G2_s 19 vs 2,  SO(4,3) 0.18 s vs 0.05,  Sp(6,R) 0.16 vs 0.09,
+      SO(5,4) 1.2 s vs 7.9,   Sp(8,R) 1.3 vs 13.6,
+  and with the candidates taken from the fast enumeration (one per W_int-orbit, then the orbit):
+      F4_s 2.7 s vs 54 s (29000 Theta evaluations),  SO(5,5) 2.6 s vs 147 s (91000).
+  Not for real use: the fast test wins from rank 4 on, by a factor growing with |W|.
+
+  Note this tests p itself; is_weakly_unipotent@Param also requires Ann(p) = J_max(gamma).
+  On parameters with Ann(p) = J_max the two agree (Sp(4,R), G2_s, SL(4,R), Sp(6,R) at 5-7
+  infinitesimal characters each, true and false answers) except where the lattices differ:
+  this translates by weights of G, the fast test by weights of the simply connected cover.
+  SO(4,3) at gamma = [1,0,0]: mu = [1,1,1]/2 is a candidate there and not here.
+}
+
+{ the integers strictly between a and b }
+set interval_old(rat a, rat b) = vec:
+let A=floor(a+1), B=ceil(b-1) in
+for i:B-A+1 from A do i od
+
+{ box for C: |<mu,alpha_i^vee>| < s_i, s_i the least integer with s_i^2 >= 4|gamma|^2/|alpha_i|^2 }
+set box_bounds_old(RootDatum rd, ratvec gamma) = (ratvec,ratvec):
+let Q=invariant_form(rd)
+then s = for a in rd.simple_roots do let B2=4*Q(gamma,gamma)/Q(a,a), k=0 in while k*k<B2 do k+:=1 od; k od
+then g = for av in rd.simple_coroots do gamma*av od
+in (for i:#s do -s[i]-g[i]-1 od, for i:#s do s[i]-g[i]+1 od)
+
+{ all mu in gamma + X^* with |mu| < |gamma| }
+set candidates_old(RootDatum rd, ratvec gamma) = [ratvec]:
+let (lo,hi)=box_bounds_old(rd,gamma), F=fundamental_weights(rd), Q=invariant_form(rd)
+in ##for C in all_words(for i:#lo do interval_old(lo[i],hi[i]) od)
+     do let nu=sum(rd.rank,for f@i in F do C[i]*f od) then mu=gamma+nu
+	in if is_integer(nu) and Q(mu,mu)<Q(gamma,gamma) then [mu] else [] fi
+     od
+
+set is_weakly_unipotent_old(Param p) = bool:
+let G=p.real_form, gamma=p.infinitesimal_character
+then cands=candidates_old(p.root_datum,gamma)
+in #cands=0 or
+   (let cfr=character_formula(T_param(p,gamma+2*G.rho)) {Theta, from the regular point}
+    in all(cands, (ratvec mu) bool: =T_param(cfr,mu)))
