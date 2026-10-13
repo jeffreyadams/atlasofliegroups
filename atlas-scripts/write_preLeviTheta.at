@@ -1,0 +1,55 @@
+<FPP_globalDirac.at {for preLeviTheta, big_unitary_hash, write_real_form}
+
+{Make a preload file like preLeviThetaE7.at: the FPP unitary dual of every
+ simple derived factor of a proper theta-stable Levi of G.
+
+ usage (redirection must come FIRST; "expr > file" is parsed as a comparison):
+   preLeviTheta(E7_s)                              {E7_s: 21 minutes}
+   > preLeviThetaE7.at write_preLeviTheta()
+
+ Loading the file restores uhash and x_known for each real form in
+ big_unitary_hash (verified on E7_s: identical uhash_sizes and x_known).}
+
+{one real form: grow, then long_match each known unitary Param, then finishxmap}
+set write_preLeviTheta(RealForm G) = void:
+    let plist = big_unitary_hash.uhash(G).list()
+    in write_real_form(G,"G_temp");
+       prints("set j = big_unitary_hash.rf_number(G_temp)");
+       if #plist>0 then prints("void: big_unitary_hash.uhash(G_temp).grow(",#plist,")") fi;
+       for p in plist
+       do prints("void:  big_unitary_hash.long_match(parameter(G_temp,",
+	         p.x.number,",",p.lambda,",",p.nu,"),j)")
+       od;
+       prints("void: big_unitary_hash.finishxmap(G_temp,",big_unitary_hash.x_known(G),")")
+
+{every real form in big_unitary_hash, in its own order}
+set write_preLeviTheta() = void:
+    for i:big_unitary_hash.real_form_size()
+    do write_preLeviTheta(big_unitary_hash.rf_index(i))
+    od
+
+{Same, but with the known NONUNITARY Params and their heights (nu_heights) as well.
+ Run preLeviTheta(G) after get_nu_info(), so that every nonunitary Param gets a height.
+
+ usage:
+   get_nu_info(); preLeviTheta(E8_s)
+   > preLeviTheta_nu_E8.at write_preLeviTheta_nu()}
+set write_preLeviTheta_nu(RealForm G) = void:
+    let nulist = big_unitary_hash.nuhash(G).list()
+    then nu_hts = big_unitary_hash.nu_heights(G)
+    in write_preLeviTheta(G);
+       if #nulist>0
+       then prints("set tempnuParams = [Param]: for :",#nulist," do Nullp od");
+	    for p@j in nulist
+	    do prints("void:tempnuParams[",j,"]:=parameter(G_temp,",
+		      p.x.number,",",p.lambda,",",p.nu,")")
+	    od;
+	    prints("set nu_hts = ",nu_hts);
+	    prints("void: big_unitary_hash.numatches_height(tempnuParams,nu_hts)")
+       fi
+
+set write_preLeviTheta_nu() = void:
+    prints("set Nullp = U(1,0).trivial");
+    for i:big_unitary_hash.real_form_size()
+    do write_preLeviTheta_nu(big_unitary_hash.rf_index(i))
+    od
