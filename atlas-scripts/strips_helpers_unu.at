@@ -1,0 +1,52 @@
+{Helpers for strips8.py (parallel FPP_unitary_hash_bottom_layer by KGB chunks and height strips).
+ Loaded by every worker. Nothing here changes how anything is computed.
+ Drop-in replacement for strips_helpers.at (same function names) that also dumps the nonunitary
+ Params found by the task, with the heights to which they are known to be nonunitary, and makes
+ the dump itself loadable: reading it puts the unitary Params, the nonunitary Params and heights,
+ and the finished x into big_unitary_hash.}
+
+{sizes of uhash(G) and nuhash(G), and the nu_heights(G), when the current task started;
+ hashes list in insertion order (hash.at)}
+set strips_k0 = int: 0
+set strips_nu_k0 = int: 0
+set strips_nu_heights0 = vec: null(0)
+set strips_mark(RealForm G) = void:
+    strips_k0 := big_unitary_hash.uhash(G).size();
+    strips_nu_k0 := big_unitary_hash.nuhash(G).size();
+    strips_nu_heights0 := big_unitary_hash.nu_heights(G)
+
+{indices in nuhash(G) of Params added since strips_mark or whose nu_height changed since then}
+set strips_nu_new(RealForm G) = [int]:
+    let nu_hts = big_unitary_hash.nu_heights(G), r = [int]: []
+    in for k:strips_nu_k0 do if nu_hts[k] != strips_nu_heights0[k] then r #:= k fi od;
+       for k:#nu_hts-strips_nu_k0 from strips_nu_k0 do r #:= k od;
+       r
+
+{Print, in the format of writeG, the unitary Params added to uhash(G) since strips_mark; the
+ nonunitary Params added to nuhash(G) since strips_mark, together with those already there whose
+ nu_height improved, with their nu_heights; and the finished x in [lo,hi) as a finishxmap line.
+ Only what the task itself found: loaded deltas come before strips_mark.}
+set strips_dump_new(RealForm G, int lo, int hi) = void:
+    let H = big_unitary_hash.uhash(G) then n = H.size()
+    then NH = big_unitary_hash.nuhash(G) then nu_hts = big_unitary_hash.nu_heights(G)
+    then nu_new = strips_nu_new(G)
+    then done = set_bit_positions(AND(big_unitary_hash.x_known(G), 2^hi - 2^lo))
+    in write_real_form(G,"G_temp");
+       prints("set j = big_unitary_hash.rf_number(G_temp)");
+       prints("set Nullp = U(1,0).trivial");
+       prints("set tempParams = [Param]: for i:",n-strips_k0," do Nullp od");
+       for k:n-strips_k0 from strips_k0
+       do let p = H.index(k)
+	  in prints("void:tempParams[",k-strips_k0,"]:=parameter(G_temp,",p.x.number,",",p.lambda,",",p.nu,")")
+       od;
+       prints("big_unitary_hash.uhash(G_temp).fill(tempParams)");
+       prints("set tempnuParams = [Param]: for i:",#nu_new," do Nullp od");
+       for k@j in nu_new
+       do let p = NH.index(k)
+	  in prints("void:tempnuParams[",j,"]:=parameter(G_temp,",p.x.number,",",p.lambda,",",p.nu,")")
+       od;
+       prints("set nu_hts = vec: ",for k in nu_new do nu_hts[k] od);
+       prints("big_unitary_hash.numatches_height(tempnuParams,nu_hts)");
+       if #done > 0
+       then prints("void: big_unitary_hash.finishxmap(G_temp,to_bitset(",done,"))")
+       fi
