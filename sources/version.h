@@ -17,7 +17,7 @@ namespace version {
   // note that the axis language version is defined in interpreter/main.w
 
 const char* const NAME = "the Atlas of Lie Groups and Representations";
-const char* const VERSION = "1.2"; // last advanced December 1, 2024
+const char* const VERSION = "2.0"; // last advanced October 13, 2026
 // version 1.0.6 completes support for cyclotomic polynomials (for Weyl c.f.)
 // version 1.0.7 (workshop) has better W_cells support, and fixes some bugs
 // version 1.0.8 has sprawling library, to track unipotent representations
@@ -25,6 +25,7 @@ const char* const VERSION = "1.2"; // last advanced December 1, 2024
 // version 1.1   was declared (on master) on December 30, 2021
 // version 1.1.1 has almost two extra years of fixing; e.g. integer conversions
 // version 1.2 has almost two extra years of changes of all kinds of nature
+// version 2.0 bas nearly two years of changes, many small improvents and fixes
 const char* const COMPILEDATE = __DATE__ " at " __TIME__;
 constexpr bool debugging =
 #ifdef NDEBUG

@@ -12,10 +12,10 @@ definition }
 <basic.at
 <sort.at
 
-{ Marc's approach to find the walls of an alcove, and for all of them that do
-  not lie outside move to them, while for the forbidden walls take equal
-  barycentric coordinates (take barycentre of smallest inside facet of alcove)
-}
+{ Marc's approach to find the walls of an alcove. For all walls that belong to
+  the alcove itself, move to the wall; for other walls (that are excluded from
+  the alcove proper), move so as to make all barycentric coordinates equal (take
+  the barycentre of the smallest inside facet of alcove) }
 
 { for finding walls of an alcove, we shall search for minimal fractional parts
   of evaluations of coroots on a given rational weight |gamma|. A subtle point
