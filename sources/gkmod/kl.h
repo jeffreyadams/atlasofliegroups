@@ -101,6 +101,7 @@ class KL_table
 // accessors
 
   BlockElt first_hole () const { return d_holes.front(); }
+  bool is_hole (BlockElt y) const { return d_holes.isMember(y); }
 
   BlockElt length_floor(BlockElt y) const
   { return length_less(length(y)); }

@@ -400,7 +400,7 @@ void Block_base::fill_Bruhat()
 }
 
 bool Block_base::has_KL_column(BlockElt j) const
-{ return KL_P_ptr!=nullptr and j<KL_P_ptr->first_hole(); }
+{ return KL_P_ptr!=nullptr and not KL_P_ptr->is_hole(j); }
 
 bool Block_base::has_KL_Q_column(BlockElt j) const
 { return dual_ptr!=nullptr and KL_Q_ptr!=nullptr

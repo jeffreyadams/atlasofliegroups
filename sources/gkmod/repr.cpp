@@ -28,6 +28,7 @@
 #include "K_repr.h"
 
 #include "kl.h"
+#include "bruhat.h" // for |fill_KL_below|
 
 #include "ext_block.h"
 #include "ext_kl.h"
@@ -2008,6 +2009,41 @@ std::vector<BlockElt_pol> contributions
   return result;
 } // |contributions|, extended block
 
+namespace {
+
+// Fill the KL table of |block| for the columns in the Bruhat interval below |y|
+// only. A column needs only the columns below it, so other columns stay holes:
+// in a large (full) block this avoids filling every column with index <= |y|.
+kl::KL_table& fill_KL_below
+  (blocks::common_block& block, BlockElt y, KL_hash_Table* hash)
+{
+  kl::KL_table& tab = block.KL_tab(hash,1); // create table if needed
+  if (not tab.is_hole(y))
+    return tab; // column |y| present, hence also all columns below it
+
+  BitMap below(y+1); below.insert(y);
+  const auto& Bruhat = block.bruhatOrder();
+  for (BlockElt z=y+1; z-->0; ) // Hasse diagram lists smaller elements only
+    if (below.isMember(z))
+      for (auto x : Bruhat.hasse(z))
+	below.insert(x);
+
+  std::vector<BlockElt> plugged;
+  for (BlockElt z=tab.first_hole(); z<y; ++z)
+    if (tab.is_hole(z) and not below.isMember(z))
+    { tab.plug_hole(z); plugged.push_back(z); }
+  try { tab.fill(y+1); }
+  catch (...) // restore the holes, so that later fills compute those columns
+  { for (auto z : plugged) tab.unplug_hole(z);
+    throw;
+  }
+  for (auto z : plugged)
+    tab.unplug_hole(z);
+  return tab;
+}
+
+} // |namespace|
+
 sl_list<std::pair<StandardRepr,int> > Rep_table::deformation_terms
   ( blocks::common_block& block, const BlockElt y,
     const block_modifier& bm, const RatWeight& gamma)
@@ -2027,7 +2063,7 @@ sl_list<std::pair<StandardRepr,int> > Rep_table::deformation_terms
 
   assert(not finals.empty() and finals.front()==y); // otherwise don't call us
   const kl::KL_table& kl_tab =
-    block.KL_tab(&KL_poly_hash,y+1); // fill silently up to |y|
+    fill_KL_below(block,y,&KL_poly_hash); // columns below |y| only
 
   std::unique_ptr<unsigned int[]> index // a sparse array, map final to position
     (new unsigned int [block.size()]); // unlike |std::vector| do not initialise
@@ -2232,7 +2268,7 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr sr) // |sr| must be final
   assert(contrib.size()==z+1 and contrib[z].front().first==z);
 
   const kl::KL_table& kl_tab =
-    block.KL_tab(&KL_poly_hash,z+1); // fill silently up to |z|
+    fill_KL_below(block,z,&KL_poly_hash); // columns below |z| only
 
   SR_poly result;
   auto z_length=block.length(z);
@@ -2352,7 +2388,7 @@ simple_list<std::pair<BlockElt,kl::KLPol> >
   Rep_table::KL_column(common_block& block, BlockElt y)
 {
   const kl::KL_table& kl_tab =
-    block.KL_tab(&KL_poly_hash,y+1); // fill silently up to |z|
+    fill_KL_below(block,y,&KL_poly_hash); // columns below |y| only
 
   simple_list<std::pair<BlockElt,kl::KLPol> > result;
   for (BlockElt x=y+1; x-->0; )
