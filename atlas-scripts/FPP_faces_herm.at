@@ -624,7 +624,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 				 else let n = nuhashes[rfnum].match(p)
 				      in if n=N
 					 then nu_heights[rfnum] #:=H
-					 elif nu_heights[rfnum][n] > H
+					 elif nu_heights[rfnum][n] > H or nu_heights[rfnum][n] < 0 {-1: height unknown}
 					 then let nuheightsrf = nu_heights[rfnum]
 					      in nuheightsrf[n] :=H;
 						 nu_heights[rfnum]:= nuheightsrf
@@ -650,7 +650,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 				      else let n = nuhashes[rfnum].match(p)
 					   in if n=N
 					      then nu_heights[rfnum] #:= H
-					      elif nu_heights[rfnum][n] > H
+					      elif nu_heights[rfnum][n] > H or nu_heights[rfnum][n] < 0 {-1: height unknown}
 					      then let nuheightsrf = nu_heights[rfnum]
 						   in nuheightsrf[n] :=H;
 						      nu_heights[rfnum]:= nuheightsrf
@@ -696,7 +696,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 			    else let n = nuhashes[rfnum].match(p)
 				 in if n=N
 				    then nu_heights[rfnum]#:=H
-				    elif nu_heights[rfnum][n] > H
+				    elif nu_heights[rfnum][n] > H or nu_heights[rfnum][n] < 0 {-1: height unknown}
 				    then let nuheightsrf = nu_heights[rfnum]
 					 in nuheightsrf[n] :=H;
 					    nu_heights[rfnum]:= nuheightsrf
@@ -734,7 +734,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 				      else let n = nuhashes[rfnum].match(p)
 				      in if n=N
 					 then nu_heights[rfnum]#:=H
-					 elif nu_heights[rfnum][n] > H
+					 elif nu_heights[rfnum][n] > H or nu_heights[rfnum][n] < 0 {-1: height unknown}
 					 then let nuheightsrf = nu_heights[rfnum]
 					      in nuheightsrf[n] :=H;
 						 nu_heights[rfnum]:= nuheightsrf
@@ -784,7 +784,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 				 else let n = nuhashes[rfnum].match(p)
 				      in if n=N
 					 then nu_heights[rfnum] #:=H
-					 elif nu_heights[rfnum][n] > H
+					 elif nu_heights[rfnum][n] > H or nu_heights[rfnum][n] < 0 {-1: height unknown}
 					 then let nuheightsrf = nu_heights[rfnum]
 					      in nuheightsrf[n] :=H;
 						 nu_heights[rfnum]:= nuheightsrf
@@ -814,7 +814,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 				      else let n = nuhashes[rfnum].match(p)
 					   in if n=N
 					      then nu_heights[rfnum] #:= H
-					      elif nu_heights[rfnum][n] > H
+					      elif nu_heights[rfnum][n] > H or nu_heights[rfnum][n] < 0 {-1: height unknown}
 					      then let nuheightsrf = nu_heights[rfnum]
 						   in nuheightsrf[n] :=H;
 						      nu_heights[rfnum]:= nuheightsrf
@@ -876,7 +876,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 			   else let n = nuhashes[rfnum].match(p)
 				in if n=N
 				   then nu_heights[rfnum]#:=H
-				   elif nu_heights[rfnum][n] > H
+				   elif nu_heights[rfnum][n] > H or nu_heights[rfnum][n] < 0 {-1: height unknown}
 				   then let nuheightsrf = nu_heights[rfnum]
 					in nuheightsrf[n] :=H;
 					   nu_heights[rfnum]:= nuheightsrf
@@ -916,7 +916,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 				else let n = nuhashes[rfnum].match(p)
 				       in if n=N
 				       	  then nu_heights[rfnum]#:=H
-				       	  elif nu_heights[rfnum][n] > H
+				       	  elif nu_heights[rfnum][n] > H or nu_heights[rfnum][n] < 0 {-1: height unknown}
 				       	  then let nuheightsrf = nu_heights[rfnum]
 					       in nuheightsrf[n] :=H;
 					       	  nu_heights[rfnum]:= nuheightsrf
@@ -1832,8 +1832,12 @@ set is_known_u_to_ht(Param p, int HT) = bool:
 {number of nonunitary detected}
 set ifu_fast_count = int:0
 
+{false: skip the Davis/Mason-Brown test, which finds no height of nonunitarity (see get_nu_info)}
+set DMB_flag = true
+
 {Use Davis/Mason-Brown criterion. -1 means nonunitary, 0 means don't know.}
 set is_FPP_unitary_fast(Param p) = int:
+    if not DMB_flag then return 0 fi;
     if (not is_hermitian(p)) then return -1 fi;
     if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return -1 fi;
     let G = (p:= herm_center(p)).real_form
@@ -1941,6 +1945,28 @@ set simple_status(Param p, int HT, ((Param,int) -> int) tester) = int:
 
 
 
+{Deformation principle: if a composition factor q of a deformation of p is nonunitary to height h,
+ then p is nonunitary to height h.  A non-hermitian q comes with its hermitian dual, giving a
+ hyperbolic (indefinite) form on the K-types of q, so h = height(q).  def_nu_height(qs,HT) is the
+ smallest such h known for the factors qs; HT if none is known (callers pass -1 unless every
+ failing q is known to fail by HT).}
+set def_nu_height([Param] qs, int HT) = int:
+    let ans = HT
+    in for q in qs
+       do let h = if is_hermitian(q) then big_unitary_hash.nu_height_lookup(herm_center(q))
+       	      	  else height(q)
+		  fi
+       	  in if h >= 0 and (ans < 0 or h < ans) then ans := h fi
+       od; ans
+
+{the face parameter pC is nonunitary because some factor in defs of a deformation of it is; record
+ it, with def_nu_height(defs,HT), when it is a single final hermitian Param}
+set def_nu_record(Param pC, [Param] defs, int HT) = void:
+    let ps = monomials(finalize(pC))
+    in if #ps = 1 and is_hermitian(ps[0])
+       then let () = big_unitary_hash.numatch_height(herm_center(ps[0]), def_nu_height(defs,HT)) in ()
+       fi
+
 {test codim 1 boundary faces only}
 {+1 if p known unitary to HT, -1 if known nonunitary, 0 else}
 set wiggle_status_cod_one(Param p, KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT) = int:
@@ -1990,8 +2016,9 @@ set wiggle_status_cod_one(Param p, KGBElt x, ratvec lambda, LocalVertexData Lvd,
        elif any(for q in defs.##
 		do @bool: simple_status(q,HT) < 0
 		od)
-       then big_unitary_hash.numatch_height(p,HT)
-       	    ; for q in helpers do big_unitary_hash.numatch_height(q,HT) od
+       then let H = def_nu_height(defs.##,HT)
+       	    in big_unitary_hash.numatch_height(p,H)
+       	    ; for q in helpers do big_unitary_hash.numatch_height(q,H) od
 	    ; statusW_nucount+:=1
 	    -1
        else 0
@@ -2046,7 +2073,7 @@ set wiggle_status_all(Param p, KGBElt x, ratvec lambda, LocalVertexData Lvd, int
        	    elif any(for q in defs.##
        	    	     do simple_status(q,HT) < 0
 		     od)
-       	    then big_unitary_hash.numatch_height(p,HT)
+       	    then big_unitary_hash.numatch_height(p,def_nu_height(defs.##,HT))
 	    	 ; statusW_nucount +:=1
 	    	 ; -1
 	    else 0
@@ -3428,16 +3455,18 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_old(Param p,[int] Ns, int time) = boo
     then () = Ns:=Ns[j0:]
     then () = for N@i in Ns
 	     do let result = 0, try_to_ht_flag = low(p,N), start = elapsed_ms()
+		then fail_ht = N {impure_height of the signature when the test reports it}
 		then () = while result = 0
 			  do result:= if try_to_ht_flag
-				      then is_unitary_to_ht_MvL(p,N,time)
+				      then let r = is_unitary_to_ht_MvL_depth(p,N,time)
+				      	   in if r < -1 then fail_ht := -r\2 - 1; -1 else r fi
 				      else case hermitian_form_irreducible(p,time)
 					  | timed_out: 0
 					  | done(result):
 					    if is_pure((to_ht(result,Ns~[0])))
 					    then add_to_u_to_ht(p,Ns~[0])
 					    	 ; return true
-					    else big_unitary_hash.numatch_height(p,Ns~[0])
+					    else big_unitary_hash.numatch_height(p,impure_height(result))
 					    	 ; return false
 					    fi
 					  esac
@@ -3453,7 +3482,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_old(Param p,[int] Ns, int time) = boo
 			      fi
 			   od {while result}
 		in if result<0
-		   then big_unitary_hash.numatch_height(p,N); return false
+		   then big_unitary_hash.numatch_height(p,fail_ht); return false
 		   else add_to_u_to_ht(p,N)
 		   fi
 	     od
@@ -3722,6 +3751,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt(Param p, int HT) = bool:
        fi
 
 set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
+  if #HTs = 0 then return true fi; {no heights requested: vacuously unitary to them}
   if not predictor_flag
   then return is_unitary_to_hts_big_SIMPLE_interrupt_old(p,HTs,interrupt_base_time)
   fi;
@@ -3829,6 +3859,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
 
 
 set is_unitary_to_hts_big_SIMPLE_interrupt_Ufirst(Param p, [int] HTs) = bool:
+  if #HTs = 0 then return true fi; {no heights requested: vacuously unitary to them}
   if not predictor_flag
   then return is_unitary_to_hts_big_SIMPLE_interrupt_old(p,HTs,interrupt_base_time)
   fi;
@@ -3939,6 +3970,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_Ufirst(Param p, [int] HTs) = bool:
       fi
 
 set is_unitary_to_hts_big_SIMPLE_interrupt(Param p, [int] HTs) = bool:
+    if #HTs = 0 then return true fi; {no heights requested: vacuously unitary to them}
     if print_int_flag
     then prints("starting iuthbsi for ",p.infinitesimal_character,", ",HTs);
        	 prints("predictor_flag = ",predictor_flag)
@@ -4951,7 +4983,7 @@ set known_non_unitaries_wiggle(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 				  {big_unitary_hash.nu_height_lookup_bool(q,HT)}
 			{or (height(q) > H0 and not is_unitary_to_hts_big_SIMPLE(q,HTs))}
 				  od) {CONCERN if HTs[0] < H0?}
-			   then answer[d]#:= j;
+			   then answer[d]#:= j; def_nu_record(p,pdefi,HT);
 				for ji in short_js
 				do if {to_ht(pol_hash.index(LFDKH[d][j][d+red_shift+1]),HT) =
 				      to_ht(pol_hash.index(LFDKH[d-1][ji][d+red_shift]),HT)}

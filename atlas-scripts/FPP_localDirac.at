@@ -579,7 +579,7 @@ set local_testK_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 						      or (status(q,-1) = -1 and not is_pure(to_ht(min_bottom_sig(q),HT)))
 						      or (status(q,HT) = 0 and wiggle_flag2 and not tester(q))
 						   od)
-					    then  wiggle_flag1_count+:=1;
+					    then  wiggle_flag1_count+:=1; def_nu_record(pC,pdef1,-1);
 					    	  newStatuses:= updateNUclassesB(newStatuses, gr, k);
 						 newStatuses[k] := "F"
 					    fi {any q} next wiggle_flag1_time +:= elapsed_ms() - start_wiggle
@@ -647,7 +647,7 @@ set local_testK_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 								 {or (status(q,-1) = -1 and not tester(q))}
 						      		 or (wiggle_flag2 and status(q,HT) = 0 and not tester(q))
 							       od)
-							then wiggle_flag1_count+:=1;
+							then wiggle_flag1_count+:=1; def_nu_record(pC,pdef1,-1);
 							     newStatuses[K] := "F"
 							fi next wiggle_flag1_time +:= elapsed_ms() - start_wiggle
 						 fi{wiggle_flag1}
@@ -817,7 +817,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 						   {or (status(q,-1) = -1 and not tester(q))}
 						      or (wiggle_flag2 and status(q,HT) = 0 and not tester(q))
 						   od)
-					    then wiggle_flag1_count+:=1;
+					    then wiggle_flag1_count+:=1; def_nu_record(pC,pdef1,-1);
 					    	 newStatuses:= updateNUclassesB(newStatuses, gr, k);
 						 newStatuses[k] := "F"
 					    fi {any q} next wiggle_flag1_time +:= elapsed_ms() - start_wiggle
@@ -889,7 +889,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 						      		or (status(q,HT) = 0 and wiggle_flag2 and
 								not tester(q))
 							       od)
-							then wiggle_flag1_count+:=1;
+							then wiggle_flag1_count+:=1; def_nu_record(pC,pdef1,-1);
 							     newStatuses[K] := "F"
 							fi next wiggle_flag1_time +:= elapsed_ms() - start_wiggle
 						 fi{wiggle_flag1}
@@ -1352,7 +1352,7 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
 			      or (wiggle_flag2 and status(q,HT) = 0 and
 			      not is_unitary_to_hts_big_SIMPLE_interrupt(q,hts[1:ONE+1]))
 					od) {add _interrupt 2/20/26}
-		   then wiggle_flag1_count+:=1;
+		   then wiggle_flag1_count+:=1; def_nu_record(pC,pdef1,-1);
 		   	newStatuses:= updateNUclassesB(newStatuses, gr, k);
 			newStatuses[k] := "F"
 		   fi {any q} next wiggle_flag1_time +:= elapsed_ms() - start_wiggle
@@ -1779,7 +1779,8 @@ set local_test_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 
 and not tester(q)
 						   od)
-					    then newStatuses:= updateNUclassesB(newStatuses, gr, m);
+					    then def_nu_record(pC,pdef1,-1);
+					    	 newStatuses:= updateNUclassesB(newStatuses, gr, m);
 						 newStatuses[m] := "F"
 					    fi {any q} next wiggle_flag1_time +:= elapsed_ms() - start_wiggle
 				fi {wiggle_flag1}
@@ -1834,7 +1835,7 @@ and not tester(q)
 						      (status(q,-1) = 0 and not is_pure(min_bottom_sig(q))) or
 						      (wiggle_flag2 and not tester(q)))
 						   od)
-					    then newStatuses[M] := "F"
+					    then def_nu_record(pC,pdef1,-1); newStatuses[M] := "F"
 					    fi {any q}
 				    fi {final_wiggle_flag}
 			in if newStatuses[M][0] = "?" and all(for p in ps
@@ -1999,6 +2000,7 @@ in  if test_verbose
 			(wiggle_flag2 and not tester(q)))
 		       od)
 	    then {prints("parameter ",pC," tests nonunitary by wiggle, verts = ",verts);}
+		 def_nu_record(pC,pdef1,-1);
 		 newStatuses:= updateNUclassesB(newStatuses, gr, m)
 	    ;	 newStatuses[m] := "F"
 	    { nothing more will happen in this loop iteration }
@@ -2162,7 +2164,8 @@ in  if test_verbose
        	     	       	  	   or (status(q,-1) = 0 and (not is_pure(min_bottom_sig(q)) or
 				   (wiggle_flag2 and not tester(q))))
 				od)
-	  then newStatuses:= updateNUclassesB(newStatuses, gr, m)
+	  then def_nu_record(pC,pdef1,-1);
+	       newStatuses:= updateNUclassesB(newStatuses, gr, m)
 	  ;     newStatuses[m] := "F"
 	  fi {any q}
        fi {final_wiggle_flag}
@@ -2482,7 +2485,8 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 			  else {now pC is final, and pCdef consists of wiggled Params with smaller x}
 			       if any(for q in pCdef do @bool:  is_finished_step(q) and
 					       (Uhash.lookup(q) = -1) od)
-			       then newStatuses := updateNUclassesB(newStatuses, gr, k);
+			       then def_nu_record(pC,pCdef,-1);
+			       	    newStatuses := updateNUclassesB(newStatuses, gr, k);
 					 newStatuses[k] := "F"
 			       fi
 			  fi {not is_final(pC)}
