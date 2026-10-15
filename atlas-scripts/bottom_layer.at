@@ -585,8 +585,7 @@ set in_fundamental_fiber(KGBElt x) = bool: x.involution = x.real_form.distinguis
 {bottom layer test of the FINAL Param p0 using minimal theta-stable parabolic Q of p0:
  false guarantees p0 is not unitary.  Every final constituent q of finalize(pC) for pC on
  an FPP face has the same Q as pC, and finalize(pC_L) = sum of the q_L (checked, 10/10/26).}
-set bl_stages = [(int,int)]: [(1,2),(4,5)] {see min_bottom_elim_factors(Param)}
-set bl_stage_min = 20
+set bl_stage_count = 4 {see min_bottom_elim_factors(Param)}
 
 set min_bottom_elim_factors(Param p0) = bool:
     let start = elapsed_ms(), (Q,pL0) = theta_stable_quasi_data(p0), G = p0.real_form
@@ -673,12 +672,20 @@ set min_bottom_elim_factors(Param p0) = bool:
   		fi
   	     od
       in (true,answer,fail_ht)
-    {heights tried in turn: large derived heights cut to bl_stages fractions first (cheap,
-     usually decisive), then the full DLs.  E8_s x=229906, 99 tests: 169s -> 30s, same catches.}
+    {heights tried in turn: on factor j the first bl_stage_count next_heights below DLs[j]
+     (cheap, usually decisive), then DLs[j] itself; never stop short of DLs, since an uncaught
+     nonunitary p0 is not recorded and comes back.  Same answers as DL/2, 4DL/5, DL;
+     E7_s full 13003s -> 11537s; E8_s x=220459 lambda [1,1,1,1,1,1,1,-7] mbef 42s -> 28s (10/14/26)}
+    then lists = [[int]]:
+      for D@j in DLs
+      do (if D <= 0 then [int]: []
+      	  else let hs = [int]: for h in next_heights(derpL0js[j],bl_stage_count+1)
+	       	       	       do if h > 0 and h < D then [h] else [] fi od.##
+	       in hs[:min(bl_stage_count,#hs)]
+	  fi) # D
+      od
     then DLstages = [[int]]:
-      if none(for D in DLs do D > bl_stage_min od) then [DLs]
-      else for (a,b) in bl_stages do for D in DLs do if D > bl_stage_min then D*a\b else D fi od od # DLs
-      fi
+      for k:max(for l in lists do #l od) do for l in lists do l[min(k,#l-1)] od od
     then (tested,answer,fail_ht) = (false,true,DG)
     then () = for DLc in DLstages
               do if answer
