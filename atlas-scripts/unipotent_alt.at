@@ -1,0 +1,53 @@
+<nilpotent_orbits.at { for |dual_orbits|, |H@ComplexNilpotent|, |real_nilpotent_orbits| }
+<springer_tables_reductive.at { for |Springer_table| }
+<K_highest_weights.at { for |all_parameters_gamma| }
+<associated_variety_annihilator.at { for |GK_dim|, |GK_dim_maximal_ideal| }
+<weakly_unipotent.at { for |GK_dim_claude|, |GK_dim_maximal_ideal_memo| }
+
+{ Special unipotent representations of G directly from the definition: for each nilpotent
+  orbit O in the dual Lie algebra, gamma = O.H/2, and the representations are the irreducible
+  q of infinitesimal character gamma with Ann(q) = J_max(gamma). Ann(q) = J_max iff
+  GK_dim(q) = GK_dim_maximal_ideal(G,gamma); the cheap necessary condition that tau(q) is the set
+  of simple integral roots nonsingular for gamma is tested first.
+
+  unipotent_representations_alt uses the library GK_dim, which recomputes the W-cells of the
+  block for every Param (95% of the time). unipotent_representations_alt_fast uses the
+  block-memoized GK_dim_claude and a memoized GK_dim_maximal_ideal; same answers, 4-6x faster,
+  and faster than G.weak_packets.parameters (1.4-1.8x on Sp(6,R) .. F4_s, 1.25-1.3x on E6_q, E6_s). }
+
+{ indices of the simple roots of the integrality datum that are nonsingular for gamma, in the
+  numbering used by tau@Param }
+set nonsingular_integral_simple(RootDatum rd, ratvec gamma) = [int]:
+   let g = dominant(rd,gamma)
+   in for av@j in integrality_datum(rd,g).simple_coroots if g*av != 0 do j fi od
+
+set unipotent_representations_alt_verbose = false
+
+set unipotent_representations_alt(RealForm G) = [Param]:
+   ##for O in dual_orbits(G)
+   do let gamma = O.H/2
+      then list0 = all_parameters_gamma(G,gamma)
+      then S = nonsingular_integral_simple(G,gamma)
+      then list1 = for q in list0 if tau(q) = S do q fi od
+      then D = GK_dim_maximal_ideal(G,gamma)
+      then list2 = for q in list1 if GK_dim(q) = D do q fi od
+      in if unipotent_representations_alt_verbose
+         then prints("H=", O.H, " #all=", #list0, " #tau=", #list1, " #unip=", #list2)
+         fi; list2
+   od
+
+{ Only the dual orbits weak_packets@([ComplexNilpotent],RealForm,ratvec) uses: O fixed by
+  delta_check (cheap), and d(O) having a real form for G (implies the first). }
+set unipotent_representations_alt_fast(RealForm G) = [Param]:
+   let st = Springer_table(G)
+   ,  delta_check = ^G.distinguished_involution
+   in ##for O in dual_orbits(G)
+   do if not (twist(delta_check,O) = O) or =#real_nilpotent_orbits(st.dual_map_i(O),G)
+      then []
+      else let gamma = O.H/2
+           then S = nonsingular_integral_simple(G,gamma)
+           then list1 = for q in all_parameters_gamma(G,gamma) if tau(q) = S do q fi od
+           then D = GK_dim_maximal_ideal_memo(G,gamma)
+           in for q in list1 if GK_dim_claude(q) = D do q fi od
+      fi
+   od
