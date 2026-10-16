@@ -2405,7 +2405,9 @@ set u_predictor(Param p, int time) = int:
 			  	 fi
 		       	      od.##
     then N = #list, data_n = #data_inds, un = #unknown_indices
-    then () = J_SHIFT:=length(p.real_form.trivial) - length(p)+1
+    then () = J_SHIFT:=length(KGB(p.real_form,KGB_size(p.real_form)-1)) - length(p)+1
+    	 {max KGB length = length of the trivial rep, without building the trivial's block:
+	  length(p.real_form.trivial) took 53 s and 1.2 GB on E8_s (10/16/26)}
     then pred_list = {if uGAM_flag
     	 	     then pred(list, data_times, data_inds, GAM(p)) {try adding GAM(p) arg 5/5/26}
 		     {no longer understand why this could help}
