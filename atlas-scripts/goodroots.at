@@ -193,9 +193,13 @@ set is_pos_on_LKTsAP(Param p) = bool:
    fi
 
 {. this is Jeff's version, which is fastest .}
+{if x is not twist-fixed, then no final parameter at (x,lambda) can carry an invariant
+ Hermitian form. Therefore we return false in that case.  (Without this test finalize_extended
+ aborts: "Involution of parameter does not commute with delta", E6_s x=11, 10/16/26)}
 set is_pos_on_LKTs(Param p) = bool:
     let delta = p.real_form.distinguished_involution
-    in if not equivalent(p,twist(p)) {is_hermitian(p)} then
+    in if twist(p.x) != p.x then false
+       elif not equivalent(p,twist(p)) {is_hermitian(p)} then
     	 {prints("oops, parameter is not hermitian");} false
    	 else  #LKTs(p) = 1 or is_pure(convert_cform_hermitian(
    	 	  K_type_pol(finalize_extended(p*0, delta))))

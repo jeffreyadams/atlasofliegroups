@@ -786,9 +786,11 @@ set FPP_lambdas_full(KGBElt x) = [ratvec]:
 	     od.##
     fi
 
-{lambdas in FPP_lambdas_full(x) whose zero-nu parameter is positive on LKTs}
+{lambdas in FPP_lambdas_full(x) whose zero-nu parameter is positive on LKTs; none unless
+ twist(x) = x (see is_pos_on_LKTs)}
 set FPP_lambdas_short(KGBElt x) = [ratvec]:
-    if FPP_lambda_table_flag
+    if twist(x) != x then [ratvec]: []
+    elif FPP_lambda_table_flag
     then FPP_lam_table.FPP_lambdas_short(x)
     else let zeroNu = null(x.real_form.rank)/1
 	 in for lambda in FPP_lambdas_full(x)
