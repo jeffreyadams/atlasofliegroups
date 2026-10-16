@@ -2294,6 +2294,14 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr sr) // |sr| must be final
 bool Rep_table::has_KL_column(StandardRepr sr) // |sr| must be final
 {
   normalise(sr); // implies that |sr| will appear at the top of its own block
+
+  { // if no block of the family of |sr| is stored, answer without building one
+    auto srm = StandardReprMod::mod_reduce(*this,sr); // modulo $X^*$
+    locator loc;
+    auto rp = Reduced_param::reduce(*this,srm,sr.gamma(),loc);
+    if (reduced_hash.find(rp)==reduced_hash.empty)
+      return false;
+  }
   assert(is_final(sr));
 
   BlockElt z; block_modifier bm;
@@ -2304,6 +2312,14 @@ bool Rep_table::has_KL_column(StandardRepr sr) // |sr| must be final
 bool Rep_table::has_KL_Q_column(StandardRepr sr) // |sr| must be final
 {
   normalise(sr); // implies that |sr| will appear at the top of its own block
+
+  { // if no block of the family of |sr| is stored, answer without building one
+    auto srm = StandardReprMod::mod_reduce(*this,sr); // modulo $X^*$
+    locator loc;
+    auto rp = Reduced_param::reduce(*this,srm,sr.gamma(),loc);
+    if (reduced_hash.find(rp)==reduced_hash.empty)
+      return false;
+  }
 
   BlockElt z; block_modifier bm;
   auto& block = lookup(sr,z,bm);
