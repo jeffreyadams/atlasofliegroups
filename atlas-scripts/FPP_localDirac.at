@@ -3836,6 +3836,7 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVert
 		     	      	then short_hts(pmax)
 		     	      	else next_heights(pmax,depth)
 				fi
+		then () = if #Shorthts = 0 then Shorthts:= [height(pmax)+1] fi
     	      	then () = if #Shorthts < depth and revert_flag
 		     	  then return local_test_GEO_hash_else_dumb(x, lambda,
     	      	 	     Lvd, LF, Shorthts[:min(1,#Shorthts)], pol_hash, Uhash, fancy_tester)
@@ -3927,6 +3928,7 @@ set local_test_GEO_hash2(KGBElt x, ratvec lambda, {VertexData vd,} LocalVertexDa
     	     	     	 	    then short_hts(pmax)
 				    else next_heights(pmax,depth)
 				    fi
+		     then () = if #Shorthts = 0 then Shorthts:=[height(pmax)+1] fi
     		     then () = if #Shorthts < depth and revert_flag
 			       then return local_test_GEO_hash_else_dumb(x, lambda, Lvd, LF,
 			       	    	 Shorthts[:min(#Shorthts,1)], pol_hash, Uhash, fancy_tester)
@@ -4079,6 +4081,7 @@ set local_test_GEO_hash2_end(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[Fac
     	     	     	 	    then short_hts(pmax)
 				    else next_heights(pmax,depth)
 				    fi
+		     then () = if #Shorthts = 0 then Shorthts := [height(pmax)+1] fi
     		     then d0 = min(#Shorthts, depth)
 		     in Shorthts[:d0] ## for j:depth-d0 do Shorthts~[0] + j+1 od
     {then () = test_string:= " using local_test_GEO_hash2end"}
@@ -4551,6 +4554,7 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
     	     	     	 	    then short_hts(pmax)
 		     	      	    else next_heights(pmax,ONE+1)
 				    fi
+		     then () = if #Shorthts = 0 then Shorthts:=[height(pmax)+1] fi
     		     then d0 = min(#Shorthts, ONE+1)
 		     in Shorthts[:d0] ## for j:ONE+ 1 - d0 do Shorthts~[0]+j+1 od
     then one_ht = hts[ONE]
@@ -4702,7 +4706,10 @@ set local_test_GEO_hash_steve_steve_end(KGBElt x, ratvec lambda, LocalVertexData
     then () = long_out_flag:=false {to allow using local_test_hash without recording Params}
     then p0 = parameter(x, lambda, 0*lambda)
     then hts = next_heights(p0,edge_offset+1)
-    then one_ht = hts[edge_offset]
+    then one_ht = if #hts > 0
+    	 	  then hts[min(edge_offset, #hts-1)]
+		  else height(p0)
+		  fi
     then tester1 = (Param->bool): (Param p) bool:
      	     	  is_unitary_to_hts_big_SIMPLE{_interrupt_TOHTfirst}(p, hts) 
     then start_count = unitary_test_counter.use_count()
@@ -4925,7 +4932,10 @@ set local_test_GEO_hash_steve_end_faces(KGBElt x, ratvec lambda, LocalVertexData
     then () = long_out_flag:=false {to allow using local_test_hash without recording Params}
     then p0 = parameter(x, lambda, 0*lambda)
     then hts = next_heights(p0,edge_offset+1)
-    then one_ht = hts[edge_offset]
+    then one_ht = if #hts > 0
+    	 	  then hts[min(edge_offset, #hts-1)]
+		  else height(p0)
+		  fi
     then tester1 = (Param->bool): (Param p) bool:
      	     	  {is_unitary_to_hts_big_SIMPLE(p, hts)}
 		  is_unitary_to_hts_big_SIMPLE_interrupt{_TOHTfirst}(p,hts) {try 12/8/25}{replace THf 2/23}

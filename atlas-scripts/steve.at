@@ -1929,7 +1929,10 @@ set localFD_Steve2(KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Pe
     ([[FaceVertsKHash]],int):
     let start = elapsed_ms(), p0 = parameter(x,lambda,0*lambda)
     then hts = next_heights(p0,edge_offset+1), extra_coord_hold = extra_coord_flag
-    then H0 = hts[first_offset]
+    then H0 = if #hts > 0
+    	      then hts[min(first_offset,#hts-1)]
+	      else height(x,lambda)
+	      fi
     then () = if (edge_offset= first_offset)
     	      then extra_coord_flag := true
 	      else extra_coord_flag := false

@@ -21,6 +21,7 @@
 <smallQ.at {for theta_stable_data_small}
 <sort.at {for sort_by_height}
 <next_heights.at {for next_height*}
+next_xl_heights_hook := [next_xl_heights@(KGBElt,ratvec,int)] {see next_xl_heights_flag}
 <integrality_hash.at {for integrality_datum_hash}
 {BREAK HERE?}
 
@@ -5966,7 +5967,10 @@ set localFD_1Dirac2_by_zero\
 set localFD_1Dirac2_by_zero\
   ( KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2) =
     [[FaceVertsIndex]]:
-    localFD_1Dirac2_by_zero(x,lambda, next_heights(parameter(x,lambda,0*lambda),edge_offset+1)~[0], Lvd, Perm2)
+    localFD_1Dirac2_by_zero(x,lambda, (let nh = next_heights(parameter(x,lambda,0*lambda), edge_offset+1)
+    				      in if #nh = 0 then height(x,lambda)+1
+				      	 else nh~[0]
+					 fi), Lvd, Perm2)
 
 set localFD_1Dirac2_by_zero(KGBElt x, ratvec lambda, int HT) = [[FaceVertsIndex]]:
     let theta = x.involution, ic = x.inner_class
@@ -6021,9 +6025,10 @@ set localFD_1Dirac2_red_update\
 (   {if face_verbose
     then prints(new_line,"start localFD_1DiracBYZERO")
     fi;}
-    if next_heights(parameter(x,lambda,0*lambda),edge_offset+1)~[0] >= HT
-    then return LF
-    fi;
+    let nh = next_heights(parameter(x,lambda,0*lambda),edge_offset+1)
+    in if #nh = 0 or nh~[0] >= HT
+       then return LF
+       fi;
     let G = x.real_form, start = elapsed_ms()
     in for LFd@d in LF
        do for v in LFd
@@ -6547,7 +6552,11 @@ set to_htB_flag = false
 set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTypePol_hash ktp_hash,
 [[FaceVertsIndex]] LF) = [[FaceVertsKHash]]:
     let start = elapsed_ms(), p0 = parameter(x,lambda,0*lambda), startDBTcount = DBTcount
-    then ht = height(p0), HT0= next_heights(p0,edge_offset+1)~[0]
+    then ht = height(p0), nh = next_heights(p0,edge_offset+1)
+    then HT0= if #nh>0
+    	      then nh~[0]
+	      else height(p0) {or +1?}
+	      fi
     then () = if HT > HT0 and red_count_flag
 	      then LF := localFD_1Dirac2_red_update(x, lambda, HT, Lvd, LF)
 	      fi

@@ -336,8 +336,11 @@ set hard_test_bl(KGBElt x, ratvec lambda) = bool:
 	       		  then 0
 			  elif more_calc_flag
 			  then let p0 = parameter(x,lambda,0*lambda)
-			       in next_heights(p0, more_int)[more_int-1] -
-			       	  height(p0)
+			       then nhts = next_heights(p0, more_int)
+			       in if #nhts>0
+			       	  then nhts~[0] - height(p0)
+				  else 0
+				  fi
 			  else gate8_more
 			  fi); true
           else more_shift(0); false

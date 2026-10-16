@@ -96,8 +96,12 @@ set next_heights = (RealForm -> int):
        	    then i = ichash.match(L)
 	    then ()= if i = I {haven't yet seen L}
 		     then nhs#:=max(for p in all_parameters_gamma(L, null(L.rank))
-    	     	      	       	    do next_heights(p, max(1, floor((semisimple_rank(L) + 1)*NH_factor)))~[0]
-				    {(semisimple_rank(L) + 1)\2)}
+    	     	      	       	    do let nh = next_heights(p, max(1, floor((semisimple_rank(L) + 1)*NH_factor)))
+				       {(semisimple_rank(L) + 1)\2)}
+				       {with next_xl_heights_flag nh may be short: use the highest height found.
+					Empty means no nonunitary Params at (p.x,p.lambda), even outside the FPP
+					(e.g. SU(2,1), x=0, lambda=0), so p adds nothing to the bound}
+				       in if #nh = 0 then height(p) else nh~[0] fi
 	     	     	       	    od)
     	    	     fi
 	    in nhs[i]
@@ -675,14 +679,20 @@ set min_bottom_elim_factors(Param p0) = bool:
     {heights tried in turn: on factor j the first bl_stage_count next_heights below DLs[j]
      (cheap, usually decisive), then DLs[j] itself; never stop short of DLs, since an uncaught
      nonunitary p0 is not recorded and comes back.  Same answers as DL/2, 4DL/5, DL;
-     E7_s full 13003s -> 11537s; E8_s x=220459 lambda [1,1,1,1,1,1,1,-7] mbef 42s -> 28s (10/14/26)}
+     E7_s full 13003s -> 11537s; E8_s x=220459 lambda [1,1,1,1,1,1,1,-7] mbef 42s -> 28s (10/14/26)
+     With next_xl_heights_flag: only the next_xl heights of (derx,derlambda) up to DLs[j], never
+     DLs[j] itself; none means nothing nonunitary there, so factor j stays at height 0 (10/15/26)}
     then lists = [[int]]:
       for D@j in DLs
-      do (if D <= 0 then [int]: []
-      	  else let hs = [int]: for h in next_heights(derpL0js[j],bl_stage_count+1)
-	       	       	       do if h > 0 and h < D then [h] else [] fi od.##
-	       in hs[:min(bl_stage_count,#hs)]
-	  fi) # D
+      do if D <= 0 then [0]
+      	 elif next_xl_heights_flag
+	 then let hs = [int]: for h in next_heights(derpL0js[j],bl_stage_count)
+	       	       	      do if h > 0 and h <= D then [h] else [] fi od.##
+	      in if #hs = 0 then [0] else hs fi
+      	 else let hs = [int]: for h in next_heights(derpL0js[j],bl_stage_count+1)
+	       	       	      do if h > 0 and h < D then [h] else [] fi od.##
+	      in hs[:min(bl_stage_count,#hs)] # D
+	 fi
       od
     then DLstages = [[int]]:
       for k:max(for l in lists do #l od) do for l in lists do l[min(k,#l-1)] od od

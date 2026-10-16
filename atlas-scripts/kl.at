@@ -212,9 +212,18 @@ set ind_quo(KGBElt x, ratvec lambda, vec av, rat t) = KTypePol:
     then pL = pL(x,lambda,av,t)
     in K_type_pol(std_quo(pL))  next ind_quoTIME+:= elapsed_ms() - start
 
+set ind_quo_param(KGBElt x, ratvec lambda, vec av, rat t) = ParamPol:
+    let start = elapsed_ms()
+    then pL = pL(x,lambda,av,t)
+    in std_quo(pL)  next ind_quoTIME+:= elapsed_ms() - start
+
 set ind_quo_simp(KGBElt x, ratvec lambda, vec av, rat t) = (KTypePol,mat):
     let start = elapsed_ms(), (pL_simp,M) = pL_simp(x,lambda,av,t)
     in (K_type_pol(std_quo(pL_simp)),M) next ind_quoTIME+:= elapsed_ms() - start
+
+set ind_quo_param_simp(KGBElt x, ratvec lambda, vec av, rat t) = (ParamPol,mat):
+    let start = elapsed_ms(), (pL_simp,M) = pL_simp(x,lambda,av,t)
+    in (std_quo(pL_simp),M) next ind_quoTIME+:= elapsed_ms() - start
 
 set to_ht_G(RealForm G, KTypePol QL, int HT) = KTypePol:
     if HT.< then return QL fi;
@@ -223,6 +232,16 @@ set to_ht_G(RealForm G, KTypePol QL, int HT) = KTypePol:
     	do if dominant(G,parameter(tauL).d_lambda)*(G.two_rho_check) <= HT
 	   then c*tauL
 	   else 0*tauL
+	   fi
+	od)
+
+set to_ht_G(RealForm G, ParamPol QL, int HT) = ParamPol:
+    if HT.< then return QL fi;
+    sum(QL.real_form,
+	for c@qL in QL
+    	do if dominant(G,qL.d_lambda)*(G.two_rho_check) <= HT
+	   then c*qL
+	   else 0*qL
 	   fi
 	od)
 
@@ -237,6 +256,18 @@ set to_ht_G_simp(RealForm G, ratvec dlambda, KTypePol QL, int HT, mat M) = KType
     	do if dominant(G,lambda0 +(J* parameter(tauL).d_lambda)/d)*(G.two_rho_check) <= HT
 	   then c*tauL
 	   else 0*tauL
+	   fi
+	od)
+
+set to_ht_G_simp(RealForm G, ratvec dlambda, ParamPol QL, int HT, mat M) = ParamPol:
+    if HT.< then return QL fi;
+    let (J,d) = simp_lift(G,M)
+    then lambda0 = dlambda - (J*(M*dlambda))/d
+    in sum(QL.real_form,
+	for c@qL in QL
+    	do if dominant(G,lambda0 +(J* qL.d_lambda)/d)*(G.two_rho_check) <= HT
+	   then c*qL
+	   else 0*qL
 	   fi
 	od)
 

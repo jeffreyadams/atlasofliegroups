@@ -310,7 +310,21 @@ set next_heightC_zero_flag = true
 
 set fine_next_frac = rat: 9/10
 
+{next_xl_heights_flag: next_heights(Param,int) answers with next_xl_heights(p.x,p.lambda,D)
+ (hermitian.at; installed in next_xl_heights_hook by FPP_faces_herm.at), even when that finds
+ fewer than D heights (e.g. none at the compact Cartan); next_xl_fallbacks counts those (name kept)}
+set next_xl_heights_flag = false
+set next_xl_heights_hook = [(KGBElt,ratvec,int->[int])]: [ (KGBElt x, ratvec lambda, int D) [int]: [int]: [] ]
+set next_xl_fallbacks = int: 0
+set next_xl_uses = int: 0
+set next_xl_time = int: 0
+
 set next_heights(Param p, int D) = [int]:
+    if next_xl_heights_flag
+    then let t0 = elapsed_ms(), a = next_xl_heights_hook[0](p.x,p.lambda,D)
+    	 in next_xl_time +:= elapsed_ms()-t0;
+	    next_xl_uses +:= 1; if #a < D then next_xl_fallbacks +:= 1 fi; return a
+    fi;
     if p.x.number > fine_next_frac*KGB_size(p.real_form)
     then let answer = [int]:[]
     	 in for mu in LKTs(p) do answer##:= next_heights(mu,D) od

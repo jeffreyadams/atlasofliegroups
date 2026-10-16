@@ -10,6 +10,7 @@
 <kl.at {for def_low}
 <jagged_deform.at {for new full_deform}
 <integrality_hash.at
+<goodroots.at {for anti_finalize}
 
 set deformLookupCounter = make_counter()
 set deformCalcCounter = make_counter()
@@ -190,10 +191,10 @@ set regroup(RealForm G, Param p) = Param:
     fi
 
 set low_height(KTypePol P) = int:
-    if P.= then -1 else height(last_K_type(P)) fi
+    if P.= then -1 else height(first_K_type(P)) fi
 
 set low_height(ParamPol P) = int:
-    if P.= then -1 else height(last_param(P)) fi
+    if P.= then -1 else height(first_param(P)) fi
 
 set impure_height(KTypePol P) = int:
     if is_pure(P) then -1
@@ -1200,6 +1201,98 @@ in for alpha_v@j in rd.poscoroots
       do alpha_v
       fi
    od
+
+set lowest_terms(ParamPol P) = ParamPol:
+    if P.= then P
+    else let h = height(first_param(P))
+         in null_module(P.real_form) + for c@p in P do if height(p) = h then [(c,p)] else [] fi od.##
+    fi
+
+set xl_height(KGBElt x, ratvec lambda) = int:
+    let theta = x.involution, rd = x.root_datum
+    then quo = dominant(rd,(1+theta)*lambda)*rd.rho_check
+    in quo.numer\quo.denom
+
+{(x,lambda) moved by complex cross actions to an x with no complex ascents}
+set xl_no_Cplus(KGBElt x, ratvec lambda) = (KGBElt,ratvec):
+    let q = to_no_Cplus(parameter(x,lambda,0*lambda)) in (q.x,q.lambda)
+
+{next_xl is memoised on the no_Cplus (x,lambda); its answers are no_Cplus too}
+set next_xl_keys = make_xlambda_hash()
+set next_xl_vals = [[(KGBElt,ratvec)]]: []
+
+set next_xl(KGBElt x, ratvec lambda) = [(KGBElt, ratvec)]:
+    let (x,lambda) = xl_no_Cplus(x,lambda)
+    then N = next_xl_keys.size(), k = next_xl_keys.match(x,lambda)
+    in if k < N then next_xl_vals[k]
+       else let theta = x.involution, G = x.real_form, j = int: 0
+       then xl_hash=make_xlambda_hash(), HT = height(x,lambda)
+       then add(Param q) = void:
+       	    if is_standard(q) and height(q)>HT and not is_zero(q) then xl_hash.match(xl_no_Cplus(q.x,q.lambda)) fi
+       in for av in red_coroots_DV(x,lambda)
+       	  do j := poscoroot_index(G,av);
+	     if (av*(1+theta)).!= {complex av}
+	     then {add multiples of alpha just until q is nonzero; a non-standard q is dropped}
+	     	  let T = 1, q = parameter(x,lambda+G.posroots[j],0*lambda)
+	     	  in while is_standard(q) and is_zero(q) and T < 100
+		     do T +:= 1; q := parameter(x,lambda+T*G.posroots[j],0*lambda) od;
+		     add(q)
+	     else {real av}
+	     	  let alpha = G.posroots[j]
+		  then p = parameter(x,lambda,alpha)
+		  then cp = if is_parity(alpha,p)
+		      	    then Cayley(alpha,p)
+			    else Cayley(alpha,p*(1/2))
+			    fi
+		  in add(cp); add(cross(alpha,cp))
+	     fi {is complex}
+	  od; {av in red_coroots}
+	  next_xl_vals #:= xl_hash.list();
+	  next_xl_vals~[0]
+       fi
+
+{iterate next_xl from (x,lambda), always expanding a pair of least height; every pair from
+ next_xl is strictly higher, so all pairs of height <= h are found once everything lower is
+ expanded.  Stop when that complete part has n heights above height(x,lambda) (or nothing is
+ left); return the pairs at those n heights, (x,lambda) excluded, sorted by height.}
+set next_xls(KGBElt x, ratvec lambda, int n) = [(KGBElt,ratvec)]:
+    let H = make_xlambda_hash(), hts = [int]: [], done = [bool]: []
+    then () = H.match(xl_no_Cplus(x,lambda)); hts #:= xl_height(x,lambda); done #:= false
+    then h0 = hts[0], going = true, cut = int: -1
+    then count_upto = (int h) int: #(for g in hts do if g > h0 and g <= h then [g] else [] fi od.##.sort_u)
+    in while going
+       do let i = -1
+       	  in for g@k in hts do if not done[k] and (i < 0 or g < hts[i]) then i := k fi od;
+	     if i < 0 then going := false {everything expanded: all heights are complete}
+	     elif count_upto(hts[i]) >= n then going := false; cut := hts[i]
+	     else done[i] := true;
+	     	  let (y,mu) = H.index(i)
+		  in for (z,nu) in next_xl(y,mu)
+		     do let N = H.size() in if H.match(z,nu) = N then hts #:= xl_height(z,nu); done #:= false fi
+		     od
+	     fi
+       od;
+       let ok = for g in hts do g > h0 and (cut < 0 or g <= cut) od
+       then ks = for k:#hts do if ok[k] then [k] else [] fi od.##
+       then hk = sort_by((int k) int: hts[k])(ks)
+       {keep pairs at the n lowest heights above h0}
+       then hs = (for k in hk do hts[k] od).sort_u
+       then top = if #hs > n then hs[n-1] else (if #hs = 0 then h0 else hs~[0] fi) fi
+       in for k in hk do if hts[k] <= top then [H.index(k)] else [] fi od.##
+
+{memoised on the no_Cplus (x,lambda): the answer for n is a prefix of the answer for any larger n,
+ and an answer shorter than the n asked for is everything there is}
+set next_xl_heights_keys = make_xlambda_hash()
+set next_xl_heights_vals = [(int,[int])]: [] {(largest n computed, its answer)}
+set next_xl_heights(KGBElt x, ratvec lambda, int n) = [int]:
+    let N = next_xl_heights_keys.size(), k = next_xl_heights_keys.match(xl_no_Cplus(x,lambda))
+    then compute() = [int]: (for (y,mu) in next_xls(x,lambda,n) do xl_height(y,mu) od).sort_u
+    in if k = N then let a = compute() in next_xl_heights_vals #:= (n,a); a
+       else let (m,a) = next_xl_heights_vals[k]
+       	    in if n <= m or #a < m then a[:min(n,#a)]
+	       else let b = compute() in next_xl_heights_vals[k] := (n,b); b
+	       fi
+       fi
 
 {like is_pure, but in case of false, second value is the lowest K-type where
 the KTypePol changes sign. Better to put the guilty K-type in a hash table.}
