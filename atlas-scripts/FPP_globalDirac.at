@@ -247,8 +247,9 @@ set bl_KGB_frac = rat:1/5
 set bl_rank_min = 7
 set bl_split_rank_min = 5
 
-{value of bl_KGB_frac to use from for rank = bl_rank_min}
-set bl_KGB_frac_min = rat: 2/5
+{value of bl_KGB_frac to use from for rank = bl_rank_min.  2/5 -> 7/20 on 10/16/26 after mbef
+ staging: cold 10-x E7_s slices, bl/ol >= 1 below x/#KGB ~0.34, < 1 from 0.36 up}
+set bl_KGB_frac_min = rat: 7/20
 
 set bl_more_min_rank = 8
 

@@ -680,13 +680,14 @@ set min_bottom_elim_factors(Param p0) = bool:
      (cheap, usually decisive), then DLs[j] itself; never stop short of DLs, since an uncaught
      nonunitary p0 is not recorded and comes back.  Same answers as DL/2, 4DL/5, DL;
      E7_s full 13003s -> 11537s; E8_s x=220459 lambda [1,1,1,1,1,1,1,-7] mbef 42s -> 28s (10/14/26)
-     With next_xl_heights_flag: only the next_xl heights of (derx,derlambda) up to DLs[j], never
-     DLs[j] itself; none means nothing nonunitary there, so factor j stays at height 0 (10/15/26)}
+     With mbef_xl_stages_flag (default): only the next_xl heights of (derx,derlambda) up to DLs[j],
+     never DLs[j] itself; none means nothing nonunitary there, so factor j stays at height 0
+     (10/15/26).  Independent of next_xl_heights_flag (next_heights.at)}
     then lists = [[int]]:
       for D@j in DLs
       do if D <= 0 then [0]
-      	 elif next_xl_heights_flag
-	 then let hs = [int]: for h in next_heights(derpL0js[j],bl_stage_count)
+      	 elif mbef_xl_stages_flag
+	 then let hs = [int]: for h in next_xl_heights_counted(derpL0js[j],bl_stage_count)
 	       	       	      do if h > 0 and h <= D then [h] else [] fi od.##
 	      in if #hs = 0 then [0] else hs fi
       	 else let hs = [int]: for h in next_heights(derpL0js[j],bl_stage_count+1)
