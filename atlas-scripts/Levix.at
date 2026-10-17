@@ -75,9 +75,10 @@ set Levix_simpTIME = int:0
 
 {rho_C for the Levi Levix(x,av), from rd and theta alone (no L constructed): one root from
 each complex pair of positive roots beta with (1-theta)*beta a multiple of (1-theta)*alpha,
-alpha the root for av. Agrees with rho_C(L,theta) on the nose, not just mod (1-theta).}
+alpha the root for av. Agrees with rho_C(L,theta) on the nose, not just mod (1-theta).
+av may be a negative coroot (coroot_index is then negative; the Levi is the same as for -av).}
 set rho_C_Levi(RootDatum rd, mat theta, vec av) = vec:
-    let alpha = rd.posroots[coroot_index(rd,av)]
+    let alpha = rd.roots[coroot_index(rd,av) + rd.nr_of_posroots]
     then key = alpha - theta*alpha, zero = null(rd.rank)
     in sum(rd.rank, for beta@j in rd.posroots
     	   	    do if rank([key, beta - theta*beta]) <= 1 {beta is a root of L}

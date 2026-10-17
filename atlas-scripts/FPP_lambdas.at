@@ -328,6 +328,160 @@ set real_ind_irr_suff(Param p0, vec tau, int HT) = bool:
 	       (let c = if av*gamma > 0 then av else av*theta fi in test(x,lambda,c,c*gamma,HT))
 	    od)
 
+{Real induction allowing a central part of nu on M' (deformation to a hermitian pM'), see
+ ind_cand_params_lin_def. Validated 17 Oct 2026 (laptop): 515 candidates with nu_c /= 0 passing
+ real_ind_irr_suff_path in Sp(4,R), SU(2,2), G2_s, Sp(6,R), SO(4,3), SL(4,R), SU(3,2), SO(5,3),
+ Spin(4,4); hermitian_form_irreducible(p) = real_induce_standard(hermitian_form_irreducible(q0),G)
+ in all 515. 433 of 1928 hermitian params got such a candidate and none from the nu_c = 0 search.}
+
+{Irreducibility of Ind(J(pM'_t)) for every t in [0,1] by David's criterion real_ind_irr_suff,
+ along the path p_t = (x0,lambda0,nu0-(1-t)nu_c), nu_c in the split center of M' = centralizer of
+ tau. t = 0 is needed: there the form is <A(w,0)f,g> with A(w,0) a self-intertwiner of
+ Ind(J(pM'_0)), equal to (a multiple of) the induced form only if Ind(J(pM'_0)) is irreducible
+ (Sp(4,R), p = (x=6,[1,2],[0,1]/2): two summands, opposite signs). For a coroot av outside M' put
+ a = av*gamma0, c = av*(gamma0+theta*gamma0) (constant in t), b = av*nu_c; with s = 1-t in [0,1],
+ av*gamma_t = a-s*b and av*theta*gamma_t = c-(a-s*b). Both are integers only if c is, and then
+ at the s where a-s*b = n is an integer; the criterion fails there iff n*(c-n) < 0. At s = 0
+ (t = 1) this is real_ind_irr_suff(p0,tau).}
+set real_ind_irr_suff_path(Param p0, vec tau, ratvec nu_c) = bool:
+    let rd = p0.root_datum, theta = p0.x.involution, gamma = p0.infinitesimal_character
+    in none(for av@j in rd.poscoroots
+    	    do tau*rd.posroots[j] != 0 and
+	       (let a = av*gamma, c = av*(gamma+theta*gamma), b = av*nu_c
+		in is_integer(c) and
+		   (let ci = floor(c) then lo = min(0,ci), hi = max(0,ci)
+		    then (nmin,nmax) = {integers n with a-s*b = n for some s in [0,1]}
+			 if b = 0 then if is_integer(a) then (floor(a),floor(a)) else (1,0) fi
+			 elif b > 0 then (ceil(a-b), floor(a))      {n in [a-b,a]}
+			 else (ceil(a), floor(a-b))                 {n in [a,a-b]}
+			 fi
+		    in nmin <= nmax and (nmin < lo or nmax > hi)))
+	    od) and
+    {t = 0: reducibility at the unitary point is not an integrality crossing; the cases seen show as
+     I(p_0) = Ind(I(pM'_0)) not final (empirical: no proof that finality suffices). Tried instead:
+     is_pos_on_LKTs(p_0) -- NOT sufficient (Sp(6,R) p = (x=27,[1,3,2],[0,1,1]/4): p_0 not final,
+     is_pos_on_LKTs true, induced form (+1,s) on the two LKTs, J(p) positive on both). It tests
+     the Knapp-Stein form of p_0*0, not A(w,0) on Ind(J(pM'_0)) when pM'_0 has nu /= 0 on M'.}
+    #monomials(finalize(parameter(p0.x,p0.lambda,p0.nu-nu_c))) = 1
+
+{The same to height HT (HT < 0: real_ind_irr_suff_path): meant to give that J(p) and Ind(J(q0)) have
+ the same form on K-types of height <= HT. Along the path a failing integral point counts only if
+ the reducibility quotient it controls has K-types of height <= HT (test@(KGBElt,ratvec,vec,rat,int)
+ of kl.at, with the coroot oriented positive on gamma_t, as in real_ind_irr_suff(p0,tau,HT)); at
+ t = 0 finalize(p_0) must be one term or (its terms all having one height) of height > HT.}
+set real_ind_irr_suff_path(Param p0, vec tau, ratvec nu_c, int HT) = bool:
+    if HT < 0 then return real_ind_irr_suff_path(p0,tau,nu_c) fi;
+    let rd = p0.root_datum, theta = p0.x.involution, gamma = p0.infinitesimal_character,
+    	x = p0.x, lambda = p0.lambda
+    in none(for av@j in rd.poscoroots
+    	    do tau*rd.posroots[j] != 0 and
+	       (let a = av*gamma, c = av*(gamma+theta*gamma), b = av*nu_c
+		in is_integer(c) and
+		   (let ci = floor(c)
+		    then (nmin,nmax) =
+			 if b = 0 then if is_integer(a) then (floor(a),floor(a)) else (1,0) fi
+			 elif b > 0 then (ceil(a-b), floor(a))
+			 else (ceil(a), floor(a-b))
+			 fi
+		    in any(nmax-nmin+1,
+			   (int i) bool:
+			   let n = nmin+i
+			   in n*(ci-n) < 0 and
+			      {test wants a coroot positive on gamma_t whose theta-image is negative there:
+			       av if n > 0; else theta*av (value ci-n) if it is a positive coroot, else -av
+			       (value -n; always for real av)}
+			      (if n > 0 then test(x,lambda,av,n,HT)
+			       elif is_poscoroot(rd,av*theta) then test(x,lambda,av*theta,ci-n,HT)
+			       else test(x,lambda,-av,-n,HT)
+			       fi))))
+	    od) and
+    (let fs = monomials(finalize(parameter(p0.x,p0.lambda,p0.nu-nu_c))) {all of one height}
+     in #fs = 1 or height(fs[0]) > HT)
+
+set icp_def_count = [int]: [0,0,0,0] {calls, lines found, lines with nu_c /= 0, hermitian found}
+{(p0, [(q0,tau,nu_c)]): as ind_cand_params_lin_tau, but a line tau is accepted even when nu is not
+ in the span of the chosen restricted roots. nu_c is the residual: the part of nu0 in the split
+ center a_M'^* of M' = centralizer of tau (Q-orthogonal to the roots of M'). q0 is a hermitian
+ final parameter on M' with Ind(I(q0)) = I(p_0), p_0 = (x0,lambda0,nu0-nu_c); nu_c = 0 gives the
+ candidates of ind_cand_params_lin_tau. If real_ind_irr_suff_path(p0,tau,nu_c), J(p) is
+ Ind(J(q0 + nu_c)) and has the signature of the form induced from J(q0) (deformation of the
+ central character from 0 without crossing reducibility).}
+set ind_cand_params_lin_def(Param p) = (Param,[(Param,vec,ratvec)]):
+    icp_def_count[0] +:= 1;
+    if not equivalent(p,twist(p)) then return (p,[]) fi;
+    let G = p.real_form, rd = p.root_datum
+    then p0 = to_no_Cplus(p)
+    then x0 = p0.x, theta = p0.x.involution
+    then dim_a = rank(1-theta)
+    then () = if dim_a = 0 then return (p0,[]) fi
+    then A = rd.invariant_form_matrix
+    then Q(ratvec v, ratvec w) = rat: v*A*w
+    then res = [vec]:
+    	 (for beta in rd.posroots
+	  do let v = beta - theta*beta
+	     in if =v then [] else let i = first(for c in v do c != 0 od)
+	     	  	   	   in if v[i] > 0 then [v] else [-v] fi
+	     fi
+	  od.##).no_reps
+    then perp([ratvec] E, ratvec v) = ratvec:
+    	 let u = v in for e in E do u -:= (Q(v,e)/Q(e,e))*e od; u
+    then () = if #res = 0 then return (p0,[]) fi
+    then RA = ^(mat: for alpha in res do alpha od)*A
+    then N0 = [rat]: for alpha in res do Q(alpha,alpha) od
+    then lines = [(vec,ratvec)]: [], nodes = 0
+    then stack = [([vec],[ratvec],ratvec,[rat])]: [([vec]:[],[ratvec]:[],ratvec: p0.nu,N0)]
+    {same greedy search, but every leaf (dim a - 1 independent restricted roots) gives a line, with
+     the residual as nu_c; when no root reduces the residual, any independent root extends}
+    then () =
+	 while #stack > 0 and #lines < icp_lin_K and nodes < icp_lin_nodes
+	 do let (chosen,E,r,N) = stack~[0] in stack := stack[:#stack-1]; nodes +:= 1;
+	    if #chosen = dim_a - 1
+	    then let C = if #chosen = 0 then 1+theta
+			 else (1+theta) ## (mat: for alpha in chosen do alpha od) fi
+		 then K = kernel(^C)
+		 then () = assert(n_columns(K) = 1,"ind_cand_params_lin_def: split center of M' not a line")
+		 then tau = K[0]
+		 then i = first(for c in tau do c != 0 od)
+		 then tau = if tau[i] < 0 then -tau else tau fi
+		 in if none(for (t,) in lines do t = tau od) then lines #:= (tau,r) fi
+	    else let rzero = r = 0*r
+		 then c = if rzero then null(#res) else RA*r fi
+		 then reducing = [(int,rat)]:
+		      for n@i in N do if n = 0 or rzero or c[i] = 0 then [] else [(i,c[i]*c[i]/n)] fi od.##
+		 then scored = if #reducing > 0 then reducing
+		 	       else for n@i in N do if n = 0 then [] else [(i,rat:1)] fi od.## fi
+		 then picks = [int]: []
+		 then () = for k:min(icp_lin_b,#scored)
+			   do let j = -1, best = rat: -1
+			      in for (i,sc)@jj in scored
+				 do if sc > best and none(for i2 in picks do i2 = i od)
+				    then j := jj; best := sc fi
+				 od; let (i,) = scored[j] in picks #:= i
+			   od
+		 in for i in picks ~do
+		       let u = perp(E,res[i]) then quu = Q(u,u) then d = RA*u
+		       then Nn = [rat]: for n@j in N do n - d[j]*d[j]/quu od
+		       then rn = if rzero then r else r - (Q(r,u)/quu)*u fi
+		       in stack #:= (chosen # res[i], E # u, rn, Nn)
+		    od
+	    fi
+	 od
+    then () = icp_def_count[1] +:= #lines
+    then cands = make_Param_hash(), triples = [(Param,vec,ratvec)]: []
+    then () =
+    	 for (tau,nu_c) in lines
+	 do let () = if nu_c != 0*nu_c then icp_def_count[2] +:= 1 fi
+	    then (L,) = real_Levi_of_cwt(x0,tau)
+	    then pL = real_restrict(parameter(x0,p0.lambda,p0.nu-nu_c),L)
+	    then qs = monomials(finalize(pL))
+	    then k = first(for q in qs do equivalent(q,twist(q)) od)
+	    in if k >= 0
+	       then icp_def_count[3] +:= 1;
+	       	    let n = cands.size() in if cands.match(qs[k]) = n then triples #:= (qs[k],tau,nu_c) fi
+	       fi
+	 od
+    in (p0,triples)
+
 {D stands for "derived." For each final Hermitian pL inducing to p found by ind_cand_params,
 take derived factors [dpL]; so pL is unitary if and only if all dpL are.}
 {This function is used in function is_u_ind}
