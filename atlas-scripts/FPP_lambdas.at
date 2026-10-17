@@ -115,7 +115,7 @@ set ind_cand_params(Param p) = [[Param]]:
 	      do if theta1*matrix(w) = matrix(w)*theta1 then [i] else [] fi
 	      od.##
 	 fi
-    then xo = x_open(G), (y2,p2) = from_no_Cplus(q1) {real induction}
+    then (y2,p2) = from_no_Cplus(q1) {real induction}
     then yinv2 = y2.inverse {goes from q1 to p2}
     {The W-orbit can be as large as W (23040 for D6), so the filter below is one matrix
      product per L2, and matrix(w) and a Param are made only for the w that pass it. They
@@ -133,23 +133,18 @@ set ind_cand_params(Param p) = [[Param]]:
 	      	 then P2_max_cowts#:=tau
 		 fi
 	      od
-    then P2s = for tau in P2_max_cowts
-    	       do parabolic_by_cwt(tau,xo)
-	       od
-    then () = for P2 in P2s
-    	      do if not parabolic_is_real(P2)
-	      	 then prints("bad parabolic ",P2," at p = ",p)
-		 fi
-	      od
-    then tempL_hashes = for P2 in P2s do make_Param_hash() od
-    then L2s = for P2 in P2s do P2.Levi od
-    then xL2s = for L2 in L2s do inverse_embed_KGB(p2.x,L2) od
-    then lam_shift = q1.lambda - G.rho, shiftG = rho_C(G,theta2)
+    {the real Levis L2 of the Cartan of p2.x centralizing the taus, not necessarily standard}
+    then LxL2s = for tau in P2_max_cowts do real_Levi_of_cwt(p2.x,tau) od
+    then L2s = for (L2,) in LxL2s do L2 od, xL2s = for (,xL2) in LxL2s do xL2 od
+    then tempL_hashes = for L2 in L2s do make_Param_hash() od
+    then lam_shift = q1.lambda - G.rho
     then () =  for L2@j in L2s
        	       do let tauN = P2_max_cowts[j]*nu2_orb
 		  {requirement for hermitian on L2 is tau*nu = 0; tau is -theta2
 		   anti-invariant, so testing before parameter() projects nu is the same test}
-		  then shift = shiftG + rho(L2) - rho_C(L2,theta2)
+		  {so that real_induce_standard of the Param below is
+		   parameter(p2.x, M*lam_shift + G.rho, nu)}
+		  then shift = G.rho - real_Levi_shift(p2.x,xL2s[j])
 		  {Keep only nu dominant for the real roots of L2 at xL2s[j]: nu's in one orbit
 		   of the real Weyl group of L2 finalize to the same Param (tested, not proved).
 		   On real coroots the lambda part of the infinitesimal character pairs to 0, so
@@ -194,22 +189,12 @@ set ind_cand_params(Param p) = [[Param]]:
  the alphas already chosen best reduces the residual of nu, and subtracts that projection. If
  the residual vanishes, extend to dim a - 1 independent alphas; the roots whose restrictions lie
  in their span form a maximal Levi M' of a real parabolic containing M, with nu trivial on the
- split center of M'. pM' is p restricted to M', so real_induce_standard(pM',G) = p. Returns
+ split center of M'. M' is the centralizer of a coweight tau, usually not a standard Levi (no
+ conjugation to standard: real_Levi_of_cwt, real_restrict in induction.at). pM' is p restricted to M', so real_induce_standard(pM',G) = p. Returns
  [[pM']] when some constituent of finalize(pM') is hermitian (that one), else [].
  Greedy, so it may miss candidates that the W-orbit search finds.}
 set icp_lin_count = [int]: [0,0,0,0,0,0] {calls, nu in span, hermitian found, restriction check failed,
-    not hermitian, conjugation not equivalent}
-{Equivalent parameter in which the coweight tau (in the -1 eigenspace of theta_x, so zero on
- imaginary roots) becomes dominant: simple reflections s with tau*alpha_s < 0, acting on (x,lambda,nu)
- linearly if alpha_s is complex, by the affine reflection through rho on lambda if real.}
-set conj_cowt_dominant(Param p, vec tau) = (Param,vec):
-    let rd = p.root_datum, x = p.x, lam = p.lambda, nu = p.nu, rho = p.root_datum.rho
-    in while let s = first(rd.semisimple_rank, (int i) bool: tau*rd.simple_roots[i] < 0) in s >= 0
-       do let r = reflection(rd,rd.simple_roots[s]), st = status(s,x)
-       	  in assert(st = 0 or st = 2 or st = 4, "conj_cowt_dominant: imaginary root");
-	     if st = 2 {real} then lam := r*(lam-rho)+rho else lam := r*lam fi;
-	     nu := r*nu; x := cross(s,x); tau := tau*r
-       od; (parameter(x,lam,nu),tau)
+    not hermitian, unused (was: conjugation to standard not equivalent)}
 set icp_lin_check = true {check real_induce_standard(pM',G) = p}
 set icp_lin_time = [int]: [0,0,0,0] {ms in: setup, search, lines (Levi and pM'), checks}
 set icp_lin_K = 1     {max number of maximal Levis M' (lines tau) to collect}
@@ -298,13 +283,8 @@ set ind_cand_params_lin_tau(Param p) = (Param,[(Param,vec)]):
     then cands = make_Param_hash(), pairs = [(Param,vec)]: []
     then () =
     	 for tau in lines
-	 do let (p1,tau_dom) = conj_cowt_dominant(p0,tau)
-	    then x1 = p1.x, lam1 = p1.lambda, nu1 = p1.nu
-	    then () = if icp_lin_check and not equivalent(p1,p0) then icp_lin_count[5] +:= 1 fi
-	    then L = Levi(parabolic_by_cwt(tau_dom,x1))
-	    then xL = inverse_embed_KGB(x1,L), theta1 = x1.involution
-	    then shift = rho_r(x1)-rho_r(xL)+(1-theta1)*(rho_S(x1)-rho_S(xL))
-	    then pL = parameter(xL, lam1 - shift, nu1)
+	 do let (L,) = real_Levi_of_cwt(x0,tau) {centralizer of tau: a real Levi, not nec. standard}
+	    then pL = real_restrict(p0,L)
 	    then tc = elapsed_ms()
 	    then () = if icp_lin_check and not equivalent(real_induce_standard(pL,G),p)
 		      then icp_lin_count[3] +:= 1
