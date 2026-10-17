@@ -208,22 +208,17 @@ set real_restrict (Param p,RealForm L) = Param:
   assert(@:is_real_Levi_for(L,x_G),"L is not Levi of real parabolic");
   parameter(x_L,lambda(p)-real_Levi_shift(x_G,x_L),nu(p))
 
-{. Real parabolic induction of a standard module of real Levi L (i.e., L
-  must be the Levi factor of a real parabolic subgroup) to G .}
+{. Real parabolic induction of a standard K_L-module of real Levi L (not
+  necessarily standard) to G: the K-type of real_induce_standard(p_L,G) when
+  tau_L is the K-type of p_L. mu_L=lambda_L-rho_L becomes lambda_G-rho_G; for a
+  standard Levi the difference lies in (1-theta)X^*, for a nonstandard one it
+  does not. .}
 set real_induce_standard (KType tau_L,RealForm G) = KType:
   let (x_L,mu_L) = %tau_L
-  in assert(@:parabolic_is_real(make_parabolic(real_form(x_L),G)),
+  then x_G=embed_KGB(x_L,G) in
+  assert(@:is_real_Levi_for(real_form(x_L),x_G),
          "L is not Levi of real parabolic");
-  let x_G=embed_KGB(x_L,G)
-  then P = make_parabolic(real_form(x_L),G)
-  then LP = P.Levi
-  then () = if not parabolic_is_real(make_parabolic(real_form(x_L),G))
-       	    then prints("x_G = ",x_G, ", pcr flags = ",LP.prefers_coroots," ",real_form(x_L).prefers_coroots);
-	    	 prints ("diff simple = ",real_form(x_L).simple_roots - LP.simple_roots)
-	    fi
-  then theta=involution(x_G)
-  then shift=rho_r(x_G)-rho_r(x_L)+(1-theta)*(rho_S(x_G)-rho_S(x_L))
-  in K_type(x_G,mu_L)
+  K_type(x_G,ratvec_as_vec(mu_L+rho(real_form(x_L))+real_Levi_shift(x_G,x_L)-rho(G)))
 
 {. Real parabolic induction of standards, applied to a formal sum of
    parameters (ParamPol). .}
