@@ -516,10 +516,35 @@ set red_mult_char = rat:3/2
 {How many reducibility walls are needed to make to_ht worth considering?}
 set red_NUM_char = int: 10
 
+{low_red_char (David, 2026-10-16): one pass over the walls for both counts.  The walls
+ (av*gamma a positive integer, av*theta*gamma < 0) come from two matrix products with the
+ poscoroots; they are counted as in red_walls_int (real with parity 1, complex 1/2).  A wall
+ counts below HT when one parameter built from it has height <= HT (no is_standard, no is_zero):
+ complex av: parameter(x,lambda-(av*theta*gamma)*alpha,0); real av (parity only):
+ Cayley(alpha,parameter(x,lambda,(av*gamma/2)*alpha)).  This replaces red_walls_to_ht_int,
+ whose test() builds std_quo on a small Levi: same gate decision on 1014/1021 recorded E7_s
+ calls, gate time 552 s -> 147 s and full E7_s 11692 s -> 11284 s.}
 set low_red_char(Param p, int HT) = bool:
     if HT < 0 then return true fi;
-    let RWI = red_walls_int(p)
-    in RWI > red_NUM_char and red_walls_to_ht_int(p,HT)*red_mult_char < RWI
+    let x = p.x, lambda = p.lambda, gamma = p.infinitesimal_character, rd = p.root_datum
+    then theta = x.involution, PC = rd.poscoroots, PR = rd.posroots, rr = rho_r(p.x)
+    then A = gamma*PC, B = (theta*gamma)*PC
+    then W = for j:#A do if is_integer(A[j]) and A[j] > 0 and B[j] < 0 then [j] else [] fi od.##
+    then real = for j in W do is_real(j,x) od
+    then par = for j@k in W do real[k] and is_parity_fast(p,PR[j],PC[j],rr) od
+    then RWI = (sum(for j@k in W do if real[k] then (if par[k] then 2 else 0 fi) else 1 fi od))\2
+    in if RWI <= red_NUM_char then false
+       else let T = sum(for j@k in W
+       	      	    do let H = if real[k]
+		       	       then if par[k]
+			       	    then height(Cayley(PR[j],parameter(x,lambda,(A[j]/2)*PR[j])))
+				    else HT+1 fi
+			       else height(parameter(x,lambda-B[j]*PR[j],0*lambda))
+			       fi
+		       in if H > HT then 0 elif real[k] then 2 else 1 fi
+		    od)\2
+	    in T*red_mult_char < RWI
+       fi
 
 
 {If NU (nu part) > LAM (lambda part) *nu_frac, then figure to_ht could work better}
@@ -924,9 +949,9 @@ set low_char(Param p, int HT) = bool:
     elif kl_block_gate(p) then kl_block_gate_count +:= 1; return false
     elif not low_char_flag
     then return true {ALWAYS do to_height}
-    elif prefer_KL_char_flag
-    then low_KL_char(p,HT)
-    elif prefer_red_flag
+    elif prefer_KL_char_flag {false}
+    then low_KL_char(p,HT) {false}
+    elif prefer_red_flag {true}
     then low_red_char(p,HT)
     elif prefer_quick_char_flag {false 8/4/26; true 4/29/26}
     then low_quick_char(p,HT)

@@ -1240,7 +1240,7 @@ set next_xl(KGBElt x, ratvec lambda) = [(KGBElt, ratvec)]:
 	     else {real av}
 	     	  let alpha = G.posroots[j]
 		  then p = parameter(x,lambda,alpha)
-		  then cp = if is_parity(alpha,p)
+		  then cp = if is_parity(alpha,p) {is_parity_fast(p,alpha,av,rho_r(p.x)}
 		      	    then Cayley(alpha,p)
 			    else Cayley(alpha,p*(1/2))
 			    fi
