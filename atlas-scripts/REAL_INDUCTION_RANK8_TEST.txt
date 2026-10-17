@@ -61,8 +61,12 @@ machinery already handles cheaply. Rank 8 is the test of whether that changes.
   lambda #7          19.0 s   24.3 / 24.6 s                   71.2 / 65.8 s
   lambda #5          33.1 s   51.0 / 51.9 s                   245.1 / 236.7 s
   Forms on M' are still the cost (46 of 66 s; 203 of 237 s); the screen's cost is the
-  candidate search (~4.5 ms per vertex). The form-hook loss is much larger than in the
-  1 Oct table above (#7: 31.5 s then); not investigated.
+  candidate search (~4.5 ms per vertex).
+  CAUTION: FPP_lambdas(x_open) changed since 1 Oct (128 -> 64 entries), so "#5", "#7"
+  are different lambdas here (#7 = [1,1,1,2,2,2,2]; the 1 Oct #7 is [1,1,1,1,2,2,2],
+  now #3). On that 1 Oct lambda, same binary: 1 Oct scripts off 19.4 s / form 30.3 s,
+  current scripts off 17.7 s / form 27.7 s, same answers (199 unitary, FDcount
+  [1754,11051]): no regression. Name lambdas by vector, not index.
 
 WHAT TO TEST IN RANK 8
 ----------------------
