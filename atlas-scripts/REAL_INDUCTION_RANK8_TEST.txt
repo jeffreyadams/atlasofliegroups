@@ -54,6 +54,15 @@ E7_s x_open, one_level driver, params_to_openE7.at preloaded:
 - Spin(7,5) x_open: +1 to +4%. The expensive tests there have no candidates at all.
 Lesson so far: the parameters with real-induction structure are the ones the existing
 machinery already handles cheaply. Rank 8 is the test of whether that changes.
+- 17 Oct 2026 (laptop, Claude; ca2f4f5e removed the conjugation to standard Levis, so M'
+  is now the centralizer of tau at x0, usually nonstandard). E7_s x_open, one_level,
+  params_to_openE7.at, seat_belt_on false, serial runs, answers identical old vs new:
+                     off      screen (maxdepth -2) old/new    form hook old/new
+  lambda #7          19.0 s   24.3 / 24.6 s                   71.2 / 65.8 s
+  lambda #5          33.1 s   51.0 / 51.9 s                   245.1 / 236.7 s
+  Forms on M' are still the cost (46 of 66 s; 203 of 237 s); the screen's cost is the
+  candidate search (~4.5 ms per vertex). The form-hook loss is much larger than in the
+  1 Oct table above (#7: 31.5 s then); not investigated.
 
 WHAT TO TEST IN RANK 8
 ----------------------
