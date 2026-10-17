@@ -112,3 +112,24 @@ For each group:
 What would make it pay (not done): computing forms on M' only to the needed height, or
 from the simple derived factors of pM' (memoized, much smaller) glued together, which
 needs glue_sigs for disconnected M' (cohom_reductionND.at handles connected M' only).
+
+CENTRAL PART OF NU ON M' (17 Oct 2026, laptop, Claude; commit 905d2301)
+-----------------------------------------------------------------------
+New: real_ind_central_flag (FPP_faces_herm.at, default true). It acts only when real_ind_form_flag
+or real_ind_vertex_flag is on. Candidates then come from ind_cand_params_lin_def (FPP_lambdas.at):
+as ind_cand_params_lin_tau, but M' = centralizer of tau is also accepted when nu has a central part
+nu_c on M'; q0 is the hermitian parameter on M' with central part 0. Accepted when
+real_ind_irr_suff_path(p0,tau,nu_c[,HT]) holds: David's real_ind_irr_suff at every integral point
+as the central character moves from nu_c to 0, plus p_0 = Ind(q0) final at t = 0. Then the form of
+p is real_induce_standard(form of q0,G) (to height HT for the HT version). Checked exact:
+515/515 full forms, 4402/4402 truncated forms, 9 groups up to SU(3,2), SO(5,3), Spin(4,4).
+False restores the nu_c = 0 code exactly.
+E7_s x_open, same answers both ways, NO extra answers (every nu_c /= 0 candidate already fails
+real_ind_irr_suff at t = 1; FPP parameters seem to sit on walls through coroots outside M'):
+                    screen (off/on flag)    form hook (off/on flag)
+  [1,1,1,2,2,2,2]   24.3 / 25.1 s           66.5 / 66.4 s
+  [1,1,1,2,1,2,1]   51.7 / 55.1 s           234.4 / 236.8 s
+In rank 8, with either hook on: compare runs with real_ind_central_flag true and false; the last
+field of real_ind_vertex_report() ("irreducibly induced with nu_c /= 0") and of
+real_ind_form_report() ("induced forms with nu_c /= 0") says whether the new candidates ever answer
+anything. If both stay 0, set the flag false (the screen pays 3-7% for the extra search).
