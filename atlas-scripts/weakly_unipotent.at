@@ -214,19 +214,22 @@ set wuq_clear() = void: wuq_hash := make_Param_hash(); wuq_vals := []
 
 set is_weakly_unipotent_base(Param q) = bool:
     let rd = q.root_datum, gamma = q.infinitesimal_character, t = elapsed_ms()
+    {tau_is_max first: a few ms, and a necessary condition by itself, while the infinitesimal
+     character test costs 2-4.5 s on E7_s factors (E8_s x=220459, 10/18/26)}
+    then tm = tau_is_max(q)
+    then () = wuq_time[1] +:= elapsed_ms()-t
+    in wuq_count[0] +:= 1;
+       if not tm and not wuq_validate_flag then wuq_count[2] +:= 1; return false fi;
     {the infinitesimal character test sees only the roots and <gamma,alpha^vee>: do it on the
      simply connected derived datum, so it also applies to reductive (e.g. Levi) q.
      This translates by the whole weight lattice of the simply connected cover. The applications
      need only translation by weights of G itself (a smaller lattice, so a less restrictive test);
      one could restrict to those, but David expects that to buy nothing in the end, so we don't.}
-    then wu = is_weakly_unipotent_claude(simply_connected(rd),
+       let t = elapsed_ms()
+       then wu = is_weakly_unipotent_claude(simply_connected(rd),
 				ratvec: for av in rd.simple_coroots do gamma*av od)
-    then () = wuq_time[0] +:= elapsed_ms()-t
-    in wuq_count[0] +:= 1;
-       if not wu then wuq_count[1] +:= 1; return false fi;
-       let t = elapsed_ms() then tm = tau_is_max(q)
-       then () = wuq_time[1] +:= elapsed_ms()-t
-       in if not tm and not wuq_validate_flag then wuq_count[2] +:= 1; return false fi;
+       then () = wuq_time[0] +:= elapsed_ms()-t
+       in if not wu then wuq_count[1] +:= 1; return false fi;
           let reg = tm and is_int_regular(q)
           in if reg and not wuq_validate_flag then wuq_count[4] +:= 1; return true fi;
              let t = elapsed_ms() then D = GK_dim_maximal_ideal_memo(rd,gamma)
