@@ -7,6 +7,7 @@
 <derived_cover.at
 <K.at {for projection_to_K_matrix}
 <FPP_faces_herm.at {for is_unitary_hash_big}
+<weakly_unipotent.at {for is_weakly_unipotent}
 
 {INVESTIGATE parabolic_LKT function in K_highest_weights.at}
 {See Ktest.at}
@@ -591,6 +592,26 @@ set in_fundamental_fiber(KGBElt x) = bool: x.involution = x.real_form.distinguis
  an FPP face has the same Q as pC, and finalize(pC_L) = sum of the q_L (checked, 10/10/26).}
 set bl_stage_count = 4 {see min_bottom_elim_factors(Param)}
 
+{When min_bottom_elim_factors allows p0: if every derived factor of pL0 is weakly unipotent and
+ unitary, record p0 as unitary.  Then pL0 is weakly unipotent (with the simply connected weight
+ lattice used by is_weakly_unipotent, factorwise is equivalent to whole), the induction is weakly
+ fair (p0 hermitian), and weakly fair + weakly unipotent + unitary on L gives R_q(pL0) unitary,
+ with p0 a constituent.  Deferred to here because the test rarely succeeds before mbef has
+ allowed p0.  E7_s [17000:17100] 117 s -> 87 s (3 p0 recorded, test 4.7 s); [19000:19030]
+ 44.6 s -> 45.7 s (none recorded) (10/18/26)}
+set mbef_wu_flag = true
+set mbef_wu_count = [int]: [0,0] {calls, p0 recorded unitary}
+set mbef_wu_time = int: 0
+set mbef_wu_unitary(Param p0, [Param] derpL0js) = void:
+    let start = elapsed_ms()
+    in mbef_wu_count[0] +:= 1;
+       if big_unitary_hash.ulookup(p0) < 0 and big_unitary_hash.nulookup(p0) < 0 and
+       	  all(for d in derpL0js do @bool: is_weakly_unipotent(d) od) and
+	  all(for d in derpL0js do @bool: is_unitary_hash_big_SIMPLE(d) od)
+       then big_unitary_hash.umatch(p0); mbef_wu_count[1] +:= 1
+       fi;
+       mbef_wu_time +:= elapsed_ms()-start
+
 set min_bottom_elim_factors(Param p0) = bool:
     let start = elapsed_ms(), (Q,pL0) = theta_stable_quasi_data(p0), G = p0.real_form
     then () = if every_MBEF_flag
@@ -707,6 +728,8 @@ set min_bottom_elim_factors(Param p0) = bool:
      in if not answer
    	     then good_hash.match(p0);
 	     	  big_unitary_hash.numatch_height(p0,fail_ht)
+	     elif mbef_wu_flag
+	     then mbef_wu_unitary(p0,derpL0js)
 	     fi;
    	     mbefTime +:= elapsed_ms()-start;
  	     if every_MBEF_flag then prints("  ",answer) fi;
