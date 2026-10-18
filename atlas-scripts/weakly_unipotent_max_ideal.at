@@ -261,119 +261,113 @@ set candidates_dominant(RootDatum G, ratvec lambda, ratvec gamma) = [ratvec]:
       do mF*Z + base
       od
 
-{next few functions compute coset representatives for W/(integral Weyl group for infl char lambda)}
-
-set W_orbit(RootDatum G,[int] S,((int,ratvec)->ratvec) action, ratvec gamma)=
-let orbit=[([int],ratvec)]:[([],gamma)] then
-todo=[([int],ratvec)]:[([],gamma)] in
-while #todo>0 do
-   let (w,v)=todo[0] in
-   for s in S do
-   let sv=action(s,v) then
-   j=first(for (,y) in orbit do y=sv od) in
-   if j=-1 then orbit#:=([s]##w,sv); todo#:=([s]##w,sv) fi
-   od;
-   todo:=todo[1:]
-od;orbit
-
-set W_orbit(RootDatum G,((int,ratvec)->ratvec) action, ratvec gamma)=
-W_orbit(G,for i:ss_rank(G) do i od,action,gamma)
-
-set star_action(RootDatum G,int i, ratvec v)=
-let w=reflect(G,i,v)
-in dominant(integrality_datum(G,w),w)
-
-set star_W_orbit(RootDatum G,ratvec v)=
-let f(int i,ratvec v)=star_action(G,i,v) in W_orbit(G,f,v)
-
-set W_mod_W_int(RootDatum G,ratvec v)=for (w,) in star_W_orbit(G,v) do W_elt(G,w) od
+{coset representatives for W/W_int, W_int the integral Weyl group of v: W_int = {w | w*v-v in the
+ root lattice} (Humphreys, BGG category O, Thm 3.4), so W/W_int is the W-orbit of v modulo the root
+ lattice, which the built-in affine_orbit_ws enumerates. It replaces a scripted orbit search that was
+ quadratic in |W/W_int| (an E7 factor with |W/W_int| > 36000 ran for hours). The representatives
+ are not of minimal length, so callers make w.inverse*x integrally dominant with dominant(M,.).}
+set W_mod_W_int(RootDatum rd,ratvec v) = [WeylElt]: affine_orbit_ws(rd,v)
 
 
-{given a RootDatum G and a dominant weight lambda, lists all integrally dominant weights mu such that
+{given a RootDatum rd and a dominant weight lambda, lists all integrally dominant weights mu such that
 1) Q(mu,mu) <= Q(lambda,lambda)
 2) w*lambda-mu is in the weight lattice for some w in W}
 
-set weak_candidates_integrally_dominant(RootDatum G, ratvec lambda) = [ratvec]:
-let ws=W_mod_W_int(G,lambda) in
-##(for w in ws do let list=weak_candidates_dominant(G,lambda,w*lambda) in
-for x in list do w.inverse*x od od)
+set weak_candidates_integrally_dominant(RootDatum rd, ratvec lambda) = [ratvec]:
+let ws=W_mod_W_int(rd,lambda), M=integrality_datum(rd,lambda) in
+##(for w in ws do let list=weak_candidates_dominant(rd,lambda,w*lambda) in
+for x in list do dominant(M,w.inverse*x) od od)
 
 
-{given a RootDatum G and a dominant weight lambda, lists all integrally dominant weights mu such that
+{given a RootDatum rd and a dominant weight lambda, lists all integrally dominant weights mu such that
 1) Q(mu,mu) < Q(lambda,lambda)
 2) w*lambda-mu is in the weight lattice for some w in W}
 
-set candidates_integrally_dominant(RootDatum G, ratvec lambda) = [ratvec]:
-let ws=W_mod_W_int(G,lambda) in
-##(for w in ws do let list=candidates_dominant(G,lambda,w*lambda) in
-for x in list do w.inverse*x od od)
+{candidates_dominant(rd,lambda,w*lambda) for every coset w, with the data that do not depend on w
+ computed once (|W/W_int| can be 40320 for E7)}
+set candidates_integrally_dominant(RootDatum rd, ratvec lambda) = [ratvec]:
+   let ws=W_mod_W_int(rd,lambda), M=integrality_datum(rd,lambda)
+   then F = fundamental_weights(rd) {[ratvec]}
+   then mF=ratvecs_as_ratmat(F) {ratmat}
+   then C=simple_coroots(rd) {[vec]}
+   then Q = invariant_form(rd) {(ratvec,ratvec) -> rat}
+   then MQ = mat: for f in F do for g in F do rat_as_int(Q(f,g)) od od
+   then R = Q(lambda,lambda)
+   in ##(for w in ws
+	 do let gamma = w*lambda
+	    then base_coords = ratvec: for f@j in F do frac(C[j]*gamma) od
+	    then base = ratvec: sum(rd.rank, for f@j in F do base_coords[j]*f od)
+	    in for Z in open_ballpoints(R - Q(base,base), MQ, 2*MQ*base_coords)
+	       do dominant(M,w.inverse*(mF*Z + base))
+	       od
+	 od)
 
 
-{given a RootDatum G and a dominant weight lambda, lists all integrally dominant weights mu such that
+{given a RootDatum rd and a dominant weight lambda, lists all integrally dominant weights mu such that
 1) Q(mu,mu) <= Q(lambda,lambda)
 2) w*lambda-mu is in the root lattice for some w in W}
 
 {SAME AS weak_candidates_integrally_dominant}
-set weak_candidates_shorter(RootDatum G, ratvec lambda) = [ratvec]:
-    weak_candidates_integrally_dominant(G,lambda)
+set weak_candidates_shorter(RootDatum rd, ratvec lambda) = [ratvec]:
+    weak_candidates_integrally_dominant(rd,lambda)
 
-{given a RootDatum G and a dominant weight lambda, lists all integrally dominant weights mu such that
+{given a RootDatum rd and a dominant weight lambda, lists all integrally dominant weights mu such that
 1) Q(mu,mu) < Q(lambda,lambda)
 2) lambda-mu is in the weight lattice}
 
-set candidates_shorter(RootDatum G, ratvec lambda) = [ratvec]:
-    candidates_integrally_dominant(G,lambda) 
+set candidates_shorter(RootDatum rd, ratvec lambda) = [ratvec]:
+    candidates_integrally_dominant(rd,lambda) 
 
-{given a RootDatum G and a dominant weight lambda, lists all integrally dominant weights mu such that
+{given a RootDatum rd and a dominant weight lambda, lists all integrally dominant weights mu such that
 1) Q(mu,mu) <= Q(lambda,lambda)
 2) lambda-mu is in the root lattice}
 {is_integer: testing for in X^*}
 
-set weak_candidates_integrally_dominant_root_lattice(RootDatum G, ratvec lambda) = [ratvec]:
-let C=weak_candidates_integrally_dominant(G,lambda) in
-for mu in C if in_root_lattice(G,mu-lambda) do mu fi od
+set weak_candidates_integrally_dominant_root_lattice(RootDatum rd, ratvec lambda) = [ratvec]:
+let C=weak_candidates_integrally_dominant(rd,lambda) in
+for mu in C if in_root_lattice(rd,mu-lambda) do mu fi od
 
 
-{given a RootDatum G and a dominant weight lambda, lists all integrally dominant weights mu such that
+{given a RootDatum rd and a dominant weight lambda, lists all integrally dominant weights mu such that
 1) Q(mu,mu) < Q(lambda,lambda)
 2) lambda-mu is in the root lattice}
 {is_integer: testing for in X^*}
 
-set candidates_integrally_dominant_root_lattice(RootDatum G, ratvec lambda) = [ratvec]:
-let C=candidates_integrally_dominant(G,lambda) in
-for x in C if in_root_lattice(G,x-lambda) do x fi od
+set candidates_integrally_dominant_root_lattice(RootDatum rd, ratvec lambda) = [ratvec]:
+let C=candidates_integrally_dominant(rd,lambda) in
+for x in C if in_root_lattice(rd,x-lambda) do x fi od
 
 
-{given a RootDatum G and a dominant weight lambda, lists all integrally dominant weights mu such that
+{given a RootDatum rd and a dominant weight lambda, lists all integrally dominant weights mu such that
 1) Q(mu,mu) <= Q(lambda,lambda)
 2) lambda-mu is in the weight lattice}
 {
-set weak_candidates_shorter_root_lattice(RootDatum G, ratvec lambda) = [ratvec]:
-{let C=}weak_candidates_integrally_dominant_root_lattice(G,lambda) {then
-I=invariant_form(G) then
+set weak_candidates_shorter_root_lattice(RootDatum rd, ratvec lambda) = [ratvec]:
+{let C=}weak_candidates_integrally_dominant_root_lattice(rd,lambda) {then
+I=invariant_form(rd) then
 ell=I(lambda,lambda) in
 for x in C do if I(x,x)<= ell do x fi od}
 }
 
 
-{given a RootDatum G and a dominant weight lambda, lists all integrally dominant weights mu such that
+{given a RootDatum rd and a dominant weight lambda, lists all integrally dominant weights mu such that
 1) |mu| <= |lambda|
 2) lambda-mu is in the root lattice}
 
-set weak_candidates_shorter_root_lattice(RootDatum G, ratvec lambda) = [ratvec]:
-    weak_candidates_integrally_dominant_root_lattice(G,lambda)
+set weak_candidates_shorter_root_lattice(RootDatum rd, ratvec lambda) = [ratvec]:
+    weak_candidates_integrally_dominant_root_lattice(rd,lambda)
 
-set candidates_shorter_root_lattice(RootDatum G, ratvec lambda) = [ratvec]:
-    candidates_integrally_dominant_root_lattice(G,lambda)
+set candidates_shorter_root_lattice(RootDatum rd, ratvec lambda) = [ratvec]:
+    candidates_integrally_dominant_root_lattice(rd,lambda)
 
-{given a RootDatum G, a dominant weight lambda, and an arbitrary weight mu, determines whether
-the singular datum of mu is NOT on the list prohibited_singular_data(G,lambda). I_{max}(lambda) is weakly unipotent
-(resp. very weakly unipotent) if and only if the answer is "true" for every mu in candidates_integrally_dominant(G,lambda) 
-(resp. candidates_integrally_dominant_root_lattice(G,lambda)}
+{given a RootDatum rd, a dominant weight lambda, and an arbitrary weight mu, determines whether
+the singular datum of mu is NOT on the list prohibited_singular_data(rd,lambda). I_{max}(lambda) is weakly unipotent
+(resp. very weakly unipotent) if and only if the answer is "true" for every mu in candidates_integrally_dominant(rd,lambda) 
+(resp. candidates_integrally_dominant_root_lattice(rd,lambda)}
 
-set check_mu(RootDatum G, ratvec lambda, ratvec mu) = bool:
-let sings=prohibited_singular_data(G,lambda) then
-M=integrality_datum(G,lambda) then
+set check_mu(RootDatum rd, ratvec lambda, ratvec mu) = bool:
+let sings=prohibited_singular_data(rd,lambda) then
+M=integrality_datum(rd,lambda) then
 S=##(for rv@i in simple_coroots(M) do if rv*mu=0 then [i] else [] fi od) in
 find(sings,S)=-1
 
@@ -384,16 +378,16 @@ find(sings,S)=-1
 set iwu_time = int:0
 set iwu_count = int:0
 
-{given a RootDatum G and a dominant weight lambda, determines whether the maximal ideal I_{max}(lambda)
+{given a RootDatum rd and a dominant weight lambda, determines whether the maximal ideal I_{max}(lambda)
 is weakly unipotent}
 
-set is_weakly_unipotent(RootDatum G, ratvec lambda)=bool:
+set is_weakly_unipotent(RootDatum rd, ratvec lambda)=bool:
     iwu_count+:=1;
-    let start = elapsed_ms(), list=candidates_shorter(G,lambda)
+    let start = elapsed_ms(), list=candidates_shorter(rd,lambda)
     in if #list=0
        then true
-       else let sings=prohibited_singular_data(G,lambda)
-       	    then M=integrality_datum(G,lambda)
+       else let sings=prohibited_singular_data(rd,lambda)
+       	    then M=integrality_datum(rd,lambda)
 	    in all(for mu in list
 	       	    do @bool: check_mu(M,lambda,mu,sings)
 		    od) next iwu_time+:= elapsed_ms() - start
@@ -401,26 +395,26 @@ set is_weakly_unipotent(RootDatum G, ratvec lambda)=bool:
 {0=sum(for mu in list do #(check_mu(M,lambda,mu,sings)=false) od) fi next iwu_time+:= elapsed_ms() - start}
 
 {See intro above: fewer lambda will pass this test}
-set is_strictly_weakly_unipotent(RootDatum G, ratvec lambda)=bool:
+set is_strictly_weakly_unipotent(RootDatum rd, ratvec lambda)=bool:
     iwu_count+:=1;
-    let start = elapsed_ms(), list=weak_candidates_shorter(G,lambda)
+    let start = elapsed_ms(), list=weak_candidates_shorter(rd,lambda)
     in if #list=0
        then true
-       else let sings=prohibited_singular_data(G,lambda)
-       	    then M=integrality_datum(G,lambda)
+       else let sings=prohibited_singular_data(rd,lambda)
+       	    then M=integrality_datum(rd,lambda)
 	    in all(for mu in list
 	       	   do @bool: check_mu(M,lambda,mu,sings)
 		   od)
        fi next iwu_time+:= elapsed_ms() - start
 {0=sum(for mu in list do #(check_mu(M,lambda,mu,sings)=false) od) fi next iwu_time+:= elapsed_ms() - start}
 
-{given a RootDatum G and a dominant weight lambda, determines whether the maximal ideal I_{max}(lambda) is DMB weakly unipotent}
+{given a RootDatum rd and a dominant weight lambda, determines whether the maximal ideal I_{max}(lambda) is DMB weakly unipotent}
 
-set is_DMB_weakly_unipotent(RootDatum G, ratvec lambda)=bool:
+set is_DMB_weakly_unipotent(RootDatum rd, ratvec lambda)=bool:
     iwu_count+:=1;
-    let start = elapsed_ms(), list=candidates_shorter_root_lattice(G,lambda)
+    let start = elapsed_ms(), list=candidates_shorter_root_lattice(rd,lambda)
     in list:=for mu in list
-       	         if all(for f in fundamental_coweights(G)
+       	         if all(for f in fundamental_coweights(rd)
 			do @bool: f*(lambda-mu) >= 0
 			od)
 	             do mu
@@ -428,8 +422,8 @@ set is_DMB_weakly_unipotent(RootDatum G, ratvec lambda)=bool:
 		      same as mu in cvx hull(W*lambda)}
 	      od;
        if #list = 0 then true
-       else let sings=prohibited_singular_data(G,lambda)
-       	    then M=integrality_datum(G,lambda)
+       else let sings=prohibited_singular_data(rd,lambda)
+       	    then M=integrality_datum(rd,lambda)
        in all([(->bool)]: for mu in list
 	       		       	  do @bool: check_mu(M,lambda,mu,sings)
 			       	  od)
