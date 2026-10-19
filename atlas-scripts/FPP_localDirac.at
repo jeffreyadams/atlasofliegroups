@@ -8,6 +8,7 @@
 <springer_tables_reductive.at {for Springer_table }
 <associated_variety_annihilator.at { for GK_dim, used in identifying unipotent reps }
 <weak_packets.at {for unipotent_representations}
+<arthur_hash.at {unipotent_representations reads and fills arthur_hash}
 <derived_cover.at {for sc_descends}
 <cohIndUnip.at {for is_FPP}
 <up_mu.at {for up_mu_hash}

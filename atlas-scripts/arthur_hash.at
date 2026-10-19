@@ -1,0 +1,183 @@
+<weak_packets.at {for unipotent_representations_compute, unip_hook}
+<cohom_reductionND.at {for derived_simple_factorsRF, is_simpleRF, glue_params}
+<isomorphism.at {for Cartan_permutations}
+<lietypes.at {for is_locally_isomorphic}
+<hash.at {for make_RealForm_hash, make_Param_hash}
+<writeFiles.at {for write_real_form}
+<derived_cover.at {for derived_cover_real_form_info, sc_descends}
+
+{ arthur_hash: for each real form G, a Param_hash of the Arthur (special) unipotent
+  representations of G, i.e. unipotent_representations(G).
+
+  arthur_hash.add_real_form(G) (called by every function taking G):
+  - G simple (is_simpleRF): look among the simple real forms already in the table (and the
+    real forms with stored unipotent data, F4_s ... E8_q) for one, candL, of the same Lie type
+    with an isomorphism of root data ML carrying the real form candL onto G; if one is found,
+    the Arthur reps of candL are carried to G by ML. Otherwise unipotent_representations_compute(G).
+  - G not simple: add each derived simple factor derL (as above), then glue their Arthur reps
+    (glue_params, central infinitesimal character 0) into the Arthur reps of G.
+
+  arthur_hash.arthur_hash(G): the Param_hash for G;  arthur_hash.arthur_list(G): its list.
+  Loading this file sets unip_hook, so unipotent_representations(G) (weak_packets.at) reads
+  arthur_hash, adding G if necessary.
+  > file.at arthur_hash.write()  saves the table; reading file.at loads it into arthur_hash
+  (arthur_hash.load(G,ps), for real forms not already filled).
+  - G simple, not simply connected, and nothing found above: if a known real form is isomorphic
+    (as above) to the simply connected cover Gsc of G, carry its Arthur reps to Gsc, and descend
+    those that factor to G (sc_descends, which also gives every extension to the component group,
+    i.e. all constituents of induction from the image of Gsc to G).
+  arthur_count: [simple real forms copied by an isomorphism, computed, glued, descended from a cover].
+}
+
+set arthur_canned = [RealForm]: [F4_s,E6_s,E6_q,E7_s,E7_q,E7_h,E8_s,E8_q] {stored unipotent data}
+set arthur_count = [int]: [0,0,0,0]
+
+{the image of x in G2 under g: X^*(x.real_form) -> X^*(G2), if it lies in the real form G2}
+set arthur_transport_x(KGBElt x, RealForm G2, mat g, mat ginv) = [KGBElt]:
+    let theta2 = g*x.involution*ginv, tf2 = x.torus_factor*ginv
+    then y = KGB_elt(G2.inner_class, theta2, tf2)
+    in if form_number(y.real_form) != form_number(G2) then [] else
+       let x2 = KGB(G2, y.number)
+       in if x2.involution = theta2 then [x2] else [] fi
+       fi
+
+{isomorphisms g: X^*(G1) -> X^*(G2) of based root data (g R1 = R2 P) respecting the inner
+ classes; the identity permutation (if valid) first}
+set arthur_isomorphisms(RealForm G1, RealForm G2) = [(mat,mat)]:
+    let rd1 = G1.root_datum, rd2 = G2.root_datum
+    in for P in Cartan_permutations(rd1,rd2)
+       do let g = rd2.simple_roots*P*rd1.simple_roots.rational_inverse then (,,d) = g
+	  in if d = 1 and abs(det(ratmat_as_mat(g))) = 1
+	     then let gi = ratmat_as_mat(g) then ginv = ratmat_as_mat(gi.rational_inverse)
+		  in if gi*G1.distinguished_involution = G2.distinguished_involution*gi
+		     then [(gi,ginv)] else [] fi
+	     else []
+	     fi
+       od.##
+
+{Arthur reps ps of G1 carried to G2, if some isomorphism carries the real form G1 onto G2}
+set arthur_transport([Param] ps, RealForm G1, RealForm G2) = [[Param]]:
+    for (g,ginv) in arthur_isomorphisms(G1,G2)
+    do if #arthur_transport_x(KGB(G1,0),G2,g,ginv) > 0
+       then return [for p in ps
+		    do parameter(arthur_transport_x(p.x,G2,g,ginv)[0], g*p.lambda, g*p.nu)
+		    od]
+       fi
+    od; []
+
+{the reps of G descended from reps ps of its simply connected cover, M: X^*(G) -> X^*(Gsc):
+ those psc that factor to G (lambda-rho in M X^*(G) + (1-theta)X^*(Gsc)), with all extensions}
+set arthur_descend([Param] ps, RealForm G, mat M) = [Param]:
+    for psc in ps
+    do if can(solve(M##(-psc.x.involution+1), psc.lambda_minus_rho))
+       then sc_descends(psc,G,M)
+       else []
+       fi
+    od.##
+
+set_type
+[ arthur_hash_table =
+  ( ( -> int) real_form_size {number of real forms included}
+  , ( -> vec) arthur_sizes {for every real form, the number of Arthur reps}
+  , (RealForm -> int) arthur_size {for one real form, the number of Arthur reps}
+  , (int -> RealForm) rf_index {jth real form in list}
+  , (RealForm -> int) add_real_form {add G (and its derived simple factors); its number}
+  , (RealForm -> Param_hash) arthur_hash {hash table of Arthur reps of G}
+  , (RealForm -> [Param]) arthur_list {list of Arthur reps of G}
+  , ( -> ) clear
+  , ((RealForm,[Param]) -> ) load {fill G with these Arthur reps, unless already filled}
+  , ( -> ) write {output the table for an .at file that loads it}
+  )
+]
+
+set make_arthur_hash() = arthur_hash_table:
+(   let rf_hash = make_RealForm_hash()
+    then hashes = [Param_hash]: [] {one for each real form}
+    then filled = [bool]: [] {one for each real form}
+    then entry(RealForm G) = int: {number of G, registered (empty) if new}
+	 let N = rf_hash.size() then i = rf_hash.match(G)
+	 in if i = N then hashes #:= make_Param_hash(); filled #:= false fi; i
+    then fill(int i, [Param] ps) = void:
+	 hashes[i].fill(ps); filled[i] := true
+    then add_canned(RealForm C) = void: {stored data, cheap}
+	 let i = entry(C) in if not filled[i] then fill(i, unipotent_representations_compute(C)) fi
+    then add_simple(RealForm S) = int:
+	 let () = for C in arthur_canned
+		  do if is_locally_isomorphic(C.root_datum,S.root_datum) then add_canned(C) fi
+		  od
+	 then i = entry(S)
+	 then () = if not filled[i]
+		   then let k = 0
+			in while not filled[i] and k < rf_hash.size()
+			   do let L = rf_hash.index(k)
+			      in if k != i and filled[k] and is_simpleRF(L) and
+				    is_locally_isomorphic(L.root_datum,S.root_datum)
+				 then let t = arthur_transport(hashes[k].list(),L,S)
+				      in if #t > 0 then fill(i,t[0]); arthur_count[0] +:= 1 fi
+				 fi;
+			      k +:= 1
+			   od;
+			   let (Gsc,M) = derived_cover_real_form_info(S), k = 0
+			   in if abs(det(M)) != 1 {S not simply connected: look for its cover}
+			      then while not filled[i] and k < rf_hash.size()
+				   do let L = rf_hash.index(k)
+				      in if filled[k] and is_simpleRF(L) and
+					    is_locally_isomorphic(L.root_datum,S.root_datum)
+					 then let t = arthur_transport(hashes[k].list(),L,Gsc)
+					      in if #t > 0
+						 then let j = entry(Gsc)
+						      in if not filled[j] then fill(j,t[0]) fi;
+							 fill(i, arthur_descend(t[0],S,M)); arthur_count[3] +:= 1
+						 fi
+					 fi;
+				      k +:= 1
+				   od
+			      fi;
+			   if not filled[i]
+			   then fill(i, unipotent_representations_compute(S)); arthur_count[1] +:= 1
+			   fi
+		   fi
+	 in i
+    then add_real_form(RealForm G) = int:
+	 if is_simpleRF(G) then add_simple(G)
+	 else let i = entry(G)
+	      in if not filled[i]
+		 then let lists = for dL in derived_simple_factorsRF(G)
+				  do for p in hashes[add_simple(dL)].list()
+				     do parameter(KGB(dL,p.x.number),p.lambda,p.nu) od {on dL itself}
+				  od
+		      in fill(i, glue_params(G,lists)); arthur_count[2] +:= 1
+		 fi; i
+	 fi
+    in
+    ( @int: rf_hash.size()
+    , @vec: for h in hashes do h.size() od
+    , (RealForm G) int: hashes[add_real_form(G)].size()
+    , (int j) RealForm: rf_hash.index(j)
+    , add_real_form
+    , (RealForm G) Param_hash: hashes[add_real_form(G)]
+    , (RealForm G) [Param]: hashes[add_real_form(G)].list()
+    , @void: rf_hash.clear(); hashes := []; filled := []
+    , (RealForm G, [Param] ps): let i = entry(G) in if not filled[i] then fill(i,ps) fi
+    , @void:
+      prints("set Nullp = U(1,0).trivial");
+      for G@i in rf_hash.list()
+      do if filled[i]
+	 then let ps = hashes[i].list()
+	      in write_real_form(G,"G_temp");
+		 prints("set tempParams = [Param]: for :",#ps," do Nullp od");
+		 for p@j in ps
+		 do prints("void: tempParams[",j,"]:=parameter(G_temp,",p.x.number,",",p.lambda,",",p.nu,")")
+		 od;
+		 prints("arthur_hash.load(G_temp,tempParams)")
+	 fi
+      od
+    )
+)
+
+set arthur_hash = make_arthur_hash()
+
+{unipotent_representations(G) now reads arthur_hash; the Params are put on G itself}
+set unipotent_representations_arthur(RealForm G) = [Param]:
+    for p in arthur_hash.arthur_list(G) do parameter(KGB(G,p.x.number),p.lambda,p.nu) od
+unip_hook := [unipotent_representations_arthur@RealForm]

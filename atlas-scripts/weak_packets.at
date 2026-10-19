@@ -478,7 +478,9 @@ set weak_packets_fast_flag = false
 set weak_packets_faster_flag = false {until verification and non-dist
 induction added}
 
-set unipotent_representations(RealForm G)=[Param]: {G.weak_packets.parameters}
+{the computation itself; unipotent_representations(G) goes through unip_hook, which
+ arthur_hash.at sets to read (or fill) arthur_hash}
+set unipotent_representations_compute(RealForm G)=[Param]: {G.weak_packets.parameters}
     if G = F4_s
     then for (x,lambda,nu) in F4_s_data do parameter(G,x,lambda,nu) od
     elif G = E6_s
@@ -507,6 +509,10 @@ set unipotent_representations(RealForm G)=[Param]: {G.weak_packets.parameters}
     then weak_packets_faster(G).##
     else G.weak_packets.parameters
     fi
+
+set unip_hook = [(RealForm->[Param])]: []
+set unipotent_representations(RealForm G)=[Param]:
+    if #unip_hook > 0 then unip_hook[0](G) else unipotent_representations_compute(G) fi
 
 set unipotents(RealForm G)=[Param]:unipotent_representations(G)
 

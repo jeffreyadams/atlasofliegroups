@@ -26,6 +26,36 @@ set root_permutations(RootDatum rd_1,RootDatum rd_2) = [mat]:
       od.##
    fi
 
+{Same set of matrices as root_permutations, found by backtracking: node i of rd_1 is sent
+ to an unused node j of rd_2 only if C_1[i,k]=C_2[j,f(k)] and C_1[k,i]=C_2[f(k),j] for every
+ node k<i already placed. Lexicographic order, so the identity (if valid) comes first.
+ Avoids enumerating all n! elements of W(GL(n)) (40320 for E8).}
+set Cartan_permutations(RootDatum rd_1,RootDatum rd_2) = [mat]:
+   let n = rd_1.semisimple_rank
+   in if n != rd_2.semisimple_rank then [mat]:[]
+      elif n = 0 then [id_mat(0)]
+      else let C_1 = rd_1.Cartan_matrix, C_2 = rd_2.Cartan_matrix
+	   then f = vec: for :n do -1 od, used = [bool]: for :n do false od
+	   , try = vec: null(n), i = 0, result = [mat]: []
+	   then ok(int i, int j) = bool:
+		C_1[i,i] = C_2[j,j] and
+		all(for k:i do C_1[i,k] = C_2[j,f[k]] and C_1[k,i] = C_2[f[k],j] od)
+	   in while i >= 0
+	      do if i = n
+		 then result #:= (mat: for j:n do for a:n do if a = f[j] then 1 else 0 fi od od);
+		      i := n-1; used[f[i]] := false; f[i] := -1
+		 else let j = try[i]
+		      in while j < n and (used[j] or not ok(i,j)) do j +:= 1 od;
+			 if j < n
+			 then f[i] := j; used[j] := true; try[i] := j+1; i +:= 1;
+			      if i < n then try[i] := 0 fi
+			 else try[i] := 0; i -:= 1;
+			      if i >= 0 then used[f[i]] := false; f[i] := -1 fi
+			 fi
+		 fi
+	      od; result
+      fi
+
 {return (bool, one permutation matrix), reductive is allowed }
 set root_permutation (RootDatum rd_1, RootDatum rd_2) = (bool,mat):
    if not is_locally_isomorphic(rd_1,rd_2) then (false,id_mat(0))
