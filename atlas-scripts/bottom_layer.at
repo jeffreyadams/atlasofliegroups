@@ -600,15 +600,25 @@ set bl_stage_count = 4 {see min_bottom_elim_factors(Param)}
  allowed p0.  E7_s [17000:17100] 117 s -> 87 s (3 p0 recorded, test 4.7 s); [19000:19030]
  44.6 s -> 45.7 s (none recorded) (10/18/26)}
 set mbef_wu_flag = true
-set mbef_wu_count = [int]: [0,0] {calls, p0 recorded unitary}
+set mbef_wu_count = [int]: [0,0,0] {calls, p0 recorded unitary, WU but a factor's unitarity unknown}
 set mbef_wu_time = int: 0
+{Unitarity of a derived factor without a full signature: status(d,-1) (lookups; with a
+ preLeviTheta_nu preload every FPP factor is known), else is_FPP_unitary(d) (Davis/Mason-Brown,
+ decisive outside the FPP).  0 = don't know, and then p0 is not recorded.}
+set mbef_wu_factor_unitary(Param d) = int:
+    let s = status(d,-1) in if s != 0 then s else is_FPP_unitary(d) fi
+
 set mbef_wu_unitary(Param p0, [Param] derpL0js) = void:
     let start = elapsed_ms()
     in mbef_wu_count[0] +:= 1;
        if big_unitary_hash.ulookup(p0) < 0 and big_unitary_hash.nulookup(p0) < 0 and
-       	  all(for d in derpL0js do @bool: is_weakly_unipotent(d) od) and
-	  all(for d in derpL0js do @bool: is_unitary_hash_big_SIMPLE(d) od)
-       then big_unitary_hash.umatch(p0); mbef_wu_count[1] +:= 1
+       	  all(for d in derpL0js do @bool: is_weakly_unipotent(d) od)
+       then let us = [int]: for d in derpL0js do mbef_wu_factor_unitary(d) od
+	    in if all(for u in us do u > 0 od)
+	       then big_unitary_hash.umatch(p0); mbef_wu_count[1] +:= 1
+	       elif none(for u in us do u < 0 od)
+	       then mbef_wu_count[2] +:= 1
+	       fi
        fi;
        mbef_wu_time +:= elapsed_ms()-start
 
