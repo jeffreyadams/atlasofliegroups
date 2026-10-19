@@ -1,0 +1,51 @@
+<basic.at {for kernel, Smith, box}
+<ratmat.at {for rational_inverse}
+
+{ Characters of T_c, the identity component of Z(G) cap K (a torus), and the unitary characters
+  of G restricted to it.
+
+  compact_central_cochars(G): basis (columns) of the cocharacter lattice of T_c: integral
+     cocharacters orthogonal to the roots and fixed by ^delta (delta = distinguished involution;
+     on the center every theta_x is delta). Saturated, so restriction X^* -> X^*(T_c) is onto.
+  unitary_chars(G): [vec], central weights mu (orthogonal to the coroots) whose restrictions to
+     T_c are a basis of the restrictions of all one-dimensional unitary characters of G with real
+     infinitesimal character: mu gives the character parameter(x,mu+rho,0) (only its delta-fixed
+     part matters there). Adapted (Smith) to compact_central_chars: the jth restricts to d_j times
+     the jth compact central character. (Not only delta-fixed mu: for GL(1,C), lambda=[0,1] is a
+     unitary character restricting to the generator of X^*(U(1)).)
+  compact_central_chars(G): [ratvec], a basis of X^*(T_c) written as rational central weights
+     (orthogonal to the coroots, delta-fixed, vanishing on the split part of the center); <z,v>
+     for z here and v a compact central cocharacter gives the restriction to T_c.
+  compact_central_reps(G): [ratvec], representatives sum c_j z_j (0 <= c_j < d_j) of X^*(T_c)
+     modulo the restrictions of unitary characters.
+  Example U(p,q), n=p+q: compact [1,...,1]/n, unitary [1,...,1], reps m[1,...,1]/n, 0 <= m < n.
+
+  A rep p has T_c-character ^compact_central_cochars(G)*(p.lambda-G.rho) in the coordinates of
+  compact_central_chars; its infinitesimal character has exactly that central part. }
+
+set compact_central_cochars(RealForm G) = mat:
+    let C = kernel(^G.simple_roots) {central cocharacters}
+    in C*kernel((^G.distinguished_involution - id_mat(G.rank))*C)
+
+{(central weights Y as columns, Smith invariants d, rational delta-fixed central weights Z with
+ ^V*Z = id, adapted basis of Z^k), V = compact_central_cochars(G), k = #columns of V}
+set central_chars_data(RealForm G) = (mat,vec,ratmat,mat):
+    let V = compact_central_cochars(G)
+    then Y = kernel(^G.simple_coroots) {central weights}
+    then Yfix = kernel(^(G.simple_coroots ## ^(G.distinguished_involution - id_mat(G.rank))))
+    then B = ^V*Y {restrictions of central weights to T_c, in the coordinates dual to V}
+    then (basis,d) = Smith(B)
+    then Z = Yfix*rational_inverse(^V*Yfix)
+    in (Y,d,Z,basis)
+
+set compact_central_chars(RealForm G) = [ratvec]:
+    let (,,Z,basis) = central_chars_data(G) in for b in basis do Z*b od
+
+set unitary_chars(RealForm G) = [vec]:
+    let (Y,d,,basis) = central_chars_data(G), B = ^compact_central_cochars(G)*kernel(^G.simple_coroots)
+    in for b@j in basis do Y*required_solution(B,d[j]*b) od
+
+set compact_central_reps(RealForm G) = [ratvec]:
+    let (,d,Z,basis) = central_chars_data(G)
+    then zs = for b in basis do Z*b od
+    in for c in box(d) do sum(G.rank, for z@j in zs do c[j]*z od) od

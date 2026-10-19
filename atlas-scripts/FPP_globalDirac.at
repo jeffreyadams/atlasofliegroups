@@ -1,4 +1,5 @@
 <K_highest_weights {for all_lambda_differential_zero}
+<central_chars.at {for compact_central_reps, unitary_chars}
 <lattice {for vec_solve}
 { <chopping_facets_fast.at {for chop_coroots(G, vertices)}}
 <face_classes {for ordering on facets}
@@ -1783,8 +1784,36 @@ set FPP_unitary_hash_real_dumb([KGBElt] xs, Param_hash Uhash, (Param->bool) fanc
 set FPP_unitary_hash_real_dumb([KGBElt] xs, (Param->bool) fancy_tester) = void:
     FPP_unitary_hash_real_dumb(xs, big_unitary_hash.uhash(xs[0].real_form), fancy_tester)
 
+{G not simple (is_simpleRF false, e.g. U(p,q), SO(2,2), a Levi): run factor_driver (an
+ FPP_unitary_hash* on one real form) on each derived simple factor, then glue (glue_params) their
+ FPP-unitary reps into reps of G with each central character in compact_central_reps(G) (the
+ central part of the infinitesimal character is that character) and record them in
+ big_unitary_hash.uhash(G). Every other FPP-unitary rep of G is one of these tensored with a
+ unitary character: lambda + an integer combination of unitary_chars(G). Simple G never comes here.}
+set FPP_unitary_hash_reductive(RealForm G, (RealForm->void) factor_driver) = void:
+    let dLs = derived_simple_factorsRF(G)
+    then () = for dL in dLs do factor_driver(dL) od
+    then lists = for dL in dLs {on dL itself: uhash may hold value-equal real forms}
+		 do for p in big_unitary_hash.uhash(dL).list() do parameter(KGB(dL,p.x.number),p.lambda,p.nu) od
+		 od
+    then U = big_unitary_hash.uhash(G), N0 = big_unitary_hash.uhash(G).size()
+    then reps = compact_central_reps(G)
+    then counts = for r in reps
+		  do let ps = glue_params(G,lists,r) in for p in ps do U.match(p) od; #ps
+		  od
+    in prints(new_line,G,": derived simple factors ",dLs,", with ",for l in lists do #l od,
+	      " FPP-unitary reps");
+       prints("compact central characters ",compact_central_chars(G),"; unitary characters ",
+	      unitary_chars(G));
+       for r@j in reps do prints("  central character ",r,": ",counts[j]," FPP-unitary reps") od;
+       prints("uhash(G) grew by ",U.size()-N0,". Every other FPP-unitary rep of G is one of these",
+	      " tensored with a unitary character: add to lambda an integer combination of ",
+	      unitary_chars(G))
+
 set FPP_unitary_hash_real_dumb(RealForm G, (Param->bool) fancy_tester) = void:
-    FPP_unitary_hash_real_dumb(KGB(G), fancy_tester)
+    if is_simpleRF(G) then FPP_unitary_hash_real_dumb(KGB(G), fancy_tester)
+    else FPP_unitary_hash_reductive(G, (RealForm S) void: FPP_unitary_hash_real_dumb(KGB(S), fancy_tester))
+    fi
 
 set FPP_unitary_hash_def_dumb([(KGBElt,ratvec)] xlambdas, Param_hash Uhash, (Param->bool) fancy_tester) =
     void:
@@ -1805,7 +1834,9 @@ set FPP_unitary_hash_def_dumb([KGBElt] xs, (Param->bool) fancy_tester) = void:
     FPP_unitary_hash_def_dumb(xs, big_unitary_hash.uhash(xs[0].real_form), fancy_tester)
 
 set FPP_unitary_hash_def_dumb(RealForm G, (Param->bool) fancy_tester) = void:
-    FPP_unitary_hash_def_dumb(KGB(G), fancy_tester)
+    if is_simpleRF(G) then FPP_unitary_hash_def_dumb(KGB(G), fancy_tester)
+    else FPP_unitary_hash_reductive(G, (RealForm S) void: FPP_unitary_hash_def_dumb(KGB(S), fancy_tester))
+    fi
 
 set FPP_unitary_hash_dumb([(KGBElt,ratvec)] xlambdas, Param_hash Uhash, (Param->bool) fancy_tester) = void:
     let () = def_flag:=false then () = real_flag:=false in
@@ -1827,7 +1858,9 @@ set FPP_unitary_hash_dumb([KGBElt] xs, (Param->bool) fancy_tester) = void:
     FPP_unitary_hash_dumb(xs, big_unitary_hash.uhash(xs[0].real_form), fancy_tester)
 
 set FPP_unitary_hash_dumb(RealForm G, (Param->bool) fancy_tester) = void:
-    FPP_unitary_hash_dumb(KGB(G), fancy_tester)
+    if is_simpleRF(G) then FPP_unitary_hash_dumb(KGB(G), fancy_tester)
+    else FPP_unitary_hash_reductive(G, (RealForm S) void: FPP_unitary_hash_dumb(KGB(S), fancy_tester))
+    fi
 
 set FPP_unitary_hash([(KGBElt,ratvec)] xlambdas, Param_hash Uhash, (Param->bool) fancy_tester) = void:
     FPP_unitary_hash_general(xlambdas, Uhash, fancy_tester, local_test_GEO_hash@(
@@ -1845,7 +1878,9 @@ set FPP_unitary_hash([KGBElt] xs,(Param->bool) fancy_tester) = void:
     FPP_unitary_hash(xs, big_unitary_hash.uhash(xs[0].real_form), fancy_tester)
 
 set FPP_unitary_hash(RealForm G, (Param->bool) fancy_tester) = void:
-    FPP_unitary_hash(KGB(G), big_unitary_hash.uhash(G), fancy_tester)
+    if is_simpleRF(G) then FPP_unitary_hash(KGB(G), big_unitary_hash.uhash(G), fancy_tester)
+    else FPP_unitary_hash_reductive(G, (RealForm S) void: FPP_unitary_hash(KGB(S), big_unitary_hash.uhash(S), fancy_tester))
+    fi
 
 set FPP_unitary_hash2([(KGBElt,ratvec)] xlambdas, Param_hash Uhash, (Param->bool) fancy_tester) = void:
     FPP_unitary_hash_general(xlambdas, Uhash, fancy_tester, local_test_GEO_hash2@(
@@ -1864,7 +1899,9 @@ set FPP_unitary_hash2([KGBElt] xs, (Param->bool) fancy_tester) = void:
     FPP_unitary_hash2(xs, big_unitary_hash.uhash(xs[0].real_form), fancy_tester)
 
 set FPP_unitary_hash2(RealForm G, (Param->bool) fancy_tester) = void:
-    FPP_unitary_hash2(KGB(G), fancy_tester)
+    if is_simpleRF(G) then FPP_unitary_hash2(KGB(G), fancy_tester)
+    else FPP_unitary_hash_reductive(G, (RealForm S) void: FPP_unitary_hash2(KGB(S), fancy_tester))
+    fi
 
 {ht_bound_track_flag: see the comment at ht_bound_track_flag in FPP_faces_herm.at.  Everything that eliminates
  candidates without giving a height of nonunitarity is turned off for the duration: Dirac, FPP_def
@@ -1967,7 +2004,9 @@ set FPP_unitary_hash_one_level([KGBElt] xs, (Param->bool) fancy_tester) = void:
     FPP_unitary_hash_one_level(xs, big_unitary_hash.uhash(xs[0].real_form), fancy_tester)
 
 set FPP_unitary_hash_one_level(RealForm G, (Param->bool) fancy_tester) = void:
-    FPP_unitary_hash_one_level(KGB(G), fancy_tester)
+    if is_simpleRF(G) then FPP_unitary_hash_one_level(KGB(G), fancy_tester)
+    else FPP_unitary_hash_reductive(G, (RealForm S) void: FPP_unitary_hash_one_level(KGB(S), fancy_tester))
+    fi
 
 set FPP_unitary_hash_steve([(KGBElt,ratvec)] xlambdas, (Param->bool) fancy_tester) = void:
     FPP_unitary_hash_steve(xlambdas, let (x,) = xlambdas[0] in big_unitary_hash.uhash(x.real_form), fancy_tester)
@@ -1976,7 +2015,9 @@ set FPP_unitary_hash_steve([KGBElt] xs, (Param->bool) fancy_tester) = void:
     FPP_unitary_hash_steve(xs, big_unitary_hash.uhash(xs[0].real_form), fancy_tester)
 
 set FPP_unitary_hash_steve(RealForm G, (Param->bool) fancy_tester) = void:
-    FPP_unitary_hash_steve(G, big_unitary_hash.uhash(G), fancy_tester)
+    if is_simpleRF(G) then FPP_unitary_hash_steve(G, big_unitary_hash.uhash(G), fancy_tester)
+    else FPP_unitary_hash_reductive(G, (RealForm S) void: FPP_unitary_hash_steve(S, big_unitary_hash.uhash(S), fancy_tester))
+    fi
 
 
 set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG, (Param->bool)
@@ -2730,7 +2771,9 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, (Param->bool) fancy_tester) = voi
     FPP_unitary_hash_bottom_layer(xs, big_unitary_hash.uhash(xs[0].real_form),fancy_tester)
 
 set FPP_unitary_hash_bottom_layer(RealForm G, (Param->bool) fancy_tester) = void:
-    FPP_unitary_hash_bottom_layer(KGB(G), fancy_tester)
+    if is_simpleRF(G) then FPP_unitary_hash_bottom_layer(KGB(G), fancy_tester)
+    else FPP_unitary_hash_reductive(G, (RealForm S) void: FPP_unitary_hash_bottom_layer(KGB(S), fancy_tester))
+    fi
 
 {Following functions invoke David/Mason-Brown result from February 2025: if infl char is on
  some one-walls of the FPP, and those roots NOT in tau-invariant, then rep is either non-unitary,
