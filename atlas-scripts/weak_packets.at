@@ -1106,8 +1106,12 @@ prints("------------------------------------------",new_line{,rf[i]}); show(wp) 
 {-----------------moved from theta_induced_unipotents.at------}
 
 
-{allow a central shift}
-set unipotent_representations(RealForm G,ratvec shift)=[Param]:parameters(weak_packets(G.dual_orbits,G,shift))
+{allow a central shift: the Arthur reps of the derived simple factors (unipotent_representations,
+ so arthur_hash), glued with central infinitesimal character shift. Same answers as the old
+ parameters(weak_packets(G.dual_orbits,G,shift)) on 13 tests (GL(n), U(p,q), products, Levis of
+ Sp(8,R), SO(5,4), E6_q)}
+set unipotent_representations(RealForm G,ratvec shift)=[Param]:
+    glue_params(G, for dL in derived_simple_factorsRF(G) do unipotent_representations(dL) od, shift)
 set unipotents(RealForm G,ratvec shift)=[Param]:unipotent_representations(G,shift)
 
 set theta_induced_unipotents(RealForm G)=[Param]:

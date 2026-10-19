@@ -27,10 +27,17 @@
     those that factor to G (sc_descends, which also gives every extension to the component group,
     i.e. all constituents of induction from the image of Gsc to G).
   arthur_count: [simple real forms copied by an isomorphism, computed, glued, descended from a cover].
+
+  Stored data (A_to_8_unip.at, C_to_8_unip.at, spin_to_8_unip.at, loaded at the end of this
+  file, like the exceptional data in weak_packets.at): each entry of arthur_store is a real form
+  C, a torus factor tf0 making (C.distinguished_involution,tf0) a strong involution of C, and the
+  Arthur reps of C as (x number, lambda, nu). Before computing for S (or its cover), a stored C
+  carried onto S (or the cover) by an isomorphism joins the table; only then are its Params built.
 }
 
 set arthur_canned = [RealForm]: [F4_s,E6_s,E6_q,E7_s,E7_q,E7_h,E8_s,E8_q] {stored unipotent data}
 set arthur_count = [int]: [0,0,0,0]
+set arthur_store = [(RealForm,ratvec,[(int,ratvec,ratvec)])]: []
 
 {the image of x in G2 under g: X^*(x.real_form) -> X^*(G2), if it lies in the real form G2}
 set arthur_transport_x(KGBElt x, RealForm G2, mat g, mat ginv) = [KGBElt]:
@@ -64,6 +71,14 @@ set arthur_transport([Param] ps, RealForm G1, RealForm G2) = [[Param]]:
 		    od]
        fi
     od; []
+
+{whether some isomorphism carries the stored real form C (with base strong involution
+ (C.distinguished_involution,tf0)) onto G; needs no KGB of C}
+set arthur_store_matches(RealForm C, ratvec tf0, RealForm G) = bool:
+    is_locally_isomorphic(C.root_datum,G.root_datum) and
+    any(for (,ginv) in arthur_isomorphisms(C,G)
+	do form_number(real_form(G.inner_class,G.distinguished_involution,tf0*ginv)) = form_number(G)
+	od)
 
 {the reps of G descended from reps ps of its simply connected cover, M: X^*(G) -> X^*(Gsc):
  those psc that factor to G (lambda-rho in M X^*(G) + (1-theta)X^*(Gsc)), with all extensions}
@@ -101,11 +116,21 @@ set make_arthur_hash() = arthur_hash_table:
 	 hashes[i].fill(ps); filled[i] := true
     then add_canned(RealForm C) = void: {stored data, cheap}
 	 let i = entry(C) in if not filled[i] then fill(i, unipotent_representations_compute(C)) fi
+    then add_stored(RealForm T) = void: {stored real forms isomorphic to T join the table}
+	 for (C,tf0,data) in arthur_store
+	 do if arthur_store_matches(C,tf0,T)
+	    then let j = entry(C)
+		 in if not filled[j]
+		    then fill(j, for (x,lambda,nu) in data do parameter(C,x,lambda,nu) od)
+		    fi
+	    fi
+	 od
     then add_simple(RealForm S) = int:
 	 let () = for C in arthur_canned
 		  do if is_locally_isomorphic(C.root_datum,S.root_datum) then add_canned(C) fi
 		  od
 	 then i = entry(S)
+	 then () = if not filled[i] then add_stored(S) fi
 	 then () = if not filled[i]
 		   then let k = 0
 			in while not filled[i] and k < rf_hash.size()
@@ -119,7 +144,8 @@ set make_arthur_hash() = arthur_hash_table:
 			   od;
 			   let (Gsc,M) = derived_cover_real_form_info(S), k = 0
 			   in if abs(det(M)) != 1 {S not simply connected: look for its cover}
-			      then while not filled[i] and k < rf_hash.size()
+			      then add_stored(Gsc);
+				   while not filled[i] and k < rf_hash.size()
 				   do let L = rf_hash.index(k)
 				      in if filled[k] and is_simpleRF(L) and
 					    is_locally_isomorphic(L.root_datum,S.root_datum)
