@@ -20,7 +20,8 @@ set write_preLeviTheta(RealForm G) = void:
        do prints("void:  big_unitary_hash.long_match(parameter(G_temp,",
 	         p.x.number,",",p.lambda,",",p.nu,"),j)")
        od;
-       prints("void: big_unitary_hash.finishxmap(G_temp,",big_unitary_hash.x_known(G),")")
+       prints("void: big_unitary_hash.finishxmap(G_temp,",big_unitary_hash.x_known(G),")");
+       if hash_deform_flag then big_unitary_hash.writeG_down(G) fi {the (p,p0) pairs}
 
 {every real form in big_unitary_hash, in its own order}
 set write_preLeviTheta() = void:
