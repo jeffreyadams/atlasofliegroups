@@ -2227,6 +2227,27 @@ in for C@k in eq
 end
 
 
+{hash_deform_flag (FPP_faces_herm.at): after local_test_hash, for each class C of eq whose faces
+ are all in Uhash (so unitary), record in big_unitary_hash the face of C of smallest infinitesimal
+ character as p0 for every face of C. Faces in a class share K-character and #Langlands quotients,
+ to the height of the K-characters in LFVH: call only after extend_K_characters to full height.
+ Classes whose faces finalize to other than one term are skipped. A non-final face in the
+ closure of p contributes p0 = finalize of it.}
+set record_class_downs(KGBElt x, ratvec lambda, LocalVertexData Lvd,
+    [[LocalFaceVertsKHash]] LFVH, [[int]] eq, Param_hash Uhash) = void:
+    for C in eq
+    do let ps = [Param]:
+	   for i in C
+	   do let (d,j) = coords(LFVH,i)
+	      then qs = monomials(finalize(parameter(x,lambda,face_bary(Lvd,LFVH[d][j][:d+1]))))
+	      in if #qs = 1 then qs else [] fi
+	   od.##
+       in if #ps = #C and #C > 1 and all(for p in ps do Uhash.lookup(p).>= od)
+	  then let p0 = ps[min_loc(for p in ps do u_down_size(p) od)]
+	       in for p in ps do big_unitary_hash.set_u_down(p,p0) od
+	  fi
+    od
+
 set old_local_test_flag = false
 set up_local_test_flag = true
 set down_local_test_flag = false
@@ -2427,6 +2448,13 @@ set local_test_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[LocalFaceVer
     then is_unitary_test_big_SIMPLE_interrupt@Param
     else is_unitary_hash_big_SIMPLE@Param
     fi)
+
+{same, for callers whose LFVH carries full K-characters: also record_class_downs}
+set local_test_hash_full(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[LocalFaceVertsKHash]] LFVH,
+    [[int]] eq, [[int]] gr, [vec] classListByFace, (Param->bool) tester, Param_hash Uhash) = [Param]:
+    let UParams = local_test_hash(x, lambda, Lvd, LFVH, eq, gr, classListByFace, tester, Uhash)
+    in if hash_deform_flag then record_class_downs(x, lambda, Lvd, LFVH, eq, Uhash) fi;
+       UParams
 
 {don't want to specify either}
 set local_test_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[LocalFaceVertsKHash]] LFVH,
@@ -4047,7 +4075,7 @@ set local_test_GEO_hash2(KGBElt x, ratvec lambda, {VertexData vd,} LocalVertexDa
 	      fi
     then mu_tester(Param p) = bool: is_unitary_test_big_SIMPLE_interrupt(p, {hts[}min(Dlast,Dmid){+1:]})
     then start=elapsed_ms() {already unitary to height hts[Dlast] = hts[max(r,2)]}
-    then UParams = local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, (Param->bool): (Param p):
+    then UParams = local_test_hash_full(x, lambda, Lvd, LFDKH, eq, gr, CLBF, (Param->bool): (Param p):
 		 if test_interrupt_flag {up_mu_flag}
 		 then mu_tester(p)
 		 else is_unitary_hash_big_SIMPLE(p)
@@ -4179,7 +4207,7 @@ set local_test_GEO_hash2_end(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[Fac
     {list hts[Dlast+1:] is automatically empty ???}
     {is_unitary_test_big_SIMPLE_interrupt(p,1) is equivalent}
     then start=elapsed_ms() {already unitary to height hts[Dlast] = hts[max(r,2)]}
-    then UParams = local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, (Param->bool): (Param p):
+    then UParams = local_test_hash_full(x, lambda, Lvd, LFDKH, eq, gr, CLBF, (Param->bool): (Param p):
 		 if test_interrupt_flag {up_mu_flag}
 		 then mu_tester(p)
 		 else is_unitary_hash_big_SIMPLE(p)
@@ -4487,7 +4515,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda,
 		 then mu_tester(p)
 		 else is_unitary_hash_big_SIMPLE(p)
 		 fi
-    then UParams = local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF,
+    then UParams = local_test_hash_full(x, lambda, Lvd, LFDKH, eq, gr, CLBF,
     	 ht_bound_wrap_full_if(final_tester), Uhash)
     then time = elapsed_ms() - start
     then () = if time_verbose
@@ -4663,7 +4691,7 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
 	      then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
 	      then () = if test_verbose then prints(sum(for list in LFDKH do #list od),
 	      	      	   " unitary candidates in ",#eq," equivalence classes.") fi
-              in local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, (Param->bool):(Param p):
+              in local_test_hash_full(x, lambda, Lvd, LFDKH, eq, gr, CLBF, (Param->bool):(Param p):
 	      	 		    if test_interrupt_flag
 				    then is_unitary_test_big_SIMPLE_interrupt(p,ONE)
 				    {this is same as argument [hts[ONE]] ???}
@@ -4909,7 +4937,7 @@ set local_test_GEO_hash_steve_end(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	 then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
 	 then () = if test_verbose then prints(sum(for list in LFDKH do #list od),
 	      	      	   " unitary candidates in ",#eq," equivalence classes.") fi
-         in local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, (Param->bool):(Param p):
+         in local_test_hash_full(x, lambda, Lvd, LFDKH, eq, gr, CLBF, (Param->bool):(Param p):
 		      		    if test_interrupt_flag
 				    then mu_tester(p) {is_unitary_test_big_SIMPLE_interrupt(p)} {,[H1])}
 				    else is_unitary_hash_big_SIMPLE(p)
@@ -5048,7 +5076,7 @@ set local_test_GEO_hash_steve_end_faces(KGBElt x, ratvec lambda, LocalVertexData
 	 then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
 	 then () = if test_verbose then prints(sum(for list in LFDKH do #list od),
 	      	      	   " unitary candidates in ",#eq," equivalence classes.") fi
-         in local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, (Param->bool):(Param p):
+         in local_test_hash_full(x, lambda, Lvd, LFDKH, eq, gr, CLBF, (Param->bool):(Param p):
 	      	 		    {if test_interrupt_flag {up_mu_flag} and prefer_to_hts
 				    then is_unitary_test_big_SIMPLE_interrupt(p,[hts[ONE])
 		      		    el}if test_interrupt_flag
@@ -5691,7 +5719,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 			       unitary_test_counter.use_count() - UTCstart);
 		   	       prints("testing with is_unitary_test_big_SIMPLE_interrupt")
 	           	   fi
-    	 	in local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, (Param->bool): (Param p) bool:
+    	 	in local_test_hash_full(x, lambda, Lvd, LFDKH, eq, gr, CLBF, (Param->bool): (Param p) bool:
 			       is_unitary_test_big_SIMPLE_interrupt(p,min_ht_max), Uhash)
     	   then time = elapsed_ms() - start
     	   then () = if time_verbose

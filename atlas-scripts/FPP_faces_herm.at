@@ -221,6 +221,12 @@ set_type
   , ((Param,int) -> int) long_umatch {add p to ith uhash table}
 {  , ((int,ratvec,ratvec,int) -> int) long_umatch_coords {add p to ith uhash table}}
   , ((Param,int) -> int) long_match {add p to ith uhash table} {included for back compatibility}
+  , (Param -> int) u_down_lookup {index in uhash of the smallest known p0 equivalent to p
+    	       	   		  (p's own index if none recorded); -1 if p not in uhash}
+  , (Param -> Param) u_down {that p0; p itself if p not in uhash}
+  , ((Param,Param) -> ) set_u_down {(p,p0): both unitary, same K-character; add both to uhash,
+    		      		   and record p0 for p if smaller than the p0 already known}
+  , (RealForm -> ) writeG_down {output the recorded (p,p0) pairs for G}
   , ( -> ) write {output unitary data for file}
   , (RealForm -> ) writeG {output data for one group to file}
   , (RealForm -> ) writeG_nu {output known nonunitary for G to file}
@@ -327,6 +333,15 @@ set real_ind_form_hook = [(Param,int->[KTypePol])]: []
 set real_ind_form_of(Param p, int D) = [KTypePol]:
     if real_ind_form_flag and #real_ind_form_hook > 0 then real_ind_form_hook[0](p,D) else [] fi
 
+{hash_deform_flag: for each unitary p in uhash, also record (by set_u_down) the index in uhash
+ of a unitary p0 of smaller infinitesimal character with the same K-character as p (so the
+ same GK-dim). Entries never set mean p0 = p; u_down_lookup follows the chain p -> p0 -> ...,
+ so replacing p0 later by something smaller updates everything pointing at it.}
+set hash_deform_flag = false
+{the measure of infinitesimal character used to decide "smaller" for u_down}
+set u_down_size(Param p) = rat:
+    let G = p.real_form in G.two_rho_check*dominant(G, p.infinitesimal_character)
+
 set make_big_unitary_hash() = big_unitary_hash_table:
 (   let real_form_hash = make_RealForm_hash()
     then uhashes = [Param_hash]: [] {one for each real form}
@@ -347,6 +362,11 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 				 the height to which sig(param i) is known}
     then nu_heights = [vec]: [] {one list for each real form; jth entry is height to which jth entry of nuhash
 				 is known to be nonunitary. -1 if don't know a height}
+    then u_downs = [vec]: [] {one list for each real form; jth entry is index in uhash of p0 for the
+			     jth entry p of uhash; entries beyond the end (or equal to j) mean p0 = p}
+    then u_down_index(int i, int j) = int: {follow the chain from j to its smallest end}
+	 let downs = u_downs[i]
+	 in while j < #downs and downs[j] != j do j := downs[j] od; j
     then xl_sizes=[[int]]: [] {one [int] of xl_sizes for each real form }
     then xl_sizes_cumulative=[[int]]: [] {one [int] of xl_sizes for each real form }
     then xl_known = [[int]]: [] {one bitmap of known (x,lambda) for each real form and x}
@@ -375,6 +395,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 then () = branch_heights := []
 	 then () = sig_heights := []
 	 then () = nu_heights := []
+	 then () = u_downs := []
          then () = xl_sizes := []
          then () = xl_sizes_cumulative := []
 	 then () = xl_known := []
@@ -399,7 +420,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 			     sigs #:= null(0);
 			     branch_heights #:= null(0);
 			     sig_heights #:= null(0);
-			     nu_heights #:= null(0)
+			     nu_heights #:= null(0);
+			     u_downs #:= null(0)
                         then ()=  xl_sizes #:= null_list
                         then ()=  xl_sizes_cumulative #:= null_list
 			then () = xl_known #:= empty {null(KGB_size(rf))}
@@ -422,7 +444,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 						 and #x_partial = #x_known
 						 and #K_type_hashes = #x_known and #K_type_pol_hashes = #x_known
 						 and #branches = #x_known and #sigs = #x_known
-						 and #sig_heights = #x_known and #nu_heights = #x_known,
+						 and #sig_heights = #x_known and #nu_heights = #x_known
+						 and #u_downs = #x_known,
 						 "big_unitary_hash damaged")
 	  in i
     then add_K_type(KType mu) = (int, int): {real form index, K type index}
@@ -953,6 +976,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		 branch_heights[i] := [];
 		 sig_heights[i] := [];
 		 nu_heights[i] := [];
+		 u_downs[i] := [];
 		 {prints("i = ",i, ", x_partial = ",x_partial);}
 		 x_partial[i] := 0;
 		 xl_known[i] := nullint(KGB_size(rf));
@@ -990,6 +1014,18 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	      do numatch_height(ps[j],HTs[j])
 	      od
 	 fi
+
+      then write_downs(int i, string Gname, int low, int high) = void: {(p,p0) with low <= p.x < high}
+      let plist = uhashes[i].list()
+      then param_string(Param p) = string:
+	   "parameter("+Gname+","+p.x.number+","+to_string(p.lambda)+","+to_string(p.nu)+")"
+      in for k@j in u_downs[i]
+	 do let p = plist[j]
+	    in if k != j and low <= p.x.number and p.x.number < high
+	       then prints("void: big_unitary_hash.set_u_down(",param_string(p),",",
+			   param_string(plist[k]),")")
+	       fi
+	 od
     in
     ( (->int): {real_form_size} @int: real_form_hash.size()
     , ( -> vec): {uhash_sizes} @vec: for uhash in uhashes
@@ -1303,6 +1339,26 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       uhashes[i].match(p)
     , ((Param,int) -> int): {long_match} (Param p, int i):
       uhashes[i].match(p)
+    , (Param -> int): {u_down_lookup} (Param p) int:
+      let i = add_real_form(p.real_form)
+      then j = uhashes[i].lookup(p)
+      in if j < 0 then j else u_down_index(i,j) fi
+    , (Param -> Param): {u_down} (Param p) Param:
+      let i = add_real_form(p.real_form)
+      then j = uhashes[i].lookup(p)
+      in if j < 0 then p else uhashes[i].index(u_down_index(i,j)) fi
+    , ((Param,Param) -> ): {set_u_down} (Param p, Param p0):
+      let i = add_real_form(p.real_form)
+      then j = uhashes[i].match(p), k = uhashes[i].match(p0)
+      then cur = u_down_index(i,j)
+      in if k != cur and
+	    u_down_size(uhashes[i].index(k)) < u_down_size(uhashes[i].index(cur))
+	 then let downs = u_downs[i]
+	      then () = while #downs <= j do downs #:= #downs od
+	      in downs[j] := k; u_downs[i] := downs
+	 fi {sizes strictly decrease along every chain, so no cycles}
+    , (RealForm -> ): {writeG_down} (RealForm G):
+      write_downs(add_real_form(G),"G_temp",0,KGB_size(G))
     , ( -> ): {write} @void:
     let rf_list = real_form_hash.list()
     in for rf@i in rf_list
@@ -1372,6 +1428,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	      od
 	 fi;
 	 prints("big_unitary_hash.uhash(",Gname,").fill(tempParams)");
+	 if hash_deform_flag then write_downs(i,Gname,0,KGB_size(G)) fi;
 	 if write_nu_flag
 	 then let pnulist = nuhashes[i].list()
 	      then nu_hts = nu_heights[i]
@@ -1428,6 +1485,7 @@ some lambdas for that x might be finished.}
 	    in prints("void:tempParams[",j,"]:=parameter(",Gname,",",xnum,",",p.lambda,",",p.nu,")")
 	 od;
 	 prints("big_unitary_hash.uhash(",Gname,").fill(tempParams)");
+	 if hash_deform_flag then write_downs(i,Gname,low,high) fi;
 	 if write_x_flag
 	 then for xnum in done_list
 	      do prints("void: big_unitary_hash.finishx_num(",Gname,",",xnum,")")
