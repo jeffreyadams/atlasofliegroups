@@ -30,14 +30,35 @@
 
   Stored data (A_to_8_unip.at, C_to_8_unip.at, spin_to_8_unip.at, loaded at the end of this
   file, like the exceptional data in weak_packets.at): each entry of arthur_store is a real form
-  C, a torus factor tf0 making (C.distinguished_involution,tf0) a strong involution of C, and the
-  Arthur reps of C as (x number, lambda, nu). Before computing for S (or its cover), a stored C
-  carried onto S (or the cover) by an isomorphism joins the table; only then are its Params built.
+  C, a torus factor tf0 making (C.distinguished_involution,tf0) a strong involution of C, a
+  denominator d, and the Arthur reps of C encoded in a string (arthur_decode): for each rep, the
+  x number, then d*lambda, then d*nu. Atlas parses one string literal far faster than the
+  equivalent (x,lambda,nu) literals (spin_to_8_unip.at: 0.14 s instead of 1.2 s), so all the data
+  can be loaded up front. Before computing for S (or its cover), a stored C carried onto S (or the
+  cover) by an isomorphism joins the table; only then is its string decoded and its Params built.
 }
 
 set arthur_canned = [RealForm]: [F4_s,E6_s,E6_q,E7_s,E7_q,E7_h,E8_s,E8_q] {stored unipotent data}
 set arthur_count = [int]: [0,0,0,0]
-set arthur_store = [(RealForm,ratvec,[(int,ratvec,ratvec)])]: []
+set arthur_store = [(RealForm,ratvec,int,string)]: []
+
+{the integers encoded in s: base 26, most significant digit first, A-Z for a digit followed by
+ more, a-z for the last digit; the value w stands for w/2 if w is even, -(w+1)/2 if odd}
+set arthur_decode(string s) = vec:
+    let z = 0
+    in for i:#s
+       do let c = ASCII(s[i])
+	  in if c < 97 then z := 26*z + c-65; []
+	     else let w = 26*z + c-97 in z := 0; [if w%2 = 0 then w\2 else -(w+1)\2 fi]
+	     fi
+       od.##
+
+{the Arthur reps of the stored real form C: (x number, lambda, nu) with denominator d}
+set arthur_stored_reps(RealForm C, int d, string s) = [Param]:
+    let v = arthur_decode(s), r = C.rank
+    in for i:#v\(2*r+1)
+       do let j = i*(2*r+1) in parameter(C, v[j], v[j+1:j+r+1]/d, v[j+r+1:j+2*r+1]/d)
+       od
 
 {the image of x in G2 under g: X^*(x.real_form) -> X^*(G2), if it lies in the real form G2}
 set arthur_transport_x(KGBElt x, RealForm G2, mat g, mat ginv) = [KGBElt]:
@@ -117,12 +138,10 @@ set make_arthur_hash() = arthur_hash_table:
     then add_canned(RealForm C) = void: {stored data, cheap}
 	 let i = entry(C) in if not filled[i] then fill(i, unipotent_representations_compute(C)) fi
     then add_stored(RealForm T) = void: {stored real forms isomorphic to T join the table}
-	 for (C,tf0,data) in arthur_store
+	 for (C,tf0,d,data) in arthur_store
 	 do if arthur_store_matches(C,tf0,T)
 	    then let j = entry(C)
-		 in if not filled[j]
-		    then fill(j, for (x,lambda,nu) in data do parameter(C,x,lambda,nu) od)
-		    fi
+		 in if not filled[j] then fill(j, arthur_stored_reps(C,d,data)) fi
 	    fi
 	 od
     then add_simple(RealForm S) = int:
@@ -207,3 +226,8 @@ set arthur_hash = make_arthur_hash()
 set unipotent_representations_arthur(RealForm G) = [Param]:
     for p in arthur_hash.arthur_list(G) do parameter(KGB(G,p.x.number),p.lambda,p.nu) od
 unip_hook := [unipotent_representations_arthur@RealForm]
+
+{stored data: simply connected forms of types A (rank <= 8), B (1-8), C (1-8) and D (4-8)}
+<A_to_8_unip.at
+<C_to_8_unip.at
+<spin_to_8_unip.at
