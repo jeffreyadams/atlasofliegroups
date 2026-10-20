@@ -3,6 +3,7 @@
 <K_highest_weights.at { for |all_parameters_gamma| }
 <associated_variety_annihilator.at { for |GK_dim|, |GK_dim_maximal_ideal| }
 <weakly_unipotent.at { for |GK_dim_claude|, |GK_dim_maximal_ideal_memo| }
+<paramRep.at { for |TalphabetaTauss_bitset|, |same_PI_visit| }
 
 { Special unipotent representations of G directly from the definition: for each nilpotent
   orbit O in the dual Lie algebra, gamma = O.H/2, and the representations are the irreducible
@@ -49,5 +50,43 @@ set unipotent_representations_alt_fast(RealForm G) = [Param]:
            then list1 = for q in all_parameters_gamma(G,gamma) if tau(q) = S do q fi od
            then D = GK_dim_maximal_ideal_memo(G,gamma)
            in for q in list1 if GK_dim_claude(q) = D do q fi od
+      fi
+   od
+
+{ Same list by the generalized tau invariant: q (with tau(q) = S as above) is unipotent iff
+  same_PI_step(q, TalphabetaTauss_bitset(psph)), psph = the spherical rep of the split form at
+  gamma. A tested candidate also decides the candidates its search visited (all of the same GK
+  dimension): if it fails they all fail; if it succeeds, those with its tau invariant succeed.
+  Same answers as alt_fast on every form tested (verified to rank 7, and the propagation on 12
+  groups); 2-4x faster than alt_fast at rank 7 except so(11,4) (0.8x). Propagation adds up to
+  1.4x on split and nearly split B, C (Sp(12,R): 296 s -> 217 s), nothing in type A, so*(2n),
+  Sp(p,q). Most of the time is same_PI_step. }
+set unipotent_representations_gentau(RealForm G) = [Param]:
+   let st = Springer_table(G), delta_check = ^G.distinguished_involution, Gs = G.split_form
+   in ##for O in dual_orbits(G)
+   do if not (twist(delta_check,O) = O) or =#real_nilpotent_orbits(st.dual_map_i(O),G)
+      then []
+      else let gamma = O.H/2
+	   then S = nonsingular_integral_simple(G,gamma)
+	   then list1 = for q in all_parameters_gamma(G,gamma) if tau(q) = S do q fi od
+	   then regs = make_Param_hash() {regs.index(i) = regularize(list1[i])}
+	   then () = for q in list1 do regs.match(regularize(q)) od
+	   then status = for q in list1 do 0 od {1 unipotent, -1 not, 0 unknown}
+	   then bits = TalphabetaTauss_bitset(Finalize(parameter(x_open(Gs),Gs.rho,gamma)))
+	   in for q@i in list1
+	      do if status[i] = 0
+		 then let (ok,visited) = same_PI_visit(q,bits), tq = tau(regularize(q))
+		      in status[i] := if ok then 1 else -1 fi;
+			 for r in visited
+			 do let k = lookup(regs)(r)
+			    in if k >= 0 and status[k] = 0
+			       then if not ok then status[k] := -1
+				    elif tau(r) = tq then status[k] := 1
+				    fi
+			       fi
+			 od
+		 fi
+	      od;
+	      for q@i in list1 if status[i] = 1 do q fi od
       fi
    od

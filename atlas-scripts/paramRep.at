@@ -1169,6 +1169,27 @@ set same_PI_step_long(Param p, [int] Tauss_bit) = (bool,int):
 set same_PI_step(Param p, [int] Tauss_bit) = bool:
     let (ans,) = same_PI_step_long(p,Tauss_bit) in ans
 
+{same_PI_step, also returning every Param visited (at the regularized infinitesimal character):
+ all of them have the GK dimension of p; used by unipotent_representations_gentau}
+set same_PI_visit(Param p, [int] Tauss_bit) = (bool,[Param]):
+    if to_bitset([to_bitset(tau(p))]) != Tauss_bit[0] then return (false,[Param]:[]) fi;
+    let q = regularize(p), G = p.real_form, step = int:0, pHash = make_Param_hash()
+    then test = int:0, toDo = 1*q, nullmod = null_module(G), size = int:0
+    in while #toDo > 0
+       do for @r in toDo do pHash.match(r) od;
+	  size:=pHash.size();
+	  test:=to_bitset(for r in pHash.list() do to_bitset(tau(r)) od );
+	  if test != Tauss_bit[min(step,#Tauss_bit -1)] then return (false,pHash.list()) fi;
+	  toDo := sum(G, for @r in toDo
+			 do sum(G, for t in Talphabeta(r)
+				   do let j = pHash.match(t) in if j>= size then 1*t else nullmod fi
+				   od)
+			 od);
+	  step +:=1
+       od;
+       (step >= #Tauss_bit and
+	to_bitset(for r in pHash.list() do to_bitset(tau(r)) od) = Tauss_bit~[0], pHash.list())
+
 {If Tauss_bit is TalphabetaTauss_bitset(q), then this is a necessary condition for p and q to have
 the same primitive ideal; need N >= 1. Second return is position where first differ.}
 set same_PI_step_long(Param p, [int] Tauss_bit, int N) = (bool,int):
