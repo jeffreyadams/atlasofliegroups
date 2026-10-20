@@ -71,7 +71,7 @@ struct Poly_hash_export // auxiliary to export possibly temporary hash table
   Kazhdan-Lusztig-Vogan polynomials for a block of representations of $G$.
 */
 class KL_table
-  : public klsupport::KLSupport // base is needed for full functionality
+  : public klsupport::KLSupport // base accesses |Block_base|, has descent info
 {
 
   BitMap d_holes; // columns to fill; its |capacity| limits ambition to do so

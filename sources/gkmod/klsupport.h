@@ -32,8 +32,8 @@ class KLSupport
 {
   const Block_base& d_block;  // non-owned reference
 
-  struct Elt_info // per block element information
-  { RankFlags descents;
+  struct Elt_info // per block element information, also present in |d_block|
+  { RankFlags descents;     // but compacted to one bit per simple reflection
     RankFlags good_ascents;
   Elt_info(RankFlags d,RankFlags a): descents(d), good_ascents(a) {}
   };

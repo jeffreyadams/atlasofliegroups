@@ -411,7 +411,7 @@ std::ostream& printCartanClasses(std::ostream& strm,
 }
 
 /* the function below is much like |kgb_io::printBruhatOrder|, but cannot
-   call that function, which needs a different type, nameley |BruhatOrder|.
+   call that function, which needs a different type, namely |BruhatOrder|.
  */
 
 // Print the Hasse diagram of the Cartan ordering of G_R.
