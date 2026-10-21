@@ -4,6 +4,8 @@
 <associated_variety_annihilator.at { for |GK_dim|, |GK_dim_maximal_ideal| }
 <weakly_unipotent.at { for |GK_dim_claude|, |GK_dim_maximal_ideal_memo| }
 <paramRep.at { for |TalphabetaTauss_bitset|, |same_PI_visit| }
+<cells.at { for |blocks|, |W_cells_of|, |cell_character_inefficient| }
+<families.at { for |family@(CharacterTable,int)| }
 
 { Special unipotent representations of G directly from the definition: for each nilpotent
   orbit O in the dual Lie algebra, gamma = O.H/2, and the representations are the irreducible
@@ -21,6 +23,59 @@
 set nonsingular_integral_simple(RootDatum rd, ratvec gamma) = [int]:
    let g = dominant(rd,gamma)
    in for av@j in integrality_datum(rd,g).simple_coroots if g*av != 0 do j fi od
+
+{ The number of Arthur (special) unipotent representations of G attached to a dual orbit O,
+  computed from Weyl group representations alone (no unitarity, no GK dimensions):
+
+    sum over tau in the family F of W(rdi)
+        [tau : Ind_{W_sing}^{W(rdi)} triv] * [tau : M]
+
+  gamma = O.H/2, rdi = integrality_datum(G,gamma), W_sing = W(roots of rdi singular on gamma),
+  M = coherent continuation representation of W(rdi) on the span of the irreducibles of G
+  of the regular infinitesimal character gamma+2rho (sum of the cell characters of all its
+  blocks), and F = the family of the special representation of W(rdi) attached to the orbit
+  O_i of the integral dual datum through O (the special rep is Springer(d(O_i)) = sgn x
+  Springer(O_i); O_i is even in rdi^vee). }
+
+set unipotent_count_verbose = false
+
+{ M depends only on G and gamma mod the weight lattice X^* (the coherent family through gamma+2rho,
+  and rdi with it), so it is cached by (G, gamma%1); |unipotent_count_M_cache:=[]| clears it }
+set unipotent_count_M_cache = [(RealForm,ratvec,[int])]: []
+
+set unipotent_count_M (RealForm G, ratvec gamma, CharacterTable ct) = [int]:
+   let key = gamma%1
+   then i = first(for (H,k,) in unipotent_count_M_cache do H=G and k=key od)
+   in if i>=0 then let (,,M) = unipotent_count_M_cache[i] in M
+      else let chi = for i:ct.n_classes do 0 od
+           in for B in blocks(all_parameters_gamma(G,gamma+2*G.rho))
+              do for cell in W_cells_of(B[0])
+                 do chi := ct.sum(chi,cell_character_inefficient(ct,cell)) od
+              od
+           ; unipotent_count_M_cache #:= (G,key,chi)
+           ; chi
+      fi
+
+{ (count, max multiplicity of triv_{W_sing} on the family, [(tau,[tau:Ind triv],[tau:M])]) }
+set unipotent_count_data (RealForm G, ComplexNilpotent O) = (int,int,[(int,int,int)]):
+   let gamma = O.H/2
+   then rdi = integrality_datum(G,gamma)
+   then st = Springer_table(rdi)
+   then ct = st.ct
+   then Oi = complex_nilpotent(rdi.dual,O.H)
+   then sp = st.springer(st.dual_map_i(Oi))
+   then F = family(ct,sp)
+   then S = for av@j in rdi.simple_coroots if gamma*av = 0 do j fi od
+   then ind_triv = ct.product(ct.sign,ind_sgn(ct.class_table,S))
+   then M = unipotent_count_M(G,gamma,ct)
+   then terms = for tau in F
+                do (tau,ct.inner(ct.character(tau),ind_triv),ct.inner(ct.character(tau),M)) od
+   in ( sum(for (,a,b) in terms do a*b od)
+      , max(for (,a,) in terms do a od)
+      , terms )
+
+set unipotent_count (RealForm G, ComplexNilpotent O) = int:
+   let (n,,) = unipotent_count_data(G,O) in n
 
 set unipotent_representations_alt_verbose = false
 
@@ -94,9 +149,10 @@ set unipotent_orbits_gentau(RealForm G) = [ComplexNilpotent]:
       if twist(delta_check,O) = O and #real_nilpotent_orbits(st.dual_map_i(O),G) > 0 do O fi
       od
 
-{ the unipotent representations attached to one dual orbit O }
-set unipotent_representations_gentau(RealForm G, ComplexNilpotent O) = [Param]:
-   let gamma = O.H/2, Gs = G.split_form, t = elapsed_ms(), t0 = elapsed_ms()
+{ the irreducibles at gamma with annihilator J_max(gamma) (gamma = O.H/2 for an orbit O;
+  on a Levi, gamma may have a central part) }
+set unipotent_representations_gentau(RealForm G, ratvec gamma) = [Param]:
+   let Gs = G.split_form, t = elapsed_ms(), t0 = elapsed_ms()
    then S = nonsingular_integral_simple(G,gamma)
    then all = all_parameters_gamma(G,gamma)
    then list1 = for q in all if tau(q) = S do q fi od
@@ -112,7 +168,7 @@ set unipotent_representations_gentau(RealForm G, ComplexNilpotent O) = [Param]:
 	       in if j >= 0 and status[j] = 0 then status[j] := st; unknown -:= 1; ntw +:= 1 fi
 	    od)
    then () = if gentau_verbose
-	     then prints("gentau H=",O.H," #all=",#all," #candidates=",#list1," (",elapsed_ms()-t," ms)")
+	     then prints("gentau gamma=",gamma," #all=",#all," #candidates=",#list1," (",elapsed_ms()-t," ms)")
 	     fi
    then () = t := elapsed_ms()
    then bits = TalphabetaTauss_bitset(Finalize(parameter(x_open(Gs),Gs.rho,gamma)))
@@ -141,9 +197,17 @@ set unipotent_representations_gentau(RealForm G, ComplexNilpotent O) = [Param]:
       od;
       let ans = for q@i in list1 if status[i] = 1 do q fi od
       in if gentau_verbose
-	 then prints("gentau H=",O.H,": ",#ans," unipotent of ",#list1," candidates, ",tests,
+	 then prints("gentau gamma=",gamma,": ",#ans," unipotent of ",#list1," candidates, ",tests,
 		     " tested (",elapsed_ms()-t0," ms)")
 	 fi; ans
+
+{ the unipotent representations attached to one dual orbit O }
+set unipotent_representations_gentau(RealForm G, ComplexNilpotent O) = [Param]:
+   let ans = unipotent_representations_gentau(G,O.H/2) in
+   { the generalized tau test has no theorem behind it; alt_fast does }
+   assert(@:#ans = unipotent_count(G,O)
+	 ,"unipotent_representations_gentau: wrong count at H=" + to_string(O.H));
+   ans
 
 set unipotent_representations_gentau(RealForm G) = [Param]:
    ##for O in unipotent_orbits_gentau(G) do unipotent_representations_gentau(G,O) od

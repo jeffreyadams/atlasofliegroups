@@ -1,0 +1,26 @@
+<unipotent_alt.at { for |unipotent_count_data|, |unipotent_orbits_gentau| }
+
+{ compare with unipotent_representations_gentau orbit by orbit: [(H, count, #computed)] }
+set unipotent_count_check (RealForm G) = [(vec,int,int)]:
+   for O in unipotent_orbits_gentau(G)
+   do let (n,m,terms) = unipotent_count_data(G,O)
+      then k = #unipotent_representations_gentau(G,O)
+      in if unipotent_count_verbose or n != k or m > 1
+         then prints("H=",O.H," count=",n," computed=",k," max mult=",m," terms=",terms)
+         fi; (O.H,n,k)
+   od
+
+{ every dual orbit: [(H, count, #(tau = S candidates), #unipotent by GK dimension)];
+  prints the rows where count and the GK-dimension list disagree }
+set unipotent_count_check_all (RealForm G) = [(vec,int,int,int)]:
+   for O in dual_orbits(G)
+   do let gamma = O.H/2
+      then S = nonsingular_integral_simple(G,gamma)
+      then list1 = for q in all_parameters_gamma(G,gamma) if tau(q) = S do q fi od
+      then D = GK_dim_maximal_ideal_memo(G,gamma)
+      then k = #for q in list1 if GK_dim_claude(q) = D do q fi od
+      then (n,m,terms) = unipotent_count_data(G,O)
+      in if unipotent_count_verbose or n != k or m > 1
+         then prints("H=",O.H," count=",n," #tau=",#list1," #GK=",k," max mult=",m," terms=",terms)
+         fi; (O.H,n,#list1,k)
+   od

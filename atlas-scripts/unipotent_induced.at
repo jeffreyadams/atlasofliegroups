@@ -1,0 +1,240 @@
+<induction.at { for |real_induce_irreducible|, |theta_induce_irreducible| }
+<unipotent_alt.at { for |nonsingular_integral_simple|, |unipotent_count|, |unipotent_orbits_gentau| }
+<hash.at { for |make_Param_hash| }
+
+{ Arthur (special) unipotent representations of G attached to a dual orbit O, by induction
+  from the Bala-Carter Levi. Let L^v be a Bala-Carter Levi of O (O distinguished in L^v, so
+  Z(L^v)^0 is a maximal torus of the centralizer of O) and L the dual Levi of G. Run over
+  every real Levi L'_R of G (Levi of a real parabolic, including G), and inside L'_R every
+  Levi L_R of a theta-stable parabolic q = l+u of complex type L (including L_R = L'_R).
+  (unipotent_induced_theta_first: the other order, theta-stable L'_R of G and real L_R.)
+  For each distinguished L^v-orbit O_L with saturation O, gamma_L = O_L.H/2: take the
+  unipotent representations of L_R at gamma_L - rho(u) (theta_induce adds rho(u)),
+  cohomologically induce to L'_R, then real induce to G. The answer is the set of
+  irreducibles occurring with nonzero coefficient.
+
+  Every such irreducible is unipotent, whatever the range of q: its infinitesimal character
+  is conjugate to O.H/2 and its associated variety lies in Ind_L^G d_L(O_L) = d(O), the
+  associated variety of the maximal ideal J_max(O.H/2), so its annihilator is J_max.
+  Completeness is what unipotent_count (unipotent_alt.at) tests. }
+
+set unipotent_induced_verbose = false
+
+{ irreducibles of L at gamma (any central part) with annihilator J_max(gamma) }
+set unipotent_at (RealForm L, ratvec gamma) = [Param]:
+   let S = nonsingular_integral_simple(L,gamma)
+   then list1 = for q in all_parameters_gamma(L,gamma) if tau(q) = S do q fi od
+   then D = GK_dim_maximal_ideal_memo(L,gamma)
+   in for q in list1 if GK_dim_claude(q) = D do q fi od
+
+{ Levis of real parabolics of G with semisimple rank >= r (G itself included) }
+set real_Levis (RealForm G, int r) = [RealForm]:
+   let n = G.semisimple_rank in
+   for S in power_set(for i:n do i od) if #S >= r
+   do for P in parabolics(G,(G.root_datum,S)) if parabolic_is_real(P) do Levi(P) fi od
+   fi od.##
+
+{ Real forms of a standard Levi L of G (simple roots S). Every real form L_R of L in G_R
+  has a fundamental Cartan, i.e. comes from x in KGB(G) whose involution theta permutes the
+  simple roots of L (theta distinguished for L). Such x and y give K-conjugate L_R iff
+  y = cross(n,x) with n in N_W(L). N_W(L) is generated, as a groupoid on the standard Levis
+  conjugate to L (Howlett), by W(L)^theta and the elements nu = w_0(K) w_0(K meet S'), K the
+  component of S' + {t} containing t, which carry S' to the standard nu(S'). The search runs
+  over pairs (S',x) with involution(x) distinguished for S'. }
+
+set reflect_root (RootDatum rd, int s, vec v) = vec:
+   v - (rd.simple_coroots[s]*v)*rd.simple_roots[s]
+
+{ a reduced word for the longest element of W_K (an involution, so order is irrelevant) }
+set longest_word (RootDatum rd, [int] K) = [int]:
+   let H = sum(rd.rank, for k in K do fundamental_coweight(rd,k) od), word = [int]: []
+   in while let j = first(for k in K do rd.simple_roots[k]*H > 0 od) in j >= 0
+      do let k = K[j] in H := H - (rd.simple_roots[k]*H)*rd.simple_coroots[k]; word #:= k
+      od; word
+
+{ the connected component of the Dynkin diagram on T containing t }
+set component (RootDatum rd, [int] T, int t) = [int]:
+   let C = rd.Cartan_matrix, comp = [t], i = 0 in
+   while i < #comp
+   do for u in T do if C[comp[i],u] != 0 and not any(for c in comp do c = u od) then comp #:= u fi od;
+      i +:= 1
+   od; comp
+
+{ the moves from S': [(word, S'')], cross by word carrying S' to S'' }
+set Levi_moves (RootDatum rd, [int] Sp) = [([int],[int])]:
+   let sr = rd.simple_roots in
+   for t in complement(rd.semisimple_rank,Sp)
+   do let K = component(rd,Sp#t,t)
+      then KS = for k in K if k != t do k fi od
+      then word = longest_word(rd,KS) ## longest_word(rd,K)
+      then image(vec v) = vec: let r = v in for s in word do r := reflect_root(rd,s,r) od; r
+      in (word, sort(for s in Sp do first(for u:#sr do sr[u] = image(sr[s]) od) od))
+   od
+
+{ generators of W(L)^theta for theta distinguished for L: for each theta-orbit on the
+  simple roots of L, s (fixed), s t (orthogonal pair), or s t s (adjacent pair) }
+set fixed_Weyl_generators (RootDatum rd, [int] S, mat theta) = [[int]]:
+   let sr = rd.simple_roots, C = rd.Cartan_matrix in
+   for s in S
+   do let t = S[first(for u in S do theta*sr[s] = sr[u] od)] in
+      if t = s then [[s]] elif s > t then [] elif C[s,t] = 0 then [[s,t]] else [[s,t,s]] fi
+   od.##
+
+set is_distinguished_for (RootDatum rd, [int] S, mat th) = bool:
+   let sr = rd.simple_roots in
+   all(for s in S do let v = th*sr[s] in any(for t in S do v = sr[t] od) od)
+
+{ one x per real form of L in G_R (up to K-conjugacy), involution(x) distinguished for L.
+  With use_moves = false, only W(L)^theta is used: one x per pair (L_R, chamber of the center
+  of L), which is what theta-stable induction needs (q depends on the chamber of H+). }
+set real_forms_of_Levi (RealForm G, [int] S, bool use_moves) = [KGBElt]:
+   let rd = G.root_datum
+   then seen = make_vec_hash(), moves = make_vec_hash(), move_list = [[([int],[int])]]: []
+   then moves_of([int] Sp) = [([int],[int])]:
+      let n = moves.size(), k = moves.match(vec:[to_bitset(Sp)]) in
+      if k = n then move_list #:= Levi_moves(rd,Sp) fi; move_list[k]
+   then key([int] Sp, KGBElt x) = vec: [to_bitset(Sp),#x]
+   then result = [KGBElt]: []
+   in for x in KGB(G)
+      do if seen.lookup(key(S,x)) < 0 and is_distinguished_for(rd,S,x.involution)
+         then let orbit = [([int],KGBElt)]: [(S,x)], i = 0
+              in seen.match(key(S,x)); result #:= x;
+                 while i < #orbit
+                 do let (Sp,y) = orbit[i]
+                    then steps = for g in fixed_Weyl_generators(rd,Sp,y.involution) do (g,Sp) od
+                                 ## if use_moves then moves_of(Sp) else [] fi
+                    in for (word,Spp) in steps
+                       do let z = y in for s in word do z := cross(s,z) od;
+                          if seen.lookup(key(Spp,z)) < 0
+                          then assert(@:is_distinguished_for(rd,Spp,z.involution)
+                                     ,"real_forms_of_Levi: move not distinguished");
+                               seen.match(key(Spp,z)); orbit #:= (Spp,z)
+                          fi
+                       od; i +:= 1
+                 od
+         fi
+      od; result
+
+set real_forms_of_Levi (RealForm G, [int] S) = [KGBElt]: real_forms_of_Levi(G,S,true)
+
+{ the real form of the standard Levi with simple roots S, at y (involution(y) stabilizes it) }
+set Levi_at (KGBElt y, [int] S) = RealForm:
+   let th = y.involution in
+   real_form(inner_class(sub_datum(y.root_datum,S),th),th,torus_factor(y))
+
+{ For x from real_forms_of_Levi(G,S): (L'_R, L_R), conjugated together into standard
+  position. H_c = central coweight of L, H+ = (1+theta)H_c, H- = (1-theta)H_c.
+  theta_first: L' = centralizer of H+, Levi of a theta-stable parabolic of G, and L the Levi
+  of a real parabolic of L'_R; otherwise L' = centralizer of H-, Levi of a real parabolic of
+  G, and L the Levi of a theta-stable parabolic of L'_R. }
+set Levi_pair_key (KGBElt x, [int] S, bool theta_first) = (RealForm,RealForm,vec):
+   let rd = x.root_datum, th = x.involution
+   then Hc = standard_Levi_coweight(rd,S)
+   then (Hout,Hin) = if theta_first then ((1+^th)*Hc,(1-^th)*Hc) else ((1-^th)*Hc,(1+^th)*Hc) fi
+   then M = 1 + max(0 # for a in rd.posroots do abs(a*Hin) od)
+   then (H,w) = from_dominant(M*Hout+Hin,rd)
+   then y = cross(w,x)
+   then thy = y.involution
+   then Hout_y = if theta_first then (1+^thy)*H else (1-^thy)*H fi
+   then SL = zero_simple_roots(rd,H), Sp = zero_simple_roots(rd,Hout_y)
+   in assert(@:#SL = #S and all(for a in rd.simple_roots do a*Hout_y >= 0 od)
+            ,"Levi_pair: conjugation to standard position failed");
+      (Levi_at(y,Sp),Levi_at(y,SL),[to_bitset(Sp),to_bitset(SL),#y])
+
+set Levi_pair (KGBElt x, [int] S, bool theta_first) = (RealForm,RealForm):
+   let (Lp,L,) = Levi_pair_key(x,S,theta_first) in (Lp,L)
+
+{ if true, theta-stable L'_R of G and real L_R in L'_R; else real L'_R and theta-stable L_R }
+set unipotent_induced_theta_first = true
+
+{ if true, the unipotent reps of the Levis by gentau, else as in alt_fast (unipotent_at) }
+set unipotent_induced_Levi_gentau = false
+
+set unipotent_representations_induced (RealForm G, ComplexNilpotent O) = [Param]:
+   let rdv = O.root_datum, S = Bala_Carter_simples(O)
+   then result = make_Param_hash()
+   then saturates(vec H) = bool: dominant(H,rdv) = O.H
+   {induce from L_R to L'_R, then to G; theta_induce adds rho(u) of its own step}
+   then induce(Param pL, RealForm Lp) = ParamPol:
+      if unipotent_induced_theta_first
+      then theta_induce_irreducible(real_induce_irreducible(pL,Lp),G)
+      else real_induce_irreducible(theta_induce_irreducible(pL,Lp),G)
+      fi
+   then done = make_vec_hash() {(L'_R, L_R) in standard position already used}
+   in for x in real_forms_of_Levi(G,S,false)
+      do let (Lp,L,key) = Levi_pair_key(x,S,unipotent_induced_theta_first)
+         then n = done.size()
+         in if done.match(key) = n then
+         let rho_u = if unipotent_induced_theta_first then rho(G)-rho(Lp) else rho(Lp)-rho(L) fi
+         in for H in distinguished_Hs(L.root_datum.dual) if saturates(H)
+            do let pLs = if unipotent_induced_Levi_gentau
+                         then unipotent_representations_gentau(L,H/2-rho_u)
+                         else unipotent_at(L,H/2-rho_u) fi
+               in if unipotent_induced_verbose
+                  then prints("x=",x," L'=",Lp," L=",L," H_L=",H," #unip(L)=",#pLs) fi;
+                  for pL in pLs
+                  do for c@p in induce(pL,Lp) do if c != 0 then result.match(p) fi od
+                  od
+            fi od
+         fi
+      od; result.list()
+
+{ previous version, for comparison: every Levi L'_R of a real (theta-stable if theta_first)
+  parabolic of G, and inside it every Levi of type L of a theta-stable (real) parabolic }
+{ Levis of theta-stable parabolics of G with semisimple rank >= r (G itself included) }
+set theta_stable_Levis (RealForm G, int r) = [RealForm]:
+   for q in theta_stable_parabolics(G) if let (S,) = q in #S >= r do Levi(q) fi od
+
+set unipotent_representations_induced_by_parabolics (RealForm G, ComplexNilpotent O) = [Param]:
+   let rdv = O.root_datum, r = #Bala_Carter_simples(O)
+   then result = make_Param_hash()
+   then saturates(vec H) = bool: dominant(H,rdv) = O.H
+   then (outer_Levis,inner_parabolics,inner_ok) =
+      if unipotent_induced_theta_first
+      then (theta_stable_Levis@(RealForm,int)
+           ,(RealForm Lp) [Parabolic]:
+               ##for S in power_set(for i:Lp.semisimple_rank do i od) if #S = r
+                 do parabolics(Lp,(Lp.root_datum,S)) fi od
+           ,parabolic_is_real@Parabolic)
+      else (real_Levis@(RealForm,int), theta_stable_parabolics@RealForm
+           ,(Parabolic q) bool: let (S,) = q in #S = r)
+      fi
+   {induce from L_R to L'_R, then to G; theta_induce adds rho(u) of its own step}
+   then induce(Param pL, RealForm Lp) = ParamPol:
+      if unipotent_induced_theta_first
+      then theta_induce_irreducible(real_induce_irreducible(pL,Lp),G)
+      else real_induce_irreducible(theta_induce_irreducible(pL,Lp),G)
+      fi
+   in for Lp in outer_Levis(G,r)
+      do let rho_u = rho(G)-rho(Lp) in
+         for q in inner_parabolics(Lp) if inner_ok(q)
+         do let L = Levi(q)
+            then rho_u = if unipotent_induced_theta_first then rho_u else rho(Lp)-rho(L) fi
+            in for H in distinguished_Hs(L.root_datum.dual) if saturates(H)
+               do let pLs = unipotent_at(L,H/2-rho_u)
+                  in if unipotent_induced_verbose
+                     then prints("L'=",Lp," L=",L," H_L=",H," #unip(L)=",#pLs) fi;
+                     for pL in pLs
+                     do for c@p in induce(pL,Lp) do if c != 0 then result.match(p) fi od
+                     od
+               fi od
+         fi od
+      od; result.list()
+
+{ every orbit alt_fast uses: [(H, #induced, #alt_fast, count)]; prints disagreements }
+set unipotent_induced_check (RealForm G) = [(vec,int,int,int)]:
+   let st = Springer_table(G), delta_check = ^G.distinguished_involution
+   in for O in dual_orbits(G)
+      if twist(delta_check,O) = O and #real_nilpotent_orbits(st.dual_map_i(O),G) > 0
+      do let gamma = O.H/2
+         then alt = unipotent_at(G,gamma)
+         then ind = unipotent_representations_induced(G,O)
+         then n = unipotent_count(G,O)
+         then h = make_Param_hash(alt)
+         then extra = for p in ind if h.lookup(p) < 0 do p fi od
+         in if unipotent_induced_verbose or #ind != #alt or #alt != n or #extra > 0
+            then prints("H=",O.H," #induced=",#ind," #alt_fast=",#alt," count=",n
+                       ," not in alt_fast: ",extra)
+            fi; (O.H,#ind,#alt,n)
+      fi
+   od

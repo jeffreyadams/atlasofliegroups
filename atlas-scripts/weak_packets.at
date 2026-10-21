@@ -19,7 +19,7 @@
 <cohom_reductionND.at {to calculate unipotents one derived factor at a time}
 <FPP_faces_herm.at {for big_unitary_hash}
 <paramRep.at {for GK_dim_new}
-<unipotent_alt.at {for unipotent_representations_alt_fast}
+<unipotent_alt.at {for unipotent_representations_gentau, unipotent_representations_alt_fast}
 
 
 {extract just the parameters from [(int,int,Param)]}
@@ -470,8 +470,11 @@ set cells([(int,int,Param)] packet)=[int]:sort_u(for (,c,) in packet do c od )
 set cells([[(int,int,Param)]] packets) =[int]:sort_u(##for i:#packets do for (,c,) in packets[i] do c od od)
 set blocks([[(int,int,Param)]] packets) =[int]:sort_u(##for i:#packets do for (b,,) in packets[i] do b od od)
 
-{use unipotent_representations_alt_fast (unipotent_alt.at) in unipotent_representations}
-set unip_alt_fast_flag = true
+{in unipotent_representations_compute, for groups without stored data: unip_gentau_flag uses
+ unipotent_representations_gentau (unipotent_alt.at; checked against unipotent_count when
+ seat_belt_on), else unip_alt_fast_flag uses unipotent_representations_alt_fast}
+set unip_gentau_flag = true
+set unip_alt_fast_flag = false
 set weak_packets_new_flag = false
 set weak_packets_newest_flag = false
 set weak_packets_fast_flag = false
@@ -497,6 +500,8 @@ set unipotent_representations_compute(RealForm G)=[Param]: {G.weak_packets.param
     then for (x,lambda,nu) in E8_s_data do parameter(G,x,lambda,nu) od
     elif G = E8_q
     then for (x,lambda,nu) in E8_q_data do parameter(G,x,lambda,nu) od
+    elif unip_gentau_flag
+    then unipotent_representations_gentau(G)
     elif unip_alt_fast_flag
     then unipotent_representations_alt_fast(G)
     elif weak_packets_new_flag

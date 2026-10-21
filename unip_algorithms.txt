@@ -1,0 +1,147 @@
+Algorithms for Arthur (special) unipotent representations in atlas-scripts
+(written 2026-10-21, branch fpp_unitary)
+
+alt_fast vs gentau (both in atlas-scripts/unipotent_alt.at)
+===========================================================
+
+They compute the same set; they differ only in how a candidate is decided.
+
+Shared:
+  - Orbits: the dual orbits O that are fixed by delta^vee and have a real form
+    for G. unipotent_orbits_gentau(G) is exactly the list alt_fast uses.
+  - Candidates: gamma = O.H/2; the irreducibles q at gamma with tau(q) = S,
+    S = integral simple roots nonsingular on gamma (the cheap necessary
+    condition).
+
+alt_fast (unipotent_representations_alt_fast):
+  q is unipotent iff GK_dim_claude(q) = GK_dim_maximal_ideal_memo(G,gamma).
+  This is the definition Ann(q) = J_max(gamma): every annihilator at gamma
+  lies in J_max, so equality is the same as equal GK dimension. Each candidate
+  is tested independently, using the block-memoized GK dimension.
+
+gentau (unipotent_representations_gentau(G,O)):
+  q is unipotent iff it has the same generalized tau invariant as psph, the
+  spherical rep of the *split* form at gamma:
+  same_PI_step(q, TalphabetaTauss_bitset(psph)) (paramRep.at).
+  Each test also decides others:
+    - if the test fails, every candidate visited by its search fails
+      (they all have the same GK dimension);
+    - if it succeeds, the visited candidates with q's tau invariant succeed;
+    - every decided candidate decides its images under the torus twists
+      (gentau_twist_xs) and the contragredient, which preserve unipotence.
+
+Which is used:
+  - unipotent_representations(G) goes through unip_hook (arthur_hash.at), which
+    uses the stored data (exceptional F4_s .. E8_q; A_to_8_unip.at,
+    C_to_8_unip.at, spin_to_8_unip.at) when it can. Otherwise
+    unipotent_representations_compute calls gentau (unip_gentau_flag = true,
+    default since 2026-10-21), or alt_fast if unip_gentau_flag = false and
+    unip_alt_fast_flag = true (it was the default before that).
+  - gentau was added Oct 20-21 (a6c55dd4, 7c68fde7) to reach groups where
+    alt_fast was too slow. According to the headers of C_to_8_unip.at and
+    spin_to_8_unip.at, it produced the stored data for Sp(14,R) and Sp(16,R),
+    and for so(11,6), so(10,7), so(9,8), so(8,8), so(10,6), so(9,7);
+    everything else there came from alt_fast.
+
+Speed / agreement:
+  - Same answers on every form tested, to rank 7.
+  - gentau is 2-4x faster at rank 7, except so(11,4) (0.8x).
+  - Most of gentau's time is in same_PI_step. The twist propagation was worth
+    30x on one Sp(16,R) orbit (4.05 h -> 494 s).
+
+Exact count: unipotent_count(G,O) (unipotent_alt.at)
+====================================================
+
+  sum over tau in the family F of W(rdi) of
+      [tau : Ind_{W_sing}^{W(rdi)} triv] * [tau : M]
+
+  gamma = O.H/2, rdi = integrality_datum(G,gamma),
+  W_sing = W(roots of rdi singular on gamma),
+  M = sum of the cell characters of all blocks at gamma + 2 rho,
+  F = the family of Springer(d(O_i)) = sgn x Springer(O_i), where O_i is O
+      seen in the integral dual datum.
+  Conventions checked directly: Springer(principal) = trivial, and the
+  finite-dimensional cell carries sign.
+
+  - Theorems (Adams, Mason-Brown, Ionov, Vogan preprint): alt_fast and the
+    induction procedure below both find all Arthur unipotent reps. gentau has
+    no theorem, so it ends each orbit with a lazy
+    assert(@:#ans = unipotent_count(G,O)); seat_belt_on := false skips it.
+    With it on (M cached), gentau takes 1.4-5x as long. alt_fast has no assert.
+  - Agrees with alt_fast orbit by orbit on 25 groups up to rank 6 (E6_q, E6_s,
+    SO(6,6), Sp(10,R), ...). [tau : Ind triv] was never > 1 on the family.
+  - Harnesses: unipotent_count.at.
+  - Renamed from arthur_count: arthur_hash.at already defines a global
+    arthur_count = [int].
+
+Induction from the Bala-Carter Levi: unipotent_induced.at
+=========================================================
+
+unipotent_representations_induced(G,O):
+  - L^vee = the Bala-Carter Levi of O; L = the dual Levi of G.
+  - Run over every Levi L'_R of G (G included) and, inside it, every Levi L_R
+    of complex type L.
+  - For each distinguished H_L of L^vee saturating to O, take the unipotent
+    reps of L_R at H_L/2 - rho(u). theta_induce adds rho(u); real induction
+    preserves the infinitesimal character.
+  - Induce to L'_R, then to G; keep every irreducible with nonzero
+    coefficient.
+
+  Flag unipotent_induced_theta_first:
+    true (default): theta-stable L'_R in G, then real L_R in L'_R;
+      10-20% faster in every timing run, as expected.
+    false: real L'_R in G, then theta-stable L_R in L'_R.
+
+  Completeness is a theorem (Adams, Mason-Brown, Ionov, Vogan preprint).
+  Soundness for every q and every range: a constituent has AV inside
+  Ind_L^G d_L(O_L) = d(O), which forces Ann = J_max. The comparison with
+  alt_fast / unipotent_count is a consistency check.
+
+  - induced = alt_fast = unipotent_count, orbit by orbit, on 31 groups up to
+    rank 6, including SO_star(8), SL(3,H), Sp(4,C). Both orders give
+    identical sets.
+  - Speed: about equal to alt_fast up to rank 4; 3-8x slower at rank 6
+    (E6_q 187 s vs 24 s). Not profiled yet.
+  - Not tested on E7.
+
+Real forms of a Levi (unipotent_induced.at, added 2026-10-21)
+-------------------------------------------------------------
+  real_forms_of_Levi(G,S): one x in KGB(G) per real form L_R of the standard
+    Levi S, up to K-conjugacy. involution(x) is distinguished for L, i.e. the
+    Cartan is fundamental in L_R. x and y are identified when
+    y = cross(n,x), n in N_W(L). The search uses W(L)^theta (generators s,
+    st, sts on theta-orbits of simple roots) plus Howlett's moves
+    nu = w_0(K) w_0(K meet S'). Check: S = {} gives the number of Cartan
+    classes (Sp(4,R) 4, Sp(6,R) 6, F4_s 8).
+  real_forms_of_Levi(G,S,false): W(L)^theta only, one x per
+    (L_R, chamber of Z(L)). This is David's original scheme (all x with a
+    distinguished involution, up to W(L)^theta), and it is what induction
+    needs: q depends on the chamber of H+. The N_W(L) moves were my addition
+    and lost reps when used for induction (Sp(4,R) H=[2,0]: 6 of 8).
+  Levi_pair(x,S,theta_first): H+- = (1 +- ^theta) H_c, H_c = the central
+    coweight of L. L' = centralizer of H+ (theta_first) or of H-; L =
+    centralizer of both. One from_dominant of M*H_outer + H_inner puts L' and
+    L in standard position together.
+  unipotent_representations_induced now uses these; the old enumeration is
+    unipotent_representations_induced_by_parabolics.
+  Results: correct on 23 groups (7 small ones plus 16 timed, up to E6_s).
+    Faster than the old enumeration on SU(3,3) and SU(4,2) (1.7-2x),
+    10-13% on E6, about equal elsewhere.
+  Profile, E6_s: 103 s total. 89% is the inductions themselves (317
+    inductions yield 68 reps, about 290 ms each), 10% unipotent_at on the
+    Levis, 0.2% the enumeration.
+
+Timing of the paths (2026-10-21, laptop, separate processes run serially,
+seat_belt_on := false except the last column; seconds)
+-----------------------------------------------------------------------------
+              alt_fast  gentau  induced/alt_fast  induced/gentau  gentau+assert
+  F4_s           3.1     0.45         3.7              2.1            2.3
+  E6_s          28.1    14.9         89.7             89.1           27.4
+  E6_q          23.8    17.3        153.4            154.3           25.0
+  Counts agree: F4_s 75, E6_s 68, E6_q 47.
+  The assert (unipotent_count) caches the regular-block cell characters M by
+  (G, gamma%1) (unipotent_count_M_cache). Cached counts are identical to
+  fresh recomputation on 9 groups (Sp(6,R) .. E6_s). The assert still costs
+  0.4-4x gentau's own time, so gentau+assert is about as fast as alt_fast.
+  The induction paths are dominated by the inductions (89% on E6_s), so
+  gentau on the Levis helps only at F4_s.
