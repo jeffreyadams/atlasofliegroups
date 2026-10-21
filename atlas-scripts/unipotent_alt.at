@@ -57,36 +57,93 @@ set unipotent_representations_alt_fast(RealForm G) = [Param]:
   same_PI_step(q, TalphabetaTauss_bitset(psph)), psph = the spherical rep of the split form at
   gamma. A tested candidate also decides the candidates its search visited (all of the same GK
   dimension): if it fails they all fail; if it succeeds, those with its tau invariant succeed.
+  Every candidate decided also decides its images under the twists of isotwistKGBs
+  (FPP_globalDirac.at) and the contragredient, which preserve being unipotent.
   Same answers as alt_fast on every form tested (verified to rank 7, and the propagation on 12
   groups); 2-4x faster than alt_fast at rank 7 except so(11,4) (0.8x). Propagation adds up to
   1.4x on split and nearly split B, C (Sp(12,R): 296 s -> 217 s), nothing in type A, so*(2n),
-  Sp(p,q). Most of the time is same_PI_step. }
-set unipotent_representations_gentau(RealForm G) = [Param]:
-   let st = Springer_table(G), delta_check = ^G.distinguished_involution, Gs = G.split_form
-   in ##for O in dual_orbits(G)
-   do if not (twist(delta_check,O) = O) or =#real_nilpotent_orbits(st.dual_map_i(O),G)
-      then []
-      else let gamma = O.H/2
-	   then S = nonsingular_integral_simple(G,gamma)
-	   then list1 = for q in all_parameters_gamma(G,gamma) if tau(q) = S do q fi od
-	   then regs = make_Param_hash() {regs.index(i) = regularize(list1[i])}
-	   then () = for q in list1 do regs.match(regularize(q)) od
-	   then status = for q in list1 do 0 od {1 unipotent, -1 not, 0 unknown}
-	   then bits = TalphabetaTauss_bitset(Finalize(parameter(x_open(Gs),Gs.rho,gamma)))
-	   in for q@i in list1
-	      do if status[i] = 0
-		 then let (ok,visited) = same_PI_visit(q,bits), tq = tau(regularize(q))
-		      in status[i] := if ok then 1 else -1 fi;
-			 for r in visited
-			 do let k = lookup(regs)(r)
-			    in if k >= 0 and status[k] = 0
-			       then if not ok then status[k] := -1
-				    elif tau(r) = tq then status[k] := 1
-				    fi
-			       fi
-			 od
+  Sp(p,q); the twists 30x on Sp(16,R) orbit 67 (4.05 h -> 494 s): later searches through
+  twisted copies of explored components get very slow. Most of the time is same_PI_step. }
+set gentau_verbose = false {report the candidate pool and every test}
+
+{ the KGB elements x' = x with torus factor shifted by an even lambda-differential-0 coweight,
+  as isotwistKGBs in FPP_globalDirac.at; (x',lambda,nu) is a twist of (x,lambda,nu) }
+set gentau_twist_xs(KGBElt x) = [KGBElt]:
+   let rd = x.root_datum, theta = x.involution, X = KGB(x.real_form)
+   then rdd = rd.dual, thd = -theta.^
+   then E = eigen_lattice(thd,-1)
+   then (A,v) = adapted_basis(in_lattice_basis(E,1-thd))
+   then basis = E*columns_with((int j):v[j] = 2,A)
+   then (RSC,) = simple_system_from_positive(real_poscoroots(rdd,thd), real_posroots(rdd,thd))
+   in for w in all_0_1_vecs(n_columns(basis))
+      do let C = basis*w
+	 in if all(for ac in RSC do is_even(ac*C) od)
+	    then [X[KGB_elt(rd,theta,x.torus_factor+C).number]] else [] fi
+      od.##
+
+{ p's images under the twists and the contragredient (with repetitions) }
+set gentau_images(Param p) = [Param]:
+   let c = contragredient(p)
+   in for x in gentau_twist_xs(p.x) do parameter(x,p.lambda,p.nu) od ##
+      for x in gentau_twist_xs(c.x) do parameter(x,c.lambda,c.nu) od
+
+{ the dual orbits used, in this order (the orbit numbers of gentau runs) }
+set unipotent_orbits_gentau(RealForm G) = [ComplexNilpotent]:
+   let st = Springer_table(G), delta_check = ^G.distinguished_involution
+   in for O in dual_orbits(G)
+      if twist(delta_check,O) = O and #real_nilpotent_orbits(st.dual_map_i(O),G) > 0 do O fi
+      od
+
+{ the unipotent representations attached to one dual orbit O }
+set unipotent_representations_gentau(RealForm G, ComplexNilpotent O) = [Param]:
+   let gamma = O.H/2, Gs = G.split_form, t = elapsed_ms(), t0 = elapsed_ms()
+   then S = nonsingular_integral_simple(G,gamma)
+   then all = all_parameters_gamma(G,gamma)
+   then list1 = for q in all if tau(q) = S do q fi od
+   then regs = make_Param_hash() {regs.index(i) = regularize(list1[i])}
+   then cands = make_Param_hash(list1)
+   then () = for q in list1 do regs.match(regularize(q)) od
+   then status = for q in list1 do 0 od {1 unipotent, -1 not, 0 unknown}
+   then unknown = #list1, tests = 0, ntw = 0
+   then decide(int k, int st) = void: {k and its images get status st}
+	   (if status[k] = 0 then status[k] := st; unknown -:= 1 fi;
+	    for r in gentau_images(list1[k])
+	    do let j = lookup(cands)(r)
+	       in if j >= 0 and status[j] = 0 then status[j] := st; unknown -:= 1; ntw +:= 1 fi
+	    od)
+   then () = if gentau_verbose
+	     then prints("gentau H=",O.H," #all=",#all," #candidates=",#list1," (",elapsed_ms()-t," ms)")
+	     fi
+   then () = t := elapsed_ms()
+   then bits = TalphabetaTauss_bitset(Finalize(parameter(x_open(Gs),Gs.rho,gamma)))
+   in if gentau_verbose
+      then prints("gentau spherical bitset: ",#bits," levels (",elapsed_ms()-t," ms)")
+      fi;
+      for q@i in list1
+      do if status[i] = 0
+	 then t := elapsed_ms(); ntw := 0;
+	      let (ok,visited) = same_PI_visit(q,bits), tq = tau(regularize(q)), nf = 0, ns = 0
+	      then st = if ok then 1 else -1 fi
+	      in decide(i,st); tests +:= 1;
+		 for r in visited
+		 do let k = lookup(regs)(r)
+		    in if k >= 0 and status[k] = 0 and (not ok or tau(r) = tq)
+		       then if ok then ns +:= 1 else nf +:= 1 fi; decide(k,st)
+		       fi
+		 od;
+		 if gentau_verbose
+		 then prints("gentau test ",tests," candidate ",i,": ",
+			     if ok then "unipotent. Visited "+#visited+"; decided "+ns+" others unipotent"
+			     else "no. Visited "+#visited+"; decided "+nf+" others no" fi,
+			     "; twists decided ",ntw,". ",unknown," left (",elapsed_ms()-t," ms)")
 		 fi
-	      od;
-	      for q@i in list1 if status[i] = 1 do q fi od
-      fi
-   od
+	 fi
+      od;
+      let ans = for q@i in list1 if status[i] = 1 do q fi od
+      in if gentau_verbose
+	 then prints("gentau H=",O.H,": ",#ans," unipotent of ",#list1," candidates, ",tests,
+		     " tested (",elapsed_ms()-t0," ms)")
+	 fi; ans
+
+set unipotent_representations_gentau(RealForm G) = [Param]:
+   ##for O in unipotent_orbits_gentau(G) do unipotent_representations_gentau(G,O) od
