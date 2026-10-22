@@ -1,7 +1,7 @@
 <K_highest_weights {for all_lambda_differential_zero}
 <central_chars.at {for compact_central_reps, unitary_chars}
 <lattice {for vec_solve}
-{ <chopping_facets_fast.at {for chop_coroots(G, vertices)}}
+<chopping_facets_fast.at {for chop_coroots(G, vertices, N)}
 <face_classes {for ordering on facets}
 <hash {for KPolHash}
 <TWOHEIGHTS {for HTA and HT}
@@ -3267,169 +3267,40 @@ set SDLALL(RealForm G) = [RealForm]:
        	      od
      in rank_lists.##
 
-{assume precompute has been done, so that all FPP unitary are known
-for all derived simple factors of real Levis of G. For maximal LRi run
-over FPP (xin,lambdainm) and put into unitary_hash all (x,lambda_nu) that are
-induced from some PROPER real Levi. }
+{For each maximal real Levi L of G: compute the FPP unitary dual of L; chop the
+ closed local face (local_vertices) of each unitary pL by the coroots of G; and put
+ into the unitary hash for G every composition factor of the real induction from L
+ to G of the parameter at each piece, if it lies in the FPP for G. These are
+ unitary: the piece lies in the closed face of pL, so it is unitary for L, and a
+ unitarily induced representation is a direct sum of unitary irreducibles. Pieces
+ whose vertices have denominators larger than chop_bound are lost, which costs
+ only information.}
 set real_induced(RealForm G) = void:
-    let maxLRis = max_LRs(G), start_time = elapsed_ms()
-    then maxLRidatas = [[(RealForm, RealForm, mat)]]: {one list for each maxLRi, with
-    	 	     an entry (Sik, derLik, Mik) for each derived simple factor derLik}
-       	 for maxLRi in maxLRis
-	 do derived_simple_factors_info(maxLRi)
-	 od
-    then derLiks = [[RealForm]]:
-    	 for Lidata in maxLRidatas
-	 do for (,derLik,) in Lidata
-	    do derLik
-	    od
-	 od
-    then () = prints(" in time ",print_time_string(elapsed_ms() - start_time), ", complete setup for ",
-    	    for list in maxLRidatas do #list od," derived simple factors")
-    then unitary_nu_lists = [[[[[ratvec]]]]]:
-    	 for Lidata in maxLRidatas
-	 do for (,derLik,) in Lidata
-	    do unitary_nus(derLik)
-	    od
-	 od
-    then () = prints("At time ",print_time_string(elapsed_ms() - start_time), ", have unitary lists on derived simple")
-    then Miks = [[mat]]: {each of these maps G weights to weights for one factor derLik}
-       	 for Lidata in maxLRidatas
-	 do for (,,Mik) in Lidata
-	    do Mik
-	    od
-	 od
-    then Mikinvs = [[ratmat]]: {each of these maps Lik weights to G weights}
-	     for Lidata in maxLRidatas
-	     do for (Lik, derLik, Mik) in Lidata
-	     	do (Lik.simple_roots)*ratvecs_as_ratmat(derLik.fundamental_coweights).^
-		od
-	     od
-    then KGBEltLis = [[KGBElt]]: {one list on maxLRi for each i}
-    	 for maxLRi in maxLRis
-	 do KGB(maxLRi)
-	 od
-    then KGBEltGs = [[KGBElt]]:
-    	 for maxLRi@i in maxLRis
-	 do for xin in KGBEltLis[i]
-	    do embed_KGB(xin,G)
-	    od
-	 od
-    {then () = prints("At time ",print_time_string(elapsed_ms() - start_time), ", complete matching KGBs")}
-    then lambdainmGs = [[[ratvec]]]: {one list for each KGBElt to G from an LRi}
-    	 for maxLRi@i in maxLRis
-	 do for x in KGBEltGs[i]
-	    do FPP_lambdas(x)
-	    od
-	 od
-    then lambdainms = [[[ratvec]]]: {one list of LRi lambdas for each xin}
-    	 for maxLRi@i in maxLRis
-	 do let rhoi = G.rho - maxLRi.rho
-	    in for n:KGB_size(maxLRi)
-	       do for lambdaG in lambdainmGs[i][n]
-	       	  do lambdaG - rhoi
-		  od
-	       od
-	 od
-    then KGBEltinks = [[[KGBElt]]]: {one KGBElt for each xin and derived simple factor derLik}
-     	 for list in KGBEltLis {indexed by i}
-     	     do for xin in list {indexed by n}
-	     	do derived_factor_KGBs0(xin) {indexed by k}
-	     od
-	 od
-     then lambdainmks = [[[[ratvec]]]]: {one ratvec for each xin, corr lambdain, and derLik}
-     	  for maxLRi@i in maxLRis
-	  do for xin@n in KGBEltLis[i]
-	     do for lambdainm in lambdainms[i][n]
-		do let pinm = parameter(xin, lambdainm, 0*lambdainm)
-		   then pinmks = derived_factor_params0(pinm)
-		   in for pinmk@k in pinmks
-		      do {if position(pinmk.x,pinmk.lambda).>=
-		      {is_FPP(derLiks[i][k], pinmk.infinitesimal_character)}
-		      	 then [}pinmk.lambda{]}
-			 {else prints("not in FPP_lambdas(x) ",pinmk); []
-			 fi}
-		      od{.##}
-		od
-	     od
-	  od
-     {then () = prints("At time ",print_time_string(elapsed_ms() - start_time), ", complete matching lambdas")}
-     then unitary_listinmks = [[[[[ratvec]]]]]:
-     	  for maxLRi@i in maxLRis
-	  do for xin@n in KGBEltLis[i]
-	     do for lambdainm@m in lambdainms[i][n] {list of lambdas for xin on maxLRi}
-	     	do for lambdainmk@k in lambdainmks[i][n][m] {factor on derLik}
-		   do let m = position(KGBEltinks[i][n][k],lambdainmk)
-		      in if m.>=
-		      	 then for nuinmj@j in unitary_nu_lists[i][k][KGBEltinks[i][n][k].number][m]
-		      {[position(KGBEltinks[i][n][k],lambdainmks[i][n][m][k])]}
-			      do Mikinvs[i][k]*nuinmj
-		      	      od {[ratvec]}
-			 else []
-			 fi
-		   od {[[ratvec]]}
-	     	od {[[[ratvec]]]}
-	     od
-	  od
-     then Binmks = [[[[[int]]]]]:
-     	  for unitary_listi@i in unitary_listinmks
-     	  do for unitary_listin@n in unitary_listi
-	     do for unitary_listinm@m in unitary_listin
-	     	do let cards = for unitary_listinmk in unitary_listinm do #unitary_listinmk od
-		   in if all(for b in cards do @bool:b > 0 od)
-		      then box(cards)
-		      else [[]]
+    let start_time = elapsed_ms(), count = 0
+    in for L in max_LRs(G)
+       do FPP_unitary_hash(L);
+	  for pL in big_unitary_hash.uhash(L).list()
+	  do for piece in chop_coroots(G, local_vertices(pL), chop_bound)
+	     do let qL = parameter(pL.x, pL.lambda, sum(G.rank,piece)/#piece)
+		in for q in monomials(real_induce_irreducible(qL,G))
+		   do if is_FPP(G, dominant(G,q.infinitesimal_character))
+		      then let qdeflist = [q]##
+			       if wiggle_flag
+			       then for Qdef in local_defs(q)
+				    do monomials(composition_series(Qdef))
+				    od.##
+			       else [Param]: []
+			       fi
+			   in for qdef in qdeflist
+			      do big_unitary_hash.umatch(qdef); count +:= 1
+			      od
 		      fi
-		od
-	     od
-	  od
-     then nuinms = for unitary_listi@i in unitary_listinmks
-     	  do for unitary_listin@n in unitary_listi
-	     do for unitary_listinm@m in unitary_listin {unitary_listinm has two indices: k (simple factor)
-	     and j (place on list)}
-	        do for B in Binmks[i][n][m]
-		   do sum(G.rank, for b@k in B do unitary_listinm[k][b] od)
 		   od
-		od
 	     od
 	  od
-     then () = prints("At time ",print_time_string(elapsed_ms() - start_time), ", complete lifting nus to Levis")
-     then cands = [[Param]]: {one list on each maxLRi}
-     	  for maxLRi@i in maxLRis
-	  do for xin@n in KGBEltLis[i]
-	     do for lambdainm@m in lambdainms[i][n]
-		do for nuinmj in nuinms[i][n][m]
-		   do let pL = parameter(xin, lambdainm, nuinmj)
-		      then gamma = dominant(G,pL.infinitesimal_character)
-		      in if is_FPP(G,gamma)
-		      	 then [pL]
-			 else {prints("parameter ",pL," failed to be FPP");}
-			      []
-			 fi
-		   od.## {list of relevant pL for this x,lambda}
-		od.## {put all lambda together}
-	     od.## {put all x together}
-	  od {but keep a separate list for each max Levi maxLRi}
-     then () = prints("At time ",print_time_string(elapsed_ms() - start_time), ", start computing induction")
-     then () = for maxLRi@i in maxLRis
-	       do {prints("At time ",print_time_string(elapsed_ms() - start_time), ", start induction from parabolic ",i);}
-	          for pL in cands[i]
-		  do for q in monomials(real_induce_irreducible(pL,G))
-		     do let qdeflist = [q]##
-		            if wiggle_flag
-			    then for Qdef in local_defs(q)
-			     	 do monomials(composition_series(Qdef))
-			     	 od.##
-			    else [Param]: []
-			    fi
-		     	in for qdef in qdeflist
-			   do big_unitary_hash.umatch(qdef)
-			   od {qdef in qdeflist}
-       		    od {for q in monommials}
-	     	 od {for pL in cands[i]}
-	      od {for maxLRi in maxLRis}
-     then () = prints("At time ",print_time_string(elapsed_ms() - start_time), ", done computing induction")
-     in ()
+       od;
+       prints(" in time ",print_time_string(elapsed_ms() - start_time),
+	      ", real_induced matched ", count, " parameters from maximal real Levis")
 
 set NUR_verbose = true
 
