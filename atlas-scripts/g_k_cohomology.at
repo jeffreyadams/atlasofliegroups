@@ -1,0 +1,383 @@
+ <tensor_product.at
+<combinatorics.at {binom}
+
+set g_k_cohomology_verbose=false {set to true/false  for more/less extra diagnostic information}
+
+{the main function computes wedge(P) as a K-module
+ primary application: computing H^i(\g,K,\pi)
+
+these functions make extensive use of K_types as realized in atlas;
+see K_highest_weights.at
+The main reference is Vogan, "Branching to a Maximal Compact Subgroup"
+
+K-type: an irreducible representation of K
+tempiric representation: irreducible, tempered representation with real infinitesimal character
+these two sets are in bijection by the map taking a tempiric representation to its (unique) lowest K-type
+tempiric parameter: Langlands parameter for a tempiric representation;
+  p -> I(p) standard with unique irreducible tempiric quotient pi(p)
+KTypePol: \sum a_i p_i  finite sum of tempiric parameters
+ representing (by restriction to K) \sum b_j \mu_k where {mu_k} are the irreducible representations of K
+ the restriction of any finite length representation to K can be expresses as \sum a_i p_i (finite sum)
+ also any finite sum \sum_0^N b_j mu_j can be expressed as \sum a_i p_i (finite sum)
+
+p=tempiric representation
+K_type_formula(p) is a KTypePol
+K_type_formula(p)=\sum a_i p_i means:
+LKT(p) = \sum a_i (restriction of I(p_i) to K)
+for example:
+p=trivial representation of SL(2,R)
+LKT(p)=trivial representation of K
+K_type_formula(p)=(spherical principal series) - (holomorphic discrete series + anti-hol discrete series)
+  (all of these are at infinitesimal character rho)
+trivial K-type = [(spherical PS) -(sum of two DS)] restricted to K}
+
+set trivial_K_type(RealForm G)=KType:LKT(G.trivial)
+
+{technical tool: the algorithm produces K-types mu=(x,lambda) with lambda
+not dominant for the imaginary roots (non-standard). Such a mu must be read as
+the coherent continuation of the standard K-module I(x,lambda)|_K, which is a
+VIRTUAL K-module: a signed sum of final standard K-types, including Cayley
+transform terms coming from the Hecht-Schmid identities. For example in SL(2,R),
+with x=0 on the compact Cartan:
+   I(x=0,lambda=-1) = I(x=2,lambda=1) - I(x=1,lambda=1)
+(spherical principal series minus antiholomorphic discrete series). 
+The built-in conversion KType->KTypePol (finals_for in K_repr.cpp) does exactly
+this coherent continuation, so make_dominant just invokes it; the result is a
+KTypePol, not a KType}
+
+set make_dominant(KType mu)=KTypePol: KTypePol:mu
+
+{The weights of a finite dimensional representation of K are given by a function KGBElt->[vec]
+given:
+ a KTypePol P, representing \sum a_i I(p_i) (restricted to K)
+ weights: KGBElt->[vec] representing a finite dimensional representation F of K
+ return the KTypePol representing \sum a_i I(p_i)\otimes F}
+set add_weights (KTypePol P,(KGBElt ->[vec]) weights) = KTypePol:
+   let ()=if g_k_cohomology_verbose then prints("in add weights with:  P=", P) fi in
+   sum(P.real_form,
+   for coef@t in P do
+   let (x,lr)=%t in
+   for H in weights(x) do
+   let mu=K_type(x,lr+H) then
+   mu_dom=make_dominant(mu) {KTypePol: coherent continuation, see above} in
+   if g_k_cohomology_verbose then prints(coef,"*",mu, " -> ", mu_dom) fi;
+   coef*mu_dom od
+   od.##)
+
+{equivalently: P.null_K_module + [(coef,K_type(x,lr+H))...]; the built-in
+ addition of (Split,KType) terms to a KTypePol does the same finalization}
+
+{\g = \k\oplus \p  (Cartan decomposition of \g=Lie(G) with respect to theta (\g,\k,\p are complex vector spaces)
+given KGBElt x -> involution theta_x of H
+return the weights of \p as characters of the (possibly disconnected) group
+H^theta_x (columns of matrix). A character of H^theta is an element of
+X^*/(1-theta)X^*, which is exactly how K_type(x,lambda-rho) reads its second
+argument, so the weights are given as elements of X^* modulo (1-theta)X^*:
+each (positive or negative) nci root alpha occurs once, as alpha
+a 4-tuple {\pm\alpha,\pm theta(\alpha)} of complex roots contributes {alpha,-alpha}
+  (theta(alpha)=alpha mod (1-theta)X^*, so alpha itself is the weight
+   [do not use (alpha+theta(alpha))/2, this is only the restriction to (H^theta)_0,
+   may fail to be in X^*, and is wrong modulo (1-theta)X^*]
+each positive real root alpha contributes alpha (alpha=-alpha mod (1-theta)X^*;
+   this is trivial on (H^theta)_0 but can be a nontrivial character of the
+   component group of H^theta, e.g. for PGL(2,R) or SL(3,R))
+Cartan H (with theta_x) contributes split_rank H (wrt theta_x)=dim(\h\cap\p) 0-vectors}
+
+set P_roots_restricted_to_H_theta (KGBElt x) = mat:
+let im=columns_with((vec alpha)bool: is_noncompact_imaginary(alpha,x) ,x.root_datum.roots) then
+S=makeS(x) {one representative of each 4-tuple of complex roots} in
+im ## S ## -S ## real_posroots(x) ## null(rank(x.root_datum),split_rank(Cartan_class(x)))
+
+{all sums of roots from previous command of size k, i.e. the weights of \wedge^k(\p) restricted to H^theta}
+set sums_P_roots_wedge_k_restricted_to_H_theta (int k) =(KGBElt x) [vec]:
+  sums_of_size_k(P_roots_restricted_to_H_theta(x),k) 
+
+{PRIMARY FUNCTION
+Given a K-type mu (irreducible finite dimensional representation of K) and
+ a weight function weights <-> finite dimensional K-representation F
+ return mu\otimes F 
+
+algorithm: write mu=\sum a_i I(p_i) (i.e. K_type_formula(mu))
+ compute \sum a_i I(p_i)\otimes F (using add_weights)
+ compute the branching of this to K (this is a finite sum)
+}
+set tensor_product(KType t,(KGBElt -> [vec]) weights)=KTypePol:
+let Q=add_weights(K_type_formula(t),weights) in
+let ()=if g_k_cohomology_verbose then prints("t=",t,new_line, " Q=",Q) fi in 
+   if height(Q)=-1
+       then
+          if g_k_cohomology_verbose then prints("Q=",Q, " ", height(Q))fi;null_K_module(t.real_form)
+       else
+          branch_std(Q,height(Q	))
+   fi
+
+set dimension_wedge_P(RealForm G,int k)=int:binom(dimension(G)-dimension(K_0(G)),k)
+
+{compute mu\otimes \wedge^k(\p) as a sum of K-types}
+set tensor_product_wedge_P(KType mu, int k)=KTypePol:
+if g_k_cohomology_verbose then
+ prints("dimension: ", dimension(mu), "*", dimension_wedge_P(mu.real_form,k),\
+  " =", dimension(mu)*dimension_wedge_P(mu.real_form,k)) fi;
+tensor_product(mu,sums_P_roots_wedge_k_restricted_to_H_theta(k))
+
+{abbreviation}
+set tpw(KType mu, int k)=tensor_product_wedge_P(mu,k)
+
+{wedge^k(\p)}
+set wedge_P(RealForm G,int k)=tensor_product_wedge_P(trivial_K_type(G),k)
+
+{sanity check: dim(wedge^k(p)) = binom(dim p,k) for all k}
+set test_wedge_P(RealForm G)=bool:
+   let n=dimension(G)-dimension(K_0(G)) then
+   dims=for k:n+1 do dimension(wedge_P(G,k)) od then
+   expected=for k:n+1 do binom(n,k) od in
+   if g_k_cohomology_verbose then prints("dim wedge^k(p)=",dims," expected ",expected) fi;
+   dims=expected
+
+{dimension of Hom_K(trivial K-type, \wedge^k(\p))}
+set dimension_Hom_K_trivial_wedge_P(RealForm G,int k)=int:
+let V=wedge_P(G,k) in split_as_int(V[trivial_K_type(G)])
+
+{returns array of dim(Hom(trivial K-type,\wedge^k(\p))) for k=0,...,dim(\p)}
+set dimensions_Hom_K_trivial_wedge_P(RealForm G)=[int]:
+for k: dimension(G)-dimension(K_0(G))+1 do dimension_Hom_K_trivial_wedge_P(G,k) od
+
+{---------------- characters of L/L_0 and the modules A_q(pi_L) ----------------}
+
+{the sums of all subsets of a list of vectors of length n (2^#gens sums, 0 first)}
+set subset_sums ([vec] gens,int n) = [vec]:
+   let sums=[null(n)] in for v in gens do sums:=sums##(for s in sums do s+v od) od; sums
+
+{det=wedge^{dim p}(p), the determinant character of K on p, as a K-type:
+ the unique term (with coefficient 1) of wedge_P(G,dim p).
+ det is trivial iff K acts on p by orientation preserving transformations
+ (always if K is connected); e.g. for PGL(2,R) or SO(4,1) it is nontrivial}
+set det_K_type (RealForm G) = KType:
+   let W=wedge_P(G,dimension(G)-dimension(K_0(G))) then
+   (c,mu)=first_term(W) in
+   if #W!=1 or split_as_int(c)!=1 then error("wedge^top(p) is not a single K-type") fi;
+   mu
+
+set contains ([KType] list,KType t) = bool: any(for s in list do s=t od)
+
+{the characters of L trivial on the identity component L_0, as K-types of L:
+ the one-dimensional K-types trivial on (L\cap K)_0 (L=(L\cap K)L_0, and L/L_0
+ is an elementary abelian 2-group). The trivial character comes first.
+ Such a K-type has KHighestWeight ((),x,mu) with x in the fundamental fiber and
+ mu a character of T_K=H^{theta_x} with differential 0, i.e. an element of
+ ker(1+theta_x)/im(1-theta_x) (characters_order_2(x) gives generators of this
+ group, as vectors); K_types(((),x,mu)) gives the |R(K,mu)| K-types containing
+ the K_#-type mu (see K_highest_weights.at). If L is connected the result is
+ [trivial_K_type(L)]}
+set characters_of_component_group (RealForm L) = [KType]:
+   let triv=trivial_K_type(L) then hw=highest_weight(triv) then x=hw.x then
+   list= ## for s in subset_sums(characters_order_2(x),rank(root_datum(L)))
+            do K_types(((),x,hw.mu+s)) od then
+   P=null_K_module(L)+for t in list do (Split:1,t) od {remove duplicates} then
+   chars=for c@t in P do t od in
+   for t in chars
+   do if dimension(t)!=1 then error("character of L/L_0 is not one dimensional") fi od;
+   triv # for t in chars if t!=triv do t fi od
+
+{wedge^j(l\cap p) as K-modules, for j=0,...,dim(l\cap p)}
+set wedge_P_all (RealForm L) = [KTypePol]:
+   for j:dimension(L)-dimension(K_0(L))+1 do wedge_P(L,j) od
+
+{multiplicity of the K-type pi in each term of W=wedge_P_all(L), i.e.
+ dim Hom_{L\cap K}(wedge^j(l\cap p),pi) = dim H^j(l,L\cap K,pi) for pi a
+ character of L/L_0}
+set dimensions_Hom_K_wedge_P ([KTypePol] W,KType pi) = [int]:
+   for W_j in W do split_as_int(W_j[pi]) od
+
+{H^*(g,K,A_q(pi_L)) for P=q=l+u a theta-stable parabolic and pi_L a character
+ of L trivial on L_0 (see characters_of_component_group). With R=dim(u\cap p):
+   H^i(g,K,A_q(pi_L)) = H^{i-R}(l,L\cap K,pi_L) = Hom_{L\cap K}(wedge^{i-R}(l\cap p),pi_L)
+ Here A_q(pi_L)=R_q^S(pi_L\otimes wedge^{top}(u)), so A_q(trivial)=A_q;
+ if G is connected these are the only cohomological representations.
+ W=wedge_P_all(L) is an argument so that it is computed once for all pi_L}
+set g_k_cohomology (RealForm G,Parabolic P,[KTypePol] W,KType pi_L) = [int]:
+   let shift=dim_u_cap_p(P) then
+   top_degree=dimension(G)-dimension(K_0(G)) then
+   dims=dimensions_Hom_K_wedge_P(W,pi_L) then
+   ()=if g_k_cohomology_verbose then
+      prints("L=", Levi(P), new_line,"pi_L=",pi_L, new_line,
+             "shift=dim(u\cap p)=", shift, new_line,
+             "dim(l\cap p)=", #W-1, new_line, "dims=", dims)
+      fi in
+   null(shift)##dims##null(top_degree-shift-#dims+1)
+
+set g_k_cohomology (RealForm G,Parabolic P,KType pi_L) = [int]:
+   g_k_cohomology(G,P,wedge_P_all(Levi(P)),pi_L)
+
+{pi_L trivial: H^*(g,K,A_q)}
+set g_k_cohomology (RealForm G,Parabolic P) = [int]:
+   g_k_cohomology(G,P,trivial_K_type(Levi(P)))
+
+{all cohomological representations A_q(pi_L): all theta-stable parabolics q
+ and all characters pi_L of L/L_0 (only pi_L trivial if G is connected)}
+set g_k_cohomology (RealForm G) = [(Parabolic,KType,[int])]:
+   ## for P in theta_stable_parabolics(G)
+      do let L=Levi(P) then W=wedge_P_all(L) in
+         for pi in characters_of_component_group(L) do (P,pi,g_k_cohomology(G,P,W,pi)) od
+      od
+
+{name of a character pi of L/L_0: "triv", "det" (=wedge^{top}(l\cap p), see
+ det_K_type), otherwise the K-type as K_type(x,lambda-rho)}
+set character_name (KType pi,KType triv,KType det) = string:
+   if pi=triv then "triv"
+   elif pi=det then "det"
+   else let (x,lr)=%pi in "K_type("+to_string(#x)+","+to_string(lr)+")"
+   fi
+set character_name (RealForm L,KType pi) = string:
+   character_name(pi,trivial_K_type(L),det_K_type(L))
+
+{Levi is form_name(L), u_p=dim(u\cap p), l_p=dim(l\cap p), pi_L as in character_name}
+set show (RealForm G,[(Parabolic,KType,[int])] data) = void:
+prints(new_line,"levi: Levi factor of theta-stable parabolic",new_line,
+"u_p:  dimension(u\cap p)", new_line, "u_k:  dimension(u\cap k)",
+new_line,
+"cohomology: dimension of H^i(g,K,pi) for i=0,...,dim(p)=", dimension(G)-dimension(K_0(G))
+);
+prints();tabulate(["Levi","u_p","l_p","pi_L","cohomology"]#
+for (P,pi,dims) in data do let L=Levi(P) in
+[form_name(L),
+dim_u_cap_p(P).to_string,
+(dimension(L)-dimension(K_0(L))).to_string,
+character_name(L,pi),
+dims.to_string
+] od)
+
+set show_g_k_cohomology (RealForm G) = void: show(G,g_k_cohomology(G))
+
+{--------------------- tests of g_k_cohomology ---------------------}
+
+{W\otimes det for W a KTypePol: each K-type is tensored (using tensor_product)
+ with the one-dimensional K-representation det=wedge^{dim p}(p)}
+set tensor_with_det (KTypePol W) = KTypePol:
+   let G=W.real_form then
+   det_weights=sums_P_roots_wedge_k_restricted_to_H_theta(dimension(G)-dimension(K_0(G))) in
+   sum(G,for c@mu in W do c*tensor_product(mu,det_weights) od)
+
+{pi\otimes det for a K-type pi (must again be a single K-type)}
+set tensor_with_det (KType pi) = KType:
+   let T=tensor_with_det(KTypePol:pi) then (c,t)=first_term(T) in
+   if #T!=1 or split_as_int(c)!=1 then error("K-type tensor det is not a single K-type") fi;
+   t
+
+{|W(L)|/|W(L\cap K)| = number of KGB elements in the fundamental fiber
+ = number of discrete series of L with a given regular integral infinitesimal character
+ = Euler characteristic of the compact dual symmetric space of L;
+ 0 if L is not equal rank}
+set number_of_discrete_series (RealForm L) = int:
+   if is_equal_rank(inner_class(L))
+   then count(for x in KGB(L) do involution(x)=id_mat(rank(L)) od)
+   else 0 fi
+
+{whether the K-type t is trivial on K_0: one dimensional, with a highest weight
+ mu of differential 0, i.e. (1+theta_x)mu=0; this is a test of
+ characters_of_component_group independent of characters_order_2 and K_types}
+set is_trivial_on_K_0 (KType t) = bool:
+   dimension(t)=1 and
+   (let hw=highest_weight(t) in (1+involution(hw.x))*hw.mu=null(#hw.mu))
+
+set yes_no (bool b) = string: if b then "ok" else "FAIL" fi
+
+{tests of the (g,K)-cohomology of the modules A_q(pi_L), for each theta-stable
+ parabolic P=(L,u) of G and each character pi_L of L/L_0. With n=dim(p),
+ R=dim(u\cap p), m=dim(l\cap p) (so n=m+2R) and c=g_k_cohomology(G,P,pi_L):
+   c[i]=dim H^i(g,K,A_q(pi_L))=dim H^{i-R}(l,L\cap K,pi_L)
+       =dim Hom_{L\cap K}(wedge^{i-R}(l\cap p),pi_L)
+ Tests (det=wedge^m(l\cap p), a character of L\cap K, see det_K_type):
+  supp:     #c=n+1, and c[i]=0 unless R<=i<=R+m
+  bottom:   c[R]=1 if pi_L is trivial, 0 otherwise (H^0(l,L\cap K,pi_L))
+  top:      c[R+m]=1 if pi_L=det, 0 otherwise
+  dim:      dim wedge^j(l\cap p)=binom(m,j) for all j (as in test_wedge_P(L))
+  duality:  Poincare duality H^j(l,L\cap K,pi_L)=H^{m-j}(l,L\cap K,pi_L\otimes det)^*,
+            i.e. c[R+j]=multiplicity of pi_L\otimes det in wedge^{m-j}(l\cap p)
+  palindromic: c[R+j]=c[R+m-j]; this is Poincare duality when pi_L\otimes det=pi_L,
+            i.e. when det is trivial (in particular whenever L\cap K is connected),
+            and is expected to fail otherwise, so it is only tested in that case
+  hodge:    wedge^j(l\cap p)=wedge^{m-j}(l\cap p)\otimes det as K-modules
+            (Hodge star: the K-module version of duality, tests tensor_product
+            on nontrivial K-types)
+  chars:    det is among the characters of L/L_0 found, and so is every
+            one-dimensional K-type trivial on (L\cap K)_0 (is_trivial_on_K_0)
+            occurring in some wedge^j(l\cap p)
+  euler:    sum_j (-1)^j c[R+j] = Euler characteristic of the compact dual of L
+            = 0 if L is not equal rank, |W(L)|/|W(L\cap K)| otherwise
+            (number_of_discrete_series(L)); this is the same for all pi_L
+            (Lefschetz: L/L_0 acts freely on the compact dual of L_0)
+  parity:   if L is equal rank then c[R+j]=0 for j odd (the compact dual has
+            cohomology only in even degrees)
+ prints a table with one row for each (P,pi_L) (Levi is form_name(L),
+ u_p=dim(u\cap p), l_p=dim(l\cap p), pi_L as in character_name),
+ returns true if all tests pass}
+
+set test_g_k_cohomology_header_strings=[
+"  supp:     #c=n+1, and c[i]=0 unless R<=i<=R+m",
+"  bottom:   c[R]=1 if pi_L is trivial, 0 otherwise (H^0(l,L\cap K,pi_L))",
+"  top:      c[R+m]=1 if pi_L=det, 0 otherwise",
+"  dim:      dim wedge^j(l\cap p)=binom(m,j) for all j (as in test_wedge_P(L))",
+"  duality:  Poincare duality H^j(l,L\cap K,pi_L)=H^{m-j}(l,L\cap K,pi_L\otimes det)^*,",
+"            i.e. c[R+j]=multiplicity of pi_L\otimes det in wedge^{m-j}(l\cap p)",
+"  palindromic: c[R+j]=c[R+m-j]; this is Poincare duality when pi_L\otimes det=pi_L,",
+"            i.e. when det is trivial (in particular whenever L\cap K is connected),",
+"            and is expected to fail otherwise, so it is only tested in that case",
+"  hodge:    wedge^j(l\cap p)=wedge^{m-j}(l\cap p)\otimes det as K-modules",
+"            (Hodge star: the K-module version of duality, tests tensor_product",
+"            on nontrivial K-types)",
+"  chars:    det is among the characters of L/L_0 found, and so is every",
+"            one-dimensional K-type trivial on (L\cap K)_0 (is_trivial_on_K_0)",
+"            occurring in some wedge^j(l\cap p)",
+"  euler:    sum_j (-1)^j c[R+j] = Euler characteristic of the compact dual of L",
+"            = 0 if L is not equal rank, |W(L)|/|W(L\cap K)| otherwise",
+"            (number_of_discrete_series(L)); this is the same for all pi_L",
+"            (Lefschetz: L/L_0 acts freely on the compact dual of L_0)",
+"  parity:   if L is equal rank then c[R+j]=0 for j odd (the compact dual has",
+"            cohomology only in even degrees)"]
+
+set test_g_k_cohomology (RealForm G) = bool:
+   for line in test_g_k_cohomology_header_strings do prints(line) od;
+   let n=dimension(G)-dimension(K_0(G)) then
+   results=
+   ## for P in theta_stable_parabolics(G) do
+      let L=Levi(P) then R=dim_u_cap_p(P) then m=dimension(L)-dimension(K_0(L)) then
+      W=wedge_P_all(L) then  {wedge^j(l\cap p) as K-modules}
+      triv=trivial_K_type(L) then det=det_K_type(L) then
+      chars=characters_of_component_group(L) then
+      {tests depending only on L}
+      dim_ok= all(for j:m+1 do dimension(W[j])=binom(m,j) od) then
+      hodge= all(for j:m+1 do W[j]=tensor_with_det(W[m-j]) od) then
+      chars_ok= contains(chars,det) and
+         all(for W_j in W
+             do all(for c@t in W_j do not is_trivial_on_K_0(t) or contains(chars,t) od) od) then
+      chi_expected=number_of_discrete_series(L) in
+      for pi in chars do
+         let c=g_k_cohomology(G,P,W,pi) then
+         pi_det=tensor_with_det(pi) then
+         self_dual= pi_det=pi then
+         support= #c=n+1 and n=m+2*R and all(for i:n+1 do c[i]=0 or (i>=R and i<=R+m) od) then
+         bottom= c[R]=(if pi=triv then 1 else 0 fi) then
+         top= c[R+m]=(if pi=det then 1 else 0 fi) then
+         duality= all(for j:m+1 do c[R+j]=split_as_int(W[m-j][pi_det]) od) then
+         palindromic= all(for j:m+1 do c[R+j]=c[R+m-j] od) then
+         chi=sum(for j:m+1 do if j.is_even then c[R+j] else -c[R+j] fi od) then
+         euler= chi=chi_expected then
+         parity= not is_equal_rank(inner_class(L)) or all(for j:m+1 do j.is_even or c[R+j]=0 od) then
+         ok= support and bottom and top and dim_ok and duality and hodge and chars_ok
+             and euler and parity and (palindromic or not self_dual) in
+         ([form_name(L), R.to_string, m.to_string, character_name(pi,triv,det), c.to_string,
+           yes_no(support), yes_no(bottom), yes_no(top), yes_no(dim_ok), yes_no(duality),
+           if self_dual then yes_no(palindromic) else "n/a" fi,
+           yes_no(hodge), yes_no(chars_ok), chi.to_string, yes_no(euler), yes_no(parity),
+           yes_no(ok)], ok)
+      od
+   od
+   then all_ok=all(for (,ok) in results do ok od) in
+   prints();
+   tabulate(["Levi","u_p","l_p","pi_L","cohomology",
+             "supp","bottom","top","dim","duality","palindromic","hodge","chars",
+             "euler","euler ok","parity","all"]#
+            for (row,) in results do row od);
+   prints("test_g_k_cohomology: ", if all_ok then "all tests passed" else "SOME TESTS FAILED" fi);
+   all_ok
