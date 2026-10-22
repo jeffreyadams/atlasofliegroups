@@ -637,11 +637,33 @@ set face (SimpleAffine Affd, ratvec gamma) = Face:
 set FVH_count = int: 0
 set FV_base_count = int: 0
 
-{ computes the FaceVerts (vertex set) of any barycenter of a face of them }
-set face_verts_base(SimpleAffine Affd, ratvec gamma) = FaceVerts:
-    FV_base_count +:=1;
+{ computes the FaceVerts (vertex set) of any barycenter of a face of them;
+  Affd must be simple }
+set face_verts_simple(SimpleAffine Affd, ratvec gamma) = FaceVerts:
     let (wtilde,gamma0) = from_fundamental_alcove(Affd, gamma)
     in wtilde*face_verts0(Affd,gamma0)
+
+{ any reductive Affd: the alcoves of Affd are products of the alcoves of its
+  simple factors (each on the full lattice), so the face of gamma is the product
+  of the faces of gamma in the factors, and its vertices are the sums of one
+  vertex from each factor (semisimple rank 0: the single vertex 0). Every vertex
+  then gets the central part zgamma of gamma, so that the face contains gamma
+  and local_vertices finds theta-partners when there is a compact central torus.
+  For semisimple Affd zgamma = 0, so this changes nothing there. }
+set face_verts_base(SimpleAffine Affd, ratvec gamma) = FaceVerts:
+    FV_base_count +:=1;
+    let factors = simple_factors(Affd)
+    then verts = if #factors = 1 then face_verts_simple(Affd,gamma)
+       	 	 else let lists = for rdf in factors do face_verts_simple(rdf,gamma) od
+       	    	      in for B in box(for list in lists do #list od)
+		      	 do sum(Affd.rank, for b@k in B do lists[k][b] od)
+			 od
+		 fi
+    in if Affd.rank = Affd.semisimple_rank then verts
+       else let zgamma = gamma - sum(Affd.rank, for alphav@j in Affd.simple_coroots
+       	    	       	 	       	      	do (gamma*alphav)*Affd.fundamental_weights[j] od)
+	    in for v in verts do v + zgamma od
+       fi
 
 set face_verts_hash = ((SimpleAffine, ratvec)->FaceVerts):
     let rd_hash = make_RootDatum_hash()
