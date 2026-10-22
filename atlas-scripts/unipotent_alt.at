@@ -4,7 +4,6 @@
 <associated_variety_annihilator.at { for |GK_dim|, |GK_dim_maximal_ideal| }
 <weakly_unipotent.at { for |GK_dim_claude|, |GK_dim_maximal_ideal_memo| }
 <paramRep.at { for |TalphabetaTauss_bitset|, |same_PI_visit| }
-<cells.at { for |blocks|, |W_cells_of|, |cell_character_inefficient| }
 <families.at { for |family@(CharacterTable,int)| }
 
 { Special unipotent representations of G directly from the definition: for each nilpotent
@@ -32,12 +31,42 @@ set nonsingular_integral_simple(RootDatum rd, ratvec gamma) = [int]:
 
   gamma = O.H/2, rdi = integrality_datum(G,gamma), W_sing = W(roots of rdi singular on gamma),
   M = coherent continuation representation of W(rdi) on the span of the irreducibles of G
-  of the regular infinitesimal character gamma+2rho (sum of the cell characters of all its
-  blocks), and F = the family of the special representation of W(rdi) attached to the orbit
+  of the regular infinitesimal character gamma+2rho (coherent_continuation_character), and F = the family of the special representation of W(rdi) attached to the orbit
   O_i of the integral dual datum through O (the special rep is Springer(d(O_i)) = sgn x
   Springer(O_i); O_i is even in rdi^vee). }
 
 set unipotent_count_verbose = false
+
+{ The character of the coherent continuation representation of W(rdi) (rdi = ct.root_datum, the
+  integrality datum) on the span of the irreducibles of G at the regular infinitesimal
+  character gamma_reg, computed on the standard modules, which span the same space. There the
+  action is triangular for the order on Cartans (Cayley transforms go to more split ones), and
+  modulo more split Cartans w.I(p) = eps(w,p) I(w x p), eps = (-1)^#(positive imaginary roots of
+  rdi made negative by w). So trace(w) = sum of eps(w,p) over the p with w x p = p, and w x p = p
+  forces w to commute with the involution of p. No KL polynomials or cells are needed.
+  (The cross-action formula of coherent_characters.at, for the integral Weyl group.) }
+set coherent_continuation_character (RealForm G, ratvec gamma_reg, CharacterTable ct) = [int]:
+   let rdi = ct.root_datum, params = all_parameters_gamma(G,gamma_reg)
+   then (thetas,group) = { KGB elements with the same involution are (mostly) consecutive }
+      let th = [mat]: [], g = for :KGB_size(G) do 0 od
+      in for x@i in KGB(G)
+         do let t = involution(x) in
+            if #th=0 or th[#th-1] != t then th #:= t fi; g[i] := #th-1
+         od; (th,g)
+   then buckets = let b = for :#thetas do [Param]: [] od
+                  in for p in params do let k = group[#p.x] in b[k] := b[k] # p od; b
+   in for w in ct.class_representatives
+      do let wm = w.matrix, word = w.word
+         in sum
+            ( for t@k in thetas
+              do if #buckets[k]=0 or wm*t != t*wm then 0
+                 else let eps = (-1)^count(for a in imaginary_posroots(rdi,t)
+                                           do not is_positive_root(rdi,wm*a) od)
+                      in eps*count(for p in buckets[k]
+                                   do let q = p in for s in word ~do q := cross(s,q) od; q = p od)
+                 fi
+              od )
+      od
 
 { M depends only on G and gamma mod the weight lattice X^* (the coherent family through gamma+2rho,
   and rdi with it), so it is cached by (G, gamma%1); |unipotent_count_M_cache:=[]| clears it }
@@ -47,13 +76,8 @@ set unipotent_count_M (RealForm G, ratvec gamma, CharacterTable ct) = [int]:
    let key = gamma%1
    then i = first(for (H,k,) in unipotent_count_M_cache do H=G and k=key od)
    in if i>=0 then let (,,M) = unipotent_count_M_cache[i] in M
-      else let chi = for i:ct.n_classes do 0 od
-           in for B in blocks(all_parameters_gamma(G,gamma+2*G.rho))
-              do for cell in W_cells_of(B[0])
-                 do chi := ct.sum(chi,cell_character_inefficient(ct,cell)) od
-              od
-           ; unipotent_count_M_cache #:= (G,key,chi)
-           ; chi
+      else let chi = coherent_continuation_character(G,gamma+2*G.rho,ct)
+           in unipotent_count_M_cache #:= (G,key,chi); chi
       fi
 
 { (count, max multiplicity of triv_{W_sing} on the family, [(tau,[tau:Ind triv],[tau:M])]) }
@@ -204,8 +228,9 @@ set unipotent_representations_gentau(RealForm G, ratvec gamma) = [Param]:
 { the unipotent representations attached to one dual orbit O }
 set unipotent_representations_gentau(RealForm G, ComplexNilpotent O) = [Param]:
    let ans = unipotent_representations_gentau(G,O.H/2) in
-   { the generalized tau test has no theorem behind it; alt_fast does }
-   assert(@:#ans = unipotent_count(G,O)
+   { the generalized tau test has no theorem behind it (except in type A); alt_fast does.
+     So the count is always checked, even with seat_belt_on false }
+   assert(#ans = unipotent_count(G,O)
 	 ,"unipotent_representations_gentau: wrong count at H=" + to_string(O.H));
    ans
 

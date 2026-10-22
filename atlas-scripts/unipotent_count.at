@@ -1,4 +1,5 @@
 <unipotent_alt.at { for |unipotent_count_data|, |unipotent_orbits_gentau| }
+<cells.at { for |blocks|, |W_cells_of|, |cell_character_inefficient| }
 
 { compare with unipotent_representations_gentau orbit by orbit: [(H, count, #computed)] }
 set unipotent_count_check (RealForm G) = [(vec,int,int)]:
@@ -24,3 +25,26 @@ set unipotent_count_check_all (RealForm G) = [(vec,int,int,int)]:
          then prints("H=",O.H," count=",n," #tau=",#list1," #GK=",k," max mult=",m," terms=",terms)
          fi; (O.H,n,#list1,k)
    od
+
+{ the old M: sum of the cell characters of all blocks at gamma_reg (needs the KL polynomials);
+  for checking coherent_continuation_character }
+set coherent_continuation_character_cells (RealForm G, ratvec gamma_reg, CharacterTable ct) = [int]:
+   let chi = for i:ct.n_classes do 0 od
+   in for B in blocks(all_parameters_gamma(G,gamma_reg))
+      do for cell in W_cells_of(B[0]) do chi := ct.sum(chi,cell_character_inefficient(ct,cell)) od
+      od; chi
+
+{ compare the two for every coset of gamma = O.H/2 (O dual orbit): [(gamma%1, same)] }
+set coherent_character_check (RealForm G) = [(ratvec,bool)]:
+   let seen = [ratvec]: [] in
+   for O in dual_orbits(G)
+   do let gamma = O.H/2 in
+      if find(seen,gamma%1) >= 0 then [] else
+         seen #:= gamma%1;
+         let ct = Springer_table(integrality_datum(G,gamma)).ct
+         then a = coherent_continuation_character(G,gamma+2*G.rho,ct)
+         , b = coherent_continuation_character_cells(G,gamma+2*G.rho,ct)
+         in if a != b then prints("MISMATCH ",G," gamma=",gamma," std=",a," cells=",b) fi
+         ; [(gamma%1,a=b)]
+      fi
+   od.##

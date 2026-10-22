@@ -57,7 +57,13 @@ Exact count: unipotent_count(G,O) (unipotent_alt.at)
 
   gamma = O.H/2, rdi = integrality_datum(G,gamma),
   W_sing = W(roots of rdi singular on gamma),
-  M = sum of the cell characters of all blocks at gamma + 2 rho,
+  M = the coherent continuation representation on the span of the irreducibles
+      at gamma + 2 rho (coherent_continuation_character), computed on standard
+      modules: filter by Cartans (Cayley transforms go to more split ones);
+      modulo more split Cartans w.I(p) = eps(w,p) I(w x p), eps = (-1)^#(positive
+      imaginary roots of rdi made negative by w). So trace(w) = sum of eps(w,p)
+      over p with w x p = p. No KL polynomials or cells. (Formula as in
+      coherent_characters.at, there for the full W.)
   F = the family of Springer(d(O_i)) = sgn x Springer(O_i), where O_i is O
       seen in the integral dual datum.
   Conventions checked directly: Springer(principal) = trivial, and the
@@ -65,9 +71,16 @@ Exact count: unipotent_count(G,O) (unipotent_alt.at)
 
   - Theorems (Adams, Mason-Brown, Ionov, Vogan preprint): alt_fast and the
     induction procedure below both find all Arthur unipotent reps. gentau has
-    no theorem, so it ends each orbit with a lazy
-    assert(@:#ans = unipotent_count(G,O)); seat_belt_on := false skips it.
-    With it on (M cached), gentau takes 1.4-5x as long. alt_fast has no assert.
+    no theorem (except in type A), so it ends each orbit with an assert
+    #ans = unipotent_count(G,O) that runs even with seat_belt_on false.
+  - M is cached by (G, gamma%1) (unipotent_count_M_cache).
+  - Standard-module M = cell M (the old method, kept as
+    coherent_continuation_character_cells in unipotent_count.at) on 19 groups,
+    92 cosets of gamma (SL(2,R) .. E6_s, Sp(4,C), Sp(3,1), so*(8)).
+  - Cost: whole count for all orbits F4_s 1.1 s, E6_q 2.7 s, E6_s 1.9 s.
+    E8_s: 1109 s for the first orbit (#41 E8(a7), building M: 526471
+    params, 199952 involutions), under 1 GB; then 0.3 s per orbit in the same
+    coset. The cell version passed 26 GB on E8_s and was stopped.
   - Agrees with alt_fast orbit by orbit on 25 groups up to rank 6 (E6_q, E6_s,
     SO(6,6), Sp(10,R), ...). [tau : Ind triv] was never > 1 on the family.
   - Harnesses: unipotent_count.at.
@@ -139,9 +152,18 @@ seat_belt_on := false except the last column; seconds)
   E6_s          28.1    14.9         89.7             89.1           27.4
   E6_q          23.8    17.3        153.4            154.3           25.0
   Counts agree: F4_s 75, E6_s 68, E6_q 47.
-  The assert (unipotent_count) caches the regular-block cell characters M by
-  (G, gamma%1) (unipotent_count_M_cache). Cached counts are identical to
-  fresh recomputation on 9 groups (Sp(6,R) .. E6_s). The assert still costs
-  0.4-4x gentau's own time, so gentau+assert is about as fast as alt_fast.
+  gentau+assert was measured with the cell-based M (cached); the
+  standard-module M (above) makes the count 4-6x cheaper still.
   The induction paths are dominated by the inductions (89% on E6_s), so
   gentau on the Levis helps only at F4_s.
+
+E8_s, five distinguished dual orbits (2026-10-21, seat_belt_on false)
+--------------------------------------------------------------------
+  orbit           diagram              gentau      #   = stored E8_s_data
+  #41 E8(a7)   [0,0,0,0,2,0,0,0]     1034 s     18   yes
+  #54 E8(b6)   [0,0,0,2,0,0,0,2]     3231 s      6   yes
+  #58 E8(a6)   [0,0,0,2,0,0,2,0]     1933 s      5   yes
+  #60 E8(b5)   [0,0,0,2,0,0,2,2]     1244 s      5   yes
+  #62 E8(a5)   [2,0,0,2,0,0,2,0]     1337 s      6   yes
+  alt_fast was killed by macOS at ~217 GB during #41 (GK dimensions need the
+  cells of the big E8_s blocks). unipotent_count at #41: 18, 1109 s.
