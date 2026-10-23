@@ -1184,6 +1184,8 @@ set report_char_to_ht_hash() = void:
 
 { composition series }
 
+set old_composition_series_flag = true
+
 set composition_series_old(ParamPol P) = ParamPol:
   null_module(P)+
   while !=P { non null module }
@@ -1206,8 +1208,11 @@ set composition_series_to_height_old (Param p,int HT) = ParamPol:
     composition_series_to_height_old(ParamPol: p, HT)
 
 set composition_series(Param p) = ParamPol:
-    let (B,m,M,polys) = dual_KL_block(p) {lower triangular; jth col is mult in stds of B[j]}
-    in sum(p.real_form,for q@j in B[:m+1] do eval(polys[M[m,j]],1)*q od)
+    if old_composition_series_flag
+    then composition_series_old(p)
+    else let (B,m,M,polys) = dual_KL_block(p) {lower triangular; jth col is mult in stds of B[j]}
+    	 in sum(p.real_form,for q@j in B[:m+1] do eval(polys[M[m,j]],1)*q od)
+    fi
 
 set composition_series(ParamPol P) = ParamPol:
     sum(P.real_form, for c@q in P do c*composition_series(q) od)
@@ -1216,6 +1221,15 @@ set composition_series_to_height(Param p, int HT) = ParamPol:
     if HT < 0 then return composition_series(p) fi;
     let (B,m,M,polys) = dual_KL_block(p) {lower triangular; jth col is mult in stds of B[j]}
     in sum(p.real_form, for q@j in B[:m+1] do if height(q) <= HT then eval(polys[M[m,j]],1)*q else 0*q fi od)
+
+set composition_series_to_height(Param p, int HT) = ParamPol:
+    if HT < 0
+    then composition_series(p)
+    elif old_composition_series_flag
+    then composition_series_to_height_old(p,HT)
+    else let (B,m,M,polys) = dual_KL_block(p) {lower triangular; jth col is mult in stds of B[j]}
+    	 in sum(p.real_form, for q@j in B[:m+1] do if height(q) <= HT then eval(polys[M[m,j]],1)*q else 0*q fi od)
+    fi
 
 set composition_series_to_height (ParamPol P,int HT) = ParamPol:
     sum(P.real_form, for c@q in P do c*composition_series_to_height(q, HT) od)
