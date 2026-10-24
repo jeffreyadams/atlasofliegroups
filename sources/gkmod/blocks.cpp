@@ -1104,7 +1104,7 @@ common_block::common_block // full block constructor
 
 common_block::common_block // partial block constructor
     (const repr::common_context& ctxt,
-     sl_list<StandardReprMod>& elements)
+     std::vector<StandardReprMod> elements)
   : Block_base(ctxt.subsys().rank())
   , rc(ctxt.rc()) // copy reference to longer living |Rep_context| object
   , simply_integrals(ctxt.simply_integrals())
@@ -1122,15 +1122,16 @@ common_block::common_block // partial block constructor
   Block_base::dd = // integral Dynkin diagram, converted from dual side
     DynkinDiagram(int_sys.Cartan_matrix().transposed());
 
-  // a type to represent |rho+gamma-lambda| values, increasing
-  using y_list = sl_list<RatWeight>;
-  struct inv_y_data
+  // a type to represent list of |rho+gamma-lambda| values, increasing
+  // the values in the list are associated to the same involution
+  using y_list = sl_list<RatWeight>; // expect fairly few |y| per involution
+  struct invol_y_data
   {
     y_list list; unsigned long offset;
-    inv_y_data() : list(), offset(-1) {}
+    invol_y_data() : list(), offset(-1) {}
   };
 
-  std::vector<inv_y_data> y_table (i_tab.size());
+  std::vector<invol_y_data> y_table (i_tab.size()); // size maybe way too large
   {
     for (const auto& srm : elements)
     { const KGBElt x = srm.x();
@@ -1143,6 +1144,7 @@ common_block::common_block // partial block constructor
 	loc.insert(it,gamlam);
     }
 
+    // set |offset|s to count all |y| values at _later_ |inv_nr| values
     for (InvolutionNbr i_x=y_table.size(); i_x-->0; )
     {
       y_table[i_x].offset = highest_y;
@@ -1151,13 +1153,14 @@ common_block::common_block // partial block constructor
     -- highest_y; // one less than the number of distinct |y| values
   }
 
-  elements.sort // pre-sort by |x| ensures descents precede when setting lengths
+  // pre-sort by |x| ensures descents precede when setting lengths
+  std::sort(elements.begin(),elements.end(),
     ([](const StandardReprMod& a, const StandardReprMod& b)
-       { return a.x()<b.x(); } );
+    { return a.x()<b.x(); } ));
 
   for (const auto& srm : elements) // find its $(x,y)$ pair and extend |info|
   { const KGBElt x = srm.x();
-    const inv_y_data& slot = y_table[kgb.inv_nr(x)];
+    const invol_y_data& slot = y_table[kgb.inv_nr(x)];
     auto y = slot.offset;
     for (auto it = slot.list.begin(); not slot.list.at_end(it); ++it,++y)
       if (*it == srm.gamma_lambda())

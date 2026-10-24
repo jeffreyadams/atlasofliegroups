@@ -1589,17 +1589,27 @@ struct ulong_entry
 
 class Rep_table::Bruhat_generator
 {
-  Mod_hash_tp& mod_hash;
   const common_context& ctxt;
+  StandardReprMod::Pooltype pool;
+  Mod_hash_tp mod_hash; // Bruhat interval will be stored here
   std::vector<simple_list<BlockElt> > predecessors;
 public:
-  Bruhat_generator (Mod_hash_tp& hash, const common_context& ctxt)
-    : mod_hash(hash),ctxt(ctxt), predecessors() {}
+  Bruhat_generator (const common_context& ctxt)
+    : ctxt(ctxt)
+    , pool(), mod_hash(pool) // create empty hash table at construction
+    , predecessors()
+  {}
 
   bool in_interval (const StandardReprMod& srm) const
   { return mod_hash.find(srm)!=mod_hash.empty; }
   const simple_list<BlockElt>& covered(BlockElt n) const
   { return predecessors.at(n); }
+
+  BlockElt match(const StandardReprMod& srm) { return mod_hash.match(srm); }
+  const StandardReprMod& elt(BlockElt i) const { return pool[i]; }
+
+  const std::vector<StandardReprMod>& listing() const & { return pool; }
+  std::vector<StandardReprMod> listing() && { return std::move(pool); }
 
   // compute |predecessors| up to |srm|
   void block_below(const StandardReprMod& srm);
@@ -1619,8 +1629,8 @@ void Rep_table::Bruhat_generator::block_below (const StandardReprMod& srm)
   for (s=0; s<rank; ++s)
   {
     std::pair<gradings::Status::Value,bool> stat=ctxt.status(s,srm.x());
-    if (not stat.second)
-      continue; // ignore imaginary, complex ascent or real (potentially) type 2
+    if (not stat.second) // whether (re or nci) type 1, or if complex: descent
+      continue; // ignore imaginary, complex ascent or real not type 1
     if (stat.first==gradings::Status::Complex)
     { // complex descent
       const StandardReprMod sz = ctxt.cross(s,srm);
@@ -1628,8 +1638,9 @@ void Rep_table::Bruhat_generator::block_below (const StandardReprMod& srm)
       pred.push_back(mod_hash.find(sz)); // |mod_hash.find| after |block_below|
       break; // we shall add $s$-ascents of predecessors of |sz| below
     }
-    else if (stat.first==gradings::Status::Real and ctxt.is_parity(s,srm))
-    { // |z| has a type 1 real descent at |s|
+    else if (stat.first==gradings::Status::Real // "type 1" was ensured above
+	     and ctxt.is_parity(s,srm)) // but parity condition needs more detail
+    { // now |z| has a type 1 real descent at |s|
       const StandardReprMod sz0 = ctxt.down_Cayley(s,srm);
       const StandardReprMod sz1 = ctxt.cross(s,sz0);
       block_below(sz0); // recursion
@@ -1695,14 +1706,12 @@ void Rep_table::Bruhat_generator::block_below (const StandardReprMod& srm)
   predecessors.push_back(pred.undress()); // store |pred| at |h|
 } // |Rep_table::Bruhat_generator::block_below|
 
-sl_list<StandardReprMod> Rep_table::Bruhat_below
+std::vector<StandardReprMod> Rep_table::Bruhat_below
   (const common_context& ctxt, const StandardReprMod& init) const
 {
-  StandardReprMod::Pooltype pool;
-  Mod_hash_tp hash(pool);
-  Bruhat_generator gen(hash,ctxt); // object to help generating Bruhat interval
-  gen.block_below(init); // generate Bruhat interval below |srm| into |pool|
-  return sl_list<StandardReprMod>(pool.begin(),pool.end());
+  Bruhat_generator gen(ctxt); // object to help generating Bruhat interval
+  gen.block_below(init); // generate Bruhat interval below |srm|
+  return std::move(gen).listing();
 } // |Rep_table::Bruhat_below|
 
 // A structure used in |Rep_table::add_block_below| and |Rep_table::add_block|
@@ -1719,44 +1728,41 @@ blocks::common_block& Rep_table::add_block_below
   (const StandardReprMod& srm, BitMap* subset, const locator& loc)
 {
   common_context ctxt(*this,loc);
-  StandardReprMod::Pooltype pool;
-  Mod_hash_tp hash(pool);
-  Bruhat_generator gen(hash,ctxt); // object to help generating Bruhat interval
+  Bruhat_generator gen(ctxt); // object to help generating Bruhat interval
   gen.block_below(srm); // generate Bruhat interval below |srm| into |pool|
 
   // traverse elements in new interval and collect known blocks containing any
   const size_t place_limit = place.size(); // record this before the loop runs
   sl_list<sub_triple> sub_blocks;
-  for (const StandardReprMod& elt : pool) // run over interval just generated
+  for (const StandardReprMod& elt : gen.listing()) // interval just generated
     append_block_containing(elt,place_limit,loc, sub_blocks); // defined below
 
   // adapt elements for all |sub_blocks|, and extend |pool| if necessary
-  size_t limit = pool.size(); // limit of generated Bruhat interval
+  const size_t limit = gen.listing().size(); // the generated Bruhat interval
   for (const auto& sub : sub_blocks)
     for (BlockElt z=0; z<sub.bp->size(); ++z)
     { StandardReprMod rep = sub.bp->representative(z);
       shift(sub.bm.shift,rep);
       transform<false>(sub.bm.w,rep); // transform towards our new block
-      hash.match(rep); // if new, add it to |pool|, beyond the |limit| marker
+      gen.match(rep); // if new, add it to |pool|, beyond the |limit| marker
     }
 
-  sl_list<StandardReprMod> // the partial |common_block| constructor needs this
-    elements(pool.begin(),pool.end()); // convert container
-
-  // a |located_block| is a pair of a |common_block| and a |locator|
+  // a |located_block| is a |std::pair| of a |common_block| and a |locator|
   sl_list<located_block> temp; // must use temporary singleton
   auto& block = temp.emplace_back // construct partial block and get a reference
-    (std::piecewise_construct,
-     std::tuple<const common_context&,sl_list<StandardReprMod>&>
-     (ctxt,elements), // arguments of partial |common_block| constructor
-     std::tuple<const locator&>(loc) // |locator| copy constructor
+    // what follows constructs the |std::pair| from freshly constructed parts
+    (std::piecewise_construct // signal that tuples unwrap to constructor args
+     ,std::tuple<const common_context&,std::vector<StandardReprMod>>
+     (ctxt,gen.listing()) // arguments of partial |common_block| constructor
+     // note that vector is copied (to be sorted in ctor); |gen| is unchanged
+    ,std::tuple<const locator&>(loc) // |locator| copy constructor
     )->first;
 
   *subset=BitMap(block.size()); // this bitmap will be exported via |subset|
   sl_list<std::pair<BlockElt,BlockEltList> > partial_Hasse_diagram;
   for (unsigned int i=0; i<limit; ++i)
   {
-    BlockElt i_z = block.lookup(pool[i]); // index of element |i| in new block
+    BlockElt i_z = block.lookup(gen.elt(i)); // index of element |i| in new block
     subset->insert(i_z); // mark |z| as element ot the Bruhat interval
     const simple_list<BlockElt>& covered = gen.covered(i);
 
@@ -1764,7 +1770,7 @@ blocks::common_block& Rep_table::add_block_below
     row.reserve(containers::length(covered));
     for (auto it=covered.begin(); not covered.at_end(it); ++it)
     {
-      const BlockElt y = block.lookup(pool[*it]); // get relative number
+      const BlockElt y = block.lookup(gen.elt(*it)); // get relative number
       assert(y!=UndefBlock);
       row.push_back(y); // store covering relation in |Hasse_diagram|
     }
@@ -2860,12 +2866,13 @@ common_context::common_context
 , sub(rc.root_datum(),simply_int) // construct and store image subsystem
 {} // |common_context::common_context|
 
+// get status of integrally-simple |s| for |x|, and whether some type 1 or C-
 std::pair<gradings::Status::Value,bool>
   common_context::status(weyl::Generator s, KGBElt x) const
 {
-  const auto& conj = sub.to_simple(s); // word in full system
+  const auto& conj = sub.to_simple(s); // conjugator to simple in full system
   KGBElt conj_x = kgb().cross(conj,x);
-  const auto t=sub.simple(s);
+  const auto t=sub.simple(s); // the simple root that |s| conjugates to
   const auto stat = kgb().status(t,conj_x);
   return std::make_pair(stat,
 			stat==gradings::Status::Real

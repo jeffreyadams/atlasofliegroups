@@ -701,7 +701,7 @@ class Rep_table : public Rep_context
   // once a parameter has been entered, we can compute this without a block
 #endif
 
-  sl_list<StandardReprMod> Bruhat_below
+  std::vector<StandardReprMod> Bruhat_below
   (const common_context& ctxt, const StandardReprMod& init) const;
 
   blocks::common_block& add_block_below // partial; defined in common_blocks.cpp

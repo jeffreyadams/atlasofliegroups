@@ -3617,24 +3617,26 @@ connected complex reductive group; the corresponding Atlas class is called
 @*2 Class definition.
 %
 A |RealReductiveGroup| object is dependent upon an |InnerClass|, to which it
-stores a reference. In \.{atlas} a |real_form_value| is an independent value, so
-we must make sure that |InnerClass| pointed to by its |RealReductiveGroup|
-cannot disappear before it does. The easiest way to do this is to place an
-|shared_inner_class| pointer |ic_ptr| inside the |real_form_value|.
-Since that data can be accessed from inside the |RealReductiveGroup|, we shall
-mostly mention the |ic_ptr| with the purpose of accessing its
-|interface| and |dual_interface| fields. They however also serve for testing
-(by pointer equality) whether two real forms are in the same inner class.
+stores a reference. Users can handle a |real_form_value| as an independent
+value, so we must make sure that |InnerClass| pointed to by its
+|RealReductiveGroup| cannot disappear before it does. The easiest way to do this
+is to place an |shared_inner_class| pointer |ic_ptr| inside the
+|real_form_value|. Since that data can be accessed from inside the
+|RealReductiveGroup| when needed by its methods, explicit mention of |ic_ptr|
+only happens for the purpose of accessing its |interface| and |dual_interface|
+fields. But this field also serves for testing (by pointer equality) whether two
+real forms are in the same inner class.
 
 This class also serves to store persistent data related to the real form, in
 values of type |KhatContext| and |Rep_table|. In order to avoid overhead at
-construction, we lazily construct these tables, storing only pointer, which will
-only be assigned on first use. These fields are marked mutable, so that we do
-not have to do copy-on-write just to add the table (which would be silly, as
+construction, we lazily construct these tables, storing only pointers, which
+will only be assigned on first use. These fields are marked mutable, so that we
+do not have to do copy-on-write just to add the table (which would be silly, as
 others might benefit from the addition; anyway we forbid copying of any
-|real_form_value|) or use |non_const_get| to dissimulate our ``destructive''
-intentions. The |val| field itself is |mutable| for similar reasons, notably the
-KGB table gets initialised lazily inside the |RealReductiveGroup|. Another
+|real_form_value|), and can avoid using |non_const_get| to dissimulate our
+``destructive'' intentions. The |val| field itself is |mutable| for similar
+reasons, notably the KGB table gets initialised lazily inside the
+|RealReductiveGroup| and will get filled when any methods used needs it. Another
 advantage of storing pointers to |KhatContext| and |Rep_table| rather than such
 objects, is that it avoids making our header file depend on the header files for
 those objects.
@@ -6965,8 +6967,7 @@ void print_part_param_block_wrapper(eval_level l)
   test_standard(*p,"Cannot generate block");
   auto srm = StandardReprMod::mod_reduce(p->rc(),p->val);
   common_context ctxt(p->rc(),srm.gamma_lambda());
-  auto interval = p->rt().Bruhat_below(ctxt,srm);
-  blocks::common_block block(ctxt,interval);
+  blocks::common_block block(ctxt,p->rt().Bruhat_below(ctxt,srm));
   block.print_to(*output_stream,block.singular(p->val.gamma()));
     // print using involution expressions
   if (l==eval_level::single_value)

@@ -374,7 +374,7 @@ class common_block : public Block_base
   common_block // full block
     (const common_context& ctxt, const StandardReprMod& srm);
   common_block // partial block
-    (const common_context& ctxt, sl_list<StandardReprMod>& elements);
+  (const common_context& ctxt, std::vector<StandardReprMod> elements);
   ~common_block(); // cleans up |extended|, so inline definition is not possible
 
   common_block(const common_block&) = delete; // no copying

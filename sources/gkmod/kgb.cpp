@@ -680,7 +680,7 @@ KGB::KGB(RealReductiveGroup& G, const BitMap& Cartan_classes)
       }
     }
   }
-} // |KGB::KGB(G,Cartan_classes,i_tab)|
+} // |KGB::KGB(G,Cartan_classes)|
 
 
 

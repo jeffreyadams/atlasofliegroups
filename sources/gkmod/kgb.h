@@ -197,10 +197,10 @@ class KGB_base
 
   // find involution index |i| such that |inv_nrs[i]| is involution of |x|
   InvolutionNbr involution_index(KGBElt x) const
-  // look up index first element if |first_of_tau| greater than |x|; then -1
+  // look up index of first element with |first_of_tau| greater than |x|; then -1
   { return std::upper_bound(first_of_tau.begin(),first_of_tau.end(),x)
       -first_of_tau.begin() -1;
-  } // returns |i| where |first_of_tau(i)<=x| and this fails for |i+1|;
+  } // returns |i| with |first_of_tau(i) <= x < first_of_tau(i+1)|;
 
  protected:
   void reserve (size_t n); // prepare for generating |n| elements

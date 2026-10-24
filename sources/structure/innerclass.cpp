@@ -146,14 +146,15 @@ InnerClass::InnerClass
   , Cartan_poset() // poset is extended and populated below
   , d_mostSplit(numRealForms(),0) // values 0 may be increased below
 
-  // DON'T use |tmp_d| as involution below: would store a dangling reference!
+  // DON'T use |tmp_d| as involution below because ultimately |InvolutionTable|
+  // held inside |C_orb| will copy and store the reference passed here
   , C_orb(d_rootDatum,distinguished(),d_Tits_group) // set up bare table
 
   , integral_pool()
   , int_hash(integral_pool)
   , int_table()
 {
-  construct(); // set up |Cartan| data, but only resizes |C_orb|
+  construct(); // sets up |Cartan| data, but only resizes |C_orb|
 }
 
 /*
