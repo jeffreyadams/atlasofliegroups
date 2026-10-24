@@ -696,18 +696,25 @@ set FPPpre(RealForm G) = void:
  face but away from its centre is missed.}
 set wu_rf_hash = make_RealForm_hash()
 set wu_lists = [[Param]]: []
+set wu_verbose = false
+
 set wu_unitary(RealForm dL) = [Param]:
-    let N = wu_rf_hash.size() then n = wu_rf_hash.match(dL)
+    let start = elapsed_ms(), N = wu_rf_hash.size() then n = wu_rf_hash.match(dL)
     in if n = N
-       then FPP_unitary_hash(dL);
-	    let cands = make_Param_hash(big_unitary_hash.uhash(dL).list() ## unipotent_representations(dL))
-	    in wu_lists #:= for p in cands.list() if is_hermitian(p) and is_weakly_unipotent(p) do p fi od
+       then if wu_verbose then prints("Starting wu_unitary at ",dL) fi;
+	    FPP_unitary_hash_bottom_layer(dL);
+	    if wu_verbose then prints("Found ",big_unitary_hash.uhash(dL).size()," unitary reps in ",
+	       print_time_string(elapsed_ms() - start)); start:=elapsed_ms() fi;
+	    let cands = make_Param_hash(big_unitary_hash.uhash(dL).list())
+	    in wu_lists #:= for p in cands.list() if is_weakly_unipotent(p) do p fi od next \
+	       if wu_verbose then prints("Found ",#wu_lists[n]," weakly unipotent reps in ",
+	       	   print_time_string(elapsed_ms() - start)) fi
        fi;
        wu_lists[n]
 
 {v is central for L, as in coh_ind_unip_all}
 set coh_ind_wu(KGPElt Q, Param_hash Uhash, ratvec v) = void:
-    let L = Q.Levi, G = Q.real_form, rhou = rho_u(Q)
+    let start = elapsed_ms(), start_hash = Uhash.size(), L = Q.Levi, G = Q.real_form, rhou = rho_u(Q)
     then uLs = glue_params(L, for dL in derived_simple_factorsRF(L) do wu_unitary(dL) od, v)
     then shifts = all_shifts(Q,v)
     in for pL in uLs
@@ -720,13 +727,18 @@ set coh_ind_wu(KGPElt Q, Param_hash Uhash, ratvec v) = void:
 		     od
 	     fi
 	  od
-       od
+       od next if wu_verbose and Uhash.size() > start_hash
+       	       then prints("Found ",Uhash.size() - start_hash, " coh ind wkly fair unitary from ",
+	       	    Q," in ", print_time_string(elapsed_ms() - start))
+	       fi
 
 set coh_ind_wu(RealForm G, Param_hash Uhash) = void:
-    for Q in Qs(G)
-    do if Q.Levi.semisimple_rank < G.semisimple_rank {proper Q only}
-       then for v in offsets(Q) do coh_ind_wu(Q,Uhash,v) od
-       fi
-    od
+    let start = elapsed_ms(), start_hash = Uhash.size()
+    in for Q in Qs(G)
+       do if Q.Levi.semisimple_rank < G.semisimple_rank {proper Q only}
+       	  then for v in offsets(Q) do coh_ind_wu(Q,Uhash,v) od
+       	  fi
+       od next if wu_verbose then prints(new_line,"Found ",Uhash.size() - start_hash,
+       	       	  " coh ind wkly fair unitary in ", print_time_string(elapsed_ms() - start)) fi
 
 set coh_ind_wu(RealForm G) = void: coh_ind_wu(G, big_unitary_hash.uhash(G))
