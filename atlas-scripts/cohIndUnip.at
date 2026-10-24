@@ -329,7 +329,7 @@ set coh_ind_unip_few(KGPElt Q, Param_hash Uhash, ratvec v) = void:
 		    factor_my_representations(L,v) {was factor_unipotent_representations}
 	       else unipotent_representations(L,v)
 	       fi
-    then Qshifts = few_shifts(Q,v)
+    then Qshifts = if #uLs = 0 then [vec]: [] else few_shifts(Q,v) fi {no shifts needed without L-reps}
     in void: for pL in uLs
 	     do for tau in Qshifts
 		do let P = if two_flag
@@ -363,7 +363,7 @@ set coh_ind_unip_most(KGPElt Q, Param_hash Uhash,ratvec v) = void:
 	       else unipotent_representations(L,v)
 	       fi
     then rhou = rho_u(Q)
-    then Qshifts = most_shifts(Q,v)
+    then Qshifts = if #uLs = 0 then [vec]: [] else most_shifts(Q,v) fi
     in void: for pL in uLs
 	     do for tau in Qshifts
 	     	do let P = if two_flag
@@ -402,7 +402,8 @@ set coh_ind_unip_all(KGPElt Q, Param_hash Uhash,ratvec v) = void:
 	       else unipotent_representations(L,v)
 	       fi
     then rhou = rho_u(Q)
-    then Qshifts = if new_shifts_flag
+    then Qshifts = if #uLs = 0 then [vec]: []
+		   elif new_shifts_flag
     	 	   then all_shifts_new(Q,v)
 		   else all_shifts(Q,v)
 		   fi

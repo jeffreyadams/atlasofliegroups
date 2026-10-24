@@ -302,55 +302,32 @@ set derived_factor_weight_inclusions(RealForm G) = [(ratvec->ratvec)]:
        od
 
 {take a family of parameters on each derived simple factor of G and glue them into parameters on G,
-restricting to central weight v on z(g)}
+restricting to central weight v on z(g): for each choice of one (x,gamma) from each list, the
+parameters at the glued KGBElt and the glued infinitesimal character whose derived factors are
+in the lists}
 set glue_params(RealForm G, [[Param]] drfs, ratvec shift) = [Param]:
     if any(for list in drfs do (#list).= od) then return [] fi;
-    let gamma_hashes = for list in drfs do make_ratvec_hash() od
-    then p_hashes = for list in drfs do make_Param_hash() od
-    then () = for list@j in drfs {these are the rep factors on simple factor #j}
-    	      do for p in list
-    	      	 do gamma_hashes[j].match(p.infinitesimal_character)
-    	      	  ; p_hashes[j].match(p)
-		 od
-	      od
+    let p_hashes = for list in drfs do make_Param_hash() od
+    then key_hashes = for list in drfs do make_vec_hash() od
+    then reps = for list@j in drfs
+		do for p in list
+		   do p_hashes[j].match(p);
+		      let (n,d) = %p.infinitesimal_character, N = key_hashes[j].size()
+		      in if key_hashes[j].match([p.x.number,d]##n) = N then [p] else [] fi
+		   od.##
+		od
     then Ms = derived_factor_weight_inclusions(G)
-    then gamma_factors_lists = for gamma_hash in gamma_hashes do gamma_hash.list() od
-    then sizes = for list in gamma_factors_lists do #list od
-    then gammas = for b in box(sizes)
-    	 	  do shift + sum(G.rank,
-		     for list@j in gamma_factors_lists
-		     do Ms[j](list[b[j]])
-    	 	     od)
-		  od
-    	 {one gamma_j from each list, move to G, sum}
-    then pGs = for gamma@j in gammas
-    	       do all_parameters_gamma(G,gamma)
-	       od.##
-{
-    	       do let rdgamma = integrality_datum(G,gamma)
-	       	  then tau = [int]:
-	       	       for avee@k in rdgamma.simple_coroots
-		       do if (avee*gamma).=
-		       	  then []
-			  else [k]
-			  fi
-		       od.## {tau = list of simple integral coroots nonzero on gamma}
-	       	  in for p in all_parameters_gamma(G,gamma)
-		     do if contains(tau)(tau(p))
-		     	then [p]
-			else []
-			fi
-		     od.## {these are the ones at gamma with correct tau}
-	      od.##
-}
-    in for p in pGs
-       do let derps = derived_factor_params0(p)
-       	  in if all(for derpj@j in derps
-	     	    do p_hashes[j].lookup(derpj).>= od)
-	     then [p]
-	     else []
-	     fi
-       od.##
+    then answer = make_Param_hash()
+    in for b in box(for list in reps do #list od)
+       do let ps = for list@j in reps do list[b[j]] od
+	  then x = glue_KGBs(G, for p in ps do p.x od)
+	  then gamma = shift + sum(G.rank, for p@j in ps do Ms[j](p.infinitesimal_character) od)
+	  in for q in all_parameters_x_gamma(x, gamma)
+	     do if all(for d@j in derived_factor_params0(q) do p_hashes[j].lookup(d).>= od)
+		then answer.match(q)
+		fi
+	     od
+       od; answer.list()
 
 {take a family of parameters on each derived simple factor of G and glue them into parameters on G}
 set glue_params(RealForm G, [[Param]] drfs) = [Param]:

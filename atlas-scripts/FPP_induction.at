@@ -716,7 +716,7 @@ set wu_unitary(RealForm dL) = [Param]:
 set coh_ind_wu(KGPElt Q, Param_hash Uhash, ratvec v) = void:
     let start = elapsed_ms(), start_hash = Uhash.size(), L = Q.Levi, G = Q.real_form, rhou = rho_u(Q)
     then uLs = glue_params(L, for dL in derived_simple_factorsRF(L) do wu_unitary(dL) od, v)
-    then shifts = all_shifts(Q,v)
+    then shifts = if #uLs = 0 then [vec]: [] else all_shifts(Q,v) fi
     in for pL in uLs
        do for tau in shifts
 	  do if is_FPP(G, dominant(G, pL.infinitesimal_character + rhou - tau))
