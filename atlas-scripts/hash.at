@@ -264,6 +264,13 @@ set make_Param_hash ([Param] data) = Hash<Param>: make_hash((hash_code@(Param,in
 set make_KTypePol_hash () = Hash<KTypePol>:
    make_hash(hash_code@(KTypePol,int),=@(KTypePol,KTypePol))
 
+{meant to hash a ParamPol (character formulas of faces) for a single group G}
+set to_vecs (ParamPol P) = [vec]:
+   for c@p in P do let (a,b)=%c,(x,lr,gamma)=%p then (gn,gd)=%gamma in [a,b,#x]##lr##(gn#gd) od
+set hash_code (ParamPol P, int mod) = int: hash_code(vec: to_vecs(P).##, mod)
+set make_ParamPol_hash () = Hash<ParamPol>:
+   make_hash(hash_code@(ParamPol,int),=@(ParamPol,ParamPol))
+
 
 {Cheap hash codes for RootDatum, InnerClass (and so RealForm), built from the
  Lie type; = sorts out values with the same code. Hashing the matrices, as
@@ -341,6 +348,7 @@ set_type RealForm_hash   = Hash<RealForm>
 set_type xlambda_hash	 = Hash<KGBratvec>
 set_type KType_hash	 = Hash<KType>
 set_type KTypePol_hash 	 = Hash<KTypePol>
+set_type ParamPol_hash 	 = Hash<ParamPol>
 set_type Param_hash 	 = Hash<Param>
 set_type KGBElt_hash	 = Hash<KGBElt>
 

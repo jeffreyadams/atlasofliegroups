@@ -8,7 +8,7 @@
 set_type FaceVerts = [ratvec]
 set_type FaceVertsIndex = vec { length k+1 for k-dimensional face }
 set_type LocalFaceVertsHash = vec {length k+5 for k-diml face}
-set_type FaceVertsKHash = vec {length d+3 for d-diml face}
+set_type FaceVertsKHash = vec {length d+4 for d-diml face}
 set_type
  [FaceStatusVertsIndex = (string status, FaceVertsIndex verts)
 , VertexData = ([ratvec] list, (ratvec->int) lookup)
@@ -121,12 +121,13 @@ set up_graph_gens([[FaceVertsKHash]] FDKHash) = [[int]]:
  in
     for d:#FDKHash-1 from 1 { traverse faces having a vertex to spare }
     do let lookup = lookups[d-1] { looking up will be at previous level }
-    in for Find@j1 in FDKHash[d] {Find has d+3 entries: d+1 vertices of a d-diml face, K-char index, #Langlands quotients}
+    in for Find@j1 in FDKHash[d] {Find has d+4 entries: d+1 vertices of a d-diml face, K-char index, #Langlands quotients,
+     charhash index}
        do for e:d+1
 	  do let j0 = lookup(delete(Find,e)[:d])
 	  in if j0.>= {ought to be automatic}
 	     then edge_gens[index(d-1,j0)] #:= index(d,j1)
-	     ; if Find[d+1:] = FDKHash[d-1][j0][d:]
+	     ; if Find[d+1:d+3] = FDKHash[d-1][j0][d:d+2]
 	       then edge_gens[index(d,j1)] #:= index(d-1,j0)
 	       fi
 	     fi
@@ -150,8 +151,8 @@ else let indexFD   = (int,int->int): index_f(FDK)
     for d:#FDK-1 from 1 { traverse faces having a vertex to spare }
     do let lookup = lookups[d-1] { looking up will be at previous level }
     in for Find@j1 in FDK[d]
-     {Find has size d+3. First d+1 entries 0 to d index verts of a d-diml face.
-      d+1 indexes K-char. d+2 is #Langlands quotients}
+     {Find has size d+4. First d+1 entries 0 to d index verts of a d-diml face.
+      d+1 indexes K-char. d+2 is #Langlands quotients. d+3 indexes charhash}
        do for e:d+1
 	  do let j0 = lookup(delete(Find,e)[:d])
 	  in if j0.>= {ought to be automatic}

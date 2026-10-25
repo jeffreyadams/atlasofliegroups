@@ -1787,6 +1787,10 @@ set was_tested_inter_to_ht(Param p,int HT, int T) = void:
 		  tested_inter_to_ht_counts[h] := tithc
 	  fi
 
+{the edge peel and wiggle report lines (argument 0: totals, 1: since the last call with 1); set in
+ FPP_localDirac.at, where their counters are. A list, since a function defined by set cannot be reassigned}
+set report_peel_wiggle = [(int->void)]: []
+
 set report_tested(string label) = void:
 {    prints("...",label,"...",DTcount," Dirac elim, ",DBTcount," best-Dirac elim; predictor_time = ",
     	  print_time_string(predictor_time));}
@@ -1848,6 +1852,7 @@ set report_tested(string label) = void:
     	   hash_def_false_count," deformations proving nonunitarity (to height).")
     prints("no_unitary_time = ", print_time_string(test_no_unitary_time), ", no_Dirac_time = ",
     	   print_time_string(test_no_Dirac_time)," , #(x,lambda) eliminated by LKTs = ",none_count);}
+    for f in report_peel_wiggle do f(0) od;
     prints("  ----------------")
 
 set report_tested() = void: report_tested("")
@@ -1928,6 +1933,7 @@ set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(v
 	 utc:=unitary_test_counter.use_count();
 	 ct:=charTime; ctth:=charTimeToHt;
 	 cu:= char_counter.use_count(); cuth:=char_counter_to_ht.use_count();
+    for f in report_peel_wiggle do f(1) od;
     prints("...",running_label,"...",DTcount + DBTcount," Dirac elim; status_time = ",
     	   print_time_string(status_time), " for ", status_count," reports");
     prints("FPP_def_time = ",print_time_string(FPP_def_time)," for ",
@@ -1969,6 +1975,7 @@ set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(v
        prints("KL_sum_at_s_to_ht_new entered ",stored_count+unstored_count," times (",
               stored_count," with the library sum stored, ",unstored_count," without)") fi;
     if IDH_flag then IDH_report() fi;
+    for f in report_peel_wiggle do f(0) od;
     prints("  ----------------")
     , @: {clear_report_tested_cum}
      tph := 0; tpt := 0; tnh := 0; tnt :=0; oth :=0; otc :=0; ott :=0;

@@ -380,7 +380,7 @@ set_type FaceBary = ratvec
 set_type FaceVertsIndex = vec { of length k+1 for k-dimensional face }
 
 set_type
-[ FaceVertsKHash = vec {next to last entry is index of KChar in some hash, last is #LQ's}
+[ FaceVertsKHash = vec {d+1 vertices, then index of KChar in some hash, #LQ's, index in charhash}
 , LocalFaceVertsKHash = vec {next to last entry is index of KChar in some hash, last is #LQ's}
 ]
 
