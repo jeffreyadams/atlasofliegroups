@@ -469,6 +469,8 @@ set wiggle_flag1_time = int:0
  deformation, so one with status(q,HT) < 0 makes the face nonunitary to height HT. No new
  character formulas are computed.}
 set wiggle_ht_flag = true
+{the wiggle tests need the stored character formulas}
+set wiggle_on() = bool: wiggle_flag1 and char_hash_flag
 set wiggle_peel_count = vec: [0,0,0] {faces tried, facets subtracted, faces found nonunitary}
 
 {the edge peel and wiggle lines of report_tested (mode 0: totals) and report_tested_cum (mode 1:
@@ -480,11 +482,11 @@ report_peel_wiggle :=
 				  else (edge_peel_count-ep0,edge_peel_time-ept0,wiggle_peel_count-wp0,
 					wiggle_flag1_time-wpt0)
 				  fi
-	    in if edge_peel_flag
+	    in if edge_peel_flag and char_hash_flag
 	       then prints(ep[0]," edges tried, ",ep[1]," peeled, ",ep[2]," caught (",ep[3],
 			   " to height), in ",print_time_string(ept))
 	       fi;
-	       if wiggle_flag1 and wiggle_ht_flag
+	       if wiggle_on() and wiggle_ht_flag
 	       then prints(wp[0]," faces wiggled to ",wp[1]," bdry faces, ",wp[2]," caught, in ",
 			   print_time_string(wpt))
 	       fi;
@@ -603,7 +605,7 @@ set local_testK_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		   fi
 		   ; if newStatuses[k] = "?"
 		     then let C=eq[k]
-			  then N = if wiggle_flag1 and C~[0] >= #FVKH[0]
+			  then N = if wiggle_on() and C~[0] >= #FVKH[0]
 				   then C~[0]
 				   else C[0]
 				   fi
@@ -613,7 +615,7 @@ set local_testK_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 			  then gamma = face_bary(Lvd,verts)
 			  then pC = parameter(x, lambda, gamma)
 			  then ps = monomials(pC)
-			  then () = if wiggle_flag1 and not wiggle_ht_flag and d>0
+			  then () = if wiggle_on() and not wiggle_ht_flag and d>0
 				    then let start_wiggle = elapsed_ms(),
 				    	     short_verts = for i:d+1
 							   do verts[:i]##verts[i+1:]
@@ -671,7 +673,7 @@ set local_testK_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 				     fi {fund_faca_verbose}
 			   then () = if newStatuses[K][0] = "?" {NEWU}
 				     then let C=eq[K]
-				     then N = if wiggle_flag1 and C~[0] >= #FVKH[0]
+				     then N = if wiggle_on() and C~[0] >= #FVKH[0]
 					      then C~[0]
 					      else C[0]
 					      fi
@@ -680,7 +682,7 @@ set local_testK_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 				     then gamma = face_bary(Lvd,verts)
 				     then pC = parameter(x, lambda, gamma)
 				     then ps = monomials(finalize(pC))
-				     then () = if wiggle_flag1 and not wiggle_ht_flag and d>0
+				     then () = if wiggle_on() and not wiggle_ht_flag and d>0
 					       then let start_wiggle = elapsed_ms(),
 					       	    	short_verts = for i:d+1
 								      do verts[:i]##verts[i+1:]
@@ -798,7 +800,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     let newStatuses = for j:#eq do "?" od,  NumClasses = #eq
 	,printkInterval = int: 1, printKInterval = int:1, H0 = height(parameter(x,lambda,0*lambda)){,
 	OTF_hold = old_testing_flag}
-	,looks = if wiggle_flag1 and wiggle_ht_flag then lookups(FVKH) else [(vec->int)]: [] fi
+	,looks = if wiggle_on() and wiggle_ht_flag then lookups(FVKH) else [(vec->int)]: [] fi
     {then () = {old_testing_flag:=true}}
     {use Uhash to mark some classes as known? (those that hit a unitary Param)}
     {Find all Param's in Uhash with (x,lambda). For each, compute corresponding Face.
@@ -853,11 +855,11 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
       then () =  for k:NumClasses
 		~do  if{NEWUk} newStatuses[k] = "?"
 		     then let C=eq[k]
-			  then () = if wiggle_flag1 and wiggle_ht_flag and wiggle_class(x,lambda,Lvd,FVKH,looks,C,HT)
+			  then () = if wiggle_on() and wiggle_ht_flag and wiggle_class(x,lambda,Lvd,FVKH,looks,C,HT)
 				    then newStatuses:= updateNUclassesB(newStatuses, gr, k);
 					 newStatuses[k] := "F"
 				    fi
-			  then N = if wiggle_flag1 and not wiggle_ht_flag and C~[0] >= #FVKH[0]
+			  then N = if wiggle_on() and not wiggle_ht_flag and C~[0] >= #FVKH[0]
 				   then C~[0]
 				   else C[0]
 				   fi
@@ -869,7 +871,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 			  then gamma = face_bary(Lvd,verts)
 			  then pC = parameter(x, lambda, gamma)
 			  then ps = monomials(pC)
-			  then () = if wiggle_flag1 and not wiggle_ht_flag and d>0 and newStatuses[k] = "?"
+			  then () = if wiggle_on() and not wiggle_ht_flag and d>0 and newStatuses[k] = "?"
 				    then {prints("got into wiggle loop, p = ",pC);}
 				    	 let start_wiggle = elapsed_ms(),
 					     short_verts = for i:d+1
@@ -934,11 +936,11 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		      then let K = (NumClasses - k - 1)\pref_bottom {K runs from 0}
 			   in if newStatuses[K][0] = "?" {NEWUK}
 				     then let C=eq[K]
-					  then () = if wiggle_flag1 and wiggle_ht_flag
+					  then () = if wiggle_on() and wiggle_ht_flag
 						       and wiggle_class(x,lambda,Lvd,FVKH,looks,C,HT)
 						    then newStatuses[K] := "F"
 						    fi
-					  then N = if wiggle_flag1 and not wiggle_ht_flag and C~[0] >= #FVKH[0]
+					  then N = if wiggle_on() and not wiggle_ht_flag and C~[0] >= #FVKH[0]
 						   then C~[0]
 						   else C[0]
 						   fi
@@ -947,7 +949,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 				     then gamma = face_bary(Lvd,verts)
 				     then pC = parameter(x, lambda, gamma)
 				     then ps = monomials(finalize(pC))
-				     then () = if wiggle_flag1 and not wiggle_ht_flag and d>0 and newStatuses[K] = "?"
+				     then () = if wiggle_on() and not wiggle_ht_flag and d>0 and newStatuses[K] = "?"
 					       then let start_wiggle = elapsed_ms(),
 					       	    	short_verts = for i:d+1
 								      do verts[:i]##verts[i+1:]
@@ -1337,7 +1339,7 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
     then hts = [int]: (for mu in monomials(branch_std(p0,HT)) do height(mu) od).sort_u
     then ONE = min(edge_offset,#hts-1), H0 = height(parameter(x,lambda,0*lambda))
     then printInterval = int: {1} max(1,NumClasses\10)
-    then looks = if wiggle_flag1 and wiggle_ht_flag then lookups(FVKH) else [(vec->int)]: [] fi
+    then looks = if wiggle_on() and wiggle_ht_flag then lookups(FVKH) else [(vec->int)]: [] fi
     {Find all Param's in Uhash with (x,lambda). For each, compute corresponding Face.
      Use function known_unitaries from FPP_faces_herm
      Look up class in classListByFace, and mark "T"}
@@ -1411,7 +1413,7 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
 		      {then sigma = sum(#lambda, ratverts)}
 		      then pC = parameter(x, lambda, gamma) {sigma/(d+1))}
 		      then ps = monomials(pC)
-		      then () = if wiggle_flag1 and d>0
+		      then () = if wiggle_on() and d>0
 				then let start_wiggle = elapsed_ms(),
 				     short_verts = for i:d+1
 						       do verts[:i]##verts[i+1:]
@@ -1823,7 +1825,7 @@ set local_test_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	      then prints("representatives of unknown classes:");
 		   for m in unknown_ms
 		   do let C = eq[m]
-		      then N = if wiggle_flag1 and C~[0] >= #LFVH[0]
+		      then N = if wiggle_on() and C~[0] >= #LFVH[0]
 			       then C~[0]
 			       else C[0]
 			       fi
@@ -1836,7 +1838,7 @@ set local_test_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	      fi {final_verbose}
     then () = for m@k in unknown_ms {work from small faces toward big}
 	     ~do let C = eq[m]
-		 then N = if wiggle_flag1 and C~[0] >= #LFVH[0]
+		 then N = if wiggle_on() and C~[0] >= #LFVH[0]
 			  then C~[0]
 			  else C[0]
 			  fi
@@ -1845,7 +1847,7 @@ set local_test_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		 then gamma = face_bary(Lvd,verts)
 		 then pC = parameter(x, lambda, gamma)
 		 then ps = monomials(pC)
-		 then () = if wiggle_flag1 and not wiggle_ht_flag and d>0 {ASSUME TESTER IS is_unitary}
+		 then () = if wiggle_on() and not wiggle_ht_flag and d>0 {ASSUME TESTER IS is_unitary}
 			   then let start_wiggle = elapsed_ms(),
 				    short_verts = for i:d+1
 						  do verts[:i]##verts[i+1:]
@@ -2568,7 +2570,7 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		      {then sigma = sum(#lambda, ratverts)}
 		      then pC = parameter(x, lambda, face_bary(Lvd,verts)) {,sigma/(d+1))}
 		      then pCdef = if is_final(pC)
-				   then if wiggle_flag1 and not wiggle_ht_flag and d > 0
+				   then if wiggle_on() and not wiggle_ht_flag and d > 0
 					then let start_wiggle = elapsed_ms(),
 				    	     	 CF = character_formula(pC)
 					     in monomials(composition_series((sum(x.real_form,

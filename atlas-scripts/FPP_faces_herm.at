@@ -6484,6 +6484,11 @@ set LFDKH01_time = int:0
 {set left_good = int:0, left_bad = int:0, right_good = int:0, right_bad = int:0, LR_no_info = int:0}
 set to_htB_flag = false
 
+{if false, no character formulas are stored (face vecs get -1 as charhash index), and the edge
+ peel and all wiggle tests are off: charhash can be large for big groups. If true, charhash is
+ kept, and edge_peel_flag and wiggle_flag1 turn those tests on.}
+set char_hash_flag = false
+
 {The character formulas of the local faces of one (x,lambda). A face vec (FaceVertsKHash) is
  d+1 vertex indices, the index in ktp_hash of its K-character, its number of Langlands
  quotients, and the index in charhash of its character formula (to height HT where the
@@ -6496,10 +6501,12 @@ set charhash_clear() = void: charhash.clear(); charhash_hts := []
 
 {store CF, complete to height h (-1: all heights); its index}
 set face_cf_store(ParamPol CF, int h) = int:
-    let N = charhash.size() then c = charhash.match(CF)
-    in if c = N then charhash_hts #:= h
-       elif h >= 0 and (charhash_hts[c] < 0 or h < charhash_hts[c]) then charhash_hts[c] := h
-       fi; c
+    if not char_hash_flag then -1
+    else let N = charhash.size() then c = charhash.match(CF)
+	 in if c = N then charhash_hts #:= h
+	    elif h >= 0 and (charhash_hts[c] < 0 or h < charhash_hts[c]) then charhash_hts[c] := h
+	    fi; c
+    fi
 
 {same, for a formula complete to height HT; none if to_htB_flag (CF is then a composition series)}
 set face_cf_store_ht(ParamPol CF, int HT) = int:
@@ -6641,7 +6648,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_has
 			      then p0 = parameter(x, lambda, nu)
 			      then P = finalize(p0)
 			      then CF = character_formula(P)
-			      in if edge_peel_flag and edge_peel_bad(p0,CF,-1,Lvd,v,[answer0[i],answer0[j]],-1) then []
+			      in if edge_peel_flag and char_hash_flag and edge_peel_bad(p0,CF,-1,Lvd,v,[answer0[i],answer0[j]],-1) then []
 				 else let m = ktp_hash.match(K_type_pol(CF))
 				      in [v##[m,#monomials(P),face_cf_store(CF,-1)]]
 				 fi
@@ -6770,7 +6777,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 					   else let (below,) = height_split(character_formula(P),HT)
 					    	 in below
 					   fi
-				      in if edge_peel_flag and not to_htB_flag and edge_peel_bad(p0,CF,HT,Lvd,v,[answer0[i],answer0[j]],HT)
+				      in if edge_peel_flag and char_hash_flag and not to_htB_flag and edge_peel_bad(p0,CF,HT,Lvd,v,[answer0[i],answer0[j]],HT)
 				      then []
 				      else
 				      let KCF = K_type_pol(CF)
