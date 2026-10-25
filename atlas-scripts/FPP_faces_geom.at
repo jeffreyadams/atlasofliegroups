@@ -2131,11 +2131,11 @@ set non_herm_center(Param p) = Param:
     in parameter(p.x, p.lambda, gamma_bary) next hermCenterNewTime +:= elapsed_ms() - start
 
 
-{argument and result meant to be sums of stds. Assume caller has calculated IP to HT + error}
+{argument and result meant to be sums of stds; IP need only be known to height HT, since the
+ wiggle does not change heights (see the comment before wiggle(Param,ratvec,int))}
 set wiggle(ParamPol IP, ratvec gamma0, int HT) = ParamPol:
-    let G = IP.real_form, gamma=IP.infinitesimal_character
-    then error = {floor(2*dominant(G,gamma-gamma0)*two_rho_check(G)} int:0
-    then (IPlow,) = height_split(IP,HT+error)
+    let G = IP.real_form
+    then (IPlow,) = height_split(IP,HT)
     in let (IPwLow,) = height_split(sum(G, for c@q in IPlow do c*parameter(q.x, q.lambda, gamma0) od),HT)
        in IPwLow
 
@@ -2148,14 +2148,15 @@ honest deformed rep) if gamma0 is in the closed local face of
 infl_char(p)}
 {DV 5/2/26: I'm dubious about HT. The wiggle can change HT = (gamma+theta*gamma)*rho_check. So change is
 at most (1+theta)(gamma-gamma0)*rho_check <= 2*dominant(G,gamma-gamm0)*rho_check}
+{10/24/26: no change at all. The height is <2rho^vee, dominant((1+theta)gamma)>/2, and
+(1+theta)gamma = (1+theta)lambda does not involve nu; so parameter(q.x,q.lambda,gamma0) has the
+height of q, and finalizing it does not lower the height (its pieces have K-types among those of
+the standard module of q). Checked on 90293 non-final wiggled terms in six groups. So no error term.}
 
 {argument is meant to be irreducible; apply only when HT >= 0.
 result is a char form, apply comp series to get irrs}
 set wiggle(Param p, ratvec gamma0, int HT) = ParamPol:
-    let G = p.real_form, gamma = p.infinitesimal_character
-    then error = floor(2*dominant(G,gamma-gamma0)*two_rho_check(G)) {int:0}
-    then CF = character_formula_to_ht(p,HT+error)
-    in wiggle(CF,gamma0,HT)
+    wiggle(character_formula_to_ht(p,HT),gamma0,HT)
 
 {argument meant to be irr; result is a char form, apply comp series to get irrs}
 set wiggle(Param p, ratvec gamma0) = ParamPol:
