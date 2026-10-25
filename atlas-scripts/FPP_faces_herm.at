@@ -6536,13 +6536,89 @@ set localFD_2Steve\
 
 set LFDKH01_time = int:0
 
+{edge peel test, in localFD_KHash_01 right after the character formula CF of an edge is computed:
+ deform CF to each endpoint; the first term of the result is a constituent of the deformation
+ (usually the endpoint), and so are the lowest-height terms after subtracting its character formula.
+ If one is known nonunitary (to HT, or at all), the edge is nonunitary; drop it.}
+set edge_peel_flag = false
+{if false, a nonunitary edge is only recorded (def_nu_record), not dropped: dropping it splits the
+ K-character classes it joins, which can cost more unitarity tests later}
+set edge_peel_drop_flag = false
+set edge_peel_count = [int]: [0,0,0] {edges tested, found nonunitary, of which to HT}
+set edge_peel_time = int:0
+
+{memos for one localFD_KHash_01 call (fixed x, lambda, HT): the constituents found are mostly
+ the endpoints, each shared by many edges. Reset at the start of each call, since status changes.}
+set edge_peel_stat_hash = make_Param_hash(), edge_peel_stats = [int]: []
+set edge_peel_cf_hash = make_Param_hash(), edge_peel_cfs = [ParamPol]: []
+set edge_peel_reset() = void:
+    edge_peel_stat_hash := make_Param_hash(); edge_peel_stats := [];
+    edge_peel_cf_hash := make_Param_hash(); edge_peel_cfs := []
+
+{2 if q is known nonunitary to HT, 1 if only known nonunitary (which suffices to make the edge
+ nonunitary), 0 else}
+set edge_peel_bad_param(Param q, int HT) = int:
+    let i = edge_peel_stat_hash.match(q)
+    in if i = #edge_peel_stats
+       then edge_peel_stats #:= if status(q,HT) < 0 then 2
+				elif HT >= 0 and status(q,-1) < 0 then 1
+				else 0
+				fi
+       fi; edge_peel_stats[i]
+
+{the vertex loops of localFD_KHash_01 store the endpoint character formulas they compute}
+set edge_peel_cf_store(ParamPol P, ParamPol CF) = void:
+    if edge_peel_flag and #P = 1
+    then let i = edge_peel_cf_hash.match(first_param(P))
+	 in if i = #edge_peel_cfs then edge_peel_cfs #:= CF fi
+    fi
+
+set edge_peel_cf(Param q, int HT) = ParamPol:
+    let i = edge_peel_cf_hash.match(q)
+    in if i = #edge_peel_cfs then edge_peel_cfs #:= character_formula_to_ht(q,HT) fi;
+       edge_peel_cfs[i]
+
+{a constituent of the deformation P (to height HT) known nonunitary, or []: the first term q of P
+ (normally the endpoint), then the terms of lowest height in P - character_formula_to_ht(q), which
+ are constituents too. No further character formulas.}
+set edge_peel_one(ParamPol P, int HT) = [Param]:
+    if =P then return [] fi;
+    let (c,q):term = first_term(P)
+    in if edge_peel_bad_param(q,HT) > 0 then return [q] fi;
+       let R = P - c*edge_peel_cf(q,HT)
+       in if =R then return [] fi;
+	  let h = height(first_param(R))
+	  in for d@r in R
+	     do if height(r) = h and d.s_to_1 > 0 and edge_peel_bad_param(r,HT) > 0 then return [r] fi
+	     od; []
+
+{CF is the character formula (to HT) of the edge v[:2] in Lvd; p0 is the edge parameter}
+set edge_peel_bad(Param p0, ParamPol CF, LocalVertexData Lvd, vec v, int HT) = bool:
+    let start = elapsed_ms()
+    then bads = [Param]: []
+    then () = for e in v[:2]
+	      do if #bads = 0 then bads := edge_peel_one(to_ht_PP(HT)(wiggle(CF, Lvd.list[e])), HT) fi
+	      od
+    in edge_peel_count[0] +:= 1;
+       if #bads > 0
+       then edge_peel_count[1] +:= 1;
+	    {nonunitary to HT if the factor is; status of p0 to HT can then see it}
+	    if edge_peel_bad_param(bads[0],HT) = 2
+	    then edge_peel_count[2] +:= 1; def_nu_record(p0, bads, HT)
+	    else def_nu_record(p0, bads, -1)
+	    fi
+       fi;
+       edge_peel_time +:= elapsed_ms() - start;
+       #bads > 0 and edge_peel_drop_flag
+
 {set left_good = int:0, left_bad = int:0, right_good = int:0, right_bad = int:0, LR_no_info = int:0}
 {takes 0 and 1-diml local faces and adds K-char index}
 {having K-char, take opportunity to apply Dirac ineq deeper }
 {No height bound here; need red_count to infinity}
 set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_hash ktp_hash,
 [[FaceVertsIndex]] LF) = [[FaceVertsKHash]]:
-    let start = elapsed_ms(), ht = height(parameter(x,lambda,0*lambda)), startDBTcount = DBTcount
+    let () = edge_peel_reset()
+    then start = elapsed_ms(), ht = height(parameter(x,lambda,0*lambda)), startDBTcount = DBTcount
     {then HT = next_heights(parameter(x,lambda,0*lambda),edge_offset+1)~[0]}
     then Q = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBestBD = 0/1
@@ -6570,7 +6646,9 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_has
 		      let gamma = Lvd.list[v[0]]
 		      then p0 = parameter(x, lambda, gamma)
 		      then P = finalize(p0)
-		      then KCF = K_type_pol(character_formula(P))
+		      then CF = character_formula(P)
+		      then () = edge_peel_cf_store(P,CF)
+		      then KCF = K_type_pol(CF)
 		      then m = ktp_hash.match(KCF)
 		      in if FPP_def_edge_flag and not FPP_def_test_wk_final(p0)
 	       	      	 then []
@@ -6599,11 +6677,17 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_has
 				      then [v##[answer0[i][2],#monomials(P)]]
 				      elif answer0[j][1] = v[2]
 				      then [v##[answer0[j][2], #monomials(P)]]
-				      else let m = ktp_hash.match(K_type_pol(character_formula(P)))
-				      in [v##[m,#monomials(P)]]
+				      else let CF = character_formula(P)
+				      in if edge_peel_flag and edge_peel_bad(p0,CF,Lvd,v,-1) then []
+					 else let m = ktp_hash.match(K_type_pol(CF))
+					      in [v##[m,#monomials(P)]]
+					 fi
 				      fi {answer = v[2]}
-				 else let m = ktp_hash.match(K_type_pol(character_formula(P)))
-				      in [v##[m, #monomials(P)]]
+				 else let CF = character_formula(P)
+				      in if edge_peel_flag and edge_peel_bad(p0,CF,Lvd,v,-1) then []
+					 else let m = ktp_hash.match(K_type_pol(CF))
+					      in [v##[m, #monomials(P)]]
+					 fi
 				 fi{red_count_flag}
 			 fi{i<0}
 		     od.##
@@ -6624,7 +6708,8 @@ set to_htB_flag = false
 {takes 0 and 1-diml local faces and adds K-char index to height HT}
 set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTypePol_hash ktp_hash,
 [[FaceVertsIndex]] LF) = [[FaceVertsKHash]]:
-    let start = elapsed_ms(), p0 = parameter(x,lambda,0*lambda), startDBTcount = DBTcount
+    let () = edge_peel_reset()
+    then start = elapsed_ms(), p0 = parameter(x,lambda,0*lambda), startDBTcount = DBTcount
     then ht = height(p0), nh = next_heights(p0,edge_offset+1)
     then HT0= if #nh>0
     	      then nh~[0]
@@ -6681,13 +6766,15 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 		      	      	then low_flag :=low_char(p0,HT)
 				fi
 		      then P = finalize(p0)
-		      then KCF = K_type_pol(if to_htB_flag
-					    then composition_series_to_heightQ(P,HT)
-					    elif low_flag
-					    then character_formula_to_ht(P,HT)
-					    else let (below,) = height_split(character_formula(P),HT)
-					    	 in below
-					    fi)
+		      then CF = if to_htB_flag
+				then composition_series_to_heightQ(P,HT)
+				elif low_flag
+				then character_formula_to_ht(P,HT)
+				else let (below,) = height_split(character_formula(P),HT)
+				     in below
+				fi
+		      then () = if not to_htB_flag then edge_peel_cf_store(P,CF) fi
+		      then KCF = K_type_pol(CF)
 		      then m = ktp_hash.match(KCF)
 		      in if (Q(gamma,gamma) > DiracBestBD)
 			    and not DiracBestTest(p0,HT,KCF)
@@ -6733,14 +6820,18 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 				 then [v##[answer0[i][2],#monomials(P)]]
 				 elif red_count_flag and answer0[j][1] = v[2] {red_counts match}
 				 then [v##[answer0[j][2], #monomials(P)]]
-				 else let KCF = K_type_pol(
+				 else let CF =
 				      	   if to_htB_flag
 				      	   then composition_series_to_heightQ(P,HT)
 					   elif low_flag
 					   then character_formula_to_ht(P,HT)
 					   else let (below,) = height_split(character_formula(P),HT)
 					    	 in below
-					   fi)
+					   fi
+				      in if edge_peel_flag and not to_htB_flag and edge_peel_bad(p0,CF,Lvd,v,HT)
+				      then []
+				      else
+				      let KCF = K_type_pol(CF)
 				      then m = ktp_hash.match(KCF)
 		      		      in if (Q(nu,nu) > DiracBestBD)
 			    	      	     and not DiracBestTest(p0,HT,KCF)
@@ -6755,6 +6846,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 			      		 DiracBestTest(p0,HT,KCF));}
 					       [v##[m,#monomials(P)]]
 			 		 fi {Q >}
+				      fi {edge_peel}
 				 fi{red_count_flag}
 			 fi{i<0}
 		     od.##
