@@ -1436,6 +1436,13 @@ set OT_hash = make_Param_hash() {used to record interrupted tests that ran too l
 set OT_times = [int]: [] {cumulative time for each OT_hash.list() entry}
 set OT_counts = [int]: [] {number of occurrences for each OT_hash.list() entry}
 
+{running sums of the lists above (for to_ht, over all heights), kept up to date where the lists
+ change, so that report_tested and report_tested_cum need not re-add long lists at every x}
+set tested_pos_time_sum = int: 0, tested_neg_time_sum = int: 0, tested_inter_time_sum = int: 0,
+    tested_inter_count_sum = int: 0, OT_time_sum = int: 0, OT_count_sum = int: 0,
+    tested_pos_to_ht_time_sum = int: 0, tested_neg_to_ht_time_sum = int: 0,
+    tested_inter_to_ht_time_sum = int: 0, tested_inter_to_ht_count_sum = int: 0
+
 {
 Following "cheap" stuff was almost entirely written by claude. I think it's not so useful now (8/20/26):
 design was based on unitary_to_ht behavior in the bad April Fool's Day atlas of 4/1/26 to ?? It's mostly
@@ -1616,7 +1623,8 @@ set was_tested(Param p, int T, bool ans) = void:
        then T+:=tested_inter_times[i]
        fi;
     if ans
-    then let M = tested_pos_hash.size()
+    then tested_pos_time_sum +:= T;
+    	 let M = tested_pos_hash.size()
        	 then m = tested_pos_hash.match(p)
        	 {then prints("M = ",M,", m = ",m)}
 	 in if m = M
@@ -1626,7 +1634,8 @@ set was_tested(Param p, int T, bool ans) = void:
 	    else tested_pos_times[m] +:= T;
 	    	 tested_pos_counts[m] +:= 1
 	    fi
-    else let M = tested_neg_hash.size()
+    else tested_neg_time_sum +:= T;
+    	 let M = tested_neg_hash.size()
        	 then m = tested_neg_hash.match(p)
 	 {then prints("M = ",M,", m = ",m)}
 	 in if m = M
@@ -1660,6 +1669,7 @@ set was_tested_inter(Param p, int T) = void:
     then prints(p," took ",print_time_string(T)," for interrupted is_unitary")
     fi;
     unitary_test_counter.use();
+    tested_inter_time_sum +:= T; tested_inter_count_sum +:= 1;
     let M = tested_inter_hash.size()
     then m = tested_inter_hash.match(p)
     in if m=M
@@ -1677,7 +1687,8 @@ set was_tested_inter(Param p, int T, int T_target) = void:
     then prints(p," took ",print_time_string(T)," for interrupted is_unitary")
     fi;
     if T>(5/4)*T_target
-    then let OTM = OT_hash.size()
+    then OT_time_sum +:= T - T_target; OT_count_sum +:= 1;
+    	 let OTM = OT_hash.size()
     	 then OTm = OT_hash.match(p)
 	 in if OTm=OTM
 	    then OT_times #:= T - T_target;
@@ -1687,6 +1698,7 @@ set was_tested_inter(Param p, int T, int T_target) = void:
 	    fi
     fi;
     unitary_test_counter.use();
+    tested_inter_time_sum +:= T; tested_inter_count_sum +:= 1;
     let M = tested_inter_hash.size()
     then m = tested_inter_hash.match(p)
     in if m=M
@@ -1727,7 +1739,8 @@ set was_tested_to_ht(Param p,int N, int T, bool ans) = void:
        let i = tested_inter_to_ht_hashes[h].lookup(p)
        in if i >= 0 then T+:= tested_inter_to_ht_times[h][i] fi;
        if ans
-       then let M = tested_pos_to_ht_hashes[h].size()
+       then tested_pos_to_ht_time_sum +:= T;
+       	    let M = tested_pos_to_ht_hashes[h].size()
     	    then m = tested_pos_to_ht_hashes[h].match(p)
        	    in if m = M
 	       then tested_pos_to_ht_times[h]#:=T;
@@ -1739,7 +1752,8 @@ set was_tested_to_ht(Param p,int N, int T, bool ans) = void:
 		       tpthc[m] +:= 1;
 		       tested_pos_to_ht_counts[h] := tpthc
 	       fi
-        else let M = tested_neg_to_ht_hashes[h].size()
+        else tested_neg_to_ht_time_sum +:= T;
+    	     let M = tested_neg_to_ht_hashes[h].size()
     	     then m = tested_neg_to_ht_hashes[h].match(p)
 	     in	if m = M
 	       	then tested_neg_to_ht_times[h] #:=T;
@@ -1774,7 +1788,8 @@ set was_tested_inter_to_ht(Param p,int HT, int T) = void:
 		   tested_neg_to_ht_counts ##:= for j:add do [int]: [] od;
 		   tested_inter_to_ht_counts ##:= for j:add do [int]: [] od
 	      fi
-    in let M = tested_inter_to_ht_hashes[h].size()
+    in tested_inter_to_ht_time_sum +:= T; tested_inter_to_ht_count_sum +:= 1;
+       let M = tested_inter_to_ht_hashes[h].size()
        then m = tested_inter_to_ht_hashes[h].match(p)
        in if m = M
 	  then tested_inter_to_ht_times[h]#:=T;
@@ -1805,22 +1820,22 @@ set report_tested(string label) = void:
     {next_heightC_time = ",}
            {print_time_string(next_heightC_time));}
     prints(new_line,tested_pos_hash.size()," pos is_unitary tests, in time = ",
-    	print_time_string(sum(tested_pos_times)),"; ",tested_neg_hash.size()," neg is_unitary tests, in time = ",
-    	print_time_string(sum(tested_neg_times)));
-    prints(sum(tested_inter_counts), " interrupted is_unitary tests, of ",
+    	print_time_string(tested_pos_time_sum),"; ",tested_neg_hash.size()," neg is_unitary tests, in time = ",
+    	print_time_string(tested_neg_time_sum));
+    prints(tested_inter_count_sum, " interrupted is_unitary tests, of ",
     	   tested_inter_hash.size(), " different parameters, in time ",
-	print_time_string(sum(tested_inter_times)));
+	print_time_string(tested_inter_time_sum));
     prints(new_line,sum(for hash in tested_pos_to_ht_hashes do hash.size() od)," pos tests to_ht, in time = ",
- 	 	   print_time_string(sum(for list in tested_pos_to_ht_times do sum(list) od)),"; ",
+ 	 	   print_time_string(tested_pos_to_ht_time_sum),"; ",
 	   sum(for hash in tested_neg_to_ht_hashes do hash.size() od)," neg tests to_ht, in time = ",
- 	   	   print_time_string(sum(for list in tested_neg_to_ht_times do sum(list) od)));
-    prints(sum(for list in tested_inter_to_ht_counts do sum(list) od), " interrupted tests to ht of ",
+ 	   	   print_time_string(tested_neg_to_ht_time_sum));
+    prints(tested_inter_to_ht_count_sum, " interrupted tests to ht of ",
     		   sum(for hash in tested_inter_to_ht_hashes
     	do hash.size() od)," different parameters, in time = ",
- 	 	   print_time_string(sum(for list in tested_inter_to_ht_times do sum(list) od)));
+ 	 	   print_time_string(tested_inter_to_ht_time_sum));
     if OT_hash.size() > 0
-    then prints(OT_hash.size()," params had ", sum(OT_counts), " interrupted tests go too long by ",
-    	 print_time_string(sum(OT_times)))
+    then prints(OT_hash.size()," params had ", OT_count_sum, " interrupted tests go too long by ",
+    	 print_time_string(OT_time_sum))
     fi;
     prints("pred_flag = ",predictor_flag,", pred u-time = ",print_time_string(predictor_u_time),
     	   ", pred u-count = ", predictor_u_count, ", pred h-time = ",print_time_string(predictor_h_time),
@@ -1862,7 +1877,11 @@ set clear_report_tested() = void:
     tested_pos_hash.clear(); tested_pos_times:=[]; tested_pos_strings:=[]; tested_pos_counts:=[];
     tested_neg_hash.clear(); tested_neg_times:=[]; tested_neg_strings:=[]; tested_neg_counts:=[];
     tested_inter_hash.clear(); tested_inter_times:=[]; tested_inter_counts:=[];
-    OT_hash.clear(); OT_times:=[]; OT_counts:=[]
+    OT_hash.clear(); OT_times:=[]; OT_counts:=[];
+    tested_pos_time_sum := 0; tested_neg_time_sum := 0; tested_inter_time_sum := 0;
+    tested_inter_count_sum := 0; OT_time_sum := 0; OT_count_sum := 0;
+    tested_pos_to_ht_time_sum := 0; tested_neg_to_ht_time_sum := 0;
+    tested_inter_to_ht_time_sum := 0; tested_inter_to_ht_count_sum := 0;
     for h:#tested_pos_to_ht_hashes
     do tested_pos_to_ht_hashes[h].clear(); tested_pos_to_ht_times[h]:=[]; tested_pos_to_ht_strings[h]:=[];
        tested_pos_to_ht_counts[h]:=[]; tested_neg_to_ht_counts[h]:=[];
@@ -1882,39 +1901,39 @@ set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(v
     " best-Dirac elim, more_shift_level = ",more_shift_level, ", edge_offset = ",edge_offset);
     	DTc :=DTcount; DBTc := DBTcount; nhtC_time:=next_heightC_time;
     prints(new_line,tested_pos_hash.size() - tph, " pos is_unitary tests, in time = ",
-    	print_time_string(sum(tested_pos_times) - tpt),"; ",tested_neg_hash.size() - tnh,
-	" neg is_unitary tests, in time = ",print_time_string(sum(tested_neg_times) - tnt));
+    	print_time_string(tested_pos_time_sum - tpt),"; ",tested_neg_hash.size() - tnh,
+	" neg is_unitary tests, in time = ",print_time_string(tested_neg_time_sum - tnt));
 	tph:=tested_pos_hash.size();
-	tpt := sum(tested_pos_times);
+	tpt := tested_pos_time_sum;
 	tnh:=tested_neg_hash.size();
-	tnt := sum(tested_neg_times);
-    prints(sum(tested_inter_counts) - tic, " interrupted is_unitary tests, of ",
+	tnt := tested_neg_time_sum;
+    prints(tested_inter_count_sum - tic, " interrupted is_unitary tests, of ",
     	   tested_inter_hash.size() - tih, " different parameters, in time ",
-	print_time_string(sum(tested_inter_times) - tit));
-	tic:= sum(tested_inter_counts);
+	print_time_string(tested_inter_time_sum - tit));
+	tic:= tested_inter_count_sum;
 	tih:= tested_inter_hash.size();
-	tit:=sum(tested_inter_times);
+	tit:=tested_inter_time_sum;
     prints(new_line,sum(for hash in tested_pos_to_ht_hashes do hash.size() od) -tphh," pos tests to_ht, in time = ",
-    	print_time_string(sum(for list in tested_pos_to_ht_times do sum(list) od) - tpht),"; ",
+    	print_time_string(tested_pos_to_ht_time_sum - tpht),"; ",
 	   sum(for hash in tested_neg_to_ht_hashes do hash.size() od) - tnhh," neg tests to_ht, in time = ",
- 	   	   print_time_string(sum(for list in tested_neg_to_ht_times do sum(list) od) - tnht));
+ 	   	   print_time_string(tested_neg_to_ht_time_sum - tnht));
         tphh:= sum(for hash in tested_pos_to_ht_hashes do hash.size() od);
-	tpht:=sum(for list in tested_pos_to_ht_times do sum(list) od);
+	tpht:=tested_pos_to_ht_time_sum;
         tnhh:= sum(for hash in tested_neg_to_ht_hashes do hash.size() od);
-	tnht:=sum(for list in tested_neg_to_ht_times do sum(list) od);
-    prints(sum(for list in tested_inter_to_ht_counts do sum(list) od) - tihc,
+	tnht:=tested_neg_to_ht_time_sum;
+    prints(tested_inter_to_ht_count_sum - tihc,
     	" interrupted tests to_ht, of ",sum(for hash
        in tested_inter_to_ht_hashes do hash.size() od) - tihh," different parameters, in time = ",
-       print_time_string(sum(for list in tested_inter_to_ht_times do sum(list) od) - tiht),new_line);
-       	tihc:=sum(for list in tested_inter_to_ht_counts do sum(list) od);
+       print_time_string(tested_inter_to_ht_time_sum - tiht),new_line);
+       	tihc:=tested_inter_to_ht_count_sum;
  	tihh:=sum(for hash in tested_inter_to_ht_hashes do hash.size() od);
-	tiht:=sum(for list in tested_inter_to_ht_times do sum(list) od);
+	tiht:=tested_inter_to_ht_time_sum;
     if OT_hash.size() - oth > 0
-    then prints(OT_hash.size()-oth," params had ", sum(OT_counts)-otc, " interrupted tests go too long by ",
-    	 print_time_string(sum(OT_times) -ott));
+    then prints(OT_hash.size()-oth," params had ", OT_count_sum-otc, " interrupted tests go too long by ",
+    	 print_time_string(OT_time_sum -ott));
 	 oth:=OT_hash.size();
-	 otc := sum(OT_counts);
-	 ott := sum(OT_times)
+	 otc := OT_count_sum;
+	 ott := OT_time_sum
     fi;
     prints("#bottom_layer = ",hash_bottom_layerCounter.use_count(), ", #one_level = ",
     	   hash_one_levelCounter.use_count(), {", #real_dumb = "} ", #dumb = ",
@@ -1947,12 +1966,12 @@ set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(v
 	print_time_string(tit));
     prints(new_line,tphh," pos tests to_ht, in time = ",print_time_string(tpht),"; ",tnhh," neg tests to_ht, in time = ",
  	print_time_string(tnht));
-    prints(sum(for list in tested_inter_to_ht_counts do sum(list) od)," interrupted tests to_ht, of ",sum(for hash
+    prints(tested_inter_to_ht_count_sum," interrupted tests to_ht, of ",sum(for hash
        in tested_inter_to_ht_hashes do hash.size() od)," different parameters, in time = ",
- 	 	   print_time_string(sum(for list in tested_inter_to_ht_times do sum(list) od)), new_line);
+ 	 	   print_time_string(tested_inter_to_ht_time_sum), new_line);
     if oth.>
-    then prints(OT_hash.size()," params had ", sum(OT_counts), " interrupted tests go too long by ",
-    	 print_time_string(sum(OT_times)))
+    then prints(OT_hash.size()," params had ", OT_count_sum, " interrupted tests go too long by ",
+    	 print_time_string(OT_time_sum))
     fi;
    prints("pred_flag = ",predictor_flag,", pred u-time = ",print_time_string(predictor_u_time),
     	   ", pred u-count = ", predictor_u_count, ", pred h-time = ",print_time_string(predictor_h_time),
