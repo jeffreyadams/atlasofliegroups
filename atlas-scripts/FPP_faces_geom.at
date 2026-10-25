@@ -102,7 +102,6 @@ savings in the rest of the computation seems tiny (maybe 1% for F4).}
 the computation of Dirac inequality, at the expense of making it
 slightly less sharp.}
 
-set red_count_flag = false
 
 {these are user's global preferences}
 set Dirac_flag = true

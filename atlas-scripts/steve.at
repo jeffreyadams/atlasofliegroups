@@ -1548,12 +1548,7 @@ set localFD_2SteveU\
      then LF1 = [FaceVertsIndex]:
           if steve_tilde_flag {BACKWARD through Edges}
 	  then for v@j in Edges
-	       ~do if fund_face_verbose and red_count_flag and (j%freq).=
-	       	   then prints("at edge ",j," of ",length,
-	    	       " at time ", print_time_string(elapsed_ms() - start),
-		       "; vecHash size = ", steve_hash_small.vecHash().size())
-	     	   fi;
-	     let nu = face_bary(Lvd,v)
+	       ~do let nu = face_bary(Lvd,v)
 	     then p = parameter(x,lambda,nu)
 	     in if Q(nu,nu) > DiracBD
 		then DTcount +:=1;
@@ -1566,12 +1561,7 @@ set localFD_2SteveU\
 		fi {Q(nu,nu) > DiracBD}
 	      od.## {v in Edges}
 	   else for v@j in Edges {now FORWARD through Edges}
-	       	do if fund_face_verbose and red_count_flag and (j%freq).=
-	       	   then prints("at edge ",j," of ",length,
-	    	       	   	  " at time ", print_time_string(elapsed_ms() - start),
-		       		  "; vecHash size = ", steve_hash_small.vecHash().size())
-	     	   fi;
-	       let nu = face_bary(Lvd,v)
+	       	do let nu = face_bary(Lvd,v)
 	       then p = parameter(x,lambda,nu)
 	       in if Q(nu,nu) > DiracBD
 	       	  then DTcount +:=1; steve_hash_small.numatch(nu);
