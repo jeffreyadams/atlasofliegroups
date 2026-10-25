@@ -697,11 +697,27 @@ set FPPpre(RealForm G) = void:
 set wu_rf_hash = make_RealForm_hash()
 set wu_lists = [[Param]]: []
 set wu_verbose = false
+{if true, wu_unitary copies the list from an isomorphic real form already done}
+set wu_copy_flag = true
 
 set wu_unitary(RealForm dL) = [Param]:
     let start = elapsed_ms(), N = wu_rf_hash.size() then n = wu_rf_hash.match(dL)
     in if n = N
-       then if wu_verbose then prints("Starting wu_unitary at ",dL) fi;
+       then {copy from an isomorphic real form already done, as in arthur_hash}
+       	    let k = 0
+	    in while wu_copy_flag and k < N
+	       do let L = wu_rf_hash.index(k)
+		  in if is_locally_isomorphic(L.root_datum,dL.root_datum)
+		     then let t = arthur_transport(wu_lists[k],L,dL)
+			  in if #t > 0
+			     then wu_lists #:= t[0];
+				  if wu_verbose then prints("Copied ",#t[0]," weakly unipotent reps to ",dL,
+				     " from #",k) fi;
+				  return t[0]
+			     fi
+		     fi; k +:= 1
+	       od;
+	    if wu_verbose then prints("Starting wu_unitary at ",dL) fi;
 	    FPP_unitary_hash_bottom_layer(dL);
 	    if wu_verbose then prints("Found ",big_unitary_hash.uhash(dL).size()," unitary reps in ",
 	       print_time_string(elapsed_ms() - start)); start:=elapsed_ms() fi;
