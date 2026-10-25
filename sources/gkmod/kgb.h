@@ -145,7 +145,7 @@ class KGB_base
   { return ic.involution_table().involution(inv_nrs[n]); }
 
   InvolutionNbr inv_nr(KGBElt x) const // external number (within inner class)
-  { return inv_nrs[involution_index(x)]; }
+  { return inv_nrs[packet_nr(x)]; }
 
   const TwistedInvolution& involution(KGBElt x) const // after construction only
   { return ic.involution_table().involution(inv_nr(x)); }
@@ -180,7 +180,7 @@ class KGB_base
     { return Weyl_group().length(involution(x).w()); }
 
   KGBEltPair packet (KGBElt x) const
-  { InvolutionNbr i = involution_index(x);
+  { InvolutionNbr i = packet_nr(x);
     return KGBEltPair(first_of_tau[i],first_of_tau[i+1]);
   }
 
@@ -193,10 +193,8 @@ class KGB_base
   virtual std::ostream& print(std::ostream& strm, KGBElt x) const
   { return strm; }
 
- private: // this internal index of involution is only usable by methods above
-
   // find involution index |i| such that |inv_nrs[i]| is involution of |x|
-  InvolutionNbr involution_index(KGBElt x) const
+  InvolutionNbr packet_nr(KGBElt x) const
   // look up index of first element with |first_of_tau| greater than |x|; then -1
   { return std::upper_bound(first_of_tau.begin(),first_of_tau.end(),x)
       -first_of_tau.begin() -1;

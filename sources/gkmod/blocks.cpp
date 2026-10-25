@@ -1114,9 +1114,9 @@ common_block::common_block // partial block constructor
   , highest_y(0) // defined when generation is complete
   , generated_as_full_block(false)
 {
+  assert(not elements.empty());
   info.reserve(elements.size());
   const auto& kgb = rc.kgb();
-  const auto& i_tab = involution_table();
   const auto& int_sys = ctxt.subsys();
 
   Block_base::dd = // integral Dynkin diagram, converted from dual side
@@ -1131,24 +1131,28 @@ common_block::common_block // partial block constructor
     invol_y_data() : list(), offset(-1) {}
   };
 
-  std::vector<invol_y_data> y_table (i_tab.size()); // size maybe way too large
+  for (const auto& srm : elements)
+  { const KGBElt x = srm.x();
+    if (x>highest_x)
+      highest_x=x;
+  }
+
+  std::vector<invol_y_data> y_table (kgb.packet_nr(highest_x)+1);
   {
     for (const auto& srm : elements)
     { const KGBElt x = srm.x();
-      if (x>highest_x)
-	highest_x=x;
       auto gamlam = srm.gamma_lambda();
-      auto& loc = y_table[kgb.inv_nr(x)].list;
+      auto& loc = y_table[kgb.packet_nr(x)].list;
       auto it = std::lower_bound(loc.cbegin(),loc.cend(),gamlam);
       if (it==loc.end() or gamlam < *it) // only insert when |gamlam| new
 	loc.insert(it,gamlam);
     }
 
-    // set |offset|s to count all |y| values at _later_ |inv_nr| values
-    for (InvolutionNbr i_x=y_table.size(); i_x-->0; )
+    // set |offset|s to count all |y| values at _later_ involutions in KGB
+    for (unsigned i = y_table.size(); i-->0; ) // run back throught packet nrs
     {
-      y_table[i_x].offset = highest_y;
-      highest_y += y_table[i_x].list.size();
+      y_table[i].offset = highest_y;
+      highest_y += y_table[i].list.size();
     }
     -- highest_y; // one less than the number of distinct |y| values
   }
@@ -1160,7 +1164,7 @@ common_block::common_block // partial block constructor
 
   for (const auto& srm : elements) // find its $(x,y)$ pair and extend |info|
   { const KGBElt x = srm.x();
-    const invol_y_data& slot = y_table[kgb.inv_nr(x)];
+    const invol_y_data& slot = y_table[kgb.packet_nr(x)];
     auto y = slot.offset;
     for (auto it = slot.list.begin(); not slot.list.at_end(it); ++it,++y)
       if (*it == srm.gamma_lambda())
