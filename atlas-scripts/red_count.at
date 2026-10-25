@@ -1,6 +1,10 @@
 <basic.at { for |infinitesimal character| }
 <hash.at { for |make_xlambda_hash| }
 
+{TODO (David, 2026-10-24): the red_count method for local faces was removed (b3f92ed7). Eventually
+ remove the red_count reporting too (red_count_time and the red_count_times prints in
+ FPP_globalDirac.at) and any other leftovers; cosmetic, can wait. red_count@Param is still used
+ by def_incident_edges (FPP_lambdas.at).}
 set red_count_time =int:0
 
 {whether to use the old version, which does not store root system data}
