@@ -1,5 +1,7 @@
 {Arthur (special) unipotent representations of the simply connected real forms of types B (rank 1-8) and D (rank 4-8), Spin(p,q) and Spin*(2n), in the order of spin_forms (spin_defs.at). Loaded by arthur_hash.at into arthur_store. Computed Oct 2026 by unipotent_representations_alt_fast, except so(11,6), so(10,7), so(9,8), so(8,8), so(10,6), so(9,7) by the generalized tau invariant (same_PI_step against the spherical rep of the split form at H/2; agrees with alt_fast on all rank-7 forms tested)}
 
+< arthur_hash.at
+
 set rd_saved = RootDatum: root_datum(mat: 
 [[ 2 ]], mat:
 [[ 1 ]]

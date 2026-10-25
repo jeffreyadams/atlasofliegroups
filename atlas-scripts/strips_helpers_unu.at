@@ -1,3 +1,5 @@
+<FPP_faces_herm.at {for big_unitary_hash}
+<writeFiles.at {for write_real_form}
 {Helpers for strips8.py (parallel FPP_unitary_hash_bottom_layer by KGB chunks and height strips).
  Loaded by every worker. Nothing here changes how anything is computed.
  Drop-in replacement for strips_helpers.at (same function names) that also dumps the nonunitary

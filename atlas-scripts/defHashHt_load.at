@@ -1,3 +1,4 @@
+<hermitian.at {for defHashHtTime}
 { Read a dump written by dump_defHashHtTime() (dump_defHashHt.at).
 
   To CHECK a dump, in the session that wrote it:

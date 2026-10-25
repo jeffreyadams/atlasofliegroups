@@ -1,5 +1,6 @@
 <basic.at {for kernel, Smith, box}
 <ratmat.at {for rational_inverse}
+<misc.at {for box}
 
 { Characters of T_c, the identity component of Z(G) cap K (a torus), and the unitary characters
   of G restricted to it.

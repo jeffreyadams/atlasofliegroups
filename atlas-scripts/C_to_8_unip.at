@@ -1,5 +1,7 @@
 {Arthur (special) unipotent representations of the simply connected real forms of type C, rank 1 to 8 (Sp(2n,R), Sp(p,q), compact), in the order of C_forms = ##for n:8 from 1 do real_forms(inner_class(Sp(2*n,R))) od. Loaded by arthur_hash.at into arthur_store. Computed Oct 2026 by unipotent_representations_compute (alt_fast), except Sp(14,R) and Sp(16,R) by the generalized tau invariant (same_PI_step against the spherical rep of the split form at H/2; agrees with alt_fast on all rank-7 forms tested)}
 
+< arthur_hash.at
+
 set rd_saved = RootDatum: root_datum(mat: 
 [[ 2 ]], mat:
 [[ 1 ]]

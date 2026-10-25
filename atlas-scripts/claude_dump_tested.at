@@ -1,3 +1,4 @@
+<hermitian.at {for the tested_* tables}
 {one line per is_unitary / to_ht test that ran: kind, x, height(p), HT, ms}
 set dump_tested() = void:
   for q@i in tested_pos_hash.list() do prints("T pos -1 ", q.x.number, " ", height(q), " ", tested_pos_times[i]) od;

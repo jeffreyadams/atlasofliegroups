@@ -1,5 +1,7 @@
 {Arthur (special) unipotent representations of every simply connected real form of type A, rank 1 to 8 (SL(n,R), SU(p,q), SL(n,H), compact): 38 real forms. Loaded by arthur_hash.at into arthur_store; built 2026-10-19 with unipotent_representations_compute.}
 
+<arthur_hash.at
+
 set rd_saved = RootDatum: root_datum(mat: 
 [[ 2 ]], mat:
 [[ 1 ]]

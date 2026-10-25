@@ -12,6 +12,9 @@
     - "finished" marks for x < warm_cutoff only.
   Takes about 2 minutes. }
 
+< groups.at
+< FPP_faces_herm.at
+
 set warm_cutoff = 20000
 set warm_G = E7_s
 set warm_coh = big_unitary_hash.uhash(warm_G).list() { coh_ind Params, all x }
