@@ -2531,16 +2531,22 @@ this for a long time, leading to wrong answers for PSU(2,2).}
 		      	     od
 	    	 	 fi
 		    fi{A}
-	then () = if xtwist != x
+	then () = if xtwist_sc != x_sc
 	     	  then {prints("skipping x = ",x.number," for xtwist = ",xtwist.number);}
+		       {copy on Gsc (Uhash holds Gsc params when disconn_flag), then descend to G}
 	    	       for p in Uhash.list()
-	    	       do if p.x = xtwist
-	       	       	  then Uhash.match(parameter(x, p.lambda, p.nu))
+	    	       do if p.x = xtwist_sc
+	       	       	  then Uhash.match(parameter(x_sc, p.lambda, p.nu))
 	       	    	  fi
 	    	       od;
+		       if disconn_flag
+		       then for psc in Uhash.list()[CUH:]
+		       	    do for p in sc_descends(psc, G, M) do UhashG.match(p) od
+			    od
+		       fi;
 	    	       big_unitary_hash.finish(x, full_N1); {mark as done all lambdas for x}
 		       big_unitary_hash.finishx(x)
-		   fi {xtwist != x}
+		   fi {xtwist_sc != x_sc}
 	 then xcont_cand = contragredient(x)
 	 then xcont = if xcont_cand != x and is_member_bitset(xcont_cand.number, known_x) and not skipx
 	      	      then skipx := true;
@@ -2735,7 +2741,10 @@ this for a long time, leading to wrong answers for PSU(2,2).}
                      fi {every_KGB_flag}
 	   in finishx_g(x,full_N1)
 	   fi {C}
-           in ()
+	   {x done on G: record x_sc as done on Gsc too, so that its isotwists can be skipped}
+           in if disconn_flag and is_member_bitset(x.number, big_unitary_hash.x_known(G))
+	      then big_unitary_hash.finishx(x_sc)
+	      fi
 {
 	 fi {contnum.>= and contnum < j}
 	 fi {twnum.>= and twnum < j}
