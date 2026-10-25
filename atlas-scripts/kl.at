@@ -1214,8 +1214,13 @@ set composition_series(Param p) = ParamPol:
     	 in sum(p.real_form,for q@j in B[:m+1] do eval(polys[M[m,j]],1)*q od)
     fi
 
+{old method: subtract character formulas from P itself, so cancellation
+ among the terms of P saves work}
 set composition_series(ParamPol P) = ParamPol:
-    sum(P.real_form, for c@q in P do c*composition_series(q) od)
+    if old_composition_series_flag
+    then composition_series_old(P)
+    else sum(P.real_form, for c@q in P do c*composition_series(q) od)
+    fi
 
 set composition_series_to_height(Param p, int HT) = ParamPol:
     if HT < 0 then return composition_series(p) fi;
