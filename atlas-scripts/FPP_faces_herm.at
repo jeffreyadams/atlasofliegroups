@@ -7,7 +7,6 @@
 <to_ht.at
 <K_highest_weights.at {for all_lambda_differential_0}
 <unity.at {for deform_hts}
-<red_count.at {for red_count@Param}
 <face_classes.at {for coords}
 <hodge0.at {for is_unitary_Hodge_0@(Param,int), the level-0 screen.  Its _to_ht
             forms push the height bound down into the recursion (pruning
@@ -2051,7 +2050,7 @@ set wiggle_status_cod_one(Param p, KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	 od
     then defs = [[Param]]:
     	 if d=0
-	 then edge_defs(p,HT)
+	 then [] {a vertex has no boundary faces}
 	 else let CF = character_formula_to_ht(p,HT)
 	      in for gammabd in deform_cands
 	      	 do  monomials(composition_series_to_ht(wiggle(CF, gammabd),HT))
@@ -2109,7 +2108,7 @@ set wiggle_status_all(Param p, KGBElt x, ratvec lambda, LocalVertexData Lvd, int
 	      od
     	 then defs = [[Param]]:
     	      if d=0
-	      then edge_defs(p,HT)
+	      then [] {a vertex has no boundary faces}
 	      else let CF = character_formula_to_ht(p,HT)
 	      	   in for gammabd in deform_cands
 	     	      do  monomials(composition_series_to_ht(wiggle(CF, gammabd),HT))
@@ -4215,7 +4214,7 @@ set wiggle_is_unitary_cod_one(Param p, KGBElt x, ratvec lambda, LocalVertexData 
 	 od
     then defs = [[Param]]:
     	 if d=0
-	 then edge_defs(p,-1)
+	 then [] {a vertex has no boundary faces}
 	 else let CF = character_formula(p)
 	      in for gammabd in deform_cands
 	      	 do  monomials(composition_series(wiggle(CF, gammabd)))
@@ -4272,11 +4271,7 @@ set wiggle_is_unitary_all(Param p, KGBElt x, ratvec lambda, LocalVertexData Lvd)
     then deform_cands = [ratvec]:
 	 for sub in vert_subs
 	 do face_bary(Lvd,sub)
-	 od##
-	 if d = 0
-	 then def_incident_edges(p)
-	 else []
-	 fi
+	 od
     then CF = character_formula(p)
     then defs = [[Param]]:
 	 for gammabd in deform_cands
@@ -5504,8 +5499,8 @@ set localFD_Lvd2 \
 
 {FD12Time now declared in hermitian.at, so report_tested can print it}
 
-set FD_wiggle_flag = false {whether to use def_incident_edges}
-set FD_wiggle_HT_flag =false {whether to use def_incident_edges to ht}
+set FD_wiggle_flag = false {whether to use wiggle_status_all}
+set FD_wiggle_HT_flag =false {whether to use wiggle_status_all to ht}
 set FDWHcount = vec:[0,0]
 set caughtHCount = int: 0
 

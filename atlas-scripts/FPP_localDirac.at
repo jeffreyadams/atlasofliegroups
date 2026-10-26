@@ -2849,7 +2849,9 @@ set LF_more_bl_vec = vec:[]
 
 {only does min_bottom test}
 set one_param_test_min_bottom(Param p, Param_hash Uhash) = [Param]:
-    let start = elapsed_ms(), Q = monomials(finalize(p)), G = p.real_form
+    if components_rank(p.real_form) > 0
+    then one_param_test(p)
+    else let start = elapsed_ms(), Q = monomials(finalize(p)), G = p.real_form
     in if not all(for q in Q do @bool: FPP_def_test(q) od)
        then one_false_counter.use();
        	    one_param_time +:= elapsed_ms() - start;
@@ -2897,13 +2899,16 @@ set one_param_test_min_bottom(Param p, Param_hash Uhash) = [Param]:
 		 fi {not elim_min}
        		 fi{all stati}
        		 fi {not FPP_def_test(p)}
+    fi {connected}
 
 set one_param_test_min_bottom(Param p) = [Param]:
     one_param_test_min_bottom(p, big_unitary_hash.uhash(p.real_form))
 
 {assume min_bottom already called, so lookup and FPP_def failed}
 set one_param_test_bottom(Param p, [int] Es) = [Param]:
-    let start = elapsed_ms(), QG = monomials(finalize(p)),G = p.real_form
+    if components_rank(p.real_form) > 0
+    then one_param_test(p)
+    else let start = elapsed_ms(), QG = monomials(finalize(p)),G = p.real_form
     in bl_KHash.clear();
        if test_string !=  " using local_test_GEO_hash_bottom_layer"
        	    then hash_bottom_layerCounter.use()
@@ -2968,6 +2973,7 @@ set one_param_test_bottom(Param p, [int] Es) = [Param]:
 	     one_param_time +:= elapsed_ms() - start;
 	     []
         fi {still_here}
+	fi {connected}
 
 set one_param_test_bottom(Param p) = [Param]:
     let Es = {[height(p)]##next_heights(p,2*edge_offset)}

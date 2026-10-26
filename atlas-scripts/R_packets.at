@@ -351,7 +351,6 @@ set check_concatenate(KGBElt x, ratvec lambda, [(WeylElt, (LocalVertexData, [[ve
     in (big_Lvd, big_LF)
 
 {Stick together local vertices and edges at a bunch of different w^*{-1}*(x0,lambda0)}
-{if red_count_flag, then vec sizes are 2 and 3 instead of 1 and 2}
 set concatenate(KGBElt x, ratvec lambda, [(WeylElt, (LocalVertexData, [[vec]]))] local01) =
     (LocalVertexData, [[vec]]):
     let wLvds = for (w, (Lvd,)) in local01
@@ -397,7 +396,7 @@ set concatenate(KGBElt x, ratvec lambda, [(WeylElt, (LocalVertexData, [[vec]]))]
     {then () = prints("in concatenate, big_LF = ",big_LF)}
     then answer = localFD_1Dirac2_add_red(x,lambda,HT,big_Lvd,big_LF)
     {then () = prints("in concatenate, answer = ",answer)}
-    {need to test pos on LKTs even if red_count_flag is false}
+    {need to test pos on LKTs}
     in (big_Lvd, answer)
 
 set blob_data(KGBElt x, ratvec lambda) = (LocalVertexData, [[vec]]):
@@ -445,8 +444,7 @@ set FPP_unitary_hash_blob(RealForm G) = void:
 		      	     print_time_string(elapsed_ms() - start),
 		      	     " for ",big_unitary_hash.uhash(G).size(), " unitary faces");
 		      prints("Time spent in char calcs = ",print_time_string(charTime),
-       	      	      	     ", number of char calcs = ", char_counter.use_count(),
-	      		     ", time spent in red_count = ",  print_time_string(red_count_time));
+       	      	      	     ", number of char calcs = ", char_counter.use_count());
 		      counter:=(3*counter)\2
 		    fi;
 		 if twist(x) != x
@@ -463,8 +461,7 @@ set FPP_unitary_hash_blob(RealForm G) = void:
        prints(" time spent in is_unitary = ",print_time_string(unitaryTime),
               ", number of unitarity tests = ", unitary_test_counter.use_count() - oldUcounter);
        prints("Time spent in char calcs = ",print_time_string(charTime),
-       	      ", #char calcs = ", char_counter.use_count(),
-	      ", time spent in red_count = ",  print_time_string(red_count_time));
+       	      ", #char calcs = ", char_counter.use_count());
        prints("Time in local_FPP_extrema = ",print_time_string(lFeTimer), ", # fLe calcs = ", lFeCounter);
        prints("Time in localFD_1Dirac2 = ",print_time_string(FD12Time),
        	      ", in localFD_1Dirac2_by_zero = ",print_time_string(FD12bzTime));

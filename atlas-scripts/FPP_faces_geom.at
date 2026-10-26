@@ -10,7 +10,6 @@
 <kl.at {for character_formula}
 <writeFiles {to write hash tables}
 <simple_factors.at {for simple_factors}
-<red_count.at {for red_count}
 <integrality_hash.at {for integrality_datum_hash}
 
 {functions for calculating FPP face lists, both "globally" (from the

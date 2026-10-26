@@ -564,7 +564,7 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     then {vd = FPP_vertex_data(G),} start = elapsed_ms(),  zeroNu = null(G.rank)/1
     then () = if FPP_report_flag
     	      then {unitaryTime := 0;} charTime := 0; charTimeToHt:=0; FD12Time:=0; FD12bzTime:=0;
-	      	   red_count_time :=0; branch_builtin_time :=0; branch_script_time := 0;
+	      	   branch_builtin_time :=0; branch_script_time := 0;
 		   char_counter.clear(); char_counter_to_ht.clear()
 	      fi
     then () = if FPP_report_flag
@@ -726,7 +726,7 @@ then coh_ind_unip_few(G,Uhash)}
 		      	   		     then}
 					     else localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2)
 			   		     {else localFD_1Dirac2(x, lambda, Lvd, Perm2)}
-			   		     fi {just red_count to edge_offset}
+			   		     fi
 		 			then () = if every_lambda_deets_flag and FPP_report_flag
 					     	     and not revert_steve_flag
     	      	      	   			  then prints("time for localFD_1Dirac2* = ",
@@ -803,7 +803,6 @@ then coh_ind_unip_few(G,Uhash)}
 	      " for ",char_counter.use_count() - oldCcounter," calcs,",
 	      " time in char_to_ht calcs = ",print_time_string(charTimeToHt - oldCTHtime),
 	      " for ",char_counter_to_ht.use_count() - oldCTHcounter, " calcs");
-	      {", time spent in red_count = ",  print_time_string(red_count_time));}
 	    prints("Time in localFD_1Dirac2* = ", print_time_string(FD12Time + FD12bzTime),
 	      ", in localFD_1Dirac2 = ",print_time_string(FD12Time),
 	    	     ", in localFD_1Dirac2_by_zero = ",print_time_string(FD12bzTime));
@@ -860,7 +859,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
     then start = elapsed_ms(), zeroPol = null_module(G), zeroNu = null(G.rank)/1
     then () = if FPP_report_flag
     	      then {unitaryTime := 0;} charTime := 0; charTimeToHt := 0; FD12Time:=0; FD12bzTime:=0;
-	      red_count_time :=0; char_counter.clear(); char_counter_to_ht.clear()
+	      char_counter.clear(); char_counter_to_ht.clear()
 	      fi
     {then {xnums = for x in xs do x.number od, xtimes = null(#xs),}}
     {then () = pol_hash.clear()} {in recursive calls, this screws up bigger G, which has
@@ -885,7 +884,6 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 	      then coh_ind_unip_few(G,Uhash)}
 	      fi
     then times = [int]: null(#xs)
-    then red_count_times = [int]: null(#xs)
     then lambdatimes = [[int]]: for j:#xs do [] od
     then answerCards = [[int]]: for j:#xs do [] od {number of unitary parameters found}
     then uparams = int: 0 {sum of all entries of answerCards, kept up to date}
@@ -916,8 +914,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 	 else
 	 let former_time = current, formerUhash = currentUhash, formerUcounter = currentUcounter,
 	     formerUtime = unitaryTime, formerCcounter = currentCcounter, formerCharTime = charTime,
-	     formerCTHcounter = currentCTHcounter, formerCTHTime = charTimeToHt,
-	     former_red_count_time = red_count_time
+	     formerCTHcounter = currentCTHcounter, formerCTHTime = charTimeToHt
 	 then xtwists = isotwistKGBs(x), twists = all_lambda_differential_0(x)
 	 then M = #FPP_lambdas(x)
 	 then full_M = to_bitset([M])-1
@@ -1118,7 +1115,6 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 {this is a bad idea because don't have here a list of all final unitary faces at (x,lambda)}
 
            then () = current := elapsed_ms(); currentUhash := Uhash.size();  times[j] := current -former_time;
-	   	     red_count_times[j] := red_count_time - former_red_count_time;
 	   	     lambdatimes[j] := templambdatimes; currentUcounter := unitary_test_counter.use_count();
 		     currentCcounter := char_counter.use_count(); uparams +:= sum(tempanswerCards) - sum(answerCards[j]); answerCards[j]:= tempanswerCards;
 		     currentCTHcounter := char_counter_to_ht.use_count()
@@ -1135,7 +1131,6 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
        	      		  	 ", for ", char_counter.use_count() - formerCcounter, " calcs, ",
 				 " time spent in char_to_ht = ",print_time_string(charTimeToHt-formerCTHTime),
        	      		  	 ", for ", char_counter_to_ht.use_count() - formerCTHcounter, " calcs");
-				 {" time spent in red_count = ",  print_time_string(red_count_times[j]));}
 			 report_tested_cum("for x=#"+to_string(x.number),"running totals");
 			 if hodge_status_flag then hodge_screen_report() fi
                      fi
@@ -1158,7 +1153,6 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
        	      " for ", char_counter.use_count() - oldCcounter," calcs: ; ",
 	      "time spent in char_to_ht = ",print_time_string(charTimeToHt),
        	      " for ", char_counter_to_ht.use_count() - oldCTHcounter," calcs");
-	      {", time spent in red_count = ",  print_time_string(red_count_time));}
 	    prints("Time in localFD_1Dirac2* = ", print_time_string(FD12Time + FD12bzTime),
 	      ", in localFD_1Dirac2 = ",print_time_string(FD12Time),
 	    	     ", in localFD_1Dirac2_by_zero = ",print_time_string(FD12bzTime));
@@ -1221,7 +1215,7 @@ set FPP_unitary_hash_steve([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     	      else let (x,) = xlambdasW[0]
     then start = elapsed_ms(),  zeroNu = null(G.rank)/1
     then () = if FPP_report_flag
-    	      then {unitaryTime := 0;} charTime := 0; FD12Time:=0; FD12bzTime:=0; red_count_time :=0;
+    	      then {unitaryTime := 0;} charTime := 0; FD12Time:=0; FD12bzTime:=0;
 	      	   branch_builtin_time :=0; branch_script_time := 0
 	      fi
     then () = if FPP_report_flag
@@ -1414,8 +1408,7 @@ then coh_ind_unip_few(G,Uhash)}
        	    prints(" Time spent in is_unitary = ",print_time_string(unitaryTime - oldUtime),
        	      ", number of utests = ", unitary_test_counter.use_count() - oldUcounter);
 	    prints(" Time spent in char calcs = ",print_time_string(charTime - oldCtime),
-	      ", number of char calcs = ",char_counter.use_count() - oldCcounter,
-	      ", time spent in red_count = ",  print_time_string(red_count_time));
+	      ", number of char calcs = ",char_counter.use_count() - oldCcounter);
 	    prints("Time in localFD_1Dirac2* = ", print_time_string(FD12Time + FD12bzTime),
 	      ", in localFD_1Dirac2 = ",print_time_string(FD12Time),
 	    	     ", in localFD_1Dirac2_by_zero = ",print_time_string(FD12bzTime));
@@ -1460,7 +1453,7 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
     then G = xs[0].real_form
     then start = elapsed_ms(), zeroPol = null_module(G), zeroNu = null(G.rank)/1
     then () = if FPP_report_flag
-    	      then {unitaryTime := 0;} charTime := 0; FD12Time:=0; FD12bzTime:=0; red_count_time :=0
+    	      then {unitaryTime := 0;} charTime := 0; FD12Time:=0; FD12bzTime:=0
 	      fi
     then () = if FPP_report_flag
     	      then {clear_report_tested();} DTcount:=0; DBTcount:=0; report_steve_clear()
@@ -1482,7 +1475,6 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 	      then coh_ind_unip_few(G,Uhash)}
 	      fi
     then times = [int]: null(#xs)
-    then red_count_times = [int]: null(#xs)
     then lambdatimes = [[int]]: for j:#xs do [] od
     then answerCards = [[int]]: for j:#xs do [] od {number of unitary parameters found}
     then uparams = int: 0 {sum of all entries of answerCards, kept up to date}
@@ -1517,7 +1509,6 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 	 let former_time = current, formerUhash = currentUhash, formerUcounter = currentUcounter,
 	     formerUtime = unitaryTime, formerCcounter = currentCcounter, formerCharTime = charTime,
 	     formerCTHcounter = currentCTHcounter, formerCTHTime = charTimeToHt,
-	     former_red_count_time = red_count_time,
 	     startmorex = more_good_hash.size(), startminbadx = bad_hash.size(), startminx = good_hash.size()
 	 then xtwists = isotwistKGBs(x), twists = all_lambda_differential_0(x)
 	 then M = #FPP_lambdas(x)
@@ -1690,7 +1681,6 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 				{would be easy enough to get [Param] for each (x,lambda), but for now just
 				put unitary reps in Uhash}
            then () = current := elapsed_ms(); currentUhash := Uhash.size();  times[j] := current -former_time;
-	   	     red_count_times[j] := red_count_time - former_red_count_time;
 	   	     lambdatimes[j] := templambdatimes; currentUcounter := unitary_test_counter.use_count();
 		     currentCcounter := char_counter.use_count(); uparams +:= sum(tempanswerCards) - sum(answerCards[j]); answerCards[j]:= tempanswerCards;
 		     currentCTHcounter := char_counter_to_ht.use_count()
@@ -1719,7 +1709,6 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
        	      		  	 " for ", char_counter.use_count() - formerCcounter, " calcs, ",
 				 " time spent in char_to_ht = ",print_time_string(charTimeToHt-formerCTHTime),
        	      		  	 ", for ", char_counter_to_ht.use_count() - formerCTHcounter, " calcs");
-				 {" time spent in red_count = ",  print_time_string(red_count_times[j]));}
 			 report_tested_cum("for x=#"+to_string(x.number),"running totals");
 			 if hodge_status_flag then hodge_screen_report() fi;
 			 report_steve_graph()
@@ -1743,7 +1732,6 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
        	      " for ", char_counter.use_count() - oldCcounter, " calcs, ",
 	   "time spent in char_to_ht = ",print_time_string(charTimeToHt),
        	      " for ", char_counter_to_ht.use_count() - oldCTHcounter," calcs");
-	      {", time spent in red_count = ",  print_time_string(red_count_time));}
 	    prints("Time in localFD_1Dirac2* = ", print_time_string(FD12Time + FD12bzTime),
 	      ", in localFD_1Dirac2 = ",print_time_string(FD12Time),
 	    	     ", in localFD_1Dirac2_by_zero = ",print_time_string(FD12bzTime));
@@ -2070,7 +2058,7 @@ fancy_tester) = void:
     then start = elapsed_ms()
     then () = if FPP_report_flag
     	      then {unitaryTime := 0;} charTime := 0; charTimeToHt:=0;  FD12Time:=0; FD12bzTime:=0;
-	      red_count_time :=0; char_counter.clear(); char_counter_to_ht.clear()
+	      char_counter.clear(); char_counter_to_ht.clear()
 	      fi
     then xnums = for (x,) in xlambdas do let (,m) = %x in m od
     {then lambdas = for (,lambda) in xlambdas do lambda od}
@@ -2353,7 +2341,6 @@ fancy_tester) = void:
 	           " for ", char_counter.use_count() - oldCcounter," calcs",
 		   " time in char_to_ht calcs = ",print_time_string(charTimeToHt),
 	      	   " for ",char_counter_to_ht.use_count() - oldCTHcounter, " calcs");
-		   {", time spent in red_count = ",  print_time_string(red_count_time));}
 	    prints("Time in localFD_1Dirac2* = ", print_time_string(FD12Time + FD12bzTime),
 	      ", in localFD_1Dirac2 = ",print_time_string(FD12Time),
 	    	     ", in localFD_1Dirac2_by_zero = ",print_time_string(FD12bzTime));
@@ -2432,7 +2419,6 @@ this for a long time, leading to wrong answers for PSU(2,2).}
     then () = dfkiTime := 0
     then () = FD12Time := 0
     then () = FD12bzTime :=0
-    then () = red_count_time :=0
     {then {xnums = for x in xs do let (,m) = %x in m od,} xtimes = null(#xs)}
     {then () = pol_hash.clear()} {in recursive calls, this screws up bigger G, which has
     	  already indexed some K_chars here.}
@@ -2463,7 +2449,6 @@ this for a long time, leading to wrong answers for PSU(2,2).}
 		   od
 	       fi
     then times = [int]: null(#xs)
-    then red_count_times = [int]: null(#xs)
     then lambdatimes = [[int]]: for j:#xs do [] od
     then answerCards = [[int]]: for j:#xs do [] od {number of unitary parameters found}
     then uparams = int: 0 {sum of all entries of answerCards, kept up to date}
@@ -2503,7 +2488,7 @@ this for a long time, leading to wrong answers for PSU(2,2).}
 	 {prefer_steve_long_flag and (x.number = KGB_size(G) - 1)}
 	 then former_time = current, formerUhash = currentUhash, formerUcounter = currentUcounter, x_sc = xs_sc[j],
 	     formerUtime = unitaryTime, formerCcounter = currentCcounter, formerCharTime = charTime,
-	     former_red_count_time = red_count_time,  startmorebadx = more_bad_hash.size(),
+	     startmorebadx = more_bad_hash.size(),
 	     startmorex = more_good_hash.size(), startminbadx = bad_hash.size(), startminx = good_hash.size()
 	 then xtwists = isotwistKGBs(x_sc), twists = all_lambda_differential_0(x_sc)
 	 then N1 = #FPP_lambdas(x)
@@ -2709,7 +2694,7 @@ this for a long time, leading to wrong answers for PSU(2,2).}
 		    	      		     but for now just put unitary reps in Uhash}
 
             then () = current := elapsed_ms(); currentUhash := Uhash.size();  times[j] := current -former_time;
-	    	     red_count_times[j] := red_count_time - former_red_count_time; currentUtime := unitaryTime;
+	    	     currentUtime := unitaryTime;
 	   	     lambdatimes[j] := templambdatimes; currentUcounter := unitary_test_counter.use_count();
 		     currentCcounter := char_counter.use_count(); uparams +:= sum(tempanswerCards) - sum(answerCards[j]); answerCards[j] := tempanswerCards
 	   then longLambdaLoc = max_loc(templambdatimes)
@@ -2734,8 +2719,7 @@ this for a long time, leading to wrong answers for PSU(2,2).}
 	    currentUhash - formerUhash, ", #tests for this x = ", currentUcounter - formerUcounter,
 	    ", time in is_unitary = ", print_time_string(unitaryTime - formerUtime));
 	    prints("     Time spent in char calcs = ", print_time_string(charTime - formerCharTime),
-			      	     ", number of char calcs = ", currentCcounter - formerCcounter,
-				     ", time for red_count = ",print_time_string(red_count_times[j]));
+			      	     ", number of char calcs = ", currentCcounter - formerCcounter);
 			   report_tested_cum("for x=#"+to_string(x.number),"running totals");
 			   if hodge_status_flag then hodge_screen_report() fi
                      fi {every_KGB_flag}
@@ -2762,8 +2746,7 @@ this for a long time, leading to wrong answers for PSU(2,2).}
 	    prints("Time spent in is_unitary = ",print_time_string(unitaryTime - oldUtime), ", #unitarity tests = ",
        		unitary_test_counter.use_count() - oldUcounter, ", #K-types studied = ", minBottomData.size());
 	    prints("Time spent in char calcs = ", print_time_string(charTime-oldcharTime), ", number of char calcs = ",
-	        char_counter.use_count() - oldCcounter,
-	      ", time spent in red_count = ",  print_time_string(red_count_time));
+	        char_counter.use_count() - oldCcounter);
 	    prints("Time in localFD_1Dirac2* = ", print_time_string(FD12Time + FD12bzTime),
 	      ", in localFD_1Dirac2 = ",print_time_string(FD12Time),
 	    	     ", in localFD_1Dirac2_by_zero = ",print_time_string(FD12bzTime));
