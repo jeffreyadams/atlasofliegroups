@@ -1115,70 +1115,59 @@ common_block::common_block // partial block constructor
   , generated_as_full_block(false)
 {
   assert(not elements.empty());
-  info.reserve(elements.size());
   const auto& kgb = rc.kgb();
   const auto& int_sys = ctxt.subsys();
 
   Block_base::dd = // integral Dynkin diagram, converted from dual side
     DynkinDiagram(int_sys.Cartan_matrix().transposed());
 
-  // a type to represent list of |rho+gamma-lambda| values, increasing
-  // the values in the list are associated to the same involution
-  using y_list = sl_list<RatWeight>; // expect fairly few |y| per involution
-  struct invol_y_data
-  {
-    y_list list; unsigned long offset;
-    invol_y_data() : list(), offset(-1) {}
-  };
-
-  for (const auto& srm : elements)
-  { const KGBElt x = srm.x();
-    if (x>highest_x)
-      highest_x=x;
-  }
-
-  std::vector<invol_y_data> y_table (kgb.packet_nr(highest_x)+1);
-  {
-    for (const auto& srm : elements)
-    { const KGBElt x = srm.x();
-      auto gamlam = srm.gamma_lambda();
-      auto& loc = y_table[kgb.packet_nr(x)].list;
-      auto it = std::lower_bound(loc.cbegin(),loc.cend(),gamlam);
-      if (it==loc.end() or gamlam < *it) // only insert when |gamlam| new
-	loc.insert(it,gamlam);
-    }
-
-    // set |offset|s to count all |y| values at _later_ involutions in KGB
-    for (unsigned i = y_table.size(); i-->0; ) // run back throught packet nrs
-    {
-      y_table[i].offset = highest_y;
-      highest_y += y_table[i].list.size();
-    }
-    -- highest_y; // one less than the number of distinct |y| values
-  }
-
-  // pre-sort by |x| ensures descents precede when setting lengths
+  // pre-sort by |x|, will also ensure any descents precede when setting lengths
   std::sort(elements.begin(),elements.end(),
     ([](const StandardReprMod& a, const StandardReprMod& b)
     { return a.x()<b.x(); } ));
 
-  for (const auto& srm : elements) // find its $(x,y)$ pair and extend |info|
-  { const KGBElt x = srm.x();
-    const invol_y_data& slot = y_table[kgb.packet_nr(x)];
-    auto y = slot.offset;
-    for (auto it = slot.list.begin(); not slot.list.at_end(it); ++it,++y)
-      if (*it == srm.gamma_lambda())
-	break;
-    assert(y-slot.offset<slot.list.size()); // should have found it
-    info.emplace_back(x,y); // for now leave descent status unset, |length==0|
-    srm_hash.match(srm);
-  }
+  // set |srm_hash| in current order so |lookup| method can be used below
+  z_pool = std::move(elements);
+  srm_hash.reconstruct();
+
+  { // now set |y| fields, |highest_x| and |highest_y|, and |Block_base::info|
+    highest_x = z_pool.back().x();
+    simple_list<Block_base::EltInfo> info_list; // to gather in reverse order
+    auto it = z_pool.crbegin(); // we shall run backwards through |z_pool|
+    do
+    { // |it| gets advanced at least once in the do-while loop inside the body
+      const auto start_it = it; // we shall run over tau packet of |x|s again
+      const auto packet_nr = kgb.packet_nr(start_it->x());
+      sl_list<RatWeight> list; // all |gamma_lambda| values found this packet
+
+      // traverse tau packet decreasingly, collecting values for |list|
+      do list.push_back(it->gamma_lambda());
+      while (++it != z_pool.crend() and kgb.packet_nr(it->x())==packet_nr);
+
+      list.sort();
+      list.unique();
+
+      auto nr_ys = list.size();
+      for (auto ita=start_it; ita!=it; ++ita) // rerun over z_pool in packet
+      { const auto x = ita->x();
+	auto y=highest_y;
+	for (auto it = list.begin(); not list.at_end(it); ++it,++y)
+	  if (*it == ita->gamma_lambda())
+	    break;
+	assert(y<highest_y+nr_ys); // should have found it
+	info_list.emplace_front(x,y); // leave descent status unset, |length==0|
+      }
+      highest_y += nr_ys;
+    }
+    while (it != z_pool.crend());
+    Block_base::info = std::move(info_list).to_vector();
+  } // setting |y| fields
 
   // allocate link fields with |UndefBlock| entries
-  data.assign(int_sys.rank(),std::vector<block_fields>(elements.size()));
+  data.assign(int_sys.rank(),std::vector<block_fields>(z_pool.size()));
 
-  assert(info.size()==elements.size());
-  auto it = elements.cbegin();
+  assert(info.size()==z_pool.size());
+  auto it = z_pool.cbegin();
   for (BlockElt i=0; i<info.size(); ++i,++it)
   {
     EltInfo& z = info[i];
@@ -1271,6 +1260,8 @@ common_block::common_block // partial block constructor
     } // |for (s)|
   } // |for (i)|
 
+  // for non-integral blocks, length is not always monotonic with |x| values
+  // since we want order to be by block length first, sorting is necessary
   sort();  // finally sort by (freshly computed) |length|, then |x|, then |y|
 
 } // |common_block::common_block|, partial block version
@@ -1513,7 +1504,7 @@ bool elt_info_less (const Block_base::EltInfo& a,const Block_base::EltInfo& b)
   return a.y<b.y; // ctors made numeric order match |gamma_lambda()| comparison
 }
 
-void common_block::sort()
+void common_block::sort ()
 {
   Permutation ranks = // standardization permutation, to be used for reordering
     permutations::standardization(info.begin(),info.end(),elt_info_less);
