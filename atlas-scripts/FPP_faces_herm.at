@@ -1932,11 +1932,11 @@ set simple_status(Param p, int HT) = int:
     in
     if HT >= GAM then HT:=-1 fi;
     ans := if big_unitary_hash.ulookup(p) >= 0
-    	   then status_ucount+:=1; 1
+    	   then 1
     	   elif big_unitary_hash.nu_height_lookup_int(p,HT) < 0
     	   then -1
     	   elif is_known_u_to_ht(p,HT)
-    	   then status_ucount+:=1; 1
+    	   then 1
     	   elif is_finished_step(p) and HT < 0
     	   then -1 {otherwise we'd have found it in ulookup}
 	   elif HT < 0 then is_FPP_unitary_fast(p)
@@ -1959,11 +1959,11 @@ set simple_status(Param p, int HT, (Param -> int) tester) = int:
     in
     if HT >= GAM then HT:=-1 fi;
     ans := if big_unitary_hash.ulookup(p) >= 0
-    	   then status_ucount+:=1; 1
+    	   then 1
     	   elif big_unitary_hash.nu_height_lookup_int(p,HT) < 0
     	   then -1
     	   elif is_known_u_to_ht(p,HT)
-    	   then status_ucount+:=1; 1
+    	   then 1
     	   elif is_finished_step(p) and HT < 0
     	   then -1 {otherwise we'd have found it in ulookup}
      	   else tester(p)
@@ -1982,11 +1982,11 @@ set simple_status(Param p, int HT, ((Param,int) -> int) tester) = int:
     in
     if HT >= GAM then HT:=-1 fi;
     ans := if big_unitary_hash.ulookup(p) >= 0
-    	   then status_ucount+:=1; 1
+    	   then 1
     	   elif big_unitary_hash.nu_height_lookup_int(p,HT) < 0
     	   then -1
     	   elif is_known_u_to_ht(p,HT)
-    	   then status_ucount+:=1; 1
+    	   then 1
     	   elif is_finished_step(p) and HT < 0
     	   then -1 {otherwise we'd have found it in ulookup}
      	   else tester(p,HT)

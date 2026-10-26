@@ -799,10 +799,8 @@ then coh_ind_unip_few(G,Uhash)}
 	      lambdas[longest],")");
        	    prints(" Time spent in is_unitary = ",print_time_string(unitaryTime - oldUtime),
        	      ", number of unitarity tests = ", unitary_test_counter.use_count() - oldUcounter);
-	    prints(" Time spent in char calcs = ",print_time_string(charTime - oldCtime),
-	      " for ",char_counter.use_count() - oldCcounter," calcs,",
-	      " time in char_to_ht calcs = ",print_time_string(charTimeToHt - oldCTHtime),
-	      " for ",char_counter_to_ht.use_count() - oldCTHcounter, " calcs");
+	    report_char_calcs(charTime - oldCtime, char_counter.use_count() - oldCcounter,
+	      charTimeToHt - oldCTHtime, char_counter_to_ht.use_count() - oldCTHcounter);
 	    prints("Time in localFD_1Dirac2* = ", print_time_string(FD12Time + FD12bzTime),
 	      ", in localFD_1Dirac2 = ",print_time_string(FD12Time),
 	    	     ", in localFD_1Dirac2_by_zero = ",print_time_string(FD12bzTime));
@@ -1149,10 +1147,8 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
               " for KGBElt ",xs[longest].number);
        	    prints("Time spent in is_unitary = ",print_time_string(unitaryTime - oldUtime),
        	      ", number of utests = ", unitary_test_counter.use_count() - oldUcounter);
-       	    prints("Time spent in char = ",print_time_string(charTime),
-       	      " for ", char_counter.use_count() - oldCcounter," calcs: ; ",
-	      "time spent in char_to_ht = ",print_time_string(charTimeToHt),
-       	      " for ", char_counter_to_ht.use_count() - oldCTHcounter," calcs");
+       	    report_char_calcs(charTime, char_counter.use_count() - oldCcounter,
+	      charTimeToHt, char_counter_to_ht.use_count() - oldCTHcounter); {both times reset at start}
 	    prints("Time in localFD_1Dirac2* = ", print_time_string(FD12Time + FD12bzTime),
 	      ", in localFD_1Dirac2 = ",print_time_string(FD12Time),
 	    	     ", in localFD_1Dirac2_by_zero = ",print_time_string(FD12bzTime));
@@ -1257,7 +1253,8 @@ then coh_ind_unip_few(G,Uhash)}
          oldUtime = unitaryTime, currentUtime = unitaryTime, oldCtime = charTime,
 	 oldCTHtime = charTimeToHt, currentCtime = charTime,
     	 oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count(),
-		   oldCcounter = char_counter.use_count(), currentCcounter = char_counter.use_count()
+		   oldCcounter = char_counter.use_count(), currentCcounter = char_counter.use_count(),
+		   oldCTHcounter = char_counter_to_ht.use_count()
     {then () = if every_lambda_deets_flag
     	      then prints("time up to main loop = ",print_time_string(elapsed_ms() - start))
 	      fi}
@@ -1377,7 +1374,7 @@ then coh_ind_unip_few(G,Uhash)}
 				 ", time = ",print_time_string(charTime - startCTime));
 			 prints("Time in min_bottom_factors = ",print_time_string(mbfTime),
 				 ", in min_bottom_elim_factors = ", print_time_string(mbefTime),
-				    " for ", actual_test_count," tests.");
+				    mbef_count_string());
 			 prints("     #Params min-caught for this lambda = ", good_hash.size() - startminxl,
 				 {", #Params min-missed = ", bad_hash.size()}
 				 ", #min-caught total = ", good_hash.size());
@@ -1407,8 +1404,8 @@ then coh_ind_unip_few(G,Uhash)}
 	      lambdas[longest],")");
        	    prints(" Time spent in is_unitary = ",print_time_string(unitaryTime - oldUtime),
        	      ", number of utests = ", unitary_test_counter.use_count() - oldUcounter);
-	    prints(" Time spent in char calcs = ",print_time_string(charTime - oldCtime),
-	      ", number of char calcs = ",char_counter.use_count() - oldCcounter);
+	    report_char_calcs(charTime - oldCtime, char_counter.use_count() - oldCcounter,
+	      charTimeToHt - oldCTHtime, char_counter_to_ht.use_count() - oldCTHcounter);
 	    prints("Time in localFD_1Dirac2* = ", print_time_string(FD12Time + FD12bzTime),
 	      ", in localFD_1Dirac2 = ",print_time_string(FD12Time),
 	    	     ", in localFD_1Dirac2_by_zero = ",print_time_string(FD12bzTime));
@@ -1692,7 +1689,7 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 			  " for #", longLambdaLoc, " = ",lambdas[longLambdaLoc]);
        	    		  prints("Time in min_bottom_factors = ",print_time_string(mbfTime),
 	    		  	 ", in min_bottom_elim_factors = ", print_time_string(mbefTime),
-				 " for ",actual_test_count," tests.");
+				 mbef_count_string());
 	    		  prints("     #Params min-caught for this x = ", good_hash.size() - startminx,
 	    		  {", #Params min-missed for this x = ", bad_hash.size() - startminbadx}
 	    		  ", #min-caught total = ",good_hash.size());
@@ -1728,10 +1725,8 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
               " for KGBElt ",xs[longest].number);
        	    prints("Time spent in is_unitary = ",print_time_string(unitaryTime - oldUtime),
        	      ", number of unitarity tests = ", unitary_test_counter.use_count() - oldUcounter);
-       	    prints("Time spent in char calcs = ",print_time_string(charTime),
-       	      " for ", char_counter.use_count() - oldCcounter, " calcs, ",
-	   "time spent in char_to_ht = ",print_time_string(charTimeToHt),
-       	      " for ", char_counter_to_ht.use_count() - oldCTHcounter," calcs");
+       	    report_char_calcs(charTime - oldCtime, char_counter.use_count() - oldCcounter,
+	      charTimeToHt - oldCTHtime, char_counter_to_ht.use_count() - oldCTHcounter);
 	    prints("Time in localFD_1Dirac2* = ", print_time_string(FD12Time + FD12bzTime),
 	      ", in localFD_1Dirac2 = ",print_time_string(FD12Time),
 	    	     ", in localFD_1Dirac2_by_zero = ",print_time_string(FD12bzTime));
@@ -2299,7 +2294,7 @@ fancy_tester) = void:
 				 ", #unitary params so far = ",uparams);
        	    			 prints("Time in min_bottom_factors = ",print_time_string(mbfTime),
 				 ", in min_bottom_elim_factors = ", print_time_string(mbefTime),
-				 " for ",actual_test_count," tests.");
+				 mbef_count_string());
 				 prints("     #Params min-caught for this lambda = ", good_hash.size() - startminxl,
 				 {", #Params min-missed = ", bad_hash.size()}
 				 ", #min-caught total = ", good_hash.size());
@@ -2337,10 +2332,8 @@ fancy_tester) = void:
 	      " for (x,lambda) = (",  xlambdas[longest], {",", lambdas[longest],}")");
 	    prints("Time spent in is_unitary = ",print_time_string(unitaryTime), ", #unitarity tests = ",
        		unitary_test_counter.use_count() - oldUcounter, ", #K-types studied = ", minBottomData.size());
-	    prints("Time spent in char calcs = ",print_time_string(charTime),
-	           " for ", char_counter.use_count() - oldCcounter," calcs",
-		   " time in char_to_ht calcs = ",print_time_string(charTimeToHt),
-	      	   " for ",char_counter_to_ht.use_count() - oldCTHcounter, " calcs");
+	    report_char_calcs(charTime, char_counter.use_count() - oldCcounter,
+	      charTimeToHt, char_counter_to_ht.use_count() - oldCTHcounter); {both times reset at start}
 	    prints("Time in localFD_1Dirac2* = ", print_time_string(FD12Time + FD12bzTime),
 	      ", in localFD_1Dirac2 = ",print_time_string(FD12Time),
 	    	     ", in localFD_1Dirac2_by_zero = ",print_time_string(FD12bzTime));
@@ -2351,7 +2344,7 @@ fancy_tester) = void:
 	    ", time in natural KGB = ", print_time_string(nKeTime));
        	    prints("Time in min_bottom_factors = ",print_time_string(mbfTime),
 	    ", in min_bottom_elim_factors = ", print_time_string(mbefTime),
-	    " for ",actual_test_count," tests.");
+	    mbef_count_string());
 	    prints("     #Params min-caught = ", good_hash.size(){,
 	    ", #Params min-missed = ", bad_hash.size()});
  	    prints("Time in bottom_factors = ", print_time_string(bfTime),
@@ -2459,7 +2452,8 @@ this for a long time, leading to wrong answers for PSU(2,2).}
     then oldUhash = UhashG.size(), currentUhash = Uhash.size(), formerUhash = Uhash.size(),
     	 oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count(),
 	 oldCcounter = char_counter.use_count(), currentCcounter = char_counter.use_count(), oldUtime = unitaryTime,
-	 oldcharTime = charTime, currentcharTime = charTime, currentUtime = unitaryTime
+	 oldcharTime = charTime, currentcharTime = charTime, currentUtime = unitaryTime,
+	 oldCTHtime = charTimeToHt, oldCTHcounter = char_counter_to_ht.use_count()
 {try to deal with x already recorded as known}
     then skipx = false
     then () = if every_lambda_deets_flag
@@ -2674,7 +2668,7 @@ this for a long time, leading to wrong answers for PSU(2,2).}
 					        ", char time = ", print_time_string(charTime - startCtime));
        	    prints("Time in min_bottom_factors = ",print_time_string(mbfTime),
 	    ", in min_bottom_elim_factors = ", print_time_string(mbefTime),
-	    " for ",actual_test_count," tests.");
+	    mbef_count_string());
 	    prints("     #Params min-caught for lambda = ", good_hash.size() - startminxl,
 	    {", #Params min-missed for lambda = ", bad_hash.size() - startminbadlambda}
 	    ", #min-caught total = ",good_hash.size());
@@ -2705,7 +2699,7 @@ this for a long time, leading to wrong answers for PSU(2,2).}
 			  " for ", longLambdaLoc, " = ",lambdas[longLambdaLoc]);
        	    prints("Time in min_bottom_factors = ",print_time_string(mbfTime),
 	    ", time in min_bottom_elim_factors = ", print_time_string(mbefTime),
-	    " for ",actual_test_count," tests.");
+	    mbef_count_string());
 	    prints("     #Params min-caught for this x = ", good_hash.size() - startminx,
 	    {", #Params min-missed for this x = ", bad_hash.size() - startminbadx}
 	    ", #min-caught total = ",good_hash.size());
@@ -2745,8 +2739,8 @@ this for a long time, leading to wrong answers for PSU(2,2).}
               " for KGBElt ",xs[longest].number);
 	    prints("Time spent in is_unitary = ",print_time_string(unitaryTime - oldUtime), ", #unitarity tests = ",
        		unitary_test_counter.use_count() - oldUcounter, ", #K-types studied = ", minBottomData.size());
-	    prints("Time spent in char calcs = ", print_time_string(charTime-oldcharTime), ", number of char calcs = ",
-	        char_counter.use_count() - oldCcounter);
+	    report_char_calcs(charTime - oldcharTime, char_counter.use_count() - oldCcounter,
+	      charTimeToHt - oldCTHtime, char_counter_to_ht.use_count() - oldCTHcounter);
 	    prints("Time in localFD_1Dirac2* = ", print_time_string(FD12Time + FD12bzTime),
 	      ", in localFD_1Dirac2 = ",print_time_string(FD12Time),
 	    	     ", in localFD_1Dirac2_by_zero = ",print_time_string(FD12bzTime));
@@ -2756,7 +2750,7 @@ this for a long time, leading to wrong answers for PSU(2,2).}
 
        	    prints("Time in min_bottom_factors = ",print_time_string(mbfTime),
 	    ", in min_bottom_elim_factors = ", print_time_string(mbefTime),
-	    " for ",actual_test_count," tests.");
+	    mbef_count_string());
 	    prints("     #Params min-caught = ", good_hash.size(),
 	    {", #Params min-missed = ", bad_hash.size(),}
 	    ", #Params more-caught = ", more_good_hash.size());

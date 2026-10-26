@@ -1009,7 +1009,6 @@ set to_ht (int N) = (KTypePol->KTypePol): (KTypePol P):
   else let (below,)=height_split(P,N) in below
   fi
 
-set KL_new_count = int:0
 set KL_false_low_count = int:0
 
 set stored_count = int:0
@@ -1028,8 +1027,7 @@ set KL_sum_at_s_to_ht_new(int HT) = (Param p) ParamPol: {should check whether li
 		    ans
  	       | some(KLS): stored_count+:=1;
 	       	 let (below,) = height_split(KLS,HT)
-    	       	 in KL_new_count +:= 1;
-		    charTimeToHt +:= elapsed_ms() - start;
+    	       	 in charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use();
 		    below
 	       esac
        fi
@@ -1063,8 +1061,7 @@ set KL_sum_at_s_to_ht_new_inter(int HT) = (Param p,int time) maybe_PP:
 	       	       KL_sum_at_s_to_height(p,HT,time) next charTimeToHt +:= elapsed_ms() - start
 	       | some(KLS): stored_count+:=1;
 	       	 	       let (below,) = height_split(KLS,HT)
-    	       	 	       in KL_new_count +:= 1;
-			       	  charTimeToHt +:= elapsed_ms() - start;
+    	       	 	       in charTimeToHt +:= elapsed_ms() - start;
 			          below.some
 	       esac
         fi next KL_new_inter_count +:=1
@@ -1088,11 +1085,11 @@ set twisted_KL_sum_at_s(Param p) = ParamPol:
     in twisted_KL_sum_at_s(p) next charTime +:= elapsed_ms() - start; char_counter.use()
 
 
+{the full twisted sum is computed, and timed and counted as a char calc, by twisted_KL_sum_at_s;
+ counting it again as char_to_ht would count it twice}
 set twisted_KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol:
-    if HT < 0 then return twisted_KL_sum_at_s(p)
-    else let start = elapsed_ms()
-    	 in height_split(twisted_KL_sum_at_s(p),HT).fst \
-	    next charTimeToHt +:= elapsed_ms() - start; char_counter_to_ht.use()
+    if HT < 0 then twisted_KL_sum_at_s(p)
+    else height_split(twisted_KL_sum_at_s(p),HT).fst
     fi
 
 {next two never try not to_ht}

@@ -1618,12 +1618,14 @@ set was_tested(Param p, int T, bool ans) = void:
     then prints(p," took ",print_time_string(T)," to test is_unitary = ", ans)
     fi;
     unitary_test_counter.use();
-    let i = tested_inter_hash.lookup(p)
+    {the record for p adds in p's earlier interrupted tests; the running sums take T0 only,
+     since tested_inter_time_sum already has the interrupted time}
+    let i = tested_inter_hash.lookup(p), T0 = T
     in if i >= 0
        then T+:=tested_inter_times[i]
        fi;
     if ans
-    then tested_pos_time_sum +:= T;
+    then tested_pos_time_sum +:= T0;
     	 let M = tested_pos_hash.size()
        	 then m = tested_pos_hash.match(p)
        	 {then prints("M = ",M,", m = ",m)}
@@ -1634,7 +1636,7 @@ set was_tested(Param p, int T, bool ans) = void:
 	    else tested_pos_times[m] +:= T;
 	    	 tested_pos_counts[m] +:= 1
 	    fi
-    else tested_neg_time_sum +:= T;
+    else tested_neg_time_sum +:= T0;
     	 let M = tested_neg_hash.size()
        	 then m = tested_neg_hash.match(p)
 	 {then prints("M = ",M,", m = ",m)}
@@ -1736,10 +1738,10 @@ set was_tested_to_ht(Param p,int N, int T, bool ans) = void:
 	     tested_neg_to_ht_counts ##:= for j:add do [int]: [] od;
 	     tested_inter_to_ht_counts ##:= for j:add do [int]: [] od
        fi;
-       let i = tested_inter_to_ht_hashes[h].lookup(p)
+       let i = tested_inter_to_ht_hashes[h].lookup(p), T0 = T {as in was_tested}
        in if i >= 0 then T+:= tested_inter_to_ht_times[h][i] fi;
        if ans
-       then tested_pos_to_ht_time_sum +:= T;
+       then tested_pos_to_ht_time_sum +:= T0;
        	    let M = tested_pos_to_ht_hashes[h].size()
     	    then m = tested_pos_to_ht_hashes[h].match(p)
        	    in if m = M
@@ -1752,7 +1754,7 @@ set was_tested_to_ht(Param p,int N, int T, bool ans) = void:
 		       tpthc[m] +:= 1;
 		       tested_pos_to_ht_counts[h] := tpthc
 	       fi
-        else tested_neg_to_ht_time_sum +:= T;
+        else tested_neg_to_ht_time_sum +:= T0;
     	     let M = tested_neg_to_ht_hashes[h].size()
     	     then m = tested_neg_to_ht_hashes[h].match(p)
 	     in	if m = M
@@ -1806,6 +1808,13 @@ set was_tested_inter_to_ht(Param p,int HT, int T) = void:
  FPP_localDirac.at, where their counters are. A list, since a function defined by set cannot be reassigned}
 set report_peel_wiggle = [(int->void)]: []
 
+{final-report line for character calculations: full ones (KL_sum_at_s) and truncated ones
+ (char_to_ht) added together, as the is_unitary line adds full and to_ht tests; arguments are
+ (time, count) for full, then (time, count) for to_ht}
+set report_char_calcs(int Ct, int Cn, int Ht, int Hn) = void:
+    prints("Time spent in char calcs = ", print_time_string(Ct+Ht), ", number of char calcs = ", Cn+Hn,
+    	   " (char_to_ht: ", print_time_string(Ht), " for ", Hn, ")")
+
 set report_tested(string label) = void:
 {    prints("...",label,"...",DTcount," Dirac elim, ",DBTcount," best-Dirac elim; predictor_time = ",
     	  print_time_string(predictor_time));}
@@ -1854,10 +1863,10 @@ set report_tested(string label) = void:
     print_time_string(charTime), " for ",char_counter.use_count(), " char calcs; ",
     print_time_string(charTimeToHt), " for ",char_counter_to_ht.use_count(), " char_to_ht calcs.");
     prints(HF_false_low_count," form_to_ht -> form because of low(p,HT); ",FD_new_count," full_deform_to_ht DISAPPEAR because of stored_full_deform");
-    if KL_sum_to_ht_new_flag then prints(KL_new_count," KL_sum_at_s_to_ht calcs -> known KL_sum_at_s, ",
-       KL_false_low_count," KL_sum_at_s_to_ht calcs -> new KL_sum_at_s because of low_char");
-       prints("KL_sum_at_s_to_ht_new entered ",stored_count+unstored_count," times (",
-              stored_count," with the library sum stored, ",unstored_count," without)") fi;
+    if KL_sum_to_ht_new_flag
+    then prints("KL_sum_at_s_to_ht_new entered ",stored_count+unstored_count," times (",
+              stored_count," with the library sum stored, ",unstored_count," without); ",
+	      KL_false_low_count," KL_sum_at_s_to_ht calcs -> full KL_sum_at_s (low_char false)") fi;
     {prints("time for up_mu = ",print_time_string(up_mu_time), ", mu_time_mult = ",mu_time_mult,
     	   ", shift_frac = ",shift_frac, ", min_ht_mult = ", min_ht_mult);}
     {prints({"LAGAmax = ",LAGAmax,", GARLAGmin = ",GARLAGmin, ", GARmin = ", GARmin,}
@@ -1989,10 +1998,10 @@ set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(v
     print_time_string(charTime), " for ",char_counter.use_count(), " char calcs; ",
     print_time_string(charTimeToHt), " for ",char_counter_to_ht.use_count(), " char_to_ht calcs");
     prints(HF_false_low_count," form_to_ht calcs -> form because of low(p,HT); ",FD_new_count," full_deform_to_ht DISAPPEAR because of stored_full_deform");
-    if KL_sum_to_ht_new_flag then prints(KL_new_count," KL_sum_at_s_to_ht calcs -> known KL_sum_at_s, ",
-       KL_false_low_count," KL_sum_at_s_to_ht calcs -> new KL_sum_at_s because of low_char");
-       prints("KL_sum_at_s_to_ht_new entered ",stored_count+unstored_count," times (",
-              stored_count," with the library sum stored, ",unstored_count," without)") fi;
+    if KL_sum_to_ht_new_flag
+    then prints("KL_sum_at_s_to_ht_new entered ",stored_count+unstored_count," times (",
+              stored_count," with the library sum stored, ",unstored_count," without); ",
+	      KL_false_low_count," KL_sum_at_s_to_ht calcs -> full KL_sum_at_s (low_char false)") fi;
     if IDH_flag then IDH_report() fi;
     for f in report_peel_wiggle do f(0) od;
     prints("  ----------------")
