@@ -2037,7 +2037,8 @@ set wiggle_status_cod_one(Param p, KGBElt x, ratvec lambda, LocalVertexData Lvd,
     	      do Lvd.lookup((v+Aff_theta(v))/2)
 	      od.sort_u
     	 then d = #local_vert_nums - 1 {local face dimension}
-    	 then () = assert(@:gamma = face_bary(Lvd,local_vert_nums),
+    	 then () = assert(@:local_vert_nums[0].>= and
+			     gamma = sum(#gamma, for v in FV do (v+Aff_theta(v))/2 od)/#FV,
 	       	    		 "bad Lvd or local_vert_nums")
     	 then vert_subs = [[int]]:
 	      if d > 0
@@ -2099,7 +2100,8 @@ set wiggle_status_all(Param p, KGBElt x, ratvec lambda, LocalVertexData Lvd, int
     	      do Lvd.lookup((v+Aff_theta(v))/2)
 	      od.sort_u
    	 then d = #local_vert_nums - 1
-    	 then () = assert(@:gamma = face_bary(Lvd,local_vert_nums),
+    	 then () = assert(@:local_vert_nums[0].>= and
+			     gamma = sum(#gamma, for v in FV do (v+Aff_theta(v))/2 od)/#FV,
 	       	    		 "bad Lvd or local_vert_nums")
     	 then vert_subs = power_set(local_vert_nums)[1:2^(d+1)-1] {omit empty and full set <--> p}
     	 then deform_cands = [ratvec]:
@@ -4141,7 +4143,8 @@ set wiggle_is_unitary(Param p, KGBElt x, ratvec lambda, LocalVertexData Lvd) = b
     	 do Lvd.lookup((v+Aff_theta(v))/2)
 	 od.sort_u
     then d = #local_vert_nums - 1
-    then () = assert(@:gamma = face_bary(Lvd,local_vert_nums),
+    then () = assert(@:local_vert_nums[0].>= and
+			     gamma = sum(#gamma, for v in FV do (v+Aff_theta(v))/2 od)/#FV,
 	       	    		 "bad Lvd or local_vert_nums")
     then vert_subs = power_set(local_vert_nums)[1:2^(d+1)] {omit empty, include full set}
     then deform_cands = [ratvec]:
@@ -4201,7 +4204,8 @@ set wiggle_is_unitary_cod_one(Param p, KGBElt x, ratvec lambda, LocalVertexData 
     	 do Lvd.lookup((v+Aff_theta(v))/2)
 	 od.sort_u
     then d = #local_vert_nums - 1
-    then () = assert(@:gamma = face_bary(Lvd,local_vert_nums),
+    then () = assert(@:local_vert_nums[0].>= and
+			     gamma = sum(#gamma, for v in FV do (v+Aff_theta(v))/2 od)/#FV,
 	       	    		 "bad Lvd or local_vert_nums")
     then vert_subs = [[int]]:
     	 if d > 0
@@ -4265,7 +4269,8 @@ set wiggle_is_unitary_all(Param p, KGBElt x, ratvec lambda, LocalVertexData Lvd)
     	 do Lvd.lookup((v+Aff_theta(v))/2)
 	 od.sort_u
     then d = #local_vert_nums - 1
-    then () = assert(@:gamma = face_bary(Lvd,local_vert_nums),
+    then () = assert(@:local_vert_nums[0].>= and
+			     gamma = sum(#gamma, for v in FV do (v+Aff_theta(v))/2 od)/#FV,
 	       	    		 "bad Lvd or local_vert_nums")
     then vert_subs = power_set(local_vert_nums)[1:2^(d+1)] {omit empty, include full set}
     then deform_cands = [ratvec]:
