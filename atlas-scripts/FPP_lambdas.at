@@ -816,16 +816,18 @@ set_type
 
 set make_FPP_lambda_table() = FPP_lambda_table:
 (   let real_form_hash = make_RealForm_hash()
+    then last_rf = [RealForm]: [], last_rf_i = int: -1 {one-entry memo, as in make_big_unitary_hash}
     then lambda_hashess = [[ratvec_hash]]: [] {one ratvec_hash for each real form and KGBElt}
     then short_hashess = [[ratvec_hash]]: [] {same, for the is_pos_on_LKTs lambdas}
     then short_done = [[ratvec_hash]]: [] {size>0 once short list is computed}
     then clear() = void:
 	 let () = real_form_hash.clear()
+	 then () = last_rf_i := -1
 	 then () = lambda_hashess := []
 	 then () = short_hashess := []
 	 then () = short_done := []
 	 in ()
-    then add_real_form(RealForm rf) = int:
+    then add_real_form_hashed(RealForm rf) = int:
 	 let I = real_form_hash.size()
 	 then i = real_form_hash.match(rf)
 	 then () = if i = I {haven't seen this real form before}
@@ -834,6 +836,10 @@ set make_FPP_lambda_table() = FPP_lambda_table:
 			short_done #:= for x in KGB(rf) do make_ratvec_hash() od
 		   fi
 	  in i
+    then add_real_form(RealForm rf) = int:
+	 if last_rf_i >= 0 and last_rf[0] = rf then last_rf_i
+	 else last_rf_i := add_real_form_hashed(rf); last_rf := [rf]; last_rf_i
+	 fi
     then add_KGBElt(KGBElt x) = int:
 	 let i = add_real_form(x.real_form)
 	 then n = x.number

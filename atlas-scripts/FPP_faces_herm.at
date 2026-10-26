@@ -339,6 +339,9 @@ set u_down_size(Param p) = rat:
 
 set make_big_unitary_hash() = big_unitary_hash_table:
 (   let real_form_hash = make_RealForm_hash()
+    {one-entry memo for add_real_form, which every access goes through: = on RealForm costs
+     0.3us, hash_code@RealForm 7us (E7_s, 10/26/26). Indices change only in clearBUH.}
+    then last_rf = [RealForm]: [], last_rf_i = int: -1
     then uhashes = [Param_hash]: [] {one for each real form}
     then nuhashes = [Param_hash]: [] {one for each real form}
     then phashes = [Param_hash]: []
@@ -377,6 +380,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 in if hi <= lo then 0 else to_bitset([hi]) - to_bitset([lo]) fi
     then clearBUH() = void:
 	 let () = real_form_hash.clear()
+	 then () = last_rf_i := -1
 	 then () = uhashes := []
 	 then () = nuhashes := []
 	 then () = phashes := []
@@ -401,7 +405,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 then () = xl_step_keys := []
 	 then () = xl_step_vals := []
 	 in ()
-    then add_real_form(RealForm rf) = int:
+    then add_real_form_hashed(RealForm rf) = int:
 	 let I = real_form_hash.size()
 	 then i = real_form_hash.match(rf)
 	 then () = if i = I {haven't seen this real form before}
@@ -443,6 +447,10 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 						 and #u_downs = #x_known,
 						 "big_unitary_hash damaged")
 	  in i
+    then add_real_form(RealForm rf) = int:
+	 if last_rf_i >= 0 and last_rf[0] = rf then last_rf_i
+	 else last_rf_i := add_real_form_hashed(rf); last_rf := [rf]; last_rf_i
+	 fi
     then add_K_type(KType mu) = (int, int): {real form index, K type index}
 	 let rfnum = add_real_form(mu.real_form)
 	 then rf = real_form_hash.index(rfnum)
