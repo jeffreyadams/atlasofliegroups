@@ -1946,6 +1946,19 @@ set get_nu_info_restore() = void:
        FPP_def_edge_flag := s[6]; KGB_def_test_frac_flag := s[7]; hodge_FD_flag := s[8];
        DMB_flag := s[9]
 
+{Production run with the wiggle (wiggle_flag1, on stored character formulas). Impure heights of
+ nonunitary Params are recorded whenever a signature is computed, with no flag needed. The cheap
+ tests that give no height (Dirac, FPP_def, Davis/Mason-Brown) stay on: turning them off
+ (get_nu_info, meant for preparatory runs) cost 2.1x on E6_q (10/26/26).
+ use_wiggle1_restore() undoes it.}
+set wiggle1_saved_flags = [bool]: []
+set use_wiggle1() = void:
+    wiggle1_saved_flags := [char_hash_flag, wiggle_flag1, wiggle_ht_flag];
+    char_hash_flag := true; wiggle_flag1 := true; wiggle_ht_flag := true
+set use_wiggle1_restore() = void:
+    let s = wiggle1_saved_flags
+    in char_hash_flag := s[0]; wiggle_flag1 := s[1]; wiggle_ht_flag := s[2]
+
 {one (x,lambda) at a time, so that ht_bound_est belongs to it; (x,lambda) already finished, or with an
  HT already, are not redone}
 set FPP_unitary_hash_one_level_ht_bound([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,

@@ -5819,6 +5819,9 @@ set localFD_vertices_by_zero\
      spherical on the identity component -- one lambda at x_open of E7_s, four for PSO(4,4).}
     then length = #(Lvd.list)
     then freq = max(length\10,1)
+    {10/26/26: keeping faces that fail Dirac or FPP_def (recorded nonunitary, height -1) instead
+     of dropping them gave the same answers but lost: E6_q 196 -> 396 s, F4_s 11 -> 16 s, with MORE
+     unitarity tests (7258 -> 9131, 1268 -> 1599). Unlike edge peel drops, they do not split classes.}
     then LF0 = [FaceVertsIndex]:
     	 for v@j in Lvd.list
 	 do let p = parameter(x,lambda,v)
