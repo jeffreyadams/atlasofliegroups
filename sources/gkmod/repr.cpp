@@ -118,9 +118,9 @@ Reduced_param Reduced_param::reduce
    locator& loc)
 { // below |int_item| must set |loc| before argument to |transform| is evaluated
   InnerClass& ic = rc.inner_class();
-  const auto& integral = ic.int_item(gamma,loc); // completely sets |loc|
+  ic.int_item(gamma,loc); // completely sets |loc|
   rc.transform<true>(loc.w,srm); // move |srm| towards fundamental alcove
-  const auto codec = integral.data(rc.kgb().inv_nr(srm.x()));
+  const auto& codec = ic.int_codec(loc.int_syst_nr,rc.kgb().inv_nr(srm.x()));
   auto evs = codec.internalise(srm.gamma_lambda());
   unsigned int reduction = 0; // mixed radix representation of remainders
   for (unsigned int i=0; i<codec.diagonal.size(); ++i)
@@ -134,8 +134,8 @@ Reduced_param Reduced_param::reduce
 Reduced_param Reduced_param::co_reduce
   (const Rep_context& rc, StandardReprMod srm, const locator& loc)
 { rc.transform<true>(loc.w,srm);
-  const auto& integral = rc.inner_class().int_item(loc.int_syst_nr);
-  const auto codec = integral.data(rc.kgb().inv_nr(srm.x()));
+  const auto& codec =
+    rc.inner_class().int_codec(loc.int_syst_nr,rc.kgb().inv_nr(srm.x()));
   auto evs = codec.internalise(srm.gamma_lambda());
   unsigned int reduction = 0; // mixed radix representation of remainders
   for (unsigned int i=0; i<codec.diagonal.size(); ++i)
@@ -328,7 +328,7 @@ RatWeight Rep_context::make_diff_integral_orthogonal
   if (not result.is_zero()) // optimize out a fairly frequent case
   {
     InvolutionNbr inv = kgb().inv_nr(srm.x());
-    const auto cd = inner_class().integrality_codec(srm.gamma_lambda(),inv);
+    const auto& cd = inner_class().integrality_codec(srm.gamma_lambda(),inv);
     result -= theta_1_preimage(result,cd); // ensure orthogonal to integ. sys
     assert((cd.coroots_matrix*result).is_zero()); // check that it was done
   }

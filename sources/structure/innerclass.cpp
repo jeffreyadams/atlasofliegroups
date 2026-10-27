@@ -27,6 +27,8 @@
 #include "matreduc.h" // |diagonalise| used in |square_class_choice|
 
 #include <set>
+#include <map>
+#include <unordered_map>
 
 #include "lattice.h"
 #include "rootdata.h"
@@ -103,6 +105,32 @@ inline WeightInvolution compute_matrix
   return ic.root_datum().action_matrix(ic.Weyl_group().word(tw.w()))
     * ic.distinguished();
 }
+
+/*
+  Lookup of blocks (|Rep_table::lookup|) calls |int_item| and constructs a
+  |repr::codec| for every parameter, while their results depend only on
+  |gamma|, respectively on an integral system and an involution; computing
+  them each time took most of the lookup time. So we memoise them here. Tables
+  are emptied when they reach their maximal size, to bound memory use.
+*/
+struct InnerClass::lookup_cache
+{
+  struct gamma_hash
+  { size_t operator() (const RatWeight& gamma) const // |gamma| is normalised
+    { size_t h = gamma.denominator();
+      for (auto c : gamma.numerator())
+	h = h*1000003u + static_cast<size_t>(c);
+      return h;
+    }
+  };
+  static constexpr size_t max_locators = 1u<<18, max_codecs = 1u<<16;
+
+  std::unordered_map<RatWeight,repr::locator,gamma_hash> locators;
+  std::unordered_map<unsigned long long,repr::codec> int_codecs;
+    // indexed by |int_sys_nr| (high 32 bits) and |inv| (low 32 bits)
+  std::map<std::pair<InvolutionNbr,RootNbrList>,repr::codec> codecs;
+    // indexed by |inv| and integrally simple roots
+};
 
 InnerClass::C_info::C_info
   (const InnerClass& G,const TwistedInvolution twi, CartanNbr i)
@@ -1117,6 +1145,18 @@ subsystem::integral_datum_item& InnerClass::int_item
   (RatWeight gamma, repr::locator& loc)
 {
   const auto& rd = root_datum();
+
+  gamma.normalize();
+  if (lookup_memo==nullptr)
+    lookup_memo.reset(new lookup_cache);
+  auto& memo = lookup_memo->locators;
+  { const auto it = memo.find(gamma);
+    if (it!=memo.end())
+    { loc = it->second; // |loc| depends on |gamma| only
+      return int_table[loc.int_syst_nr];
+    }
+  }
+  const RatWeight key = gamma; // since |gamma| will be modified
   const auto& W = Weyl_group();
 
   // start by moving |gamma| closer to origin: into |W| orbit of fundam. alcove
@@ -1177,18 +1217,49 @@ subsystem::integral_datum_item& InnerClass::int_item
   for (RootNbr alpha : images)
     loc.simple_pi.push_back(im_set.position(alpha));
 
+  if (memo.size()>=lookup_cache::max_locators)
+    memo.clear();
+  memo.emplace(key,loc);
   return result;
 } // |InnerClass::int_item|
 
-repr::codec InnerClass::integrality_codec
+const repr::codec& InnerClass::int_codec
+  (unsigned int int_sys_nr, InvolutionNbr inv) const
+{
+  if (lookup_memo==nullptr)
+    lookup_memo.reset(new lookup_cache);
+  auto& memo = lookup_memo->int_codecs;
+  const auto key = static_cast<unsigned long long>(int_sys_nr)<<32 | inv;
+  auto it = memo.find(key);
+  if (it==memo.end())
+  {
+    if (memo.size()>=lookup_cache::max_codecs)
+      memo.clear();
+    it = memo.emplace(key,int_table[int_sys_nr].data(inv)).first;
+  }
+  return it->second;
+}
+
+const repr::codec& InnerClass::integrality_codec
   (const RatWeight& gamma, InvolutionNbr inv) const
 { const auto& rd = root_datum();
   sl_list<RootNbr> int_simples = integrality_simples(rd,gamma);
-  int_Matrix coroot_mat(int_simples.size(),rank());
-  unsigned int i=0;
-  for (RootNbr alpha : int_simples)
-    coroot_mat.set_row(i++,rd.coroot(alpha));
-  return repr::codec(*this,inv,coroot_mat);
+  if (lookup_memo==nullptr)
+    lookup_memo.reset(new lookup_cache);
+  auto& memo = lookup_memo->codecs;
+  auto key = std::make_pair(inv,int_simples.to_vector());
+  auto it = memo.find(key);
+  if (it==memo.end())
+  {
+    int_Matrix coroot_mat(int_simples.size(),rank());
+    unsigned int i=0;
+    for (RootNbr alpha : int_simples)
+      coroot_mat.set_row(i++,rd.coroot(alpha));
+    if (memo.size()>=lookup_cache::max_codecs)
+      memo.clear();
+    it = memo.emplace(std::move(key),repr::codec(*this,inv,coroot_mat)).first;
+  }
+  return it->second;
 }
 
 #if 0 // see if the folloing are still used; they shouldn't

@@ -18,6 +18,8 @@
 
 #include "Atlas.h"
 
+#include <memory> // for |std::unique_ptr|
+
 #include "tags.h"
 #include "bitmap.h"	// containment of bitmaps for real forms
 #include "permutations.h"// containment of root twist
@@ -236,6 +238,9 @@ class InnerClass
   subsystem::integral_datum_entry::Pooltype integral_pool;
   integral_hash int_hash;
   std::vector<subsystem::integral_datum_item> int_table;
+
+  struct lookup_cache; // results of |int_item| and codecs, see innerclass.cpp
+  mutable std::unique_ptr<lookup_cache> lookup_memo; // created on first use
 
  public:
 // constructors and destructors
@@ -505,7 +510,11 @@ class InnerClass
   const subsystem::integral_datum_item& int_item (unsigned int int_sys_nr) const
   { return int_table[int_sys_nr]; }
 
-  repr::codec integrality_codec
+  // codecs are memoised; a returned reference remains valid until the next
+  // call of |int_codec| or |integrality_codec|
+  const repr::codec& int_codec // same as |int_item(int_sys_nr).data(inv)|
+    (unsigned int int_sys_nr, InvolutionNbr inv) const;
+  const repr::codec& integrality_codec
     (const RatWeight& gamma, InvolutionNbr inv) const;
 
   // map root (number) from |root_datum()| to its |cofolded_datum()| counterpart
