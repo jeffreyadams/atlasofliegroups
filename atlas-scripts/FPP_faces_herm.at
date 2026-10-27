@@ -2556,6 +2556,25 @@ set tuf(Param p) = rat:
 set thf(Param p) = rat:
     if step_tuf_flag then max(try_ht_factor, (9/8)/tuf(p)) else try_ht_factor fi
 
+{u_cap_flag (Oct 27 2026).  A race that chooses is_unitary gives it u_factor*u_time, however cheap
+ to_ht is predicted to be.  At E7_s x_open, p = (x=20925,lambda=[1,1,1,1,1,1,1],nu=[3,1,1,2,1,2,1]/3)
+ at HT 27: u_time 28.9 s <= try_u_factor*to_ht_time (31.8 s), so is_unitary got 231 s and took
+ 127.6 s (false); to_ht 27 takes 1.3 s (false).  Both predictions were off (u 4x low, to_ht 25x high),
+ and which side of try_u_factor they fall on depends on measured deform times.  So cap the is_unitary
+ budget by the predicted cost of the alternative: an interrupted is_unitary keeps its work (see
+ alt_u_flag), and the race then also tries to_ht.  Only the first attempt is capped: once p has an
+ interrupted is_unitary on record it gets the full budget, since a cap that stays at the to_ht
+ prediction makes the race alternate (E8_s 220459 lambda #384: three extra positive to_ht tests,
+ 46.6 s, between capped is_unitary attempts that together took the same 57 s as one uncapped).}
+set u_cap_flag = true
+set u_cap_factor = rat: 1
+set u_budget(Param p, int u_time, int to_ht_time) = int:
+    let b = floor(u_factor*u_time)
+    in if u_cap_flag and to_ht_time >= 0 and tested_inter_hash.lookup(p) < 0
+       then min(b, max(floor(u_cap_factor*to_ht_time), interrupt_base_time))
+       else b
+       fi
+
 {lazy head sampling (u_head_lazy_flag in hermitian.at): when a race has chosen is_unitary, sample
  the head now; if the new prediction u2 reverses the choice (u2 > tuf(p)*to_ht_time), keep u2 as a
  floor for p and decline (result 0, no time spent), so the race moves to to_ht.}
@@ -2566,7 +2585,7 @@ set race_lazy_check(Param p, int to_ht_time, int budget) = (bool,int): {(decline
 	 then () = u_head_sampling := false
 	 in if u2 > tuf(p)*to_ht_time
 	    then u_head_set_floor(p,u2); u_head_declined +:= 1; (true, 0)
-	    else (false, max(budget, floor(u_factor*u2)))
+	    else (false, max(budget, u_budget(p,u2,to_ht_time)))
 	    fi
     else (false, budget)
     fi
@@ -3113,7 +3132,7 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
        	    do if{A} u_time <= tuf(p)*to_ht_time
 	       then u_count+:=1;
 	       	    let start_u = elapsed_ms()
-	       	    then () = result := race_u(1,ht,u_time,to_ht_time,test_time,p,floor(u_factor*u_time))
+	       	    then () = result := race_u(1,ht,u_time,to_ht_time,test_time,p,u_budget(p,u_time,to_ht_time))
 		    in test_time:= elapsed_ms() - start_u;
 		       if print_int_flag
 		       then prints("result ",result," from is_unitary, in time ",
@@ -3243,7 +3262,7 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
 	        fi{A};  {tuf(p)*to_ht_time}
 		if{B} u_time <= tuf(p)*to_ht_time
 		then let startu = elapsed_ms()
-		     then () = result := race_u(2,ht,u_time,to_ht_time,test_time,p,floor(u_factor*u_time))
+		     then () = result := race_u(2,ht,u_time,to_ht_time,test_time,p,u_budget(p,u_time,to_ht_time))
 		     in test_time:= elapsed_ms() - startu;
 		     	if print_int_flag {and result != 0}
 		        then prints("result ",result," from is_unitary, in time ",
@@ -3379,7 +3398,7 @@ set is_unitary_test_big_SIMPLE_interrupted_Ufirst(Param p, int time) = int:
   then () = while result = 0 and elapsed_ms() - start < time
        	    do if{A} u_time <= tuf(p)*to_ht_time {floor(u_factor*u_time) < 2*floor(to_ht_factor*to_ht_time)}
 	       then let start_u = elapsed_ms()
-	       	     in result := race_u(3,ht,u_time,to_ht_time,test_time,p,floor(u_factor*u_time));
+	       	     in result := race_u(3,ht,u_time,to_ht_time,test_time,p,u_budget(p,u_time,to_ht_time));
 		       	 test_time:= elapsed_ms() - start_u;
 	       		 if print_int_flag
 		       	 then prints("result ",result," from is_unitary, in time ",
@@ -3491,7 +3510,7 @@ set is_unitary_test_big_SIMPLE_interrupted(Param p, int time) = int:
 	       fi; {A} { to_ht_time <= thf(p)*u_time}
 	       if{B}  u_time <= tuf(p)*to_ht_time 
 	       then let start_u = elapsed_ms()
-	       then () = result := race_u(4,ht,u_time,to_ht_time,test_time,p,floor(u_factor*u_time));
+	       then () = result := race_u(4,ht,u_time,to_ht_time,test_time,p,u_budget(p,u_time,to_ht_time));
 		       	 test_time:= elapsed_ms() - start_u;
 	       		 if print_int_flag
 		       	 then prints("result ",result," from is_unitary, in time ",
@@ -3637,7 +3656,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
   then () = while result = 0
        	    do if{A} u_time <= tuf(p)*to_ht_time
 	       then let start_u = elapsed_ms()
-	       	    then form = race_sig(5,HT,u_time,to_ht_time,test_time,p,floor(u_factor*u_time))
+	       	    then form = race_sig(5,HT,u_time,to_ht_time,test_time,p,u_budget(p,u_time,to_ht_time))
 		    in result := is_pure(to_ht(form,HT));
 		       test_time:= elapsed_ms() - start_u;
 	       	       if print_int_flag
@@ -3749,7 +3768,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
 	       fi{A}; { to_ht_time <= thf(p)*u_time }
 	       if{C}  u_time <= tuf(p)*to_ht_time
 	       then let start_u = elapsed_ms()
-	       	    then form = race_sig(6,HT,u_time,to_ht_time,test_time,p,floor(u_factor*u_time))
+	       	    then form = race_sig(6,HT,u_time,to_ht_time,test_time,p,u_budget(p,u_time,to_ht_time))
 		    then () = result := is_pure(to_ht(form,HT));
 		       	      test_time:= elapsed_ms() - start_u;
 	       		 if print_int_flag
@@ -3904,10 +3923,11 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
 		fi; {A} { to_ht_time <= thf(p)*u_time}
 	        if {B}  u_time <= tuf(p)*to_ht_time
 		then let start_u = elapsed_ms()
-		     then form = big_unitary_hash.sig_entry_interrupt(p,-1 ,floor(u_factor*u_time))
+		     then form = big_unitary_hash.sig_entry_interrupt(p,-1 ,u_budget(p,u_time,to_ht_time))
 	       	     in u_count+:=1;
 		     	test_time:= elapsed_ms() - start_u;
 			result:=is_pure(to_ht(form,HTlast));
+			race_log_add(p,[7,0,HT,u_time,to_ht_time,u_budget(p,u_time,to_ht_time),test_time,result]);
 	       		if print_int_flag
 		       	then prints("result ",result," from is_unitary, in time ",
 				      	 print_time_string(test_time),
@@ -3977,11 +3997,12 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_Ufirst(Param p, [int] HTs) = bool:
 	       then let start_u = elapsed_ms()
 		     {then () = push_deform_flag:=true}
 		     {then depth = is_unitary_depth(p,floor(u_factor*u_time))}
-		     then form = big_unitary_hash.sig_entry_interrupt(p,-1 ,floor(u_factor*u_time))
+		     then form = big_unitary_hash.sig_entry_interrupt(p,-1 ,u_budget(p,u_time,to_ht_time))
 		     {then form = hermitian_form_irreducible(p,floor(u_factor*u_time))}
 	       	     in u_count+:=1;
 		     	test_time:= elapsed_ms() - start_u;
 			result:=is_pure(to_ht(form,HTlast));
+			race_log_add(p,[8,0,HT,u_time,to_ht_time,u_budget(p,u_time,to_ht_time),test_time,result]);
 	       		if print_int_flag
 		       	then prints("result ",result," from is_unitary, in time ",
 				      	 print_time_string(test_time),

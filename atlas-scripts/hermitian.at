@@ -304,7 +304,8 @@ set jagH_time = int:0
  by log_2 KGB_size), once it has th_min_count entries; else th_fallback_scale (fits gave
  1/4000-1/37000).  The old position-based curve (GAM_HTs_easy(N,HT)) put a fixed 85x head/tail
  ratio on 18 terms and gave E7_s x_open p3 at HT 27 10-92sec against an actual 2.0sec.}
-set th_model_flag = false
+set th_model_flag = true {on by default Oct 27 2026: with u_cap_flag, E7_s x_open 874 -> 838 s; neutral on
+  E7_s [17000:17100] and E8_s 220459 lambda #384 (rank-8 UKL gate answers first)}
 set TH_REM = [int]: [1000,1149,1320,1516,1741] {1000*2^(r/5)}
 set th_weight(Param q, int HT) = int:
     let g = max(HT - height(q), 0) in 2^(g\5) * TH_REM[g%5] * (#reducibility_points(q) + 1)
@@ -1601,7 +1602,10 @@ set uh_record(Param p, int T) = void:
     	       in uh_sumT[i] +:= T; uh_sumN[i] +:= #K; uh_count[i] +:= 1
     esac
 
+{pred_log_flag: see was_tested_to_ht; UTESTLOG/UINTERLOG/UPREDLOG are the is_unitary analogues}
+set pred_log_flag = false
 set was_tested(Param p, int T, bool ans) = void:
+    if pred_log_flag then prints("UTESTLOG ",p.root_datum.rank," ",p," T=",T," ans=",ans) fi;
     record_u_time(p.real_form, T);
     uh_record(p, T);
     {let () = if p = parameter(Sp(6,R),8,[2,1,1],[1,-1,0]/2)
@@ -1666,6 +1670,7 @@ set report_inter_log() = void:
     for (p,T,c) in inter_log do prints("  ", T, " ms  ", c, "  ", p) od
 
 set was_tested_inter(Param p, int T) = void:
+    if pred_log_flag then prints("UINTERLOG ",p.root_datum.rank," ",p," T=",T) fi;
     inter_log #:= (p, T, race_ctx);
     if drain_plug_flag and T > drain_plug_time
     then prints(p," took ",print_time_string(T)," for interrupted is_unitary")
@@ -1713,7 +1718,6 @@ set was_tested_inter(Param p, int T, int T_target) = void:
 
 {pred_log_flag: log every u_predictor_to_ht call (PREDLOG) and every completed to_ht test
  (TESTLOG), to compare predictions with actual times offline (join on param and HT).}
-set pred_log_flag = false
 set was_tested_to_ht(Param p,int N, int T, bool ans) = void:
     if pred_log_flag then prints("TESTLOG ",p.root_datum.rank," ",p," HT=",N," T=",T," ans=",ans) fi;
     if drain_plug_flag and T > drain_plug_time
@@ -2474,6 +2478,8 @@ set u_predictor(Param p, int time) = int:
 	predictor_count+:=1;
 	predictor_u_time+:= elapsed_ms() - start_pred;
 	predictor_u_count+:=1;
+	if pred_log_flag then prints("UPREDLOG ",p.root_datum.rank," ",p," N=",N," un=",un," unk=",
+	   sum(for j in unknown_indices do pred_list[j] od)," pred=",pred) fi;
        	pred
 
 set u_predictor(Param p) = int:
