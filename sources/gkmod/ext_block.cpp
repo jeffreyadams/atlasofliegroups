@@ -307,7 +307,7 @@ bool context::is_very_complex (InvolutionNbr theta, RootNbr alpha) const
 Weight context::to_simple_shift
   (InvolutionNbr theta, InvolutionNbr theta_p, RootNbrSet S) const
 { const InvolutionTable& i_tab = inner_class().involution_table();
-  S &= (i_tab.real_roots(theta) ^i_tab.real_roots(theta_p));
+  S &= (i_tab.real_roots(theta) ^ i_tab.real_roots(theta_p));
   return root_sum(root_datum(),S);
 }
 
@@ -320,8 +320,11 @@ Weight context::to_simple_shift
 
   This comes from an action of |delta| on a certain top wedge product of
   root spaces, and the formula below tells whether that action is by $-1$.
+
+  It appears that currently this methods is neither used internally, nor
+  made available as a user-callable function
 */
-bool context::shift_flip
+bool context::conjug_flip
   (InvolutionNbr theta, InvolutionNbr theta_p, RootNbrSet S) const
 { S.andnot(delta_fixed()); // $\delta$-fixed roots won't contribute
 
@@ -2433,8 +2436,8 @@ K_repr::K_type ext_param::restrict_K(Weight&& theta_plus_1_lambda) const
   may by associated to the transformations made while setting $\nu=0$. This is
   the first of three related functions that deal with similar questions, the
   other ones being |extended_finalise| (which does not change $\nu$ but handles
-  non-dominant |gamma|) end |scale_extended| (which deals with deforming $\nu$
-  as well as this function, but not all the way to zero).
+  non-dominant |gamma|) and |scaled_extended_finalise| (which deals with
+  deforming $\nu$ just like this function, but not all the way to zero).
 
   Changing $\nu$ in the parameter may mean that |gamma|, which we here assume
   initially dominant and fixed by |delta|, crosses some (complex) walls into
@@ -2447,7 +2450,7 @@ K_repr::K_type ext_param::restrict_K(Weight&& theta_plus_1_lambda) const
   the default choices for |sr|, and at the end comparing the transformed values
   to the default choices at the final parameter.
  */
-K_type_poly extended_restrict_to_K
+K_type_poly extended_scale_to_0
   (const Rep_context rc, const StandardRepr& sr, const WeightInvolution& delta)
 {
   assert(rc.is_standard(sr));
@@ -2559,7 +2562,7 @@ K_type_poly extended_restrict_to_K
   } // |while(not todo.empty())|
 
   return result;
-} // |extended_restrict_to_K|
+} // |extended_scale_to_0|
 
 /*
   The following function determines whether an extended parameter has a descent
@@ -2626,8 +2629,8 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
   RatWeight gamma = sr.gamma(); // a working copy
   ext_param E = default_extend(ctxt,sr); // start extension at |sr|
 
-  // now make |gamma| dominant and finalise |scaled_sr|, while updating |E|
-  // similar to |extended_restrict_to_K| above
+  // now make |gamma| dominant and finalise |sr|, while updating |E|
+  // similar to |extended_scale_to_0| above
 
   containers::sl_list<std::pair<StandardRepr,bool> > result;
   using q_element = std::pair<ext_param,RatWeight>;
@@ -2741,7 +2744,7 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
   reports whether a net flip of the default extension choice occurred as the
   second component of the returned value. It is simpler than |extended_finalise|
   because it requires |sr| to be initially final. It is also a bit simpler than
-  |extended_restrict_to_K| above, in that $\nu$ does not become zero: one does
+  |extended_scale_to_0| above, in that $\nu$ does not become zero: one does
   not move onto new real walls (no new real singular roots), and for real roots
   that were already singular, the parity condition is unchanged (also dominance
   for the imaginary subsystem is altogether unaffected by $\nu$). Therefore
@@ -2773,7 +2776,7 @@ std::pair<StandardRepr,bool> scaled_extended_finalise
   E.gamma_lambda += gamma-sr.gamma(); // shift |E.gamma_lambda| by $\nu$ change
 
   // now make |gamma| dominant and finalise |scaled_sr|, while updating |E|
-  // similar to |extended_restrict_to_K| above, but we only need to treat
+  // similar to |extended_scale_to_0| above, but we only need to treat
   // complex coroots (both for dominance and finality)
 
   InvolutionNbr i_theta = i_tab.nr(E.tw);

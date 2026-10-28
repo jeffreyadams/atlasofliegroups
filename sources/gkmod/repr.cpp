@@ -2759,8 +2759,8 @@ const deformation_unit&
   }
 
   KT_nr_pol P { std::less<K_type_nr>() }; // order terms using |K_type_hash|
-  { // compute the LKTs with possible sign flips, using |extended_restrict_to_K|
-    auto z_K = ext_block::extended_restrict_to_K(*this,z,delta);
+  { // compute the LKTs with possible sign flips, using |extended_scale_to_0|
+    auto z_K = ext_block::extended_scale_to_0(*this,z,delta);
     for (auto&& term : z_K) // look up K-types, map coefs to |int|, and reorder
       P.add_term(K_type_hash.match(std::move(term.first)),
 		 term.second.s_to_minus_1());

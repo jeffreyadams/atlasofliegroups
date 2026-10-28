@@ -279,8 +279,8 @@ class context // holds values that remain fixed across extended block
 			 RootNbrSet pos_to_neg) const;
   // whether conjugation-to-simple sending |theta| to |theta_p|, and with
   // |pos_to_neg| as set of positive roots becoming negative, induces a flip
-  bool shift_flip(InvolutionNbr theta, InvolutionNbr theta_p,
-		  RootNbrSet pos_to_neg) const;
+  bool conjug_flip(InvolutionNbr theta, InvolutionNbr theta_p,
+		   RootNbrSet pos_to_neg) const;
 
   // possible manipulator; |RootDatum|,|SubSystem| need to implement this first
   // void act_on_gamma(const WeylWord& ww); // left-apply |ww| to |d_gamma|
@@ -363,7 +363,7 @@ inline bool is_default (const ext_param& E)
 { return same_sign(E,default_extend(E.ctxt,E.restrict_mod())); }
 
 // restrict to K expanding to final K types, taking into account extended flips
-K_type_poly extended_restrict_to_K
+K_type_poly extended_scale_to_0
   (const Rep_context rc, const StandardRepr& sr, const WeightInvolution& delta);
 
 // similar operation for scaling of $\nu$ by strictly positive |factor|

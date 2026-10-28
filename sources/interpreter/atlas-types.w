@@ -8968,7 +8968,7 @@ imaginary reflections being applied (the former might produce one or two
 contributions from a Hecht-Schmid identity, the latter might remove a
 contribution). Since we handle failure of dominance and of finality for
 $K$-types anyway, we need only require the argument parameter to satisfy
-|is_standard| here. The function |extended_restrict_to_K| in the
+|is_standard| here. The function |extended_scale_to_0| in the
 module \\{ext\_block} does the actual work.
 
 @< Local function def...@>=
@@ -8984,7 +8984,7 @@ void K_type_pol_extended_wrapper(eval_level l)
   if (l==eval_level::no_value)
     return;
 @)
-  auto result = @;ext_block::extended_restrict_to_K(rc,p->val,delta->val);
+  auto result = @;ext_block::extended_scale_to_0(rc,p->val,delta->val);
   push_value (std::make_shared<K_type_pol_value>(p->rf,std::move(result)));
 }
 
