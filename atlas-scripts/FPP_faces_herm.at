@@ -2852,7 +2852,7 @@ set is_unitary_to_ht_hash_big_SIMPLE_Lucas(Param p, int HT) = int:
 		    	 G_jump = HT - height(p)
      {first nonunitarity height for pL is height(pL) + min_{derpL}(1st nu ht for derpL-ht(derpL)).}
      	    	    in if all(for derpL in derpLs
-	       	       	      do @bool: is_unitary_to_ht_big_SIMPLE(derpL, height(derpL)+G_jump - jump)
+	       	       	      do @bool: is_unitary_to_ht_big_SIMPLE(derpL, height(derpL)+G_jump)
 	       		      od)
 		       then add_to_u_to_ht(p,HT); 1
 		       else big_unitary_hash.numatch_height(p,HT); -1
@@ -4609,7 +4609,7 @@ set is_FPP_unitary_to_ht(Param p, int HT) = int:
      then derpLs = derived_factor_params0(pL), jump = height_jump(pL,Q), G_jump = HT - height(p)
      {first nonunitarity height for pL is height(pL) + min_{derpL}(1st nu ht for derpL-ht(derpL)).}
      in if all(for derpL in derpLs
-	       do @bool: is_unitary_to_ht_big_SIMPLE(derpL, height(derpL)+G_jump - jump)
+	       do @bool: is_unitary_to_ht_big_SIMPLE(derpL, height(derpL)+G_jump)
 	       od)
 	then add_to_u_to_ht(p,HT); 1
 	else big_unitary_hash.numatch_height(p,HT); -1
