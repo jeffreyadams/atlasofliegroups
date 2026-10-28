@@ -1898,63 +1898,74 @@ set ifu_fast_count = int:0
 set DMB_flag = true
 
 {Use Davis/Mason-Brown criterion. -1 means nonunitary, 0 means don't know.}
-set is_FPP_unitary_fast(Param p) = int:
-    if not DMB_flag then return 0 fi;
-    if (not is_hermitian(p)) then return -1 fi;
-    if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return -1 fi;
-    let G = (p:= herm_center(p)).real_form
-    then gamma = p.infinitesimal_character
+{DMB_core: p hermitian and herm-centered; no side effects. For a simple coroot alphav of G with
+ gamma*alphav = 1, alpha_j is simple in the integral system, so "alpha_j in tau(p)" is
+ status(alpha_j,p) < 4 (the definition of tau_bitset). Oct 28 2026: the old test built
+ integrality_datum_hash and tau(p) once per such coroot; E7_s x=20918, 34114 Params: 12.7 s -> 3.8 s,
+ identical answers.}
+set DMB_core(Param p) = int:
+    let G = p.real_form, gamma = p.infinitesimal_character
+    then sr = G.simple_roots
     then alphavs = for alphav@j in G.simple_coroots
-		  do if gamma*alphav < 1
-		     then [j]
-		     elif gamma*alphav > 1
-		     then []
-		     else let rdi = integrality_datum_hash(G,gamma)
-			  then ji = coroot_index(rdi,alphav)
-			  in if not is_member_sorted(tau(p))(ji)
-			     then []
-			     else [j]
-			     fi
-		     fi
-		  od.##
-     then () = if #alphavs = G.semisimple_rank
-	       then return 0 {say we don't know}
-	       fi
-     then Q = KGPElt:(alphavs, p.x) {p now must be good range coh ind from Q}
-     then rhou = Q.rho_u
-     in if((p.x.involution-1)*rhou).!=
-	then big_unitary_hash.numatch(p);
-	     ifu_fast_count +:= 1;
-	     -1
-        else 0
-	fi
+		   do let c = gamma*alphav
+		      in if c < 1 then [j]
+			 elif c > 1 then []
+			 elif status(sr[j],p) < 4 then [j]
+			 else []
+			 fi
+		   od.##
+    in if #alphavs = G.semisimple_rank then 0 {say we don't know}
+       else let Q = KGPElt:(alphavs, p.x) {p now must be good range coh ind from Q}
+	    in if ((p.x.involution-1)*Q.rho_u).!= then -1 else 0 fi
+       fi
+
+{is_FPP_unitary_fast for p already hermitian and herm-centered}
+set is_FPP_unitary_fast_c(Param p) = int:
+    if not DMB_flag then 0
+    elif not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then -1
+    else let r = DMB_core(p)
+	 in if r < 0 then big_unitary_hash.numatch(p); ifu_fast_count +:= 1 fi; r
+    fi
+
+set is_FPP_unitary_fast(Param p) = int:
+    if not DMB_flag then 0
+    elif not is_hermitian(p) then -1
+    elif not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then -1
+    else is_FPP_unitary_fast_c(herm_center(p))
+    fi
 
 set stat_holder = int:0
 
 {1 means unitary to HT, -1 means nonunitary to HT, 0 means don't know}
+{simple_status_c: p already hermitian and herm-centered (status calls it directly). Oct 28 2026:
+ one uhash lookup (nu_height_lookup_int repeated it), no u_to_ht lookup when HT < 0 (it is always
+ false there), and the centered DMB test: status(q,-1) 21.2 s -> 9.6 s on the 83744 vertex
+ monomials of E7_s x=20918, identical answers.}
+set simple_status_c(Param p, int HT) = int:
+    let start_st = elapsed_ms(), GAM = GAM(p)
+    then () = if HT >= GAM then HT:=-1 fi
+    then nu_neg(Param p) = bool: {= nu_height_lookup_int(p,HT) < 0 when p is not in uhash}
+	 let jn = big_unitary_hash.nulookup(p)
+	 in jn >= 0 and
+	    (HT < 0 or
+	     (HT > height(p) and
+	      (let H0 = big_unitary_hash.nu_heights(p.real_form)[jn] in H0 >= 0 and HT >= H0)))
+    then ans = int:
+	 if big_unitary_hash.ulookup(p) >= 0 then 1
+	 elif nu_neg(p) then -1
+	 elif HT >= 0 and is_known_u_to_ht(p,HT) then 1
+	 elif is_finished_step(p) and HT < 0 then -1 {otherwise we'd have found it in ulookup}
+	 elif HT < 0 then is_FPP_unitary_fast_c(p)
+	 else 0 {is_FPP_unitary_fast(p) {WRONG!}}
+	 fi
+    in status_time +:= elapsed_ms() - start_st;
+       status_count +:= 1;
+       if ans > 0 then status_ucount+:=1 fi;
+       if ans < 0 then status_nucount+:=1 fi;
+       ans
+
 set simple_status(Param p, int HT) = int:
-    if not is_hermitian(p) then return -1 fi;
-    p:= herm_center(p);
-    let start_st = elapsed_ms(), ans = int:0
-    then GAM = GAM(p)
-    in
-    if HT >= GAM then HT:=-1 fi;
-    ans := if big_unitary_hash.ulookup(p) >= 0
-    	   then 1
-    	   elif big_unitary_hash.nu_height_lookup_int(p,HT) < 0
-    	   then -1
-    	   elif is_known_u_to_ht(p,HT)
-    	   then 1
-    	   elif is_finished_step(p) and HT < 0
-    	   then -1 {otherwise we'd have found it in ulookup}
-	   elif HT < 0 then is_FPP_unitary_fast(p)
-     	   else 0 {is_FPP_unitary_fast(p) {WRONG!}}
-    	   fi;
-    status_time +:= elapsed_ms() - start_st;
-    status_count +:= 1;
-    if ans > 0 then status_ucount+:=1 fi;
-    if ans < 0 then status_nucount+:=1 fi;
-    ans
+    if not is_hermitian(p) then -1 else simple_status_c(herm_center(p),HT) fi
 
 {1 means unitary to HT, -1 means nonunitary to HT, 0 means don't know}
 {function tester is an additional test of this sort, like is_unitary_hash_big_SIMPLE_reduce or
@@ -2374,7 +2385,7 @@ set status(Param p, int HT) = int:
     p:= herm_center(p);
     if wiggle_status_cod_one_flag then return wiggle_status_cod_one(p,HT) fi;
     if wiggle_status_all_flag then return wiggle_status_all(p,HT) fi;
-    let st = simple_status(p,HT)
+    let st = simple_status_c(p,HT)
     in if st = 0 and real_ind_flag
        then for test in real_ind_tests do let a = test(p,HT) in if a != 0 then return a fi od
        fi;
