@@ -2780,17 +2780,15 @@ set is_unitary_hash_big_SIMPLE_Lucas(Param p) = int:
 	if (stat_holder:= status(p,-1)).!= then return stat_holder fi;
     } {#3}
     let gamma = p.infinitesimal_character, rd = p.root_datum, G=p.real_form, start = elapsed_ms()
-    then rdi = integrality_datum_hash(rd,gamma)
+    then sr = G.simple_roots
     then alphavs = for alphav@j in rd.simple_coroots
-		  do if gamma*alphav < 1
-		     then [j]
-		     else let ji = coroot_index(rdi,alphav)
-			  in if not is_member_sorted(tau(p))(ji)
-			     then []
-			     else [j]
-			     fi
-		     fi
-		  od.##
+		   do let c = gamma*alphav
+		      in if c < 1 then [j]
+			 elif denom(c) != 1 then [] {not integral, so not in tau(p)}
+			 elif status(sr[j],p) < 4 then [j] {alpha_j in tau(p); see DMB_core}
+			 else []
+			 fi
+		   od.##
     in if #alphavs = G.semisimple_rank
        then 0
        else Lucas_counter+:=1;
@@ -2826,17 +2824,15 @@ set reduce_frac = 3/2 {NEVER do reduce_testing. This seems better in E7_s. Chang
 set is_unitary_to_ht_hash_big_SIMPLE_Lucas(Param p, int HT) = int:
     if p.x.number < reduce_frac*p.real_form.KGB_size then return 0 fi;
     let gamma = p.infinitesimal_character, rd = p.root_datum, G=p.real_form, start = elapsed_ms()
-    then rdi = integrality_datum_hash(rd,gamma)
+    then sr = G.simple_roots
     then alphavs = for alphav@j in G.simple_coroots
-		   do if gamma*alphav < 1
-		      then [j]
-		      else let ji = coroot_index(rdi,alphav)
-			  in if not is_member_sorted(tau(p))(ji)
-			     then []
-			     else [j]
-			     fi
-		     fi
-		  od.##
+		   do let c = gamma*alphav
+		      in if c < 1 then [j]
+			 elif denom(c) != 1 then [] {not integral, so not in tau(p)}
+			 elif status(sr[j],p) < 4 then [j] {alpha_j in tau(p); see DMB_core}
+			 else []
+			 fi
+		   od.##
      in if #alphavs = G.semisimple_rank
 	then 0 {say we don't know}
 	else Lucas_counter+:=1;
@@ -4486,19 +4482,15 @@ set is_FPP_unitary(Param p) = int:
     if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return -1 fi;
     let G = (p:= herm_center(p)).real_form
     then gamma = p.infinitesimal_character
+    then sr = G.simple_roots
     then alphavs = for alphav@j in G.simple_coroots
-		  do if gamma*alphav < 1
-		     then [j]
-		     elif gamma*alphav > 1
-		     then []
-		     else let rdi = integrality_datum_hash(G,gamma)
-			  then ji = coroot_index(rdi,alphav)
-			  in if not is_member_sorted(tau(p))(ji)
-			     then []
-			     else [j]
-			     fi
-		     fi
-		  od.##
+		   do let c = gamma*alphav
+		      in if c < 1 then [j]
+			 elif c > 1 then []
+			 elif status(sr[j],p) < 4 then [j] {alpha_j in tau(p); see DMB_core}
+			 else []
+			 fi
+		   od.##
      then () = if #alphavs = G.semisimple_rank
 	       then return 0 {say we don't know}
 	       fi
@@ -4532,18 +4524,15 @@ set is_FPP_unitary(Param p, (Param -> bool) fancy_tester ) = int:
     if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return -1 fi;
     let G = (p:= herm_center(p)).real_form
     then gamma = p.infinitesimal_character
-    then rdi = integrality_datum_hash(G,gamma)
+    then sr = G.simple_roots
     then alphavs = for alphav@j in G.simple_coroots
-		  do if gamma*alphav < 1
-		     then [j]
-		     elif gamma*alphav > 1
-		     then []
-		     else let ji = coroot_index(rdi,alphav)
-			  in if is_member_sorted(tau(p))(ji)
-			     do j
-			     fi
-		     fi
-		  od.##
+		   do let c = gamma*alphav
+		      in if c < 1 then [j]
+			 elif c > 1 then []
+			 elif status(sr[j],p) < 4 then [j] {alpha_j in tau(p); see DMB_core}
+			 else []
+			 fi
+		   od.##
      then () = if #alphavs = G.semisimple_rank
 	       then return 0 {say we don't know}
 	       fi
@@ -4576,19 +4565,15 @@ set is_FPP_unitary_to_ht(Param p, int HT) = int:
     if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return -1 fi;
     let G = (p:= herm_center(p)).real_form
     then gamma = p.infinitesimal_character
+    then sr = G.simple_roots
     then alphavs = for alphav@j in G.simple_coroots
-		  do if gamma*alphav < 1
-		     then [j]
-		     elif gamma*alphav > 1
-		     then []
-		     else let rdi = integrality_datum_hash(G,gamma)
-			  then ji = coroot_index(rdi,alphav)
-			  in if not is_member_sorted(tau(p))(ji)
-			     then []
-			     else [j]
-			     fi
-		     fi
-		  od.##
+		   do let c = gamma*alphav
+		      in if c < 1 then [j]
+			 elif c > 1 then []
+			 elif status(sr[j],p) < 4 then [j] {alpha_j in tau(p); see DMB_core}
+			 else []
+			 fi
+		   od.##
      then () = if #alphavs = G.semisimple_rank
 	       then return 0 {say we don't know}
 	       fi
