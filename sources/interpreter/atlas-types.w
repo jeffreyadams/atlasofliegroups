@@ -7601,6 +7601,11 @@ void default_extend_wrapper(eval_level l)
 when shifted to a different infinitesimal character |gamma| produces an extended
 parameter opposite to the default extensions at |gamma|.
 
+The free function |ext_block::shifted_default_extension| that computes the
+shifted version of the default extension of |p->val| just applies the shift
+directly into the |ext_block::ext_param| that it builds; it is so simple that it
+is actually inlined in the file \.{ext_block.h}.
+
 @< Local function def...@>=
 void shift_flip_wrapper(eval_level l)
 {
@@ -7614,9 +7619,14 @@ void shift_flip_wrapper(eval_level l)
     throw runtime_error@|("Involution does not fix rational weight");
   if (not ((1-delta)*p->val.gamma().numerator()).is_zero())
     throw runtime_error@|("Involution does not fix infinitesimal character");
+  const WeightInvolution& theta =
+    p->rf->val.innerClass().matrix(p->rf->kgb().involution(p->val.x()));
+  auto shift = gamma->val - p->val.gamma();
+  if (not (theta*shift+shift).is_zero())
+    throw runtime_error@|("Shift amount is not in -1 eigenspace of theta");
+@)
   if (l==eval_level::no_value)
     return;
-@)
   repr::Ext_rep_context ctxt(rc,delta);
   auto E = ext_block::shifted_default_extension(ctxt,p->val,gamma->val);
   push_value(whether(not ext_block::is_default(E)));
