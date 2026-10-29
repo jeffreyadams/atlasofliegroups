@@ -271,6 +271,48 @@ set K0_K_type(KGBElt xcG, vec tauwt) = KType:
 
 {this time the results are a list of [tau, [dertauLj]. First tau is always mu}
 {used only to create entry in minBottomData}
+{Bottom-layer lift of STORED factor witnesses in min_bottom_elim_factors (David, 10/29/26).
+ (Q,pL0) = theta_stable_quasi_data(p0), G connected. If a derived factor d_j of pL0 has a stored
+ witness der_tau (big_unitary_hash.nu_witnesses: signature at der_tau differs from that at the LKT),
+ the L-K-type with der_tau on d_j and the LKT factor of muL on every other factor is the min_bottom_factors
+ construction for one tuple; if its lift is K_0-dominant it is a bottom-layer K-type of p0 where the
+ signature differs from that at the LKT, so p0 is nonunitary with that witness. No signature is computed.
+ mbef_lift_mode: 0 off; 1 lift, then the usual test if undecided; 2 lift only (incomplete: loses
+ 1.5-8x, since uncaught p0 go on to full tests). E7_s with preLeviTheta_nu_E7_cls (serial, faces
+ identical): [14000:15866] 513 -> 504 s (mbef 61.6 -> 54.0 s); [17000:17100] 45.5 -> 45.2 s;
+ [20900:20910] tie (2 of 1148 p0 have a stored factor witness). All 5647 lifts of [14000:15866] checked
+ against the branched signature of p0: 0 wrong, 5 of them p0 that the usual test passed.
+ The lift's per-mu data and K_0 weights are those min_bottom_factors(mu) computes, which it stores
+ here when mbef_lift_mode > 0 (lift 12.9 s -> 1.2 s on [14000:15866]).}
+set mbef_lift_mode = 1
+set mbef_lift_count = [0,0] {lifts tried (some factor has a stored witness), p0 found nonunitary}
+set mbef_lift_time = int: 0
+
+{memo of K0_param(t,x).lambda_minus_rho, keyed on (t, x.number)}
+set k0lmr_keys = make_KType_hash()
+set k0lmr_vals = [[(int,ratvec)]]: []
+set k0lmr_empty = [(int,ratvec)]: []
+set k0lmr_find(KType t, KGBElt x) = (int,int): {(index of t, position of x.number or -1)}
+    let k = k0lmr_keys.match(t), n = x.number
+    then () = if k = #k0lmr_vals then k0lmr_vals #:= k0lmr_empty fi
+    in (k, first(#k0lmr_vals[k], (int i) bool: let (m,) = k0lmr_vals[k][i] in m = n))
+set k0lmr_store(KType t, KGBElt x, ratvec v) = void:
+    let (k,i) = k0lmr_find(t,x) in if i < 0 then k0lmr_vals[k] #:= (x.number,v) fi
+set k0lmr(KType t, KGBElt x) = ratvec:
+    let (k,i) = k0lmr_find(t,x)
+    in if i >= 0 then let (,v) = k0lmr_vals[k][i] in v
+       else let v = ratvec: K0_param(t,x).lambda_minus_rho in k0lmr_vals[k] #:= (x.number,v); v
+       fi
+
+{per-mu data of min_bottom_factors(mu): (G,ProjK,SFRP,dermuLs,derLs,derProjKinvs,xcG,derxcLs,muwt,K0)}
+set_type bl_lift_data = (RealForm,mat,[[int]],[KType],[RealForm],[mat],KGBElt,[KGBElt],vec,RealForm)
+set bl_lift_keys = make_KType_hash()
+set bl_lift_vals = [bl_lift_data]: []
+set bl_lift_store(KType mu, bl_lift_data v) = void:
+    let n = #bl_lift_vals in if bl_lift_keys.match(mu) = n then bl_lift_vals #:= v fi
+set bl_lift_clear() = void:
+    k0lmr_keys.clear(); k0lmr_vals := []; bl_lift_keys.clear(); bl_lift_vals := []
+
 set min_bottom_factors(KType mu) = LK_data:
     let p = parameter(mu), start = elapsed_ms()
     then (Q,pL) = theta_stable_quasi_data(p), G = p.real_form, ProjK = projection_to_K_matrix(mu.inner_class)
@@ -292,6 +334,9 @@ set min_bottom_factors(KType mu) = LK_data:
     then derxcLs = derived_factor_KGBs0(xcL)
     then muwt=K0_param(mu,xcG).lambda_minus_rho {size is rank(K)}
     then K0 = K_0(xcG)
+    then () = if mbef_lift_mode > 0
+    	      then bl_lift_store(mu,(G,ProjK,SFRP,dermuLs,derLs,derProjKinvs,xcG,derxcLs,muwt,K0))
+	      fi
     then test_coroots = [vec]:[]
     then dlambda = ProjK*(d_lambda(p).numer)
     then () = if use_test_coroots_flag
@@ -316,7 +361,9 @@ set min_bottom_factors(KType mu) = LK_data:
     	 for listj@j in dertauLs {list of derLj types}
     	 do let dermuLwtj = K0_param(listj[0], derxcLs[j]).lambda_minus_rho
 	    in for dertauLj in listj
-	       do K0_param(dertauLj,derxcLs[j]).lambda_minus_rho - dermuLwtj {this is a wt for K on derLj}
+	       do let v = K0_param(dertauLj,derxcLs[j]).lambda_minus_rho
+	       	  in if mbef_lift_mode > 0 then k0lmr_store(dertauLj,derxcLs[j],v) fi;
+		     v - dermuLwtj {this is a wt for K on derLj}
 	       od
 	 od
     then taushifts = for shiftlist@j in dertauLjshifts {for jth simple factor of L, this is a list of the (ratvec)
@@ -373,7 +420,7 @@ set make_min_bottom_data () = min_bottom_data:
    then heights = vec: [] {one for each K-type}
    then Lheights = [vec]: [] {one for each K-type; size #simple factors of L}
    then clear() = void:
-       let () = K_type_hash.clear()
+       let () = K_type_hash.clear(); bl_lift_clear()
        then () = bottom_data:=[]
        then  () = heights := []
        then () = Lheights :=[]
@@ -629,6 +676,51 @@ set mbef_wu_unitary(Param p0, [Param] derpL0js) = void:
 set mbef_pass_hash = make_Param_hash()
 set mbef_repeat_count = int: 0
 
+{per-mu data for the lift: as stored by min_bottom_factors(mu), else computed the same way}
+set bl_lift_pre(KType mu) = bl_lift_data:
+    let n = #bl_lift_vals, k = bl_lift_keys.match(mu)
+    in if k < n then bl_lift_vals[k] else
+    let p = parameter(mu)
+    then (Q,pL) = theta_stable_quasi_data(p), G = p.real_form
+    then muL = LKT(pL), L = Q.Levi
+    then derLs = derived_simple_factorsRF(L)
+    then xcL = natural_KGB_elt(muL)
+    then xcG = embed_KGB(xcL,G)
+    then v = (G, projection_to_K_matrix(mu.inner_class), simple_factor_root_partition(Q),
+    	      derived_factor_K_types0(muL), derLs,
+	      for derL in derLs do right_inverse(projection_to_K_matrix(derL)) od,
+	      xcG, derived_factor_KGBs0(xcL), K0_param(mu,xcG).lambda_minus_rho, K_0(xcG))
+    in bl_lift_vals #:= v; v fi
+
+{the first K_0-dominant lift of (wits[i] on derived factor jbad, LKT factor of muL elsewhere), as in
+ min_bottom_factors; [] if none}
+set bl_lift_K_type(KType mu, int jbad, [KType] wits) = [KType]:
+    let (G,ProjK,SFRP,dermuLs,derLs,derProjKinvs,xcG,derxcLs,muwt,K0) = bl_lift_pre(mu)
+    then Sj = SFRP[jbad], derLj = derLs[jbad], derxcLj = derxcLs[jbad]
+    then base = k0lmr(dermuLs[jbad],derxcLj)
+    then ans = [KType]: []
+    then () = for w in wits
+       do if #ans = 0
+	  then let sh = k0lmr(monomials(regroup(derLj, 1*w))[0],derxcLj) - base
+	       then tauwt = ratvec_as_vec(ProjK*(sum(G.rank, for xi@k in fundamental_coweights(derLj)
+	  	       	   do ((derProjKinvs[jbad]*sh)*xi)*(G.simple_roots[Sj[k]]) od)) + muwt)
+	       in if is_dominant(K0,tauwt) then ans := [K0_K_type(xcG,tauwt)] fi
+	  fi
+       od
+    in ans
+
+{a witness for p0 (LKT mu) from stored witnesses of the derived factors ds of pL0; [] if none}
+set mbef_lift_witness(Param p0, KType mu, [Param] ds) = [KType]:
+    if components_rank(p0.real_form) != 0 then [] else
+    let bad = [int]: for d@j in ds do if #big_unitary_hash.nu_witnesses(d) > 0 then [j] else [] fi od.##
+    in if #bad = 0 then [] else
+    let ans = [KType]: []
+    then () = for j in bad
+    	      do if #ans = 0 then ans := bl_lift_K_type(mu, j, big_unitary_hash.nu_witnesses(ds[j])) fi
+	      od
+    in mbef_lift_count[0] +:= 1; if #ans > 0 then mbef_lift_count[1] +:= 1 fi; ans
+    fi fi
+
 set min_bottom_elim_factors_test(Param p0) = bool:
     let start = elapsed_ms(), (Q,pL0) = theta_stable_quasi_data(p0), G = p0.real_form
     then () = if every_MBEF_flag
@@ -643,6 +735,20 @@ set min_bottom_elim_factors_test(Param p0) = bool:
     then () = assert(@:is_final(pL0),"nonfinal pL0 in min_bottom_elim_factors")
     then () = assert(@:is_hermitian(pL0),"nonherm pL0 in min_bottom_elim_factors")
     then derpL0js = derived_factor_params0(pL0) {all height 0; big_unitary_hash centers}
+    then () = if mbef_lift_mode > 0
+    	      then let t = elapsed_ms(), w = mbef_lift_witness(p0,mu,derpL0js)
+	      	   in mbef_lift_time +:= elapsed_ms() - t;
+		      if #w > 0
+		      then good_hash.match(p0); big_unitary_hash.numatch_witness(p0,w);
+		      	   mbefTime +:= elapsed_ms()-start;
+			   if every_MBEF_flag then prints("  false (lift)") fi;
+			   return false
+		      elif mbef_lift_mode = 2
+		      then mbef_pass_hash.match(p0); mbefTime +:= elapsed_ms()-start;
+			   if every_MBEF_flag then prints("  true (lift only)") fi;
+			   return true
+		      fi
+	      fi
     then zs = [bool]: for d in derpL0js do fiber_derived_zero_flag and in_fundamental_fiber(d.x) od
     then () = for z in zs do if z then fiber_derived_count +:= 1 fi od
     then DLs = for j:#derpL0js
@@ -757,7 +863,9 @@ set min_bottom_elim_factors_test(Param p0) = bool:
 set mbef_count_string() = string:
     " for " + (good_hash.size() + mbef_pass_hash.size()).to_string + " Params (" +
     actual_test_count.to_string + " needing a signature); " + mbef_repeat_count.to_string +
-    " repeat calls answered from hashes"
+    " repeat calls answered from hashes" +
+    (if mbef_lift_mode > 0 then "; witness lift caught " + mbef_lift_count[1].to_string + " of " +
+    	mbef_lift_count[0].to_string + " tried (" + print_time_string(mbef_lift_time) + ")" else "" fi)
 
 set min_bottom_elim_factors(Param p0) = bool:
     if good_hash.lookup(p0) >= 0 then mbef_repeat_count +:= 1; false
