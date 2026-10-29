@@ -1929,6 +1929,7 @@ set ht_bound_flags_restore() = void:
  also as FPP_def on deformations; hodge_FD, whose level-0 heights are not heights of the full form),
  so that nonunitary Params enter big_unitary_hash with their impure heights (nu_heights).  Wiggle and
  deformation tests are left alone: they record heights by def_nu_height (FPP_faces_herm.at).
+ Also records the faces of each graph equivalence class found nonunitary (nu_class_record).
  get_nu_info_restore() undoes it.}
 set nu_info_saved_flags = [bool]: []
 set get_nu_info() = void:
@@ -1938,13 +1939,13 @@ set get_nu_info() = void:
     Dirac_flag := false; Dirac_best_flag := false; Dirac_local_flag := false;
     Dirac_best_local_flag := false; Dirac_best_K_hash_flag := false; FPP_def_flag := false;
     FPP_def_edge_flag := false; KGB_def_test_frac_flag := false; hodge_FD_flag := false;
-    DMB_flag := false
+    DMB_flag := false; nu_class_record := 1
 set get_nu_info_restore() = void:
     let s = nu_info_saved_flags
     in Dirac_flag := s[0]; Dirac_best_flag := s[1]; Dirac_local_flag := s[2];
        Dirac_best_local_flag := s[3]; Dirac_best_K_hash_flag := s[4]; FPP_def_flag := s[5];
        FPP_def_edge_flag := s[6]; KGB_def_test_frac_flag := s[7]; hodge_FD_flag := s[8];
-       DMB_flag := s[9]
+       DMB_flag := s[9]; nu_class_record := 0
 
 {Production run with the wiggle (wiggle_flag1, on stored character formulas). Impure heights of
  nonunitary Params are recorded whenever a signature is computed, with no flag needed. The cheap

@@ -790,6 +790,67 @@ set wiggle_class(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]
 	       wiggle_flag1_time +:= elapsed_ms() - start; #qs > 0
        fi
 
+{Recording the faces of graph equivalence classes found nonunitary (David, 10/28/26). Class k of eq
+ (face numbers in FVKH) is discarded when tester fails at the Param p of one of its faces, and with it
+ the classes above (before -> after: those updateNUclassesB marks "Ffrom..", bigger faces). Each of
+ their faces q deforms down to p, so near p the form of q is an orthogonal sum containing the form of
+ p: a witness of p (big_unitary_hash.nu_witnesses) of height <= HT is a witness for q; with no witness,
+ the height of p is recorded. nu_class_record: 0 off; 1 record the lowest-dimensional faces of each
+ class; 2 all faces (get_nu_info sets 1). Faces whose Param is not a single hermitian monomial are
+ skipped. nu_class_check: test each record against the signature of the face (slow; for testing).}
+set nu_class_record = 0
+set nu_class_check = false
+set nu_class_count = [0,0,0,0,0] {classes found, classes above, faces with witness, faces with height only,
+    		     	   	  check FAILED}
+set record_nu_class(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]] FVKH, [[int]] eq,
+    int k, [Param] ps, int HT, [string] before, [string] after) = void:
+    if nu_class_record > 0 and #ps = 1
+    then let p = herm_center(ps[0])
+    	 then w = big_unitary_hash.nu_witnesses(p), hp = big_unitary_hash.nu_height_lookup(p)
+	 then ws = if #w > 0 and (HT < 0 or height(w[0]) <= HT) then w else [KType]: [] fi
+	 then h = if #ws > 0 then height(ws[0]) elif hp >= 0 and (HT < 0 or hp <= HT) then hp else -1 fi
+	 {the faces of class C to record, as Params q}
+	 then faces([int] C) = [Param]:
+	      let dims = for N in C do let (d,) = coords(FVKH,N) in d od
+	      then dmin = min(dims)
+	      in for N@i in C
+		 do if nu_class_record > 1 or dims[i] = dmin
+		    then let (d,j) = coords(FVKH,N)
+		    	 then qs = monomials(finalize(parameter(x,lambda,face_bary(Lvd,FVKH[d][j][:d+1]))))
+			 in if #qs = 1 and is_hermitian(qs[0]) then [herm_center(qs[0])] else [] fi
+		    else []
+		    fi
+		 od.##
+	 {a witness tau of q: the signature of q at tau has a part of the kind missing at its LKT}
+	 then check(Param q) = void:
+	      if nu_class_check and h >= 0
+	      then let ok = if #ws = 0 then not is_pure(to_ht(big_unitary_hash.sig_entry(q,h),h))
+	      	   	    else let B = branch_std(big_unitary_hash.sig_entry(q,h),h)
+			    	 then a = B[LKTs(q)[0]]
+			    	 in any(for tau in ws
+				     	do let b = B[tau]
+					   in (!=a.int_part and !=b.s_part) or (!=a.s_part and !=b.int_part)
+					od)
+			    fi
+		   in if not ok
+		      then nu_class_count[4] +:= 1; prints("NU_CLASS_CHECK_FAILED ",q," from ",p," height ",h)
+		      fi
+	      fi
+	 then record(Param q) = void:
+	      if #ws > 0 then nu_class_count[2] +:= 1; big_unitary_hash.numatch_witness(q,ws)
+	      else nu_class_count[3] +:= 1; big_unitary_hash.numatch_height(q,h)
+	      fi; check(q)
+	 in nu_class_count[0] +:= 1;
+	    for q in faces(eq[k]) do record(q) od;
+	    if h >= 0
+	    then for m:#eq
+	    	 do if m != k and before[m] != after[m] and after[m][0] = "F"
+		    then nu_class_count[1] +:= 1; for q in faces(eq[m]) do record(q) od
+		    fi
+		 od
+	    fi
+    fi
+
 set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     [[FaceVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFace, (Param->bool) tester,
     int HT, Param_hash Uhash, (Param->bool) fancy_tester) = [[FaceVertsKHash]]:
@@ -916,7 +977,9 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 				       	    elif all(for stat in stats do stat > 0 od)
 				       	    then newStatuses[k] := "T"
 				       	    el}if any(for p in ps do @bool: not tester(p) od)
-				       	    then newStatuses:= updateNUclassesB(newStatuses, gr, k);
+				       	    then let before = newStatuses
+				       	         in newStatuses:= updateNUclassesB(newStatuses, gr, k);
+				       	            record_nu_class(x,lambda,Lvd,FVKH,eq,k,ps,HT,before,newStatuses);
 				       	    	 newStatuses[k] := "F"
 				       	    else newStatuses[k] := "T"
 				       	    fi {any stat}
@@ -996,7 +1059,8 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 				     newStatuses[K]:= "T"
 				el}
 				if any(for p in ps do @bool: not tester(p) od)
-				then newStatuses[K] := "F"
+				then record_nu_class(x,lambda,Lvd,FVKH,eq,K,ps,HT,newStatuses,newStatuses);
+				     newStatuses[K] := "F"
 				else downdateUclassesB(newStatuses, gr, K, "T");
 				     newStatuses[K]:= "T"
 				fi

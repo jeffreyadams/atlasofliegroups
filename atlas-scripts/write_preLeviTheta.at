@@ -29,7 +29,8 @@ set write_preLeviTheta() = void:
     do write_preLeviTheta(big_unitary_hash.rf_index(i))
     od
 
-{Same, but with the known NONUNITARY Params and their heights (nu_heights) as well.
+{Same, but with the known NONUNITARY Params, their heights (nu_heights) and witness K-types
+ (nu_witnesses) as well.
  Run preLeviTheta(G) after get_nu_info(), so that every nonunitary Param gets a height.
 
  usage:
@@ -46,7 +47,18 @@ set write_preLeviTheta_nu(RealForm G) = void:
 		      p.x.number,",",p.lambda,",",p.nu,")")
 	    od;
 	    prints("set nu_hts = ",nu_hts);
-	    prints("void: big_unitary_hash.numatches_height(tempnuParams,nu_hts)")
+	    prints("void: big_unitary_hash.numatches_height(tempnuParams,nu_hts)");
+	    for p@j in nulist
+	    do let ws = big_unitary_hash.nu_witnesses(p)
+	       in if #ws > 0
+	       	  then let str = "void: big_unitary_hash.numatch_witness(tempnuParams[" + j + "],[KType]: ["
+		       in for tau@m in ws
+		       	  do str +:= (if m > 0 then "," else "" fi) + "K_type(KGB(G_temp," + tau.x.number + "),"
+			     	     + to_string(tau.lambda_minus_rho) + ")"
+			  od;
+			  prints(str + "])")
+		  fi
+	    od
        fi
 
 set write_preLeviTheta_nu() = void:

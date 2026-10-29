@@ -655,8 +655,8 @@ set min_bottom_elim_factors_test(Param p0) = bool:
      matters only where the other factors give a nonzero s_part, and then only
      through whether m = 0. Its branch is computed lazily, at most once.}
     then nf = #derpL0js
-    {failing bottom-layer K-type tau (LKT pure, tau not): impure_height(signature(p0)) <= height(tau)}
-    then stage = ([int] DLs) (bool,bool,int): {(tested, answer, height of failing tau or -1)}
+    {failing bottom-layer K-type tau (LKT pure, tau not): a witness for p0 (big_unitary_hash.nu_witnesses)}
+    then stage = ([int] DLs) (bool,bool,[KType]): {(tested, answer, failing tau or [])}
         let known = [bool]: for j:nf do false od {signature of factor j computed}
       then Lbranches = [KTypePol]: for j:nf do null_K_module(derpL0js[j].real_form) od
       then existNU = false
@@ -674,9 +674,9 @@ set min_bottom_elim_factors_test(Param p0) = bool:
   				    fi
   	    fi
   	 od
-       in if not existNU then return (false,true,-1) fi;
+       in if not existNU then return (false,true,[]) fi;
   	let ubr_done = [bool]: for j:nf do false od {lazy branches of known-unitary factors}
-  	then answer = true, fail_ht = -1
+  	then answer = true, fail_tau = [KType]: []
   	then () = for mu in LKTs(p0)
   	     do if answer
   	     	then let LKData = minBottomData.entry(mu) {[tau,[dertauLj]]; LKData[0] is mu}
@@ -707,13 +707,13 @@ set min_bottom_elim_factors_test(Param p0) = bool:
   						   if int_part(UB[j][list[j]]) = 0 then zero := true fi
   					      fi
   					   od;
-  					   if not zero then answer := false; fail_ht := height(tau) fi
+  					   if not zero then answer := false; fail_tau := [tau] fi
   				   fi
   			   fi
   			od
   		fi
   	     od
-      in (true,answer,fail_ht)
+      in (true,answer,fail_tau)
     {heights tried in turn: on factor j the first bl_stage_count next_heights below DLs[j]
      (cheap, usually decisive), then DLs[j] itself; never stop short of DLs, since an uncaught
      nonunitary p0 is not recorded and comes back.  Same answers as DL/2, 4DL/5, DL;
@@ -735,16 +735,16 @@ set min_bottom_elim_factors_test(Param p0) = bool:
       od
     then DLstages = [[int]]:
       for k:max(for l in lists do #l od) do for l in lists do l[min(k,#l-1)] od od
-    then (tested,answer,fail_ht) = (false,true,DG)
+    then (tested,answer,fail_tau) = (false,true,[KType]: [])
     then () = for DLc in DLstages
               do if answer
-	      	 then let (t,a,h) = stage(DLc) in tested := tested or t; answer := a; fail_ht := h
+	      	 then let (t,a,w) = stage(DLc) in tested := tested or t; answer := a; fail_tau := w
 		 fi
 	      od
     then () = if tested then actual_test_count+:=1 else not_test_count+:=1 fi
      in if not answer
    	     then good_hash.match(p0);
-	     	  big_unitary_hash.numatch_height(p0,fail_ht)
+	     	  big_unitary_hash.numatch_witness(p0,fail_tau)
 	     else mbef_pass_hash.match(p0);
 	     	  if mbef_wu_flag then mbef_wu_unitary(p0,derpL0js) fi
 	     fi;
@@ -891,7 +891,7 @@ set min_bottom_elim_factors(Param p0, int HT) = bool:
 	    return true
        else actual_test_count +:=1
        fi;
-       let answer = true, fail_ht = DG {failing tau: impure_height(signature(p0)) <= height(tau)}
+       let answer = true, fail_tau = [KType]: [] {failing tau: a witness for p0}
        then () = for mu in LKTs(p0)
     	 do if answer
 	    then for (tau,list) in minBottomData.entry_to_bd(mu,HT)[1:] {[tau,[dertauLj]]}
@@ -900,14 +900,14 @@ set min_bottom_elim_factors(Param p0, int HT) = bool:
 			 then () = for Lbranch@i in Lbranches
 			       	   do coeff*:= regroup(list[i].real_form,Lbranch)[list[i]]
 			  	   od
-		    	 in if s_part(coeff).!= then answer := false; fail_ht := height(tau) fi
+		    	 in if s_part(coeff).!= then answer := false; fail_tau := [tau] fi
 		    fi
 	       	 od
 	    fi
          od
    	in if not answer
    	   then good_hash.match(p0);
-	     	big_unitary_hash.numatch_height(p0,fail_ht)
+	     	big_unitary_hash.numatch_witness(p0,fail_tau)
 	   fi;
    	   mbefTime +:= elapsed_ms()-start;
    	   if every_MBEF_flag then prints("  ",answer) fi;
@@ -1007,7 +1007,7 @@ set bottom_elim_factors(Param p0, QKL_bottom_data (Q, LKdata)) = bool:
     then rfs = let (,l0) = LKdata[0] in for tauLj in l0 do tauLj.real_form od
     then LB = for j:nf do if known[j] then regroup(rfs[j],Lbranches[j]) else Lbranches[j] fi od
     then ub_done = [bool]: for j:nf do false od
-    then result = true, fail_ht = D {failing tau: impure_height(signature(p0)) <= height(tau)}
+    then result = true, fail_tau = [KType]: [] {failing tau: a witness for p0}
     then () = for (tau,list) in LKdata
     	      do if result
 	      	 then let coeff = Split: 1 {bottom layer signature at tau, known factors}
@@ -1024,13 +1024,13 @@ set bottom_elim_factors(Param p0, QKL_bottom_data (Q, LKdata)) = bool:
 					 if int_part(LB[j][list[j]]) = 0 then zero := true fi
 				    fi
 				 od;
-				 if not zero then result := false; fail_ht := height(tau) fi
+				 if not zero then result := false; fail_tau := [tau] fi
 			 fi
 		 fi
 	      od
     then () = if not result
 	      then more_good_hash.match(p0);
-		   big_unitary_hash.numatch_height(p0,fail_ht)
+		   big_unitary_hash.numatch_witness(p0,fail_tau)
 	      fi
     then () =  befmoreTime +:= elapsed_ms()-start
     in result
