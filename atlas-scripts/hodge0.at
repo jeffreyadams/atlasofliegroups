@@ -1,5 +1,6 @@
 <hodge_deform.at
 <TWOHEIGHTS.at {for HT}
+<bruhat_Param_claude.at {for Q_constant_term (Q_const_flag)}
 
 {---------------------------------------------------------------------------}
 { hodge0HT_claude.at -- push the height truncation DOWN INTO the recursion.
@@ -405,6 +406,15 @@ set hodge_check_time() = bool:
 
 set_type [hodge0_data = (KTypePol H0std, KTypePol H0irr, vec inds)]
 
+{Q_const_flag: in equal rank, take the column Q of graded composition
+ multiplicities from Q_constant_term (bruhat_Param_claude.at), a mu-free
+ recursion for KL Q-polynomial constant terms, instead of filling the whole
+ signed P(0) matrix of the partial block and back-solving.  partial_KL_block is
+ still called: the P(0) column of p is needed for Hpirr.  Q_constant_term
+ agreed with back_solve on 1515 parameters / 95k pairs in Sp(10,R), Spin(6,4),
+ SU(3,3), Spin(5,5), E6_q, E6_s, Sp(12,R), Spin(6,6) (Oct 2026).}
+set Q_const_flag = bool: false
+
 set (Hodge_hash_0, Hodge_hash_clear, print_HH_stats, HH_data, Hodge_maybe_0) = ((Param -> (KTypePol, KTypePol)), ( -> ), ( -> ), ( -> (Param_hash, KTypePol_hash,[vec])), ((Param,int) -> (maybe_KTP,maybe_KTP))):
 (    let hodge_param_hash = make_Param_hash()
     then hodge_Kpol_hash = make_KTypePol_hash()
@@ -503,18 +513,25 @@ set (Hodge_hash_0, Hodge_hash_clear, print_HH_stats, HH_data, Hodge_maybe_0) = (
 		the whole of the P fill and the solve on top of the block.}
 	       then () = if hodge_check_time() then return (vec: []) fi
 	       then sgns = for l in easy_block_lengths(B) do (-1)^l od
-	       then P = id_mat(#B)
-	       then () = for i:#B - 1
-	    	       	 do  for j: #B - i - 1 from i+1
-		      	  do  P[i,j]:= if Ppol[i,j] = 0
-			    	       then 0
-				       else sgns[i]*sgns[j]*pols[Ppol[i,j]][0]
-				       fi
-			  od
-		      od
-	       then last = null(#B-1)#1
-	       then Q = back_solve(P,last)
-	       then lower_inds = for j:#B-1 if (Q[j]!=0) or (P[j,#B-1]!=0) do j fi od
+	       {Pc = column of p in the signed P(0) matrix, Q = column of its inverse}
+	       then (Pc,Q) = (vec,vec):
+	       	    if Q_const_flag and is_equal_rank(prf)
+		    then let l = #B-1
+		    	 in (for i:#B do if i = l then 1 elif Ppol[i,l] = 0 then 0
+			    	      	 else sgns[i]*sgns[l]*pols[Ppol[i,l]][0] fi od,
+			     for q in B do Q_constant_term(q,p) od)
+		    else let P = id_mat(#B)
+		    	 then () = for i:#B - 1
+	    	       	 	   do  for j: #B - i - 1 from i+1
+		      	  	       do  P[i,j]:= if Ppol[i,j] = 0
+			    	       		    then 0
+						    else sgns[i]*sgns[j]*pols[Ppol[i,j]][0]
+						    fi
+				       od
+				   od
+			 in (P[#B-1], back_solve(P,null(#B-1)#1))
+		    fi
+	       then lower_inds = for j:#B-1 if (Q[j]!=0) or (Pc[j]!=0) do j fi od
 	       then lowers = for j in lower_inds
 	    	     	     do HHinds(B[j])
 		     	     od
@@ -542,11 +559,11 @@ set (Hodge_hash_0, Hodge_hash_clear, print_HH_stats, HH_data, Hodge_maybe_0) = (
             in Hstds #:=Hpstd; lower_inds#:=#B-1;
 	       if hodge0_verbose
 	       then prints("at ",p,", def is ",def);
-	       	    prints("graded comp series of p = ",Q); prints("P = ",P)
+	       	    prints("graded comp series of p = ",Q); prints("column of p in P = ",Pc)
 	       fi;
 	       let Hpirr = HHcut(sum(prf, for j@k in lower_inds
 				    do if orientation_nr(B[j]) = orp
-				       then P[j,#B-1]*Hstds[k]
+				       then Pc[j]*Hstds[k]
 				       else emptyK
 				       fi
 				    od))

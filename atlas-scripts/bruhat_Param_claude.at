@@ -1,0 +1,412 @@
+<tabulate.at
+<W_orbit.at
+<sort.at
+<basic.at {for integrality datum}
+<groups.at {for trivial_group}
+<Vogan-dual.at {for dual@Param, used by the twisted section}
+{bruhat order: given x,y\in KGB(G) compute x<=y (boolean)
+in principle this is determined by the covering relations,
+as given by KGB_Hasse}
+
+{
+There are easy relations for KL P polynomials: if s is in tau(q) and the p is in the unique ascent of (one or two)
+[pi^alpha] (so in particular s is not in tau(p); two pi^alpha happens in case i2 for p) then
+
+P_{p,q} = sum_i P_{pi^alpha,q}.
+
+p small, q big; tau(p) small, tau(q) big
+
+The library code uses this with the notion of _primitive_: (p,q) is called P-PRIMITIVE if no root for which p is
+a single-valued descent is in tau(q). (Crudely: tau(q) is contained in tau(p).) The reason is that for s in tau(q),
+character formula of q must transform by -1 under s.
+
+If p were one of two [p0,p1] with the same descent p^alpha (case i1), then the formula would be
+
+P_{p0,q} + P_{p_1,q}= P_{p^alpha,q}, which doesn't compute individual terms on the left.
+
+*************
+
+For the KL Q polynomials, "same" thing: if s not in tau(p) and s is in tau(q) and
+[qi_alpha] are its s-descents q (0, 1, or 2 parameters), then
+
+Q_{p,q} = sum_i Q_{p,qi_alpha}
+
+Reason is that if s is in tau(q), then the composition factors (p with s not in tau(p))
+of q and of sum(qi_alpha) are exactly the same.
+
+So we call (p,q) Q-PRIMITIVE if tau(p) is contained in tau(q) (so we can't use this).)
+}
+
+<bruhat.at {descend, bruhat_leq, ... (this file used to carry a copy)}
+
+{ ================================================================
+  Constant terms Q_{p,q}(0) of the inverse KL polynomials.
+  (Claude, 9/21/26; replaces the unfinished bruhat_param_leq draft
+   in bruhat_Param.at)
+
+  Convention: I(q) = sum_p Q_{p,q}(1) J(p), so Q_{p,q} != 0 only if p <= q;
+  equivalently  sum_x (-1)^{l(x)-l(z)} P_{z,x} Q_{x,q} = delta_{z,q}.
+
+  By Vogan duality Q_{p,q} = P^v_{q^v,p^v}.  The recursion below is atlas's
+  own P recursion (sources/gkmod/kl.cpp) applied on the dual side and
+  translated back.  Duality exchanges statuses
+      C- <-> C+,  ic <-> rn,  r1 <-> i2,  r2 <-> i1
+  (r1 = real type I: two inverse Cayleys, cross fixes; i2 = imaginary
+   type II: two Cayleys, cross fixes), and descents of p^v are the
+  s NOT in tau(p).  In every formula of kl.cpp the mu-correction terms
+  carry a positive power of q, so at q=0 they all drop out: the constant
+  terms satisfy a closed recursion with no mu's.
+
+  Steps, for p != q with l(p) < l(q):
+  1 (Q-primitivize) some s is not in tau(p) but in tau(q):
+      q C- : Q(p,s x q)       q ic : 0
+      q r1 : Q(p,q1)+Q(p,q2)  q r2 : Q(p,q1)        (q1,q2 inverse Cayleys)
+  2 (direct) some s is C+ or i2 for p; p' = s x p, resp. a Cayley of p;
+    s is then an ascent for q too (tau(q) in tau(p)):
+      q rn : Q(p',q)                    q C+ : Q(p',s x q)
+      q i2 : Q(p',q1)+Q(p',q2)-Q(p',q)  q i1 : Q(p',Cayley(q))-Q(p',s x q)
+  3 (new recursion) every s not in tau(p) is i1 or rn for p:
+    a) some s ic for p with q C- or rn:  0
+                                  q r1:  (Q(p,q1)+Q(p,q2))/2
+    b) "endgame" s ic for p, r2 for q, and t i1 for p, r1/r2 for s x q:
+         Q(p,Cayley(s,q)) - sum over inverse t-Cayleys u of s x q of Q(p,u)
+    c) otherwise 0
+  Regular infinitesimal character only (asserted).
+  ================================================================ }
+
+{ integral simple roots, cached for the most recent (real form, infinitesimal
+  character): integrality_datum is recomputed otherwise on every call }
+set int_simple_cache_key = ratvec: []
+set int_simple_cache_rf = trivial_group
+set int_simple_cache = [vec]: []
+set int_simple_roots (Param p) = [vec]:
+  let g = p.infinitesimal_character in
+  if g = int_simple_cache_key and p.real_form = int_simple_cache_rf
+  then int_simple_cache
+  else int_simple_cache := integrality_datum(p).simple_roots;
+       int_simple_cache_key := g; int_simple_cache_rf := p.real_form;
+       int_simple_cache
+  fi
+
+{ inverse Cayley transform(s) of q in simple root alpha, when real parity }
+set down_Cayleys (vec alpha, Param q) = [Param]:
+  let st = status(alpha,q) in
+  if st=2 then let q1 = Cayley(alpha,q) in [q1,cross(alpha,q1)]  {r1}
+  elif st=3 then [Cayley(alpha,q)]                                {r2}
+  else [] fi
+
+{ one step of Q-primitivization, as a signed list of (coefficient, param):
+  returns [] with flag false when (p,q) is already Q-primitive }
+set Q_primitivize_step (Param p, Param q) = (bool,[(int,Param)]):
+  let S = int_simple_roots(p)
+  then j = first(#S, (int i) bool: status(S[i],p) >= 4 and status(S[i],q) < 4)
+  in if j<0 then (false,[])
+     else let alpha = S[j], st = status(S[j],q) in
+       (true,
+        if st=0 then [(1,cross(alpha,q))]                 {C-}
+	elif st=1 then []                                  {ic: Q=0}
+	else for u in down_Cayleys(alpha,q) do (1,u) od   {r1, r2}
+	fi)
+     fi
+
+{ fully Q-primitivize: list of q_down with Q(p,q) = sum Q(p,q_down) }
+set rec_fun Q_primitivize (Param p, Param q) = [Param]:
+  if q=p then [q]
+  elif length(q)<=length(p) then [] { Q(p,q)=0 from here on }
+  else let (moved,terms) = Q_primitivize_step(p,q) in
+    if not moved then [q]
+    else ## for (,u) in terms do Q_primitivize(p,u) od
+    fi
+  fi
+
+{ (p,q) Q-primitive: no s outside tau(p) lies in tau(q), i.e. tau(q) in tau(p) }
+set is_Q_primitive (Param p, Param q) = bool:
+  p.real_form = q.real_form and
+  p.infinitesimal_character = q.infinitesimal_character and
+  (let S = int_simple_roots(p)
+   in first(#S, (int i) bool: status(S[i],p) >= 4 and status(S[i],q) < 4) < 0)
+
+{ memo table for Q0, keyed by indices of p and q in Q0_params }
+set Q0_params = make_Param_hash()
+set Q0_keys = make_vec_hash()
+set Q0_vals = [int]: []
+{ diagnostics: how often each step of the recursion fires
+  [prim, direct, 3a-zero, 3a-r1, endgame, 3c-zero] }
+set Q0_step_counts = [0,0,0,0,0,0]
+set Q0_stat = [[int]]: [] { status vectors, parallel to Q0_params }
+set clear_Q0() = void:
+  Q0_params := make_Param_hash(); Q0_keys := make_vec_hash(); Q0_vals := [];
+  Q0_stat := []
+
+{ statuses of p on the integral simple roots, cached per parameter
+  (status@(vec,Param) is costly; this cache is O(#params), not O(#pairs)) }
+set pstat (Param p) = [int]:
+  let N = Q0_params.size() then i = Q0_params.match(p) in
+  if i=N then Q0_stat #:= for alpha in int_simple_roots(p) do status(alpha,p) od fi;
+  Q0_stat[i]
+
+
+{ if true, only Q-primitive pairs are memoized; any other pair is first
+  expanded by Q_primitivize (DV's suggestion, 9/21/26) }
+set Q0_prim_only = true
+
+set rec_fun Q0 (Param p, Param q) = int:
+  if p=q then 1
+  elif length(p) >= length(q) then 0
+  else
+    let S = int_simple_roots(p), sp = pstat(p), sq = pstat(q)
+    then j1 = first(#S, (int i) bool: sp[i]>=4 and sq[i]<4)
+    then step1 = @int: { Q-primitivization by S[j1], used when j1>=0 }
+      ( let alpha = S[j1], st = sq[j1] in
+        Q0_step_counts[0] +:= 1;
+        if st=0 then Q0(p,cross(alpha,q))                          {C-}
+        elif st=1 then 0                                            {ic}
+        else for u in down_Cayleys(alpha,q) do Q0(p,u) od.sum      {r1, r2}
+        fi )
+    in if j1>=0 and Q0_prim_only then step1() { not memoized }
+    else
+    let key = [Q0_params.match(p), Q0_params.match(q)]
+    then N = Q0_keys.size(), k = Q0_keys.match(key)
+    in if k<N then Q0_vals[k]
+    else Q0_vals #:= 0; { reserve slot k }
+      let value =
+        if j1>=0 then step1()
+        else
+        let j2 = first(#S, (int i) bool: sp[i]=4 or sp[i]=7) in
+        if j2>=0 { step 2: s is C+ or i2 for p }
+        then Q0_step_counts[1] +:= 1; let alpha = S[j2]
+             then pp = if sp[j2]=4 then cross(alpha,p) else Cayley(alpha,p) fi
+             , st = sq[j2]
+             in if st=5 then Q0(pp,q)                                  {rn}
+                elif st=4 then Q0(pp,cross(alpha,q))                   {C+}
+                elif st=7 then let q1 = Cayley(alpha,q)                {i2}
+                               in Q0(pp,q1)+Q0(pp,cross(alpha,q1))-Q0(pp,q)
+                elif st=6 then Q0(pp,Cayley(alpha,q))-Q0(pp,cross(alpha,q)) {i1}
+                else error("Q0 step 2: s in tau(q) but not tau(p)")
+                fi
+        else { step 3: every s outside tau(p) is i1 or rn for p }
+        let j3 = first(#S, (int i) bool: sp[i]=1 and (sq[i]=0 or sq[i]=2 or sq[i]=5))
+        in if j3>=0
+           then if sq[j3]=2
+                then Q0_step_counts[3] +:= 1; let tot = for u in down_Cayleys(S[j3],q) do Q0(p,u) od.sum
+                     in assert(tot%2=0,"Q0: odd sum in r1 case"); tot\2
+                else Q0_step_counts[2] +:= 1; 0 fi
+           else { endgame pair (s,t) }
+             let pairs = ## for i:#S do
+                 if sp[i]=1 and sq[i]=3
+                 then let sxq = cross(S[i],q) in
+                      ## for t:#S do
+                        if sp[t]=6 and (let st=pstat(sxq)[t] in st=2 or st=3)
+                        then [(i,t)] else [] fi od
+                 else [] fi od
+             in if #pairs=0 then Q0_step_counts[5] +:= 1; 0
+                else Q0_step_counts[4] +:= 1; let (i,t) = pairs[0]
+                     then sxq = cross(S[i],q)
+                     in Q0(p,Cayley(S[i],q))
+                        - for u in down_Cayleys(S[t],sxq) do Q0(p,u) od.sum
+                fi
+        fi fi fi
+      in Q0_vals[k] := value; value
+    fi { memo lookup }
+    fi { primitive or not }
+  fi
+
+{ translate a parameter at singular infinitesimal character to a regular one
+  (DV): Q_{p0,q0} = Q_{p1,q1} for p1 = parameter(p0.x, p0.lambda+2rho, p0.nu+2rho) }
+set Q0_regularize (Param p) = Param:
+  let tr = two_rho(p.real_form) in parameter(p.x, p.lambda+tr, p.nu+tr)
+
+{ public entry point: checks, then the memoized recursion;
+  singular infinitesimal character is handled by translation to regular }
+set Q_constant_term (Param p, Param q) = int:
+  assert(p.real_form = q.real_form, "real forms don't match");
+  assert(is_final(p) and is_final(q), "parameters must be final");
+  assert(p.infinitesimal_character = q.infinitesimal_character,
+         "infinitesimal characters don't match");
+  if is_regular(p) then Q0(p,q)
+  else let p1 = Q0_regularize(p), q1 = Q0_regularize(q) in
+    assert(is_regular(p1) and is_final(p1) and is_final(q1),
+           "translation by two_rho did not give regular final parameters");
+    Q0(p1,q1)
+  fi
+
+{ --------  ground truth from KL_block, for testing  -------- }
+
+{ Q(0) for the block of p: inverse of the matrix (-1)^{l(x)-l(z)} P_{z,x}(0) }
+set Q0_block (Param p) = ([Param],mat):
+  let (B,,M,polys) = KL_block(p)
+  then n = #B, ls = for b in B do length(b) od
+  then A = matrix((n,n), (int z,int x) int:
+             let P = polys[M[z,x]] in
+             if =#P then 0 else minus_1^(ls[x]-ls[z]) * P[0] fi)
+  then (Ainv,d) = invert(A)
+  in assert(d=1 or d=-1,"P(0) matrix not unimodular"); (B, d*Ainv)
+
+{ compare Q_constant_term with the ground truth on every pair in the block }
+set test_Q0 (Param p) = int:
+  let (B,Q) = Q0_block(p) then bad = 0, nz = 0 in
+  for x@i in B do for y@j in B do
+    let truth = Q[i,j], mine = Q_constant_term(x,y) in
+    if truth!=0 then nz +:= 1 fi;
+    if truth != mine
+    then bad +:= 1;
+         if bad<=5 then prints("MISMATCH Q(",i,",",j,")(0): truth ",truth,
+                               ", recursion ",mine) fi
+    fi
+  od od;
+  prints("test_Q0 ",p.real_form," block size ",#B,": ",#B*#B," pairs, ",
+         nz," nonzero, ",bad," mismatches");
+  bad
+
+{ ================================================================
+  TWISTED constant terms: ground truth only, for now.
+  partial_extended_KL_block(q,delta) gives the delta-fixed final parameters
+  of the block up to q, with twisted KLV polynomials already carrying the
+  length-parity signs (-1)^{l(x)-l(z)} (extensions are atlas's default ones).
+  Twisted Q(0) is the inverse of the matrix of their constant terms.
+  (A recursion for these is NOT mu-free as in the untwisted case: defect
+   types divide by 1+q, and length-3 / defect length-2 orbits have
+   degree-2 m-polynomials whose q^d factor is q^0 when l(y,u)=2;
+   see do_new_recursion, get_M and extract_M in sources/gkmod/ext_kl.cpp.)
+  ================================================================ }
+
+{ constant term of entry i of a partial_extended_KL_block polynomial matrix;
+  a negative index means the negated polynomial }
+set ext_const (int i, [vec] polys) = int:
+  let P = polys[abs(i)] in if =#P then 0 elif i<0 then -P[0] else P[0] fi
+
+set twisted_Q0_block (Param p) = ([Param],mat):
+  let delta = p.real_form.distinguished_involution
+  then B = block_of(p)
+  then fixed = for b in B if is_final(b) and twist(b)=b do b fi od
+  in if #fixed=0 then ([],null(0,0))
+  else let (F,M,polys) = partial_extended_KL_block(fixed~[0],delta)
+       then n = #F
+       then A = matrix((n,n),(int i,int j) int: ext_const(M[i,j],polys))
+       then (Ainv,d) = invert(A)
+       in assert(d=1 or d=-1,"twisted P(0) matrix not unimodular"); (F, d*Ainv)
+  fi
+
+{ histogram of the twisted Q(0) values in the block of p }
+set show_twisted_Q0 (Param p) = void:
+  let (F,Q) = twisted_Q0_block(p) then vals = [int]:[], cnt = [int]:[] in
+  for i:#F do for j:#F do let v = Q[i,j], k = find(vals,Q[i,j]) in
+    if k<0 then vals #:= v; cnt #:= 1 else cnt[k] +:= 1 fi od od;
+  prints(p.real_form,": ",#F," delta-fixed final parameters; twisted Q(0) values ",
+         vals," with counts ",cnt)
+
+{ ================================================================
+  TWISTED Q via Vogan duality (needs dualQ.at loaded for dual@Param):
+     twisted Q_{p,q} = twisted P^v_{dual(q),dual(p)}
+  so a whole row Q_{p,.} is the single twisted KL column at dual(p),
+  computed on a PARTIAL extended block of the dual group.
+  partial_extended_KL_block returns P with length-parity signs built in;
+  we undo them.  Extension-choice signs are what test_twisted_Q_row checks.
+  ================================================================ }
+
+{ dual(q) re-anchored over the real form dG: dual@Param can return value-distinct
+  (but mathematically identical) copies of the dual real form, e.g. from different
+  anchors, and = on Params then fails across them.  Same KGB number, lambda, nu. }
+set dual_over (RealForm dG, Param q) = Param:
+  let d = dual(q) in parameter(dG, d.x.number, d.lambda, d.nu)
+
+{ the row: dual partial block (delta-fixed finals up to dual(p)) and, for each
+  of its elements e, the twisted P^v_{e,dual(p)} WITHOUT length-parity sign }
+set twisted_Q_row (Param p) = ([Param],[vec]):
+  let dp = dual(p)
+  { duality transports delta to its transpose on the dual lattice; this is
+    NOT dual's own distinguished involution (they differ by -w0) }
+  then ddelta = ^(p.real_form.distinguished_involution)
+  then (dF,M,polys) = partial_extended_KL_block(dp, ddelta)
+  then n = #dF
+  in assert(n>0 and dF[n-1]=dp, "dual(p) is not the last element of its partial extended block");
+     (dF, for e@t in dF do
+            let i = M[t,n-1] then P = polys[abs(i)] then sgn = if i<0 then -1 else 1 fi
+            in sgn*minus_1^(length(dp)-length(e))*P od)
+
+{ folded length l_f: number of folded-generator steps from p down to the bottom
+  of its extended block (graph from built-in extended_block; path-independent,
+  checked on Spin(5,3), Spin(5,5), SL(6,R), E6_s).  Memoized per parameter. }
+set lf_params = make_Param_hash()
+set lf_values = [int]: []
+set folded_length (Param p) = int:
+  let k = lf_params.lookup(p) in
+  if k>=0 then lf_values[k]
+  else
+    let (P,types,L1,L2) = extended_block(p, p.real_form.distinguished_involution)
+    then n = #P, r = n_columns(types), ls = for x in P do length(x) od
+    then order = sort_by((int i) int: ls[i], <=@(int,int))(for i:n do i od)
+    then lf = for i:n do 0 od
+    in for i in order do
+         let ds = [int]:[] in
+         for j:r do for L in [L1,L2] do let v = L[i,j] in
+           if v<n then let k = if v<0 then -1-v else v fi in if ls[k]<ls[i] then ds #:= k fi fi
+         od od;
+         if #ds>0 then lf[i] := 1 + lf[ds[0]] fi
+       od;
+       for x@i in P do
+         let N = lf_params.size() then m = lf_params.match(x) in
+         if m=N then lf_values #:= lf[i] fi
+       od;
+       let k = lf_params.lookup(p) in
+       assert(k>=0,"folded_length: p not delta-fixed?"); lf_values[k]
+  fi
+
+{ sign relating the dual computation to atlas's own twisted KL for G:
+  eps(p) = (-1)^(l(p)-l_f(p)); found empirically (2026-09-21), holds on
+  SL(3..6,R), SU(2,1), Sp(4,R), SL(3,C), SL(4,C), Sp(4,C), Sp(6,C),
+  Spin(5,3), Spin(5,5), E6_s.  Presumably: twisted KL inversion wants folded
+  length parity, while partial_extended_KL_block signs use ordinary length. }
+set twisted_eps (Param p) = int: minus_1^(length(p)-folded_length(p))
+
+{ twisted Q_{p,q}(0) in atlas's conventions (default extensions for G) }
+set twisted_Q_constant_term (Param p, Param q) = int:
+  let (dF,col) = twisted_Q_row(p) then dq = dual_over(dF[0].real_form,q)
+  then k = first(#dF, (int t) bool: dF[t]=dq)
+  in if k<0 then 0 elif =#col[k] then 0
+     else twisted_eps(p)*twisted_eps(q)*col[k][0] fi
+
+{ compare with twisted_Q0_block ground truth on the block of p.
+  Parameters whose dual lies outside the dual block of the bottom element are
+  skipped (dual@Param has such failures, e.g. Spin(5,3); see notes).
+  Values include the sign twisted_eps(p)*twisted_eps(q); any residual sign
+  disagreement is reported, with a test whether it factors as e(p)e(q). }
+set test_twisted_Q_row (Param p) = void:
+  let (F,Q) = twisted_Q0_block(p) then n = #F
+  then dref = block_of(dual(F[0]))
+  then ok = for x in F do first(#dref,(int t) bool: dref[t]=dual_over(dref[0].real_form,x))>=0 od
+  then R = null(n,n) { +1 agree, -1 sign flip, 0 zero or skipped }
+  then agree=0, flip=0, bad=0, skipped=0
+  in for x@i in F do
+       if ok[i] then
+       let (dF,col) = twisted_Q_row(x) in
+       for y@j in F do
+         if not ok[j] then skipped +:= 1
+         else
+         let dy = dual_over(dF[0].real_form,y) then k = first(#dF, (int t) bool: dF[t]=dy)
+         then mine = if k<0 then 0 elif =#col[k] then 0
+                     else twisted_eps(x)*twisted_eps(y)*col[k][0] fi
+         in if mine=Q[i,j] then agree+:=1; if mine!=0 then R[i,j]:=1 fi
+            elif mine=-Q[i,j] then flip+:=1; R[i,j]:=-1
+            else bad+:=1;
+                 if bad<=4 then prints("  MISMATCH (",i,",",j,"): truth ",Q[i,j]," via dual ",mine) fi
+            fi
+         fi
+       od
+       else skipped +:= n
+       fi
+     od;
+     { try to write R[i,j] = eps[i]*eps[j] on the nonzero entries: propagate from each root }
+     let eps = for i:n do 0 od, consistent = true in
+     for r:n do if eps[r]=0 then eps[r]:=1;
+       let changed = true in
+       while changed do changed:=false;
+         for i:n do for j:n do if R[i,j]!=0 then
+           if eps[i]!=0 and eps[j]=0 then eps[j]:=R[i,j]*eps[i]; changed:=true
+           elif eps[j]!=0 and eps[i]=0 then eps[i]:=R[i,j]*eps[j]; changed:=true
+           elif eps[i]!=0 and eps[j]!=0 and eps[i]*eps[j]!=R[i,j] then consistent:=false
+           fi fi od od
+       od fi od;
+     prints("test_twisted_Q_row ",p.real_form,": ",n," fixed; ",agree," agree, ",flip,
+            " sign flips, ",bad," mismatches, ",skipped," skipped (dual outside block); ",
+            "signs of form eps(p)eps(q)? ",consistent)
