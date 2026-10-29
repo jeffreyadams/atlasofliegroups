@@ -599,6 +599,53 @@ set s_index(KTypePol H) = KTypePol:
 {sum(, for c@mu in K_type_pol_extended(p,delta)
 				{sum of 2^r LKTs, each with 1 or s}
 		     	      	        do if c = 1 then mu else -mu fi od)}
+{---- cache for partial_extended_KL_block -----------------------------------
+ Unlike partial_KL_block, whose blocks the library keeps, the built-in
+ partial_extended_KL_block rebuilds the extended block and its KL matrix on
+ every call (ext_KL_matrix, atlas-types.cpp:4414).  HTHinds calls it at every
+ reducible node and then recurses into lower elements of the same block, so
+ the same matrix was recomputed many times: 65% of hodge0 in Spin(5,5).
+
+ On a miss we compute the extended KL matrix of the LAST delta-fixed element
+ of the whole block and keep it; any later node found in a kept block reads
+ its own matrix off it.  The rows/columns kept are the P-support closure of p
+ (indices reachable from p through nonzero P entries).  That is not the
+ extended Bruhat down-set of p (the fixed part of partial_block(p) is smaller
+ still, and wrong), but it contains everything HTHinds reads: the column of p
+ and the column of its inverse are both supported on it.  Verified: identical
+ Hodge forms on all 784 parameters screened in FPP(Spin(5,5)).}
+set xkl_cache_flag = true
+set xk_hash = make_Param_hash() {every element of every kept block}
+set xk_where = [int]: []        {for each entry of xk_hash: number of a kept block containing it}
+set xk_B = [[Param]]: []
+set xk_P = [mat]: []
+set xk_pols = [[vec]]: []
+set xk_bh = [Param_hash]: []    {position within each kept block}
+set xk_clear() = void:
+    xk_hash := make_Param_hash(); xk_where := []; xk_B := []; xk_P := []; xk_pols := []; xk_bh := []
+set xk_store(([Param],mat,[vec]) r) = void:
+    let (B,P,pols) = r, b = #xk_B
+    in xk_B #:= B; xk_P #:= P; xk_pols #:= pols; xk_bh #:= make_Param_hash(B);
+       for q in B do let N = xk_hash.size() in if xk_hash.match(q) = N then xk_where #:= b fi od
+set xk_extract(Param p) = ([Param],mat,[vec]):
+    let b = xk_where[xk_hash.lookup(p)]
+    then kp = xk_bh[b].lookup(p), Bb = xk_B[b], Pb = xk_P[b]
+    then mark = for i:kp+1 do i = kp od
+    then () = for j:kp+1 ~do if mark[j] then for i:j do if Pb[i,j] != 0 then mark[i] := true fi od fi od
+    then D = for i:kp+1 do if mark[i] then [i] else [] fi od.##
+    in (for i in D do Bb[i] od, mat: for j in D do vec: for i in D do Pb[i,j] od od, xk_pols[b])
+set partial_extended_KL_block_cached(Param p, mat delta) = ([Param],mat,[vec]):
+    if not xkl_cache_flag then partial_extended_KL_block(p,delta)
+    elif xk_hash.lookup(p) >= 0 then xk_extract(p)
+    else let (Bl,) = block(p)
+    	 then t = last(for q in Bl do is_fixed(delta,q) od)
+	 in xk_store(partial_extended_KL_block(Bl[t],delta));
+	    if xk_hash.lookup(p) >= 0 then xk_extract(p)
+	    else {p is not below that element: keep p's own block}
+	    	 let r = partial_extended_KL_block(p,delta) in xk_store(r); r
+	    fi
+    fi
+
 set (Hodge_twisted_hash_0, Hodge_twisted_hash_clear, print_HTH_stats, HTH_data, Hodge_twisted_maybe_0) = ((Param -> (KTypePol, KTypePol)), ( -> ), ( -> ), ( -> (Param_hash, KTypePol_hash,[vec])), ((Param,int) -> (maybe_KTP,maybe_KTP))):
 (    let hodge_param_hash = make_Param_hash()
     then hodge_Kpol_hash = make_KTypePol_hash()
@@ -608,7 +655,7 @@ set (Hodge_twisted_hash_0, Hodge_twisted_hash_clear, print_HTH_stats, HTH_data, 
     then clearHTH() = void:
     	 hodge_param_hash.clear();
 	 hodge_Kpol_hash.clear();
-	 answers:=[]
+	 answers:=[]; xk_clear()
     then HKH_index(int m) = KTypePol:
     	 if m>=0
 	 then hodge_Kpol_hash.index(m)
@@ -661,7 +708,7 @@ set (Hodge_twisted_hash_0, Hodge_twisted_hash_clear, print_HTH_stats, HTH_data, 
 		  assert(@:N=n and N = #answers-1);
 		  v
        	  else let orp = orientation_nr(p) {henceforth p is reducible}
-	       then (B,Ppol,pols) = partial_extended_KL_block(p,delta)
+	       then (B,Ppol,pols) = partial_extended_KL_block_cached(p,delta)
 	       then () = if hodge_check_time() then return (vec: []) fi
 	       then P = id_mat(#B)
 	       then () = for i:#B - 1
