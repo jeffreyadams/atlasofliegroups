@@ -699,34 +699,52 @@ set wu_lists = [[Param]]: []
 set wu_verbose = false
 {if true, wu_unitary copies the list from an isomorphic real form already done}
 set wu_copy_flag = true
+{if true, wu_unitary of a real form dL that is not simply connected descends the list of its
+ simply connected cover Gsc, as arthur_hash does: the FPP and is_weakly_unipotent do not depend
+ on the isogeny, so the descents (with all extensions to the component group) of the list for
+ Gsc are the list for dL}
+set wu_descend_flag = true
+
+{record ps as the list for dL}
+set wu_register(RealForm dL, [Param] ps) = [Param]: wu_rf_hash.match(dL); wu_lists #:= ps; ps
+
+{the list for dL, not yet in wu_rf_hash; the list for Gsc is found (and recorded) on the way}
+set rec_fun wu_unitary_new(RealForm dL) = [Param]:
+    let start = elapsed_ms(), N = wu_rf_hash.size()
+    then copy = {from an isomorphic real form already done, as in arthur_hash}
+         let k = 0, t = [[Param]]: []
+	 in while wu_copy_flag and #t = 0 and k < N
+	    do let L = wu_rf_hash.index(k)
+	       in if is_locally_isomorphic(L.root_datum,dL.root_datum)
+		  then t := arthur_transport(wu_lists[k],L,dL);
+		       if wu_verbose and #t > 0
+		       then prints("Copied ",#t[0]," weakly unipotent reps to ",dL," from #",k) fi
+		  fi; k +:= 1
+	    od; t
+    in if #copy > 0 then copy[0] else
+       let (Gsc,M) = derived_cover_real_form_info(dL)
+       in if wu_descend_flag and abs(det(M)) != 1
+	  then let n = lookup(wu_rf_hash)(Gsc)
+	       then psc = if n >= 0 then wu_lists[n] else wu_register(Gsc,wu_unitary_new(Gsc)) fi
+	       then ps = make_Param_hash(arthur_descend(psc,dL,M)).list()
+	       in if wu_verbose then prints("Descended ",#ps," weakly unipotent reps to ",dL,
+		     " from ",Gsc," in ",print_time_string(elapsed_ms() - start)) fi; ps
+	  else if wu_verbose then prints("Starting wu_unitary at ",dL) fi;
+	       FPP_unitary_hash_bottom_layer(dL);
+	       if wu_verbose then prints("Found ",big_unitary_hash.uhash(dL).size()," unitary reps in ",
+		  print_time_string(elapsed_ms() - start)); start:=elapsed_ms() fi;
+	       let cands = make_Param_hash(big_unitary_hash.uhash(dL).list())
+	       then ps = for p in cands.list() if is_weakly_unipotent(p) do p fi od
+	       in if wu_verbose then prints("Found ",#ps," weakly unipotent reps in ",
+		     print_time_string(elapsed_ms() - start)) fi; ps
+	  fi
+       fi
 
 set wu_unitary(RealForm dL) = [Param]:
-    let start = elapsed_ms(), N = wu_rf_hash.size() then n = wu_rf_hash.match(dL)
-    in if n = N
-       then {copy from an isomorphic real form already done, as in arthur_hash}
-       	    let k = 0
-	    in while wu_copy_flag and k < N
-	       do let L = wu_rf_hash.index(k)
-		  in if is_locally_isomorphic(L.root_datum,dL.root_datum)
-		     then let t = arthur_transport(wu_lists[k],L,dL)
-			  in if #t > 0
-			     then wu_lists #:= t[0];
-				  if wu_verbose then prints("Copied ",#t[0]," weakly unipotent reps to ",dL,
-				     " from #",k) fi;
-				  return t[0]
-			     fi
-		     fi; k +:= 1
-	       od;
-	    if wu_verbose then prints("Starting wu_unitary at ",dL) fi;
-	    FPP_unitary_hash_bottom_layer(dL);
-	    if wu_verbose then prints("Found ",big_unitary_hash.uhash(dL).size()," unitary reps in ",
-	       print_time_string(elapsed_ms() - start)); start:=elapsed_ms() fi;
-	    let cands = make_Param_hash(big_unitary_hash.uhash(dL).list())
-	    in wu_lists #:= for p in cands.list() if is_weakly_unipotent(p) do p fi od next \
-	       if wu_verbose then prints("Found ",#wu_lists[n]," weakly unipotent reps in ",
-	       	   print_time_string(elapsed_ms() - start)) fi
-       fi;
-       wu_lists[n]
+    let n = lookup(wu_rf_hash)(dL)
+    in if n >= 0 then wu_lists[n]
+       else wu_register(dL,wu_unitary_new(dL))
+       fi
 
 {v is central for L, as in coh_ind_unip_all}
 set coh_ind_wu(KGPElt Q, Param_hash Uhash, ratvec v) = void:
