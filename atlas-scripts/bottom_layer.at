@@ -310,8 +310,13 @@ set bl_lift_keys = make_KType_hash()
 set bl_lift_vals = [bl_lift_data]: []
 set bl_lift_store(KType mu, bl_lift_data v) = void:
     let n = #bl_lift_vals in if bl_lift_keys.match(mu) = n then bl_lift_vals #:= v fi
+{the same data for (mu, non-minimal Q) in the more_bottom lift, keyed on mu, then Q.S}
+set more_lift_keys = make_KType_hash()
+set more_lift_vals = [[([int],bl_lift_data)]]: []
+set more_lift_empty = [([int],bl_lift_data)]: []
 set bl_lift_clear() = void:
-    k0lmr_keys.clear(); k0lmr_vals := []; bl_lift_keys.clear(); bl_lift_vals := []
+    k0lmr_keys.clear(); k0lmr_vals := []; bl_lift_keys.clear(); bl_lift_vals := [];
+    more_lift_keys.clear(); more_lift_vals := []
 
 set min_bottom_factors(KType mu) = LK_data:
     let p = parameter(mu), start = elapsed_ms()
@@ -692,33 +697,49 @@ set bl_lift_pre(KType mu) = bl_lift_data:
 	      xcG, derived_factor_KGBs0(xcL), K0_param(mu,xcG).lambda_minus_rho, K_0(xcG))
     in bl_lift_vals #:= v; v fi
 
-{the first K_0-dominant lift of (wits[i] on derived factor jbad, LKT factor of muL elsewhere), as in
- min_bottom_factors; [] if none}
-set bl_lift_K_type(KType mu, int jbad, [KType] wits) = [KType]:
-    let (G,ProjK,SFRP,dermuLs,derLs,derProjKinvs,xcG,derxcLs,muwt,K0) = bl_lift_pre(mu)
-    then Sj = SFRP[jbad], derLj = derLs[jbad], derxcLj = derxcLs[jbad]
+{the first K_0-dominant lift of (wits[i] on derived factor jbad, LKT factor of muL elsewhere), from the
+ per-(mu,Q) data (bl_lift_pre for Q minimal, more_lift_pre otherwise), as in
+ min_bottom_factors, of height at most bound ([] if none), and the first one above bound ([] if none).
+ The callers' face classes agree only to the height their usual test reaches (DG in mbef, D in
+ more_bottom), and a nonunitary Param eliminates its whole class, so a witness above that height must
+ not be used for that; the callers still record it in big_unitary_hash (with its height).}
+set bl_lift_above = int: 0 {K_0-dominant lifts refused because their height exceeds the bound}
+set bl_lift_K_type(bl_lift_data (G,ProjK,SFRP,dermuLs,derLs,derProjKinvs,xcG,derxcLs,muwt,K0),
+    int jbad, [KType] wits, int bound) = ([KType],[KType]):
+    let Sj = SFRP[jbad], derLj = derLs[jbad], derxcLj = derxcLs[jbad]
     then base = k0lmr(dermuLs[jbad],derxcLj)
-    then ans = [KType]: []
+    then ans = [KType]: [], high = [KType]: []
     then () = for w in wits
        do if #ans = 0
 	  then let sh = k0lmr(monomials(regroup(derLj, 1*w))[0],derxcLj) - base
 	       then tauwt = ratvec_as_vec(ProjK*(sum(G.rank, for xi@k in fundamental_coweights(derLj)
 	  	       	   do ((derProjKinvs[jbad]*sh)*xi)*(G.simple_roots[Sj[k]]) od)) + muwt)
-	       in if is_dominant(K0,tauwt) then ans := [K0_K_type(xcG,tauwt)] fi
+	       in if is_dominant(K0,tauwt)
+	       	  then let t = K0_K_type(xcG,tauwt)
+		       in if height(t) <= bound then ans := [t]
+		       	  else bl_lift_above +:= 1; if #high = 0 then high := [t] fi
+			  fi
+		  fi
 	  fi
        od
-    in ans
+    in (ans,high)
 
 {a witness for p0 (LKT mu) from stored witnesses of the derived factors ds of pL0; [] if none}
-set mbef_lift_witness(Param p0, KType mu, [Param] ds) = [KType]:
+set mbef_lift_witness(Param p0, KType mu, [Param] ds, int bound) = [KType]:
     if components_rank(p0.real_form) != 0 then [] else
     let bad = [int]: for d@j in ds do if #big_unitary_hash.nu_witnesses(d) > 0 then [j] else [] fi od.##
     in if #bad = 0 then [] else
-    let ans = [KType]: []
+    let ans = [KType]: [], high = [KType]: []
     then () = for j in bad
-    	      do if #ans = 0 then ans := bl_lift_K_type(mu, j, big_unitary_hash.nu_witnesses(ds[j])) fi
+    	      do if #ans = 0
+	      	 then let (a,h) = bl_lift_K_type(bl_lift_pre(mu), j, big_unitary_hash.nu_witnesses(ds[j]), bound)
+		      in ans := a; if #high = 0 then high := h fi
+		 fi
 	      od
-    in mbef_lift_count[0] +:= 1; if #ans > 0 then mbef_lift_count[1] +:= 1 fi; ans
+    in mbef_lift_count[0] +:= 1;
+       if #ans > 0 then mbef_lift_count[1] +:= 1
+       elif #high > 0 then big_unitary_hash.numatch_witness(p0,high) {too high for the classes; still recorded}
+       fi; ans
     fi fi
 
 set min_bottom_elim_factors_test(Param p0) = bool:
@@ -736,7 +757,7 @@ set min_bottom_elim_factors_test(Param p0) = bool:
     then () = assert(@:is_hermitian(pL0),"nonherm pL0 in min_bottom_elim_factors")
     then derpL0js = derived_factor_params0(pL0) {all height 0; big_unitary_hash centers}
     then () = if mbef_lift_mode > 0
-    	      then let t = elapsed_ms(), w = mbef_lift_witness(p0,mu,derpL0js)
+    	      then let t = elapsed_ms(), w = mbef_lift_witness(p0,mu,derpL0js,DG)
 	      	   in mbef_lift_time +:= elapsed_ms() - t;
 		      if #w > 0
 		      then good_hash.match(p0); big_unitary_hash.numatch_witness(p0,w);
@@ -1433,6 +1454,91 @@ set goodness(Param p, KGPElt Q) = (bool, bool, bool):
     in (is_dominant(G,gamma) and is_regular(G,gamma), is_dominant(G,gamma), is_dominant(G,gamma0))
 
 
+{Witness lift for more_bottom (David, 10/30/26): the mbef lift with a non-minimal theta-stable Q
+ containing Qmin in place of Qmin. pL on Q.Levi is induced from the piece of pLmin with LKT muLmin, as
+ in bottom_elim_factors. If a derived factor of pL has a stored witness, it is glued with the LKT
+ factors of muL on the other factors and lifted; a K_0-dominant lift is a bottom-layer K-type of p0
+ (final) where the signature differs from that at the LKT. No branch on G, no signatures, and no
+ height bound. more_lift_mode: 0 off; 1 lift, then the usual test if undecided.}
+set more_lift_mode = 1
+set more_lift_count = [0,0] {p0 tried (some Q has a factor with a stored witness), p0 found nonunitary}
+set more_lift_time = int: 0
+set more_lift_check_flag = false {test only: check each lift against the branched signature of p0}
+set more_lift_check = [0,0] {lifts confirmed, lifts WRONG}
+
+{per-(mu,Q) data, as bl_lift_pre}
+set more_lift_pre(KType mu, KGPElt Q) = bl_lift_data:
+    let k = more_lift_keys.match(mu), S = Q.S
+    then () = if k = #more_lift_vals then more_lift_vals #:= more_lift_empty fi
+    then i = first(#more_lift_vals[k], (int i) bool: let (s,) = more_lift_vals[k][i] in s = S)
+    in if i >= 0 then let (,v) = more_lift_vals[k][i] in v else
+    let G = mu.real_form, (muL,dermuLs) = highest_LK_derived(mu,Q)
+    then derLs = derived_simple_factorsRF(Q.Levi)
+    then xcL = natural_KGB_elt(muL)
+    then xcG = embed_KGB(xcL,G)
+    then v = (G, projection_to_K_matrix(mu.inner_class), simple_factor_root_partition(Q),
+    	      dermuLs, derLs, for derL in derLs do right_inverse(projection_to_K_matrix(derL)) od,
+	      xcG, derived_factor_KGBs0(xcL), K0_param(mu,xcG).lambda_minus_rho, K_0(xcG))
+    in more_lift_vals[k] #:= (S,v); v fi
+
+{a witness for the final Param p0 from stored witnesses of the derived factors of pL, for the proper
+ Q in Qs (in order, repeats skipped); [] if none}
+set more_lift_witness(Param p0, [KGPElt] Qs, int bound) = [KType]:
+    let G = p0.real_form
+    in if components_rank(G) != 0 then [] else
+    let (Qm,pLm) = theta_stable_quasi_data(p0), mu = LKTs(p0)[0]
+    then muLm = highest_LK(mu,Qm)
+    then pLmis = monomials(1*pLm)
+    then pLm0 = pLmis[first(for pLmi in pLmis do (K_type_pol(pLmi*0))[muLm].!= od)]
+    then seen = [[int]]: [Qm.S], tried = false {Q = Qmin is the mbef lift}, ans = [KType]: [],
+    	 high = [KType]: []
+    then () = for Q in Qs
+    	 do if #ans = 0 and #(Q.S) < G.semisimple_rank and none(for S in seen do S = Q.S od)
+	    then seen #:= Q.S;
+	    	 let pL = first_param(theta_induce_standard(pLm0,Q.Levi))
+	    	 in if is_hermitian(pL)
+		    then let ds = derived_factor_params0(pL)
+		    	 then bad = [int]: for d@j in ds
+			      	   do if #big_unitary_hash.nu_witnesses(d) > 0 then [j] else [] fi od.##
+			 in if #bad > 0
+			    then tried := true;
+			    	 let v = more_lift_pre(mu,Q)
+			    	 in for j in bad
+				    do if #ans = 0
+				       then let (a,h) = bl_lift_K_type(v, j, big_unitary_hash.nu_witnesses(ds[j]), bound)
+				       	    in ans := a; if #high = 0 then high := h fi
+				       fi
+				    od
+			    fi
+		    fi
+	    fi
+	 od
+    in if tried then more_lift_count[0] +:= 1 fi;
+       if #ans > 0 then more_lift_count[1] +:= 1
+       elif #high > 0 then big_unitary_hash.numatch_witness(p0,high) {too high for the classes; still recorded}
+       fi; ans
+    fi
+
+{whether the lift shows p0 nonunitary (then recorded with its witness), trying the Qs and then the
+ maximal ones containing Qmin}
+set more_lift_caught(Param p0, [KGPElt] Qs, int bound) = bool:
+    more_lift_mode > 0 and
+    (let t = elapsed_ms(), (Q0,) = theta_stable_quasi_data(p0)
+     then w = more_lift_witness(p0, Qs ## max_Qs(Q0), bound)
+     in more_lift_time +:= elapsed_ms() - t;
+	#w > 0 and
+	(more_good_hash.match(p0); big_unitary_hash.numatch_witness(p0,w);
+	 if more_lift_check_flag
+	 then let tau = w[0]
+	      then sig = branch_std(big_unitary_hash.sig_entry(p0, height(tau)), height(tau))
+	      then a = sig[LKTs(p0)[0]], b = sig[tau]
+	      in if (!=a.int_part and !=b.s_part) or (!=a.s_part and !=b.int_part)
+	      	 then more_lift_check[0] +:= 1
+		 else more_lift_check[1] +:= 1; prints("MORE LIFT WRONG ",p0," tau ",tau," a ",a," b ",b)
+		 fi
+	 fi;
+	 true))
+
 {need to be sure nQs does not include a Borel}
 {add computation of D = max heights(mu in datas); just do good range sigs to D.}
 {insist that p0 is final}
@@ -1441,6 +1547,9 @@ set bottom_elim_factors_more(Param p0, [QKL_bottom_data] data)= bool:
     then D = max(for (Q,LKdata) in data
 		 do max(for (tau,) in LKdata do height(tau) od#h)
 		 od#h)
+    then () = if more_lift_caught(p0, for (Q,) in data do Q od, D)
+    	      then befmoreTime +:= elapsed_ms() - start; return false
+	      fi
     then maxQps = max_Qps(p0)
     then () = if #maxQps = 0
     	      then NIHCOUNT +:= 1;
@@ -1503,6 +1612,9 @@ set bottom_elim_factors_more(Param p0, int D_low, int D)= bool:
     then return bottom_elim_factors_more_old(p0,p,D_low,D,P)
     fi;}
     let start =  elapsed_ms(), G=p0.real_form, (Q0,pL0) = theta_stable_quasi_data(p0)
+    then () = if more_lift_caught(p0, [], D)
+    	      then befmoreTime +:= elapsed_ms() - start; return false
+	      fi
     then maxQs = max_Qs(Q0), R = more_good_hash.size()
     then maxQps = max_Qps(p0) {[(KGPElt,Param)]}
     then () = if #maxQps = 0

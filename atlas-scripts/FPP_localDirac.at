@@ -1543,7 +1543,7 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
 		  then ps = monomials(finalize(pC))
 		  then test = if all(for p in ps do @bool:Uhash.lookup(p).>= od)
 			      then true
-			      elif not all(for p in ps do @bool: min_bottom_elim_factors(p) od)
+			      elif not all(for p in ps do @bool: Uhash.lookup(p).>= or min_bottom_elim_factors(p) od)
 				then false
 			      else true
 			      fi
