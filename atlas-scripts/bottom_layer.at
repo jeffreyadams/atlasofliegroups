@@ -1459,7 +1459,8 @@ set goodness(Param p, KGPElt Q) = (bool, bool, bool):
  in bottom_elim_factors. If a derived factor of pL has a stored witness, it is glued with the LKT
  factors of muL on the other factors and lifted; a K_0-dominant lift is a bottom-layer K-type of p0
  (final) where the signature differs from that at the LKT. No branch on G, no signatures, and no
- height bound. more_lift_mode: 0 off; 1 lift, then the usual test if undecided.}
+ height bound. more_lift_mode: 0 off; 1 lift, then the usual test if undecided; 2 lift only (p0 not
+ decided by the lift passes, as if the usual test had found nothing).}
 set more_lift_mode = 1
 set more_lift_count = [0,0] {p0 tried (some Q has a factor with a stored witness), p0 found nonunitary}
 set more_lift_time = int: 0
@@ -1549,6 +1550,7 @@ set bottom_elim_factors_more(Param p0, [QKL_bottom_data] data)= bool:
 		 od#h)
     then () = if more_lift_caught(p0, for (Q,) in data do Q od, D)
     	      then befmoreTime +:= elapsed_ms() - start; return false
+	      elif more_lift_mode = 2 then befmoreTime +:= elapsed_ms() - start; return true
 	      fi
     then maxQps = max_Qps(p0)
     then () = if #maxQps = 0
@@ -1614,6 +1616,7 @@ set bottom_elim_factors_more(Param p0, int D_low, int D)= bool:
     let start =  elapsed_ms(), G=p0.real_form, (Q0,pL0) = theta_stable_quasi_data(p0)
     then () = if more_lift_caught(p0, [], D)
     	      then befmoreTime +:= elapsed_ms() - start; return false
+	      elif more_lift_mode = 2 then befmoreTime +:= elapsed_ms() - start; return true
 	      fi
     then maxQs = max_Qs(Q0), R = more_good_hash.size()
     then maxQps = max_Qps(p0) {[(KGPElt,Param)]}
