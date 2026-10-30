@@ -314,9 +314,11 @@ set bl_lift_store(KType mu, bl_lift_data v) = void:
 set more_lift_keys = make_KType_hash()
 set more_lift_vals = [[([int],bl_lift_data)]]: []
 set more_lift_empty = [([int],bl_lift_data)]: []
+set more_bf_keys = make_KType_hash() {more_bottom_factors memo}
+set more_bf_vals = [[([int],LK_data)]]: []
 set bl_lift_clear() = void:
     k0lmr_keys.clear(); k0lmr_vals := []; bl_lift_keys.clear(); bl_lift_vals := [];
-    more_lift_keys.clear(); more_lift_vals := []
+    more_lift_keys.clear(); more_lift_vals := []; more_bf_keys.clear(); more_bf_vals := []
 
 set min_bottom_factors(KType mu) = LK_data:
     let p = parameter(mu), start = elapsed_ms()
@@ -1082,30 +1084,11 @@ set sort([QKL_bottom_data] data, int Dlow, int Dhigh, KType_hash KHash) = [QKL_b
 	      od
     in answer.##
 
-{insist that p0 is final (bottom layer multiplicities of p0 equal those of the
- L-side product, so a nonzero s_part is enough (9/26/26))}
-set bottom_elim_factors(Param p0, QKL_bottom_data (Q, LKdata)) = bool:
-    let start = elapsed_ms(), L = Q.Levi,
-    	(Qm,pLm) = theta_stable_quasi_data(p0)
-    then () = assert(@:#(Q.S) < p0.real_form.semisimple_rank,"tried to use Q=G in bottom_elim_factors")
-    then Lm = Qm.Levi, mu = LKTs(p0)[0]
-    then (muL,dermuLjs) = highest_LK_derived(mu,Q), muLm = highest_LK(mu,Qm)
-    then pLmis = monomials(1*pLm)
-    then i0 = first(for pLmi in pLmis do (K_type_pol(pLmi*0))[muLm].!= od)
-    then pLm0 = pLmis[i0] {now has LKT muL}
-    then pL = first_param(theta_induce_standard(pLm0,L)) {has muL as a LKT}
-    then D = max(max_ht(LKdata), height(p0))
-    then () = if not is_hermitian(pL)
-    	      then NIHCOUNT +:= 1;
-	      	   prints("bad bef at ",p0);
-		   befmoreTime +:= elapsed_ms()-start;
-	      	   return if quitNIH_flag
-		   	  then true
-			  else is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(p0,D)
-			  fi
-	      fi
-    then () = if #LKdata = 0 then befmoreTime +:= elapsed_ms()-start; return true fi
-    then derpLjs = derived_factor_params0(pL) {one for each derived simple factor derLj}
+{the factor-signature test of bottom_elim_factors: pL on Q.Levi (hermitian, LKT muL with derived
+ factors dermuLjs), LKdata bottom-layer data for Q; a bottom-layer K-type where the signature of p0
+ differs from that at its LKT, or [] if none}
+set bef_sig_test(Param pL, [KType] dermuLjs, LK_data LKdata) = [KType]:
+    let derpLjs = derived_factor_params0(pL) {one for each derived simple factor derLj}
     then DLs = for j:#derpLjs
        	       do max([height(derpLjs[j])] ## for (, list) in LKdata {one for each j}
        	    	      do height(list[j])
@@ -1131,7 +1114,7 @@ set bottom_elim_factors(Param p0, QKL_bottom_data (Q, LKdata)) = bool:
 				    fi
 	    fi
 	 od
-    then () = if not existNU then befmoreTime +:= elapsed_ms()-start; return true fi
+    then () = if not existNU then return [] fi
     {regroup once per factor, not once per tau}
     then rfs = let (,l0) = LKdata[0] in for tauLj in l0 do tauLj.real_form od
     then LB = for j:nf do if known[j] then regroup(rfs[j],Lbranches[j]) else Lbranches[j] fi od
@@ -1157,6 +1140,33 @@ set bottom_elim_factors(Param p0, QKL_bottom_data (Q, LKdata)) = bool:
 			 fi
 		 fi
 	      od
+    in fail_tau
+
+{insist that p0 is final (bottom layer multiplicities of p0 equal those of the
+ L-side product, so a nonzero s_part is enough (9/26/26))}
+set bottom_elim_factors(Param p0, QKL_bottom_data (Q, LKdata)) = bool:
+    let start = elapsed_ms(), L = Q.Levi,
+    	(Qm,pLm) = theta_stable_quasi_data(p0)
+    then () = assert(@:#(Q.S) < p0.real_form.semisimple_rank,"tried to use Q=G in bottom_elim_factors")
+    then Lm = Qm.Levi, mu = LKTs(p0)[0]
+    then (muL,dermuLjs) = highest_LK_derived(mu,Q), muLm = highest_LK(mu,Qm)
+    then pLmis = monomials(1*pLm)
+    then i0 = first(for pLmi in pLmis do (K_type_pol(pLmi*0))[muLm].!= od)
+    then pLm0 = pLmis[i0] {now has LKT muL}
+    then pL = first_param(theta_induce_standard(pLm0,L)) {has muL as a LKT}
+    then D = max(max_ht(LKdata), height(p0))
+    then () = if not is_hermitian(pL)
+    	      then NIHCOUNT +:= 1;
+	      	   prints("bad bef at ",p0);
+		   befmoreTime +:= elapsed_ms()-start;
+	      	   return if quitNIH_flag
+		   	  then true
+			  else is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(p0,D)
+			  fi
+	      fi
+    then () = if #LKdata = 0 then befmoreTime +:= elapsed_ms()-start; return true fi
+    then fail_tau = bef_sig_test(pL, dermuLjs, LKdata)
+    then result = #fail_tau = 0
     then () = if not result
 	      then more_good_hash.match(p0);
 		   big_unitary_hash.numatch_witness(p0,fail_tau)
@@ -1539,6 +1549,81 @@ set more_lift_caught(Param p0, [KGPElt] Qs, int bound) = bool:
 		 fi
 	 fi;
 	 true))
+
+{more_bottom from the L side (David, 10/30/26): for a maximal theta-stable Q containing Qmin, the
+ bottom-layer data of min_bottom_factors with Q in place of Qmin: (L_j cap K)-types of the derived
+ factors of the LKT muL of mu (branch_entry on derL_j, to next_height + more_shift_level), tensored, lifted to G,
+ K_0-dominant ones kept. No branch on G. Maximal Q suffice: the bottom layer for a smaller Q lies in
+ that of any larger one. Memo keyed on (mu, Q.S), as more_lift_pre.}
+set more_bf_time = int: 0
+
+set more_bottom_factors(KType mu, KGPElt Q) = LK_data:
+    let k = more_bf_keys.match(mu), S = Q.S
+    then () = if k = #more_bf_vals then more_bf_vals #:= ([([int],LK_data)]: []) fi
+    then i = first(#more_bf_vals[k], (int i) bool: let (s,) = more_bf_vals[k][i] in s = S)
+    in if i >= 0 then let (,v) = more_bf_vals[k][i] in v else
+    let start = elapsed_ms()
+    then (G,ProjK,SFRP,dermuLs,derLs,derProjKinvs,xcG,derxcLs,muwt,K0) = more_lift_pre(mu,Q)
+    then dertauLs = [[KType]]:
+    	 for dermuLj in dermuLs
+	 do monomials(big_unitary_hash.branch_entry(dermuLj, next_height(dermuLj) + more_shift_level))
+	 od
+    then () = assert(all(for l in dertauLs do #l > 0 od),"more_bottom_factors: no K-types on a factor")
+    then taushifts = [[ratvec]]:
+    	 for listj@j in dertauLs
+    	 do let Sj = SFRP[j], base = K0_param(listj[0], derxcLs[j]).lambda_minus_rho
+	    in for dertauLj in listj
+	       do let sh = K0_param(dertauLj,derxcLs[j]).lambda_minus_rho - base
+	       	  in ProjK*(sum(G.rank, for xi@k in fundamental_coweights(derLs[j])
+		     	   do ((derProjKinvs[j]*sh)*xi)*(G.simple_roots[Sj[k]]) od))
+	       od
+	 od
+    then B = box(for list in dertauLs do #list od)
+    then data = LK_data:
+    	 for b in B
+	 do let tauwt = ratvec_as_vec(sum(rank(K0), for m@j in b do taushifts[j][m] od) + muwt)
+	    in if is_dominant(K0,tauwt)
+	       then [(K0_K_type(xcG, tauwt), for m@j in b do dertauLs[j][m] od)]
+	       else []
+	       fi
+	 od.##
+    in more_bf_vals[k] #:= (S,data); more_bf_time +:= elapsed_ms() - start; data fi
+
+{whether the final Param p0 survives more_bottom from the L side: for each maximal theta-stable Q
+ containing Qmin with pL hermitian, the factor-signature test on the bottom-layer K-types of height at
+ most bound (the level of the face classes, so a witness may eliminate its whole class). The witness
+ lift is tried first (more_lift_mode as in bottom_elim_factors_more).}
+set more_L_count = [0,0] {p0 tested, p0 found nonunitary by signatures}
+set more_L_time = int: 0
+set more_L_elim(Param p0, int bound) = bool:
+    if more_good_hash.lookup(p0) >= 0 then false
+    elif more_lift_caught(p0, [], bound) then false
+    elif more_lift_mode = 2 or components_rank(p0.real_form) != 0 then true
+    else
+    let start = elapsed_ms(), G = p0.real_form
+    then (Qm,pLm) = theta_stable_quasi_data(p0), mu = LKTs(p0)[0]
+    then muLm = highest_LK(mu,Qm)
+    then pLmis = monomials(1*pLm)
+    then pLm0 = pLmis[first(for pLmi in pLmis do (K_type_pol(pLmi*0))[muLm].!= od)]
+    then fail_tau = [KType]: []
+    then () = more_L_count[0] +:= 1
+    then () = for Q in max_Qs(Qm)
+    	 do if #fail_tau = 0 and #(Q.S) < G.semisimple_rank and Q.S != Qm.S {Qmin: min_bottom's}
+	    then let data = to_ht(more_bottom_factors(mu,Q), bound)
+	    	 in if #data > 1
+		    then let pL = first_param(theta_induce_standard(pLm0,Q.Levi))
+		    	 in if is_hermitian(pL)
+			    then let (,dermuLjs) = highest_LK_derived(mu,Q)
+			    	 in fail_tau := bef_sig_test(pL, dermuLjs, data)
+			    fi
+		    fi
+	    fi
+	 od
+    in more_L_time +:= elapsed_ms() - start;
+       if #fail_tau = 0 then true
+       else more_L_count[1] +:= 1; more_good_hash.match(p0); big_unitary_hash.numatch_witness(p0,fail_tau); false
+       fi
+    fi
 
 {need to be sure nQs does not include a Borel}
 {add computation of D = max heights(mu in datas); just do good range sigs to D.}

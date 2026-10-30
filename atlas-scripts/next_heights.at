@@ -6,7 +6,8 @@
 {to store next_K_type info}
 set NKThash = make_KType_hash()
 
-{size of NKThash; jth entry is indices of next_to_lowests}
+{size of NKThash; jth entry is indices of next_to_lowests, or [-1] if
+there are none}
 set NKTanswer = [vec]:[]
 
 {size of NKThash; jth entry is some heights above jth hash member}
@@ -27,29 +28,43 @@ set next_height_time = int:0
 {formerly used NTL := big_unitary_hash.K_type_formula{_to_ht}(mu,HT) - mu}
 set next_to_lowest_base(KType mu) = [KType]:
     let start = elapsed_ms(), HT = height(mu)+1
-    then NTL = null_K_module(mu)
-    then () = while NTL.=
-	      do NTL := K_type_formula(mu,HT) - mu;
-		 HT+:=1
-	      od
-    in monomials(NTL) next next_height_time +:=elapsed_ms() - start
+    then G= mu.real_form
+    in if KGB_size(G) = 1 then [KType]:[]
+       else let NTL = null_K_module(mu)
+       	    then () = while NTL.=
+	      	      do NTL := K_type_formula(mu,HT) - mu;
+		      	 HT+:=1
+	      	      od
+    	    in monomials(NTL) next next_height_time +:=elapsed_ms() -
+	    start
+       fi
 
 set next_to_lowest_inds(KType mu) = [int]:
     let n = NKTlookup(mu)
     in if #NKTanswer[n] = 0
-       then NKTanswer[n]:=(vec: for tau in next_to_lowest_base(mu)
-       	    			do NKTlookup(tau)
-				od)
+       then let NTLb = next_to_lowest_base(mu)
+       	    in NKTanswer[n]:=(vec:
+	       if #NTLb = 0
+	       then [-1]
+	       else for tau in NTLb
+       	    	    do NKTlookup(tau)
+		    od
+	       fi)
        fi;
        NKTanswer[n]
 
 set next_to_lowests(KType mu) = [KType]:
-       for m in next_to_lowest_inds(mu)
-       do NKThash.index(m)
-       od
+    let NTL = next_to_lowest_inds(mu)
+        in if NTL = [-1]
+	   then []
+	   else for m in NTL
+       	   	do NKThash.index(m)
+       		od
+	   fi
 
 set next_to_lowest_short(KType mu) = KType:
-    next_to_lowests(mu)[0]
+    let NTLm = next_to_lowests(mu)
+    in if #NTLm = 0 then mu else NTLm[0] fi
 
 {creates a list of size D}
 set next_to_lowest_short(KType mu, int D) = [KType]:
@@ -95,7 +110,10 @@ set next_to_lowest(Param p,int HT) = [KType]:
 
 {. height of a smallest non-lowest K_type of standard with LKT mu .}
 set next_height(KType mu)  = int:
-    height(next_to_lowests(mu)[0])
+    let list = next_to_lowests(mu)
+    in if #list = 0 then height(mu)
+       else height(list[0])
+       fi
 
 {if we know p unitary to HT, AND have K-char to GAM(p), next height where something could change}
 {was monomials(branch_std_hash(qKCF,HT_bound))}
