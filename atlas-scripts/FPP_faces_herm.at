@@ -668,7 +668,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 			      in if h < h0 then ks elif h = h0 then (old##ks).sort_u else old fi
 			 fi
 	      in if new != old
-		 then let w = nu_wits[i] in while #w <= n do w #:= ([int]: []) od; w[n] := new; nu_wits[i] := w
+		 then let w = nu_wits[i] {release nu_wits[i] first, or w[n]:= copies the whole list}
+		 in nu_wits[i] := ([[int]]: []); while #w <= n do w #:= ([int]: []) od; w[n] := new; nu_wits[i] := w
 		 fi
 	 fi
     {p (attached to real form i) has impure signature sig, H = impure_height(sig) >= 0: record p as
@@ -677,7 +678,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 let N = nuhashes[i].size() then n = nuhashes[i].match(p)
 	 in if n = N then nu_heights[i] #:= H
 	    elif nu_heights[i][n] > H or nu_heights[i][n] < 0 {-1: height unknown}
-	    then let hts = nu_heights[i] in hts[n] := H; nu_heights[i] := hts
+	    then let hts = nu_heights[i] in nu_heights[i] := null(0); hts[n] := H; nu_heights[i] := hts
 	    fi;
 	    set_nu_wits(i,n,impure_witnesses(sig))
     then add_param_inf(Param p) = (int, int, int): {add a param, full herm form}
@@ -990,7 +991,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	    	 then let Hold = nu_heights[i][n]
 		      in if Hold > H or Hold < 0
 		      	 then let nuhtsi = nu_heights[i]
-		      	      in nuhtsi[n]:=H;
+		      	      in nu_heights[i] := null(0); nuhtsi[n]:=H;
 			      	 nu_heights[i]:=nuhtsi
 		 	 fi
 		  fi; n
