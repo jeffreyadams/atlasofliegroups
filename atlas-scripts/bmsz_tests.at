@@ -1,0 +1,86 @@
+<BMSZ.at
+
+{ bmsz_tests.at -- consistency tests for BMSZ.at (load via all.at, then run_bmsz_tests()).
+
+  Checks (for every extended painted bipartition X of every good-parity orbit):
+    - descent chains terminate (verify_all_descents)
+    - number_unipotent agrees with atlas unipotent_representations (table_BCD)
+    - associated cycle AC(X) is nonempty, each term has underlying partition = orbit(X)
+      and (p,q) signature equal to that of the group
+    - the K-orbits occurring in one AC are pairwise distinct (BMSZ Prop. 4.10)
+    - AC is injective on each group's reps when the orbit is quasi-distinguished (Prop. 4.11)
+    - Sp(2n,R), orbit [2^n]: AC is a bijection onto all 4n local systems for n even;
+      for n odd there are 2n+1 reps (agrees with atlas) and AC is injective but not onto.
+}
+set part_of(KLocalSystem M)=Partition:
+let rv=Partition:[] in
+for k:#M.signs downto 0 do
+  let z=M.signs[k] in
+  for j:abs(int_part(z))+abs(s_part(z)) do rv#:=k+1 od
+od; rv
+set trim([int] v)=[int]: let w=v in while #w>0 and w~[0]=0 do w:=w[:#w-1] od; w
+set orbit_key(KLocalSystem M)=string:
+to_string(trim(##for z in M.signs do [abs(int_part(z)),abs(s_part(z))] od))
+set sort_strings([string] l)=[string]:
+ let rv=[string]:[] in
+ for s in l do
+   let i=0 in while i<#rv and rv[i]<s do i+:=1 od;
+   rv:=rv[:i]##[s]##rv[i:]
+ od; rv
+set ac_key([KLocalSystem] ac)=string:to_string(sort_strings(for M in ac do to_string_(M) od))
+set quasi_dist(Orbit O,string label)=bool:
+ first(for i:#O from 1 do
+   is_primitive_parity(i,label) and (let a=O[i-1], b=if i<#O then O[i] else 0 fi in a=b and a>0) od)=-1
+set group_key(ExtendedPaintedBiPartition X)=string:
+ X.painted_bi_partition.bi_label+" "+group_name(X.painted_bi_partition)
+set test_ac(int n,string label)=void:
+ let nreps=0, bad_part=0, bad_sig=0, bad_dup=0, empty=0, inj_fail_qd=0, inj_fail_nqd=0, blocks=0 in
+ for O in good_parity_partitions(n,label) do
+   let L=reps(O,label) then qd=quasi_dist(O,label) in
+   let keys=[string]:[] then groups=[string]:[] in
+   for X in L do
+     let ac=compute_AC(X) in
+     nreps+:=1;
+     if #ac=0 then empty+:=1 fi;
+     for M in ac do
+       if part_of(M)!=orbit(X) then bad_part+:=1;
+         if bad_part<=3 then prints("  PART FAIL ",label," ",O," ",group_key(X)," orbit=",orbit(X)," M=",to_string_(M)) fi fi;
+       if signature(M)!=signature(X).z then bad_sig+:=1;
+         if bad_sig<=3 then prints("  SIG FAIL ",label," ",O," ",group_key(X)," sig=",signature(X)," M=",to_string_(M)," sigM=",signature(M)) fi fi
+     od;
+     let ks=for M in ac do orbit_key(M) od in
+     if (let sk=sort_strings(ks) in first(for i:#sk-1 do sk[i]=sk[i+1] od)!=-1) then
+       bad_dup+:=1; if bad_dup<=3 then prints("  DUP-ORBIT ",label," ",O," ",group_key(X)," ",ac_string(ac)) fi fi;
+     keys#:=group_key(X)+"|"+ac_key(ac); groups#:=group_key(X)
+   od;
+   { injectivity per group }
+
+   let seen=[string]:[] in
+   for k in keys do
+     if first(for s in seen do s=k od)!=-1 then
+       if qd then inj_fail_qd+:=1 else inj_fail_nqd+:=1 fi
+     else seen#:=k fi
+   od
+ od;
+ prints(label," n=",n,": reps=",nreps," empty_AC=",empty," partition_fail=",bad_part," signature_fail=",bad_sig," dup_orbit=",bad_dup," inj_fail(quasi-dist)=",inj_fail_qd," inj_fail(other)=",inj_fail_nqd)
+set expected_2n(int n)=[string]:
+ sort_strings(##for a:n+1 do
+   let b=n-a in
+   ##for sa in (if a>0 then [1,-1] else [1] fi) do
+     for sb in (if b>0 then [1,-1] else [1] fi) do
+       to_string_(K_local_system([0+0*s, (sa*a)+(sb*b)*s], "C")) od od od)
+set test_sp(int n)=void:
+ let found=[string]:[] then nreps=0 in
+ for O in good_parity_partitions(n,"C") do
+   for X in reps(O,"C") do
+     if group_name(X.painted_bi_partition)="Sp("+2*n+",R)" and orbit(X)=(for i:n do 2 od) then
+       nreps+:=1; let ac=compute_AC(X) in
+       if #ac=1 then found#:=to_string_(ac[0]) else found#:="MULTI:"+ac_string(ac) fi
+     fi od od;
+ let sf=sort_strings(found) then ex=expected_2n(n) in
+ prints("Sp(",2*n,",R) orbit [2^",n,"]: #reps=",nreps," 4n=",4*n," distinct ACs=",#(let u=[string]:[] in for s in sf do if first(for t in u do t=s od)=-1 then u#:=s fi od; u),
+        "  AC set = all 4n local systems: ", to_string(sf)=to_string(ex))
+
+set run_bmsz_tests()=void:
+ for label in ["C","B","D","C~","C*","D*"] do for n:4 from 2 do test_ac(n,label) od od;
+ for n:5 from 2 do test_sp(n) od

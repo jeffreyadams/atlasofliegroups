@@ -1,0 +1,2189 @@
+<sommers.at
+<weak_packets.at
+
+{ ---- Definitions BMSZ.at needs that master does not provide at top level ---- }
+set bmsz_C_partitions=(int->[Partition]):parity_restricted_partitions(true)   { odd parts only }
+set bmsz_BD_partitions=(int->[Partition]):parity_restricted_partitions(false) { even parts only }
+
+{ weak unipotent packet for a classical group, orbit given by the partition of the dual group }
+set unipotent_representations(Orbit orbit,RealForm G)=[Param]:
+let n=rank(G) in
+if type_number(G)=1 {type B}
+ then
+ assert(is_valid("C",orbit), "not an orbit of type C");
+ parameters(weak_packet(nilpotent_orbit_Sp(orbit),G))
+elif type_number(G)=2 or type_number(G)=0 and rank(G)=1 {type C, including SL(2)}
+ then
+ assert(is_valid("B",orbit), "not an orbit of type B");
+ parameters(weak_packet(nilpotent_orbit_SO(orbit),G))
+elif type_number(G)=3 {type D}
+ then
+ assert(is_valid("D",orbit), "not an orbit of type D");
+ parameters(weak_packet(nilpotent_orbit_SO(orbit,false),G))
+else
+ prints("bad");
+ [Param]:[]
+fi
+
+{ [BMSZ]  Barbasch-Ma-Sun-Zhu, arXiv:1712.05552  (construction & unitarity)
+  [BMSZb] Barbasch-Ma-Sun-Zhu, arXiv:2205.05266  (counting & reduction)
+
+  Graphviz usage (from atlas prompt):
+    > orbit.dot prints(lift_tree_dot(O_v, label))
+  Shell:
+    dot -Tpdf -o orbit.pdf orbit.dot
+}
+
+{ --------------  Section 0. Summary of Data Types -------------}
+
+{
+PaintedPartition=[[int]]:
+  BMSZ Definition 3.1
+  Partition with a symbol from symbols=[*,s,r,c,d] in each box (satisfying certain rules)
+  P[i]=[a0,a1,...,an] means:
+   row i has length n+1, j^th entry has color symbols[a_j]  (a_j=0,1,2,3,4)
+
+PaintedBiPartition=(PaintedPartition P,PaintedPartition Q,string bi_label)
+  BMSZ Definition 3.2
+  bi_labels=["B+","B-", "C","D","C~","C*","D*"]
+  Pair of painted partitions + bilabel giving the type of group
+    C~=metaplectic
+    B\pm = SO(p,q) sign=(-1)^q
+  
+ExtendedPaintedBiPartition=(PaintedBiPartition painted_bi_partition,[int] S)
+   BMSZ before Propostion 3.6
+   PaintedBiPartition plus S: S <-> PP_*(O^v)  BMSZ Definition 3.5
+                                <-> element of A^bar(O^v)
+   ExtendedPaintedBiPartitions parametrize unipotent representations (BMSZ Theorem 3.16)			
+KOrbit=([Split] signs,string label)
+   K-orbit on \mathfrak P <-> real form of orbit
+   orbit is given by partition
+   K-orbit: sign in each box, alternating along rows
+   one split for each row length
+   split=a+bs, a,b>=0 required <-> first boxes of this row length have a pluses, b minuses
+   
+KLocalSystem=([Split] signs,string label)
+   Formerly known as SignedYoungDiagram
+   Same as KOrbit, except that each split is allowed to be a+bs for any a,b
+   Corresponds to a one-dimensional representation of K-isotropy group
+   given split a+bs, the underlying KOrbit has |a|+|b|s in this location
+   -> O(|a|,|b|) factor of isotropy group, which has 4 one-dimensional representations
+   a,b>0: trivial
+   a,b<0: sign
+   a>0>b: (trivial on O(|a|), sign on O(|b|))
+   a<0<b: (sign on O(|a|), trivial on O(|b|))
+   
+ZKLocalSystem=[(int,KLocalSystem)]
+   sum of KLocalSystems with integral coefficients
+   
+ClassicalSignature=(string label, Split z)
+   BMSZ Section 4.1
+   label is from labels=["B","D","C","C~","C*","D*"]  (same as bilabels but no \pm in type B)
+   z=a+bs indicates a real form of this type, for example
+   ("C",n,n) = Sp(2n,R)
+   ("C*",p,q) = Sp(p,q)
+   ("B",p,q)  = SO(p,q) p+q odd
+}
+
+{ --------------  Section 1. Utilities  --------------}
+
+{Some of these should be moved elsewhere}
+
+{shorthand for rat_as_int(n/2), with check that n is even}
+set h(int n)=int:
+assert(is_even(n),"trying to take half of odd integer");n\2
+
+set find(string S,[string] list)=int:first(for x in list do S=x od)
+set is_in(string S,[string] list)=bool:find(S,list)!=-1
+
+set labels=["A","A~", "B","D","C","C~","C*","D*"]  {don't need A/A~?}
+set bi_labels=["B+","B-", "C","D","C~","C*","D*"]  {for PaintedBiPartitions see Def 3.3}
+
+{dual label in sense of duality: B<->C, others no change}
+set dual_label(string label)=string:
+if label="C" or label="C*" then "B"
+elif label="B" then "C"
+elif label="D*" then "D"
+else label fi
+
+
+{dual_labels: in the sense of Howe dual pairs: B<->C~, C<->D, C*<->D*}
+set dual_labels=["*","*",  "C~","C","D","B", "D*","C*"]
+set dual_howe_label(string label)=string:dual_labels[find(label,labels)]
+
+
+
+set is_descending([int] list)=bool:first(for i:#list-1 do list[i] < list[i+1] od)=-1
+set is_strongly_descending([int] list)=bool:first(for i:#list-1 do list[i] <= list[i+1] od)=-1
+
+set is_ascending([int] list)=bool:first(for i:#list-1 do list[i] > list[i+1] od)=-1
+set is_strongly_ascending([int] list)=bool:first(for i:#list-1 do list[i] >= list[i+1] od)=-1
+set is_valid(Partition P)=is_descending(P)
+
+set star_string(int n)=string:let rv="" in for i:n do rv:=rv+"*" od;rv
+
+
+
+
+set symbols=[string]:["*","s","r","c","d"]
+set symbol(int k)=string:assert(k>=0 and k<=4,"k out of range");symbols[k]
+
+set add_one([int] P)=[[int]]:
+if (#P>1 and P~[0]<P~[1]) or #P=1 then
+[P#1,P~[0]+:=1;P] else [P#1] fi
+
+{ Find the index of G among the real forms of its inner class. }
+set rf_index(RealForm G)=int:
+first(for i:#real_forms(inner_class(G)) do real_form(inner_class(G),i)=G od)
+
+{ For type D: detect the "even" inner class (contains SO(2a,2b) and SO*(2n)).
+  Even ic: index-0 form is SO(2n,0), which is compact.
+  Odd ic: index-0 form is SO(2n-1,1), which is not compact. }
+set is_D_even_ic(RealForm G)=bool:
+is_compact(real_form(inner_class(G),0))
+
+
+
+
+{ --------------  Section 2: Painted Partitions  --------------}
+
+set size(Partition P)=int:sum(P)
+
+set_type PaintedPartition=[[int]]
+
+set partition(PaintedPartition P)=Partition:for row in P do #row od
+set number_rows(PaintedPartition P)=int:#P
+set number_columns(PaintedPartition P)=int:#transpose(partition(P))
+set size(PaintedPartition P)=int:size(partition(P))
+
+set null_painted_partition=PaintedPartition:[[]]
+
+set equal(PaintedPartition P,PaintedPartition Q)=bool:
+number_rows(P)=number_rows(Q) and all(for row@i in P do row=Q[i] od)
+
+set symbol_string([int] row)=string:##for j in row do symbol(j) od
+set symbol_string(PaintedPartition P)=[string]: for row in P do symbol_string(row) od
+
+set symbols([int] row)=sort_u(row)
+set symbols(PaintedPartition P)=symbols(##P)
+
+
+
+set column_of(PaintedPartition P)=(int->[int]):(int i):
+##for j:number_rows(P) do if i<#P[j] then [P[j][i]] else [] fi  od
+
+set transpose_of(PaintedPartition P)=PaintedPartition:
+let f=column_of(P) in for i:number_columns(P) do f(i) od
+
+set count([int] row, int symbol)=int:count(for i in row do i=symbol od)
+
+set count_in_row(PaintedPartition P,int row,int symbol)=int:count(P[row],symbol)
+set count_in_column(PaintedPartition P, int column, int symbol)=int:count_in_row(transpose_of(P),column,symbol)
+set count(PaintedPartition P, int symbol)=sum(for row in P do count(row,symbol) od)
+
+set rows_by_length(Partition P)=[int]:
+for i:max(P)+1 do count(P,i) od
+
+set partition_from_row_lengths([int] rows)=
+reverse(sort(##for i:#rows do for j:rows[i] do i od od))
+
+set delete_by_symbols(PaintedPartition P,[int] excluded_symbols)=PaintedPartition:
+for row in P do
+  for j in row do if is_member(excluded_symbols)(j) then [-1] else [j] fi od.##
+ od
+
+set delete_by_symbols(PaintedPartition P,int excluded_symbol)=PaintedPartition:delete_by_symbols(P,[excluded_symbol])
+
+set no_holes([int] row)=bool:let f=first(for j:#row do row[j]=-1 od) in
+if f=-1 then true else row[f:]=-ones(#row-f) fi
+set no_holes_by_rows(PaintedPartition P)=bool:all(for row in P do no_holes(row) od)
+set no_holes_by_columns(PaintedPartition P)=bool:all(for row in transpose_of(P) do no_holes(row) od)
+
+set is_valid(PaintedPartition P)=bool:
+is_valid(partition(P)) and
+all(for row:number_rows(P) do count_in_row(P,row,1)<=1 od)and
+all(for row:number_rows(P) do count_in_row(P,row,2)<=1 od)and
+all(for column:number_columns(P) do count_in_column(P,column,3)<=1 od)and
+all(for column:number_columns(P) do count_in_column(P,column,4)<=1 od) and
+all(for S in [[4],[3,4],[2,3,4],[1,2,3,4]] do
+ let Q=delete_by_symbols(P,S) in no_holes_by_rows(Q) and no_holes_by_columns(Q) od)
+
+set locations(PaintedPartition P,int i)=
+##for row@j in P do
+ ##for c@k in row do if c=i then [(j,k)] else [] fi od od
+
+set same_zeroes(PaintedPartition P,PaintedPartition Q)=bool:
+let loc_P=locations(P,0) then loc_Q=locations(Q,0) in
+#loc_P=#loc_Q and all(for i:#loc_P do loc_P[i]=loc_Q[i] od)
+
+set add_one_to_first_column(PaintedPartition P)=[PaintedPartition]:
+for i:5 do if is_valid(P#[i]) then [P#[i]] else [] fi od.##
+
+set add_one_to_last_row(PaintedPartition P)=[PaintedPartition]:
+if #P=0
+ then [ [[0]],[[1]],[[2]],[[3]],[[4]] ]
+elif #P=1
+ then
+ for i:5 do let Q=[P[0]#i] in
+   if is_valid(Q) then [Q] else [] fi od.##
+elif #P~[0]<#P~[1]
+ then
+ for i:5 do let Q=P then ()=Q~[0]:=Q~[0]#i in if is_valid(Q) then [Q] else [] fi od.##
+else
+ []
+fi
+
+set painted_partitions(int n)=
+let rec_fun f(int n)=[PaintedPartition]:
+if n=0
+ then [[]]
+elif n=1 then
+  [ [[0]],[[1]],[[2]],[[3]],[[4]] ]
+else
+ for P in f(n-1) do  add_one_to_first_column(P)##add_one_to_last_row(P) od.##
+fi in f(n)
+
+set painted_partitions(Partition P)=[PaintedPartition]:
+##for pp in painted_partitions(size(P)) do
+ if partition(pp)=P then [pp] else [] fi od
+
+{ --------------  Section 3: Painted BiPartitions --------------}
+  
+set_type PaintedBiPartition=(PaintedPartition P,PaintedPartition Q,string bi_label)
+set label_of(string bi_label)=string:if is_in(bi_label,["B+","B-"]) then "B" else bi_label fi
+set label(PaintedBiPartition Z)=string:label_of(bi_label(Z))
+set =(PaintedBiPartition A,PaintedBiPartition B)=bool:equal(A.P,B.P) and equal(A.Q,B.Q)
+set size(PaintedBiPartition (P,Q,))=int:size(P)+size(Q)
+set count(PaintedBiPartition (P,Q,),int symbol)=int:count(P,symbol)+count(Q,symbol)
+set dim_tau(PaintedBiPartition Z)=int:
+if Z.bi_label="B+" or Z.bi_label="B-" then 2*size(Z)+1 else 2*size(Z) fi
+
+set dual_howe_bi_label(PaintedBiPartition Z)=string:
+if Z.label="C~" then
+ if size(Z.P)>0 then
+  let column=transpose_of(Z.P)[0] then
+  c=find(column,3) in
+  if c=-1 then "B+" else "B-" fi
+ else "B-" fi
+else
+  dual_howe_label(Z.label)
+fi
+
+set is_valid_left(PaintedPartition P, string label)=
+let S=symbols(P) then
+excluded=[int]:
+ if   label="B" then [1,2,4]
+ elif label="C" then [1]
+ elif label="D" then []
+ elif label="C~" then [2,4]
+ elif label="C*" then [1,2,3,4]
+ elif label="D*" then [2,3,4]
+else
+ error("missing case in is_valid_left")
+fi
+in all(for x in excluded do count(S,x)=0 od)
+
+set is_valid_left(PaintedPartition P, string bi_label)=bool:is_valid_left(P,label_of(bi_label))
+
+set is_valid_right(PaintedPartition Q, string label)=
+let S=symbols(Q) then
+excluded=[int]:
+ if label="B" then [3]
+ elif label="C" then [2,3,4]
+ elif label="D" then [1,2,3,4]
+ elif label="C~" then [1,3]
+ elif label="C*" then [3,4]
+ elif label="D*" then [1,3,4]
+else
+ error("missing case in is_valid_right")
+fi
+in all(for x in excluded do count(S,x)=0 od)
+
+set is_valid_right(PaintedPartition P, string bi_label)=bool:is_valid_right(P,label_of(bi_label))
+
+set is_valid(PaintedBiPartition Z)=bool:
+same_zeroes(Z.P,Z.Q) and is_valid_left(Z.P,Z.label) and is_valid_right(Z.Q,Z.label)
+
+set p(PaintedBiPartition Z)=int:
+if is_in(Z.bi_label,["B+","B-","D","C*"]) then
+ let extra= if Z.bi_label="B+" then 1 else 0 fi in
+ count(Z,0) + 2*count(Z,2) + count(Z,3) + count(Z,4) + extra
+else
+ size(Z)
+fi
+
+set q(PaintedBiPartition Z)=int:
+if is_in(Z.bi_label,["B+","B-","D","C*"]) then
+ let extra= if Z.bi_label="B-" then 1 else 0 fi in
+ count(Z,0) + 2*count(Z,1) + count(Z,3) + count(Z,4) + extra
+else
+ size(Z)
+fi
+
+{(3.6) epsilon = 0 if d occurs in 1st column of P or Q, else 1}
+set epsilon(PaintedBiPartition Z)=int:
+if any(for row in Z.P##Z.Q do row[0]=4 od) then 0 else 1 fi
+
+
+{ --------------  Section 4: Groups --------------}
+
+set_type GroupDatum=(string name,int p,int q)
+set =(GroupDatum A,GroupDatum B)=bool:
+ A.name=B.name and A.p=B.p and A.q=B.q
+
+set all_group_data(int rank,string label)=[GroupDatum]:
+if is_in(label,["B+"]) then
+ for i:2*rank+2 do ("SO",2*rank+1-i,i) od
+elif is_in(label,["B-"]) then
+ for i:2*rank+2 do ("SO",2*rank-i,i+1) od
+elif label="D" then
+ for i:2*rank+1 do ("SO",2*rank-i,i) od
+elif label="C" then [("Sp",2*rank,-1)]
+elif label="C*" then
+ for i:rank+1 do ("Sp",rank-i,i) od
+elif label="D*" then [("SO*",2*rank,0)]
+elif label="C~" then [("Mp",2*rank,0)]
+else error("incorrect data")
+fi
+
+set group_name(GroupDatum G)=string:
+if G.name="SO"
+ then "SO("+G.p+","+G.q+")"
+elif G.name="Sp" and G.q=-1
+ then "Sp("+G.p+",R)"
+elif G.name="Sp" and G.q>=0
+ then "Sp("+G.p+","+G.q+")"
+elif G.name="SO*"
+ then "SO*("+2*G.p+")"
+else
+ prints("incorrect bi_label");""
+fi
+
+set group_datum(PaintedBiPartition Z)=GroupDatum:
+if Z.bi_label="B+" then
+    ("SO",p(Z),q(Z))
+ elif Z.bi_label="B-" then
+     ("SO",p(Z),q(Z))
+ elif Z.bi_label="D" then
+     ("SO",p(Z),q(Z))
+ elif Z.bi_label="C" then
+    ("Sp",2*p(Z),-1)
+ elif Z.bi_label="C*" then
+    ("Sp",h(p(Z)),h(q(Z)))
+ elif Z.bi_label="D*" then
+    ("SO*",2*p(Z),0)
+ elif Z.bi_label="C~" then
+    ("Mp*",2*size(Z),0)
+else
+  error("incorrect bi_label")
+fi
+
+set group_name(PaintedBiPartition Z)=string:
+if is_in(Z.bi_label,["B+","B-","D"])
+ then "SO("+p(Z)+","+q(Z)+")"
+elif Z.bi_label="C"
+ then "Sp("+2*size(Z)+",R)"
+elif Z.bi_label="C*" then
+ "Sp("+rat_as_int(p(Z)/2)+","+ rat_as_int(q(Z)/2)+")"
+elif Z.bi_label="D*" then
+ "SO*("+2*size(Z)+")"
+elif Z.bi_label="C~" then
+ "Mp("+2*size(Z)+")"
+else
+ prints("incorrect bi_label");""
+fi
+
+{ Extract the BMSZ bi_label and GroupDatum from an atlas RealForm G.
+  Supported types:
+    B_n → SO(p,q) with p+q=2n+1; bi_label="B+" (p odd) or "B-" (q odd)
+    C_n → Sp(2n,R) (split, label "C") or Sp(p,q) (non-split, label "C*")
+    D_n → SO(p,q) with p+q=2n (label "D") or SO*(2n) (label "D*")
+  Returns (bi_label, GroupDatum). }
+set label_and_datum(RealForm G)=(string,GroupDatum):
+let rd=root_datum(G) then
+factors=simple_factors(Lie_type(rd)) then
+k=rf_index(G) in
+let (type_str,n)=factors[0] in
+if type_str="B" then
+  let q=k then p=2*n+1-q then
+  bi_label=if is_even(q) then "B+" else "B-" fi in
+  (bi_label,("SO",p,q))
+elif type_str="C" then
+  if is_split(G)
+   then ("C",("Sp",2*n,-1))
+   else ("C*",("Sp",n-k,k))
+  fi
+elif type_str="D" then
+  if is_D_even_ic(G) then
+    let half=n\2 then
+    num_star=if is_even(n) then 2 else 1 fi then
+    last_idx=#real_forms(inner_class(G))-1 in
+    if k<half then ("D",("SO",2*n-2*k,2*k))
+    elif k<half+num_star then ("D*",("SO*",2*n,0))
+    else ("D",("SO",n+n%2,n-n%2))
+    fi
+  else
+    ("D",("SO",2*n-2*k-1,2*k+1))
+  fi
+else
+  error("label_and_datum: unsupported Lie type "+type_str+
+        " (low-rank exceptional isomorphism: B_1/C_1 ≅ A_1, D_2 ≅ A_1xA_1, D_3 ≅ A_3)")
+fi
+
+set label(RealForm G)=string:
+let (bi_label,)=label_and_datum(G) in label_of(bi_label)
+
+
+{ --------------  Section 5: Orbits --------------}
+
+set is_primitive_parity(int i, string bi_label)=bool:
+let label=label_of(bi_label) in
+if is_in(label,["C","C~","C*"])
+ then is_odd(i)
+elif is_in(label,["B","D","D*"])
+ then is_even(i)
+else
+ error("missing case in is_primitive_parity")
+fi
+
+set is_primitive(Orbit O,int i, string label)=bool:
+assert(i>0 and i<=#O, "i out of range");
+is_primitive_parity(i,label) and
+if i<#O
+ then is_even(O[i-1]-O[i]) and O[i-1]-O[i]>0
+ else is_even(O[i-1])
+fi
+
+set primitive_pairs(Orbit O,string label)=[int]:
+{ i runs over 1..#O (for i:n from 1 gives 1..n); the last pair (#O,#O+1) has r_{#O+1}=0 }
+##for i:#O from 1 do if is_primitive(O,i,label) then [i] else [] fi od
+set pp(Orbit O,string label)=[int]:primitive_pairs(O,label)
+set number_primitive(Orbit O,string label)=int:#primitive_pairs(O,label)
+set A_bar(Orbit O, string label)=[[int]]:power_set(pp(O,label))
+{not sure why this is the right definition: is the C*/D* special case needed?}
+set A_bar_order(Orbit O_v, string label)=int:
+if is_in(label,["B","C","D","C~"]) then #A_bar(O_v,label) else 1  fi
+
+set orbit((Partition,Partition) pair,string label)=
+if label="C" then  dual_orbit(orbit_C(pair))
+elif label="B" then  dual_orbit(orbit_B(pair))
+else [-1]  {placeholder for type D} fi
+
+set orbit(PaintedBiPartition Z)=orbit((Z.P.partition,Z.Q.partition),Z.label)
+
+set is_good_parity(Orbit P, string label)=bool:
+if label="A"
+ then all(for row in P do is_even(row-size(P)) od)
+elif label="A!"
+ then all(for row in P do is_odd(row-size(P)) od)
+elif is_in(label,["C","C*","D","D*"])
+ then all(for row in P do is_odd(row) od)
+elif is_in(label,["B","B+","B-","C~"])
+ then all(for row in P do is_even(row) od)
+else
+ error("missing case")
+fi
+
+set all_partitions(int n,string label)=[Orbit]:
+if is_in(label,["B","D","D*"]) then bmsz_BD_partitions(n)
+elif is_in(label,["C","C~","C*"]) then bmsz_C_partitions(n)
+else
+error("missing case")
+fi
+
+set good_parity_partitions(int n, string label)=
+if is_in(label,["C","C*"]) then
+ for P in  bmsz_BD_partitions(2*n+1) do if is_good_parity(P,label) then [P] else [] fi od.##
+elif is_in(label,["D","D*"]) then
+ for P in  bmsz_BD_partitions(2*n) do if is_good_parity(P,label) then [P] else [] fi od.##
+elif is_in(label,["B","B+","B-","C~"]) then
+ for P in  bmsz_C_partitions(2*n) do if is_good_parity(P,label) then [P] else [] fi od.##
+else
+ error("missing case in good_parity_partitions")
+fi
+
+set even_index_rows(Orbit P)=Orbit:for i:(#P-2)\2+1 do P[2*i+1] od
+set odd_index_rows(Orbit P)=Orbit:for i:(#P-1)\2+1 do P[2*i] od
+
+set left_diagram(Orbit P, string bi_label)=Partition:
+let left=
+ if label_of(bi_label)="B" then
+ for row in even_index_rows(P) do h(row) od
+elif bi_label="C~" then
+ for row in odd_index_rows(P) do h(row) od
+elif is_in(bi_label,["C","C*"]) then
+ let temp=for row in even_index_rows(P) do h(row+1) od in
+ if 2*#temp-1=#P then temp[:#temp-1] else temp fi
+elif is_in(bi_label,["D","D*"]) then
+ if #P=0 then [0] else
+  for i:#P\2 do
+   if i=0
+    then if P[0]=0 then 0 else h(P[0]+1)
+   fi
+  else h(P[2*i]+1) fi od
+ fi
+else
+ error("case not found")
+fi
+in transpose(left)
+
+set right_diagram(Orbit P, string bi_label)=Orbit:
+let right=
+if label_of(bi_label)="B" then
+ for row in odd_index_rows(P) do h(row) od
+elif bi_label="C~" then
+ for row in even_index_rows(P) do h(row) od
+elif is_in(bi_label,["C","C*"]) then
+ for row in odd_index_rows(P) do h(row-1) od
+elif is_in(bi_label,["D","D*"]) then
+ if #P=0 then [0]
+  else for i:#P\2 do  h(P[2*i+1]-1) od
+ fi
+else
+ error("case not found")
+fi
+in transpose(right)
+
+{bi_partition_bmsz: BMSZ Section 3.2
+ NOTE: the orbit is for G^v and the label is for G
+ bipartition associated to a dual orbit: given G and an orbit O^v for
+ G^v, return the corresponding bipartition (P,Q). This corresponds to
+ a representation of the Weyl group of type B, which is the special
+ representation for the dual orbit O of G (assuming we're not in the
+ metaplectic case). The Weyl group is type B (\simeq C) because G is
+ of type B,C or D, and in the D case the BMSZ paper works with the
+ disconnected orthogonal group, so the Weyl group is also type B.
+}
+set bi_partition_bmsz(Orbit dual_orbit,string label_for_G)=BiPartition:
+(left_diagram(dual_orbit,label_for_G),right_diagram(dual_orbit,label_for_G))
+
+set left_valid_painted_partitions(int n,string label)=[PaintedPartition]:
+let valid=for P in painted_partitions(n) do
+ if is_valid_left(P,label) then [P] else [] fi od.##
+in if #valid=0 then [null_painted_partition] else valid fi
+
+set left_valid_painted_partitions(Partition P,string label)=[PaintedPartition]:
+for Z in painted_partitions(size(P)) do
+  if is_valid_left(Z,label) and partition(Z)=P then [Z] else [] fi od.##
+
+set right_valid_painted_partitions(int n,string label)=
+for P in painted_partitions(n) do
+ if is_valid_right(P,label) then [P] else [] fi od.##
+
+set right_valid_painted_partitions(Partition P,string label)=
+for Z in painted_partitions(size(P)) do
+  if is_valid_right(Z,label) and partition(Z)=P then [Z] else [] fi od.##
+
+set complex_group(Orbit O_v,string label)=RootDatum:
+if is_in(label,["B","C~"]) then SO(2*#O_v+1)
+elif is_in(label,["C","C*"]) then Sp(2*#O_v-1)
+elif is_in(label,["D","D*"]) then SO(2*#O_v)
+else
+error("case not implemented yet")
+fi
+
+set find = find(=@(GroupDatum,GroupDatum))
+
+set collated_group_data([PaintedBiPartition] list)=([GroupDatum],[int]):
+if #list=0 then ([],[]) else
+ let rank=size(list[0]) then
+ bi_label=list[0].bi_label then
+ group_data=all_group_data(rank,bi_label) then
+ rv=null(#group_data) in
+ for Z in list do
+  let j=find(group_data,group_datum(Z)) in
+  rv[j]+:=1
+ od;(group_data,rv)
+fi
+
+set show_collated_group_data([PaintedBiPartition] list)=void:
+let (groups,numbers)=collated_group_data(list) in
+for G@i in groups do
+prints(group_name(G), " ", numbers[i]) od
+
+{ Barbasch-Vogan dual for the metaplectic group, [BMSZ] Definition 4.5 with star=C~.
+  The columns of d_BV(O^v) come in pairs (c_i,c_{i+1}), i odd, from rows (r_i,r_{i+1}):
+    vacant or balanced (r_i=r_{i+1}):         (r_i, r_{i+1})
+    tailed (r_i-r_{i+1} positive and odd):    (r_i-1, 0)
+    primitive (r_i-r_{i+1} positive and even): (r_i-1, r_{i+1}+1)
+  Takes a good parity partition of 2n (all parts even), returns a partition of 2n. }
+set row_or_zero(Partition P,int i)=int:if i<=#P then P[i-1] else 0 fi
+
+set dual_Ctilde(Partition P)=Partition:
+let cols=[int]:[] in
+for k:(#P+1)\2 do
+  let a=row_or_zero(P,2*k+1), b=row_or_zero(P,2*k+2) in
+  cols:=cols##(if a=b then [a,b]
+               elif is_odd(a-b) then [a-1,0]
+               else [a-1,b+1] fi)
+od;
+let m=if #cols=0 then 0 else max(cols) fi in
+for j:m from 1 do #(##for c in cols do if c>=j then [c] else [] fi od) od
+
+set dual(Partition P, string label)=
+if #P=0 then []
+elif is_in(label,["B","B+","B-"]) then
+B_to_C_dual(P)
+elif is_in(label,["C","C*"]) then
+C_to_B_dual(P)
+elif is_in(label,["C~"]) then
+dual_Ctilde(P)
+elif is_in(label,["D","D*"]) then
+let (Q,)=D_dual(P,true) in Q
+else
+error("(dual) only types BCD")
+fi
+
+set dual_orbit_by_search(Partition P,Partition Q, string label)=Orbit:
+let orbits= ##for orbit in good_parity_partitions(rank(P,Q), label) do
+ if bi_partition_bmsz(orbit,label)=(P,Q) then [orbit] else [] fi od
+in assert(#orbits<2,"orbit function returned >1 orbit");
+assert(#orbits>0,"orbit function returned no orbits");
+orbits[0]
+
+set orbit_by_search(Partition P,Partition Q, string label)=Orbit:
+dual(dual_orbit_by_search(P,Q,label),label)
+
+set dual_orbit(Partition P,Partition Q, string label)=Orbit:
+if is_in(label,["C","C*"]) then dual(orbit_C(P,Q),"C")
+elif is_in(label,["B","B+","B-"]) then dual(orbit_B(P,Q),"B")
+elif is_in(label,["D","D*","C~"]) then
+ dual_orbit_by_search(P,Q,label)
+else
+ error("(dual_orbit) missing case")
+fi
+set dual_orbit(PaintedPartition P,PaintedPartition Q,string label)=Orbit:dual_orbit(P.partition,Q.partition,label)
+set orbit(BiPartition (P,Q), string label)=dual_orbit(P,Q,label)
+set dual_orbit(BiPartition (P,Q), string label)=dual_orbit(P,Q,label)
+
+set orbit(Partition P,Partition Q, string label)=Orbit:
+if is_in(label,["C","C*"]) then orbit_C(P,Q)
+elif is_in(label,["B","B+","B-"])  then orbit_B(P,Q)
+elif is_in(label,["D","D*","C~"]) then
+ orbit_by_search(P,Q,label)
+else
+ error("(orbit) only types BCD")
+fi
+set orbit(PaintedPartition P,PaintedPartition Q,string label)=Orbit:orbit(P.partition,Q.partition,label)
+set orbit(PaintedBiPartition Z)=orbit(Z.P,Z.Q,Z.label)
+
+
+set painted_bi_partitions(Orbit O_vee,string label_for_G)=[PaintedBiPartition]:
+let (left,right)=bi_partition_bmsz(O_vee,label_for_G) in
+##for P in left_valid_painted_partitions(left,label_for_G) do
+ ##for Q in right_valid_painted_partitions(right,label_for_G) do
+  if is_valid(P,Q,label_for_G) then [(P,Q,label_for_G)] else [] fi
+ od
+od
+
+set painted_bi_partitions(int n, string label)=[PaintedBiPartition]:
+##for orbit in good_parity_partitions(n,label) do painted_bi_partitions(orbit,label) od
+
+set pbp(Orbit O_v, string label)=[PaintedBiPartition]:painted_bi_partitions(O_v,label)
+set pbp(GroupDatum G, Orbit O_v, string bi_label)=[PaintedBiPartition]:
+##for Z in pbp(O_v,bi_label) do
+  let gd=group_datum(Z) in
+  if gd.name=G.name and gd.p=G.p and gd.q=G.q then [Z] else [] fi
+od
+
+set number_pbp(GroupDatum G, Orbit O_v, string bi_label)=int:
+#pbp(G,O_v,bi_label)
+
+{ --------------  Section 6: Descent --------------}
+
+set row_descent_naive(Partition P)=Partition:
+if size(P)=0 then P else P[1:] fi
+
+set row_descent(Partition P,string label)=Partition:
+if is_in(label,["D","D*"]) and size(P)=0 then [1] else row_descent_naive(P) fi
+
+set row_descent_naive(PaintedPartition P)=PaintedPartition:
+if size(P)=0 then P else P[1:] fi
+
+set row_descent(PaintedPartition P,string label)=PaintedPartition:
+if is_in(label,["D","D*"]) and size(P)=0 then [[1]] else row_descent_naive(P) fi
+
+set column_descent_naive(Partition P)=Partition:transpose(row_descent_naive(transpose(P)))
+set column_descent_naive(PaintedPartition P)=PaintedPartition:transpose_of(row_descent_naive(transpose_of(P)))
+
+set change(PaintedPartition P,int a, int b)=PaintedPartition:
+for row in P do
+ for j in row do if j=a then b else j fi od
+od
+
+set descent_naive_case_a(PaintedBiPartition Z)=
+let Qnew=change(column_descent_naive(Z.Q),1,0) then
+Pnew=for row@i in Z.P do
+      for entry@j in row do
+       if entry=0
+        then
+	 if i<number_columns(Qnew) and j<#Qnew[i] and Qnew[i][j] !=0 then 1
+	 elif i>=number_columns(Qnew) or j>=#Qnew[i]  then 1
+	  else entry
+	 fi
+       else entry
+       fi
+      od
+     od
+in (Pnew,Qnew,dual_howe_bi_label(Z))
+
+set descent_naive_case_b(PaintedBiPartition Z)=
+let Pnew=change(column_descent_naive(Z.P),1,0) then
+Qnew=for row@i in Z.Q do
+      for entry@j in row do
+       if entry=0
+        then
+	 if i<number_columns(Pnew) and j<#Pnew[i] and Pnew[i][j] !=0 then 1
+	 elif i>=number_columns(Pnew) or j>=#Pnew[i]  then 1
+	  else entry
+	 fi
+       else entry
+       fi
+      od
+     od
+in (Pnew,Qnew,dual_howe_bi_label(Z))
+
+set descent_naive(PaintedBiPartition Z)=PaintedBiPartition:
+if size(Z)=0 then Z else
+if is_in(label(Z),["B","C","C*"]) then descent_naive_case_a(Z)  else descent_naive_case_b(Z) fi fi
+
+set descent(PaintedBiPartition Z)=PaintedBiPartition:
+let dZ=descent_naive(Z) in
+if (Z.bi_label="B+" and
+    number_rows(Z.Q)>=2 and
+    find([2,3],Z.Q~[0][0])!=-1) and
+    size(dZ.P)>0  then
+ let ()=prints("special case 1") in
+ let Pnew=dZ.P then
+  row=Pnew~[0] in
+  row[0]:=1;
+  Pnew~[0]:=row; (Pnew,dZ.Q,dZ.bi_label)
+elif
+  Z.bi_label = "D" then
+    let c1 = #column_of(Z.P)(0) then
+    c2 = #column_of(Z.P)(1) then
+    c1j = #column_of(Z.Q)(0) in
+    if
+     c2 > 0 and
+     c2 = c1j + 1 and
+     column_of(Z.P)(1)~[0] = 3 and
+     all(for i:c1-c2+1 from c2-1 do
+         find([2,4],column_of(Z.P)(0)[i])!=-1 od) then
+  let ()=prints("special case 2") in
+  let Pnew=dZ.P then
+  row=Pnew~[0] in
+  row[0]:=2;
+  Pnew~[0]:=row;
+  (Pnew,dZ.Q,dZ.bi_label)
+  else dZ fi
+else
+ dZ
+fi
+
+set descent([PaintedBiPartition] list)=[PaintedBiPartition]:for Z in list do descent(Z) od
+
+set descent_ext([int] S)=[int]:
+##for j in S do if j>1 then [j-1] else [] fi od
+
+
+{ --------------  Section 7: Extended Painted BiPartitions --------------}
+  
+set_type ExtendedPaintedBiPartition=(PaintedBiPartition painted_bi_partition,[int] S)
+set extended_painted_bi_partition(PaintedBiPartition X,[int] S)=ExtendedPaintedBiPartition:(X,S)
+set size(ExtendedPaintedBiPartition X)=size(X.painted_bi_partition)
+set epsilon(ExtendedPaintedBiPartition X)=int:epsilon(X.painted_bi_partition)
+set epsilon_extended(ExtendedPaintedBiPartition X)=int:
+ if contains(1)(X.S) then 1 else 0 fi
+set descent(ExtendedPaintedBiPartition (Z,S))=ExtendedPaintedBiPartition:
+(descent(Z),descent_ext(S))
+set orbit(ExtendedPaintedBiPartition Z)=orbit(painted_bi_partition(Z))
+set label(ExtendedPaintedBiPartition Z)=string:label(painted_bi_partition(Z))
+set =(ExtendedPaintedBiPartition A,ExtendedPaintedBiPartition B)=bool:
+ A.painted_bi_partition=B.painted_bi_partition and A.S=B.S
+set descent_chain(ExtendedPaintedBiPartition Z)=[ExtendedPaintedBiPartition]:
+let rv=[Z] in
+while size(rv~[0])>0 do
+ rv#:=descent(rv~[0]) od;rv
+
+
+set descent_naive(Orbit O_v)=Orbit: row_descent_naive(O_v)
+
+set descent(Orbit O_v,string label)=Orbit:
+if is_in(label,["D","D*"]) and size(O_v)=0 then [1] else
+row_descent_naive(O_v) fi
+
+set descent(Orbit O_v,[int] S,string label)=(Orbit,[int]):
+ let O_v_prime=descent(O_v,label) then
+ pp_prime=pp(O_v_prime,label) in
+(O_v_prime,##for i in pp(O_v,label) do if i>1 and is_member(pp_prime)(i-1) then [i] else [] fi  od)
+
+set extended_painted_bipartitions(Orbit O_v,string label)=
+let pbp=pbp(O_v,label) in
+if is_in(label,["B","C","D","C~"])
+ then
+   ##for Z in pbp do
+    for S in A_bar(O_v,label) do
+     ExtendedPaintedBiPartition:(Z,S) od od
+ else
+    for Z in pbp do ExtendedPaintedBiPartition:(Z,[int]:[]) od
+fi
+
+set reps(Orbit O_v,string label)=extended_painted_bipartitions(O_v,label)
+
+{ --------------  Section 8: Signatures--------------}
+
+set_type ClassicalSignature=(string label, Split z)
+set p(ClassicalSignature S)=int: int_part(S.z)
+set q(ClassicalSignature S)=int: s_part(S.z)
+set size(ClassicalSignature S)=int:p(S)+q(S)
+set classical_signature(string label, Split z)=ClassicalSignature:(label,z)
+
+set p(Split z)=int:int_part(z)
+set q(Split z)=int:s_part(z)
+set pair(Split z)=(int,int):(p(z),q(z))
+set is_non_negative(Split z)=bool:p(z)>=0 and q(z)>=0
+
+set signature(PaintedBiPartition Z)=ClassicalSignature:
+(Z.label,(Z.p,Z.q))
+set signature(ExtendedPaintedBiPartition X)=signature(X.painted_bi_partition)
+
+{ --------------  Section 9: K Orbits --------------}
+
+set_type KOrbit=([Split] signs,string label)
+{the integers (p,q) are required to be non-negative
+to avoid headaches: the first entry is always (0,0) and is ignored.
+ Y=[(0,0),(p_1,q_1),(p_2,q_2),...]
+ corresponds to a Young diagram with p_i + q_i rows of length i
+ each row has alternating signs in its boxes
+   p_i of the rows start with +, q_i start with -
+Example:
+ Y=[(0,0),(1,1),(2,0),(2,1)] ->
+ +-+
+ +-+
+ -+-
+ +-
+ +-
+ +
+ -
+
+Note: starting with (0,0) gives:
+the rows of even length are those Y[i] with i even
+rather than vice-versa
+}
+set K_orbit([Split] signs,string label)=KOrbit:(signs,label)
+set p(KOrbit (signs,label))=(int->int):(int i):int_part(signs[i])
+set q(KOrbit (signs,label))=(int->int):(int i):s_part(signs[i])
+set size(KOrbit Y)=int:sum(for z@i in signs(Y) do (p(z)+q(z))*i  od)
+set partition(KOrbit (signs,))=
+let rv=[[int]]:[] in
+ for z@i in signs do
+   if !=z then
+     rv#:=for j:p(z)+q(z) do i od
+   fi
+ od;reverse(##rv)
+set orbit(KOrbit orbit)=Orbit:partition(orbit)
+
+set =(KOrbit A,KOrbit B)=A.label=B.label and
+#A.signs=#B.signs and
+all(for i:#A.signs do A.signs[i]=B.signs[i] od)
+
+set null_K_orbit(string label)=KOrbit:([],label)
+
+{n>0}
+set sign_char(int n)=string:
+assert(n>=0, "n<0 in sign_char");
+if is_even(n) then "+" else "-" fi
+
+{z is either an integer n or an integer*s}
+set sign_char(Split z)=string:
+assert(is_pure(z), "z is not pure");
+if s_part(z)=0 then {z is an integer}
+ let w=int_part(z) in
+  if w>0 then
+     if is_even(w) then "+" else "-" fi
+  else
+     if is_even(w) then "*" else "=" fi
+  fi
+else {z is n*s}
+ let w=s_part(z) in
+  if w>0 then
+     if is_even(w) then "-" else "+" fi
+  else
+     if is_even(w) then "=" else "*" fi
+  fi
+fi
+
+set alt_string_plus(int k)=string:concat(for i:k do sign_char(i) od)
+set alt_string_minus(int k)=string:concat(for i:k do sign_char(i+1) od)
+set alt_string(int plus_or_minus,int length)=string:
+ if is_even(plus_or_minus) then alt_string_plus(length) else alt_string_minus(length) fi
+
+{(length, z=p+qs -> p+q alternating rows, p starting with +, q starting with -}
+set signed_rows(int length, Split z)=[string]:
+for i:int_part(z) do alt_string_plus(length) od##
+for i:s_part(z) do alt_string_minus(length) od
+
+set show(KOrbit (signs,label))=void:
+for i:#signs downto 0 do
+ let rows=signed_rows(i,signs[i]) in
+ for row in rows do prints(row) od
+od
+
+set even_integers([int] list)=[int]: ##for i:#list-1 from 1 do if is_even(i) then [i] else [] fi od
+set odd_integers([int] list)=[int]: ##for i:#list-1 from 1  do if is_odd(i) then [i] else [] fi od
+
+{array v=[a,b,c,d,...] of any type, we ignore the first entry and write it
+       v=[*,a,b,c,d,...]
+ the even indices are 2,4,6,... the odd indices are 1,3,5,...
+}
+any_type S,T begin
+set even_indices([T]a) = even_integers(#(#a))
+set odd_indices([T]a) =  odd_integers(#(#a))
+set even_entries([T]a) = for i in even_indices(a) do a[i] od
+set odd_entries([T]a) = for i in odd_indices(a) do a[i] od
+end
+
+set is_valid(KOrbit Y)=bool:
+all (for z in Y.signs do int_part(z)>=0 and s_part(z)>=0 od) and
+if is_in(Y.label,["B","D"]) then
+ all(for z in even_entries(Y.signs) do int_part(z)=s_part(z) od)
+elif is_in(Y.label,["C","C~"]) then
+ all(for z in odd_entries(Y.signs) do int_part(z)=s_part(z) od)
+elif Y.label="C*" then
+ all(for z in odd_entries(Y.signs) do is_even(int_part(z)) and is_even(s_part(z)) od) and
+ all(for z in even_entries(Y.signs) do int_part(z)=s_part(z) od)
+elif Y.label="D*" then
+ all(for z in odd_entries(Y.signs) do int_part(z)=s_part(z) od) and
+ all(for z in even_entries(Y.signs) do is_even(int_part(z)) and is_even(s_part(z)) od)
+else
+ error("missing case")
+fi
+
+{(9.10)}
+{set signature_old(KOrbit Y)=
+let
+P=sum(for i in even_indices(Y.signs) do let (p,q)=Y.signs[i] in i\2*(p+q) od)
+ +sum(for i in odd_indices(Y.signs) do let (p,q)=Y.signs[i] in ((i+1)\2)*p + ((i-1)\2)*q od)
+then
+Q=sum(for i in even_indices(Y.signs) do let (p,q)=Y.signs[i] in i\2*(p+q) od)
+ +sum (for i in odd_indices(Y.signs) do let (p,q)=Y.signs[i] in ((i-1)\2)*p + ((i+1)\2)*q od)
+in (P,Q)}
+
+{(9.10) converted to use Splits}
+{ 1) term z_2k=p_2k+2_2ks -> (kp_2k + q_2k) + s(kp_2k + 2kp_2k) = (1+s)kz_2k
+  or z_j -> (1+s)(j/2)z_l  if j is even
+  2) term z_{2k-1}=(p_{2k-1}+sq_{2k-1})-> (kp_{2k-1}+(k-1)q_{2k-1}) + s((k-1)p_{2k-1}+kq_{2k-1})
+                  = k(p_{2k-1}+sq_{2k-1}) + (k-1)(q_{2k-1}+sp_{2k-1})
+                  = k(p_{2k-1}+sq_{2k-1}) + (k-1)s(p_{2k-1}+sq_{2k-1})
+                  = kz_{2k-1}+s(k-1)z_{2k-1}
+    or j=2k-1, k=(j+1)/2
+    z_j -> ((j+1)/2+ s(j-1)/2) z_j
+conclusion:  z_j -> j/2(1+s)z_j (j even) or ((j+1)/2 + s(j-1)/2)z_j  (j odd)
+}
+set signature(KOrbit Y)=Split:
+sum(for j in even_indices(Y.signs) do (j\2)*(1+s)*Y.signs[j] od) +
+sum(for j in odd_indices(Y.signs) do ((j+1)\2 + s*((j-1)\2))*Y.signs[j] od)
+
+set remove_first_column(Partition P)=Partition:transpose(delete(transpose(P),0))
+
+{add first column of size the number of rows}
+set add_first_column(Partition P)=Partition:
+if #P=0 then [] else partition_from_row_lengths(0#rows_by_length(P)) fi
+
+{add first column of size n}
+set add_first_column(Partition P, int n)=Partition:
+let rows=rows_by_length(P) then
+sum=sum(rows) then
+()=assert(sum<=n,"n is too small") in
+partition_from_row_lengths([0,n-sum]##delete(rows,0))
+
+{remove n rows of length 1}
+set remove_ones(Partition P, int n)=Partition:
+let rows=rows_by_length(P) in
+assert(n<=rows[1], "not that many rows of length 1");
+rows[1]:=rows[1]-n;
+partition_from_row_lengths(rows)
+
+set Delta_naive(Orbit O,string label)=(Orbit,string):
+(remove_first_column(O),dual_howe_label(label))
+
+set Delta((Orbit O,string label),int size)=(Orbit,string):
+let naive=remove_first_column(O) then
+extra=size-size(naive) in
+(naive##ones(extra),dual_howe_label(label))
+
+{remove first column, i.e. remove first pair (p_1,q_1) not including (0,0):
+ so remove first two entries, and tack (0,0) back on; orbit for dual group}
+set Delta_naive(KOrbit Y)=KOrbit:
+let signs=Y.signs then
+ orbit=K_orbit((0*s)#signs[2:],dual_howe_label(Y.label))
+ in assert(is_valid(orbit),"Delta_naive(orbit) not valid");orbit
+
+set remove_ones(KOrbit Y)=KOrbit:
+let signs=Y.signs then
+()=signs[1]:=0 in
+(signs,Y.label)
+
+{Lemma 9.2
+ Y=(signs,label)
+ theta(p',q',Y) =  (new_signs,howe_dual(label))  if (p_prime,q_prime)=signature(Delta_naive(Y))>=(0,0)
+                   undefined otherwise
+}
+set theta_non_zero(KOrbit Y,ClassicalSignature S_prime)=bool:
+let Y_naive=Delta_naive(Y) then
+()=assert(S_prime.label=dual_howe_label(Y.label), "Wrong classical signature in Delta") then
+z_prime=S_prime.z then
+sig_naive=signature(Y_naive) then
+sig_0=z_prime-sig_naive in
+if int_part(sig_0)>=0 and s_part(sig_0)>=0 then true else false fi
+
+{Lemma 9.2}
+set Delta(KOrbit Y, ClassicalSignature S_prime)=KOrbit:
+let ()=assert(theta_non_zero(Y,S_prime), "theta lift of orbit is 0");
+assert(S_prime.label=dual_howe_label(Y.label), "Wrong classical signature in Delta") then
+z_0=S_prime.z-signature(Delta_naive(Y)) in
+if int_part(z_0)>=0 and s_part(z_0)>=0
+ then
+  let signs=Y.signs then
+  signs_new=
+  if #signs=2 {single column}
+    then [0*s,z_0]
+  else
+    [0*s,signs[2]+z_0]##for i:#signs-3 from 3 do signs[i] od
+  fi
+ in (signs_new,S_prime.label)
+else null_K_orbit(S_prime.label)
+fi
+
+set plus(int parity)=string:if is_even(parity) then "+" else "-" fi
+set minus(int parity)=string:if is_odd(parity) then "+" else "-" fi
+
+{alt_string(0,n)="+-+-..." (n terms)
+ alt_string(1,n)="-+-+..." (n terms)
+}
+set alt_string(int starting_plus_minus, int length)=string:
+let rv="" in
+ if is_even(starting_plus_minus)
+   then
+     for i:length do rv+:=plus(i) od;rv
+    else
+     for i:length do rv+:=minus(i) od;rv
+ fi
+
+set show(KOrbit Y)=void:
+prints("type ",Y.label,size(Y)\2, " (size=",size(Y),")");
+prints(partition(Y));
+let signs=Y.signs in
+for i:#signs-1 downto 1 do
+ for j:int_part(signs[i]) do prints(alt_string(0,i)) od;
+ for j:s_part(signs[i]) do prints(alt_string(1,i)) od
+ od
+
+set show_short(KOrbit Y)=void:
+let signs=Y.signs in
+for i:#signs-1 downto 1 do
+ for j:int_part(signs[i]) do prints(alt_string(0,i)) od;
+ for j:s_part(signs[i]) do prints(alt_string(1,i)) od
+ od
+
+{ --------------  Section 10: K Local Systems --------------}
+{
+  An irreducible local system on a K_ℂ-orbit, represented as a pair
+  (signs, label) where:
+    signs[k] = p_{k+1} + q_{k+1}*s  (0-based index; k=0 → row length 1)
+    label     = bi_label string (B+, B-, C, D, C~, C*, D*)
+
+  Positive p/q = trivial local system on that sign component.
+  Negative p/q = non-trivial (twisted) local system.
+  This matches the [Split] K local system convention used throughout Section 3.
+}
+
+set_type KLocalSystem=([Split] signs, string label)
+set K_local_system([Split] signs, string label)=KLocalSystem:(signs,label)
+
+{ (p,q) signature of the KLocalSystem }
+set signature(KLocalSystem M)=Split:
+let (ps,ns)=
+  let p_acc=0, n_acc=0 in
+  for z@i in M.signs do
+    let pp=abs(int_part(z)), nn=abs(s_part(z)) then
+    d=i+1 then hrl=d\2, rrl=d%2 in
+    p_acc +:= pp*(hrl+rrl)+nn*hrl;
+    n_acc +:= nn*(hrl+rrl)+pp*hrl
+  od; (p_acc,n_acc)
+in ps+ns*s
+
+{ Partition: abs(p_{k+1})+abs(q_{k+1}) rows of length k+1, sorted descending }
+{set partition(KLocalSystem M)=Partition:
+sort(##for z@k in M.signs do
+  for j: abs(int_part(z))+abs(s_part(z)) do [k+1] od od)
+}
+{ One-line string: "(p1,q1)(p2,q2)..." with label }
+set to_string_(KLocalSystem M)=string:
+let rv="" in
+for z in M.signs do rv+:="("+to_string(int_part(z))+","+to_string(s_part(z))+")" od;
+M.label+":"+rv
+
+set show(KLocalSystem M)=void: prints(to_string_(M))
+set show([KLocalSystem] list)=void: for M in list do show(M) od
+
+{ A_bar factor from formula (3.8): 2^#pp(O_v,label).
+  Only present for labels B, C, D, C~ (per extended_painted_bipartitions);
+  for C* and D* the S-component is always [], so the factor is 1. }
+
+
+{ ============================================================
+  Section 0d: number_unipotent(orbit, G)
+  Implements formula (3.9) of BMSZ (arXiv:1712.05552).
+  Uses the corrected primitive_pairs and number_pbp.
+
+  Counting rules (checked against atlas unipotent_representations):
+    Type B: count both B+ and B- PBPs for group datum G, multiply by |A_bar|.
+            (3.9) counts O(p,q) and has the factor eps=2; for p+q odd
+            O(p,q)=SO(p,q)x{+-1}, so #Unip(SO(p,q)) = #Unip(O(p,q))/2
+            and the eps=2 is not applied here.
+            |A_bar|=2^#pp, where the last pair (#O,#O+1) (r_{#O+1}=0)
+            counts as primitive when it has the right parity.
+    Type D: count D-type PBPs for G, multiply by |A_bar|.  No ε=2 factor.
+    Types C, C~, C*, D*: count PBPs for the matching bi_label, multiply by
+            |A_bar| (which equals 1 for C*, D*).
+
+  Usage:  number_unipotent([3,1], SO(3,2))
+  ============================================================ }
+
+{ For type B: total PBPs (both B+ and B-) with group datum G. }
+set total_pbp_B(GroupDatum G, Orbit O_v)=int:
+#pbp(G,O_v,"B+") + #pbp(G,O_v,"B-")
+
+{ Count unipotent representations of G for dual orbit O_v. }
+set number_unipotent(Orbit O_v, RealForm G)=int:
+let (bi_label,G_datum)=label_and_datum(G) then
+label=label_of(bi_label) in
+assert(is_good_parity(O_v,label),
+  "orbit "+to_string(O_v)+" does not have good parity for type "+label);
+if label="B"
+ then total_pbp_B(G_datum,O_v) * A_bar_order(O_v,"B")
+ else number_pbp(G_datum,O_v,bi_label) * A_bar_order(O_v,label)
+fi
+
+{ Verbose version: prints the breakdown. }
+set number_unipotent(Orbit O_v, RealForm G, bool report)=int:
+let (bi_label,G_datum)=label_and_datum(G) then
+label=label_of(bi_label) in
+let (n_pbp, a_bar) =
+  if label="B"
+   then (total_pbp_B(G_datum,O_v), A_bar_order(O_v,"B"))
+   else (number_pbp(G_datum,O_v,bi_label), A_bar_order(O_v,label))
+  fi then
+result=n_pbp*a_bar in
+if report then
+  prints("number_unipotent(",O_v,", ",group_name(G_datum),")");
+  prints("  bi_label=",bi_label,"  label=",label);
+  if label="B"
+   then
+    prints("  #B+_PBP_G=",#pbp(G_datum,O_v,"B+"),
+           "  #B-_PBP_G=",#pbp(G_datum,O_v,"B-"),
+           "  total=",n_pbp)
+   else prints("  #PBP_G(O^v)=",n_pbp)
+  fi;
+  prints("  |A_bar|=",a_bar,"  (primitive pairs: ",pp(O_v,label),")");
+  prints("  => #unipotent_reps=",result)
+fi;
+result
+
+{ Sum over all good-parity orbits for G. }
+set total_unipotent(RealForm G, int n)=int:
+let label=label(G) then
+orbits=good_parity_partitions(n,label) in
+sum(for O_v in orbits do number_unipotent(O_v,G) od)
+
+{ ============================================================
+  Section 0e: Corrected extended PBPs (reps)
+  Uses bmsz_A_bar instead of A_bar to get the right S-subsets.
+  ============================================================ }
+
+{ All extended painted bipartitions for (O_v, label) using corrected A_bar.
+  For label "B": generates PBPs with both bi_label "B+" and "B-",
+  each extended with each subset in A_bar(O_v,"B"). }
+set reps(Orbit O_v, string label)=[ExtendedPaintedBiPartition]:
+if label="B" then
+  let S_list=A_bar(O_v,"B") in
+  ##for Z in pbp(O_v,"B+") do for S in S_list do ExtendedPaintedBiPartition:(Z,S) od od ##
+  ##for Z in pbp(O_v,"B-") do for S in S_list do ExtendedPaintedBiPartition:(Z,S) od od
+elif is_in(label,["C","D","C~"])
+ then
+   let S_list=A_bar(O_v,label) in
+   ##for Z in pbp(O_v,label) do for S in S_list do ExtendedPaintedBiPartition:(Z,S) od od
+ else  { C*, D* }
+    for Z in pbp(O_v,label) do ExtendedPaintedBiPartition:(Z,[int]:[]) od
+fi
+
+
+{ ============================================================
+  Section 1: DRC column-string display
+  Mirrors standalone.py str_dgms, reg_drc
+  ============================================================ }
+
+{ Format a PaintedPartition as column strings, e.g.  |*c|*|
+  Each |...| represents one column (top to bottom).
+  Mirrors standalone.py str_dgms. }
+set drc_col_string(PaintedPartition P)=string:
+let cols=number_columns(P) in
+if cols=0 then "[]"
+else
+ let rv="" in
+ for i:cols do
+  rv+:="|";
+  let col=column_of(P)(i) in
+  for sym in col do rv+:=symbol(sym) od
+ od;
+ rv+:="|";rv
+fi
+
+{ DRC bipartition display: "P_cols  bi_label  Q_cols"
+  Mirrors standalone.py str_dgms side-by-side view. }
+set drc_string(PaintedBiPartition (P,Q,bi_label))=string:
+drc_col_string(P)+" "+bi_label+" "+drc_col_string(Q)
+
+set drc_string(ExtendedPaintedBiPartition (Z,S))=string:
+drc_string(Z)+"  S="+to_string(S)+"  eps="+to_string(epsilon(Z))
+
+set show_drc(PaintedBiPartition Z)=void:
+prints(drc_string(Z))
+
+set show_drc(ExtendedPaintedBiPartition X)=void:
+prints(drc_string(X))
+
+set show_drc([ExtendedPaintedBiPartition] list)=void:
+for X in list do show_drc(X) od
+
+{ Tabular display of a list of ExtendedPBPs.
+  Mirrors standalone.py compute_all_pbp(..., report=True). }
+set show_table([ExtendedPaintedBiPartition] list)=void:
+tabulate(
+["#","type","P","Q","S","group","orbit","p","q","eps"]#
+for X@i in list do
+ let sig=signature(X) in
+ [to_string(i),
+  X.painted_bi_partition.bi_label,
+  drc_col_string(X.painted_bi_partition.P),
+  drc_col_string(X.painted_bi_partition.Q),
+  to_string(X.S),
+  group_name(X.painted_bi_partition),
+  to_string(orbit(X)),
+  to_string(p(sig)),
+  to_string(q(sig)),
+  to_string(epsilon(X))]
+od)
+
+{ ============================================================
+  Section 2: compute_all_pbp
+  Mirrors standalone.py compute_all_pbp(dpart, rtype[, report])
+  ============================================================ }
+
+{ All extended painted bipartitions (reps) for a given dual orbit O_v.
+  Uses reps (corrected A_bar). }
+set compute_all_pbp(Orbit O_v, string label)=[ExtendedPaintedBiPartition]:
+reps(O_v,label)
+
+set compute_all_pbp(Orbit O_v, string label, bool report)=[ExtendedPaintedBiPartition]:
+let result=reps(O_v,label) in
+if report then
+  prints("Orbit O^v=", O_v, "  type: ", label);
+  prints("#PBPs (painted bipartitions): ", #pbp(O_v,label));
+  prints("#primitive pairs: ", #pp(O_v,label));
+  prints("|A_bar|=2^#pp: ", A_bar_order(O_v,label));
+  prints("#reps (extended PBPs): ", #result);
+  prints("");
+  show_table(result)
+fi;
+result
+
+{ ============================================================
+  Section 3: Associated cycle computation
+  Self-contained K local system algebra + theta lift, porting standalone.py.
+
+  K local system = [Split], where entry i is
+  the pair (p_i, n_i) encoded as the Split p_i + n_i*s.
+  Empty K local system = [].
+
+  This replaces theta_recurse/theta_before_twist in
+  signed_and_marked_young_diagrams.at, which has a bug for type B
+  targets (delta can be odd, causing h(delta) to fail).
+
+  Reference: [BMSZ] Sections 9.3-9.4, 11.1-11.3.
+  ============================================================ }
+
+{ Helper: (-1)^n for base ∈ {1,-1}. }
+set sign_pow(int base, int n)=int:
+if base=1 then 1 elif n%2=0 then 1 else -1 fi
+
+{ Signature (ps, ns) of a K local system.
+  Entry at 0-based index i has weight (hrl+rrl, hrl) for (p,n),
+  where hrl = (i+1)\2, rrl = (i+1)%2. Reference: [BMSZ] Sect. 9.3. }
+set K_local_system_sign([Split] kls)=(int,int):
+let ps=0, ns=0 in
+for z@i in kls do
+  let pp=abs(int_part(z)), nn=abs(s_part(z)) then
+  d=i+1 then hrl=d\2, rrl=d%2 in
+  ps +:= pp*(hrl+rrl) + nn*hrl;
+  ns +:= nn*(hrl+rrl) + pp*hrl
+od; (ps,ns)
+
+{ First-column signature (fps, fns) of a K local system. }
+set firstcol_sign([Split] kls)=(int,int):
+let fps=0, fns=0 in
+for z@i in kls do
+  let pp=abs(int_part(z)), nn=abs(s_part(z)) in
+  if i%2=0 then fps +:= pp; fns +:= nn
+  else fps +:= nn; fns +:= pp fi
+od; (fps,fns)
+
+{ BD-twist on K local system: (tp,tn) ∈ {1,-1}². Acts only on odd-indexed entries.
+  (1,-1): post-twist for B/D.  (-1,-1): pre-twist for C/C~. }
+set twist_BD([Split] kls, int tp, int tn)=[Split]:
+for z@i in kls do
+  let pp=int_part(z), nn=s_part(z) then
+  d=i+1 then hrl=d\2, rrl=d%2 in
+  if rrl=0 then z
+  else
+    let tpp=sign_pow(tp,hrl+1)*sign_pow(tn,hrl) then
+        tnn=sign_pow(tn,hrl+1)*sign_pow(tp,hrl) in
+    tpp*pp + tnn*nn*s
+  fi
+od
+
+{ CM-twist T^j: negate entries at positions i with (i+1)%4=2 when j is odd. }
+set char_twist_CM([Split] kls, int j)=[Split]:
+if j%2=1 then for z@i in kls do if (i+1)%4=2 then -z else z fi od
+else kls fi
+
+{ Theta lift a single KLocalSystem to target type rtype with signature (p, q).
+  Returns list of lifted KLocalSystem: [] = zero, [M] = one, [M1,M2] = two.
+  The rtype is taken from M.label; p and q are the target signature.
+  Types: "C" (D→C), "D" (C→D), "C~" (B→M), "B+"/"B-" (M→B). }
+set theta_lift_kls(KLocalSystem M, int p, int q)=[KLocalSystem]:
+let kls=M.signs then rtype=M.label in
+let result=
+let (ps,ns)=K_local_system_sign(kls) then
+(fps,fns)=firstcol_sign(kls) in
+if rtype="C" then
+  let n=p then addp=n-ps-fns, addn=n-ns-fps in
+  if addp>=0 and addn>=0 then
+    let irr_ss=[addp+addn*s]##kls in
+    [char_twist_CM(irr_ss,(ps-ns)\2)]
+  elif (addp=-1 and addn=-1) or (addp=-2 and addn=0) or (addp=0 and addn=-2) then
+    let pp0=int_part(kls[0]), nn0=s_part(kls[0]) then j=(ps-ns)\2 in
+    (if pp0>0 then [char_twist_CM([(0+0*s)]##[(pp0-1)+nn0*s]##kls[1:],j)] else [] fi)##
+    (if nn0>0 then [char_twist_CM([(0+0*s)]##[pp0+(nn0-1)*s]##kls[1:],j)] else [] fi)
+  else [[Split]]:[]
+  fi
+elif rtype="D" then
+  let addp=p-ps-fns, addn=q-ns-fps in
+  if addp>=0 and addn>=0 then
+    let kls_tw=char_twist_CM(kls,(p-q)\2) in
+    [[addp+addn*s]##kls_tw]
+  else [[Split]]:[]
+  fi
+elif rtype="C~" then
+  let n=p then addp=n-ps-fns, addn=n-ns-fps in
+  if addp>=0 and addn>=0 then
+    let irr_ss=[addp+addn*s]##kls in
+    [char_twist_CM(irr_ss,(ps-ns-1)\2)]
+  elif (addp=-1 and addn=-1) or (addp=-2 and addn=0) or (addp=0 and addn=-2) then
+    let pp0=int_part(kls[0]), nn0=s_part(kls[0]) then j=(ps-ns-1)\2 in
+    (if pp0>0 then [char_twist_CM([(0+0*s)]##[(pp0-1)+nn0*s]##kls[1:],j)] else [] fi)##
+    (if nn0>0 then [char_twist_CM([(0+0*s)]##[pp0+(nn0-1)*s]##kls[1:],j)] else [] fi)
+  else [[Split]]:[]
+  fi
+elif rtype="B+" or rtype="B-" then
+  let addp=p-ps-fns, addn=q-ns-fps in
+  if addp>=0 and addn>=0 then
+    let kls_tw=char_twist_CM(kls,(p-q+1)\2) in
+    [[addp+addn*s]##kls_tw]
+  else [[Split]]:[]
+  fi
+elif rtype="D*" or rtype="C*" then
+  { D* = SO*(2n), C* = Sp(p,q): theta lift with no CM-twist.
+    Same addp/addn formula as D, but involution power is always 0.
+    Reference: signed_and_marked_young_diagrams.at theta_before_twist,
+    C* case (lines 512-524) and D* case (lines 559-576) with delta=0. }
+  let addp=p-ps-fns, addn=q-ns-fps in
+  if addp>=0 and addn>=0 then [[addp+addn*s]##kls]
+  else [[Split]]:[]
+  fi
+else error("theta_lift_kls: unsupported rtype "+rtype)
+fi
+in
+for lft in result do K_local_system(lft, rtype) od
+
+{ ============================================================
+  B+ correction for descent: bmsz_descent.at misses this.
+  Reference: [BMSZb] Section 10.4, case (a) for ★ = B+.
+
+  Condition: γ = B+, (2,3) ∉ ℘ (shape-based: c₂(j) < c₁(ι)+2),
+  r₂(Ǒ) > 0 (total DRC columns ≥ 2), and Q(c₁(ι), 1) ∈ {r,d}.
+  Action: change last entry of descended P's first column to 's'.
+  ============================================================ }
+
+set B_correction(PaintedBiPartition Z, PaintedBiPartition dZ)=PaintedBiPartition:
+if Z.bi_label="B+" then
+  let col_P0=column_of(Z.P)(0) then  { first column of original P }
+  col_Q0=column_of(Z.Q)(0) then      { first column of original Q }
+  c1=#col_P0 then                    { c₁(ι) = length of P's first column }
+  c2j=#column_of(Z.Q)(1) then        { c₂(j) = length of Q's second column }
+  ncols=number_columns(Z.P)+number_columns(Z.Q) then  { total columns }
+  has_23=(c2j>=c1+2) in             { shape-based: (2,3) ∈ ℘ iff c₂(j)≥c₁(ι)+2 }
+  if not has_23 and c1>0 and ncols>=2 and
+     #col_Q0>=c1 and find([2,4],col_Q0[c1-1])!=-1 and  { Q(c₁(ι),1) ∈ {r,d} }
+     number_columns(dZ.P)>0  { descended P non-empty }
+  then
+    let Pnew=dZ.P then row=Pnew~[0] in
+    row[0]:=1;      { change last column-0 entry to 's' (1) }
+    Pnew~[0]:=row;
+    PaintedBiPartition:(Pnew,dZ.Q,dZ.bi_label)
+  else dZ fi
+else dZ fi
+
+{ Corrected single-step descent for ExtendedPaintedBiPartition. }
+set descent(ExtendedPaintedBiPartition X)=ExtendedPaintedBiPartition:
+let Z=X.painted_bi_partition then
+dZ_raw=descent(Z) then
+dZ=B_correction(Z,dZ_raw) in
+ExtendedPaintedBiPartition:(dZ, descent_ext(X.S))
+
+{ Full descent chain using the corrected descent. }
+set descent_chain(ExtendedPaintedBiPartition X)=[ExtendedPaintedBiPartition]:
+let rv=[X] in
+while size(rv~[0])>0 do rv#:=descent(rv~[0]) od;
+rv
+
+{ Compute the associated cycle as a list of KLocalSystem.
+  Iterative: build full descent chain, then apply theta lifts from
+  bottom to top. Reference: [BMSZ] Eq. (3.16). }
+set compute_AC(ExtendedPaintedBiPartition X)=[KLocalSystem]:
+let chain=descent_chain(X) then
+k=#chain-1 then
+base_rtype=chain[k].painted_bi_partition.bi_label then
+ac=[KLocalSystem]:
+  if base_rtype="B+" then [K_local_system([1+0*s], base_rtype)]
+  elif base_rtype="B-" then [K_local_system([0+(-1)*s], base_rtype)]
+  else [K_local_system([], base_rtype)]
+  fi then
+j=k-1 in
+while j>=0 do
+  let Y=chain[j] then
+  Z=Y.painted_bi_partition then
+  rtype=Z.bi_label then
+  tau_p=Z.p then tau_q=Z.q then
+  tau_eps=epsilon(Z) then
+  e_wp=epsilon_extended(Y) in
+  ac :=
+    ##for src_kls in ac do
+      let src=
+        if is_in(rtype,["C","C~"]) and e_wp!=0
+        then K_local_system(twist_BD(src_kls.signs,-1,-1), rtype)
+        else K_local_system(src_kls.signs, rtype) fi then
+      lifted=theta_lift_kls(src,tau_p,tau_q) in
+      for M in lifted do
+        if is_in(rtype,["B+","B-","D"]) and tau_eps!=0
+        then K_local_system(twist_BD(M.signs,1,-1), M.label)
+        else M fi
+      od
+    od;
+  j:=j-1
+od;
+for M in ac do K_local_system(M.signs, X.painted_bi_partition.bi_label) od
+
+{ Compute all associated cycles for all reps of orbit O_v. }
+set compute_all_AC(Orbit O_v, string label)=[[KLocalSystem]]:
+for X in reps(O_v,label) do compute_AC(X) od
+
+{ Format the signs of a KLocalSystem as a string: "(p1,n1)(p2,n2)..." }
+set K_local_system_string([Split] kls)=string:
+if #kls=0 then "()"
+else
+  let rv="" in
+  for z in kls do rv+:="("+to_string(int_part(z))+","+to_string(s_part(z))+")" od;
+  rv
+fi
+
+set ac_string([KLocalSystem] ac)=string:
+if #ac=0 then "(trivial)"
+else
+  let rv="" in
+  for M@i in ac do
+    if i>0 then rv+:=" | " fi;
+    rv+:=to_string_(M)
+  od;
+  rv
+fi
+
+{ Print associated cycle for one extended PBP. }
+set print_AC(ExtendedPaintedBiPartition X)=void:
+let ac=compute_AC(X) in
+prints("AC for ", drc_string(X), ":");
+if #ac=0 then prints("  (empty)")
+else
+  for M@i in ac do
+    prints("  [", i, "] ", to_string_(M))
+  od
+fi
+
+{ Full descent chain display with AC at each level. }
+set show_AC_chain(ExtendedPaintedBiPartition X)=void:
+let chain=descent_chain(X) then
+ac=compute_AC(X) in
+prints("=================================================");
+prints("Rep: ", drc_string(X.painted_bi_partition));
+prints("S=", to_string(X.S), "  eps=", to_string(epsilon(X)));
+prints("Group: ", group_name(X.painted_bi_partition));
+prints("Orbit (G^v): ", orbit(X));
+prints("----- Descent chain (", #chain, " steps) -----");
+for i:#chain do
+  let Y=chain[i] then
+  sig=signature(Y) in
+  prints("Level ", i, ": ", drc_string(Y.painted_bi_partition),
+         "  S=", to_string(Y.S),
+         "  sig=(", to_string(p(sig)), ",", to_string(q(sig)), ")",
+         "  eps=", to_string(epsilon(Y)))
+od;
+prints("----- Associated cycle (", #ac, " component(s)) -----");
+for M@i in ac do
+  prints("  [", i, "] ", to_string_(M))
+od;
+prints("")
+
+set show_AC_chain([ExtendedPaintedBiPartition] list)=void:
+for X in list do show_AC_chain(X) od
+
+{ ============================================================
+  Section 4: verify_descent
+  Mirrors standalone.py verify_descent(dpart, rtype[, report])
+  ============================================================ }
+
+{ Verify all descent chains for orbit O_v terminate at size 0. }
+set verify_descent(Orbit O_v, string label)=(int,int):
+let result=reps(O_v,label) then
+passed=0 then failed=0 in
+for X in result do
+  let chain=descent_chain(X) in
+  if size(chain~[0])=0 then passed+:=1
+  else failed+:=1;
+    prints("FAIL: chain does not terminate at size 0 for:");
+    show_drc(X)
+  fi
+od;
+(passed,failed)
+
+set verify_descent(Orbit O_v, string label, bool report)=(int,int):
+let (p_val,f_val)=verify_descent(O_v,label) in
+if report then
+  prints("Orbit: ", O_v, " label: ", label,
+         "  passed: ", p_val, "  failed: ", f_val)
+fi;
+(p_val,f_val)
+
+{ Verify descent for all good-parity orbits of total size n. }
+set verify_all_descents(int n, string label)=(int,int):
+let total_p=0 then total_f=0 in
+for O_v in good_parity_partitions(n,label) do
+  let (p_val,f_val)=verify_descent(O_v,label) in
+  total_p+:=p_val; total_f+:=f_val
+od;
+prints("verify_all_descents: n=", n, " label=", label,
+       "  passed=", total_p, " failed=", total_f);
+(total_p,total_f)
+
+{ ============================================================
+  Section 5: Full BMSZ report
+  Mirrors standalone.py main() and report()
+  ============================================================ }
+
+{ Summary table for one orbit: one row per rep. }
+set bmsz_summary(Orbit O_v, string label)=void:
+let reps_list=reps(O_v,label) then
+acs=for X in reps_list do compute_AC(X) od in
+prints("Orbit O^v=", O_v, "  label=", label, new_line,"bipartition: ", bi_partition_bmsz(O_v,label),
+       new_line,"#reps=", #reps_list);
+tabulate(
+["#","group","p","q","eps","S","AC"]#
+for X@i in reps_list do
+ let sig=signature(X) in
+ [to_string(i),
+  group_name(X.painted_bi_partition),
+  to_string(p(sig)), to_string(q(sig)),
+  to_string(epsilon(X)),
+  to_string(X.S),
+  ac_string(acs[i])]
+od)
+
+set bmsz_summary(int n, string label)=void:
+let orbits=good_parity_partitions(n,label) in
+prints("summary: n=", n, " label=", label,
+       "  #orbits=", #orbits);
+for O_v in orbits do bmsz_summary(O_v,label) od
+
+{ Full report for one orbit: descent chain + AC for each rep. }
+set bmsz_report(Orbit O_v, string label)=void:
+let reps_list=reps(O_v,label) in
+prints("================================================================");
+prints("BMSZ Report: orbit O^v=", O_v, "  type=", label);
+if #reps_list>0 then
+  prints("Group: ", group_name(reps_list[0].painted_bi_partition))
+fi;
+prints("#reps: ", #reps_list);
+prints("================================================================");
+for X@i in reps_list do
+  prints(new_line, "--- Rep #", i, " ---");
+  show_AC_chain(X)
+od
+
+set bmsz_report(int n, string label)=void:
+for O_v in good_parity_partitions(n,label) do
+   bmsz_report(O_v,label)
+od
+
+{ ============================================================
+  Section 13: Induction of K orbits (Section 9.6 [BMSZ])
+
+  A K orbit (KOrbit) is a map ℕ⁺ → ℕ × ℕ, i ↦ (p_i, q_i).
+  Represented as [Split] with O.signs[k] = p_{k+1} + q_{k+1}*s (0-based index).
+
+  The column length c_k(ι) = Σ_{i≥k} (p_i + q_i)  (eq. 9.10).
+  In particular c_1(O') = Σ_i (p_i + q_i) = total rows of ι.
+
+  The induction parameter t_0 = p_0 - c_1(O').
+
+  Operations:
+    Augmentation   O' ⊕ (a,b)       — prepend (a,b) at position 1  (eq. 9.18)
+    Truncation     Λ_{(a,b)}(O')    — subtract (a,b) from entry 1  (eq. 9.20)
+
+  Return type of induce_K_orbit is [(int,KOrbit)], a formal Z-linear combination
+  of KOrbits.  Coefficient 1 is the generic case; 2 appears in certain odd cases.
+
+  Formula for the last case (★'∈{C,C̃,D*}, t_0<0 odd) is implemented by
+  analogy with the B/D t_0≥0 odd case; verify against paper if needed.
+  ============================================================ }
+
+{ c_1(O') = Σ_i (p_i + q_i) }
+set c1(KOrbit O)=int:
+sum(for z in O.signs do int_part(z)+s_part(z) od)
+
+{ Augmentation: O' ⊕ (p0,q0) prepends (p0,q0) at position 1 (eq. 9.18) }
+set augment(KOrbit O, int p0, int q0)=KOrbit:
+([p0+q0*s]##O.signs,O.label)
+
+{ True iff Λ_{(a,b)} applicable: need p_1 ≥ a and q_1 ≥ b }
+set truncate_ok(KOrbit O, int a, int b)=bool:
+#O.signs>0 and int_part(O.signs[0])>=a and s_part(O.signs[0])>=b
+
+{ Truncation Λ_{(a,b)}(O'): subtract (a,b) from entry at position 1 (eq. 9.20) }
+set K_orbit_truncate(KOrbit O, int a, int b)=KOrbit:
+([(int_part(O.signs[0])-a)+(s_part(O.signs[0])-b)*s]##O.signs[1:],O.label)
+
+{ Induction of K orbits, Section 9.6 [BMSZ].
+
+  O':   O' ∈ KOrbit_{s'}
+  star: ★' ∈ {"B","D","C","C~","C*","D*"}  (type of s')
+  p0:   induction rank increment (= q_0; always p_0 = q_0 in the good-parity case)
+
+  Returns Ind_{s'}^{s''}(O') ∈ Z[KOrbit_{s''}] as [(coeff, KOrbit)] pairs.
+
+  Cases (t_0 := p_0 − c_1(O')):
+    ★' ∈ {B,D,C*}, t_0 ≥ 0 even  : O' ⊕ (t_0/2,t_0/2) ⊕ (0,0)
+    ★' ∈ {B,D,C*}, t_0 ≥ 0 odd   : 2·(O' ⊕ ((t_0-1)/2,(t_0-1)/2) ⊕ (1,1))
+    ★' ∈ {B,D},    t_0 < 0        : Σ_{a+b=-t_0, a,b∈ℕ}   Λ_{(a,b)}O' ⊕ (0,0) ⊕ (a,b)
+    ★' = C*,       t_0 < 0        : Σ_{a+b=-t_0, a,b∈2ℕ}  Λ_{(a,b)}O' ⊕ (0,0) ⊕ (a,b)
+    ★' ∈ {C,C̃},   t_0 ≥ 0        : Σ_{a+b=t_0,  a,b∈ℕ}   O' ⊕ (a,b) ⊕ (0,0)
+    ★' = D*,       t_0 ≥ 0        : Σ_{a+b=t_0,  a,b∈2ℕ}  O' ⊕ (a,b) ⊕ (0,0)
+    ★' ∈ {C,C̃,D*},t_0 < 0 even   : Λ_{(h,h)}O' ⊕ (0,0) ⊕ (h,h)  [h = -t_0/2]
+    ★' ∈ {C,C̃,D*},t_0 < 0 odd    : 2·(Λ_{(h,h)}O' ⊕ (0,0) ⊕ (1,1))  [h=(-t_0-1)/2]
+}
+set induce_K_orbit(KOrbit O, string label, int p0)=[(int,KOrbit)]:
+let t0=p0-c1(O) in
+if is_in(label,["B","D","C*"]) then
+  if t0>=0 then
+    if is_even(t0) then
+      let h=t0\2 in
+      [(1, augment(augment(O,h,h),0,0))]
+    else { t0 odd }
+      let h=(t0-1)\2 in
+      [(2, augment(augment(O,h,h),1,1))]
+    fi
+  else { t0 < 0 }
+    let n=-t0 in
+    ##for a:n+1 do
+      let b=n-a in
+      if label="C*" and (not is_even(a) or not is_even(b)) then []
+      elif truncate_ok(O,a,b) then
+        [(1, augment(augment(K_orbit_truncate(O,a,b),0,0),a,b))]
+      else []
+      fi
+    od
+  fi
+elif is_in(label,["C","C~","D*"]) then
+  if t0>=0 then
+    ##for a:t0+1 do
+      let b=t0-a in
+      if label="D*" and (not is_even(a) or not is_even(b)) then []
+      else [(1, augment(augment(O,a,b),0,0))]
+      fi
+    od
+  elif is_even(t0) then { t0 < 0, even }
+    let h=(-t0)\2 in
+    if truncate_ok(O,h,h) then
+      [(1, augment(augment(K_orbit_truncate(O,h,h),0,0),h,h))]
+    else []
+    fi
+  else { t0 < 0, odd }
+    let h=(-t0-1)\2 in
+    if truncate_ok(O,h,h) then
+      [(2, augment(augment(K_orbit_truncate(O,h,h),0,0),1,1))]
+    else []
+    fi
+  fi
+else error("induce_K_orbit: unsupported type "+label)
+fi
+
+{ ---- Display helpers ---- }
+
+{ Format one KOrbit as "(p1,q1)(p2,q2)..." }
+set K_orbit_string([Split] splits)=string:
+if #splits=0 then "()"
+else let rv="" in
+  for z in splits do rv+:="("+to_string(int_part(z))+","+to_string(s_part(z))+")" od;rv
+fi
+
+set K_orbit_string(KOrbit O)=string:K_orbit_string(O.signs)
+
+
+{ Format Z[KOrbit] element as a readable sum }
+set ind_K_orbit_string([(int,KOrbit)] terms)=string:
+if #terms=0 then "0"
+else let rv="" in
+  for (c,splits)@i in terms do
+    if i>0 then rv+:=" + " fi;
+    if c!=1 then rv+:=to_string(c)+"*" fi;
+    rv+:=K_orbit_string(splits)
+  od;rv
+fi
+
+{ Compute and print induce_K_orbit }
+set print_ind_K_orbit(KOrbit O, string label, int p0)=void:
+let t0=p0-c1(O) then
+result=induce_K_orbit(O,label,p0) in
+prints("Ind_{",label,",p0=",p0,"}( ",K_orbit_string(O.signs)," )  t_0=",t0);
+prints("  = ",ind_K_orbit_string(result),"  (",#result," term(s))")
+
+{ Apply induce_K_orbit to each term of a Z[KOrbit] sum (extend linearly) }
+set ind_K_orbit_linear([(int,KOrbit)] terms, string label, int p0)=[(int,KOrbit)]:
+##for (c,signs) in terms do
+  for (c2,signs2) in induce_K_orbit(signs,label,p0) do (c*c2,signs2) od od
+
+{ Compute and print linear extension }
+set print_ind_K_orbit_linear([(int,KOrbit)] terms, string label, int p0)=void:
+let result=ind_K_orbit_linear(terms,label,p0) in
+prints("Ind_{",label,",p0=",p0,"}( ",ind_K_orbit_string(terms)," )");
+prints("  = ",ind_K_orbit_string(result),"  (",#result," term(s))")
+
+{ Count PBPs grouped by real form (group datum). }
+set show_group_counts(Orbit O_v, string label)=void:
+let bp=pbp(O_v,label) in
+prints("Orbit: ", O_v, "  type: ", label,
+       "  #PBPs=", #bp);
+show_collated_group_data(bp)
+
+set show_group_counts(int n, string label)=void:
+for O_v in good_parity_partitions(n,label) do
+  show_group_counts(O_v,label)
+od
+
+{ ============================================================
+  Section 6: Graphviz / dot file output
+  Mirrors standalone.py gen_lift_tree, gen_descent_tree.
+
+  Usage (in atlas prompt):
+    > lift.dot prints(lift_tree_dot(O_v, label))
+    > descent.dot prints(descent_tree_dot(O_v, label))
+  Then in shell:
+    dot -Tpdf -o lift.pdf lift.dot
+    dot -Tpdf -o descent.pdf descent.dot
+  ============================================================ }
+
+{ Format a single KLocalSystem as a compact one-line string for dot labels. }
+set dot_string(KLocalSystem M)=string:
+to_string_(M)
+
+{ Format list of KLocalSystem (associated cycle) as a dot label string. }
+set ac_dot_string([KLocalSystem] ac)=string:
+ac_string(ac)
+
+{ Format an ExtendedPBP as a dot node label. }
+set epbp_dot_label(ExtendedPaintedBiPartition X)=string:
+let Z=X.painted_bi_partition then
+sig=signature(X) in
+Z.bi_label+"  "+drc_col_string(Z.P)+" "+drc_col_string(Z.Q)+"\n"+
+"S="+to_string(X.S)+
+"  sig=("+to_string(p(sig))+","+to_string(q(sig))+")"+
+"  eps="+to_string(epsilon(X))
+
+{ ----------------------------------------
+  lift_tree_dot: Extended PBP tree.
+  Usage: > orbit.dot prints(lift_tree_dot(O_v, label))
+  ---------------------------------------- }
+set lift_tree_dot(Orbit O_v, string label)=string:
+let reps_list=reps(O_v,label) then
+chains=for X in reps_list do descent_chain(X) od then
+max_depth=
+ let md=0 in
+ for ch in chains do if #ch>md then md:=#ch fi od;md then
+header=
+"digraph lift_tree {"+new_line+
+"  rankdir=TB"+new_line+
+"  node [shape=box fontname=Courier fontsize=9]"+new_line+
+"  edge [fontsize=8]"+new_line
+in
+let body="" in
+for level:max_depth do
+  let members=##for i:#chains do
+    if level<#chains[i]
+     then ["n"+to_string(i)+"_"+to_string(level)]
+     else []
+    fi
+  od in
+  if #members>0 then
+    body+:="  { rank=same;";
+    for m in members do body+:=" "+m od;
+    body+:=" }"+new_line
+  fi
+od;
+for X@i in reps_list do
+  let chain=chains[i] in
+  for Z@j in chain do
+    let nid="n"+to_string(i)+"_"+to_string(j) then
+    lbl=epbp_dot_label(Z)+"\nAC: "+ac_dot_string(compute_AC(Z)) in
+    body+:="  "+nid+" [label="""+lbl+"""]"+new_line
+  od
+od;
+for X@i in reps_list do
+  let chain=chains[i] in
+  for j:#chain-1 do
+    body+:=
+      "  n"+to_string(i)+"_"+to_string(j)+
+      " -> n"+to_string(i)+"_"+to_string(j+1)+
+      " [color=blue label="+chain[j+1].painted_bi_partition.bi_label+"]"+new_line
+  od
+od;
+header+body+"}"
+
+{ ----------------------------------------
+  descent_tree_dot: Local system tree.
+  Usage: > orbit_d.dot prints(descent_tree_dot(O_v, label))
+  ---------------------------------------- }
+set descent_tree_dot(Orbit O_v, string label)=string:
+let reps_list=reps(O_v,label) then
+acs=for X in reps_list do compute_AC(X) od then
+header=
+"digraph descent_tree {"+new_line+
+"  rankdir=LR"+new_line+
+"  node [shape=box fontname=Courier fontsize=9]"+new_line
+in
+let body="" in
+for X@i in reps_list do
+  let Z=X.painted_bi_partition then
+  sig=signature(X) then
+  ac=acs[i] then
+  nid="rep"+to_string(i) then
+  lbl=
+    group_name(Z)+"  S="+to_string(X.S)+"\n"+
+    "DRC: "+drc_col_string(Z.P)+" "+drc_col_string(Z.Q)+"\n"+
+    "sig=("+to_string(p(sig))+","+to_string(q(sig))+")"+
+    "  eps="+to_string(epsilon(X))+"\n"+
+    "AC: "+ac_dot_string(ac) in
+  body+:="  "+nid+" [label="""+lbl+"""]"+new_line
+od;
+header+body+"}"
+
+set print_dot(string dot_content)=void:
+prints(dot_content)
+
+{ ============================================================
+  Section 7: run() — top-level entry points
+  Mirrors standalone.py main()
+  ============================================================ }
+
+set run(Orbit O_v, string label)=void:
+bmsz_report(O_v,label)
+
+set run(int n, string label)=void:
+bmsz_report(n,label)
+
+set bmsz_summary(Orbit O_v, string label)=void:
+bmsz_summary(O_v,label)
+
+set bmsz_summary(int n, string label)=void:
+bmsz_summary(n,label)
+
+set check(int n, string label)=void:
+let (p_val,f_val)=verify_all_descents(n,label) in
+prints("Passed: ", p_val, "  Failed: ", f_val, new_line);
+bmsz_summary(n,label)
+
+{ ============================================================
+  Section 8: Orbit-level orbit/W-rep information
+  Mirrors standalone.py dpart_to_bipartition, dpart2Wrepns
+  ============================================================ }
+
+set orbit_diagrams(Orbit O_v, string label)=BiPartition:
+bi_partition_bmsz(O_v,label)
+
+
+{ ============================================================
+  Section 9: Epsilon and signature summaries
+  ============================================================ }
+
+set show_signatures(Orbit O_v, string label)=void:
+let reps_list=reps(O_v,label) in
+prints("Orbit: ", O_v, "  type: ", label);
+tabulate(
+["#","type","DRC","sig (p,q)","eps","group"]#
+for X@i in reps_list do
+ let sig=signature(X) in
+ [to_string(i),
+  X.painted_bi_partition.bi_label,
+  drc_string(X.painted_bi_partition),
+  "("+to_string(p(sig))+","+to_string(q(sig))+")",
+  to_string(epsilon(X)),
+  group_name(X.painted_bi_partition)]
+od)
+
+{ ============================================================
+  Section 10: Testing utilities
+  ============================================================ }
+
+set test_orbit_recovery(int n, string label)=bool:
+let orbits=good_parity_partitions(n,label) in
+all(for O_v in orbits do
+  let (left,right)=bi_partition_bmsz(O_v,label) in
+  dual_orbit(left,right,label)=O_v
+od)
+
+set run_tests(int n, string label)=void:
+prints("Testing orbit recovery for n=", n, " label=", label);
+let ok=test_orbit_recovery(n,label) in
+if ok then prints("  PASSED")
+else prints("  FAILED: some orbits do not recover correctly")
+fi;
+let (p_val,f_val)=verify_descent(good_parity_partitions(n,label)[0],label) in
+prints("Sample descent verify (first orbit): passed=", p_val, " failed=", f_val)
+
+set run_all_tests(int n)=void:
+for label in ["C","D","B","C~"] do
+  prints("--- Testing label=", label, " ---");
+  let orbits=good_parity_partitions(n,label) in
+  if #orbits=0 then prints("  no orbits at n=", n)
+  else
+    let (p_val,f_val)=verify_all_descents(n,label) in
+    prints("  descent verify: passed=", p_val, " failed=", f_val)
+  fi
+od
+
+{ ============================================================
+  Section 11: table_BCD
+  Tabulate number_unipotent vs. atlas unipotent_representations
+  for all B/C/D groups of rank 2-4 (D: rank 4 only).
+
+  Column #bmsz: formula (3.9) count (corrected primitive pairs + PBP count).
+  Column #atlas: unipotent_representations count.
+  Asterisk (*) if they disagree.
+
+  Note: number_unipotent counts representations of G directly
+  (no SO vs O correction needed — formula (3.9) gives the SO count).
+  ============================================================ }
+
+{ SO(p,q) real forms for type B_n: q = 0, 1, ..., n. }
+set B_n_groups(int n)=[RealForm]:
+for k:n+1 do SO(2*n+1-k,k) od
+
+{ Sp(p,q) real forms for type C_n (p+q=n, p≥q) plus Sp(2n,R). }
+set C_n_groups(int n)=[RealForm]:
+(for k:n\2+1 do Sp(n-k,k) od) ## [Sp_R(2*n)]
+
+{ All D_4 real forms. }
+set D4_groups()=[RealForm]:
+[SO(8,0), SO(6,2), SO_star(8), SO_star(8,true,SO(8)), SO(4,4),
+ SO(7,1), SO(5,3)]
+
+{ One table row: [group, bi_label, orbit, #bmsz, #atlas (* if mismatch)]. }
+set row(RealForm G, Orbit O_v)=[string]:
+let (bi_label,G_datum)=label_and_datum(G) then
+n=number_unipotent(O_v,G) then
+atlas_n=#unipotent_representations(O_v,G) in
+[group_name(G_datum), bi_label, to_string(O_v),
+ to_string(n),
+ to_string(atlas_n) + if atlas_n=n then "" else "*" fi]
+
+set B_rows(int n)=[[string]]:
+let groups=B_n_groups(n) then
+orbits=good_parity_partitions(n,"B") in
+##for G in groups do for O_v in orbits do row(G,O_v) od od
+
+set C_rows(int n)=[[string]]:
+let groups=C_n_groups(n) then
+orbits=good_parity_partitions(n,"C") in
+##for G in groups do for O_v in orbits do row(G,O_v) od od
+
+set D4_rows()=[[string]]:
+let groups=D4_groups() then
+orbits=good_parity_partitions(4,"D") in
+##for G in groups do for O_v in orbits do row(G,O_v) od od
+
+{ Master table: B_n (n=2..4), C_n (n=2..4), D_4.
+  Rank 1 is skipped (exceptional isomorphism B_1 ≅ C_1 ≅ A_1). }
+set table_BCD()=void:
+tabulate(
+  [["group","bi_label","orbit","#bmsz","#atlas"]] ##
+  (##for n:3 do B_rows(n+2) od) ##
+  (##for n:3 do C_rows(n+2) od) ##
+  D4_rows()
+)
+
+{ ============================================================
+  Section 12: Standalone.py comparison helpers
+  Functions to reproduce standalone.py output for comparison.
+  ============================================================ }
+
+{ Show all PBPs for orbit O_v with their group, orbit, signature, epsilon.
+  Mirrors standalone.py compute_all_pbp(dpart, rtype, report=True). }
+set show_all_pbp(Orbit O_v, string label)=void:
+let result=compute_all_pbp(O_v,label,true) in
+prints("#total extended PBPs: ", #result)
+
+{ Count PBPs by group for one orbit.
+  Mirrors standalone.py's group counting output. }
+set count_by_group(Orbit O_v, string label)=void:
+let reps_list=reps(O_v,label) in
+prints("Orbit O^v=",O_v,"  label=",label,"  #reps=",#reps_list);
+let groups=for X in reps_list do group_name(X.painted_bi_partition) od in
+let seen=[string]:[] in
+for g in groups do
+  if not(is_member(seen)(g)) then
+    seen#:=g;
+    let cnt=0 in
+    for h in groups do if h=g then cnt+:=1 fi od;
+    prints("  ",g,": ",cnt)
+  fi
+od
+
+{ Check number_unipotent for all good-parity orbits of rank n and type label. }
+set check(int n, string label)=void:
+let orbits=good_parity_partitions(n,label) in
+prints("Checking n=",n," label=",label,"  #orbits=",#orbits);
+for O_v in orbits do
+  prints("  O^v=",O_v);
+  prints("    pp=",pp(O_v,label),"  |A_bar|=",A_bar_order(O_v,label))
+od
+
+{ --------------  Section *:  show functions  --------------}
+set show_partition(Partition P)=void:for r in P do prints(star_string(r)) od
+set show_partition(PaintedPartition P)=void:show_partition(partition(P))
+forget show@i_poly
+set show(Partition P)=void:show_partition(P)
+
+
+set show_painted_partition(PaintedPartition P)=void:
+if #P=0 then prints("[]") else for row in P do prints(symbol_string(row)) od fi
+
+set show(PaintedBiPartition (P,Q,bi_label))=void:
+prints("bi_label:", bi_label);
+prints("P:");show_painted_partition(P);
+prints("---------",new_line,"Q:");show_painted_partition(Q)
+
+set show([PaintedBiPartition] list)=void:
+for Z in list do prints("=====================",new_line,Z);show(Z) od
+
+set show_short(PaintedBiPartition (P,Q,bi_label))=void:
+prints(P, " ", Q, " ", bi_label, " ", group_name(P,Q,bi_label), " ", orbit(P,Q,bi_label))
+
+set show_short([PaintedBiPartition] list)=void:
+tabulate(for (P,Q,bi_label) in list do
+ [P.to_string,Q.to_string,bi_label,group_name(P,Q,bi_label),orbit(P,Q,bi_label).to_string] od)
+
+
+set show(ExtendedPaintedBiPartition (Z,S))=void:
+prints(Z.P, " ", Z.Q, " ", Z.bi_label, " ", group_name(Z), " ", orbit(Z), " ", dual_orbit(Z), " ", S)
+
+set show([ExtendedPaintedBiPartition] list)=void:
+tabulate(
+["P","Q","bi-label","group","orbit","dual orbit","S"]#
+for (Z,S) in list do
+ [Z.P.to_string,Z.Q.to_string,Z.bi_label,group_name(Z),orbit(Z).to_string,dual_orbit(Z).to_string,S.to_string] od)
+
+set show_long(ExtendedPaintedBiPartition (Z,S))=void:
+prints("bi_label:", Z.bi_label, new_line, "S=", S);
+prints("painted partition P:");show_painted_partition(Z.P);
+prints("<<<<<<<<<<<<<<<<<<<<<<<<<<<",new_line,"painted partition Q:");show_painted_partition(Z.Q);
+prints(">>>>>>>>>>>>>>>>>>>>>>>>>>>")
+
+set show_short(ExtendedPaintedBiPartition (Z,S))=void:
+prints(Z.P, " ", Z.Q, " ", Z.bi_label, " ", group_name(Z), " ", orbit(Z))
+
+set show_short([ExtendedPaintedBiPartition] list)=void:
+tabulate(for (Z,S) in list do
+ [Z.P.to_string,Z.Q.to_string,Z.bi_label,group_name(Z),orbit(Z).to_string,S.to_string] od)
+
+{ Show all extended painted bipartitions for an orbit and label.
+  For type "B", shows B+ and B- separately.
+  Usage: show_epbp([4,2],"B") }
+set show_epbp(Orbit O_v, string label)=void:
+if label="B" then
+  let S_list=A_bar(O_v,"B") then
+  bplus=  ##for Z in pbp(O_v,"B+") do for S in S_list do ExtendedPaintedBiPartition:(Z,S) od od then
+  bminus= ##for Z in pbp(O_v,"B-") do for S in S_list do ExtendedPaintedBiPartition:(Z,S) od od in
+  prints("=== B+ (p odd) ===");
+  show(bplus);
+  prints("=== B- (q odd) ===");
+  show(bminus)
+else
+  show(reps(O_v,label))
+fi
+
+set show_orbit_diagrams(Orbit O_v, string label)=void:
+let (left,right)=bi_partition_bmsz(O_v,label) in
+prints("Orbit O^v=", O_v, "  type=", label);
+prints("Left (P partition):  ", left);
+show_partition(left);
+prints("Right (Q partition): ", right);
+show_partition(right)
+
+set show_primitive_pairs(Orbit O_v, string label)=void:
+let pp_list=pp(O_v,label) in
+prints("Orbit O^v=", O_v, "  type=", label);
+prints("Primitive pairs (indices i such that (i,i+1) is primitive): ", pp_list);
+prints("|A_bar|=", A_bar_order(O_v,label), " (subsets of primitive pairs)")
+
+set show_pbp_info(Orbit O_v, string label)=void:
+let bp=pbp(O_v,label) then
+pp_list=pp(O_v,label) in
+prints("Orbit O^v=", O_v, "  type=", label);
+prints("#PBPs: ", #bp, "  primitive pairs: ", pp_list);
+show(bp)
+
+set show( [([ExtendedPaintedBiPartition], [KLocalSystem])] data)=void:
+for (chain,ac) in data do prints("====================================",new_line,"chain:"); show(chain);
+prints("associated cycle:");show(ac) od
+
+set show_short( [([ExtendedPaintedBiPartition], [KLocalSystem])] data)=void:
+for (chain,ac) in data do prints("====================================",new_line,"rep:");show(chain[0]);
+prints("associated cycle:");show(ac) od
+
+set reps_chains(Orbit O_v,string bi_label)=
+let reps=reps(O_v,bi_label) then
+chains=for pi in reps do descent_chain(pi) od in (reps,chains)
+
+set reps_chains_acs(Orbit O_v,string bi_label)=
+let reps=reps(O_v,bi_label) then
+chains=for pi in reps do descent_chain(pi) od then
+acs=for X in reps do compute_AC(X) od  in
+(reps,chains,acs) 
