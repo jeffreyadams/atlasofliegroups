@@ -1,3 +1,6 @@
+<nci_nilrad_roots.at
+<K_types.at
+
 set make_dominant(KType mu)=
 let (x,lambda_rho)=%mu {lambda_rho= is a vec} then
 rf=mu.real_form then 

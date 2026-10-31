@@ -1,3 +1,5 @@
+<endoscopic_lifting.at
+
 {assuming G(R) is equal rank: compute base change of parameter for G(R) to G(C)}
 {algorithm (see twisted_endosopy.pdf):
  write H(R)=G(R)  (endoscopy picture)
