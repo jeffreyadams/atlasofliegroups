@@ -64,10 +64,14 @@ for G in pure_strong_real_forms(dual_quasisplit_form(phi.y.inner_class)) do
 set pure_component_group(L_homomorphism phi)=[KGBElt]:
 ##for x in ##component_group(phi) do if is_pure(x) then [x] else [] fi od
 
+{the L-packet of phi on the single real form G; this used component_group(phi_dom),
+ which runs over all pure strong real forms, so it returned the packet on every
+ pure form, ignoring G, and param_pol/sum of the result failed with "Real form
+ mismatch" (e.g. in pure_stable_sum_std, hence epstar_stable_std) (jda 10/31/26)}
 set L_packet(RealForm G,L_homomorphism phi)=[Param]:
 let phi_dom=make_dominant(phi) then
-(y,gamma)=phi_dom in 
-##for x in ##component_group(phi_dom) do
+(y,gamma)=phi_dom in
+##for x in component_group(G,phi_dom) do
 monomials(finalize(parameter(x,y,gamma))) od
 
 set L_packet(L_homomorphism phi)=[[Param]]:
