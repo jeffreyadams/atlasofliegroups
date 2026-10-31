@@ -2776,6 +2776,7 @@ this for a long time, leading to wrong answers for PSU(2,2).}
 		    		       	     bl_step_count*bl_step_size else more_shift_level fi);
 	    {prints("     #Params more-caught = ", more_good_hash.size(), 
       	    ", #Params more-missed = ", more_bad_hash.size());}
+	    if more_L_flag then prints(more_L_string(), "; more_L step ", print_time_string(more_L_step_time)) fi;
        	    {prints("  #hash_real_dumb = ",hash_real_dumbCounter.use_count(),",  #hash_dumb = ", hash_dumbCounter.use_count(),
 	    	   ", #hash_def_dumb = ", hash_def_dumbCounter.use_count(),
 	    	   ", #hash2 = ",hash2Counter.use_count(), ", #hash_one_level = ", hash_one_levelCounter.use_count(), ", #hash_bottom_layer = ",

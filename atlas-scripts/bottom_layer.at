@@ -1552,21 +1552,44 @@ set more_lift_caught(Param p0, [KGPElt] Qs, int bound) = bool:
 
 {more_bottom from the L side (David, 10/30/26): for a maximal theta-stable Q containing Qmin, the
  bottom-layer data of min_bottom_factors with Q in place of Qmin: (L_j cap K)-types of the derived
- factors of the LKT muL of mu (branch_entry on derL_j, to next_height + more_shift_level), tensored, lifted to G,
+ factors of the LKT muL of mu (branch_entry on derL_j, to more_L_ht), tensored, lifted to G,
  K_0-dominant ones kept. No branch on G. Maximal Q suffice: the bottom layer for a smaller Q lies in
  that of any larger one. Memo keyed on (mu, Q.S), as more_lift_pre.}
 set more_bf_time = int: 0
 
+{height to which the (L_j cap K)-types of the derived factor dermuLj are taken. more_L_ht_mode 0:
+ next_height + more_shift_level (more_shift_level is a height on G); 1: next_heights(dermuLj,D)~[0],
+ D = more_L_steps(dermuLj) steps up from the LKT, a measure comparable across groups (one_level's
+ basic height on G is edge_offset steps up)}
+set more_L_ht_mode = 1
+set more_L_rank_frac = 1/2, more_L_steps_add = 1
+{more_L_der_eo_flag: in place of edge_offset (set by test_edge from x in G), the value test_edge would
+ give for the KGB element of dermuLj in derL_j (KGB_edge_frac of FPP_globalDirac.at copied here)}
+set more_L_der_eo_flag = true, more_L_edge_frac = 1/10
+set der_edge_offset(KGBElt x) = int:
+    let N = KGB_size(x.real_form), n = x.number
+    in if n > (1-more_L_edge_frac)*N then (x.root_datum.semisimple_rank+1)\3
+       elif n > more_L_edge_frac*N then 2 else 0 fi
+set more_L_steps(KType dermuLj) = int:
+    (if more_L_der_eo_flag then der_edge_offset(dermuLj.x) else edge_offset fi) +
+    (more_L_rank_frac*dermuLj.real_form.semisimple_rank)\1 + more_L_steps_add
+set more_L_ht(KType dermuLj) = int:
+    if more_L_ht_mode = 0 then next_height(dermuLj) + more_shift_level
+    else let hs = next_heights(dermuLj, more_L_steps(dermuLj))
+    	 in if #hs = 0 then height(dermuLj) else hs~[0] fi
+    fi
+
 set more_bottom_factors(KType mu, KGPElt Q) = LK_data:
     let k = more_bf_keys.match(mu), S = Q.S
+    then (G,ProjK,SFRP,dermuLs,derLs,derProjKinvs,xcG,derxcLs,muwt,K0) = more_lift_pre(mu,Q)
+    then hts = for dermuLj in dermuLs do more_L_ht(dermuLj) od {in the memo key: they vary with x}
     then () = if k = #more_bf_vals then more_bf_vals #:= ([([int],LK_data)]: []) fi
-    then i = first(#more_bf_vals[k], (int i) bool: let (s,) = more_bf_vals[k][i] in s = S)
+    then i = first(#more_bf_vals[k], (int i) bool: let (s,) = more_bf_vals[k][i] in s = S##hts)
     in if i >= 0 then let (,v) = more_bf_vals[k][i] in v else
     let start = elapsed_ms()
-    then (G,ProjK,SFRP,dermuLs,derLs,derProjKinvs,xcG,derxcLs,muwt,K0) = more_lift_pre(mu,Q)
     then dertauLs = [[KType]]:
-    	 for dermuLj in dermuLs
-	 do monomials(big_unitary_hash.branch_entry(dermuLj, next_height(dermuLj) + more_shift_level))
+    	 for dermuLj@j in dermuLs
+	 do monomials(big_unitary_hash.branch_entry(dermuLj, hts[j]))
 	 od
     then () = assert(all(for l in dertauLs do #l > 0 od),"more_bottom_factors: no K-types on a factor")
     then taushifts = [[ratvec]]:
@@ -1587,20 +1610,24 @@ set more_bottom_factors(KType mu, KGPElt Q) = LK_data:
 	       else []
 	       fi
 	 od.##
-    in more_bf_vals[k] #:= (S,data); more_bf_time +:= elapsed_ms() - start; data fi
+    in more_bf_vals[k] #:= (S##hts,data); more_bf_time +:= elapsed_ms() - start; data fi
 
 {whether the final Param p0 survives more_bottom from the L side: for each maximal theta-stable Q
  containing Qmin with pL hermitian, the factor-signature test on the bottom-layer K-types of height at
  most bound (the level of the face classes, so a witness may eliminate its whole class). The witness
  lift is tried first (more_lift_mode as in bottom_elim_factors_more).}
 set more_L_count = [0,0] {p0 tested, p0 found nonunitary by signatures}
-set more_L_time = int: 0
+set more_L_calls = 0 {p0 not already in more_good_hash}
+set more_L_time = int: 0 {all of more_L_elim, the lift included}
 set more_L_elim(Param p0, int bound) = bool:
-    if more_good_hash.lookup(p0) >= 0 then false
-    elif more_lift_caught(p0, [], bound) then false
-    elif more_lift_mode = 2 or components_rank(p0.real_form) != 0 then true
+    if more_good_hash.lookup(p0) >= 0 then false else
+    let start = elapsed_ms()
+    in more_L_calls +:= 1;
+    if more_lift_caught(p0, [], bound) then more_L_time +:= elapsed_ms() - start; false
+    elif more_lift_mode = 2 or components_rank(p0.real_form) != 0
+    then more_L_time +:= elapsed_ms() - start; true
     else
-    let start = elapsed_ms(), G = p0.real_form
+    let G = p0.real_form
     then (Qm,pLm) = theta_stable_quasi_data(p0), mu = LKTs(p0)[0]
     then muLm = highest_LK(mu,Qm)
     then pLmis = monomials(1*pLm)
@@ -1623,7 +1650,14 @@ set more_L_elim(Param p0, int bound) = bool:
        if #fail_tau = 0 then true
        else more_L_count[1] +:= 1; more_good_hash.match(p0); big_unitary_hash.numatch_witness(p0,fail_tau); false
        fi
-    fi
+    fi fi
+
+{for the reports}
+set more_L_string() = string:
+    "Time in more_L_elim = " + print_time_string(more_L_time) + " for " + more_L_calls.to_string +
+    " Params (factors " + print_time_string(more_bf_time) + ", lift " + print_time_string(more_lift_time) +
+    "); lift caught " + more_lift_count[1].to_string + " of " + more_lift_count[0].to_string +
+    " tried; signatures caught " + more_L_count[1].to_string + " of " + more_L_count[0].to_string
 
 {need to be sure nQs does not include a Borel}
 {add computation of D = max heights(mu in datas); just do good range sigs to D.}

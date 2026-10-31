@@ -175,7 +175,7 @@ set next_heightsB(KType mu, int D) = [int]:
 set next_heights(KType mu, int D) = [int]:
     let m = NKTlookup(mu)
     then answer = NKThtLists[m]
-    in if #answer < D
+    in if #answer < D and #next_to_lowests(mu) > 0 {none: mu is alone in its standard (compact G); answer []}
        then let start = elapsed_ms()
        	    then M = if #answer > 0
        	    	     then answer~[0]
