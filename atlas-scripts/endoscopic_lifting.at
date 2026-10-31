@@ -61,14 +61,40 @@ set KGB_elt_opt(RealForm G,mat theta,ratvec tf)=[KGBElt]:
  Such x_G are dropped: the only caller, epstar, keeps just the pairs with
  x_H_new=x_H, so an x_G with no counterpart in KGB(ic_H) was discarded there
  in any case. Dropping it here changes no result that previously computed,
- and replaces the crash by the answer the filter would have given.}
+ and replaces the crash by the answer the filter would have given.
+ The counterpart is looked for in every pure strong real form of H, not only
+ the quasisplit one: x_H (the argument of epstar) may be on any of them, and
+ the x_G that match x_H on a non-quasisplit form are exactly the ones carrying
+ the signs in the stable (Shelstad) lift. (In the example above [-1,0] is now
+ found, on su(2).su(2).) Searching only KGB(ic_H) gave wrong stable lifts.
+ The x_G returned are those of pure_component_group(phi_G), which makes phi_G
+ dominant first, so they are matched to w*y_G, where (w,)=to_dominant(gamma_G).
+ Their torus factors are therefore in coordinates moved by w, and must be moved
+ back (cross action of w^-1 on the G side, which has matrix ^w) before being
+ compared with x_H, which is matched to y_H, not made dominant. Without this,
+ when w<>1 an x_G was paired with the wrong x_H or with none. Example:
+ H=endoscopic_group(SO(4,5),[0,0,1,1]/2), B=block_of(H.trivial): B[4] has x=4
+ and its L-packet in H is {x=4,x=5}; w swaps coordinates 2,3, and the x_G of
+ torus factor [-1,0,-1,0] (giving parameter x=9 of SO(5,4)) was compared with
+ [-1,0,-1,0] in H, which does not exist, instead of [-1,-1,0,0], which is x=5.
+ So x=5 lifted to nothing.
+ Test: with both changes, the stable lift of each of the 36 L-packets in this
+ block to SO(4,5) agrees with lift_std_T_test of Arancibia-Mezo (32 exactly,
+ 4 up to an overall sign of the packet); without them 15 of 36 differed.
+ (jda 10/31/26)}
 set inverse_map_on_pure_component_group(L_homomorphism phi_H,L_homomorphism phi_G,mat M)=
 let S_phi_G=pure_component_group(phi_G) then
 y_H=phi_H.y then
 ic_H=dual_quasisplit_form(inner_class(phi_H)) then
-theta_H_v=y_H.involution then theta_H=-^theta_H_v in
+theta_H_v=y_H.involution then theta_H=-^theta_H_v then
+theta_G=-^phi_G.y.involution then
+(w,)=to_dominant(phi_G.y.root_datum,phi_G.gamma) in
  ##for x_G in S_phi_G
-  do let c=KGB_elt_opt(ic_H,theta_H,x_G.torus_factor*M) in
+  do let x_G_back=cross(W_elt(x_G.real_form,^w.matrix),x_G) then
+     ()=assert(x_G_back.involution=theta_G,
+               "inverse_map_on_pure_component_group: x_G not moved back to theta_G") then
+     c=##for H in pure_strong_real_forms(ic_H) do
+           KGB_elt_opt(H,theta_H,x_G_back.torus_factor*M) od in
      if #c>0 then [(x_G,c[0])] else [] fi
  od
 
