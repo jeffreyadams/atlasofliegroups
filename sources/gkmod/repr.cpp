@@ -2368,14 +2368,15 @@ SR_poly Rep_table::KL_column_at_s_to_height (StandardRepr p, level height_bound)
 
   assert(retained.isMember(start)); // since |p| was final
 
-  matrix::Vector<Split_integer> value_at_s; // polynomial evaluations at $q=s$
-  value_at_s.reserve(KL_Q_tab.pol_store().size());
-  for (auto& entry : KL_Q_tab.pol_store())
-  { Split_integer val (0);
+  // evaluate at $q=s$ only the polynomials used below: |pol_store()| is the
+  // pool shared by all KL tables, so evaluating all of it grows with history
+  const auto value_at_s = [&KL_Q_tab](kl::KLIndex inx)
+  { const auto& entry = KL_Q_tab.pol_store()[inx];
+    Split_integer val (0);
     for (unsigned d=entry.size(); d-->0;)
       val.times_s() += static_cast<int>(entry[d]); // Horner evaluate at s
-    value_at_s.push_back(val);
-  }
+    return val;
+  };
 
 
   // viewed from |block|, the |kl_tab| is lower triangular
@@ -2384,7 +2385,7 @@ SR_poly Rep_table::KL_column_at_s_to_height (StandardRepr p, level height_bound)
   { unsigned int i=0,j; unsigned int const top=block.size()-1;
     for (auto it=retained.begin(); it(); ++it,++i)
       for (auto jt=(j=i+1,std::next(it)); jt(); ++jt,++j)
-	Q_mat(i,j) = value_at_s[KL_Q_tab.KL_pol_index(top-*jt,top-*it)];
+	Q_mat(i,j) = value_at_s(KL_Q_tab.KL_pol_index(top-*jt,top-*it));
   }
 
   auto signed_P = inverse_upper_triangular(Q_mat);
