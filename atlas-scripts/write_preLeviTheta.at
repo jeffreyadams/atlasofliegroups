@@ -10,21 +10,61 @@
  Loading the file restores uhash and x_known for each real form in
  big_unitary_hash (verified on E7_s: identical uhash_sizes and x_known).}
 
+{The file is batched for load speed (one command per 500 Params, not one per Param):
+ write_preload_helpers() writes the functions that unpack the flat vecs below.}
+set preload_batch = 500
+
+{Param p as [x, numer(lambda), denom(lambda), numer(nu), denom(nu)], read by preload_params}
+set preload_ints(Param p) = vec:
+    [p.x.number]##numer(p.lambda)##[denom(p.lambda)]##numer(p.nu)##[denom(p.nu)]
+
+{the flat vecs of preload_ints, preload_batch Params per vec}
+set preload_chunks([Param] ps) = [vec]:
+    for c:(#ps+preload_batch-1)\preload_batch
+    do ##(for p in ps[c*preload_batch:min(#ps,(c+1)*preload_batch)] do preload_ints(p) od) od
+
+{"set name_k = [T]: ##[f(G_temp,v),...]" for each 100 chunks, then "set name = [T]: ##[name_0,...]":
+ a top-level ##:= copies the whole list (slow), and one huge expression doubles memory on E8}
+set write_preload_list(string name, string T, string f, [vec] vs) = void:
+    let ng = (#vs+99)\100
+    in for g:ng
+       do prints("set ",name,"_",g," = [",T,"]: ##");
+       	  for v@c in vs[100*g:min(#vs,100*(g+1))] do prints(if c=0 then "[" else "," fi,f,"(G_temp,vec:",v,")") od;
+	  prints("]")
+       od;
+       prints("set ",name," = [",T,"]: ##[",
+       	      ##for g:ng do (if g=0 then "" else "," fi) + name + "_" + g od,"]")
+
+set write_preload_helpers() = void:
+    prints("set preload_params(RealForm G, vec v) = [Param]:");
+    prints("    let r = rank(G) then w = 2*r+3");
+    prints("    in for i:#v\w do let a = v[i*w:(i+1)*w] in parameter(G,a[0],a[1:r+1]/a[r+1],a[r+2:2*r+2]/a[2*r+2]) od");
+    prints("set preload_K_types(RealForm G, vec v) = [KType]: {each KType as [x, lambda_minus_rho]}");
+    prints("    let r = rank(G) then w = r+1");
+    prints("    in for i:#v\w do K_type(KGB(G,v[i*w]),v[i*w+1:(i+1)*w]) od");
+    prints("set preload_u(RealForm G, int j, vec v) = void:");
+    prints("    for p in preload_params(G,v) do big_unitary_hash.long_match(p,j) od");
+    prints("{v: records [n, #taus, indices in ks of the witnesses of ps[n]]}");
+    prints("set preload_wits([Param] ps, [KType] ks, vec v) = void:");
+    prints("    let i = 0");
+    prints("    in while i < #v");
+    prints("       do let c = v[i+1]");
+    prints("          in big_unitary_hash.numatch_witness(ps[v[i]],for k in v[i+2:i+2+c] do ks[k] od); i +:= c+2");
+    prints("       od")
+
 {one real form: grow, then long_match each known unitary Param, then finishxmap}
 set write_preLeviTheta(RealForm G) = void:
     let plist = big_unitary_hash.uhash(G).list()
     in write_real_form(G,"G_temp");
        prints("set j = big_unitary_hash.rf_number(G_temp)");
        if #plist>0 then prints("void: big_unitary_hash.uhash(G_temp).grow(",#plist,")") fi;
-       for p in plist
-       do prints("void:  big_unitary_hash.long_match(parameter(G_temp,",
-	         p.x.number,",",p.lambda,",",p.nu,"),j)")
-       od;
+       for v in preload_chunks(plist) do prints("void: preload_u(G_temp,j,vec:",v,")") od;
        prints("void: big_unitary_hash.finishxmap(G_temp,",big_unitary_hash.x_known(G),")");
        if hash_deform_flag then big_unitary_hash.writeG_down(G) fi {the (p,p0) pairs}
 
 {every real form in big_unitary_hash, in its own order}
 set write_preLeviTheta() = void:
+    write_preload_helpers();
     for i:big_unitary_hash.real_form_size()
     do write_preLeviTheta(big_unitary_hash.rf_index(i))
     od
@@ -41,28 +81,30 @@ set write_preLeviTheta_nu(RealForm G) = void:
     then nu_hts = big_unitary_hash.nu_heights(G)
     in write_preLeviTheta(G);
        if #nulist>0
-       then prints("set tempnuParams = [Param]: for :",#nulist," do Nullp od");
-	    for p@j in nulist
-	    do prints("void:tempnuParams[",j,"]:=parameter(G_temp,",
-		      p.x.number,",",p.lambda,",",p.nu,")")
-	    od;
+       then write_preload_list("tempnuParams","Param","preload_params",preload_chunks(nulist));
 	    prints("set nu_hts = ",nu_hts);
 	    prints("void: big_unitary_hash.numatches_height(tempnuParams,nu_hts)");
-	    for p@j in nulist
-	    do let ws = big_unitary_hash.nu_witnesses(p)
-	       in if #ws > 0
-	       	  then let str = "void: big_unitary_hash.numatch_witness(tempnuParams[" + j + "],[KType]: ["
-		       in for tau@m in ws
-		       	  do str +:= (if m > 0 then "," else "" fi) + "K_type(KGB(G_temp," + tau.x.number + "),"
-			     	     + to_string(tau.lambda_minus_rho) + ")"
-			  od;
-			  prints(str + "])")
-		  fi
-	    od
+	    let ktab = make_vec_hash() {the witness K-types, as [x, lambda_minus_rho]}
+	    then recs = [vec]:
+	    	 for p@j in nulist
+		 do let ws = big_unitary_hash.nu_witnesses(p)
+		    in if #ws = 0 then vec: []
+		       else [j,#ws]##for tau in ws do ktab.match([tau.x.number]##tau.lambda_minus_rho) od
+		       fi
+		 od
+	    in if ktab.size() > 0
+	       then write_preload_list("tempKs","KType","preload_K_types",
+	       	    	for c:(ktab.size()+preload_batch-1)\preload_batch
+	       	    	do ##ktab.list()[c*preload_batch:min(ktab.size(),(c+1)*preload_batch)] od);
+		    for c:(#recs+preload_batch-1)\preload_batch
+		    do let v = ##recs[c*preload_batch:min(#recs,(c+1)*preload_batch)]
+		       in if #v > 0 then prints("void: preload_wits(tempnuParams,tempKs,vec:",v,")") fi
+		    od
+	       fi
        fi
 
 set write_preLeviTheta_nu() = void:
-    prints("set Nullp = U(1,0).trivial");
+    write_preload_helpers();
     for i:big_unitary_hash.real_form_size()
     do write_preLeviTheta_nu(big_unitary_hash.rf_index(i))
     od
