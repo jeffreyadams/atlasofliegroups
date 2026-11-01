@@ -6852,13 +6852,15 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 		      fi;
 		      let gamma = Lvd.list[v[0]]
 		      then p0 = parameter(x, lambda, gamma)
-		      then () = if k%low_step = 0
+		      then intg = integral_probe_flag and is_integral_gamma(p0)
+		      then () = if k%low_step = 0 and not intg
 		      	      	then low_flag :=low_char(p0,HT)
 				fi
+		      then this_flag = if intg then low_char(p0,HT) else low_flag fi
 		      then P = finalize(p0)
 		      then CF = if to_htB_flag
 				then composition_series_to_heightQ(P,HT)
-				elif low_flag
+				elif this_flag
 				then character_formula_to_ht(P,HT)
 				else let (below,) = height_split(character_formula(P),HT)
 				     in below
@@ -6901,14 +6903,16 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 			 then []
 			 else let nu = face_bary(Lvd,v[:2])
 			      then p0 = parameter(x, lambda, nu)
-			      then () = if k%low_step = 0
+			      then intg = integral_probe_flag and is_integral_gamma(p0)
+			      then () = if k%low_step = 0 and not intg
 		      	      	      	then low_flag :=low_char(p0,HT)
 					fi
+			      then this_flag = if intg then low_char(p0,HT) else low_flag fi
 			      then P = finalize(p0)
 			      in let CF =
 				      	   if to_htB_flag
 				      	   then composition_series_to_heightQ(P,HT)
-					   elif low_flag
+					   elif this_flag
 					   then character_formula_to_ht(P,HT)
 					   else let (below,) = height_split(character_formula(P),HT)
 					    	 in below

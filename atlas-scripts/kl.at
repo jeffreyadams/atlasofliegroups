@@ -714,8 +714,8 @@ set low_diff_char(Param p, int HT) = bool: {false {ALWAYS use KL_sum_at_s}}
 
 {predicted time in milliseconds to compute KL in block of p}
 set KL_predictor_full(Param p) = int:
-    let rk = semisimple_rank(integrality_datum_hash(p))
-    in floor((#full_block(p))^2*3^rk* KL_rate/2^(2*rk+1))
+    let rk = semisimple_rank(integrality_datum_hash(p)), (n,) = full_block_size_index(p)
+    in floor(n^2*3^rk* KL_rate/2^(2*rk+1))
     {next prints("we're in KL_pred_full at ",p)}
 {number of extremal pairs in full block is ROUGHLY: (x,y) so tau(y)\cap tau(x) is empty.
 Number of pairs of [bool] with ANSWER IS 3^rank.}
@@ -943,9 +943,31 @@ set kl_block_gate(Param p) = bool:
     kl_block_gate_flag and semisimple_rank(p.real_form) >= kl_block_gate_min_rank and
     kl_block_size(p) >= kl_block_gate_min
 
+{Integral probe (David, 1 Nov 2026).  At gamma integral for every root, choose
+ KL_sum_at_s_to_height only if p lies near the end of its full block (index >= (1-f)*size)
+ and the block element at floor((1-f)*size) has height > HT; heights decrease roughly along
+ the block, so then roughly less than a fraction f of the block is at height <= HT.
+ Uses the built-ins of a1e10e38: < 1 ms per call once the block family exists.}
+set integral_probe_flag = true
+set integral_probe_frac = rat: 1/10
+set integral_probe_counts = [int]: [0,0]  {to height, full}
+{Possible later (not done): #full_block_to_ht(p,HT) by a binary search with full_block_height,
+ since heights decrease roughly along the full block; an approximate count is good enough for
+ KL_predictor_to_ht and ht_saving.}
+set integral_probe_time = int: 0
+set is_integral_gamma(Param p) = bool:
+    (p.infinitesimal_character*p.root_datum.poscoroots).denom = 1
+set integral_probe(Param p, int HT) = bool:
+    let start = elapsed_ms() then (n,i) = full_block_size_index(p)
+    then k = floor(n*(1-integral_probe_frac))
+    then ans = k < n and i >= k and full_block_height(p,k) > HT
+    in integral_probe_counts[if ans then 0 else 1 fi] +:= 1;
+       ans next integral_probe_time +:= elapsed_ms() - start
+
 set low_char(Param p, int HT) = bool:
     let start=elapsed_ms() in
     if (HT < 0 or p.x.number < diff_KGB_char_frac*KGB_size(p.real_form)) then return false
+    elif integral_probe_flag and is_integral_gamma(p) then return integral_probe(p,HT)
     elif kl_block_gate(p) then kl_block_gate_count +:= 1; return false
     elif not low_char_flag
     then return true {ALWAYS do to_height}
