@@ -7032,6 +7032,47 @@ void common_block_wrapper(eval_level l)
     wrap_tuple<2>();
 }
 
+@ For deciding cheaply between |KL_sum_at_s| and |KL_sum_at_s_to_height| it
+helps to know about the full block that the latter uses (including non-final
+elements) without building a parameter value for each of its elements. The
+function |full_block_size_index| returns the size of that block and the index
+of (the normalised form of) the parameter in it, and |full_block_height|
+returns the height of one element of the block, at the infinitesimal character
+of the given parameter. Only the first call for a block family builds the
+block; later calls are cheap.
+
+@< Local function def...@>=
+void full_block_size_index_wrapper(eval_level l)
+{ own_module_parameter p = get_own<module_parameter_value>();
+  test_standard(*p,"Cannot generate block");
+  if (l==eval_level::no_value)
+    return;
+  BlockElt start; repr::block_modifier bm;
+  auto& block = p->rt().lookup_full_block(p->val,start,bm);
+  push_value(std::make_shared<int_value>(block.size()));
+  push_value(std::make_shared<int_value>(start));
+  if (l==eval_level::single_value)
+    wrap_tuple<2>();
+}
+@)
+void full_block_height_wrapper(eval_level l)
+{ int k = get<int_value>()->int_val();
+  own_module_parameter p = get_own<module_parameter_value>();
+  test_standard(*p,"Cannot generate block");
+  if (l==eval_level::no_value)
+    return;
+  BlockElt start; repr::block_modifier bm;
+  auto& block = p->rt().lookup_full_block(p->val,start,bm);
+  if (k<0 or static_cast<unsigned long>(k)>=block.size())
+  { std::ostringstream o;
+    o << "Block element " << k << " out of range (<" << block.size() << ")";
+    throw runtime_error(o.str());
+  }
+  const auto& gamma = p->val.gamma();
+  push_value(std::make_shared<int_value>
+    (p->rc().sr(block.representative(k),bm,gamma).height()));
+}
+
 @ There are also functions that compute just a partial block. We generate
 the Bruhat interval inside the block (which might have more elements than just
 the requested partial bock because of earlier computations) by completing the
@@ -7764,6 +7805,10 @@ install_function(print_part_param_block_wrapper,@|
 install_function(print_pc_block_wrapper,@|
 		"print_partial_common_block","(Param->)");
 install_function(common_block_wrapper,@|"block" ,"(Param->[Param],int)");
+install_function(full_block_size_index_wrapper,@|"full_block_size_index"
+                ,"(Param->int,int)");
+install_function(full_block_height_wrapper,@|"full_block_height"
+                ,"(Param,int->int)");
 install_function(partial_common_block_wrapper,@|"partial_block"
                 ,"(Param->[Param])");
 install_function(param_length_wrapper,@|"length","(Param->int)");
