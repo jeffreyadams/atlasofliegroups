@@ -572,11 +572,6 @@ is (GAM-LAM)*diff_frac. INCREASE to use to_ht more often}
 set diff_char_frac = rat: 1/9 {1/10}{1/6, 1/4 much worse for E7 4/2/26}
     		   {1/8 and 1/12 used a bit more memory and time in
     		     	       spherical E7_s}
-		{2/5/26: for Spin(6,6), .20 was faster than .15 or .25}
-		{2/12/26: 1/3 was better than 1/5 or 1/2 for E7_s (20925,[ 1, 2, 2, 1, 1, 2, 2 ]/1)}
-		{2/14/26: 1/4 better than 1/3 for E7_s[20000:20025]}
-		{2/15/26: 1/8 much better than 1/4 20800-20810}
-		{4/2/26: 1/4 best for Spin(6,6), with diff_KGB_char_frac 1/2?}
 
 {if diff_char_mult*rank*(HT - LAM) >= GAM then don't try char_to_ht.
 So largest reasonable target height is (1/(diff_char_mult*rank))*GAM + LAM.
@@ -936,9 +931,10 @@ set kl_block_gate_flag = true
 set kl_block_gate_min_rank = 8
 set kl_block_gate_min = int: 100000
 set kl_block_gate_count = int: 0
-set kl_block_size(Param p) = int:
-    let m = block_sizes(inner_class(integrality_datum(p),p.x.involution))
-    in m[n_rows(m)-1,n_columns(m)-1]
+
+set kl_block_size(Param p) = int
+    full_block_index(p).first
+
 set kl_block_gate(Param p) = bool:
     kl_block_gate_flag and semisimple_rank(p.real_form) >= kl_block_gate_min_rank and
     kl_block_size(p) >= kl_block_gate_min
@@ -951,12 +947,15 @@ set kl_block_gate(Param p) = bool:
 set integral_probe_flag = true
 set integral_probe_frac = rat: 1/10
 set integral_probe_counts = [int]: [0,0]  {to height, full}
+
 {Possible later (not done): #full_block_to_ht(p,HT) by a binary search with full_block_height,
  since heights decrease roughly along the full block; an approximate count is good enough for
  KL_predictor_to_ht and ht_saving.}
 set integral_probe_time = int: 0
+
 set is_integral_gamma(Param p) = bool:
     (p.infinitesimal_character*p.root_datum.poscoroots).denom = 1
+
 set integral_probe(Param p, int HT) = bool:
     let start = elapsed_ms() then (n,i) = full_block_size_index(p)
     then k = floor(n*(1-integral_probe_frac))
@@ -964,59 +963,32 @@ set integral_probe(Param p, int HT) = bool:
     in integral_probe_counts[if ans then 0 else 1 fi] +:= 1;
        ans next integral_probe_time +:= elapsed_ms() - start
 
-{probe_only_flag (David, 2 Nov 2026): go to height iff x is in the top third of KGB and the
+{probe_only_flag (David, 2 Nov 2026): go to height iff x is in the top probe_only_frac of KGB and the
  integral probe says so, for every gamma.  The probe costs ~3 us once the full block exists
  (E7_s, warm), so callers may decide per parameter; the old rule below needs sampling.}
 set probe_only_flag = true
-set probe_only_frac = rat: 2/3
+set probe_only_frac = rat: 0 {In E7_s, fact that probe is cheap j}
+
 set low_char(Param p, int HT) = bool:
     let start=elapsed_ms() in
-    if HT < 0 then return false
+    if HT < 0 then false
+    elif not low_char_flag
+    then true {ALWAYS do to_height}
     elif probe_only_flag
     then p.x.number > probe_only_frac*KGB_size(p.real_form) and integral_probe(p,HT)
-    elif p.x.number < diff_KGB_char_frac*KGB_size(p.real_form) then return false
-    elif integral_probe_flag and is_integral_gamma(p) then return integral_probe(p,HT)
-    elif kl_block_gate(p) then kl_block_gate_count +:= 1; return false
-    elif not low_char_flag
-    then return true {ALWAYS do to_height}
-    elif prefer_KL_char_flag {false}
-    then low_KL_char(p,HT) {false}
+    elif p.x.number < diff_KGB_char_frac*KGB_size(p.real_form) then false
+    elif integral_probe_flag and is_integral_gamma(p) then integral_probe(p,HT)
+    elif kl_block_gate(p) then kl_block_gate_count +:= 1; false
+    elif prefer_KL_char_flag {default false}
+    then low_KL_char(p,HT)
     elif prefer_red_flag {true}
     then low_red_char(p,HT)
     elif prefer_quick_char_flag {false 8/4/26; true 4/29/26}
     then low_quick_char(p,HT)
     elif prefer_diff_flag
     then low_diff_char(p,HT)
-    {elif prefer_strict_KL_flag
-    then strict_low_KL_char(p,HT)}
     else false{ALWAYS truncate to KL_sum}
     fi next low_char_time +:= elapsed_ms() - start; low_char_count+:=1
-
-{
-{predicted time in milliseconds to compute KL in block of p}
-set KL_predictor_full(Param p) = int:
-    let rk = semisimple_rank(integrality_datum_hash(p))
-    in floor((#full_block(p))^2*3^rk* KL_rate/2^(2*rk+1))
-    {next prints("we're in KL_pred_full at ",p)}
-{number of extremal pairs in full block is ROUGHLY: (x,y) so tau(y)\cap tau(x) is empty.
-Number of pairs of [bool] with ANSWER IS 3^rank.}
-
-{relevant to KL_sum_at_s for p}
-set KL_predictor(Param p) = int:
-    let rk = semisimple_rank(integrality_datum_hash(p))
-    in floor((full_block_down_size(p))^2*3^rk*KL_rate/2^(2*rk + 1))
-
-{this one is relevant to KL_sum_at_s_to_height, I think?}
-{predicted time in milliseconds to compute KL to height HT in block of p}
-{typically applied near principal series, where all tau invts large; so (3/4)^rk factor is not justified}
-{Extra factof of 4 is unexplained heuristic; undo rate heuristic}
-set KL_predictor_to_ht(Param p, int HT) = int:
-    if not low_char(p,HT)
-    then KL_predictor(p)
-    {let rk = semisimple_rank(integrality_datum(p))}
-    else floor((#full_block_to_ht(p,HT))^2 * {3^rk*}KL_rate/2{/2^({2*rk+}1)})
-    fi
-}
 
 set to_ht (KTypePol P,int N) = KTypePol:
   if N<0 then return P fi;
@@ -1122,9 +1094,31 @@ set twisted_KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol:
     else height_split(twisted_KL_sum_at_s(p),HT).fst
     fi
 
+{Reducibility walls of p (David, 2 Nov 2026): indices j of positive roots with
+ <gamma,alpha_j^vee> a positive integer and <theta gamma,alpha_j^vee> < 0, alpha_j complex, or
+ real and satisfying the parity condition.  Real induction from the real Levi L containing all
+ of them is irreducible, so character_formula(p) = real_induce_standard(character_formula(pL))
+ (character_formula_Levi in induction.at; exact on 5581 tests, Sp(6,R) ... F4_s).  With no walls
+ at all L is the minimal real Levi and the character formula of p is p.  The test costs ~1.4 ms
+ per Param at E8_s vertices, much more than a stored KL_sum_at_s, so it is used here only in the
+ user-level character_formula_to_height, not in the KL wrappers used by FPP.}
+set reducibility_walls(Param p) = [int]:
+    let x = p.x, gamma = p.infinitesimal_character, rd = p.root_datum
+    then theta = x.involution, PC = rd.poscoroots, PR = rd.posroots, rr = rho_r(x)
+    then A = gamma*PC, B = (theta*gamma)*PC
+    in for j:#A
+       do if is_integer(A[j]) and A[j] > 0 and B[j] < 0 and
+             (not is_real(j,x) or is_parity_fast(p,PR[j],PC[j],rr))
+          then [j] else []
+          fi
+       od.##
+
 {next two never try not to_ht}
 set character_formula_to_height(Param p, int HT) = ParamPol:
-    s_to_1(KL_sum_at_s_to_height(p,HT))
+    if #reducibility_walls(p) = 0
+    then height_split(null_module(p.real_form) + p,HT).fst
+    else s_to_1(KL_sum_at_s_to_height(p,HT))
+    fi
 
 set character_formula_to_height (ParamPol P, int HT) = ParamPol:
     map(((Param->ParamPol): (Param p): character_formula_to_height(p, HT)), P)
