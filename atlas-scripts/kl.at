@@ -964,9 +964,17 @@ set integral_probe(Param p, int HT) = bool:
     in integral_probe_counts[if ans then 0 else 1 fi] +:= 1;
        ans next integral_probe_time +:= elapsed_ms() - start
 
+{probe_only_flag (David, 2 Nov 2026): go to height iff x is in the top third of KGB and the
+ integral probe says so, for every gamma.  The probe costs ~3 us once the full block exists
+ (E7_s, warm), so callers may decide per parameter; the old rule below needs sampling.}
+set probe_only_flag = true
+set probe_only_frac = rat: 2/3
 set low_char(Param p, int HT) = bool:
     let start=elapsed_ms() in
-    if (HT < 0 or p.x.number < diff_KGB_char_frac*KGB_size(p.real_form)) then return false
+    if HT < 0 then return false
+    elif probe_only_flag
+    then p.x.number > probe_only_frac*KGB_size(p.real_form) and integral_probe(p,HT)
+    elif p.x.number < diff_KGB_char_frac*KGB_size(p.real_form) then return false
     elif integral_probe_flag and is_integral_gamma(p) then return integral_probe(p,HT)
     elif kl_block_gate(p) then kl_block_gate_count +:= 1; return false
     elif not low_char_flag
