@@ -932,8 +932,8 @@ set kl_block_gate_min_rank = 8
 set kl_block_gate_min = int: 100000
 set kl_block_gate_count = int: 0
 
-set kl_block_size(Param p) = int
-    full_block_index(p).first
+set kl_block_size(Param p) = int:
+    full_block_size_index(p).fst
 
 set kl_block_gate(Param p) = bool:
     kl_block_gate_flag and semisimple_rank(p.real_form) >= kl_block_gate_min_rank and
