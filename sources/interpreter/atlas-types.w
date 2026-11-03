@@ -7072,6 +7072,41 @@ void full_block_height_wrapper(eval_level l)
   push_value(std::make_shared<int_value>
     (p->rc().sr(block.representative(k),bm,gamma).height()));
 }
+@)
+@ The function |Bruhat_below_height| returns the smallest height, at the
+infinitesimal character of |p|, of a final parameter strictly below (the
+normalised form of) |p| in the Bruhat order of its full block, or $-1$ if there
+is none. The downward closure is computed as in |partial_KL_block|. (David,
+3 Nov 2026: a lower bound for the height at which crossing a reducibility wall
+changes the character formula of |p|.)
+
+@< Local function def...@>=
+void Bruhat_below_height_wrapper(eval_level l)
+{ own_module_parameter p = get_own<module_parameter_value>();
+  test_standard(*p,"Cannot generate block");
+  if (l==eval_level::no_value)
+    return;
+  BlockElt start; repr::block_modifier bm;
+  auto& block = p->rt().lookup_full_block(p->val,start,bm);
+  const auto& gamma = p->val.gamma();
+  unsigned long n=block.size();
+    // |unsigned long| type is imposed by |BitMap::back_up|
+  BitMap subset(n);
+  subset.insert(start);
+  while (subset.back_up(n)) // compute downward closure
+    for (BlockElt y : block.bruhatOrder().hasse(n))
+      subset.insert(y);
+  subset.remove(start);
+  const RankFlags singular = block.singular(bm,gamma);
+  int result = -1;
+  for (BlockElt z : subset)
+    if (block.survives(z,singular))
+    { int h = p->rc().sr(block.representative(z),bm,gamma).height();
+      if (result<0 or h<result)
+        result = h;
+    }
+  push_value(std::make_shared<int_value>(result));
+}
 
 @ There are also functions that compute just a partial block. We generate
 the Bruhat interval inside the block (which might have more elements than just
@@ -7809,6 +7844,8 @@ install_function(full_block_size_index_wrapper,@|"full_block_size_index"
                 ,"(Param->int,int)");
 install_function(full_block_height_wrapper,@|"full_block_height"
                 ,"(Param,int->int)");
+install_function(Bruhat_below_height_wrapper,@|"Bruhat_below_height"
+                ,"(Param->int)");
 install_function(partial_common_block_wrapper,@|"partial_block"
                 ,"(Param->[Param])");
 install_function(param_length_wrapper,@|"length","(Param->int)");

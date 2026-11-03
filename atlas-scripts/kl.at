@@ -519,11 +519,66 @@ set red_NUM_char = int: 10
 {low_red_char (David, 2026-10-16): one pass over the walls for both counts.  The walls
  (av*gamma a positive integer, av*theta*gamma < 0) come from two matrix products with the
  poscoroots; they are counted as in red_walls_int (real with parity 1, complex 1/2).  A wall
- counts below HT when one parameter built from it has height <= HT (no is_standard, no is_zero):
- complex av: parameter(x,lambda-(av*theta*gamma)*alpha,0); real av (parity only):
- Cayley(alpha,parameter(x,lambda,(av*gamma/2)*alpha)).  This replaces red_walls_to_ht_int,
+ counts below HT when reducibility_wall_height(p,j) <= HT (3 Nov 2026; until then the height of
+ one parameter built from it: complex av: parameter(x,lambda-(av*theta*gamma)*alpha,0); real av
+ (parity only): Cayley(alpha,parameter(x,lambda,(av*gamma/2)*alpha))).  This replaces red_walls_to_ht_int,
  whose test() builds std_quo on a small Levi: same gate decision on 1014/1021 recorded E7_s
  calls, gate time 552 s -> 147 s and full E7_s 11692 s -> 11284 s.}
+{Reducibility height of the walls js of p (David, 3 Nov 2026).  Move nu by a small nu_eps with
+ theta*nu_eps = -nu_eps, <nu_eps,alphav> = 0 for alphav in js, and <nu_eps,betav> != 0 for every
+ other coroot it can move; then the integral system of p_eps comes only from the walls js.  The
+ answer is Bruhat_below_height(p_eps) (built-in, 3 Nov 2026): the lowest height of a final element
+ strictly Bruhat-below p_eps in its full block (none: 2^30).  An earlier version took the lowest
+ height of all block elements with index below p_eps: also safe, but equal to the true height in
+ only 54-94% of the pairs below (Bruhat-below: 71-97%).  For one wall it replaces the single-parameter heights used in low_red_char
+ until now (complex: lambda-(av*theta*gamma)*alpha; real: a Cayley transform), which were not
+ lower bounds.  Test on face pairs of the FPP faces of Sp(4,R), Sp(6,R), Sp(8,R), G2_s, SU(2,2),
+ SU(3,2), SO(4,3), SO(5,2), Sp(4,2), where the full character changes across walls S: the true
+ change height is the lowest K-type of the difference of K-characters; min over j in S of
+ reducibility_wall_height(p,[j]) was never above it (20304 pairs), equal in 54-94%; the old
+ estimate was above it in 940 pairs.}
+{generic direction for nu_eps(p,[j]) depends only on (x,j): cache it for the current x.  p_eps need
+ not be dominant: the block built-ins normalise it, and that is what tests safe.  (Choosing nu_eps to
+ keep gamma dominant was tried 3 Nov 2026: then often nothing is Bruhat-below p_eps, and the
+ estimate is wrong, e.g. Sp(4,R) x=10.)}
+set nu_eps_x = int: -1, nu_eps_rf = RealForm: SL(2,R), nu_eps_cache = [vec]: [], nu_eps_have = [bool]: []
+set nu_eps_keep_singular = false {true: also keep <gamma,b> = 0 for the coroots b singular for p; tried 3 Nov 2026, looser everywhere (E7_s x=20910: 17186 classes vs 10723)}
+set nu_eps_dir(Param p, [int] js) = vec:
+    let theta = p.x.involution, PC = p.root_datum.poscoroots, gamma = p.infinitesimal_character
+    then sing = if nu_eps_keep_singular then for b in PC do if (b*gamma).= then [b] else [] fi od.## else [] fi
+    then K = kernel(^(mat: for c in ^(theta+1) do c od ## for j in js do PC[j] od ## sing))
+    then forced = for b in PC do (b*K).= od {coroots that every such nu kills}
+    then primes = [2,3,5,7,11,13,17,19,23,29,31,37]
+    then try(int s) = vec: K*(for i:n_columns(K) do primes[(i+s)%#primes] + i*s od)
+    then s = 0, v = try(0)
+    then () = while any(for b@j in PC do not forced[j] and (b*v).= od) and s < 50
+    	      do s +:= 1; v := try(s) od
+    then () = assert(s < 50, "nu_eps: no generic vector")
+    in v
+set nu_eps(Param p, [int] js) = ratvec:
+    let v = if #js = 1 and not nu_eps_keep_singular
+    	    then let j = js[0], n = #p.root_datum.poscoroots
+	    	 in if p.x.number != nu_eps_x or p.real_form != nu_eps_rf
+		    then nu_eps_x := p.x.number; nu_eps_rf := p.real_form;
+		    	 nu_eps_cache := for :n do null(p.root_datum.rank) od; nu_eps_have := for :n do false od
+		    fi;
+		    if not nu_eps_have[j]
+		    then nu_eps_cache[j] := nu_eps_dir(p,js); nu_eps_have[j] := true
+		    fi; nu_eps_cache[j]
+	    else nu_eps_dir(p,js)
+	    fi
+    then PC = p.root_datum.poscoroots
+    then m = max(for b in PC do abs(b*v) od), d = (p.infinitesimal_character*PC).denom
+    in if v.= then 0*p.nu else v/(2*d*(m+1)) fi
+
+set rwh_times = [int]: [0,0,0] {ms in nu_eps, in Bruhat_below_height; number of calls}
+set reducibility_wall_height(Param p, [int] js) = int:
+    let t0 = elapsed_ms() then pe = parameter(p.x, p.lambda, p.nu + nu_eps(p,js))
+    then t1 = elapsed_ms() then h = Bruhat_below_height(pe)
+    in rwh_times[0] +:= t1-t0; rwh_times[1] +:= elapsed_ms()-t1; rwh_times[2] +:= 1;
+       if h < 0 then 2^30 else h fi
+set reducibility_wall_height(Param p, int j) = int: reducibility_wall_height(p,[j])
+
 set low_red_char(Param p, int HT) = bool:
     if HT < 0 then return true fi;
     let x = p.x, lambda = p.lambda, gamma = p.infinitesimal_character, rd = p.root_datum
@@ -535,11 +590,8 @@ set low_red_char(Param p, int HT) = bool:
     then RWI = (sum(for j@k in W do if real[k] then (if par[k] then 2 else 0 fi) else 1 fi od))\2
     in if RWI <= red_NUM_char then false
        else let T = sum(for j@k in W
-       	      	    do let H = if real[k]
-		       	       then if par[k]
-			       	    then height(Cayley(PR[j],parameter(x,lambda,(A[j]/2)*PR[j])))
-				    else HT+1 fi
-			       else height(parameter(x,lambda-B[j]*PR[j],0*lambda))
+       	      	    do let H = if real[k] and not par[k] then HT+1
+			       else reducibility_wall_height(p,j)
 			       fi
 		       in if H > HT then 0 elif real[k] then 2 else 1 fi
 		    od)\2
