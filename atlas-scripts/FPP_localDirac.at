@@ -349,15 +349,26 @@ set red_face_walls(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHas
     then red_fw_hash.clear(); red_fw := [];
     	 red_fw_x := x.number; red_fw_rf := x.real_form; red_fw_lambda := lambda; red_fw_Lvd := Lvd.list
     fi;
+    let start = elapsed_ms(), new0 = #red_fw
+    then ans =
     for L@d in FDKH
-    do for F in L
-       do let i = red_fw_hash.match(F[:d+1])
+    do let step = max(#L\10,1000)
+       in for F@k in L
+       do if fund_face_verbose and k > 0 and k%step = 0
+       	  then prints("red_face_walls: dim ",d,", face ",k," of ",#L,"; ",#red_fw-new0,
+	       	      " new faces at ",print_time_string(elapsed_ms()-start))
+	  fi;
+	  let i = red_fw_hash.match(F[:d+1])
           in if i = #red_fw
 	     then let p = parameter(x,lambda,face_bary(Lvd,F[:d+1]))
 	     	  in red_fw #:= (p.infinitesimal_character*p.root_datum.poscoroots, reducibility_walls(p), p)
 	     fi; red_fw[i]
        od
     od
+    in if fund_face_verbose
+       then prints("red_face_walls: ",for L in FDKH do #L od," faces (",#red_fw-new0," new) in ",
+       	    	   print_time_string(elapsed_ms()-start))
+       fi; ans
 
 {reducibility_wall_height(p,k), remembered for the current (x,lambda): each face's walls are
  computed once, however many faces lie above it and however many graphs are built.
@@ -395,10 +406,16 @@ set up_graph_gens_red(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsK
     , t_w = elapsed_ms()
     then walls = red_face_walls(x,lambda,Lvd,FDKH)
     then () = red_walls_time +:= elapsed_ms() - t_w
+    then start = elapsed_ms(), joins0 = red_ht_count, rwh0 = rwh_times[2]
     in for d:#FDKH-1 from 1
-       do let lookup = lookups[d-1]
+       do let lookup = lookups[d-1], step = max(#FDKH[d]\20,1000)
           in for Find@j1 in FDKH[d]
-             do let (A1,,p1) = walls[d][j1]
+             do if fund_face_verbose and j1 > 0 and j1%step = 0
+	     	then prints("up_graph_gens_red(HT=",HT,"): dim ",d," face ",j1," of ",#FDKH[d],
+		     "; ht joins ",red_ht_count-joins0,", wall heights computed ",rwh_times[2]-rwh0,
+		     " at ",print_time_string(elapsed_ms()-start))
+		fi;
+	     	let (A1,,p1) = walls[d][j1]
                 in for e:d+1
                    do let j0 = lookup(delete(Find,e)[:d])
                       in if j0.>=
@@ -423,7 +440,11 @@ set up_graph_gens_red(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsK
                          fi
                    od
              od
-       od; edge_gens
+       od;
+       if fund_face_verbose
+       then prints("up_graph_gens_red(HT=",HT,"): done; ht joins ",red_ht_count-joins0,
+       	    ", wall heights computed ",rwh_times[2]-rwh0," in ",print_time_string(elapsed_ms()-start))
+       fi; edge_gens
 set up_graph_gens_red(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]] FDKH) =
     [[int]]: up_graph_gens_red(x,lambda,Lvd,FDKH,-1)
 
@@ -439,6 +460,10 @@ set localGraphRed(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash
     then classListByFace = [vec]: class_lists(FDKH,(eq,gr))
        , IUCL = full_down_classes(eq,gr)
     in LGK_time+:= elapsed_ms() - start;
+       if fund_face_verbose
+       then prints("localGraphRed(HT=",HT,"): ",for L in FDKH do #L od," faces, ",#eq," classes in ",
+       	    print_time_string(elapsed_ms()-start))
+       fi;
        ((eq,gr), IUCL, classListByFace)
 set localGraphRed(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]] FDKH) =
     (GraphData, [vec],[vec]): localGraphRed(x,lambda,Lvd,FDKH,-1)
@@ -446,11 +471,15 @@ set localGraphRed(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash
 {FaceVertsIndex -> FaceVertsKHash with no K-character: [-1, #Langlands quotients, -1]}
 set red_pad(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsIndex]] LF) =
     [[FaceVertsKHash]]:
-    for L@d in LF
-    do for v in L
-       do v[:d+1]##[-1,#monomials(finalize(parameter(x,lambda,face_bary(Lvd,v[:d+1])))),-1]
-       od
-    od
+    let start = elapsed_ms()
+    then ans = for L@d in LF
+    	       do for v in L
+       		  do v[:d+1]##[-1,#monomials(finalize(parameter(x,lambda,face_bary(Lvd,v[:d+1])))),-1]
+       		  od
+    	       od
+    in if fund_face_verbose
+       then prints("red_pad: ",for L in LF do #L od," faces in ",print_time_string(elapsed_ms()-start))
+       fi; ans
 
 {as localFD_KHashbt_lookDownGEO: add faces of dims #LFKH to t-1, but with no K-characters}
 set localFD_red_lookDown(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]] LFKH,
@@ -4998,7 +5027,7 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
  pol_hash is unused; it is there so this fits FPP_unitary_hash_general.
  red_from_faces is the ending: faces (padded by red_pad) already unitary to HK_known (-1: nothing
  known).  With red_ht_flag (two stages): test vertices and edges to HT = hts[red_edge_offset] (skipped
- if HT <= HK_known) with classes from localGraphRed(...,HT), where the classes are large; then finish
+ if HT <= HK_known) with classes from localGraphRed(...,HT); then finish
  with local_test_GEO_hash_one_level_end(...,HK_known = HT), which computes K-characters to its own
  one_ht = hts[edge_offset] for the survivors only, retests them, and does the higher faces and the
  full test by K-characters exactly as one_level.  Without red_ht_flag: higher faces and the full test
@@ -5007,10 +5036,12 @@ set red_ht_flag = true
 {red_final_K_flag: for the final full test only, compute full K-characters of the surviving faces
  and use localGraphK, as one_level_end does}
 set red_final_K_flag = false
-{red_edge_offset >= 0: the wall stage tests vertices and edges to hts[red_edge_offset] (0: lowest
- height, largest wall classes), and edge_offset is left for one_level_end.
- red_edge_offset < 0: the wall stage uses edge_offset, raised to at least 1 as in one_level.}
-set red_edge_offset = 0
+{red_edge_offset >= 0: the wall stage tests vertices and edges to hts[red_edge_offset], and
+ edge_offset is left for one_level_end.
+ red_edge_offset < 0 (default): the wall stage uses edge_offset, raised to at least 1 as in one_level.
+ Low levels lose: at hts[0] almost every class passes, nothing propagates, and E7_s x_open
+ took 1982 s (offset 2: 347 s, 3: 321 s, 4: 358 s, 1: 477 s; the wall joins do not change).}
+set red_edge_offset = -1
 {hts list as in local_test_GEO_hash_one_level_end, for level ONE}
 set red_hts(Param pmax, int ONE) = [int]:
     let sh = if short_hts_flag then short_hts(pmax) else next_heights(pmax,ONE+1) fi
