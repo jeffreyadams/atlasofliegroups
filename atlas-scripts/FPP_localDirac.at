@@ -337,12 +337,19 @@ set localGraphK([[FaceVertsKHash]] FDKH, KTypePol_hash pol_hash, int level) =
  quotients must also agree (this catches real parity roots with <gamma,alpha^vee> = 0, where
  the standard module splits).  The edge F0 -> F1 is always there, as in
  up_graph_gens.  Faces are FaceVertsKHash with the three extra coordinates padded by red_pad.}
-{per face: (gamma*poscoroots, reducibility walls, parameter), cached for the current (x,lambda)
- (red_wall_ht_clear clears it): the same faces recur in every graph pass}
-set red_fw_hash = make_vec_hash(), red_fw = [(ratvec,[int],Param)]: [] {keyed by vertex list}
+{per face: (gamma*poscoroots, reducibility walls, nu), cached for the current (x,lambda)
+ (red_wall_ht_clear clears it): the same faces recur in every graph pass.  up_graph_gens_red reads
+ the walls only of faces below the top dimension, so top faces get walls [-1] (not computed),
+ filled in if the face later appears below the top.
+ No Param is built (4 Nov 2026: on E8_s x_open, parameter() + reducibility_walls cost ~5 ms per
+ face on 25.8M edges).  x is fixed, so gamma(nu) = gamma(0) + (nu - theta nu)/2, and for a real
+ integral coroot the parity test of is_parity_fast is A[j] + c[j] odd, c[j] = av*(lambda+rho_r(x))
+ (p.lambda is the same for every nu at fixed x, up to (1-theta)X^*, which pairs evenly with real
+ coroots).  seat_belt_on compares with reducibility_walls(parameter(x,lambda,nu)).}
+set red_fw_hash = make_vec_hash(), red_fw = [(ratvec,[int],ratvec)]: [] {keyed by vertex list}
 set red_fw_x = int: -1, red_fw_rf = RealForm: SL(2,R), red_fw_lambda = ratvec: [], red_fw_Lvd = [ratvec]: []
 set red_face_walls(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]] FDKH) =
-    [[(ratvec,[int],Param)]]:
+    [[(ratvec,[int],ratvec)]]:
     {vertex numbers mean something only for this (x,lambda,Lvd): clear when they change}
     if x.number != red_fw_x or x.real_form != red_fw_rf or lambda != red_fw_lambda
        or #Lvd.list != #red_fw_Lvd or any(for v@i in Lvd.list do v != red_fw_Lvd[i] od)
@@ -350,6 +357,22 @@ set red_face_walls(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHas
     	 red_fw_x := x.number; red_fw_rf := x.real_form; red_fw_lambda := lambda; red_fw_Lvd := Lvd.list
     fi;
     let start = elapsed_ms(), new0 = #red_fw
+    then p00 = parameter(x,lambda,0*lambda), theta = x.involution
+    then PC = p00.root_datum.poscoroots, gamma0 = p00.infinitesimal_character, rr = rho_r(x)
+    then real = for j:#PC do is_real(j,x) od
+    then c = for av in PC do av*p00.lambda + av*rr od
+    then A(ratvec nu) = ratvec: (gamma0 + (nu - theta*nu)/2)*PC
+    then walls(ratvec nu) = (ratvec,[int]):
+         let gamma = gamma0 + (nu - theta*nu)/2
+         then A = gamma*PC, B = (theta*gamma)*PC
+         then W = for j:#A
+                  do if is_integer(A[j]) and A[j] > 0 and B[j] < 0 and
+                        (not real[j] or (let s = A[j]+c[j] in is_integer(s) and floor(s)%2 = 1))
+                     then [j] else []
+                     fi
+                  od.##
+         in assert(@:W = reducibility_walls(parameter(x,lambda,nu)),"red_face_walls: walls disagree");
+            (A,W)
     then ans =
     for L@d in FDKH
     do let step = max(#L\10,1000)
@@ -358,10 +381,12 @@ set red_face_walls(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHas
        	  then prints("red_face_walls: dim ",d,", face ",k," of ",#L,"; ",#red_fw-new0,
 	       	      " new faces at ",print_time_string(elapsed_ms()-start))
 	  fi;
-	  let i = red_fw_hash.match(F[:d+1])
+	  let i = red_fw_hash.match(F[:d+1]), top = d = #FDKH-1
           in if i = #red_fw
-	     then let p = parameter(x,lambda,face_bary(Lvd,F[:d+1]))
-	     	  in red_fw #:= (p.infinitesimal_character*p.root_datum.poscoroots, reducibility_walls(p), p)
+	     then let nu = face_bary(Lvd,F[:d+1])
+	     	  in red_fw #:= if top then (A(nu),[-1],nu) else let (a,w) = walls(nu) in (a,w,nu) fi
+	     else let (a,w,nu) = red_fw[i]
+	     	  in if not top and w = [-1] then red_fw[i] := (a,walls(nu).snd,nu) fi
 	     fi; red_fw[i]
        od
     od
@@ -415,22 +440,22 @@ set up_graph_gens_red(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsK
 		     "; ht joins ",red_ht_count-joins0,", wall heights computed ",rwh_times[2]-rwh0,
 		     " at ",print_time_string(elapsed_ms()-start))
 		fi;
-	     	let (A1,,p1) = walls[d][j1]
+	     	let (A1,,nu1) = walls[d][j1]
                 in for e:d+1
                    do let j0 = lookup(delete(Find,e)[:d])
                       in if j0.>=
                          then edge_gens[index(d-1,j0)] #:= index(d,j1)
-                         ; let (A0,W0,p0) = walls[d-1][j0]
+                         ; let (A0,W0,nu0) = walls[d-1][j0]
                            then S = for k in W0 do if A1[k] != A0[k] then [k] else [] fi od.##
                            then join = Find[d+2] = FDKH[d-1][j0][d+1] {same # Langlands quotients}
                                 and (#S = 0 or
                                      (HT >= 0 and
-                                      (let ok = true
+                                      (let ok = true, p0 = parameter(x,lambda,nu0)
                                        in for k in S do if ok and red_wall_ht(p0,k) <= HT
                                                         then ok := false fi od;
                                           if ok then red_ht_count +:= 1
                                           elif red_hybrid_flag
-                                          then ok := red_K_char_to_ht(p0,HT) = red_K_char_to_ht(p1,HT);
+                                          then ok := red_K_char_to_ht(p0,HT) = red_K_char_to_ht(parameter(x,lambda,nu1),HT);
                                                if ok then red_kc_join_count +:= 1 fi
                                           fi; ok)))
                            in if join
