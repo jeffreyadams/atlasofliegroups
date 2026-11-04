@@ -2731,16 +2731,35 @@ set twisted_c_form_std(Param p) = KTypePol: { c-form on extended group}
        else twisted_full_deform(pc)
        fi}
 
-{    c_form on irreducible representations   }
+{    c_form on irreducible representations   defHashTime}
+
+set is_unitary_verbose = false
+
+set c_form_irreducible_verbose (Param p) = KTypePol:
+   let startc = elapsed_ms(), ori_nr_p = orientation_nr(p)
+   then oriented_KL_sum = ParamPol: null_module(p) +
+      for c@q in KL_sum_at_s(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
+   then nP = #oriented_KL_sum, count=0
+   then step = min(10,nP/20)
+   then f(Param q) = if count < 11 or count%step = 0 or nP-count<=10
+   		     then prints("Term ",count,": ",q);
+		     	  prints("      ",defHashTime.size()," deformations stored, in time ",
+			  	print_time_string(elapsed_ms() - startc))
+		     fi; count+:=1; c_form_std(q)
+   in  prints("Fully deforming ",nP," terms"); map(f, oriented_KL_sum)
+
 
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
 {.c-invariant form on irreducible module of p as KTypePol }
 set c_form_irreducible (Param p) = KTypePol:
-   let ori_nr_p = orientation_nr(p)
+    if is_unitary_verbose
+    then c_form_irreducible_verbose(p)
+    else let ori_nr_p = orientation_nr(p)
    then oriented_KL_sum = ParamPol: null_module(p) +
       for c@q in KL_sum_at_s(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
 in if back_form_flag then back_map(c_form_std@Param, oriented_KL_sum )
    else map(c_form_std@Param, oriented_KL_sum )
+   fi
    fi
 
 {set p1 = parameter(x_open(E7_s),[1,1,1,1,1,1,1]/1,[ 4, 4, 4, 1, 4, 4, 4 ]/4)
