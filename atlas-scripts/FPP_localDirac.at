@@ -421,8 +421,25 @@ set red_wall_ht(Param p, int k) = int:
        red_wht[i]
 
 {To height HT >= 0 (3 Nov 2026): also join F0 and F1 when every reducibility wall of F0 that does not
- contain F1 has reducibility_wall_height (kl.at) > HT, so their character formulas agree to height HT.
- HT < 0: no such joins.}
+ contain F1 has reducibility height > HT, so their character formulas agree to height HT.
+ HT < 0: no such joins.
+ The height of the wall <gamma,alpha^vee> = t is simp_H1(x,lambda,alpha^vee,t) (kl.at): the least
+ G-height of a K-type of std/irr on the simple factor of the Levi L_alpha^vee, exact and cached per
+ (x,alpha^vee,lambda,t), so it does not depend on the face (4 Nov 2026).  The old estimate
+ reducibility_wall_height (Bruhat_below_height) is only a lower bound: equal at x_open (F4_s 62,
+ E7_s 217, E8_s sample 408 keys), lower on 685 walls elsewhere in F4_s.  With the Levix_simp fix
+ (4c136e6f) simp_H1 equals red_true_height on every wall of FPP_unitary_hash_red(F4_s).}
+set red_H1_check_flag = false {print the walls where red_H1 and reducibility_wall_height differ,
+                               with red_true_height}
+{arbiter (slow, full characters): least height of a K-type where the irreducible at a generic point of
+ wall k near p0 differs from the irreducible at a nearby generic point off the wall; 2^30 if none}
+set red_true_height(Param p0, int k) = int:
+    let e = nu_eps(p0,[k]) then g = nu_eps(p0,[int]:[])
+    then pe = parameter(p0.x,p0.lambda,p0.nu + e), pg = parameter(p0.x,p0.lambda,p0.nu + e + g/7)
+    then D = K_type_pol(character_formula(finalize(pe))) - K_type_pol(character_formula(finalize(pg)))
+    in if D = 0*D then 2^30 else min(for @t in D do height(t) od) fi
+set red_H1(KGBElt x, ratvec lambda, int k, rat t) = rat:
+    let h = simp_H1(x,lambda,x.real_form.poscoroots[k],t) in if h < 0 then 2^30 else h fi
 set red_walls_time = int: 0 {ms in red_face_walls}
 set red_same_count = int: 0, red_split_count = int: 0, red_ht_count = int: 0, red_kc_join_count = int: 0
 set up_graph_gens_red(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]] FDKH, int HT) =
@@ -433,13 +450,13 @@ set up_graph_gens_red(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsK
     , t_w = elapsed_ms()
     then walls = red_face_walls(x,lambda,Lvd,FDKH)
     then () = red_walls_time +:= elapsed_ms() - t_w
-    then start = elapsed_ms(), joins0 = red_ht_count, rwh0 = rwh_times[2]
+    then start = elapsed_ms(), joins0 = red_ht_count, rwh0 = simp_H1_misses
     in for d:#FDKH-1 from 1
        do let lookup = lookups[d-1], step = max(#FDKH[d]\20,1000)
           in for Find@j1 in FDKH[d]
              do if fund_face_verbose and j1 > 0 and j1%step = 0
 	     	then prints("up_graph_gens_red(HT=",HT,"): dim ",d," face ",j1," of ",#FDKH[d],
-		     "; ht joins ",red_ht_count-joins0,", wall heights computed ",rwh_times[2]-rwh0,
+		     "; ht joins ",red_ht_count-joins0,", wall heights (alpha,t) computed ",simp_H1_misses-rwh0,
 		     " at ",print_time_string(elapsed_ms()-start))
 		fi;
 	     	let (A1,,nu1) = walls[d][j1]
@@ -453,8 +470,14 @@ set up_graph_gens_red(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsK
                                 and (#S = 0 or
                                      (HT >= 0 and
                                       (let ok = true, p0 = parameter(x,lambda,nu0)
-                                       in for k in S do if ok and red_wall_ht(p0,k) <= HT
-                                                        then ok := false fi od;
+                                       in for k in S do if ok and red_H1(x,p0.lambda,k,A0[k]) <= HT
+                                                        then ok := false fi;
+                                                        if red_H1_check_flag and red_H1(x,p0.lambda,k,A0[k]) != red_wall_ht(p0,k)
+                                                        then prints("red_H1 differs: ",p0," wall ",k," t ",A0[k]," H1 ",
+                                                                    red_H1(x,p0.lambda,k,A0[k])," Bruhat ",red_wall_ht(p0,k),
+                                                                    " true ",red_true_height(p0,k)," HT ",HT)
+                                                        fi
+                                                     od;
                                           if ok then red_ht_count +:= 1
                                           elif red_hybrid_flag
                                           then ok := red_K_char_to_ht(p0,HT) = red_K_char_to_ht(parameter(x,lambda,nu1),HT);
@@ -470,7 +493,7 @@ set up_graph_gens_red(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsK
        od;
        if fund_face_verbose
        then prints("up_graph_gens_red(HT=",HT,"): done; ht joins ",red_ht_count-joins0,
-       	    ", wall heights computed ",rwh_times[2]-rwh0," in ",print_time_string(elapsed_ms()-start))
+       	    ", wall heights (alpha,t) computed ",simp_H1_misses-rwh0," in ",print_time_string(elapsed_ms()-start))
        fi; edge_gens
 set up_graph_gens_red(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]] FDKH) =
     [[int]]: up_graph_gens_red(x,lambda,Lvd,FDKH,-1)
