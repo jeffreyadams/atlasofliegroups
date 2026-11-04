@@ -112,9 +112,23 @@ set Levix_simp_base(KGBElt x, vec av) = (RealForm,KGBElt,vec,mat,vec):
      then av_coeffs = required_solution(for j in min_js do pos_co[j] od, av) {write av in terms of simple}
      then avth_coeffs = required_solution(for j in min_js do pos_co[j] od, av*theta)
      	  {write av in terms of simple}
-     then min_simp_js = for j@k in min_js if (av_coeffs[k] != 0 or avth_coeffs[k] != 0) do j fi od
+     {the simple factor: the connected component(s) of the Dynkin diagram of L containing the
+      support of av and av*theta, NOT just that support (4 Nov 2026: F4_s x=16, av simple in
+      L = F4, gave SL(2,R) and a reducibility that G does not have)}
+     then inS = for k:#min_js do av_coeffs[k] != 0 or avth_coeffs[k] != 0 od
+     then () = let grew = true
+               in while grew
+                  do grew := false;
+                     for a@k in min_js
+                     do if not inS[k] and
+                           any(for b@l in min_js do inS[l] and pos_r[a]*pos_co[b] != 0 od)
+                        then inS[k] := true; grew := true
+                        fi
+                     od
+                  od
+     then min_simp_js = for j@k in min_js if inS[k] do j fi od
      	  {this is location of rd_simp_L simples among all simples}
-     then min_simp_ks = for j@k in min_js if (av_coeffs[k] != 0 or avth_coeffs[k] != 0) do k fi od
+     then min_simp_ks = for j@k in min_js if inS[k] do k fi od
      	  {this is location of rd_simp_L simples among all simples for minjs}
      then min_simp_cos = mat: for j@k in min_simp_js do pos_co[j] od {size rk(G) x rk(simp_L)}
      then M = min_simp_cos.^ {matrix of size rk(simp_L) x rk(G)}
