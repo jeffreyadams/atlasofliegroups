@@ -414,7 +414,9 @@ set red_wall_ht_clear() = void: red_wht_hash.clear(); red_wht := []; red_kc_clea
     red_fw_hash.clear(); red_fw := []
 set red_wall_ht(Param p, int k) = int:
     let n = #p.root_datum.poscoroots then i = red_wht_hash.match(p)*n + k
-    in if i >= #red_wht then red_wht ##:= for :i+n-i%n-#red_wht do -1 od fi;
+    in {grow by doubling: one ##:= per new Param copied the whole list, quadratic (E8_s x_open:
+        ~4 ms per edge in up_graph_gens_red, 28 h projected)}
+       if i >= #red_wht then red_wht ##:= for :max(i+n-i%n-#red_wht,#red_wht) do -1 od fi;
        if red_wht[i] < 0 then red_wht[i] := reducibility_wall_height(p,k) fi;
        red_wht[i]
 
