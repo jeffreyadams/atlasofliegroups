@@ -354,7 +354,7 @@ elif G.name="Sp" and G.q=-1
 elif G.name="Sp" and G.q>=0
  then "Sp("+G.p+","+G.q+")"
 elif G.name="SO*"
- then "SO*("+2*G.p+")"
+ then "SO*("+G.p+")"   { G.p is already 2n, see label_and_datum }
 else
  prints("incorrect bi_label");""
 fi
@@ -2048,6 +2048,52 @@ tabulate(
   (##for n:3 do C_rows(n+2) od) ##
   D4_rows()
 )
+
+{ ============================================================
+  Section 11b: compare_bmsz_atlas
+  Compare the size of the atlas weak packet attached to (G,O^v)
+  with the BMSZ count of special unipotent representations.
+
+  Usage:  compare_bmsz_atlas(Sp(4,R), Sp(4,R).dual_orbits[2])
+          compare_bmsz_atlas(SO(5,4))      { all dual orbits of G }
+
+  The BMSZ count only applies to orbits O^v of good parity; other
+  orbits are reported as skipped and are not counted as failures.
+  (In type D good parity means all parts odd, so very even orbits,
+  where the partition does not determine the orbit, never arise.)
+  ============================================================ }
+
+{ partition of O^v in the classical type of the dual group of G }
+set bmsz_dual_partition(RealForm G, ComplexNilpotent Ov)=Partition:
+let (bi_label,)=label_and_datum(G) then label=label_of(bi_label) in
+if label="B" then partition_of_orbit_C(Ov)            { G=SO(odd), G^v=Sp }
+elif is_in(label,["C","C*"]) then partition_of_orbit_B(Ov) { G=Sp, G^v=SO(odd) }
+elif is_in(label,["D","D*"]) then let (P,)=partition_of_orbit_D(Ov) in P
+else error("bmsz_dual_partition: unsupported type "+label) fi
+
+{ returns true if the counts agree, or if BMSZ does not apply (not good parity) }
+set compare_bmsz_atlas(RealForm G, ComplexNilpotent Ov)=bool:
+let (bi_label,G_datum)=label_and_datum(G) then
+label=label_of(bi_label) then
+P=bmsz_dual_partition(G,Ov) then
+name=group_name(G_datum) in
+if not is_good_parity(P,label) then
+  prints(name, "  O^v=", P, "  not of good parity: BMSZ count does not apply (skipped)");
+  true
+else
+  let n_atlas=#parameters(weak_packet(Ov,G)) then
+  n_bmsz=number_unipotent(P,G) in
+  prints(name, "  O^v=", P, "  atlas=", n_atlas, "  bmsz=", n_bmsz,
+         if n_atlas=n_bmsz then "  ok" else "  MISMATCH" fi);
+  n_atlas=n_bmsz
+fi
+
+{ run over all dual orbits of G; returns true if there is no mismatch }
+set compare_bmsz_atlas(RealForm G)=bool:
+let results=for Ov in G.dual_orbits do compare_bmsz_atlas(G,Ov) od then
+bad=#(##for r in results do if r then [] else [r] fi od) in
+prints("compare_bmsz_atlas: ", #results, " dual orbits, ", bad, " mismatch(es)");
+bad=0
 
 { ============================================================
   Section 12: Standalone.py comparison helpers
