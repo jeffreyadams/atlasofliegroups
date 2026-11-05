@@ -561,7 +561,7 @@ more_bad_hash.}
 set local_testK_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     [[FaceVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFace, (Param->bool) tester,
     int HT, Param_hash Uhash, (Param->bool) fancy_tester) = [[FaceVertsKHash]]:
-    let newStatuses = for j:#eq do "?" od,  NumClasses = #eq
+    let below = reverse_graph(gr), newStatuses = for j:#eq do "?" od,  NumClasses = #eq
 	, printInterval = int: 1, H0 = height(parameter(x,lambda,0*lambda))
     {use Uhash to mark some classes as known? (those that hit a unitary Param)}
     {Find all Param's in Uhash with (x,lambda). For each, compute corresponding Face.
@@ -574,7 +574,7 @@ set local_testK_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		   then () = for list@d in knownUnitaries
 			     do for j in list
 				do let k = classListByFace[d][j]
-				    then ()=newStatuses:= downdateUclassesB(newStatuses, gr, k, "T")
+				    then ()=newStatuses:= downdateUclassesR(newStatuses, below, k, "T")
 				    in newStatuses[k] := "T"
 				od
 			     od
@@ -718,7 +718,7 @@ set local_testK_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 							do is_unitary_hash_big_SIMPLE(pi)
 							od)}
 						od)
-					  then newStatuses:= downdateUclassesB(newStatuses, gr, K, "T");
+					  then newStatuses:= downdateUclassesR(newStatuses, below, K, "T");
 						  U_ind_counter+:=1;
 				  {prints("Khash ICP F: ",parameter(x,lambda,face_bary(Lvd,verts)));}
 						 newStatuses[K] := "T"
@@ -729,7 +729,7 @@ set local_testK_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 			then if ps[0].nu.= or all(for p in ps
 			do {simple_status(p,HT, is_unitary_to_ht_hash_big_SIMPLE_Lucas).> or}
 					  @bool: tester(p) od)
-			     then downdateUclassesB(newStatuses, gr, K, "T");
+			     then newStatuses:= downdateUclassesR(newStatuses, below, K, "T");
 				  newStatuses[K]:= "T"
 			     else {newStatuses:= updateNUclassesB(newStatuses, gr, k, "F")
 				{; prints("tested F at class ",k)}
@@ -864,7 +864,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     then return local_testK_hash_old(x, lambda, Lvd, FVKH, eq, gr, classListByFace, tester, HT,
 		Uhash, fancy_tester)
     fi;
-    let newStatuses = for j:#eq do "?" od,  NumClasses = #eq
+    let below = reverse_graph(gr), newStatuses = for j:#eq do "?" od,  NumClasses = #eq
 	,printkInterval = int: 1, printKInterval = int:1, H0 = height(parameter(x,lambda,0*lambda)){,
 	OTF_hold = old_testing_flag}
 	,looks = if wiggle_on() and wiggle_ht_flag then lookups(FVKH) else [(vec->int)]: [] fi
@@ -880,7 +880,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	      	   in for list@d in knownUnitaries
 		      do for j in list
 			 do let k = classListByFace[d][j]
-			    in newStatuses:= downdateUclassesB(newStatuses, gr, k, "T");
+			    in newStatuses:= downdateUclassesR(newStatuses, below, k, "T");
 			       newStatuses[k] := "T"
 				od
 			     od;
@@ -897,7 +897,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		     in for list@d in knownUnitaries
 			do for j in list
 			   do let k = classListByFace[d][j]
-			      in newStatuses:= downdateUclassesB(newStatuses, gr, k, "T");
+			      in newStatuses:= downdateUclassesR(newStatuses, below, k, "T");
 				 newStatuses[k] := "T"
 			   od {j in list}
 			od {list@d} next KUKU_flag:=true
@@ -1049,7 +1049,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 							do is_unitary_hash_big_SIMPLE(pi)
 							od)}
 						od)
-					  then newStatuses:= downdateUclassesB(newStatuses, gr, K, "T");
+					  then newStatuses:= downdateUclassesR(newStatuses, below, K, "T");
 						  U_ind_counter+:=1;
 				  {prints("Khash ICP F: ",parameter(x,lambda,face_bary(Lvd,verts)));}
 						 newStatuses[K] := "T"
@@ -1061,13 +1061,13 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 			     in if any(for stat in stats do stat < 0 od)
 			     	then newStatuses[K] := "F"
 				elif all(for stat in stats do stat > 0 od)
-				then downdateUclassesB(newStatuses, gr, K, "T");
+				then newStatuses:= downdateUclassesR(newStatuses, below, K, "T");
 				     newStatuses[K]:= "T"
 				el}
 				if any(for p in ps do @bool: not tester(p) od)
 				then record_nu_class(x,lambda,Lvd,FVKH,eq,K,ps,HT,newStatuses,newStatuses);
 				     newStatuses[K] := "F"
-				else downdateUclassesB(newStatuses, gr, K, "T");
+				else newStatuses:= downdateUclassesR(newStatuses, below, K, "T");
 				     newStatuses[K]:= "T"
 				fi
 			fi{still NEWUK}
@@ -1146,7 +1146,7 @@ set local_testK_hash_know_lower(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     [[FaceVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFace, (Param->bool) tester,
     Param_hash Uhash, (Param->bool) fancy_tester) = [[FaceVertsKHash]]:
     prints("GOT TO KNOW_LOWER");
-    let newStatuses = for j:#eq do "?" od,  NumClasses = #eq
+    let below = reverse_graph(gr), newStatuses = for j:#eq do "?" od,  NumClasses = #eq
 	, printInterval = int: 1, G = x.real_form{, OTF_hold = old_testing_flag}
     {then () = {old_testing_flag:=true}}
     {use Uhash to mark some classes as known? (those that hit a unitary Param)}
@@ -1160,7 +1160,7 @@ set local_testK_hash_know_lower(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	      	   in for list@d in knownUnitaries
 		      do for j in list
 			 do let k = classListByFace[d][j]
-			    in newStatuses:= downdateUclassesB(newStatuses, gr, k, "T");
+			    in newStatuses:= downdateUclassesR(newStatuses, below, k, "T");
 			       newStatuses[k] := "T"
 				od
 			     od;
@@ -1318,7 +1318,7 @@ set local_testK_hash_know_lower(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 							do is_unitary_hash_big_SIMPLE(pi)
 							od)}
 						od)
-					  then newStatuses:= downdateUclassesB(newStatuses, gr, kup, "T");
+					  then newStatuses:= downdateUclassesR(newStatuses, below, kup, "T");
 						  U_ind_counter+:=1;
 				  {prints("Khash ICP F: ",parameter(x,lambda,face_bary(Lvd,verts)));}
 						 newStatuses[kup] := "T"
@@ -1341,7 +1341,7 @@ set local_testK_hash_know_lower(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		     in if{NEWU} newStatuses[kup] = "?"
 			then if ps[0].nu.= or all(for p in ps do Uhash.lookup(p).>= or
 					    tester(p) od)
-			     then downdateUclassesB(newStatuses, gr, kup, "T");
+			     then newStatuses:= downdateUclassesR(newStatuses, below, kup, "T");
 				  newStatuses[kup]:= "T"
 			     else {newStatuses:= updateNUclassesB(newStatuses, gr, k, "F")
 				{; prints("tested F at class ",k)}
@@ -1405,7 +1405,7 @@ for unitarity.}
 set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     [[FaceVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFace, int HT,
     KTypePol_hash pol_hash, Param_hash Uhash, (Param -> bool) fancy_tester) = [[FaceVertsKHash]]:
-    let newStatuses = for j:#eq do "?" od,  NumClasses = #eq, p0 = parameter(x,lambda,0*lambda)
+    let below = reverse_graph(gr), newStatuses = for j:#eq do "?" od,  NumClasses = #eq, p0 = parameter(x,lambda,0*lambda)
     then hts = [int]: (for mu in monomials(branch_std(p0,HT)) do height(mu) od).sort_u
     then ONE = min(edge_offset,#hts-1), H0 = height(parameter(x,lambda,0*lambda))
     then printInterval = int: {1} max(1,NumClasses\10)
@@ -1425,7 +1425,7 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
 	      in for list@d in knownUnitaries
 		 do for j in list
 		    do let k = classListByFace[d][j]
-		       in newStatuses:= downdateUclassesB(newStatuses, gr, k, "T");
+		       in newStatuses:= downdateUclassesR(newStatuses, below, k, "T");
 			  newStatuses[k] := "T"
 		    od {j in list}
 		 od ;{list in kU}
@@ -1749,7 +1749,7 @@ set local_testK_hash_bottom_layer_more_step(KGBElt x, ratvec lambda, LocalVertex
     [[FaceVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFace, KGPElt Qmin,
      {[KGPElt] maxQs,} [QKL_bottom_data] datas, [int] Ds{, KTypePol MU}, KTypePol_hash pol_hash,
      Param_hash Uhash, (Param->bool) fancy_tester) = [[FaceVertsKHash]]:
-    let newStatuses = for j:#eq do "?" od,  NumClasses = #eq
+    let below = reverse_graph(gr), newStatuses = for j:#eq do "?" od,  NumClasses = #eq
     then printInterval = int: {1}max(NumClasses\10, 1)
     {use Uhash to mark some classes at known? (those that hit a unitary Param)}
     {Find all Param's in Uhash with (x,lambda). For each, compute corresponding Face.
@@ -1762,7 +1762,7 @@ set local_testK_hash_bottom_layer_more_step(KGBElt x, ratvec lambda, LocalVertex
 		   then () = for list@d in knownUnitaries
 			     do for j in list
 				do let k = classListByFace[d][j]
-				    then ()=newStatuses:= downdateUclassesB(newStatuses, gr, k, "T")
+				    then ()=newStatuses:= downdateUclassesR(newStatuses, below, k, "T")
 				    in newStatuses[k] := "T"
 				od
 			     od
@@ -1874,7 +1874,7 @@ set local_test_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     [[LocalFaceVertsKHash]] LFVH, [[int]] eq, [[int]] gr, [vec] classListByFace,
     (Param->bool) tester, Param_hash Uhash, (Param->bool) fancy_tester) = [Param]:
     let NumClasses = #eq, printInterval = int: 1, start = elapsed_ms()
-    then newStatuses = for m:NumClasses do "?" od
+    then below = reverse_graph(gr), newStatuses = for m:NumClasses do "?" od
     then start_count = unitary_test_counter.use_count(), H0 = height(parameter(x,lambda,0*lambda))
     then () = if fund_face_verbose and NumClasses > 100
 	      then prints("start old local_test, ",NumClasses,
@@ -1888,7 +1888,7 @@ set local_test_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		   then () = for list@d in knownUnitaries
 			     do for j in list
 				do let k = classListByFace[d][j]
-				   in newStatuses:= downdateUclassesB(newStatuses, gr, k, "T");
+				   in newStatuses:= downdateUclassesR(newStatuses, below, k, "T");
 				      newStatuses[k] := "T"
 				od
 			     od
@@ -2024,7 +2024,7 @@ and not tester(q)
 									      fi{not ans}
 									      ; ans)
 					od) {all for p in ps}
-			    then newStatuses := downdateUclassesB(newStatuses, gr, M,"T");
+			    then newStatuses := downdateUclassesR(newStatuses, below, M,"T");
 				 newStatuses[M] := "T"
 			    else newStatuses[M] := "F"
 			    fi {all for p in ps}
@@ -2087,7 +2087,7 @@ set local_test_hash_up(
     ) = [Param]:
 begin
     let NumClasses = #eq, printInterval = int: 1, start = elapsed_ms()
-    then newStatuses = for m:NumClasses do "?" od
+    then below = reverse_graph(gr), newStatuses = for m:NumClasses do "?" od
     ,    H0 = height(parameter(x,lambda,0*lambda))
     then start_count = unitary_test_counter.use_count()
 in
@@ -2103,7 +2103,7 @@ in
     in for list@d in knownUnitaries
        do for j in list
 	  do let k = classListByFace[d][j]
-	     in newStatuses:= downdateUclassesB(newStatuses, gr, k, "T"); { make "T" below cllas k }
+	     in newStatuses:= downdateUclassesR(newStatuses, below, k, "T"); { make "T" below cllas k }
 		newStatuses[k] := "T"
 	  od
        od
@@ -2254,7 +2254,7 @@ set local_test_hash_down(
     ) = [Param]:
 begin
     let NumClasses = #eq, printInterval = int: 1, start = elapsed_ms()
-    then newStatuses = for m:NumClasses do "?" od
+    then below = reverse_graph(gr), newStatuses = for m:NumClasses do "?" od
     then start_count = unitary_test_counter.use_count()
     , H0 = height(parameter(x,lambda,0*lambda))
     then start_count = unitary_test_counter.use_count()
@@ -2271,7 +2271,7 @@ in
     in for list@d in knownUnitaries
        do for j in list
 	  do let k = classListByFace[d][j]
-	     in newStatuses:= downdateUclassesB(newStatuses, gr, k, "T");
+	     in newStatuses:= downdateUclassesR(newStatuses, below, k, "T");
 		newStatuses[k] := "T"
 	  od
        od
@@ -2357,7 +2357,7 @@ in  if test_verbose
 		  fi
 		)
 	     od.all
-	   then newStatuses:= downdateUclassesB(newStatuses, gr, m)
+	   then newStatuses:= downdateUclassesR(newStatuses, below, m)
 	   ; newStatuses[m]:="T"
 
 	   else newStatuses[m] := "F"
@@ -2450,7 +2450,7 @@ set local_test_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	 tester, Uhash, fancy_tester)
     fi;
     let NumClasses = #eq, printInterval = int: 1, start = elapsed_ms()
-    then newStatuses = for m:NumClasses do "?" od
+    then below = reverse_graph(gr), newStatuses = for m:NumClasses do "?" od
     then start_count = unitary_test_counter.use_count()
     then () = if fund_face_verbose and NumClasses > 100
 	      then prints("start new local_test, ",NumClasses,
@@ -2464,7 +2464,7 @@ set local_test_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		   then () = for list@d in knownUnitaries
 			     do for j in list
 				do let k = classListByFace[d][j]
-				   in newStatuses:= downdateUclassesB(newStatuses, gr, k, "T");
+				   in newStatuses:= downdateUclassesR(newStatuses, below, k, "T");
 				      newStatuses[k] := "T"
 				od
 			     od
@@ -2525,7 +2525,7 @@ set local_test_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 									   fi
 								       fi; ans)
 				   od)
-				then newStatuses := downdateUclassesB(newStatuses, gr, m);
+				then newStatuses := downdateUclassesR(newStatuses, below, m);
 				     newStatuses[m]:="T"
 				else {prints("class ",m," is non-unitary");}
 				     newStatuses[m] := "F"

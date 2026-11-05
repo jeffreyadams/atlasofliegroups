@@ -847,12 +847,12 @@ begin
 		 then () = statuses[k] :=
 		      	 if known > 0
  		      	 then if not graph_tilde_flag
-		    	      then downdateUclassesB(statuses, gr, k, "T") {needed only in forward eq}
+		    	      then statuses := downdateUclassesB(statuses, gr, k, "T") {needed only in forward eq}
 			      fi;
 		      	      "T"
 		      	 elif known < 0
 			 then if graph_tilde_flag
-		    	      then updateNUclassesB(statuses, gr, k, "F") {needed only in backward eq}
+		    	      then statuses := updateNUclassesB(statuses, gr, k, "F") {needed only in backward eq}
 			      fi;
 		      	      "F"
 			 else "$"
@@ -872,11 +872,11 @@ begin
 		      	    	do @bool: tester(q)
 			   	od)
 		    	 then if not graph_tilde_flag
-		    	      then downdateUclassesB(statuses, gr, k, "T") {needed only in forward eq}
+		    	      then statuses := downdateUclassesB(statuses, gr, k, "T") {needed only in forward eq}
 			      fi;
 		      	      "T"
 		    	 else if graph_tilde_flag
-		    	      then updateNUclassesB(statuses, gr, k, "F") {needed only in backward eq}
+		    	      then statuses := updateNUclassesB(statuses, gr, k, "F") {needed only in backward eq}
 			      fi;
 		      	      "F"
 		    	 fi {all(q in monomials}
