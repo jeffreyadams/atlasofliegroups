@@ -1705,88 +1705,45 @@ set low_FPP_faces_BB(RealForm G) = [[FaceVertsIndex]]:
  	    in low_faces
     fi
 
-{ m is a class known to be nonunitary; update classes above using
-graph; label as "Ffrom"##tail}
-{ first list in toDo all n covering m; then what covers those...
-These get larger and larger.}
-{Should make this function put nonunitary statuses into unitarity_hash?}
-set updateNUclassesB([string] statuses, [[int]] covers, int m,
-string tail) = [string]:
-    let G1 = inner_class(root_datum(null(1,0),null(1,0))
-    	,id_mat(1)).quasicompact_form {CALLER SHOULD HANDLE NEXT LINE}
-    then x0 = KGB(G1,0)
-    then toDo = sum(G1, for n in covers[m] do 1*K_type(x0,[n]) od) {+
-    	 (if statuses[m] = "?" then 1 else 0 fi)*K_type(x0,[m])}
-    then () = while #toDo != 0
-    	      do
-	      let list = vec:
-	      	  for p in monomials(toDo)
-		  do lambda_rho(p)[0]
-		  od
-	      then () = toDo := sum(G1, for n in list
-	      	   	  	  do sum(G1,
-					for q in covers[n]
-					do 1*K_type(x0,[q]) od)
-				  od)
-	      in for k in list
-	      	 do  if statuses[k] = "?"
-    	     	     then statuses[k] := "Ffrom"##tail
-		     fi
-		 od
-	      od
-    in statuses
+{Propagation of statuses through the class graph (rewritten 4 Nov 2026).
+ covers[m] lists the classes covering class m; from strong_components they have SMALLER indices,
+ so the classes below m have LARGER indices.  The old downdateUclassesB scanned covers[:m] for
+ classes covered by m, found none, and marked nothing below m; the old updateNUclassesB kept its
+ frontier as a sum of K-types over a dummy group and re-walked classes reached by several paths.
+ Now both walk the graph once with a visited set, through the classes still "?" only: every F
+ class should already have F above it, and every T class T below it, so a decided class ends the
+ walk.  If that ever fails, some class is left "?" and gets tested: more work, never a wrong answer.}
 
-{ m is a class known to be nonunitary; update classes above using
-graph; label as "Ffrom"##tail}
-{overs lists all the classes above m (computed elsewhere}
-set updateNUclassesC([string] statuses, [[int]] overs, int m, string tail) = [string]:
-    for k in overs[m]
-    do if statuses[k] = "?"
-       then statuses[k]:= "Ffrom"##tail
-       fi
-    od;
-    statuses
+{the classes still "?" reachable from m along adj (m itself excluded)}
+set closure_q([string] st, [[int]] adj, int m) = [int]:
+    let seen = make_vec_hash(), q = [m], h = 0
+    in seen.match([m]);
+       while h < #q
+       do for n in adj[q[h]]
+          do if st[n] = "?" then let s0 = seen.size() in if seen.match([n]) = s0 then q #:= n fi fi
+          od; h +:= 1
+       od; q[1:]
 
-{ m is a class known to be nonunitary; update classes above using
-graph; label as "Ffrom"m}
+{reverse of a class graph: below[a] = the classes m with a in gr[m]}
+set reverse_graph([[int]] gr) = [[int]]:
+    let b = for :#gr do [int]: [] od in for C@m in gr do for a in C do b[a] #:= m od od; b
+
+{m is a class known to be nonunitary: mark the classes above it "Ffrom"##tail}
+set updateNUclassesB([string] statuses, [[int]] covers, int m, string tail) = [string]:
+    for n in closure_q(statuses,covers,m) do statuses[n] := "Ffrom"##tail od; statuses
 set updateNUclassesB([string] statuses, [[int]] covers, int m) = [string]:
     updateNUclassesB(statuses, covers, m, to_string(m))
 
-
-{m is a class known to be unitary; update classes below using graph}
-{first list in toDo everything covered by m: the n so m appears in covers[n].
-Then what those cover... These n get SMALLER.}
-set downdateUclassesB([string] statuses, [[int]] covers, int m,
-string tail) = [string]:
-    let G1 = inner_class(root_datum(null(1,0),null(1,0))
-        ,id_mat(1)).quasicompact_form
-    then x0 = KGB(G1,0)
-    then toDo = (if statuses[m] = "?" then 1 else 0 fi)*K_type(x0,[m])
-    then () = toDo +:= sum(G1, for C@n in covers[:m]
-                          ~do (if is_member_sorted(C)(m) then 1
-                              else 0 fi)*K_type(x0,[n])
-         {(if statuses[n] = "?" then 1 else 0 fi)}
-                           od)
-    then () = while #toDo != 0
-              do
-              let list = vec:
-                  for p in monomials(toDo)
-                  do lambda_rho(p)[0]
-                  od
-              then () = toDo :=
-                   sum(G1, for n in list
-                           do sum(G1, for C@q in covers[:n]
-                                      ~do (if is_member_sorted(C)(n)
-                                          then 1 else 0 fi)*K_type(x0,[q])
-                                      od)
-                           od)
-              in for k in list
-                 do  if statuses[k] = "?"
-                     then statuses[k] := "Tfrom"##tail{to_string(m)}
-                     fi
-                 od
-              od
-    in statuses
+{m is a class known to be unitary: mark the classes below it "Tfrom"##tail.  below =
+ reverse_graph(covers), built once by the caller; downdateUclassesB builds it on every call.}
+set downdateUclassesR([string] statuses, [[int]] below, int m, string tail) = [string]:
+    for n in closure_q(statuses,below,m) do statuses[n] := "Tfrom"##tail od; statuses
+set downdateUclassesR([string] statuses, [[int]] below, int m) = [string]:
+    downdateUclassesR(statuses, below, m, to_string(m))
+set downdateUclassesB([string] statuses, [[int]] covers, int m, string tail) = [string]:
+    downdateUclassesR(statuses, reverse_graph(covers), m, tail)
+set downdateUclassesB([string] statuses, [[int]] covers, int m) = [string]:
+    downdateUclassesB(statuses, covers, m, to_string(m))
 
 set downdateUclassesC([string] statuses, [[int]] unders, int m,
 string tail) = [string]:
