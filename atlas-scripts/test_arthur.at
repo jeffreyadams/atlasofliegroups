@@ -1,0 +1,93 @@
+<basic.at
+<weak_packets.at { for |weak_packet|, |parameters|, |dual_orbits| }
+<BMSZ.at         { for |label_and_datum|, |pbp|, |A_bar|, |bmsz_dual_partition| }
+
+{ test_arthur.at: compare different computations of Arthur packets
+  for real classical groups.
+
+  G is a real classical group, O^v a nilpotent orbit of the dual group G^v.
+
+  Notation:
+    Pi_bmsz        an Arthur packet computed by BMSZ (Barbasch-Ma-Sun-Zhu), BMSZ.at
+    Pi_aam         an Arthur packet computed by AAM (Adams-Arancibia-Mezo)
+    Pi_weak_bmsz   the weak packet of O^v according to BMSZ
+    Pi_weak_aam    the weak packet of O^v according to AAM
+    Pi_weak_atlas  the weak packet of O^v computed by |weak_packet| (weak_packets.at)
+
+  Contents so far:
+    Section 1: Pi_weak_atlas, Pi_weak_bmsz, and comparison of their orders
+
+  BMSZ applies to O^v of good parity only, and to G of type
+  SO(p,q), Sp(2n,R), Sp(p,q), SO^*(2n).
+}
+
+{ --------------  Section 1: orders of Pi_weak_bmsz and Pi_weak_atlas  -------------- }
+
+{ Usage:
+    compare_weak_bmsz_atlas(Sp(4,R), Sp(4,R).dual_orbits[2])   { one orbit }
+    compare_weak_bmsz_atlas(SO(5,4))                           { all dual orbits of G }
+}
+
+{ the weak packet of O^v computed by atlas }
+set Pi_weak_atlas(RealForm G, ComplexNilpotent Ov)=[Param]:
+parameters(weak_packet(Ov,G))
+
+{ does O^v have good parity (for the type of G), i.e. does BMSZ apply to (G,O^v)? }
+set is_good_parity(RealForm G, ComplexNilpotent Ov)=bool:
+let (bi_label,)=label_and_datum(G) in
+is_good_parity(bmsz_dual_partition(G,Ov),label_of(bi_label))
+
+{ the weak packet of O^v according to BMSZ: the extended painted bipartitions
+  (tau,S) for O^v whose group is G; this is the list counted by |number_unipotent|.
+  P is the partition of O^v (in the classical type of G^v), of good parity.
+  For G=SO(p,q) with p+q odd both the B+ and B- painted bipartitions with
+  signature (p,q) are used, see the comment at |number_unipotent| in BMSZ.at. }
+set Pi_weak_bmsz(RealForm G, Partition P)=[ExtendedPaintedBiPartition]:
+let (bi_label,G_datum)=label_and_datum(G) then
+label=label_of(bi_label) in
+assert(is_good_parity(P,label),
+  "orbit "+to_string(P)+" does not have good parity for type "+label);
+let taus=[PaintedBiPartition]:
+  if label="B"
+   then pbp(G_datum,P,"B+")##pbp(G_datum,P,"B-")
+   else pbp(G_datum,P,bi_label)
+  fi then
+S_list=[[int]]:
+  if is_in(label,["B","C","D"]) then A_bar(P,label) else [[int]:[]] fi in
+##for tau in taus do for S in S_list do ExtendedPaintedBiPartition:(tau,S) od od
+
+set Pi_weak_bmsz(RealForm G, ComplexNilpotent Ov)=[ExtendedPaintedBiPartition]:
+Pi_weak_bmsz(G,bmsz_dual_partition(G,Ov))
+
+{ Compare #Pi_weak_bmsz(G,O^v) with #Pi_weak_atlas(G,O^v), and print one line.
+  Returns:  1 if the orders agree
+            0 if they differ
+           -1 if O^v does not have good parity (BMSZ does not apply; nothing compared) }
+set compare_weak_bmsz_atlas_status(RealForm G, ComplexNilpotent Ov)=int:
+let (,G_datum)=label_and_datum(G) then
+P=bmsz_dual_partition(G,Ov) then
+name=group_name(G_datum) in
+if not is_good_parity(G,Ov) then
+  prints(name, "  O^v=", P, "  not of good parity: BMSZ does not apply (skipped)");
+  -1
+else
+  let n_atlas=#Pi_weak_atlas(G,Ov) then
+  n_bmsz=#Pi_weak_bmsz(G,P) in
+  prints(name, "  O^v=", P, "  #Pi_weak_atlas=", n_atlas, "  #Pi_weak_bmsz=", n_bmsz,
+         if n_atlas=n_bmsz then "  ok" else "  MISMATCH" fi);
+  if n_atlas=n_bmsz then 1 else 0 fi
+fi
+
+{ one pair (G,O^v): true unless the orders differ
+  (so also true if O^v is not of good parity, when there is nothing to compare) }
+set compare_weak_bmsz_atlas(RealForm G, ComplexNilpotent Ov)=bool:
+compare_weak_bmsz_atlas_status(G,Ov)!=0
+
+{ all dual orbits of G: true if there is no mismatch }
+set compare_weak_bmsz_atlas(RealForm G)=bool:
+let results=for Ov in G.dual_orbits do compare_weak_bmsz_atlas_status(G,Ov) od then
+count(int v)=int:#(##for r in results do if r=v then [r] else [] fi od) in
+prints("compare_weak_bmsz_atlas: ", #results, " dual orbits: ",
+       count(1), " agree, ", count(0), " mismatch(es), ",
+       count(-1), " skipped (not good parity)");
+count(0)=0
