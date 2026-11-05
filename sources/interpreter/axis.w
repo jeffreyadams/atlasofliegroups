@@ -184,13 +184,13 @@ set in the first place.
 
 @< Function definitions @>=
 void check_interrupt()
-{@;
+{
   if (interrupt_flag!=0)
   {@; interrupt_flag=0;
     throw user_interrupt();
   }
   if (timer_out!=eternity and std::chrono::steady_clock::now()>timer_out)
-  {@; clear_timer();
+@/{@; clear_timer();
     throw time_out();
   }
 }
@@ -875,7 +875,7 @@ case tuple_display:
   wtl_const_iterator tl_it (ntt.tuple());
   for (wel_const_iterator it(e.sublist); not it.at_end(); ++it,++tl_it)
   {
-    type& comp_type = comp_types.push_back(type::wrap(*tl_it,fc));
+    type& comp_type = *comp_types.push_back(type::wrap(*tl_it,fc));
     @< Call |convert_expr| for |*it| with |comp_type| @>
     @< Handle |is_constant| maintenance and possible need for voiding @>
   }
@@ -1226,9 +1226,9 @@ purpose of pruning.
    converting the component, also add the incriminated types to |conflicts| @>=
 for (wel_const_iterator it(elist); not it.at_end(); ++it)
 { try
-  { auto& node = comp_data.emplace_back
+  { auto last = comp_data.emplace_back
      (std::make_unique<type>(common.copy()),expression_ptr());
-    node.second = convert_expr(*it,*node.first);
+    last->second = convert_expr(*it,*last->first);
   }
   catch (balance_error& err)
   { if (&err.offender!=&*it) // only incorporate top-level balancing errors
@@ -1251,9 +1251,10 @@ types it means the former unifies to the latter; this may seem
 counter-intuitive, but in a mix of more or less polymorphic types, the most
 accepting type will be the least polymorphic one, if all others can unify to it.
 If joining fails due to incomparable types we add the non-conforming types to
-|conflicts|. The call |join_to(common,T)| succeeds without changes if |common|
-already accepts |T|, and otherwise may succeed after setting |common| to |T| is
-|T| accepts |common|; in the remaining cases the call fails without changes.
+|conflicts|. The call |join_to(common,tp)| succeeds without changes if |common|
+already accepts |tp|, and otherwise may succeed after setting |common| to |tp|
+if |tp| accepts |common|; in the remaining cases the call fails without
+changes.
 
 @< Join |common| with each of the types in |comp_data|, copying to
      |conflicts| those for which this fails @>=
@@ -1643,26 +1644,30 @@ case applied_identifier:
 @.Undefined identifier@>
 }
 
-@ When an identifier is found neither in the current |lexical_context| nor in
-the |global_id_table|, we used to flag an error, but as a service to the user we
-now try instead to find something from the |global_overload_table| first,
+@ When an identifier is encountered that can be found neither in the current
+|lexical_context| nor in the |global_id_table|, the interpreter (in version~1 of
+the \.{axis} language) used to simply flag an error. But as a service to the
+user, we now instead try to get a value from the |global_overload_table|,
 provided there is a unique instance of the identifier there that matches the
 type requirement |tp| from the context (which may be no requirement at all).
-If the context type does not accept any function type we skip this code (the
-overload table can hold only functions), and if it does we distinguish between
-accepting functions of any argument type, or making some restriction on the
-argument type. This is mainly to be able to give more meaningful error messages
-when our attempt fails, but the case of no restrictions also can be handled with
-somewhat simpler logic. if the type requirements should rule out all available
-variants, then we fall through this code as if there were no overloads at all.
+We make a distinction between the case where just a single variant is known in
+the overload table, which we treat essentially as if that value had been held in
+a variable of function type instead, and cases where multiple variants of the
+same identifier are defined; in the latter case we only succeed if exactly one
+of the variants meets the requirements of |tp|. The distinction is mainly made
+so that we can give more meaningful error messages when our attempt fails.
+If |tp| does not accept any function type to begin with, we just skip the
+attempt to use the overload table, and if it does accept function types but none
+of the defined variants matches it, we also fall through this code; in either
+case that will result in a simple ``undefined identifier'' error message.
 
 @< See if a unique member of |*vars| matches |tp|, and if so |return| a
    |capture_expression| holding the value of that variant @>=
 { type_expr f_type = gen_func_type.copy();
   if (tp.unify_specialise(f_type))
-  { if (tp.assign().is_polymorphic(f_type.func()->arg_type))
-    @< If |*vars| has a unique variant, |return| its value wrapped in a
-       |capture_expression|, otherwise |throw| an error signalling ambiguity @>
+  { if (vars->size()==1)
+    @< If the unique element of |*vars| matches |tp|, |return| its value wrapped
+       in a |capture_expression|; otherwise |throw| a |type_error| @>
     else
     @< If a unique variant among |*vars| unifies to the type |tp|,
        |return| its value wrapped in a |capture_expression|; if more than one
@@ -1671,44 +1676,57 @@ variants, then we fall through this code as if there were no overloads at all.
   }
 }
 
-@ When the context poses no requirements, we basically look for a unique variant
-for the identifier and return it. However we must specialise |tp| to the
-possibly polymorphic function type of |variant|, which |functype_absorb| should
-accomplish. If there are multiple variants, we warn the user that one cannot
-simply use an overloaded symbol as an identifier with nothing to disambiguate
-the usage.
+@ When the overload table hols a single variant for the identifier, we try to
+specialise |tp| to the function type of |variant|, which |functype_absorb|
+defined below does, returning whether it succeeded. In case of failure, we throw
+a |type_error|, just like we would for a variable used in a context requiring a
+different type.
 
-@< If |*vars| has a unique variant, |return| its value wrapped...@>=
-{ if (vars->size()==1)
-  { const auto& variant = vars->front();
-    if (functype_absorb(tp,variant))
-    { o << main_hash_table->name_of(id) << '@@' << tp.arg_type();
-      return
-        expression_ptr(new capture_expression(variant.value(),o.str()));
-    }
-    throw logic_error
-      ("Partially determined function type failed to specialise");
+@< If the unique element of |*vars| matches |tp|, |return| its value...@>=
+{ const auto& variant = vars->front();
+  if (functype_absorb(tp,variant))
+  { o << main_hash_table->name_of(id) << '@@' << tp.arg_type();
+    return expression_ptr(new capture_expression(variant.value(),o.str()));
   }
-  else
-  { o << "Use of overloaded '" << main_hash_table->name_of(id)
-    @| << "' is ambiguous, specify argument type to disambiguate";
-    throw expr_error(e,o.str());
-  }
+  throw type_error(e,get_ftype(variant.f_tp()),tp.bake());
 }
 
-@ In the case where the context poses a restriction, we filter the variants for
-one that matches the requirement, and use the result if it is unique. We proceed
-basically as in the case of no restriction, but here the call of
-|functype_absorb| can meaningfully fail, indicating that the variant does not
-satisfy the restriction. In case of such a failure, we must undo any type
-assignments that the failed attempt to match may have made. Since this must be
-done repeatedly, it is simplest to just apply any assignment that might be
-pending initially, by calling |tp.wring_out|, after which any type assignments
-we have must be new, and can be undone by calling |tp.clear|. The fact that we
-call |tp.wring_out| does mean that callers to |convert_expr| cannot expect that
-changes to |tp| are limited to acquiring type assignments; we do not believe any
-caller make that assumption, but if that should be the case, the code below must
-be more careful, and instead record |tp.polymorphics()| initially, and then use
+@ The overload table stores type information in a |func_type| value, which
+|functype_absorb| must compare against the respective parts of |type tp@;| and
+make the necessary assignments to them in case of success. Note that unlike
+in ordinary overload resolution, we use both the argument and the result type to
+make the match.
+
+We should be aware that in case the table holds polymorphic types they will
+numbered from~$0$, while |tp| has a possibly nonzero |floor()| value that needs
+to be respected. This means that if we should use |unify_specialise| twice for
+this task, both argument and result type should be properly shifted first. It is
+a bit more straightforward to instead first construct a |type_expr| from the
+|func_type| with the proper shifts, and then use |unify| with that type. We so
+using a helper function |get_type|, which also will come in handy when reporting
+errors related to types in the overload table.
+
+@< Local function definitions @>=
+inline type_expr get_ftype(const func_type& ftp)
+{@; return type_expr::function(ftp.arg_type.copy(),ftp.result_type.copy()); }
+
+inline bool functype_absorb (type& tp, const overload_data& entry)
+{ type model = type::wrap(get_ftype(entry.f_tp()),0,tp.floor());
+    // proper shift facilitates |unify|
+  return tp.unify(model);
+}
+
+@ In the case where there is more than one variant to choose from, we filter
+them for one that makes |functype_absorb| succeed. In case of a failure, we must
+undo any type assignments that the failed attempt to match may have made. Since
+this must be done repeatedly, it is simplest to just initially apply any
+assignment that might be pending, by calling |tp.wring_out|, after which any
+type assignments produced by |functype_absorb| must be new, and can be undone by
+calling |tp.clear|. The fact that we call |tp.wring_out| does mean that callers
+to |convert_expr| cannot expect that changes to |tp| are limited to acquiring
+type assignments; we do not believe any caller makes that assumption, but if
+that should turn out to be the case, the code below must be more careful: it
+should instead record |tp.polymorphics()| initially, and then use
 |restore_polymorphics| instead of |clear|.
 
 @< If a unique variant among |*vars| unifies to the type |tp|... @>=
@@ -1722,6 +1740,7 @@ be more careful, and instead record |tp.polymorphics()| initially, and then use
         @< Throw an error reporting ambiguous overloaded symbol usage @>
       o << main_hash_table->name_of(id) << '@@' << tp.arg_type();
       result.reset(new capture_expression(variant.value(),o.str()));
+      o.str("");
       prev_match = &variant; // record for purpose of possible error message
     }
     tp.clear(); // reset initial type
@@ -1736,12 +1755,12 @@ overloaded function call, but here we report the full function types.
 @< Throw an error reporting ambiguous overloaded symbol usage @>=
 {
   tp.clear(); // forget the type assignment matching current variant
-  o << "Ambiguous overloaded symbol " << main_hash_table->name_of(id)
-    <<  ", context type " << tp
-  @|<< " matches both (" << prev_match->f_tp().arg_type
+  o << "Ambiguous overloaded symbol '" << main_hash_table->name_of(id)
+    <<  "': its context type " << tp
+  @|<< " matches\n  both (" << prev_match->f_tp().arg_type
   @|<< "->" << prev_match->f_tp().result_type
   @|<< ") and (" << variant.f_tp().arg_type
-  @|<< "->" << variant.f_tp().result_type << ')';
+  @|<< "->" << variant.f_tp().result_type << ") in overload table";
   throw expr_error(e,o.str());
 }
 
@@ -1883,7 +1902,7 @@ we set the variable to |false| in that case.
     for (wel_const_iterator it(args.sublist); not it.at_end();
          ++it,++arg_vector_it)
     {
-      type& comp_tp = comp_types.push_back(type::bottom(tp.floor()));
+      type& comp_tp = *comp_types.push_back(type::bottom(tp.floor()));
       *arg_vector_it = convert_expr(*it,comp_tp);
       is_constant = is_constant and
          dynamic_cast<const denotation*>(arg_vector_it->get()) != nullptr;
@@ -1901,7 +1920,7 @@ aside a call for the first match, and leave a pointer |prev_match| to the
 current variant, which will be used for error reporting in case an ambiguity is
 found.
 
-Whenever an argument matches, be it exact of inexact, |conform_types| will be
+Whenever an argument matches, be it exact or inexact, |conform_types| will be
 called for the variant result type and the expected |tp|; this may throw an
 error, also aborting the matching process.
 
@@ -2227,6 +2246,8 @@ tells how the function object wants its arguments prepared, |maybe_push| is a
 hook that does nothing except for recursive functions that use it for their
 implementation, and |report_origin| which serves in forming an back-trace in
 case of errors during execution of the function.
+
+@s eval_level vector
 
 @< Type def... @>=
 // \.{global.h} predeclares |function_base|, and defines:
@@ -2681,7 +2702,7 @@ instances.
 void call_expression::evaluate(level l) const
 { function->eval();
   auto f = std::dynamic_pointer_cast<const function_base>(pop_value());
-  if (f.get()==nullptr)
+  if (f==nullptr)
     throw logic_error
       ("Non-function value found for function in a call expression");
   f->maybe_push(f); // provide shared pointer to self for recursive functions
@@ -3081,7 +3102,7 @@ void thread_bindings
   {
     type tp = type::wrap(te,lvl);
     unsigned char flags = pat.kind;
-    if (tp.is_polymorphic())
+    if (is_const or tp.is_polymorphic())
       flags |= 0x4; // polymorphic type implies constant
     dst.add(pat.name,std::move(tp),flags);
   }
@@ -3489,7 +3510,7 @@ case lambda_expr:
   const id_pat& pat=fun.pattern;
   type_expr fun_type = gen_func_type.copy();
   type_expr& par_tp = fun_type.func()->arg_type;
-  par_tp.specialise(global_id_table->expand(fun.parameter_type));
+  par_tp.specialise(global_id_table->swallow(fun.parameter_type));
       // argument type specified in |fun|
   if (not par_tp.can_specialise(pattern_type(pat)))
     throw expr_error
@@ -3550,8 +3571,8 @@ case rec_lambda_expr:
 { const rec_lambda_node& fun=*e.rec_lambda_variant;
   const id_pat& pat=fun.pattern;
   type_expr fun_type = type_expr::function
-    ( global_id_table->expand(fun.parameter_type)
-    , global_id_table->expand(fun.result_type)
+    ( global_id_table->swallow(fun.parameter_type)
+    , global_id_table->swallow(fun.result_type)
     );
   type_expr& par_tp = fun_type.func()->arg_type;
   if (not par_tp.can_specialise(pattern_type(pat)))
@@ -4928,14 +4949,14 @@ assignments.
 
 @< Type def... @>=
 struct projector_value : public function_base
-{ type_expr type; // used for printing purposes only
+{ type_expr tp; // used for printing purposes only
   unsigned position;
   id_type id;
   source_location loc;
 @)
   projector_value
      (const type_expr& t,unsigned i,id_type id,const source_location& loc)
-  : type(t.copy()),position(i),id(id),loc(loc) @+ {}
+  : tp(t.copy()),position(i),id(id),loc(loc) @+ {}
   virtual ~projector_value() = default;
   virtual void print(std::ostream& out) const;
   virtual void apply(eval_level l) const;
@@ -4958,7 +4979,7 @@ components.
 @< Function def... @>=
 void projector_value::print(std::ostream& out) const
   { out << "{." << main_hash_table->name_of(id) << ": projector_" << position
-     @| << '('  << type << ") }"; }
+     @| << '('  << tp << ") }"; }
 eval_level projector_value::argument_policy() const
   {@; return eval_level::single_value; }
 void projector_value::report_origin(std::ostream& o) const
@@ -5026,14 +5047,14 @@ not provide any other means of forming values of these types.
 
 @< Type def... @>=
 struct injector_value : public function_base
-{ type_expr type; // used for printing purposes only
+{ type_expr tp; // used for printing purposes only
   unsigned position;
   id_type id;
   source_location loc;
 @)
   injector_value
      (const type_expr& t,unsigned i,id_type id,const source_location& loc)
-  : type(t.copy()),position(i),id(id),loc(loc) @+ {}
+  : tp(t.copy()),position(i),id(id),loc(loc) @+ {}
   virtual ~injector_value() = default;
   virtual void print(std::ostream& out) const;
   virtual void apply(eval_level l) const;
@@ -5056,7 +5077,7 @@ components.
 @< Function def... @>=
 void injector_value::print(std::ostream& out) const
   { out << "{."<< main_hash_table->name_of(id) << ": injector_" << position
-     @| << '(' << type << ") }"; }
+     @| << '(' << tp << ") }"; }
 eval_level injector_value::argument_policy() const
   {@; return eval_level::single_value; }
 void injector_value::report_origin(std::ostream& o) const
@@ -5605,7 +5626,7 @@ whose set of tags do not provide for all tags that were used in the clause.
         failure = true;
         break;
       }
-    } // |for(tag)|
+    } // |for(tag@;@;)@;|
     if (failure)
       candidates.erase(it);
     else
@@ -5613,7 +5634,7 @@ whose set of tags do not provide for all tags that were used in the clause.
         positions=pos.undress();
       ++it;
     }
-  } // |for (it)| looping over |candidates|
+  } // |for (it@;@;)@;| looping over |candidates|
   if (not candidates.singleton())
     @< Report that the number of |candidates| accommodating all |tags|
        is not exactly one @>
@@ -5689,7 +5710,7 @@ this branch is chosen, and suppress creating a |frame| for the branch.
 discrimination expression.
 
 @< Check that |choices[k]| has not been filled before... @>=
-{ if (choices[k].second.get()!=nullptr)
+{ if (choices[k].second!=nullptr)
   { o << "Multiple branches with label "
       << main_hash_table->name_of(branch.label);
     throw expr_error(e,o.str());
@@ -5789,7 +5810,7 @@ all match for one of the candidates.
 branch was already defined.
 
 @< Use |branch| to set |default_choice| @>=
-{ if (default_choice.get()!=nullptr)
+{ if (default_choice!=nullptr)
     throw expr_error(e,"Multiple default branches present");
   default_choice = convert_expr(branch.branch,tp);
 }
@@ -5809,10 +5830,10 @@ the identifier pattern of defaulted branches be empty, the value from the
 {
   if (n_branches>n_variants)
     throw expr_error(e,"Spurious default branch present");
-  if (default_choice.get()!=nullptr)
+  if (default_choice!=nullptr)
   // if a default was given, insert for omitted branches
   { for (auto it=choices.begin(); it!=choices.end(); ++it)
-      if (it->second.get()==nullptr)
+      if (it->second==nullptr)
         *it = choice_part(id_pat(),default_choice);
               // share |default_choice| here
   }
@@ -5828,7 +5849,7 @@ among the variants.
 @< Report a missing branch @>=
 {
   auto it=choices.begin();
-  while(it->second.get()!=nullptr) ++it;
+  while(it->second!=nullptr) ++it;
   auto tag = candidates.front()->fields[it-choices.begin()];
   if (tag==type_binding::no_id)
     o << "Missing branch for anonymous variant " << it-choices.begin();
@@ -6944,7 +6965,7 @@ void counted_for_expression<flags>::print(std::ostream& out) const
 { if (has_frame(flags))
     out << " for " << main_hash_table->name_of(id) << ": " << *count;
   else out << " for : " << *count;  // omit nonexistent identifier
-  if (bound.get()!=nullptr)
+  if (bound!=nullptr)
     out << " from " << *bound;
   print_body(out,body,flags);
 }
@@ -7082,7 +7103,7 @@ anyway) we can omit trying to evaluate |bound| here.
 template <unsigned flags>
 void counted_for_expression<flags>::evaluate(level l) const
 { const auto n=(count->eval(),get<int_value>()->long_val());
-  const auto lwb=(bound.get()==nullptr
+  const auto lwb=(bound==nullptr
           ? 0 : (bound->eval(),get<int_value>()->long_val()));
   long long int c = n<0 ? 0 : n; // no negative size result
 
@@ -7301,44 +7322,22 @@ if it is exported from that scope.
 @< Cases for type-checking and converting... @>=
 case cast_expr:
 { cast_node& c=*e.cast_variant;
-  type_expr cast_tp = global_id_table->expand(c.dst_tp);
+  type_expr cast_tp = global_id_table->swallow(c.dst_tp);
   if (tp.unify_specialise(cast_tp)) // see if we can do without coercion
     return convert_expr(c.exp,tp); // in which case use now specialised |tp|
   expression_ptr p = convert_expr_strongly(c.exp,fc,cast_tp);
     // otherwise use |cast_tp|
-  return conform_types(c.dst_tp,tp,std::move(p),e);
+  return conform_types(cast_tp,tp,std::move(p),e);
 }
 
 @ Another kind of cast is the operator cast, which selects an operator or
 overloaded function instance as it would for arguments of specified types, but
 without giving actual arguments, so that the selected function itself can be
-handled as a value. In order to do so we shall need the following function.
-
-The overload table stores type information in a |func_type| value, whose two
-components may contain polymorphic values numbered from~$0$. We want to
-integrate these into a |type tp@;| that was initialised to a generic function
-type with a possibly nonzero |floor()| value. We could use the subexpression
-form of |unify_specialise| here with properly shifted copies of the |func_type|
-components, but it seems a bit more straightforward to use |unify|.
-
-@< Local function definitions @>=
-inline bool functype_absorb (type& tp, const overload_data& entry)
-{ auto te = type_expr::function @|
-   (entry.f_tp().arg_type.copy(),
-    entry.f_tp().result_type.copy());
-  type model = type::wrap(te,0,tp.floor()); // proper shift facilitates |unify|
-  if (tp.unify(model))
-  {@;
-    tp.wring_out();
-    return true;
-  }
-  return false;
-}
-
-@ Operator casts only access already existing values, which are looked up in the
-global overload table. Since upon success we find a bare |shared_function|, we
-must (as we did for~`\.\$') use the |capture_expression| class to serve as
-wrapper that upon evaluation will return the value again.
+handled as a value. In other words, and operator cast accesses a value in the
+global overload table by providing its name and argument types. Since in
+successful cases we find a bare |shared_function| in the table, we must (as we
+did for~`\.\$') use the |capture_expression| class to serve as wrapper that upon
+evaluation will return the value again.
 
 We do two attempts to match the specified type |c_type| to an entry in the
 |global_overload_table|. In the first we deduce from |c_type| a type as it would
@@ -7364,12 +7363,12 @@ which uses |overload_table::variants|.
 @< Cases for type-checking and converting... @>=
 case op_cast_expr:
 { const op_cast& c=e.op_cast_variant;
-  const type_expr c_type = global_id_table->expand(c->arg_type);
+  const type_expr c_type = global_id_table->swallow(c->arg_type);
   std::ostringstream o; // prepare name for value, and for error message
   o << main_hash_table->name_of(c->oper) << '@@' << c_type;
   expression_ptr result;
   type deduced_type = type::wrap(gen_func_type,fc);
-  if (const auto* entry = global_overload_table->entry(c->oper,c_type,fc))
+  if (@[const auto* entry = global_overload_table->entry(c->oper,c_type,fc)@])
   {
     result.reset(new capture_expression(entry->value(),o.str()));
     bool success = functype_absorb(deduced_type,*entry);
@@ -8803,7 +8802,7 @@ case field_ass_stat:
   unsigned pos=-1; // value is anxiolytic for the compiler
   @< Look up a field of |*tuple_tp| named |selector|, and if found assign
      its position to |pos| and set |component| to the corresponding
-     component of |*tuple_tp|; on failure |throw expr_error| @>
+     component of |*tuple_tp|; on failure |throw @[expr_error@]| @>
   expression_ptr r = convert_expr_strongly(rhs,fc,component);
   expression_ptr p;
   if (is_local)
@@ -8816,7 +8815,8 @@ case field_ass_stat:
 @ If either no function at all doing the requested projection is found, or if
 the function found is not a projector, then we signal failure. Moving |pos|
 places forward in the linked list can be done by calling |std::next| after
-converting the raw node pointer |tuple_tp->tuple()| to a weak type list iterator.
+converting the raw node pointer |tuple_tp->tuple()| to a weak type list
+iterator.
 
 @< Look up a field of |*tuple_tp| named |selector|... @>=
 { std::ostringstream o;

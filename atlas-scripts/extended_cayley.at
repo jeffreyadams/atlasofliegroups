@@ -4,7 +4,7 @@
 
 { debug ext_cayley construction, shouldn't be needed }
 set test_ext_cayley (Param p, int j, string ext_type, ExtParam E) = void:
-( assert(valid(E),"E is not valid")
+( assert(@:valid(E),"E is not valid")
 { I'm not sure how the rest of this should work, therefore it is comment only
 ; let q=parameter(E)
   , k() = { companion index, only needed if length=2,3 }
@@ -324,10 +324,10 @@ begin
   else
   { prints("extended Cayley transform of type ", type); }
     let p=parameter(E) in
-    assert(is_fixed(delta,p),"Parameter is not fixed by delta")
+    assert(@:is_fixed(delta,p),"Parameter is not fixed by delta")
   ; let rd=root_datum(p), id=integrality_datum(p)
     then alpha = root(id,j) {a simple root }
-    in assert(rho_check(rd)*alpha=1 { simple root for G }
+    in assert(@:rho_check(rd)*alpha=1 { simple root for G }
         ,"root is integral-simple but not simple, "+
          "use nonintegral.at to define ext_Cayley")
   ; let l=ext_length(integrality_datum(p),delta,j) in

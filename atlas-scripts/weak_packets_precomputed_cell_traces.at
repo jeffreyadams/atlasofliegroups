@@ -138,65 +138,67 @@ set weak_packets_pre (RealForm G,CharacterTable ct) =
 
 { stuff particular to E8:  }
 {compute cell_and_character_data for each block of G=E8_s (tiny, small, big)
-also SpringerTable for G
-this can then be used to call:
-weak_packet(st,G,dual_orbit,data),
-weak_packets(st,G,dual_orbits,data)
-weak_packets(st,G,data)
+ also SpringerTable for G
+ this can then be used to call:
+ weak_packet(st,G,dual_orbit,data),
+ weak_packets(st,G,dual_orbits,data)
+ weak_packets(st,G,data)
 }
 {comment this out to avoid loading except when necessary:}
 {CUT
 
-<E8_big_block_parameters.at     {parameters_big: [Param]: big block}
-<E8_big_block_cell_parameter_numbers.at   {cells_big=[[int]]}
-<E8_big_block_cell_characters.at  {cell_characters_big=[[int]]}
-<E8_big_block_cells.at  {E8_big_block_cells=[([int],[([int],[(int,int)])])]}
+ <E8_big_block_parameters.at     {parameters_big: [Param]: big block}
+ <E8_big_block_cell_parameter_numbers.at   {cells_big=[[int]]}
+ <E8_big_block_cell_characters.at  {cell_characters_big=[[int]]}
+ <E8_big_block_cells.at  {E8_big_block_cells=[([int],[([int],[(int,int)])])]}
 
 
-<E8_small_block_parameters.at     {parameters_small: [Param]: small block}
-<E8_small_block_cell_parameter_numbers.at  {cells_small=[[int]]}
-<E8_small_block_cell_characters.at  {cell_characters_small=[[int]]}
-<E8_small_block_cells.at  {E8_small_block_cells=([int],([([int],[(int,int)])]))}
-prints("loaded files")
+ <E8_small_block_parameters.at     {parameters_small: [Param]: small block}
+ <E8_small_block_cell_parameter_numbers.at  {cells_small=[[int]]}
+ <E8_small_block_cell_characters.at  {cell_characters_small=[[int]]}
+ <E8_small_block_cells.at  {E8_small_block_cells=([int],([([int],[(int,int)])]))}
+ prints("loaded files")
 
-set irreducible_PS=parameter(G.x_open,null(8),rho(G))
-set cells_tiny=W_cells(irreducible_PS)
+ set irreducible_PS=parameter(G.x_open,null(8),rho(G))
+ set cells_tiny=W_cells(irreducible_PS)
 
-set p=parameter(G.trivial.x, 2*rho(G),rho(G))
-set cell_and_characters_tiny_block=(([p],cells_tiny),[([0],[int]:ones(112))])
+ set p=parameter(G.trivial.x, 2*rho(G),rho(G))
+ set cell_and_characters_tiny_block=(([p],cells_tiny),[([0],[int]:ones(112))])
 
-set E8_dual_orbits=G.dual_orbits
-prints("defined dual orbits")
-set E8_dual_orbits_even=G.even_dual_orbits
-prints("defined dual even orbits")
+ set E8_dual_orbits=G.dual_orbits
+ prints("defined dual orbits")
+ set E8_dual_orbits_even=G.even_dual_orbits
+ prints("defined dual even orbits")
 
-set cell_and_characters_big_block=((parameters_big,E8_big_block_cells),for i:#cells_big do (cells_big[i], cell_characters_big[i]) od)
-prints("defined cell_and_characters_big_block")
+ set cell_and_characters_big_block=
+  ((parameters_big,E8_big_block_cells)
+   ,for i:#cells_big do (cells_big[i], cell_characters_big[i]) od)
+ prints("defined cell_and_characters_big_block")
 
-set cell_and_characters_small_block=((parameters_small,E8_small_block_cells),for i:#cells_small do (cells_small[i], cell_characters_small[i]) od)
-prints("defined cell_and_characters_small_block")
+ set cell_and_characters_small_block=
+  ((parameters_small,E8_small_block_cells),
+   for i:#cells_small do (cells_small[i], cell_characters_small[i]) od)
+ prints("defined cell_and_characters_small_block")
 
-set E8_cell_and_character_data=[cell_and_characters_big_block,cell_and_characters_small_block,cell_and_characters_tiny_block]
+ set E8_cell_and_character_data =
+   [cell_and_characters_big_block,cell_and_characters_small_block,
+    cell_and_characters_tiny_block]
 
-{comment out either the first line or lines 2-4}
-prints("Springer table already defined")
-prints("Defining Springer table")
-set E8_st=Springer_table(simply_connected(E8))
-prints("defined Springer table")
-
-
-
-{set wp=weak_packets(st_E8,E8_dual_orbits,E8_cell_and_character_data)}
-
-
+ {comment out either the first line or lines 2-4}
+ prints("Springer table already defined")
+ prints("Defining Springer table")
+ set E8_st=Springer_table(simply_connected(E8))
+ prints("defined Springer table")
 
 
+
+ {set wp=weak_packets(st_E8,E8_dual_orbits,E8_cell_and_character_data)}
 /CUT}
 
 {assuming the lines between CUT and /CUT have been loaded,
-then weak_packets(st,orbits,all_cell_data) will
-compute all weak packets for E8_s
-weak_packets(st,orbits,cell_and_characters_*_block)
-where *=tiny,small,or big
-compute the weak packets coming from these blocks
+ then weak_packets(st,orbits,all_cell_data) will
+ compute all weak packets for E8_s
+ weak_packets(st,orbits,cell_and_characters_*_block)
+ where *=tiny,small,or big
+ compute the weak packets coming from these blocks
 }

@@ -127,7 +127,7 @@ set dual_diagram_E8([int] diagram) = [int]:
 in E8_diagrams[index]
 
 set digit_to_int (string str) =
-   let d = ascii(str)-ascii("0") in assert(d.>= and d<10,"Bad digit"); d
+   let d = ASCII(str)-ASCII("0") in assert(d.>= and d<10,"Bad digit"); d
 
 
 set string_to_diagram(string str) = [int]:

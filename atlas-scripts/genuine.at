@@ -1,5 +1,4 @@
 <basic.at
-<torus.at { for torus@(int,int,int) }
 <hermitian.at { for hermitian_form_irreducible@Param }
 
 set is_positive (KTypePol P) = bool:

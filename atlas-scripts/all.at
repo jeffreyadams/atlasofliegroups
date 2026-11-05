@@ -44,9 +44,10 @@
 <new_conjugacy.at
 <test_braid.at
 {<lucas.at
-<self_intersection.at}
+ <self_intersection.at
+}
 {this is slow to load:
-<unipotent_representations_exceptional.at
+ <unipotent_representations_exceptional.at
 }
 <hash.at
 <certificate.at
@@ -70,6 +71,4 @@
 <endoscopic_lifting.at
 <base_change.at
 <wedgeP.at
-
-
-
+<cell_graph.at

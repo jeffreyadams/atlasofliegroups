@@ -1,3 +1,4 @@
+<subtorus.at { for SubTorus, restrict, inject, complex_torus }
 {This file is deprecated: replaced by endoscopic_groups.at}
 {<embed.at
 

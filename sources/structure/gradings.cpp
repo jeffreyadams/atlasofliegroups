@@ -98,7 +98,7 @@ RootNbrSet max_orth(const RootNbrSet& non_compact,
   By definition this holds iff either |lhs| has fewer set bits, or they have
   the number, and |lhs<rhs| holds in the usual (bitwise lexicographic) sense.
 */
-bool GradingCompare::operator() (const Grading& lhs, const Grading& rhs)
+bool GradingCompare::operator() (const Grading& lhs, const Grading& rhs) const
 {
   size_t lhc=lhs.count(), rhc=rhs.count();
   return lhc!=rhc ? lhc<rhc : lhs<rhs;

@@ -71,7 +71,7 @@ set is_fundamental_Cartan (KGBElt x) =
 
 { in the following function x is required to be on the fundamental Cartan}
 set cocharacter_lattice_K (KGBElt x) = mat:
-  assert(is_fundamental_Cartan(x), "x is not on the fundamental Cartan");
+  assert(@:is_fundamental_Cartan(x), "x is not on the fundamental Cartan");
   eigen_lattice(^involution(x),1)
 
 { matrix of projection X^*(H)-> X^*(T_K0)=X^*(H)/X^*(H)^{-theta_x}
@@ -148,7 +148,7 @@ set G_K_roots_and_coroots_raw (KGBElt x) = ((mat,mat),(mat,mat)):
   , is_cpt  = is_compact(x) { predicate on imaginary roots }
   , ic_inx = [int]:[], C_inx = [int]:[] { list indices into proots/pcroots }
   in begin
-    assert(involution(x)=delta,"x is not in distinguished fiber")
+    assert(@:involution(x)=delta,"x is not in distinguished fiber")
   ; for alpha@j in proots
     do let k = root_index(rd,delta*alpha) in
        if k=j { since delta=involution(x), this means alpha is imaginary }

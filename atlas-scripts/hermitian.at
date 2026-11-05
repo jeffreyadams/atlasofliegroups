@@ -171,7 +171,7 @@ set twisted_c_form_irreducible_as_sum_of_standards (Param p) = ParamPol:
 {.c_form_irrecible with extra information.}
 set twisted_c_form_irreducible_long (Param p) =
     (ParamPol,[(Param,Split,KTypePol)],[Param,Split,KType],KTypePol):
-( assert(twist(p)=p,"parameter is not fixed by inner class involution");
+( assert(@:twist(p)=p,"parameter is not fixed by inner class involution");
   let (fixed,unfixed) = twisted_c_form_irreducible_contributions(p)
   then G=p.real_form
   , fixed_contribs = [(Param,Split,KTypePol)]:
@@ -191,7 +191,7 @@ in ( fixed+unfixed
    )
 
 set twist_orbits (ParamPol P) = ParamPol:
-( assert(map(twist@Param,P)=P) { polynomial is assumed to be twist-stable }
+( assert(@:map(twist@Param,P)=P) { polynomial is assumed to be twist-stable }
 ; P.real_form.null_module +
   while !=P
   do let (c,q):term = P.first_term then tq=twist(q)

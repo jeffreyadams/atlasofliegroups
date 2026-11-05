@@ -35,16 +35,16 @@ namespace error {
 
 // user abandoning input
 struct InputError {
-  void operator() (const char*);
+  void operator() (const char*) const;
 };
 
 // failure opening or writing output
 struct OutputError {
-  void operator() (const char*);
+  void operator() (const char*) const;
 };
 
 struct NumericOverflow {
-  void operator() (const char*);
+  void operator() (const char*) const;
 };
 
 

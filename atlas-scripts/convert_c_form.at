@@ -50,14 +50,14 @@ set mu (KType t) = rat:
 }
 set number_real_orthogonal_pairs (KGBElt x, mat delta) = int:
   let rd=x.root_datum, theta=x.involution in
-  assert(delta*theta=theta*delta
+  assert(@:delta*theta=theta*delta
         ,"Cartan involution does not commute with delta");
-  assert(no_Cminus_roots(x)
+  assert(@:no_Cminus_roots(x)
         , "Not defined unless all complex roots are type C+");
   for alpha in real_posroots(rd,theta)
   do int:
     let pairing = int: coroot(rd,alpha)*delta*alpha in
-    assert(pairing=0 or pairing=-1 or pairing=2 { since we paired \emph{roots} }
+    assert(@:pairing=0 or pairing=-1 or pairing=2 { since we paired \emph{roots} }
           ,"invalid pairing of root and coroot");
     #(pairing=0) { count zero pairings }
   od.sum.half { compensate for each pair being counted twice }

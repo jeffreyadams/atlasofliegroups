@@ -142,7 +142,7 @@ const StandardRepr& currentStandardRepr() { return *sr; }
 
 kl::KL_table& current_KL()
 {
-  return current_common_block().kl_tab(nullptr,0,true);
+  return current_common_block().KL_tab(nullptr,0,true);
 }
 
 void ensure_full_block()

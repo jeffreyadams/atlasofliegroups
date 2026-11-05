@@ -45,11 +45,6 @@
 #include "hashtable.h"
 #include "wgraph.h"	// for the |wGraph| function
 
-// extra defs for windows compilation -spc
-#ifdef WIN32
-#include <iterator>
-#endif
-
 /*
   [Fokko's original description, which referred to a slightly older
   version of the computation. Fokko implemented the change from using
@@ -100,7 +95,7 @@ KL_table::KL_table(const Block_base& b, KL_hash_Table* pol_hash)
   , own(pol_hash!=nullptr ? nullptr : new KLStore{Zero,One})
   , storage_pool(pol_hash!=nullptr ? pol_hash->pool() : *own)
 {
-  d_holes.fill();
+  d_holes.fill(); // by default request computation of all columns
 }
 
 /******** copy, assignment and swap ******************************************/
@@ -182,6 +177,12 @@ Poly_hash_export KL_table::polynomial_hash_table ()
 void KL_table::plug_hole(BlockElt y)
 { assert(y<d_holes.capacity());
   d_holes.remove(y);
+}
+
+void KL_table::unplug_hole(BlockElt y)
+{ assert(y<d_holes.capacity());
+  if (d_KL[y].size()==0) // action is only needed for not yet computed columns
+    d_holes.insert(y);
 }
 
 // Fill (or extend) the KL- and mu-lists up to |limit|
@@ -852,6 +853,7 @@ void KL_table::silent_fill(BlockElt limit)
     // fill the lists
     for (auto it = d_holes.begin(); it() and *it<limit; ++it)
     {
+      interpreter::check_interrupt();
       fill_KL_column(klv,*it,hash);
       d_holes.remove(*it);
     }
@@ -861,7 +863,7 @@ void KL_table::silent_fill(BlockElt limit)
   { // identify and relabel error so that atlas may catch it
     throw std::runtime_error("Numeric overflow in KL computations");
   }
-}
+} // |KL_table::silent_fill|
 
 // Fill the existing |KL_table| object while printing progress reports
 void KL_table::verbose_fill(BlockElt limit)
@@ -889,16 +891,18 @@ void KL_table::verbose_fill(BlockElt limit)
   {
     for (size_t l=minLength; l<=maxLength; ++l) // by length for progress report
     {
+      interpreter::check_interrupt();
       BlockElt y_start = l==minLength ? first_hole() : length_less(l);
       BlockElt y_limit = l<maxLength ? length_less(l+1) : limit;
       for (BlockElt y=y_start; y<y_limit; ++y)
-      {
-	std::cerr << y << "\r";
+	if (d_holes.isMember(y))
+	{
+	  std::cerr << y << "\r";
 
-	fill_KL_column(klv,y,hash);
-	kl_size += d_KL[y].size();
-	d_holes.remove(y);
-      }
+	  fill_KL_column(klv,y,hash);
+	  kl_size += d_KL[y].size();
+	  d_holes.remove(y);
+	}
 
       // now length |l| is completed
       size_t p_capacity // currently used memory for polynomials storage

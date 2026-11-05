@@ -1,10 +1,8 @@
 <basic.at
-<parabolics.at
-<W_classes.at
+<W_classes.at { for type |WeylClassTable|| }
 <sort.at { for |sort_u@[vec]| }
-<lattice.at { for |restrict_action@(mat,mat)| }
 <sparse.at { for column-grouped |sparse_mat| type }
-<W_orbit { for |W_parabolic_act@(RootDatum,[int],int,[mat])| }
+<W_orbit.at { for |W_parabolic_act@(RootDatum,[int],int,[mat])| }
 
 { data type for representation of W
   operators[i] is the matrix of the action of simple generator #i
@@ -40,7 +38,7 @@ set is_isomorphic (WeylClassTable tab, W_rep pi, W_rep sigma) = bool:
 {. matrix of inner products of characters of representations .}
 set matrix_of_inner_products (WeylClassTable tab) = ([[int]] characters) mat:
 (  let n=#characters
-   , triangle = [[int]]:
+   , triangle = [[int]]: { avoid computing a same inner product in two ways }
       for f@i in characters do for g in characters[i:] do tab.inner(f,g) od od
    in matrix
      ((n,n)
@@ -48,21 +46,12 @@ set matrix_of_inner_products (WeylClassTable tab) = ([[int]] characters) mat:
      )
 )
 
-{ filter list of representations to a unique copy of any occurring character }
+{ reduce list of representations to one with at most 1 copy of any character }
 set unique (WeylClassTable tab,[W_rep] list) = [W_rep]:
-  case #list
-  in [], list
-  else let chars = for pi in list do character(tab,pi) od
-     , leq = lexicographic(<=@(int,int))
-     then sorted = [[int]]: sort_u(leq)(chars)
-     then positions = for :#sorted do -1 od
-     in for char@i in chars
-        do let j =
-           binary_search_first((int j):leq(char,sorted[j]),0,#sorted)
-           in assert(char=sorted[j]); if positions[j].< then positions[j]:=i fi
-        od
-     ; for pos in positions do list[pos] od
-  esac
+   let leq = ([int],[int]->bool): lexicographic(<=@(int,int))
+   then classes = [[W_rep,[int]]]:
+      for pi in list do (pi,character(tab,pi)) od.(partition_by(snd,leq))
+in for class in classes do class[0].fst od
 
 { ----------- cell representations --------------}
 
@@ -144,7 +133,7 @@ set # (WGraph (,nodes)) = int: #nodes
 
 {. matrix for s of graph, of coherent continuation action on irreducibles. }
 set graph_action (WGraph (rd,nodes),int s) = sparse_mat:
-   assert(s.>= and s<rd.semisimple_rank,"bad W generator: "+s);
+   assert(@:0<=s and s<rd.semisimple_rank,"bad W generator: "+s);
    let tau_has_s(WNode nd) = bool: is_member(nd.tau)(s) in
    for node@j in nodes
    do if node.tau_has_s
@@ -237,23 +226,20 @@ set cell_representations (WeylClassTable Wct,[WCell] cells) = [W_rep]:
 
 { ------------------- induction ------------------- }
 
-{ all 2^n standard Levis }
-set standard_Levis (RootDatum rd) = [RootDatum]:
-  for S in power_set(rd.all_simples) do Levi_datum(rd,S) od
-
 { induction from a Levi factor
 
-  L is a Levi in G, |pi_L| is a class function on W(L)
+  Suppose L is a Levi in G, and |pi_L| is a class function on W(L),
   we want to compute the class function pi_G=ind_L^G(pi_L) on W(G)
 
   formula: if C is a conjugacy class for G
-  pi_G(C) = |W(G)| / (|W(L)|*|C|)) * \sum |C_j| pi_L(C_j)
-  where the sum runs over the W(L)-conjugacy classes in C\cap W(L) (this follows
-  from Frobenius reciprocity, pairing pi_L with the indicator function for C)
+		pi_G(C) = |W(G)| / (|W(L)|*|C|) * \sum |C_i| pi_L(C_i)
+  where the sum runs over the W(L)-conjugacy classes C_i in C\cap W(L) (this
+  follows from Frobenius reciprocity, by pairing the character pi_L with the
+  indicator function for C)
 
   In other words the value of |pi_L| on each class C_j in W(L) contributes to
   the induced character value only at the class C of W(G) containing it, and for
-  this contribution its character value is multiplied by [W(G):W(L)] * |C|/|C_j|
+  this contribution its character value is multiplied by [W(G):W(L)] * |C_i|/|C|
 
   algorithm: initialize the result to be the 0-character
   run over conjugacy class representatives in L

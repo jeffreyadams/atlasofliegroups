@@ -38,6 +38,9 @@ moreover this has to be done outside any namespaces.
 @( parse_types.h @>=
 #ifndef PARSE_TYPES_H
 #define PARSE_TYPES_H
+
+#include "Atlas.h" // must be very first \.{atlas} include
+
 @< Includes needed in \.{parse\_types.h} @>@;
 struct YYLTYPE; // pre-declare
 
@@ -123,11 +126,11 @@ enum expr_kind @+
 typedef struct expr* expr_p; // raw pointer type for use on parser stack
 typedef std::unique_ptr<expr> expr_ptr;
 @)
-@< Declaration of |struct expr| and its extended family @>
+@< Declaration of |struct expr@;| and its extended family @>
 
 @ We separate this out for ease of moving.
 
-@< Declaration of |struct expr| and its extended family @>=
+@< Declaration of |struct expr@;| and its extended family @>=
 @< Type declarations needed in definition of |struct expr@;| @>@;
 struct expr {
   expr_kind kind;
@@ -172,6 +175,8 @@ source line.
 @< Definitions of functions not for the parser @>=
 std::ostream& operator<<(std::ostream& out, const source_location& sl)
 {
+  if (sl.start_line == ~0u)
+    return out << "in the prelude";
   out << "at " << main_input_buffer->name_of(sl.file) @|
       << ':' << sl.start_line << ':' << sl.first_col << '-';
   if (sl.extent>0)
@@ -373,7 +378,7 @@ we shall use a pointer to |std::string|.
 #include <string>
 
 @~For Boolean denotations, the value itself will fit comfortably inside the
-|struct expr@;|. For integers and strings we store a |std::string*| value
+|struct expr@;|. For integers and strings we store a |std::string*@[@]@;| value
 (sharing a single variant), leaving in the case of integers the conversion from
 decimal to |big_int| to be done later. We used to store |std::string| which
 provided an example of how the special member functions of |expr| should handle
@@ -1512,7 +1517,7 @@ by default; it is present only for backward compatibility \.{gcc}~4.6.
 @< Structure and typedef definitions for types built upon |expr| @>=
 struct let_pair { id_pat pattern; expr val; };
 using let_list = containers::simple_list<let_pair>;
-using raw_let_list = containers::sl_node<let_pair>*;
+using raw_let_list = @[containers::sl_node<let_pair>*@];
 @)
 struct let_expr_node
 { id_pat pattern; expr val; expr body;
@@ -1706,7 +1711,7 @@ in the |type_expr| variables can have user defined types and type variables that
 are not yet expanded, but encoded as the |tabled| variant of a type in which the
 |tabled_nr()| is simply the identifier code, and any argument types are
 similarly encoded. In order to obtain a |type_expr| that is usable in type
-analysis, clients should apply the method |global_id_table->expand| to these
+analysis, clients should apply the method |global_id_table->swallow| to these
 type values, which will look up the user definitions as necessary. One reason to
 not do this during parsing is that the process can fail (if the length of an
 argument list does not match the arity of the type constructor), but the paser
@@ -1854,7 +1859,7 @@ easy to get used to).
 @< Cases for printing... @>=
 case lambda_expr:
 { const auto& fun=*e.lambda_variant;
-  const type_expr par_tp = global_id_table->expand(fun.parameter_type);
+  const type_expr par_tp = global_id_table->swallow(fun.parameter_type);
   if (par_tp==void_type)
     out << '@@';
   else
@@ -1864,8 +1869,8 @@ case lambda_expr:
 break;
 case rec_lambda_expr:
 { const auto& fun=*e.rec_lambda_variant;
-  const type_expr par_tp = global_id_table->expand(fun.parameter_type);
-  const type_expr res_tp = global_id_table->expand(fun.result_type);
+  const type_expr par_tp = global_id_table->swallow(fun.parameter_type);
+  const type_expr res_tp = global_id_table->swallow(fun.result_type);
   out << "rec_fun " << main_hash_table->name_of(fun.self_id);
   if (par_tp==void_type)
     out << '@@';
@@ -2667,7 +2672,7 @@ case cast_expr: delete cast_variant; break;
 @< Cases for printing... @>=
 case cast_expr:
 {@; const auto& c = *e.cast_variant;
-  const type_expr tp = global_id_table->expand(c.dst_tp);
+  const type_expr tp = global_id_table->swallow(c.dst_tp);
   out << tp << ':' << c.exp ;
 }
 break;
@@ -2736,7 +2741,7 @@ case op_cast_expr: delete op_cast_variant; break;
 @< Cases for printing... @>=
 case op_cast_expr:
 { const auto& c = *e.op_cast_variant;
-  const type_expr tp = global_id_table->expand(c.arg_type);
+  const type_expr tp = global_id_table->swallow(c.arg_type);
   out << main_hash_table->name_of(c.oper) << '@@' << tp;
 }
 break;
@@ -2748,7 +2753,7 @@ unique subexpression, a number of new type variables is introduced. This has no
 semantic significance, but the type checking process takes this into account.
 
 @< Type declarations needed in definition of |struct expr@;| @>=
-using abstractor = struct abstr_node*;
+using abstractor = @[struct abstr_node*@];
 
 @~The corresponding node type stores a number of variables and an expression.
 
@@ -3279,8 +3284,8 @@ we need a list of pairs of a type identifier and its defining type expression.
 
 @< Structure and typedef definitions for types built upon |expr| @>=
 struct typedef_struct {@; id_type id; type_p tp; patlist fields; };
-using typedef_list = containers::simple_list<typedef_struct>;
-using raw_typedef_list = atlas::containers::sl_node<typedef_struct>*;
+using typedef_list = simple_list<typedef_struct>;
+using raw_typedef_list = @[containers::sl_node<typedef_struct>*@];
 
 @ Here are the functions defined for those types.
 

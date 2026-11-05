@@ -29,11 +29,6 @@
 
 #include "interactive.h" // to clear input buffer
 
-// extra defs for windows compilation -spc
-#ifdef WIN32
-#include "constants.h"
-#endif
-
 /*****************************************************************************
 
   This module contains the code for the command interface which we use during

@@ -138,10 +138,11 @@ dependency on the readline library.
 @q axis_version "0.9.9" integer 'case': optional out-of-bounds clause(s) @>
 @q axis_version "1.0" recursion implemented without creating memory leak @>
 @q axis_version "1.1" concatenating for and if loop syntax 1/4/2022 @>
+@q axis_version "2.0" @q Major update to allow polymorphic types 1/12/2024 @>
 
-@d axis_version "2.0" @q Major update to allow polymorphic types 1/12/2024 @>
+@d axis_version "2.1" @q Expansion concerning polymorphic types 13/10/2026 @>
 
- // numbering from 0.5 (on 27/11/2010); last change December 1st, 2024
+ // numbering from 0.5 (on 27/11/2010); last change October 13, 2024
 
 @c
 
@@ -213,6 +214,24 @@ returns. It must be declared |extern "C"|.
 extern "C" void sigint_handler (int)
 @+{@; atlas::interpreter::interrupt_flag=1; }
 
+@ While the |add_history| function of GNU \.{readline} officially
+returns~|void|, some operating systems (looking at you macOS) find it opportune
+to ship a replacement for \.{readline} (a rebranded version of \.{libedit}) that
+does have a function |add_history|, but which returns~|int|; the very important
+information it wants to return is always the value~$0$. If we would call this
+function directly, the spurious result value would be ignored, but we pass the
+function pointer to the |BufferedInput| constructor, where return type matters.
+In order to adapt painlessly (for the user) to this state of affairs, we define
+our own function that just forwards to |add_history|, but which returns~|void|
+independently of how |add_history| was declared, so that its function pointer
+can be passed to and stored in |BufferedInput| regardless of which library is
+used.
+
+@< Definitions of global namespace functions @>=
+#ifndef NREADLINE
+extern "C" void call_add_history (const char* line) @+{@; add_history(line); }
+#endif
+
 @ Here are some header files which need to be included for this main program.
 As we discussed above, the inclusion of header files for the readline
 libraries is made dependent on the flag |NREADLINE|. In case the flag is set,
@@ -235,7 +254,7 @@ not being defined.
 @< Conditionally include some header files @>=
 #ifdef NREADLINE
 #define readline nullptr
-#define add_history nullptr
+#define call_add_history nullptr
 #define clear_history()
 #else
 #include <readline/readline.h>
@@ -327,7 +346,7 @@ int main(int argc, char** argv)
   @< Handle command line arguments @>
 @/BufferedInput input_buffer(do_prompting ? "atlas> " : nullptr
                             ,use_readline ? readline : nullptr
-			    ,use_readline ? add_history : nullptr);
+			    ,use_readline ? call_add_history : nullptr);
   main_input_buffer= &input_buffer;
 @/Lexical_analyser ana(input_buffer,hash,keywords,prim_names); lex=&ana;
   @< Prepare the lexical analyser |ana| after construction and before use @>
@@ -398,8 +417,12 @@ while (*++argv!=nullptr)
   static const size_t pol = std::strlen(path_opt);
   std::string arg(*argv);
   if (arg=="--no-readline")
-    {@; use_readline = false; continue; }
-  if (arg.substr(0,pol)==path_opt)
+    use_readline = false;
+  else if (arg=="--prompt")
+    do_prompting = true;
+  else if (arg=="--no-prompt")
+    do_prompting = false;
+  else if (arg.substr(0,pol)==path_opt)
      paths.push_back(&(*argv)[pol]);
   else prelude_filenames.push_back(*argv);
 }
@@ -417,19 +440,22 @@ until other initialisations have been done), but we defer the details.
   auto oit = force<row_value>(input_path.get())->val.begin();
   for (auto it=paths.begin(); it!=paths.end(); ++it)
     *oit++ = std::make_shared<string_value>(std::string(*it)+'/');
-@/global_id_table->add@|(ip_id, input_path, mk_type("[string]"), false);
+@/global_id_table->add@|
+    (ip_id, input_path, mk_type("[string]"), false,source_location());
   input_path_pointer = global_id_table->address_of(ip_id);
 @)
   own_value prelude_log = std::make_shared<row_value>(0); // start out empty
   id_type pl_id = main_hash_table->match_literal("prelude_log");
   auto& logs = force<row_value>(input_path.get())->val;
   logs.reserve(prelude_filenames.size());
-@/global_id_table->add@|(pl_id, prelude_log, mk_type("[string]"), true);
+@/global_id_table->add@|
+    (pl_id, prelude_log, mk_type("[string]"), true,source_location());
   prelude_log_pointer = global_id_table->address_of(pl_id);
 @)
   own_value back_trace = std::make_shared<row_value>(0); // start out empty
   id_type bt_id = main_hash_table->match_literal("back_trace");
-@/global_id_table->add@|(bt_id, back_trace, mk_type("[string]"), false);
+@/global_id_table->add@|
+    (bt_id, back_trace, mk_type("[string]"), false,source_location());
   back_trace_pointer = global_id_table->address_of(bt_id);
 }
 
@@ -565,50 +591,49 @@ file.
 for (auto it=prelude_filenames.begin(); it!=prelude_filenames.end(); ++it )
 { std::ostringstream log_stream; output_stream = &log_stream;
   main_input_buffer->push_file(*it,true);
-    // set up to read |fname|, unless already done
-  while (main_input_buffer->include_depth()>0) // go on until file ends
-  { if (not ana.prime())
-    { std::cerr << "Internal error, getline fails reading " << *it
-                  << std::endl;
-      return EXIT_FAILURE;
-    }
-    expr_p parse_tree;
-    if (yyparse(&parse_tree,&verbosity)!=0)
-      // if a syntax error was signalled input has been closed
-    {@; ana.reset();  continue; }
-    if (verbosity!=0)
-    { std::cerr << "Cannot "
-                << (verbosity<0 ? "quit" :
-                    verbosity==1 ? "set verbose" : "redirect output")
-                         << " during prelude.\n";
-      verbosity=0; main_input_buffer->close_includes();
-    }
-    else
-    { try
-      { expression_ptr e;
-        type found_type=analyse_types(*parse_tree,e,0);
-        e->evaluate(eval_level::single_value);
-        if (not found_type.is_void())
-          log_stream << "Value: " << *pop_value() << '\n';
-        else
-          pop_value(); // don't forget to cast away that void value
+    // set up to read prelude file, unless already done
+  try
+  { while (main_input_buffer->include_depth()>0) // go on until file ends
+    { if (not ana.prime())
+      { std::cerr << "Internal error, getline fails reading " << *it
+                    << std::endl;
+        return EXIT_FAILURE;
       }
-      catch (error_base& err)
-      { std::cerr << err.message << "\nEvaluation aborted.\n";
-      @/clean=false;
-        clear_timer();
-        reset_evaluator(); main_input_buffer->close_includes();
+      expr_p parse_tree;
+      if (yyparse(&parse_tree,&verbosity)!=0)
+        // on syntax error input has been closed
+      {@; ana.reset();  continue; }
+      if (verbosity!=0)
+      { std::cerr << "Cannot "
+                  << (verbosity<0 ? "quit" :
+                      verbosity==1 ? "set verbose" : "redirect output")
+                           << " during prelude.\n";
+        verbosity=0; main_input_buffer->close_includes();
       }
-      catch (std::exception& err)
-      {
-        std::cerr << err.what() << "\nEvaluation aborted.\n";
-      @/clean=false;
-        clear_timer();
-        reset_evaluator(); main_input_buffer->close_includes();
+      else
+      { try
+        { expression_ptr e;
+          type found_type=analyse_types(*parse_tree,e,0);
+          e->evaluate(eval_level::single_value);
+          if (not found_type.is_void())
+            log_stream << "Value: " << *pop_value() << '\n';
+          else
+            pop_value(); // don't forget to cast away that void value
+        }
+        catch (std::exception& err) @+
+        {@; throw runtime_error(err.what()); } // convert error
       }
+      destroy_expr(parse_tree);
     }
-    destroy_expr(parse_tree);
   }
+  catch (error_base& err)
+  { std::cerr << err.message << '\n';
+  @/clean=false;
+    reset_evaluator(); main_input_buffer->close_includes();
+    ana.reset();
+    clear_timer();
+  }
+
   row_value* logs = uniquify<row_value>(*prelude_log_pointer);
   logs->val.emplace_back(std::make_shared<string_value>(log_stream.str()));
   output_stream = &std::cout;
@@ -641,6 +666,11 @@ catch (error_base& err)
     std::cerr << "Runtime error:\n  ";
   else if (dynamic_cast<logic_error*>(&err)!=nullptr)
     std::cerr << "Internal error: ";
+  else if (dynamic_cast<program_error*>(&err)!=nullptr)
+  {@;
+    std::cerr << "Program error: ";
+    ana.reset();
+  }
   std::cerr << err.message << "\n";
 @)
   set_back_trace(err.back_trace);
@@ -726,7 +756,9 @@ functions (in our case |do_completion| defined below), it is too late to
 adjust the |text| it selected to be completed.
 
 @< Local static data @>=
+#ifndef NREADLINE
 char lexical_break_chars[] = " \t\n=<>+-*/\\%,;:.()[]{}#!?$@@\"|~";
+#endif
 
 @ The above function |id_completion_func| will not be plugged directly into
 the readline completion mechanism, but instead we provide an alternative

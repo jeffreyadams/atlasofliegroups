@@ -336,9 +336,20 @@ bool context::shift_flip
 }
 
 /* Auxiliary function to recognise local situation in |ext_block| construction.
-   It assumes precomputed |fixed_points|; block may be partial or complete
-   for partial blocks, some boundary elements may return an uncertain type.
-   Note that being defined for |Block_base|, no linear algebra is used at all.
+   Being passed just a |Block_base|, all work is done in terms of the graph
+   structure of |block|, with no possibility to compute using linear algebra. We
+   do assume the |fixed_points| are precomputed by our caller. A complication is
+   that |block| may be partial, closure begin guaranteed only under decent
+   links. So following ascents or same-length cross links, we may find
+   |UndefBlock| values indicating that the element in question lies outside the
+   partial block. Even though the status of each (integrally) simple generator
+   is available for every block element, there are cases where we need to know
+   similar information for elements intermediate between |z| and an extended
+   block element it wants to link to in order to find the extended type of |z|;
+   it may then happen that the absence of the intermediate block element makes
+   it impossible to know the extended type of |z| with certainty. Such cases are
+   marked in comments as "uncertain", and for them determining the exact
+   situation with certainty is left to the caller.
 */
 DescValue extended_type(const Block_base& block, BlockElt z, const ext_gen& p,
 			BlockElt& link, const BitMap& fixed_points)
@@ -416,15 +427,15 @@ DescValue extended_type(const Block_base& block, BlockElt z, const ext_gen& p,
       }
     case DescentStatus::ImaginaryTypeII:
       { BlockElt tmp=block.cayley(p.s0,z).first;
-	if (tmp==UndefBlock) // first Cayley ascent crossed edge of partial block
-	  // since both our links have it as ascent, they are beyond edge too
+	if (tmp==UndefBlock) // both Cayley ascents are beyond the partial block
+	  // since both links have a Cayley as descent, they are beyond it too
 	  return link=tmp, two_imaginary_double_double; // certain, unset |link|
 	auto pair = block.cayley(p.s1,tmp);
 	if (pair.first==UndefBlock or // then both components are |UndefBlock|
 	    (not fixed_points.isMember(pair.first) and pair.second==UndefBlock))
 	{ // try again with other pair of Cayley ascent by |s0| of |z|
 	  if ((tmp=block.cayley(p.s0,z).second)==UndefBlock)
-	    return link=tmp, two_imaginary_double_double; // crt, unset |link|
+	    return link=tmp, two_imaginary_double_double; // certn, unset |link|
 	  pair = block.cayley(p.s1,tmp); // try other pair
 	  if (pair.first==UndefBlock)
 	    return link=UndefBlock, two_imaginary_double_double;
@@ -804,10 +815,13 @@ void ext_block::complete_construction(const BitMap& fixed_points)
 	    second = parent.cross(s,tmp);
 	  else if ((tmp=parent.cayley(s,z).second)!=UndefBlock)
 	  { // in |two_imaginary_double_double| case, try again from above
+	    // maybe |extended_type| already needed |tmp|; be aware of redoing
 	    auto pair = parent.cayley(t,tmp);
 	    if (pair.first!=UndefBlock)
 	      second = fixed_points.isMember(pair.first)
 		? pair.first : pair.second;
+	    if (second==link) // this might happen when redoing; when it does
+	      second=UndefBlock; // avoid double link to same: erase |second|
 	  }
 	  if (link>second) // make sure single |UndefBlock| is ranked second
 	      std::swap(link,second); // by ordering by block number

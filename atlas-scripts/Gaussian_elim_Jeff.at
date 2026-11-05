@@ -16,9 +16,11 @@ set find_pivot (int k, [rat] v) = int: { seek pivot beyond |k| initial entries }
 
 
 set swap_rows([[rat]] M, int i, int k) = [[rat]]:
-   for Mj@j in M
+   for @j in M
    do { swap entries in positions |i| and |k| }
-       let t=Mj[i] in Mj[i]:=Mj[k]; Mj[k]:=t
+      let Mj=M[j] { get a modifiable copy } then t=Mj[i]
+   in M[j] :=[] { make |Mj| unshared for efficiency }
+   ;  Mj[i]:=Mj[k]; Mj[k]:=t
    ;  Mj { yield modified column }
    od
 
@@ -37,8 +39,8 @@ set gauss ([[rat]] M) = [[rat]]:
    ;  for i:m-1-k from k+1  { (row) i: k+1 to m-1 }
       do let r=Mk[i]/Mk[k] in { do row operation from |k| to |i| factor |-r| }
          M :=
-         for Mj@j in M
-	 do M[j]:=[] { efficiency hack: make |Mj| unshared before modifying it }
+         for @j in M
+	 do let Mj=M[j] in M[j]:=[] { for efficiency make |Mj| unshared }
 	 ;  if j>=k then Mj[i] -:= r*Mj[k] fi
 	 ;  Mj { restitute column after possibly modifying it }
 	 od

@@ -135,7 +135,7 @@ public:
   const Rational& normalize() const; // pseudo-|const|; defined way below
   Rational& power(int n); // raise to power |n| and return |*this|
 
-  Rational& normalize() // non-|const| version delagates to (pseudo) |const| one
+  Rational& normalize() // non-|const| version delegates to (pseudo) |const| one
   { static_cast<const Rational*>(this)->normalize(); return *this; }
 }; // |class Rational|
 

@@ -15,7 +15,7 @@ set Aq_reducible_long (KGBElt x,ratvec lambda, ratvec lambda_q) =
   then t_L_new=trivial(Levi(P_new))
   , shift = w1*lambda-rho_u(P_new)
   in
-  assert(is_parabolic_theta_stable(P_new),"q is not theta-stable");
+  assert(parabolic_is_theta_stable(P_new),"q is not theta-stable");
   let pi_L= parameter( x(t_L_new), lambda(t_L_new)+shift, nu(t_L_new)+shift )
   in
   assert(dimension(pi_L)=1,"pi_L is not one-dimensional");

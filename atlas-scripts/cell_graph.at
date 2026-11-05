@@ -1,0 +1,75 @@
+<basic.at
+
+{Graph on W-cells of the block of p, numbered as in block_of(p) and W_cells(p).
+ Similar to builtin print_W_cells@Block and print_W_cells@(RealForm,RealForm)
+ but using the ordering of parameters from block_of@Param}
+
+{ (cells, induced graph): cells[c] = members of cell c (block_of(p) numbering),
+  induced[c] = cells d<>c reached by an edge leaving cell c }
+set W_cell_graph_data (Param p) = ([[int]],[[int]]):
+  let (,g)=W_graph(p)
+  then oriented = [[int]]:
+    for (tau,edges) in g
+    do ##for (y,) in edges
+         do let (tau_y,)=g[y] in if is_subset(tau,tau_y) then [] else [y] fi od
+    od
+  in strong_components(oriented)
+
+{ transitive closure of an induced graph on cells (edges go to lower numbers) }
+set cell_closure ([[int]] induced) = [[int]]:
+  let below=[[int]]:[] in
+  for edges@c in induced
+  do assert(all(for d in edges do d<c od),"unexpected cell numbering");
+     let s = for d:c do false od in
+     for d in edges do s[d]:=true; for e in below[d] do s[e]:=true od od;
+     below:=below#(##for b@d in s do if b then [d] else [] fi od)
+  od; below
+
+{ transitive closure of the induced graph: all cells reachable from c }
+set W_cell_order (Param p) = [[int]]:
+  let (,induced)=W_cell_graph_data(p) in cell_closure(induced)
+
+set print_W_cell_graph (Param p) = void:
+  let (cells,induced)=W_cell_graph_data(p) then order=cell_closure(induced) in
+  prints("// Cells and their vertices (block_of(p) numbering).");
+  for c@i in cells do prints("#",i,"=",c) od;
+  prints(new_line,"// Induced graph on cells.");
+  for e@i in induced do prints("#",i,": -> ",e) od;
+  prints(new_line,"// All cells reachable from each cell.");
+  for e@i in order do prints("#",i,": -> ",e) od
+
+{ transitive reduction (Hasse diagram) of the induced graph: keep the edge
+  c->d unless d is reachable from c through another cell }
+set cell_reduction ([[int]] induced) = [[int]]:
+  let order=cell_closure(induced) in
+  for edges in induced
+  do ##for d in edges
+       do if any(for e in edges do e!=d and is_member(order[e])(d) od)
+          then [] else [d] fi
+       od
+  od
+
+{ graphviz file for the graph on cells of block_of(p): one node per cell,
+  labelled by its number and size, edges the Hasse diagram of the order
+  (cell 0 at the bottom). W_cell_graph prints the text (no prints needed),
+  W_cell_graph_dot returns it as a string. Typical usage:
+  > file.dot W_cell_graph(p)
+  in console:
+  dot -Tpdf -o file.pdf file.dot
+}
+set W_cell_graph_dot (Param p) = string:
+  let (cells,induced)=W_cell_graph_data(p) then hasse=cell_reduction(induced)
+  then text=
+  "strict digraph  { " +
+  new_line + "label=""W-cells of block of " + p.to_string + """; " +
+  new_line + "center=true;  " +
+  new_line + "node [shape=box,color=black,fontcolor=black] " +
+  new_line + " edge [arrowhead=normal,color=black]; "
+  in
+  for c@i in cells
+  do text+:=new_line+i.to_string+"[label=""#"+i.to_string+"\n"+
+       (#c).to_string+(if #c=1 then " node" else " nodes" fi)+"""];";
+     for j in hasse[i] do text+:=i.to_string+"->"+j.to_string+";" od
+  od; text+new_line+"}"
+
+set W_cell_graph (Param p) = void: prints(W_cell_graph_dot(p))

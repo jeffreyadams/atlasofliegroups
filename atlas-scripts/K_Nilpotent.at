@@ -272,7 +272,7 @@ set rho_shifts(RealNilpotent O,KGBElt x_G)=[(vec,int)]:
 let O_dom=dominant(O) then
 S=subsets_of_s_one_nc_cx_restricted_roots(O_dom,x_G) in
 [(vec:null(rank(O.root_datum)),0)]##
-for A in S do (sum(A),#A) od
+for A in S do (sum(O.root_datum.rank # A),#A) od
 
 {given Q theta-stable, and the K-type formula P for a K-type mu_L of L=Levi(Q),
  return the K-type formula for mu_L twisted by -2rho(u\cap s)

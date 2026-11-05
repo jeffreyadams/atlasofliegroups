@@ -815,9 +815,12 @@ KGBElt any_Cayley (const KGB_base& kgb, KGBElt x, RootNbr alpha)
 
 
 
-// status of |alpha| in |kgb|: conjugate to simple root follow cross actions
+// imaginary compact/imag. noncompact/complex/real status of general root |alpha|
 gradings::Status::Value status(const KGB_base& kgb, KGBElt x, RootNbr alpha)
 {
+  // conjugate to simple root follow cross actions
+  // this method would even preserve complex ascent/descent distinction
+  // but type |gradings:Status::Value| does not allow making that distinction
   const RootSystem& rs = kgb.root_datum();
   make_positive(rs,alpha);
   weyl::Generator s;

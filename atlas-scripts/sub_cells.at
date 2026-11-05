@@ -7,8 +7,8 @@
 {Suppose G is a RootDatum, and \theta is a algebraic involution of G
 defining a real form G(R) We say G is a "complex group" if the root
 system R of G is "complex": meaning R\simeq R_1\times R_1, with \delta
-exchanging the two factors.  Equivalently:
-<\alpha,\delta(\alpha^vee)>=0 for all (simple) roots alpha
+exchanging the two factors. Equivalently: <\alpha,\delta(\alpha^vee)>=0
+for all (simple) roots alpha
 
 Caution: This is slightly weaker than: G\simeq G_1\times G_1 with
 \delta switching factors. For example SL(2)xSL(2)/<-I,-I>, delta acts
@@ -77,11 +77,11 @@ assert(G.is_complex,"G is not complex");
 let sf=G.simple_factors in
 for (i,j) in G.swapped_factors do sf[i] od
 
-set left_roots(RealForm G)=[vec]:
-##for f in G.left_factors do [vec]:f.simple_roots od
+set left_roots(RealForm G)=mat:
+  G.rank ## for f in G.left_factors do f.simple_roots od
 
-set left_coroots(RealForm G)=[vec]:
-##for f in G.left_factors do [vec]:f.simple_coroots od
+set left_coroots(RealForm G)=mat:
+  G.rank ## for f in G.left_factors do f.simple_coroots od
 
 set left_copy(RealForm G)=RootDatum:
   root_datum(left_roots(G),left_coroots(G),G.prefers_coroots)
@@ -94,11 +94,11 @@ assert(G.is_complex,"G is not complex");
 let sf=G.simple_factors in
 for (i,j) in G.swapped_factors do sf[i] od
 
-set right_roots(RealForm G)=[vec]:
-##for f in G.right_factors do [vec]:f.simple_roots od
+set right_roots(RealForm G)=mat:
+  G.rank ## for f in G.right_factors do mat:f.simple_roots od
 
-set right_coroots(RealForm G)=[vec]:
-##for f in G.right_factors do [vec]:f.simple_coroots od
+set right_coroots(RealForm G)=mat:
+  G.rank ## for f in G.right_factors do mat:f.simple_coroots od
 
 set right_copy(RealForm G)=RootDatum:
    root_datum(right_roots(G),right_coroots(G),G.prefers_coroots)

@@ -13,6 +13,7 @@
 #include <iosfwd>
 #include <iostream>
 #include <vector>
+#include <cstdint> // for |uint32_t|
 
 #include "Atlas.h"
 
@@ -118,7 +119,7 @@ void write_bytes(unsigned long long val, std::ostream& out);
 
 unsigned long long read_var_bytes(unsigned int n,std::istream& in);
 
-void put_int (unsigned int val, std::ostream& out);
+void put_int (std::uint32_t val, std::ostream& out);
 void write_bytes(unsigned int n, unsigned long long val, std::ostream& out);
 
 

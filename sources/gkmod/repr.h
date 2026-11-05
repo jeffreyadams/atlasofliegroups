@@ -480,31 +480,19 @@ class deformation_unit
 
   KT_nr_pol lowest_K_types, def_contrib,
     LKTs_twisted, def_contrib_twisted; // twisted versions at $q = -1$
-  Rep_table& rt; // access $K$-type table, coroots (for alcove testing) etc.
+  const Rep_context& rc; // access information for hash table methods
 
   RankFlags status; // whether |def_contrib|,|def_contrib_twisted| are defined
 
-  void set_LKTs();
+  void set_LKTs(Rep_table& rt);
 public:
-  deformation_unit(Rep_table& rt, const StandardRepr& sr)
-    : sample(sr)
-    , lowest_K_types(), def_contrib(), LKTs_twisted(), def_contrib_twisted()
-    , rt(rt), status(0)
-  {
-    set_LKTs();
-  }
-  deformation_unit(Rep_table& rt, StandardRepr&& sr)
-  : sample(std::move(sr))
-  , lowest_K_types(), def_contrib(), LKTs_twisted(), def_contrib_twisted()
-  , rt(rt), status(0)
-  {
-    set_LKTs();
-  }
-
+  deformation_unit(Rep_table& rt, const StandardRepr& sr, bool twisted);
+  deformation_unit(Rep_table& rt, StandardRepr&& sr, bool twisted);
   deformation_unit(deformation_unit&&) = default; // type is only movable
 
   bool has_def_contrib() const { return status.test(0); }
   bool has_twdef_contrib() const { return status.test(1); }
+  bool is_delta_fixed() const { return status.test(2); }
   // no separate test for |LKTs_twisted|: it is set whenever |has_twdef_contrib|
 
   const KT_nr_pol& LKTs() const { return lowest_K_types; }
@@ -519,6 +507,9 @@ public:
   void set_LKTs_at_minus_1(KT_nr_pol&& p) { LKTs_twisted = std::move(p); }
   void set_twisted_contribution(KT_nr_pol&& p)
   { status.set(1); def_contrib_twisted=std::move(p); }
+
+  void replace_sample(StandardRepr z) // to force a delta-fixed sample value
+  { sample = std::move(z); status |= RankFlags(0x4); }
 
 // special members required by HashTable
   using Pooltype = std::vector<deformation_unit>;
@@ -646,6 +637,9 @@ class Rep_table : public Rep_context
 
   // polynomial representing column of |z| in KL-table, evaluated at $q:=s$
   SR_poly KL_column_at_s(StandardRepr z); // by value
+  bool has_KL_column(StandardRepr z); // by value
+  bool has_KL_Q_column(StandardRepr z); // by value
+
   // column of |z| in KL-table, as (sparse) list of pairs $(x,P_{x,y})$
   simple_list<std::pair<BlockElt,kl::KLPol> >
     KL_column(common_block& block, BlockElt y);
@@ -694,6 +688,7 @@ class Rep_table : public Rep_context
   // full deformation to $\nu=0$ of |z|
   const deformation_unit& // warning: transient reference (into |pool| vector)
     deformation(StandardRepr z); // by value
+  bool has_deformation(const StandardRepr& z);
   K_type_nr_poly full_deformation(const StandardRepr& z);
 
   // like |deformation_terms|; caller multiplies returned coefficients by $1-s$
@@ -714,7 +709,8 @@ class Rep_table : public Rep_context
 
   // full twisted deformation, with |flip| telling whether to multiply by |s|
   const deformation_unit& // warning: transient reference (into |pool| vector)
-  twisted_deformation(StandardRepr z, bool& flip); // |z| by value
+    twisted_deformation(StandardRepr z, bool& flip); // |z| by value
+  bool has_twisted_deformation(const StandardRepr& z);
   K_type_nr_poly twisted_full_deformation(const StandardRepr& z);
 
  private:

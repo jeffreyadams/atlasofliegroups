@@ -33,6 +33,10 @@ namespace atlas {
 
 namespace rootdata {
 
+// as extra argument: a list of root indices, which must form a simple system
+using Gens = const std::vector<RootNbr>&;
+using GenWord = WeylWord; // with letters that are indices into a given |Gens|
+
 RatWeight rho (const RootDatum& rd);
 RatWeight rho (const RootDatum& rd,const RootNbrSet& sub_posroots);
 RatCoweight rho_check (const RootDatum& rd);
@@ -110,11 +114,19 @@ bool is_long_root(const RootSystem& rs, RootNbr i);
 bool is_long_coroot(const RootSystem& rs, RootNbr i);
 
 sl_list<WeylElt>
-  Weyl_orbit_words(const RootDatum& rd, const WeylGroup& W, Weight v);
+  Weyl_orbit_Welts(const RootDatum& rd, const WeylGroup& W, Weight v);
 sl_list<WeylElt>
-  Weyl_orbit_words(Weight v, const RootDatum& rd, const WeylGroup& W);
+  Weyl_orbit_Welts(Weight v, const RootDatum& rd, const WeylGroup& W);
 int_Matrix Weyl_orbit(const RootDatum& rd, Weight v);
 int_Matrix Weyl_orbit(Coweight w, const RootDatum& rd);
+
+// also provide these function using a Weyl subgroup given by its |Gens|
+sl_list<WeylElt>
+  Weyl_orbit_Welts(const RootDatum& rd, const WeylGroup& W, Gens g, Weight v);
+sl_list<WeylElt>
+  Weyl_orbit_Welts(Weight v, const RootDatum& rd, const WeylGroup& W, Gens g);
+int_Matrix Weyl_orbit(const RootDatum& rd, Gens g, Weight v);
+int_Matrix Weyl_orbit(Coweight w, const RootDatum& rd, Gens g);
 
 template<bool for_coroots=true>
   RootNbrSet additive_closure(const RootSystem& rs, RootNbrSet generators);
@@ -646,6 +658,25 @@ public:
   template<typename C>
     matrix::Vector<C>& make_codominant(matrix::Vector<C>& lambda) const
       { factor_codominant(lambda); return lambda; } // modify and return |lambda|
+
+  // the same set of functions but for a given list of simple generator indices
+
+  template<typename C>
+    GenWord factor_dominant (Gens g, matrix::Vector<C>& lambda) const;
+  template<typename C>
+    GenWord to_dominant(Gens g, matrix::Vector<C> lambda) const;
+  template<typename C>
+    matrix::Vector<C>& make_dominant(Gens g, matrix::Vector<C>& lambda) const
+      { factor_dominant(lambda); return lambda; }
+
+  // make |lambda| codominant, and return Weyl word that will convert it back
+  template<typename C>
+    GenWord factor_codominant (Gens g, matrix::Vector<C>& lambda) const;
+  template<typename C>
+    GenWord to_codominant (Gens g, matrix::Vector<C> lambda) const;
+  template<typename C>
+    matrix::Vector<C>& make_codominant(Gens g, matrix::Vector<C>& lambda) const
+      { factor_codominant(lambda); return lambda; }
 
   template<typename C>
     void act(const WeylWord& ww, matrix::Vector<C>& lambda) const

@@ -54,8 +54,8 @@ set is_one_factor(RootDatum rd)=bool: derived_is_simple(rd)
 set is_one_factor(AffineDatum ad)=bool: is_one_factor(ad.rd)
 
 set number_factors(AffineDatum ad)=int:#ad.affine_roots
-set affine_root_sum(AffineDatum ad)=sum(ad.affine_roots)
-set affine_coroot_sum(AffineDatum ad)=sum(ad.affine_coroots)
+set affine_root_sum(AffineDatum ad)=sum(ad.rd.rank # ad.affine_roots)
+set affine_coroot_sum(AffineDatum ad)=sum(ad.rd.rank # ad.affine_coroots)
 
 {an affine root datum ad is obtained by "folding" from a pair
 (root datum,distinguished automorphism)=(rd,delta)

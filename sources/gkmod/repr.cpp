@@ -11,6 +11,7 @@
 
 #include <memory> // for |std::unique_ptr|
 #include <cstdlib> // for |std::abs|
+#include <algorithm> // for |std::fill|
 #include <cassert>
 #include <map> // used in computing |reducibility_points|
 #include <iostream> // for progress reports and easier debugging
@@ -263,7 +264,7 @@ bool Rep_context::is_parity_at_0(RootNbr i,const StandardRepr& z) const
   Weight theta_1_lamrho = i_tab.y_lift(i_x,z.y()); // |(1-theta)*lam_rho|
   int eval = // twice evaluation of |alpha_hat| on |\lambda-\rho_{rea]}|
     alpha_hat.dot(theta_1_lamrho+rd.twoRho(non_real_roots));
-  assert (eval%2==0); // because |\lambda-\rho_{rea]}| is integral
+  assert (eval%2==0); // because |\lambda-\rho_{real}| is integral
   return eval%4!=0;
 }
 
@@ -836,6 +837,7 @@ StandardRepr Rep_context::sr
   return sr_gamma(srm.x_part,lambda_rho,gamma);
 } // |Rep_context::sr|
 
+// factors in (0,1] for which scaling $\nu$ might give reducibility, increasing
 RatNumList Rep_context::reducibility_points(const StandardRepr& z) const
 {
   const RootDatum& rd = root_datum();
@@ -845,58 +847,107 @@ RatNumList Rep_context::reducibility_points(const StandardRepr& z) const
 
   const RatWeight& gamma = z.gamma();
   const Ratvec_Numer_t& numer = gamma.numerator();
-  const arithmetic::Numer_t d = gamma.denominator();
-  const Weight lam_rho = lambda_rho(z);
+  const arithmetic::Numer_t f = gamma.denominator();
+
+/* Each real or complex descent coroot may give reducibility, under similar but
+   slightly distinct conditions. In both cases the coroot considered can only
+   cause reducibility if has integer evaluation on the $\gamma$ value of the
+   deformed parameter, which may lead to an arithmetic progression of rational
+   factors to be associated to the coroot; at the end we will compute the union
+   of these progressions. There are however additional conditions, leading us to
+   list fewer rational factors than those singled out by the previous sentence.
+
+   In case of a real root, the scalar multiple of $\nu$ with evaluation $\pm1$
+   at the coroot, if it exists, only gives a half-stride of the progression,
+   because the parity condition alternates between successive points, and only
+   when it holds is there potential reducibility associated to the coroot. In
+   this case we shall contribute a the full intersection of (0,1] with an
+   arithmetic progression, starting either at a whole stride or a half-stride.
+
+   In the case of a complex complex root $\alpha$, with $\theta$ image $\beta$,
+   the condition for reducibility is that the evaluation of the associated
+   coroots at the infinitesimal character of the deformed parameter are both
+   integer, non-zero, and of opposite signs. These evaluations are equal when
+   $\nu=0$, and a multiple of $1/2$. Also the evaluations of both coroots at any
+   multiple of $\nu$ are opposite numbers, so here the scalar multiple of $\nu$
+   with evaluation $\pm1$ at the coroots, if it exists, gives a full stride of
+   the progression. We must then however first advance (from $0$ upwards) to the
+   factor that makes one of the evaluations zero, which happens after an integer
+   number of half-strides depending on the evaluation at $\nu=0$, with the first
+   point of the arithmetic progression being a full stride after that.
+*/
 
   const RootNbrSet pos_real = i_tab.real_roots(i_x) & rd.posroot_set();
-  const Weight two_rho_real = rd.twoRho(pos_real);
+  const Weight lam_rho = lambda_rho(z); // needed to compute parity conditions
+  const Weight two_rho_real = rd.twoRho(pos_real); // likewise
 
-  // we shall associate to certain numbers $num>0$ a strict lower bound $lwb$
-  // for which we shall then later form fractions $(d/num)*k$ for $k>lwb$
-  typedef std::map<long,long> table;
+/* As a representation of an arithmetic progressions to be generated, we store
+   for each a value |den|, which encodes the stride length (the half-stride will
+   be $f/den$), and an associated lower bound |lwb|, limiting points generated
+   to those whose number |k| of half-strides has |k>lwb|. Finally we record for
+   each progression its "phase", namely the parity of |k| for which to generate
+   reducibility points. For real roots we always have |lwb==0|, while for
+   complex roots the parity of |lwb| matches the phase of the progression.
 
-  // because of the parity condition, distinguish cases with even and odd $k$
-  table odds,evens; // name indicates the parity that $k$ will have
+   To avoid redundant generation, we suppress storage for progressions already
+   contained in another one present. These must have the same stride and the
+   same phase, so for each combination we record the minimal |lwb| encountered.
 
-  for (RootNbrSet::iterator it=pos_real.begin(); it(); ++it)
+   Since we see no easy to compute upper bound for the values of |den|, we store
+   our representation of a collection of arithmetic progressions in two tables
+   of type |std::map|, one for each phase, mapping each |den| to the associated
+   minimal |lwb| value.
+ */
+  using progressions_list = std::map<long,long>;
+  progressions_list evens,odds; // name indicates the parity that $k$ will have
+
+  for (RootNbr alpha : pos_real)
   {
-    arithmetic::Numer_t num =
-      rd.coroot(*it).dot(numer); // now $\<\alpha^v,\nu>=num/d$ (real $\alpha$)
-    if (num!=0)
+    arithmetic::Numer_t den = //value for which $f/den$ gives a half-stride
+      rd.coroot(alpha).dot(numer); // now $\<\alpha^v,\nu>=den/d$ (real $\alpha$)
+    if (den!=0) // coroots vanishing on |gamma| and |nu| give no reducibility
     {
-      long lam_alpha = lam_rho.dot(rd.coroot(*it))+rd.colevel(*it);
-      bool do_odd = (lam_alpha+two_rho_real.dot(rd.coroot(*it))/2)%2 ==0;
-      (do_odd ? odds : evens).insert(std::make_pair(std::abs(num),0));
+      long lam_alpha = lam_rho.dot(rd.coroot(alpha))+rd.colevel(alpha);
+      bool phase = (lam_alpha+two_rho_real.dot(rd.coroot(alpha))/2)%2 ==0;
+      (phase ? odds : evens).insert(std::make_pair(std::abs(den),0));
+      // if insertion fails, |lwb=0| is already recorded for |den|, so skip
     }
   }
 
   RootNbrSet pos_complex = i_tab.complex_roots(i_x) & rd.posroot_set();
-  for (RootNbrSet::iterator it=pos_complex.begin(); it(); ++it)
+  for (RootNbr alpha : pos_complex)
   {
-    RootNbr alpha=*it, beta=theta[alpha];
+    RootNbr beta=theta[alpha];
     arithmetic::Numer_t vala = rd.coroot(alpha).dot(numer);
     arithmetic::Numer_t valb = rd.coroot(beta).dot(numer);
-    arithmetic::Numer_t num = vala - valb; // $2\<\alpha^v,\nu>=num/d$ (complex)
-    if (num!=0)
-    {
-      assert((vala+valb)%d==0); // since $\<a+b,\gamma>=\<a+b,\lambda>$
-      long lwb =std::abs(vala+valb)/d;
-      std::pair<table::iterator,bool> trial = // try insert |lwb| as |num| value
-	(lwb%2==0 ? evens : odds).insert(std::make_pair(std::abs(num),lwb));
-      if (not trial.second and lwb<trial.first->second)
-	trial.first->second=lwb; // if not new, maybe lower the old bound value
-    }
+    if (vala==0 or valb==0 or (vala>0)==(valb>0)) // signs are not opposite
+      continue; // then there will be no reducibility for these coroots on (0,1]
+    arithmetic::Numer_t den = vala - valb; // $2\<\alpha^v,\nu>=den/f$ (complex)
+    assert(den!=0); // since |vala| and |valb| now have opposite signs
+    assert((vala+valb)%f==0); // since $\<a+b,\gamma>=\<a+b,\lambda>\in\Z$
+    // both coroots have equal evaluations at $\gamma-\nu$ (end of deformation)
+    // each of those evaluations is |(vala+valb)/(2*f)|, a multiple of $1/2$
+    // the |abs| of that multiple gives the number of half-strides to advance:
+    long lwb =std::abs(vala+valb)/f; // one evaluation is 0 at $lwb*(f/den)$
+    std::pair<progressions_list::iterator,bool> trial = // try insertion
+      (lwb%2==0 ? evens : odds).insert(std::make_pair(std::abs(den),lwb));
+    if (not trial.second and lwb<trial.first->second)
+      trial.first->second=lwb; // if not new, maybe lower the old bound value
   }
 
   std::set<RatNum> fracs;
 
-  for (table::iterator it= evens.begin(); it!=evens.end(); ++it)
-    for (long s= d*(it->second+2); s<=it->first; s+=2*d)
-      fracs.insert(RatNum(s,it->first));
+  for (const auto& pair : evens)
+  { long den = pair.first; long lwb= pair.second;
+    for (long k = f*(lwb+2); k<=den; k+=2*f)
+      fracs.insert(RatNum(k,den));
+  }
 
-  for (table::iterator it= odds.begin(); it!=odds.end(); ++it)
-    for (long s= it->second==0 ? d : d*(it->second+2); s<=it->first; s+=2*d)
-      fracs.insert(RatNum(s,it->first));
+  for (const auto& pair : odds)
+  { long den = pair.first; long lwb= pair.second;
+    for (long k = lwb==0 ? f : f*(lwb+2); k<=den; k+=2*f)
+      fracs.insert(RatNum(k,den));
+  }
 
   return RatNumList(fracs.begin(),fracs.end());
 } // |Rep_context::reducibility_points|
@@ -1323,6 +1374,23 @@ SR_poly Rep_context::expand_final (StandardRepr z) const
   return result;
 } // |Rep_context::expand_final|
 
+deformation_unit::deformation_unit
+  (Rep_table& rt, const StandardRepr& sr, bool twisted)
+    : sample(sr)
+    , lowest_K_types(), def_contrib(), LKTs_twisted(), def_contrib_twisted()
+    , rc(rt), status(twisted ? 0x4 : 0)
+  {
+    set_LKTs(rt);
+  }
+deformation_unit::deformation_unit
+  (Rep_table& rt, StandardRepr&& sr, bool twisted)
+  : sample(std::move(sr))
+  , lowest_K_types(), def_contrib(), LKTs_twisted(), def_contrib_twisted()
+  , rc(rt), status(twisted ? 0x4 : 0)
+  {
+    set_LKTs(rt);
+  }
+
 
 bool deformation_unit::operator!=(const deformation_unit& another) const
 {
@@ -1331,8 +1399,8 @@ bool deformation_unit::operator!=(const deformation_unit& another) const
       sample.y().data()!=another.sample.y().data())
     return true; // easy tests for difference
 
-  auto& i_tab = rt.involution_table();
-  const auto& kgb = rt.kgb();
+  auto& i_tab = rc.involution_table();
+  const auto& kgb = rc.kgb();
   InvolutionNbr inv_nr = kgb.inv_nr(sample.x());
 
   {
@@ -1343,7 +1411,7 @@ bool deformation_unit::operator!=(const deformation_unit& another) const
       return true; // difference in the free part of $\lambda$ spotted
   }
 
-  const auto& rd = rt.root_datum();
+  const auto& rd = rc.root_datum();
   const auto& g0=sample.gamma();
   const auto& g1=another.sample.gamma();
   const auto& num0 = g0.numerator();
@@ -1360,7 +1428,7 @@ bool deformation_unit::operator!=(const deformation_unit& another) const
   {
     const RootNbrSet real_posroots = rd.posroot_set() & i_tab.real_roots(inv_nr);
     auto lambda_rho_real2 =
-      rt.lambda_rho(sample)*2-rd.twoRho(rd.posroot_set()^real_posroots);
+      rc.lambda_rho(sample)*2-rd.twoRho(rd.posroot_set()^real_posroots);
     for (auto it=real_posroots.begin(); it(); ++it)
     {
       const auto& alpha_v= rd.coroot(*it);
@@ -1382,8 +1450,8 @@ bool deformation_unit::operator!=(const deformation_unit& another) const
 
 size_t deformation_unit::hashCode(size_t modulus) const
 {
-  auto& i_tab = rt.involution_table();
-  const auto& kgb = rt.kgb();
+  auto& i_tab = rc.involution_table();
+  const auto& kgb = rc.kgb();
   InvolutionNbr inv_nr = kgb.inv_nr(sample.x());
 
   size_t hash = 17*sample.x() + 89*sample.y().data().to_ulong();
@@ -1395,7 +1463,7 @@ size_t deformation_unit::hashCode(size_t modulus) const
   for (auto c : (theta*num+num)/denom) // over temporary |arithmetic::Numer_t|
     hash = 21*hash + c;
 
-  const auto& rd = rt.root_datum();
+  const auto& rd = rc.root_datum();
   { RootNbrSet complex_posroots = rd.posroot_set() & i_tab.complex_roots(inv_nr);
     for (auto it=complex_posroots.begin(); it(); ++it)
       if (i_tab.complex_is_descent(inv_nr,*it))
@@ -1404,7 +1472,7 @@ size_t deformation_unit::hashCode(size_t modulus) const
   {
     const RootNbrSet real_posroots = rd.posroot_set() & i_tab.real_roots(inv_nr);
     auto lambda_rho_real2 =
-      rt.lambda_rho(sample)*2-rd.twoRho(rd.posroot_set()^real_posroots);
+      rc.lambda_rho(sample)*2-rd.twoRho(rd.posroot_set()^real_posroots);
     for (auto it=real_posroots.begin(); it(); ++it)
     {
       const auto& alpha_v= rd.coroot(*it);
@@ -1416,9 +1484,8 @@ size_t deformation_unit::hashCode(size_t modulus) const
   return hash&(modulus-1);
 } // |deformation_unit::hashCode|
 
-void deformation_unit::set_LKTs()
+void deformation_unit::set_LKTs(Rep_table& rt)
 {
-  const Rep_context& rc = rt;
   auto finals = rc.finals_for(rc.scale_0(sample));
   KT_nr_pol::poly LKTs; LKTs.reserve(length(finals));
   for (auto it=finals.begin(); not finals.at_end(it); ++it)
@@ -1484,12 +1551,13 @@ void Rep_table::add_block (const StandardReprMod& srm, const locator& loc)
   }
   auto& block = singleton.front().first; // pick up reference to moved block
 #else // so instead we shall construct the block directly into the pair
-  auto& block = singleton.emplace_back // build full block in place, take its ref
+  auto& block = // reference to block constructed here
+    singleton.emplace_back // build full block in place
     (std::piecewise_construct, // indicates constructiion, not passing, of args
      std::tuple<const common_context&,const StandardReprMod&>
      (common_context(*this,loc),srm), // arguments of full |common_block| ctor
      std::tuple<const locator&>(loc) // single |locator&| argument
-    ) .first;
+    )->first;
 #endif
 
   // record current boundary of "old" |place| values, before adding any
@@ -1682,7 +1750,7 @@ blocks::common_block& Rep_table::add_block_below
      std::tuple<const common_context&,sl_list<StandardReprMod>&>
      (ctxt,elements), // arguments of partial |common_block| constructor
      std::tuple<const locator&>(loc) // |locator| copy constructor
-    ) .first;
+    )->first;
 
   *subset=BitMap(block.size()); // this bitmap will be exported via |subset|
   sl_list<std::pair<BlockElt,BlockEltList> > partial_Hasse_diagram;
@@ -1829,7 +1897,7 @@ blocks::common_block& Rep_table::lookup_full_block
   auto rp = Reduced_param::reduce(*this,srm,sr.gamma(),loc); // sets |loc|
 
   auto h = reduced_hash.find(rp);
-  if (h!=reduced_hash.empty and place[h].first->first.is_full()) // then
+  if (h!=reduced_hash.empty and place[h].first->first.is_full())
   { // then we can return a looked-up block, suitably modified
     auto& block_loc = *place[h].first;
     auto& block = block_loc.first;
@@ -2010,7 +2078,7 @@ sl_list<std::pair<StandardRepr,int> > Rep_table::deformation_terms
 
   assert(not finals.empty() and finals.front()==y); // otherwise don't call us
   const kl::KL_table& kl_tab =
-    block.kl_tab(&KL_poly_hash,y+1); // fill silently up to |y|
+    block.KL_tab(&KL_poly_hash,y+1); // fill silently up to |y|
 
   std::unique_ptr<unsigned int[]> index // a sparse array, map final to position
     (new unsigned int [block.size()]); // unlike |std::vector| do not initialise
@@ -2088,65 +2156,73 @@ sl_list<std::pair<StandardRepr,int> > Rep_table::deformation_terms
 // a function trying to take advantage of a height bound; its milage varies
 sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
   (StandardRepr p, SR_poly& queue, level height_bound)
+// we assume that |queue| contains no terms of height exceeding |height_bound|
 {
   BlockElt start; block_modifier bm;
-  auto& block = lookup_full_block(p,start,bm); // also makes |p| dominant
   const auto& gamma = p.gamma();
   assert(is_dominant_ratweight(root_datum(),gamma));
-  auto dual_block = blocks::Bare_block::dual(block);
-  kl::KL_table& kl_tab = dual_block.kl_tab(nullptr,1);
-  // create KL table only minimally filled
+  auto& block = lookup_full_block(p,start,bm); // also makes |p| dominant
+  kl::KL_table& KL_Q_tab // table of KL $Q$-polynomials; empty table first time
+    = block.dual_KL_tab(&KL_poly_hash); // share the |block| polynomial pool
 
-  // now fill remainder up to height; prepare for restriction to this subset
+  // record heights for the block, and extract block terms from |queue|
+  std::vector<level> heights(block.size());
   BitMap retained(block.size());
-  sl_list<std::pair<const StandardRepr,Split_integer> > result;
+  level low_mark = height_bound+1; // to be lowest height of any term in |queue|
+  sl_list<SR_poly::value_type> result;
+  // where that |value_type| is |std::pair<const StandardRepr,Split_integer>|
   for (BlockElt z=0; z<block.size(); ++z)
   { StandardRepr q = sr(block.representative(z),bm,gamma);
-    if (retained.set_to(z,q.height()<=height_bound))
+    if (retained.set_to(z,((heights[z]=q.height()) <= height_bound)))
     {
+      KL_Q_tab.unplug_hole(block.size()-1-z); // interested in this parameter
       auto it = queue.find(q);
-      if (it==queue.end())
+      if (it==queue.end()) // then ensure a term for any |retained| is present
 	result.emplace_back(std::move(q),Split_integer(0));
       else
       {
+	if (q.height()<low_mark)
+	  low_mark = q.height();
 	result.emplace_back(std::move(q),it->second); // push |(q,queue[q])|
 	queue.erase(it); // and remove that term it from the |queue|
       }
     }
     else
-      kl_tab.plug_hole(block.size()-1-z); // not interested in this parameter
+      KL_Q_tab.plug_hole(block.size()-1-z); // not interested in this parameter
   }
-  kl_tab.fill(); // fill whole table; we might go beyond |size()-1-start|
-
-  int_Vector value_at_minus_1;
-  value_at_minus_1.reserve(kl_tab.pol_store().size());
-  for (auto& entry : kl_tab.pol_store())
-  { int val = 0;
-    for (unsigned d=entry.size(); d-->0;)
-      val = static_cast<int>(entry[d])-val; // Horner evaluate polynomial at -1
-    value_at_minus_1.push_back(val);
-  }
+  KL_Q_tab.fill(); // fill whole table; we might go beyond |size()-1-start|
 
   const RankFlags singular = block.singular(bm,gamma); // singular simple coroots
   auto it = result.begin();
-  for (auto elt: retained) // don't increment |it| here
-    if (block.survives(elt,singular))
-      ++it;
-    else
-    { retained.remove(elt);
-      assert(it->second.is_zero()); // |queue| cannot have non final parameter
-      result.erase(it); // drop term; |it| now points to next term
+  for (BlockElt z : retained) // run over block elements recorded in |result|
+    // now |it->first == sr(block.representative(z),bm,gamma)|
+    { if (heights[z]>=low_mark and block.survives(z,singular))
+	++it; // leave survivors at |gamma|
+      else
+      { assert(it->second.is_zero()); // |queue| cannot have non final parameter
+	retained.remove(z);
+	result.erase(it); // drop term; |it| now points to next term
+      }
     }
   result.reverse(); // we shall need to traverse elements downwards in |block|
 
-  // viewed from |block|, the |kl_tab| is lower triangular
+  // viewed from |block|, the |KL_Q_tab| is lower triangular
   // build its transpose, restricted to |retained|, and evaluated at $q=-1$
-  int_Matrix Q_mat (result.size()); // initialise to identity matrix
-  unsigned int i=0,j;
-  unsigned int const top=block.size()-1;
-  for (auto it=retained.begin(); it(); ++it,++i)
-    for (auto jt=(j=i+1,std::next(it)); jt(); ++jt,++j)
-      Q_mat(i,j) = value_at_minus_1[kl_tab.KL_pol_index(top-*jt,top-*it)];
+
+  int_Matrix Q_mat (retained.size()); // initialise to identity matrix
+  { // Since |KL_Q_tab| shares full polynomial pool, DO NOT tablulate all their
+    // evaluations. Don't bother even to memoize; juste recompute for each $i,j$
+    unsigned int i=0,j;
+    unsigned int const top=block.size()-1;
+    for (auto it=retained.begin(); it(); ++it,++i)
+      for (auto jt=(j=i+1,std::next(it)); jt(); ++jt,++j)
+      { int val = 0;
+	const auto& entry = KL_Q_tab.KL_pol(top-*jt,top-*it);
+	for (unsigned d=entry.size(); d-->0;) // Horner evaluate |entry| at -1
+	  val = static_cast<int>(entry[d])-val;
+	Q_mat(i,j) = val;
+      }
+  }
 
   int_Matrix signed_P = inverse_upper_triangular(Q_mat);
   BitMap odd_length(signed_P.n_rows());
@@ -2154,21 +2230,26 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
     for (const BlockElt z : retained)
       odd_length.set_to(i++,block.length(z)%2!=0);
   }
+  const BitMap even_length = ~odd_length;
 
-  matrix::Vector<Split_integer> coef(signed_P.n_rows());
-  auto pos = result.size()-1;
+  matrix::Vector<Split_integer> coef(signed_P.n_rows()); // working array
+  auto pos = result.size()-1; // distance from |it| to final element of |result|
   for (auto it=result.begin(); not result.at_end(it); ++it,--pos)
     if (not it->second.is_zero())
-    { coef.assign(pos,Split_integer(0));
-      // compute into |coef| the product of columns of |signed_P| with parity
-      // opposite to |pos| with corresponding entries of column |pos| of |Q_mat|
-      for (auto j : (odd_length.isMember(pos) ? ~odd_length : odd_length))
+    { // incorporate deformation terms from |*it|
+      std::fill(&coef[0],&coef[pos],Split_integer(0)); // clear range to be used
+    /* compute into |coef| the matrix product of extracted columns of |signed_P|
+       up to |pos| and with parity opposite it, with vector extracted from
+       column |pos| of |Q_mat| at the corresponding (row) positions  */
+      for (auto j : // values with opposite bit as |pos| in |odd_length|
+	     (odd_length.isMember(pos) ? even_length : odd_length))
       { if (j>=pos)
 	  break;
 	for (unsigned i=0; i<=j; ++i)
 	  coef[i] += signed_P(i,j)*Q_mat(j,pos);
       }
-      { auto our_orient = orientation_number(it->first);
+      { // now add contributions computed in |coef| to |result| beyond |it|
+	auto our_orient = orientation_number(it->first);
 	auto j = pos-1;
 	for (auto jt = std::next(it); not result.at_end(jt); ++jt,--j)
 	{ coef[j] *= it->second;
@@ -2177,7 +2258,7 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
 	  coef[j].times_1_s();
 	  if (diff%4!=0)
 	    coef[j].times_s(); // equivalently |coef[j].negate|
-	  jt->second += coef[j]; // contribute coefficient to result
+	  jt->second += coef[j]; // deformation contribution within block
 	}
       }
   }
@@ -2202,7 +2283,7 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr sr) // |sr| must be final
   assert(contrib.size()==z+1 and contrib[z].front().first==z);
 
   const kl::KL_table& kl_tab =
-    block.kl_tab(&KL_poly_hash,z+1); // fill silently up to |z|
+    block.KL_tab(&KL_poly_hash,z+1); // fill silently up to |z|
 
   SR_poly result;
   auto z_length=block.length(z);
@@ -2225,6 +2306,25 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr sr) // |sr| must be final
   return result;
 } // |Rep_table::KL_column_at_s|
 
+bool Rep_table::has_KL_column(StandardRepr sr) // |sr| must be final
+{
+  normalise(sr); // implies that |sr| will appear at the top of its own block
+  assert(is_final(sr));
+
+  BlockElt z; block_modifier bm;
+  auto& block = lookup(sr,z,bm);
+  return block.has_KL_column(z);
+}
+
+bool Rep_table::has_KL_Q_column(StandardRepr sr) // |sr| must be final
+{
+  normalise(sr); // implies that |sr| will appear at the top of its own block
+
+  BlockElt z; block_modifier bm;
+  auto& block = lookup(sr,z,bm);
+  return block.has_KL_Q_column(z);
+}
+
 SR_poly Rep_table::KL_column_at_s_to_height (StandardRepr p, level height_bound)
 {
   normalise(p); // implies that |p| it will appear at the top of its own block
@@ -2234,35 +2334,42 @@ SR_poly Rep_table::KL_column_at_s_to_height (StandardRepr p, level height_bound)
   if (p.height()>height_bound)
     return result;
 
-  BlockElt z; block_modifier bm;
-  auto& block = lookup_full_block(p,z,bm); // also makes |p| dominant
+  BlockElt start; block_modifier bm;
+  auto& block = lookup_full_block(p,start,bm); // also makes |p| dominant
 
   const auto& gamma = p.gamma();
   assert(is_dominant_ratweight(root_datum(),gamma));
-  auto dual_block = blocks::Bare_block::dual(block);
-  kl::KL_table& kl_tab = dual_block.kl_tab(nullptr,1);
-  // create KL table only minimally filled
 
   // now fill remainder up to height; prepare for restriction to this subset
   BitMap retained(block.size());
 
-  for (BlockElt x=0; x<block.size(); ++x)
-  { StandardRepr q = sr(block.representative(x),bm,gamma);
-    if (not retained.set_to(x,q.height()<=height_bound))
-      kl_tab.plug_hole(block.size()-1-x); // not interested in this parameter
+  for (BlockElt z=0; z<block.size(); ++z)
+  { StandardRepr q = sr(block.representative(z),bm,gamma);
+    retained.set_to(z,q.height()<=height_bound);
   }
-  kl_tab.fill(); // fill whole table; we might go beyond |size()-1-start|
+
+  kl::KL_table& KL_Q_tab // table of KL $Q$-polynomials; empty table first time
+    = block.dual_KL_tab(&KL_poly_hash);
+  for (BlockElt z=0; z<block.size(); ++z)
+    if (retained.isMember(z))
+      KL_Q_tab.unplug_hole(block.size()-1-z);
+    else
+      KL_Q_tab.plug_hole(block.size()-1-z); // not interested in this parameter
+
+  KL_Q_tab.fill(); // fill whole table, except the plugged holes
+
+  retained.clear(start+1,block.size()); // only the part from |p| on interests us
 
   const RankFlags singular = block.singular(bm,gamma); // singular simple coroots
-  for (auto elt: retained) // don't increment |it| here
-    if (not block.survives(elt,singular))
-      retained.remove(elt); // at the dual (Q) side we just ignore non-finals
+  for (auto z: retained) // don't increment |it| here
+    if (not block.survives(z,singular))
+      retained.remove(z); // at the dual (Q) side we just ignore non-finals
 
-  assert(retained.isMember(z)); // since |p| was final
+  assert(retained.isMember(start)); // since |p| was final
 
-  matrix::Vector<Split_integer> value_at_s;
-  value_at_s.reserve(kl_tab.pol_store().size());
-  for (auto& entry : kl_tab.pol_store())
+  matrix::Vector<Split_integer> value_at_s; // polynomial evaluations at $q=s$
+  value_at_s.reserve(KL_Q_tab.pol_store().size());
+  for (auto& entry : KL_Q_tab.pol_store())
   { Split_integer val (0);
     for (unsigned d=entry.size(); d-->0;)
       val.times_s() += static_cast<int>(entry[d]); // Horner evaluate at s
@@ -2276,13 +2383,13 @@ SR_poly Rep_table::KL_column_at_s_to_height (StandardRepr p, level height_bound)
   { unsigned int i=0,j; unsigned int const top=block.size()-1;
     for (auto it=retained.begin(); it(); ++it,++i)
       for (auto jt=(j=i+1,std::next(it)); jt(); ++jt,++j)
-	Q_mat(i,j) = value_at_s[kl_tab.KL_pol_index(top-*jt,top-*it)];
+	Q_mat(i,j) = value_at_s[KL_Q_tab.KL_pol_index(top-*jt,top-*it)];
   }
 
   auto signed_P = inverse_upper_triangular(Q_mat);
   // with signs in place, the alternating sum is obtained without any effort
 
-  { const unsigned int j = retained.position(z); // final column
+  { const unsigned int j = retained.position(start); // final column
     auto it = retained.begin();
     for (unsigned int i=0; i<=j; ++i,++it)
       result.add_term(block.sr(*it,bm,gamma),signed_P(i,j));
@@ -2296,7 +2403,7 @@ simple_list<std::pair<BlockElt,kl::KLPol> >
   Rep_table::KL_column(common_block& block, BlockElt y)
 {
   const kl::KL_table& kl_tab =
-    block.kl_tab(&KL_poly_hash,y+1); // fill silently up to |z|
+    block.KL_tab(&KL_poly_hash,y+1); // fill silently up to |z|
 
   simple_list<std::pair<BlockElt,kl::KLPol> > result;
   for (BlockElt x=y+1; x-->0; )
@@ -2316,7 +2423,7 @@ const deformation_unit& Rep_table::deformation(StandardRepr z)
   if (z.gamma().denominator() > (1LL<<rank()))
     z = weyl::alcove_center(*this,z);
 
-  auto h=alcove_hash.match(deformation_unit(*this,z));
+  auto h=alcove_hash.match(deformation_unit(*this,z,false));
   {
     deformation_unit& result = pool[h];
     if (result.has_def_contrib())
@@ -2349,6 +2456,14 @@ const deformation_unit& Rep_table::deformation(StandardRepr z)
   pool[h].set_def_contrib(std::move(P));
   return pool[h];
 } // |Rep_table::deformation|
+
+bool Rep_table::has_deformation(const StandardRepr& z)
+{
+  assert(is_final(z));
+
+  auto h=alcove_hash.find(deformation_unit(*this,z,false));
+  return h!=alcove_hash.empty and pool[h].has_def_contrib();
+}
 
 K_type_nr_poly Rep_table::full_deformation(const StandardRepr& z)
 // that |z| is dominant and final is a precondition assured in the recursion
@@ -2520,18 +2635,6 @@ sl_list<std::pair<StandardRepr,int> > Rep_table::twisted_deformation_terms
 
   const auto& kl_tab = eblock.kl_table(&poly_hash,y_index+1);
 
-  std::vector<int> pool_at_minus_1; // evaluations at $q=-1$ of KL polynomials
-  {
-    const auto& pool=kl_tab.polys();
-    pool_at_minus_1.reserve(pool.size());
-    for (const auto& pol: pool)
-    {
-      int eval=0;
-      for (unsigned i=pol.degree()+1; i-->0; )
-	eval = pol[i]-eval;
-      pool_at_minus_1.push_back(eval);
-    }
-  }
 
   std::unique_ptr<unsigned int[]> index // a sparse array, map final to position
     (new unsigned int [eblock.size()]); // unlike |std::vector| do not initialise
@@ -2556,18 +2659,19 @@ sl_list<std::pair<StandardRepr,int> > Rep_table::twisted_deformation_terms
     const BlockElt z=*it; // element |pos| of |finals|; value decreases in loop
     const bool contribute = block.length(eblock.z(z))%2!=y_parity;
     for (auto x : kl_tab.nonzero_column(z))
-    {
-      auto p = kl_tab.KL_pol_index(x,z); // pair (index,negate_p)
-      if (pool_at_minus_1[p.first]==0)
+    { int val = 0;
+      ext_kl::Pol P = kl_tab.P(x,z);
+      if (P.is_zero())
 	continue; // polynomials with $-1$ as root do not contribute; skip
-      const int val_xz = p.second!= // XOR stored sign with length diff. parity
-	((block.length(eblock.z(x))-block.length(eblock.z(z)))%2!=0)
-	? -pool_at_minus_1[p.first] : pool_at_minus_1[p.first];
+      for (unsigned d=P.size(); d-->0;) // Horner evaluate |entry| at -1
+	val = P[d]-val;
+      if ((block.length(eblock.z(x))-block.length(eblock.z(z)))%2!=0)
+	val = -val;
       for (auto jt=contrib[x].wcbegin(); not contrib[x].at_end(jt); ++jt)
       {
 	auto j=index[jt->first]; // position where |P(x,z)| contributes
 	assert(j>=pos); // triangularity of KLV polynomials
-	int c =c_cur*val_xz*jt->second;
+	int c =c_cur*val*jt->second;
 	remainder[j] -= c;
 	if (contribute) // optimisation will apply loop unswitching to this test
 	  acc[j] += c; // here we contribute
@@ -2636,7 +2740,9 @@ const deformation_unit&
 
   const auto& delta = inner_class().distinguished();
 
-  auto h = alcove_hash.match(deformation_unit(*this,z));
+  auto h = alcove_hash.match(deformation_unit(*this,z,true));
+  if (not pool[h].is_delta_fixed()) // previous value was from untwisted case
+    pool[h].replace_sample(z); // replace by our value, was tested delta-fixed
   if (pool[h].has_twdef_contrib())
   {
     Ext_rep_context ctxt(*this,delta);
@@ -2683,7 +2789,7 @@ const deformation_unit&
     {
       bool flip_def=p.second; // initialise to flip from scaling |z| by |rp[i]|
       const auto& def =
-	twisted_deformation(std::move(term.first),flip_def); // recursion
+	twisted_deformation(term.first,flip_def); // recursion
       if (flip_def) term.second = -term.second;
       P.add_multiple(def.LKTs_at_minus_1(),term.second);
       P.add_multiple(def.twisted_deformation_contribution(),2*term.second);
@@ -2695,6 +2801,15 @@ const deformation_unit&
 
 } // |Rep_table::twisted_deformation (StandardRepr z)|
 
+
+bool Rep_table::has_twisted_deformation(const StandardRepr& z)
+{
+  assert(is_final(z));
+  assert(is_delta_fixed(z));
+
+  auto h=alcove_hash.find(deformation_unit(*this,z,false));
+  return h!=alcove_hash.empty and pool[h].has_twdef_contrib();
+}
 
 K_type_nr_poly Rep_table::twisted_full_deformation(const StandardRepr& z)
 {

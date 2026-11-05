@@ -1,4 +1,5 @@
-<basic.at
+<basic.at { for |assert| }
+<combinatorics.at { for type |Permutation| }
 
 { Several representations of univariate polynomials are defined below, all have
   in common a dense representation of coefficients starting at degree 0
@@ -62,7 +63,7 @@ set !poly_0 = constant_poly(0),
     !poly_q2 = i_poly: [0,0,1]
 
 set monic_divide (i_poly P, i_poly D) = (i_poly,i_poly): { quotient, remainder }
-   assert(#D>0 and D~[0]=1,"Not a monic divisor");
+   assert(@:#D>0 and D~[0]=1,"Not a monic divisor");
    let deg_D = #D-1, l_P=#P in
    if l_P<deg_D then (poly_0,P##null(deg_D-l_P))
    else
@@ -110,7 +111,7 @@ set * (int_poly(X,a,), int_poly(,b,)) = int_poly:
 )
 set monic_divide (int_poly(X,P,), int_poly(,D,)) =
    (int_poly,int_poly): { quotient, remainder unstripped: size |degree(D)| }
-   assert(#D>0 and D~[0]=1,"Not a monic divisor");
+   assert(@:#D>0 and D~[0]=1,"Not a monic divisor");
    let deg_D = #D-1, l_P=#P in
    if l_P<deg_D
    then ( constant_poly(int:0,X), to_int_poly(P##for :deg_D-l_P do int:0 od,X) )
@@ -192,7 +193,7 @@ set ^ (rat_poly (X,,):P,int n) = rat_poly: { power of a rational polynomial }
 
 set monic_divide (rat_poly(X,P,), rat_poly(,D,)) =
        (rat_poly,rat_poly): { quotient, remainder unstripped: size |degree(D)| }
-   assert(#D>0 and D~[0]=1,"Not a monic divisor");
+   assert(@:#D>0 and D~[0]=1,"Not a monic divisor");
    let deg_D = #D-1, l_P=#P in
    if l_P<deg_D
    then ( constant_poly(rat:0,X), to_rat_poly(P##for :deg_D-l_P do rat:0 od,X) )
@@ -222,7 +223,7 @@ set unsafe_divide (i_poly p,i_poly d) = (i_poly,i_poly):
 
 set divide (rat_poly(X,P,), rat_poly(,D,)) =
        (rat_poly,[rat]): { quotient, remainder unstripped: size |degree(D)| }
-   let deg_D = #D-1, l_P=#P in assert(deg_D.>=,"Euclidean division by 0");
+   let deg_D = #D-1, l_P=#P in assert(@:deg_D.>=,"Euclidean division by 0");
    if l_P<deg_D
    then ( constant_poly(rat:0,X), P##for :deg_D-l_P do rat:0 od )
    else let lcD = D~[0] in
@@ -302,11 +303,11 @@ set *(i_poly_mat A,i_poly_mat B) = i_poly_mat:
 
 { add lists of polynomials, assumed of same length (name avoids +@(mat,mat)) }
 set poly_list_add([i_poly] v,[i_poly] w) = [i_poly]:
-( assert(#v=#w,"length mismatch adding lists of polynomials")
+( assert(@:#v=#w,"length mismatch adding lists of polynomials")
 ; for p@i in v do p+w[i] od
 )
 set poly_list_sub([i_poly] v,[i_poly] w) = [i_poly]:
-( assert(#v=#w,"length mismatch adding lists of polynomials")
+( assert(@:#v=#w,"length mismatch adding lists of polynomials")
 ; for p@i in v do p-w[i] od
 )
 
@@ -314,11 +315,11 @@ set -(i_poly_mat M) = i_poly_mat: for row in M do for p in row do -p od od
 
 { add or subtract matrices of the same size }
 set +(i_poly_mat A,i_poly_mat B)=i_poly_mat:
-( assert(#A=#B,"number of rows mismatch adding matrices of polynomials")
+( assert(@:#A=#B,"number of rows mismatch adding matrices of polynomials")
 ; for row@i in A do poly_list_add(row,B[i]) od
 )
 set -(i_poly_mat A,i_poly_mat B)=i_poly_mat:
-( assert(#A=#B,"number of rows mismatch adding matrices of polynomials")
+( assert(@:#A=#B,"number of rows mismatch adding matrices of polynomials")
 ; for row@i in A do poly_list_sub(row,B[i]) od
 )
 
@@ -364,35 +365,34 @@ set ^ = (i_poly,int->i_poly): { power of a polynomial }
     fi
 
 { equality of polynomial matrices }
-set = (i_poly_mat A,i_poly_mat B) = bool:
-  all(#A, (int i): let r=A[i],s=B[i] in #r=#s and all(#r, (int j): r[j]=s[j] ))
+set = (i_poly_mat M,i_poly_mat N) = bool:
+  all(#M, (int i): let r=M[i],s=N[i] in #r=#s and all(#r, (int j): r[j]=s[j] ))
 
 { polynomial matrix is 0 if all its entries are zero-length polynomials }
 set is_zero (i_poly_mat M) = bool:
   all(#M, (int i): let r=M[i] in all(#r, (int j): =#r[j]) )
 
-set upper_unitriangular_inverse (i_poly_mat P) = i_poly_mat:
-  let n=#P { number of rows in matrix }, dummy_row=zero_poly_row(0)
-  then Q= for :n do dummy_row od { prepare |n| rows, but leave them empty now }
-  in { solve equation $P*Q=I$ for $Q$, proceeding from bottom to top }
+set upper_unitriangular_inverse (i_poly_mat M) = i_poly_mat:
+  let n=#M { number of rows in matrix }, dummy_row=zero_poly_row(0)
+  then R= for :n do dummy_row od { prepare |n| rows, but leave them empty now }
+  in { solve equation $M*R=I$ for $Q$, proceeding from bottom to top }
   for i:n { reverse traversal loop with reverse accumulation -> straight value }
-  ~do let Pi=P[i] { we use only this part of P during this iteration } in
-    Q[i] := { computed row is stored as |Q[i]|, and contributed to result }
-    (zero_poly_row(i) # poly_1) { beginning of row |Q[i]| is somewhat boring }
-    ## { concatenate with more interesting newly computed part of |Q[i]| }
+  ~do let Mi=M[i] { we use only this part of M during this iteration } in
+    R[i] := { computed row is stored as |R[i]|, and contributed to result }
+    (zero_poly_row(i) # poly_1) { beginning of row |R[i]| is somewhat boring }
+    ## { concatenate with more interesting newly computed part of |R[i]| }
       for j: n-i-1 from i+1 { left to right, but computations are independent }
-      do let sum=poly_0 in for k: j-i from i+1 do sum -:= Pi[k] * Q[k][j] od
-      ; sum    { contribute $Q_{i,j} = - \sum_{k=i+1}^j P_{i,k}Q_{k,j}$ }
+      do let sum=poly_0 in for k: j-i from i+1 do sum -:= Mi[k] * R[k][j] od
+      ; sum    { contribute $R_{i,j} = - \sum_{k=i+1}^j M_{i,k}R_{k,j}$ }
       od
   ~od
 
-set lower_unitriangular_inverse(i_poly_mat M)=transpose(upper_unitriangular_inverse(transpose(M)))
+set lower_unitriangular_inverse (i_poly_mat M) = i_poly_mat:
+  transpose(upper_unitriangular_inverse(transpose(M)))
 
-{ compute PMP^{-1} where P is a permutation of [1,,,n]
-  and M is a polynomial matrix
-}
-set poly_permute_basis([int] P, i_poly_mat A) = i_poly_mat: { P is permutation }
-  for i:#A do let row=A[P[i]] in for j:#row do row[P[j]] od od
+{ $PMP^{-1}$ where $P$ is a permutation matrix, and $M$ a polynomial matrix }
+set poly_permute_basis(Permutation sigma, i_poly_mat M) = i_poly_mat:
+  for i:#M do let row=M[sigma[i]] in for j:#row do row[sigma[j]] od od
 
 { some printing functions }
 
@@ -459,15 +459,20 @@ set show(i_poly v)=void:printPoly(v)
    0 +1
 }
 
-set printPolyMatrix(i_poly_mat M,int space_size,string char)= void:
-  let space= " "*space_size, wd = max(for v in ##M do #poly_format(v,char) od)
-  in
-    for row in M
-    do prints(##for v in row do space+l_adjust(wd,poly_format(v,char)) od)
-    od
-set printPolyMatrix(i_poly_mat M,int space_size)= void:printPolyMatrix(M,space_size,"q")
+set printPolyMatrix (i_poly_mat M,int space_size, string X_name) = void:
+   let string_mat = for row in M do for e in row do poly_format(e,X_name) od od
+   then space= " "*space_size, wd =
+     if =#string_mat then []
+     else for j:#M[0] do for row in string_mat do #row[j] od.max od
+     fi
+in for s_row in string_mat
+   do for s@j in s_row do space+l_adjust(wd[j],s) od.##.prints
+   od
+
+set printPolyMatrix (i_poly_mat M,int space_size) = void:
+   printPolyMatrix(M,space_size,"q")
 set printPolyMatrix (i_poly_mat M,string char) = void: printPolyMatrix(M,3,char)
-set printPolyMatrix (i_poly_mat M) = void: printPolyMatrix(M,3)
+set printPolyMatrix (i_poly_mat M) = void: printPolyMatrix(M,3,"q")
 
 { this provides maybe more meaningful names for |flex_add| and friends }
 set poly_plus    = +@(i_poly,i_poly) { this binding will remain exported }
@@ -483,7 +488,7 @@ set - = fix_sub@(vec,vec)
 set * = dot_product@(vec,vec)
 
 set sgn_poly (int k) = i_poly:
-  assert(!=k,"taking sign of 0"); [if k.< then -1 else 1 fi]
+  assert(@:k!=0,"taking sign of 0"); [if k.< then -1 else 1 fi]
 
 set divide_by (int k,i_poly v) = i_poly: ratvec_as_vec(v/k)
 

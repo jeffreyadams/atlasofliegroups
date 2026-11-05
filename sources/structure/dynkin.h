@@ -40,6 +40,7 @@ class DynkinDiagram;
 
   // the following two functions are main entry points to this module
   // find (semisimple) Lie type given by Cartan matrix
+  // if the matrix is not a Cartan matrix, an |error::Cartan_error| is thrown
   LieType Lie_type(const int_Matrix& cm);
 
   // same, also set |pi| to permutation "straightening" each diagram component

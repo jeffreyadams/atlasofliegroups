@@ -1,0 +1,158 @@
+{ Functionality related to Lie types, Dynkin diagrams, and their automorphisms }
+
+<basic.at
+<generics.at { for |foldr| }
+<sort.at { for |partition_by| }
+<combinatorics.at { for |compose_permutation| }
+
+{ Computing diagram automorphismes for a Lie type:
+  For a Lie type, generate all diagram automorphisms as permutation vectors,
+  whose positions correspond to nodes of the diagram, so size is semisimple rank.
+}
+
+set simple_automorphisms (string simple_type, int rank) = [Permutation]:
+   let identity = Permutation: #rank
+in case char_index(simple_type,"ABCDEFG")
+   in {A} if rank<=1 then [identity] else [identity, ~identity] fi
+   ,  {B} [identity]
+   ,  {C} [identity]
+   ,  {D} if rank=4
+          then [identity,[0,1,3,2],[2,1,0,3],[2,1,3,0],[3,1,0,2],[3,1,2,0] ]
+	  else [identity, identity[:2~] ## identity~[:2] ]
+	  fi
+   ,  {E} if rank=6 then [identity,[5,1,4,3,2,0] ] else [identity] fi
+   ,  {F} [identity]
+   ,  {G} [identity]
+   ,  {T} error("Cannot list diagram automorphisms for torus factors")
+   else error("Unknown Lie type ",simple_type,rank)
+   esac
+
+{ Find groups of equal simple factors, presumably produced by |simple_factors|.
+  This uses plain equality of strings and numbers, so if one wishes to allow
+  permuting factors B2 and C2, give them the same name before calling
+  |permutable_types| (and make arragements to do the permutation correctly).
+
+  Example: permutable_types(simple_factors("A2D4A2A1D4A2")) = [[3],[0,2,5],[1,4]]
+}
+set permutable_types ([string,int] simple_factors) = [[int]]:
+   let leq((string t0,int r0),(string t1,int r1)) = bool:
+      if t0!=t1 then t0<=t1 else r0<=r1 fi
+in partition_by ( (int i):simple_factors[i] , leq ) (# #simple_factors)
+
+{ Prepare for iterating over diagram autormorphisms (a laborious enterprise) }
+set diagram_automorphism_iterator (LieType t) = Iterator<vec>:
+(  let types = [string,int]: simple_factors(t)
+   , n = semisimple_rank(t) { size of all diagram permutations }
+   then !clusters = [vec]: { each entry lists type indices in a cluster }
+     permutable_types(types).(filter(([int]a):#a>1)) { omit singletons }
+   , simple_autos = [int,[Permutation]]: { (position,internal permutations) }
+     for type@i in types do (i,simple_automorphisms(type)) od
+     .(filter((int.,[vec]a):#a>1)) { omit trivial automorphism groups }
+in { change to "difference" form of permutations components of |simple_autos| }
+   for (k,autos)@i in simple_autos
+   do let m=#autos { the number of permutations to cycle through }
+      then deltas = { left-multiply each entry by cyclically preceeding one }
+	for pi@i in autos
+	do compose_permutations(permutation_inverse(autos[(i-1)%m]),pi)
+	od
+      in simple_autos[i] := (k,deltas) { replace after all |autos| are used }
+   od
+;
+{ variables for iteration }
+   let go=true { set to false when |incr| cannot produce anything new }
+   , cur = vec: #n { working permutation }
+   , auto_position = [int,int]:
+     { loop indices while traversing internal automorphisms, and their modulus }
+     for (,autos) in simple_autos do ( 0, #autos ) od { intially indices are 0 }
+   , current_perm = [Iterator<vec>]: { one iterator for each cluster }
+     for c in clusters do permutation_iterator(c) od
+
+{ constants for iteration }
+   , !starts = { starting indice of the diagram components }
+     0 # map(snd)(types).cumulate_forward
+   , !modulus = { orders of the lists of automoprhism that are run over }
+     for (,autos) in simple_autos do #autos od
+
+   then
+     advance(int start,vec delta) = void:
+     { right-multiply by permutation |delta| lifted to simple factor at |start| }
+        let snap = cur[start:start+#delta] { take snapshot of old values } in
+        for dst@src in delta do cur[start+src] := snap[dst] od
+   , install(int k, vec pi) = void: { install permutation |pi| of cluster |k| }
+        let !cl = vec: clusters[k] { cluster of which |pi| is a permutation }
+	then (,r) = types[cl[0]] { common rank of all of the factors permuted }
+     in for j@i in pi { now |j=pi[i]| is a simple type index present in |cl| }
+	do let a = starts[cl[i]], b=starts[j] { component-initial diagram nodes }
+	in for d:r do cur[a+d] := b+d od { trivial map component |cl[i]| to |j| }
+	od
+in ( @Maybe<vec>:  { |get| method: value produced this iteration, if any }
+     if go then some(cur) else none() fi
+   , @void:
+     for (c,m)@j in auto_position
+     do let k = (c+1) % m { increment "|c|" }
+     , (i,deltas) = simple_autos[j] { find index of simple factor }
+     in auto_position[j] := (k,m) { replace |c| by |k| }
+     ;  advance(starts[i],deltas[k])
+     ;  if k>0 then return() fi { stop unless |k| was wrapped around }
+     od
+     { factor automorphisms are back to identity; advance cluster permutations }
+   ; for (get,incr)@j in current_perm { only rarely iterates more than once }
+     do incr() { try to advance |current_perm[j]|, then quit unless it carries }
+     ;  case get()
+        | none():
+	    current_perm[j] := permutation_iterator(clusters[j]) { reset }
+	  ; install(j,clusters[j]) { adapt |cur| to match, then continue loop }
+	| some(pi): install(j,pi)
+	  ; return() { quit increment, do not reset |go| }
+	esac
+     od
+   ; go:=false { if loop terminates, we've "carried" all the way through: stop }
+   )
+)
+
+set sanitize (bool to_C) = ((LieType,[int])->LieType,[int]):
+    let (fro,to) = if to_C then ("B","C") else ("C","B") fi
+in  (LieType lt,[int] sigma) (LieType,[int]):
+    let type = LieType:
+       let sum=0 in
+       for (letter,rank):st in simple_factors(lt)
+       do if rank=2 and letter = fro
+	  else letter+rank
+	  then let x=sigma[sum] in sigma[sum]:=sigma[sum+1]; sigma[sum+1]:=x
+	  ; to+rank
+	  fi
+       next sum +:= rank
+       od.##.Lie_type
+    in (type,sigma)
+
+
+set diagram_automorphism_iterator (RootDatum rd) = Iterator<mat>:
+   let (lt,map_to_rd)=Cartan_matrix_type(Cartan_matrix(rd)).(sanitize(false))
+   , ssr=rd.semisimple_rank, r=rd.rank
+   then ext = (#r)[ssr:] { extended permutation by identity }
+   then M = permutation_right_act(root_coradical(rd),map_to_rd ## (#r)[ssr:])
+   then (M1,d) = invert(M)
+   , flip = mat: for i:rank(rd) do if i<ssr then 1 else -1 fi od.diagonal
+   then (get,incr) = diagram_automorphism_iterator(lt)
+   , lift (vec auto) = Maybe<mat>:
+     { solve |M*A=P*M| where |A| is |auto.matrix| extended diagonally by $\pm1$ }
+        let A = permutation_matrix(auto ## ext) { extend by identity }
+	then MA = M*A then prod = MA*M1 in
+	if =prod%d then some(prod\d)
+	elif =(prod:=MA*flip*M1)%d then some(prod\d)
+	else none() { we only try acting by $\pm1$ on central torus, so fail }
+	fi
+in ( @Maybe<mat>: let result = Maybe<mat>: none() in
+     while
+        case get()
+	| none(): dont { quit while loop if inner iterator is exhausted }
+	| some(auto):
+	  case lift(auto)
+	  | none: do incr() { skip this one; continue |while| for another try }
+	  | some(M): result:=some(M); dont
+	  esac
+	esac
+     od; result
+   , @void: incr()
+     { no need to test whether iterator ran out, or to repeat until |lift| }
+   )

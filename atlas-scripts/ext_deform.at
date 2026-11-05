@@ -24,7 +24,7 @@ set KL_block_raw (Param p, mat delta) = { emulate built-in |KL_block| }
 set ed_verbose=false
 
 set deformation_terms (Param p, mat delta) = ParamPol:
-  assert(is_final(p) and is_fixed(delta,p),"improper parameter");
+  assert(@:is_final(p) and is_fixed(delta,p),"improper parameter");
   let (B,P_ind_mat,polys) = partial_extended_KL_block(p,delta)
   then nB=#B, pev=for Q in polys do eval(Q,minus_1) od
   then P_mat= for col in P_ind_mat do for entry in col do pev[entry] od od
@@ -54,7 +54,7 @@ set deformation_terms (Param p, mat delta) = ParamPol:
     for c@i in solution
     do { twist (1-s)*solution according to orientation numbers of its terms }
       let x=B[i] then (q,r)=(on_p-orientation_nr(x))\%2 in
-      assert(=r,"odd orientation");
+      assert(@:r=0,"odd orientation");
       (minus_1^q*c*one_minus_s,x) { we have |s^q*c*(1-s) = (-1)^q*c(1-s)| }
       { for the same reason we replaced |s| by |-1| in computations giving |c| }
     od
@@ -62,14 +62,14 @@ set deformation_terms (Param p, mat delta) = ParamPol:
 
 
 set recursive_deform (Param p, mat delta, (Param->ParamPol)terms) = KTypePol:
-  assert(is_final(p) and is_fixed(delta,p),"improper parameter");
+  assert(@:is_final(p) and is_fixed(delta,p),"improper parameter");
   let G=p.real_form in
    (1,p). { apply following recursive function to this initial argument }
    ( rec_fun full_def (Split sc,Param p) KTypePol:
        { |sc| will simply scale the resulting ParamPol, |delta| is implicit }
     begin
       if ed_verbose then prints("full_def with: sc=", sc, ", p=", p) fi;
-      assert(is_standard(p)
+      assert(@:is_standard(p)
 	    ,"non standard parameter encountered in deformation");
       let acc = G.null_module, at_nu0 = sc*K_type_pol_extended(p,delta)
       in

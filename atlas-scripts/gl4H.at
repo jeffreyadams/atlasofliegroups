@@ -1,5 +1,8 @@
-<<all.at
-<<coordinates.at
+<basic.at
+<groups.at
+<hermitian.at { for |twisted_c_form_irreducible_as_sum_of_standards| }
+<coordinates.at { for |change_basis| }
+
 set G=quasicompact_form(GL(8,R))
 set S=SL(4,H)
 set delta_G=G.distinguished_involution

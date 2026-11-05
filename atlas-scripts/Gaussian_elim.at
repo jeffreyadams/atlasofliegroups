@@ -1,4 +1,5 @@
-<basic.at
+<basic.at { for |all@(int,(int->bool))| }
+
 { Gaussian elimination on matrices represented by values of type [[rat]] }
 
 { Use as matrices: lists of their columns, each a list of rational numbers }
@@ -36,12 +37,6 @@ set_type Pivot_info = ( (int,[rat]) pivot | [rat] no_pivot )
   part of the column where a pivot might be found is zero) we instead record the
   nonzero initial part of the column as the |no_pivot| variant of |Pivot_info|.
 }
-
-{ avoid converting to |ratvec| when testing a (partial) column to be zero }
-forget =@ratvec
-forget !=@ratvec
-set = ([rat] row) = bool: all(#row,(int i) bool: =row[i])
-set != ([rat] row) = bool: not =row
 
 
 set times ([[rat]] M, [rat] v) = [rat]:
@@ -156,8 +151,8 @@ set_type affine_subspace = ([rat] base_point ,[[rat]] tangent_space)
 set full_solve ([[rat]] A, [rat] b) = Maybe<affine_subspace>:
    let (pivots,kernel,spread)= A.get_data.split_data
    then reduced_rhs=b.(apply(pivots)), rank=#pivots
-   in if =reduced_rhs[rank:] { entries of |reduced_rhs| after |rank| must be 0 }
-      then some(spread(reduced_rhs) , kernel) { return an |affine_suvbspace| }
+   in if all(reduced_rhs[rank:],=@rat) { these entries must be 0 }
+      then some(spread(reduced_rhs) , kernel) { return an |affine_subspace| }
       else none()
       fi
 

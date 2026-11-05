@@ -1,6 +1,11 @@
-<basic.at
+<basic.at { for |Maybe| }
 
 any_type T begin
+
+{ a user function to verify that sorting has worked }
+set is_sorted ((T,T->bool)leq) = ([T] a)bool:
+  let n=#a in n<2 or all(n-1,(int i)bool: leq(a[i],a[i+1]))
+
 
 { merge weakly increasing lists }
 set merge ((T,T->bool)leq) = ([T] a, [T] b) [T]:
@@ -61,6 +66,9 @@ set reverse_sort = sort(>=@(string,string))
 set sort_u = sort_u(<=@(int,int))
 set sort_u = sort_u(<=@(rat,rat))
 set sort_u = sort_u(<=@(string,string))
+set merge_u = merge_u(<=@(int,int))
+set merge_u = merge_u(<=@(rat,rat))
+set merge_u = merge_u(<=@(string,string))
 
 { the following helps stable-sorting of anything according to a statistic }
 
@@ -68,25 +76,53 @@ any_type S,T begin
 
 { Compute list |R| such that |R[i]| is index of element ranked |i| for |leq|.
   For $i<j$ one will have |leq(a[R[i]],a[R[j]])|, and in case of equality
-  (the comparison also holds in the opposite order) one also has |R[i]<R[j]|.
-  This is the inverse of the permutation that stable-sorts the list |a| into
-  into order for |leq|, the latter being called the standardisation of |a|.
-  Therfore this function used to be called |inv_standardisation|.
+  (the comparison also holds in the opposite order) one also has |R[i]<R[j]|
+  (stability). This is the inverse of the permutation that stable-sorts the list
+  |a| into into order for |leq|, the latter being called the standardisation of
+  |a|. Therefore this function used to be called |inv_standardisation|.
 }
 set ranking ((T,T->bool)leq) = ([T] a) [int]:
-  sort((int i,int j)bool:leq(a[i],a[j]))(# #a)
+  sort((int i,int j)bool:leq(a[i],a[j]))(indices(a))
 
 set sort_by ((T->S)f,(S,S->bool)leq) = ([T]->[T]):
-   sort((T x,T y)bool:leq(f(x),f(y)))
+{ do |sort((T x,T y)bool:leq(f(x),f(y)))|, but avoid calling |f| so often: }
+   ([T]a) [T]: for r in for x in a do f(x) od.(ranking(leq)) do a[r] od
+set merge_by ((T->S)f,(S,S->bool)leq) = ([T],[T]->[T]):
+   merge((T x,T y)bool:leq(f(x),f(y))) { don't bother to improve this }
+set sort_u_by ((T->S)f,(S,S->bool)leq) = ([T]->[T]):
+{ keep first instance of each |f| value |sort_u((T x,T y)bool:leq(f(x),f(y)))| }
+   ([T]a) [T]:
+   let vals = [S]: for x in a do f(x) od
+   then rank = [int]: vals.(ranking(leq))
+in for r@i in rank
+      if not (i>0 and leq(vals[r],vals[rank[i-1]]) { |leq| implies equality })
+      do a[rank[i]]
+      fi
+   od
+
+set merge_u_by ((T->S)f,(S,S->bool)leq) = ([T],[T]->[T]):
+   merge_u((T x,T y)bool:leq(f(x),f(y)))
 { when sorting by integer or rational value, default to increasing sort }
 set sort_by ((T->int) f) = ([T]->[T]): sort_by(f,<=@(int,int))
 set sort_by ((T->rat) f) = ([T]->[T]): sort_by(f,<=@(rat,rat))
 
+set lookup_in ([S]a,(S->T)f,(T,T->bool) leq) = (T->Maybe<S>):
+  binary_search_get(sort_by(f,leq)(a),f,leq)
+
+{ group together elements with the same value under |f|, ordered by that value }
 set partition_by ((T->S)f,(S,S->bool)leq) = ([T] a) [[T]]:
   let vals = map(f)(a) then rank = ranking(leq)(vals), i=0, n=#a in
   while i<n
   do let v = S: vals[rank[i]] in
-     while i<n and leq(vals[rank[i]],v) do a[i] next i+:=1 od
+     while i<n and leq(vals[rank[i]],v) do a[rank[i]] next i+:=1 od
+  od
+
+{ similar, but keep only one (the first) element for each value of |f| }
+set representatives_by ((T->S)f,(S,S->bool)leq) = ([T] a) [T]:
+  let vals = map(f)(a) then rank = ranking(leq)(vals), i=0, n=#a in
+  while i<n
+  do let j=rank[i] then v = S: vals[j] in a[j] next
+     while (i+:=1)<n and leq(vals[rank[i]],v) do () od
   od
 
 set lexicographic  ((T,T->bool)leq) = ([T] a,[T] b) bool:
@@ -132,19 +168,48 @@ set sort_by_height = ([(Split,KType)] -> [(Split,KType)]):
 set sort_by_height = ([(Split,Param)] -> [(Split,Param)]):
  sort_by( (Split s,Param p) int: height(p), <=@(int,int) )
 
-{ sorting fixed size vectors lexicographically }
-set lex_leq (vec v,vec w) = bool: { assert(#v=#w); }
+{ comparing vectors lexicographically }
+set lex_leq (vec v,vec w) = bool: { assert(@:#v=#w); }
+( let lv=#v,lw=#w in
+  for i:min(lv,lw) do if v[i]!=w[i] then return v[i]<w[i] fi od
+; lv<=lw { break tie using length }
+)
+
+{ compariung fixed size vectors lexicographically (restricted lex ordering) }
+set rlex_leq (vec v,vec w) = bool: { assert(@:#v=#w); }
    for x@i in v do if x!=w[i] then return x<w[i] fi od; true
-{ for types [T], including [int], one can use |lexicographic(leq@(T,T))| instead }
+
+{ short lex ordering }
+set slex_leq (vec v,vec w) = bool:
+  let lv=#v,lw=#w in
+  if lv=lw else lv<lw
+  then for i:min(lv,lw) do if v[i]!=w[i] then return v[i]<w[i] fi od; true
+  fi
+
+{ for types [T], including [int], one can also use |lexicographic(leq@(T,T))| }
+
 
 set ranking = ranking(lex_leq@(vec,vec))
 set sort_lex = sort(lex_leq@(vec,vec))
 set sort_u_lex = sort_u(lex_leq@(vec,vec))
+set sort_rlex = sort(rlex_leq@(vec,vec))
+set sort_u_rlex = sort_u(rlex_leq@(vec,vec))
+set sort_slex = sort(slex_leq@(vec,vec))
+set sort_u_slex = sort_u(slex_leq@(vec,vec))
 
-{ sorting rational ratvectors lexicographically }
-set lex_leq (ratvec v,ratvec w) = bool: { assert(#v=#w); }
-   for x@i in v do if x!=w[i] then return x<w[i] fi od; true
+{ comparing rational vectors }
+set (lex_leq,rlex_leq,slex_leq) =
+   let same_denom (ratvec v,ratvec w) = (vec,vec):
+      let (vn,vd)=%v, (wn,wd)=%w in (vn*wd,wn*vd)
+in ( ((ratvec,ratvec)args)bool:args.same_denom.lex_leq
+   , ((ratvec,ratvec)args)bool:args.same_denom.rlex_leq
+   , ((ratvec,ratvec)args)bool:args.same_denom.slex_leq
+   )
 
 set ranking = ranking(lex_leq@(ratvec,ratvec))
 set sort_lex = sort(lex_leq@(ratvec,ratvec))
 set sort_u_lex = sort_u(lex_leq@(ratvec,ratvec))
+set sort_rlex = sort(rlex_leq@(ratvec,ratvec))
+set sort_u_rlex = sort_u(rlex_leq@(ratvec,ratvec))
+set sort_slex = sort(slex_leq@(ratvec,ratvec))
+set sort_u_slex = sort_u(slex_leq@(ratvec,ratvec))

@@ -68,7 +68,7 @@ set posroot_Cayley (int i, Param p) = Param:
 ( let x0=x(p), gamma=infinitesimal_character(p)
   then G = real_form(x0), x3=posroot_Cayley(i,x0), theta0=involution(x0)
   then rd=root_datum(G), theta3=involution(x3)
-  in assert(denom(coroot(rd,i)*gamma)=1
+  in assert(@:denom(coroot(rd,i)*gamma)=1
            ,"coroot is not integral for parameter"
            )
 ; let  (w,alpha) = from_simple(rd,root(rd,i))
@@ -83,7 +83,7 @@ set posroot_inv_Cayley (int i, Param p) = Param:
 ( let x0=x(p), gamma=infinitesimal_character(p)
   then G = real_form(x0), x3=posroot_Cayley(i,x0), theta0=involution(x0)
   then rd=root_datum(G), theta3=involution(x3)
-  in assert(denom(coroot(rd,i)*gamma)=1
+  in assert(@:denom(coroot(rd,i)*gamma)=1
            ,"coroot is not integral for parameter"
            )
 ; let (w,alpha) = from_simple(rd,root(rd,i))
@@ -91,8 +91,8 @@ set posroot_inv_Cayley (int i, Param p) = Param:
   then theta2 = reflection(rd,alpha)*theta1 { after that simple Cayley }
   then diff1 = w*rho_r(rd,theta1) - rho_r(rd,theta0)
   ,    diff2 = w*rho_r(rd,theta2) - rho_r(rd,theta3)
-  in assert(=(1+theta0)*diff1,"non-real diff at 0")
-;    assert(=(1+theta3)*diff2,"non-real diff at 3")
+  in assert(@:((1+theta0)*diff1).=,"non-real diff at 0")
+;    assert(@:((1+theta3)*diff2).=,"non-real diff at 3")
 ; let par(ratvec mu) = { use only torsion of mu; ensure infin.char.=gamma }
     { use ((1-theta3)*mu+(1+theta3)*gamma)/2 = mu+(1+theta3)*(gamma-mu)/2 }
     parameter(x3,mu+(1+theta3)*(gamma-mu)/2,gamma)
@@ -181,6 +181,7 @@ set *(mat delta,KGBElt_gen(ic,theta,t)) = KGBElt_gen:
   (ic,delta*theta*delta,t*delta)
 
 set is_fixed (KGBElt_gen y,mat delta) = bool: y = delta*y
+set is_fixed (mat delta,KGBElt_gen y) = bool: is_fixed(y,delta) {order used on master}
 
 {action by W on KGB and KGB_gen by transport of structure: theta_x(t)=xtx^{-1}
  (inner_class,theta,lambda) -> (inner_class. w*theta*inverse(w), w*lambda)

@@ -1,5 +1,13 @@
 {Double extended parameters}
 {this file extParamPol.at includes what used to be extParamPolPlus.at}
+<basic.at
+<polynomial.at
+<bigMatrices.at { for |tabulate_indices@([Param],mat)| and friends }
+<convert_c_form.at { for |conbvert_cform_hermitian| }
+<hermitian.at { for |is_weakly_unitary| }
+<extended_misc.at { for type |ExtParam| and functions on it }
+<extended.at { for |nu@ExtParam| }
+<ext_deform.at { for |ed_verbose| }
 
 {ExtParamPol: virtual character for doubly extended group
  two commuting distinguished involutions: (xi,delta)
@@ -416,7 +424,7 @@ then
    rec_fun full_def (Split sc,Param p, int type) ExtParamPol:
       begin
 	 prints("executing rec_fun with p=",p, " type=", type);
-	 assert(is_standard(p)
+	 assert(@:is_standard(p)
 	       ,"non standard parameter encountered in deformation");
 	 let acc=empty in
 	 prints("acc defined", "  sc=", sc, " p=", p, " type=", type)
@@ -440,7 +448,7 @@ then
    else
       rec_fun full_def (Split sc,Param p, int type) ExtParamPol:
       begin
-         assert(is_standard(p)
+         assert(@:is_standard(p)
                ,"non standard parameter encountered in deformation");
          let acc=empty, at_nu0=ExtParamPol: sc*change_nu(p,0,type) in
          for factor in reducibility_points(p)

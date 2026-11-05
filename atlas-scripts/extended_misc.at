@@ -92,6 +92,10 @@ set is_fixed (ratvec gamma, KGBElt x,KGBElt y,mat delta) = bool:
 set is_fixed (KGBElt x,mat delta) = bool: x=twist(x,delta)
 set is_fixed (KGBElt x, KGBElt y,mat delta) = bool:
   is_fixed(x,delta) and is_fixed(y,^delta)
+{delta-first versions, the argument order used on master}
+set is_fixed (mat delta, KGBElt x) = bool: is_fixed(x,delta)
+set is_fixed (mat delta, KGBElt x, KGBElt y) = bool: is_fixed(x,y,delta)
+set is_fixed (ratvec gamma, mat delta, KGBElt x, KGBElt y) = bool: is_fixed(gamma,x,y,delta)
 
 {p->p if fixed, (1+delta)p otherwise}
 set symmetrize(Param p,mat delta)=ParamPol:

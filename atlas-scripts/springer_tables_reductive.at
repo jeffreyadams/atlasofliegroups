@@ -12,7 +12,7 @@
 <springer_table_E8.at
 
 set springer_table_simple(RootDatum rd,string letter,int n) = SpringerTable:
-   case ascii(letter)-ascii("A")
+   case ASCII(letter)-ASCII("A")
    in springer_table_A(rd)
    ,  springer_table_B(rd)
    ,  springer_table_C(rd)

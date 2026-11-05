@@ -10,7 +10,7 @@ to change of syntax}
 <W_reps_type_BC.at
 <Vogan-dual.at { for |dual_KGB| }
 <groups.at { for |GL| }
-<finite_dimensional { for |is_finite_dimensional| }
+<finite_dimensional.at { for |is_finite_dimensional| }
 <induction.at { for |induce_irreducible| }
 <stable.at { for |print_stable| }
 <combinatorics.at

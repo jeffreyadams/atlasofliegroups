@@ -19,7 +19,7 @@ namespace ext_kl {
 
 descent_table::descent_table(const ext_block::ext_block& eb)
   : info()
-  , prim_index(1<<eb.rank(),std::vector<unsigned int>(eb.size(),0))
+  , prim_index(1ul<<eb.rank(),std::vector<unsigned int>(eb.size(),0))
   , prim_flip(eb.size(),BitMap(prim_index.size()))
   , block(eb)
 {
@@ -441,6 +441,7 @@ void KL_table::fill_columns(BlockElt limit)
       catch(...)
       {
 	column[y].clear(); // ensure partially filled columns are removed
+	throw;
       }
     }
 

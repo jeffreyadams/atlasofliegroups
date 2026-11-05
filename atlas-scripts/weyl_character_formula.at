@@ -71,7 +71,7 @@ set weyl_denominator_quotient(RootDatum rd, ratvec v,CyclotomicField F) =
 set trace_semisimple_simply_connected(
       RootDatum rd, vec lambda,ratvec v,CyclotomicField F) =
       CyclotomicFieldElement:
-   assert(is_simply_connected(rd)
+   assert(@:is_simply_connected(rd)
          ,"root datum is not semisimple and simply connected");
    let S=W_orbit_torus_element(rd,v), result=F.zero in
    for w in S do
@@ -89,7 +89,7 @@ set trace_semisimple_simply_connected(
          fi
       ;  result +:= contribution
    od;
-   assert(is_integer(result.v),"Character value is not an algebraic integer");
+   assert(@:is_integer(result.v),"Character value is not an algebraic integer");
    result
 
 { Weyl character formula in general case is obtained by reduction to

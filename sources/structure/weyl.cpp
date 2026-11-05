@@ -35,11 +35,6 @@
 #include "lietype.h"  // for |ext_gen|
 #include "sl_list.h"
 
-// extra defs for windows compilation -spc
-#ifdef WIN32
-#include <iterator>
-#endif
-
 /*****************************************************************************
 
   Implementation of Weyl groups. I have decided to represent elements as

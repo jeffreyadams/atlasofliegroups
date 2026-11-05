@@ -6,10 +6,10 @@
 <sort.at
 <groups.at { for root data computed by |GL|, |Sp|, |SO| }
 
-{ |fac@int| is now defined in basic.at }
+{ |factorial@int| is now defined in basic.at, and it can be written as |n!| }
 
 set binom (int n, int k) = int:
-   if n.>= and k+k>n then k:=n-k fi; { use symmetry to limit |k| }
+   if n>=0 and k+k>n then k:=n-k fi; { use symmetry to limit |k| }
    case k then 0 in 1, n
    else let p=n*(n-1) in for i:k-2 from 2 do p:=p\i*(n-i) od; p\k
    esac
@@ -20,42 +20,19 @@ set binom (rat n, int k) = rat:
    else let p=n*(n-1) in for i:k-2 from 2 do p:=p/i*(n-i) od; p/k
    esac
 
+set multinom ([int] a) = int: { multinomial coefficient, upper index implicit }
+   let upper = cumulate_backward(a) in
+   for m@i in a do binom(upper[i],m) od.product
+
 set multi_choose (int n,int k) = int: binom(n+k-1,k)
 
-set falling_power (int n, int k) = int: assert(>=0,"Negative exponent");
+set falling_power (int n, int k) = int: assert(@:k>=0,"Negative exponent");
    let p=1 in for i:k from n-k+1 do p*:=i od; p
 
-set rising_power (int n, int k) = int: assert(>=0,"Negative exponent");
+set rising_power (int n, int k) = int: assert(@:k>=0,"Negative exponent");
    let p=1 in for i:k from n do p*:=i od; p
 
 { Combinatorial number system ${\N\choose k}\to\N$ encoding and decoding }
-
-{ represent a permutation as a single number: its lexicographic position }
-set permutation_encode([int] sigma) = int:
-   let n=#sigma then unseen=#n, acc=0
-in for x in sigma
-   do let l=#unseen
-      then pos = binary_search_first((int i): unseen[i]>=x,0,l)
-   in assert(unseen[pos]=x)
-   ; unseen:=unseen[:pos]##unseen[pos+1:]
-   ; acc:=l*acc+pos
-   od; acc
-
-set permutation_decode(int code, int n) = [int]:
-(   let result=null(n), unseen=#n
-in  (code,1).
-    (rec_fun f (int rem, int i) void:
-       let (q,r)=rem\%i in
-       if i<n then f(q,i+1) fi
-    ;  result~[i-1] := unseen[r]
-    ;  unseen := unseen[:r]##unseen[r+1:]
-    )
-;   result
-)
-
-set permutations([vec] vs) = [[vec]]: { any type for |vec|, ignore equalities }
-   let n  = #vs
-in for i:fac(n) do for e in permutation_decode(i,n) do vs[e] od od
 
 { Represent any $k$-combination on $\N$ as a single natural number
   For fixed $k$ this is bijective, and a decoding follows.
@@ -70,19 +47,7 @@ set combination_decode(int k) = (int->[int]):
 in for i:k from 1 ~ { entries are determined in decreasing order }
    do let c_i = binary_search_first((int n)bool: binom(n,i)>N, 1,bound) - 1
    in N -:= binom(c_i,i); bound:=c_i
-  ~od { next assert(N=0) }
-
-{		some transformations of sequences of numbers		}
-
-set cumulate_forward ([int] seq) = [int]:
-   let sum=0 in for k in seq do sum+:=k od
-set cumulate_backward ([int] seq) = [int]:
-   let sum=0 in for k in seq ~do sum+:=k ~od
-
-set forward_differences ([int] seq) = [int]: { inverse of |cumulate_forward| }
-   let last=0 in for k in seq do k-last next last:=k od
-set backward_differences ([int] seq) = [int]: { inverse of |cumulate_backward| }
-   let last=0 in for k in seq ~do k-last next last:=k ~od
+  ~od { next assert(@:N=0) }
 
 { extract components at even or odd positions }
 set even_places ([int] v) = for i:-(-#v)\2 do v[2*i] od
@@ -91,50 +56,188 @@ set odd_places  ([int] v) = for i:#v\2 do v[2*i+1] od
 
 {				Permutations				}
 
+set_type Permutation = vec { second line of 2-line form of a permutation }
+
+set is_permutation (vec v) = bool:
+   let n=#v then seen = for :n do false od
+in for e in v
+   do if e<0 or e>=n or seen[e] then return false
+      else seen[e]:=true
+      fi
+   od; true
+
 { Matrix whose left-multiplication to a column vector permutes it by |pi|.
   It has nonzero entries at each (pi(j),j), it could have been defined (using
   |matrix| from basic.at) as |matrix((#pi,#pi),(int i,int j): #(i=pi[j]) )|.
 }
-set permutation_matrix ([int] pi) = mat:
+set permutation_matrix (Permutation pi) = mat:
    let n=#pi then I=n.id_mat in n# for v in pi do I[v] od
 
-set permutation (mat P) { assumed a permutation matrix} = [int]:
+set permutation (mat P) { assumed a permutation matrix} = Permutation:
   (vec: #P.n_rows)*P { right-act on row [0,1,...,n-1] for one-line form }
 
-set compose_permutations ([int] sigma, [int] pi) = [int]:
+set compose_permutations (Permutation sigma, Permutation pi) = Permutation:
   for i in pi do sigma[i] od
 
-set inverse ([int] pi) = [int]: { hope that name causes no conflict }
-  let n=#pi then result=for :n do n od { sentinel values} in
-  for i@j in pi
-  do assert(i.>= and i<n and result[i]=n { in range, and no seen before }
-           ,to_string("not a permutation (",i,")"));
+set inverse (Permutation pi) = Permutation: { hope the name causes no conflict }
+   let n=#pi then result = Permutation: for :n do n od { sentinel values}
+in for i@j in pi
+   do assert(@:(0<=i and i<n and result[i]=n { in range, and no seen before }
+               ,to_string("not a permutation (",i,")")
+	       ));
      result[i]:=j
-  od; result
+   od; result
 
 { longer name for non-checking (so faster) version of the above }
-set permutation_inverse ([int] pi) = [int]:
+set permutation_inverse (Permutation pi) = Permutation:
   let result=null(#pi) in for i@j in pi do result[i]:=j od; result
 
-set permute ([int] pi,vec v) = vec: { replaces |v[i]| by |v[pi.inverse[i]]| }
-  assert(#pi=#v { and |pi| is a permutation },"length mismatch");
-  let result=null(#v) in for i@j in pi do result[i]:=v[j] od; result
+{ a product of many permutations, arranged as columns of a matrix }
+set permutation_product (mat M) = Permutation:
+   for i: n_rows(M) do let x=i in for j:n_columns(M) ~do x:=M[x,j] od; x od
 
-set permutation_cycles ([int] pi) = [[int]]:
-  let n=#pi then todo = for :n do true od in
+{ get transpositions as |cyclic_permutation(n)([i,j])|, and cycles similarly }
+set cyclic_permutation (int n) = ([int] cycle) Permutation:
+   let pi=vec:#n { default to fixed points }, l=#cycle
+in for e@i in cycle do pi[e]:=cycle[(i+1)%l] od; pi
+
+{ similarly make a permutation from a product of cycles (disjoint or not) }
+set cycle_product (int n) = ([[int]]->Permutation):
+   let as_column = cyclic_permutation(n) in
+   ([[int]] cycles) Permutation:
+   permutation_product(mat: n # for c in cycles do c.as_column od)
+
+{ permutation action on |vec| values }
+set permute (Permutation pi,vec v) = vec:
+   assert(@:(#pi=#v and is_permutation(pi)
+            ,to_string("cannot permute ",v," by ",pi)
+	    ));
+   let result=null(#v)
+in for i@j in pi do result[i]:=v[j] od; result
+
+any_type T begin
+set permute (Permutation pi,[T]a) = [T]:
+  assert(@:(#pi=#a and is_permutation(pi)
+           ,to_string("cannot permute row of length ",#a," by ",pi)
+	   ));
+{ here we cannot pre-allocate a row of undefined T values, but have no need to }
+  for i in permutation_inverse(pi) do a[i] od
+end
+
+{ left-multiply by permutation matrix (permute rows by permutation) }
+set permutation_act (Permutation sigma, mat M) = mat:
+   M.n_columns ^ for i in permutation_inverse(sigma) do row(M,i) od
+
+{ right-multiply by permutation matrix (permute columns by inverse permutation) }
+set permutation_right_act (mat M,Permutation sigma) = mat:
+   M.n_rows # for j in sigma do column(M,j) od
+
+set permute_rows = permutation_act@(Permutation,mat)
+set permute_columns (Permutation sigma,mat M) = mat:
+   permutation_right_act(M,permutation_inverse(sigma))
+
+set permutation_conjugation (Permutation sigma, mat M) = mat:
+   let s_inv = permutation_inverse(sigma)
+in matrix(shape(M),(int i,int j) int: M[s_inv[i],s_inv[j]])
+
+
+set permutation_cycles (Permutation pi) = [[int]]:
+  let n=#pi then todo = full_bitset(n) in
   for start:n { try every index once as |start|, those visited give 0-cycles }
-  do let i=start { we need a modifiable index }
-     then cycle = while todo[i] do todo[i]:=false; i next i:=pi[i] od
-     in if >#cycle do cycle fi { suppress the 0-cycles }
+  do let ii = exp_2(start)
+     then cycle =
+        while bitwise_subset(ii,todo)
+	do todo:=AND_NOT(todo,ii)
+	;  let i=first_set_bit(ii) in ii:=exp_2(pi[i])
+	;  i
+	od
+     in if #cycle>0 do cycle fi { suppress the 0-cycles }
   od.##
 
-{ group root indices by orbits under group generated by |w| }
+{ represent a permutation as a single number: its lexicographic position }
+set permutation_encode (Permutation sigma) = int:
+   let n=#sigma then unseen=#n, acc=0
+in for x in sigma
+   do case binary_lookup(x,unseen)
+      | none(): error("Not a permutation")
+      | some(pos): acc:=(#unseen)*acc+pos; unseen delete:= pos
+      esac
+   od; acc
+
+
+{ permutation number |code| in lexicographic order among permutations of |n| }
+set permutation_decode(int code, int n) = Permutation:
+(   let result=null(n), unseen = #n
+in  (code,1). { use recursion so as to post-process in reverse order of |i| }
+    (rec_fun f (int rem, int i) void: { action is to modify |result|, |seen| }
+       let (q,r)=rem\%i in
+       if i<n then f(q,i+1) fi
+    ;  result~[i-1] := unseen[r]; unseen delete:= r
+    )
+;   result
+)
+
+{ The following generates partitions starting from #n, without large storage
+
+    let (get,incr)= permutation_iterator(#n) in
+    while
+      case get() | none(): false | some(perm): process(perm); true esac
+    do incr()
+    od
+
+  Instead of |#n| one can supply any vector |pi| as starting value, which will
+  generate all permutations only if |pi| is weakly increasing. In case of
+  equality among entries of |pi|, permuting these among each other is avoided.
+}
+set permutation_iterator (vec pi) = Iterator<vec>:
+   let n=#pi, go=true
+in ( @Maybe<vec>: if go then some(pi) else none() fi
+   , @void:
+      let i = last(n-1,(int i)bool: pi[i]<pi[i+1]) in
+      if i<0 then go:=false
+      else let x=pi[i], j=0
+      in while pi~[j]<=x do j+:=1 od { search least element >x after it}
+      ;  pi[i] := pi~[j]; pi~[j] := x { swap to increase |perm[i]| }
+      ;  pi := pi[:i+1] ## pi~[:i+1~] { reverse tail after |pi[i]| }
+      fi
+   )
+
+{ generate |(#xs)!| permutations of |xs|, not avoiding permutation of equals }
+any_type T begin
+set permutations([T] xs) = [[T]]:
+   (xs,#xs).
+   (rec_fun perms ([T]xs,int n) [[T]]:
+    if n<=1 then [xs]
+    else
+       for x@i in xs
+          for ps in perms(delete(xs,i),n-1)
+	  do x#ps
+	  od
+       od
+    fi
+   )
+end
+
+{ group root indices by orbits under action of cyclic group generated by |w| }
 set root_orbits (WeylElt w) = [[int]]:
    let perm=root_permutation(w) then npr=#perm\2 { number of positive roots }
 in for cycle in permutation_cycles(perm)
    do for index in cycle do index-npr od { shift back to interval [-npr,npr[ }
    od
 
+
+set multiset_permutations ([int] multiplicities) = [[int]]:
+   ([],multiplicities).
+   (rec_fun mp ([int] prefix, vec mult) [[int]]:
+    if =mult then [prefix]
+    else
+       for m@i in mult
+	  if m>0
+	  do let new_mult=mult in new_mult[i]-:=1; mp(prefix#i,new_mult)
+	  fi
+       od.##
+    fi
+   )
 
 {				Partitions				}
 
@@ -149,12 +252,15 @@ set is_partition ([int] seq) = bool: backward_differences(seq).>=
 set frequencies (Partition lambda) = vec: { frequency vector, position 0 unused }
   let v=null(1) in { ensure the unused position 0 is always present }
   for l in lambda
-  do if l>=#v then v ##:= null(l-#v)#1 { append final 1 } else v[l]+:=1 fi
+  do if l>=#v then v ##:= null(l-#v)#1 { append final 1 }
+     elif l>=0 then v[l]+:=1
+     else error("Negative entry present") fi
   od; v
 
-{ the following is a right-inverse to |frequencies|, image is all partitions }
+{ the following is a right-inverse to |frequencies|; assuming |frequencies[0]=0|
+  to avoid getting trailing 0's, the image is precisely the set of partitions }
 set repeat_parts (vec frequencies) = Partition:
-  for f@i in frequencies[1:] { skip 0, reverse:} ~ for :f do i+1 od od
+  for f@i in frequencies { reverse: } ~ if i>0 for :f do i od fi od
 
 set sort_to_partition ([int] parts) = Partition:
   parts.frequencies.repeat_parts
@@ -168,7 +274,7 @@ set transpose ([int] parts) = Partition:
 { or more "manually", when |parts| assumed already in decreasing order
   if #lambda=0 then []
   else let l=#lambda in
-    for i:lambda[0] { value |lambda[0]| is sentinel ensuring |l>0| below }
+    for i:lambda[0] { since |i<lambda[0]|, we can never set |l:=0| below }
     do while lambda[l-1]<=i do l-:=1 od; l
     od
   fi
@@ -193,18 +299,17 @@ set compressed_string(Partition P) = string:
       od.##
 in result ## if mult=1 then P~[0].to_string else P~[0]+"^"+mult fi ## " ]"
 
-
-{ comparing partitions of same |n| lexicographically; implicitly 0-extend }
-set leq_equal_sum_partitions(Partition lambda, Partition mu) = bool:
+{ lexicographic comparison restricted to partitions of same |n| (0-extended) }
+set rlex_leq_partitions (Partition lambda, Partition mu) = bool:
    let m=#mu in
    for l@i in lambda
-   do if i>=m then assert(=l,"unequal sum"); return true
+   do if i>=m then assert(@:l=0,"unequal sum"); return true
       elif l!=mu[i] then return l<mu[i]
       fi
-   od; assert(=mu[#lambda:],"unequal sum"); true
+   od; assert(@:mu[#lambda:].=,"unequal sum"); true
 
 { same, but three-way result in $\{-1,0,1\}$ for less/equal/greater; no 0-ext }
-set cmp_equal_sum_partitions(Partition lambda, Partition mu) = int:
+set rlex_cmp_partitions (Partition lambda, Partition mu) = int:
    let m=#mu in
    for l@i in lambda
    do if l!=mu[i] { equal sum, nonzero entries, so |mu| cannot run out }
@@ -213,40 +318,49 @@ set cmp_equal_sum_partitions(Partition lambda, Partition mu) = int:
    od; 0 { if |lambda| exhausted then so is |mu|, and we have equality }
 
 { comparing partitions by sum then lexicographically; implicitly 0-extend }
-set leq_partitions ((Partition,Partition) (lambda,mu):pair) = bool:
+set slex_leq_partitions ((Partition,Partition) (lambda,mu):pair) = bool:
   let sl=lambda.sum, sm=mu.sum in
-  if sl!=sm then sl<sm else leq_equal_sum_partitions(pair) fi
+  if sl!=sm then sl<sm else rlex_leq_partitions(pair) fi
 
-set cmp_partitions ((Partition,Partition) (lambda,mu):pair) = int:
+set slex_cmp_partitions ((Partition,Partition) (lambda,mu):pair) = int:
   let sl=lambda.sum, sm=mu.sum in
-  case sl-sm then minus_1 in cmp_equal_sum_partitions(pair) else 1 esac
+  case sl-sm then minus_1 in rlex_cmp_partitions(pair) else 1 esac
 
 { look up partition in sorted list of partitions, all assumed of same sum }
 set index_partition([Partition] sorted_list) = (Partition->int):
 (  let l=#sorted_list in { precompute constant }
    (Partition lambda) int:
       binary_search_first
-      ((int i)bool:leq_equal_sum_partitions(lambda,sorted_list[i])
+      ((int i)bool:rlex_leq_partitions(lambda,sorted_list[i])
       ,0,l
       )
 )
 
-{ dominance order of partitions }
-set leq_dominance_order_partitions (Partition v,Partition w) = bool:
-   if =#v then assert(=w ,"not comparable"); true
-   elif =#w then assert(=v ,"not comparable"); true
-   else v:=sort_to_partition(v); w:=sort_to_partition(w)
-   ; assert(v~[0].>= and w~[0].>=,"negative terms")
-   ; let sums_v = cumulate_forward(v), sums_w = cumulate_forward(w)
-     in assert(sums_v~[0]=sums_w~[0],"not comparable")
-     ; for i:min(#v,#w) do sums_v[i]<=sums_w[i] od.all { need exactly these }
+{ dominance order on compositions, assumed to be so of the same number }
+set dominance_leq_compositions (Partition v,Partition w) = bool:
+(  v:=sort_to_partition(v); w:=sort_to_partition(w)
+;  if   #v=0 then #w=0 or error("compositions not of same number")
+   else assert(@: #w>0,"compositions not of same number")
+   { |sort_to_partition| balks on negative entries, so |v~[0]>0 and w~[0]>0| }
+   ;  let sums_v = cumulate_forward(v), sums_w = cumulate_forward(w)
+   in assert(@:sums_v~[0]=sums_w~[0],"compositions not of same number")
+   ;  for sw@i in sums_w do @: sums_v[i]<=sw od.all { is safe and sufficient }
    fi
+)
 
-{ same as previous but assume each term is already reverse sorted,
-  and all terms are comparable }
-set leq_dominance_order_partitions_presorted (Partition v,Partition w) = bool:
-   let sums_v = cumulate_forward(v), sums_w = cumulate_forward(w)
-   in for i:min(#v,#w) do sums_v[i]<=sums_w[i] od.all
+{ same as previous, but assuming |v|,|w| are equal sum partitions (so sorted) }
+set dominance_leq_partitions (Partition v,Partition w) = bool:
+   let limit=#w
+in limit=0 {in which case |#v=0| as well by assumption} or
+  (let sum_v=v[0],sum_w=w[0] { both exist, since absence of 0-entries assumed }
+   in for i:limit-1 from 1
+      do @: { so that evaluation stops once a |false| is encountered }
+         if sum_v<=sum_w
+         then true next sum_v+:=v[i]; sum_w+:=w[i]
+	 else false
+	 fi
+      od.all
+  )
 
 {		functions related to representations of S_n		}
 
@@ -257,7 +371,7 @@ set hook_lengths (Partition lambda) = [int]:
    od.sort_to_partition { not viewed as partition, but sorting is the same }
 
 set Sn_representation_dimension (Partition lambda) = int:
-   let hl=lambda.hook_lengths in hl.#.fac\hl.product
+   let hl=lambda.hook_lengths in hl.#.factorial\hl.product
 
 set hook_lengths ([bool] edges) = [int]:
    let last=#edges-1
@@ -278,9 +392,9 @@ set edge_sequence (Partition lambda) = ([bool],int):
 
 set cycle_type_order = lcm@[int]
 set cycle_centralizer_order ([int] cycles) = int:
-  product(cycles)*product(for m in cycles.frequencies do m.fac od)
+  product(cycles)*product(for m in cycles.frequencies do m! od)
 set cycle_class_size ([int] cycles) = int:
-  cycles.sum.fac \ cycle_centralizer_order(cycles)
+  cycles.sum.factorial \ cycle_centralizer_order(cycles)
 
 { compute cycle type of power of a permutation, given its cycle type }
 set cycle_power ([int] cycles, int k) = [int]:
@@ -290,7 +404,7 @@ set cycle_power ([int] cycles, int k) = [int]:
 
 { character of irreducible Sn representation lambda at give cycle type }
 set Murnaghan_Nakayama (Partition lambda, [int] cycle_type) = int:
-   assert(sum(lambda)=sum(cycle_type),"Size mismatch");
+   assert(@:sum(lambda)=sum(cycle_type),"Size mismatch");
    let (edge,) = edge_sequence(lambda), alpha=cycle_type.sort { increasing } in
    (#alpha-1).
    (rec_fun MN (int j) int:
@@ -306,7 +420,7 @@ set Murnaghan_Nakayama (Partition lambda, [int] cycle_type) = int:
 	  od
 	 .sum { add up value from all candidate positions }
        then { |k=1| case, used the hook length formula for remaining partition }
-          let hl=edge.hook_lengths in hl.#.fac\hl.product
+          let hl=edge.hook_lengths in hl.#.factorial\hl.product
        fi
     fi
    )
@@ -388,11 +502,11 @@ set strict_partitions = (int n) [Partition]:
 
 {		Jordan types of nilpotent elements (or orbits)		}
 
-{ test if partition is valid (nilpotent orbit) JOrdan type in type ABCD }
+{ test if partition is valid (nilpotent orbit) Jordan type in type ABCD }
 set is_valid (string type,Partition P) = bool:
-{ avoid constructing |Lie_type(type[0]+n|, to avoid choking on "B1" and such }
+{ avoid constructing |Lie_type(type[0]+n)|, to avoid choking on "B1" and such }
   P:=P.strip_to_partition; { avoid frequencies of 0 }
-  case ascii(type)-ascii("A")
+  case ASCII(type)-ASCII("A")
   in { type A } true
   , { type B } sum(P).is_odd and
     all(for mult in P.frequencies.even_places do mult.is_even od)
@@ -407,10 +521,13 @@ set is_valid (LieType t) = (Partition->bool):
    let codes = simple_factors(t)
    then (letter,r)= assert(#codes=1,"Non-simple Lie type"); codes[0]
    then n =
-      case ascii(letter)-ascii("A") in r+1, r+r+1, r+r, r+r
+      case ASCII(letter)-ASCII("A") in r+1, r+r+1, r+r, r+r
       else error("Exceptional ",t)
       esac
-in (Partition P) bool: #P = n and is_valid(letter,P)
+in (Partition P) bool: sum(P) = n and is_valid(letter,P)
+
+
+{	Combinatorics specifically for (Weyl groups of) types B,C,D	}
 
 { partitions with even multiplicity of parts of one parity (odd or even) }
 set parity_restricted_partitions (bool restrict_odd_parts) = (int->[Partition]):
@@ -421,7 +538,7 @@ set parity_restricted_partitions (bool restrict_odd_parts) = (int->[Partition]):
   else
     let table = [[ [Partition] ]]: { partitions by sum, then by largest part }
       for m:n+1
-      do if =m then [ [[]] ] { empty partition of 0 } else [] { nothing yet } fi
+      do if m=0 do [[]] { empty partition of 0, else nothing yet } fi
       od
     in
     for m:n from 1
@@ -443,8 +560,6 @@ set parity_restricted_partitions (bool restrict_odd_parts) = (int->[Partition]):
     od
   ; ##table~[0] { concatenate entries of final table row }
   fi
-
-{	Combinatorics specifically for (Weyl groups of) types B,C,D	}
 
 { for conjugagy classes: cycles with product of signs, for simple types B,C,D }
 set_type Signed_cycles = [int,bool] { bool |b| encodes product |minus_1^#b| }
@@ -509,38 +624,6 @@ set to_partition_pair(Signed_cycles cy) = BiPartition:
 , for (part,b) in cy do if b then part else 0 fi od.sort_to_partition
 )
 
-{ partitions with even multiplicity of parts of one parity (odd or even) }
-set parity_restricted_partitions (bool restrict_odd_parts) = (int->[Partition]):
-  let is_multiplicity_restricted = (int->bool):
-    if restrict_odd_parts then is_odd@int else is_even@int fi   in
-  (int n) [Partition]:
-  if n.< or restrict_odd_parts and n.is_odd then [] { impossible, so nothing }
-  else
-    let table = [[ [Partition] ]]: { partitions by sum, then by largest part }
-      for m:n+1
-      do if =m do [[]] { empty partition of 0, else nothing yet } fi
-      od
-    in
-    for m:n from 1
-    do table[m] := ([Partition]: []) { no partitions with largest part 0 } #
-      for k: if m=n then n else min(m,n-m) { truncate to need } fi from 1
-	 { form list of partitions of |m| with largest part |k| }
-      do { traverse all partitions |m-k| with parts at most |min(k,m-k)|: }
-        if k.is_multiplicity_restricted
-        then { restrict use of k to using it twice, |lambda| may also have |k| }
-	  let rem=m-k-k in
-          if rem.< then []  { if a negative remainder, then no solutions here }
-          else for lambda in ##table[rem][:min(k,rem)+1] do [k,k]##lambda od
-          fi
-	else { we use |k| once, |lambda| could have part(s) equal to |k| too }
-	  let rem = m-k in
-          for lambda in ##table[rem][:min(k,rem)+1] do k#lambda od
-        fi
-      od
-    od
-  ; ##table~[0] { concatenate entries of final table row }
-  fi
-
 { generate pairs of partitions of total size |n| with size |k| components
   produced in the order in which |lister| lists them, starting all on left }
 set pairs_of_total_sum (int n,(int->[Partition]) lister) = [BiPartition]:
@@ -560,13 +643,14 @@ set <=(BiPartition (P,Q), BiPartition (R,S)) = bool:
    case P.sum-R.sum
    then false else true { size balance is decisive, inverted ordering! }
    in { equal size case: compare left partitions, or right if ex aequo }
-      if P=R else (P,R) then (Q,S) fi.leq_equal_sum_partitions
+      if P=R else (P,R) then (Q,S) fi.rlex_leq_partitions
    esac
 
 { look up pair in sorted list of partition pairs, all assumed of same sum }
 set index_bipartition ([BiPartition] sorted_list) = (BiPartition->int):
    (BiPartition PQ) int:
       binary_search_first( (int i)bool: PQ<=sorted_list[i], 0, #sorted_list )
+
 
 { counterpart of the Murnaghan-Nakayama rule for hyperocthedral groups }
 
@@ -590,7 +674,7 @@ set hyperoctahedral_character (
        BiPartition (lambda,mu):pair { irreducible repn, sign applies to |mu| }
       ,Signed_cycles signed_cycle_type { describes a conjugacy class }
       ) = int:
-   assert(rank(pair)=rank(signed_cycle_type),"Size mismatch");
+   assert(@:rank(pair)=rank(signed_cycle_type),"Size mismatch");
 { The formula implemented is recursive in the number of cycles, similarly to the
   Murnaghan-Nakayama rule. Pick a signed cycle |(k,sign)| (we start with picking
   longest ones, so as to have all length 1 cycles remaining at the bottom of the
@@ -640,9 +724,10 @@ set hyperoctahedral_character (
           then { get fixed row sums and column sums for $\N$-matrix [.,.|.,l] }
             (a,b) = (#hl0,#hl1) { partition sizes to be filled }
           then lwb = max(0,d-a{=b-c}), upb=min(b,d) { bounds for l }
-          in assert(a+b=c+d);
+          in assert(@:a+b=c+d);
           for l:upb-lwb+1 from lwb do (-1)^l*binom(c,b-l)*binom(d,l)od.sum
-          * (a.fac\hl0.product)*(b.fac\hl1.product) { factor independent of l }
+          * (a! \ hl0.product)
+	  * (b! \ hl1.product) { factors independent of |l| }
        fi
     fi
    )
@@ -671,7 +756,7 @@ set hyperoctahedral_character (
 }
 
 set core_length (int n) = int: if n.<= then 2*-n else 2*n-1 fi
-set core_number (int k) = int: assert(k.>=); case k in -k\2, -k\-2 esac
+set core_number (int k) = int: assert(@:k>=0); case k in -k\2, -k\-2 esac
 
 { Core number and quotient partition pair. In the latter, as per |BiPartition|
   convention, the partition coming from the EVEN edge positions comes first }
@@ -716,10 +801,10 @@ in if k>l
   commuting with $x \mapsto -x$, and the one-line format consists of a list of
   the images of $1, 2, ..., n$ (1-based); it determines the signed permutation.
 }
-set classic_permutation (WeylElt w) = [int]:
+set classic_permutation (WeylElt w) = Permutation:
 (  let rd=w.root_datum then (lt,map)=Cartan_matrix_type(rd.Cartan_matrix)
    then factors=simple_factors(lt) then nf=#factors
-in assert(nf=1,"Root datum diagram is not connected ("+ nf +" components)")
+in assert(@:(nf=1,"Root datum diagram is not connected ("+ nf +" components)"))
 ;  let word = { |w.word| translated to word for Bourbaki numbered diagram }
       let inv = permutation_inverse(map) in for s in w.word do inv[s] od
    , (type,rank)=factors[0]
@@ -766,10 +851,10 @@ set cycle_centralizer_order (Signed_cycles cycles) = int:
   let plus_cycles = for (c,s) in cycles if not s do c fi od
   ,  minus_cycles = for (c,s) in cycles if   s   do c fi od
   in product(for (cycle,) in cycles do cycle+cycle od)*
-     product(for m in plus_cycles.frequencies do m.fac od)*
-     product(for m in minus_cycles.frequencies do m.fac od)
+     product(for m in plus_cycles.frequencies  do m! od)*
+     product(for m in minus_cycles.frequencies do m! od)
 set cycle_class_size (Signed_cycles cycles) = int:
-  let n=rank(cycles) in n.fac * 2^n \ cycle_centralizer_order(cycles)
+  let n=rank(cycles) in n! * 2^n \ cycle_centralizer_order(cycles)
 
 { compute cycle type of power of a signed permutation, given its cycle type }
 set cycle_power (Signed_cycles cycles, int k) = Signed_cycles:
@@ -880,7 +965,7 @@ set centralizer_order (D_class c) = int:
        alpha.cycle_centralizer_order*2^#alpha { add a factor 2 for each cycle }
    esac
 set class_size (D_class c) = int:
-  let n=rank(c) in n.fac * 2^(n-1) \ centralizer_order(c)
+  let n=rank(c) in n! * 2^(n-1) \ centralizer_order(c)
 
 { compute cycle type of power of a signed permutation, given its cycle type }
 set cycle_power (D_class c, int k) = D_class:
@@ -942,7 +1027,7 @@ set D_classes (int n) = [D_class]:
 
 set D_irreducibles (int n) = [D_irrep]:
 (  for (lambda,):pair in partition_pairs(n)
-      if not leq_partitions(pair) do pair.unsplit_irr fi
+      if not slex_leq_partitions(pair) do pair.unsplit_irr fi
    od
 ##(let (s,r)=n\%2 in
    if =r else []
@@ -970,7 +1055,7 @@ set less_eq (D_class elt) = (D_class->bool):
 	| (cycles_C).unsplit_class:
 	  cycles_C.to_partition_pair<=(nu,nu)
 	| (lambda,b0).split_class:
-	  case cmp_equal_sum_partitions(lambda,nu)
+	  case rlex_cmp_partitions(lambda,nu)
 	  then true
 	  in not b0 or b1 { same as |#b0<=#b1|; or |b0| implies |b1| }
 	  else false
@@ -1023,7 +1108,7 @@ set make_special (D_irrep chi) = D_irrep:
    esac
 
 set character (D_irrep chi, D_class c) = int:
-   assert(chi.rank = c.rank,"Size mismatch");
+   assert(@:chi.rank = c.rank,"Size mismatch");
    let pos_cycles(Partition mu)=Signed_cycles: for l in mu do (l,false) od in
    case chi
    | (pair).unsplit_irr:
@@ -1036,15 +1121,15 @@ set character (D_irrep chi, D_class c) = int:
      case c
      | (cycles).unsplit_class:
        let (q,r) = hyperoctahedral_character((lambda,lambda),cycles)\%2 in
-       assert(=r,"Odd character value at unsplit class"); q
+       assert(@:r=0,"Odd character value at unsplit class"); q
      | (alpha,delta).split_class:
        let Hn_char = int:
            hyperoctahedral_character((lambda,lambda),pos_cycles(alpha))
        ,   Sn_char = int:
-           assert(alpha.is_very_even,"Split class with odd cycle(s)");
+           assert(@:alpha.is_very_even,"Split class with odd cycle(s)");
            Murnaghan_Nakayama(lambda, alpha\2)
        then (q,r) = (Hn_char+sign(epsilon!=delta)*2^#alpha*Sn_char)\%2
-       in assert(=r,"Parity problem for split-split character value"); q
+       in assert(@:r=0,"Parity problem for split-split character value"); q
      esac
    esac
 

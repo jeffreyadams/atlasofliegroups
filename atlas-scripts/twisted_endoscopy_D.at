@@ -1,3 +1,4 @@
+<subtorus.at { for SubTorus, restrict, inject, complex_torus }
 {this file is going to be deprecated and  moved to twisted_endoscopic_lifting.at, but still need
 some of it. See twisted_endoscopic_lifting.at}
 
@@ -348,6 +349,26 @@ inverse_lift_std_preliminary(p_G,H,M) else
 inverse_lift_std_by_search(p_G,H,M,left_inverse(M)*p_G.infinitesimal_character)
 fi
 
+
+{ outer_automorphism_group and diagram_automorphisms: formerly in conjugate.at,
+  which master rewrote (it now provides diagram_automorphism_iterator instead).
+  Restored here unchanged for use by O_action (with symmetric_group). }
+set symmetric_group(int n)=[mat]: for w in W(GL(n)) do matrix(w) od
+
+set diagram_automorphisms(RootDatum rd)=[mat]:
+if rd.is_abelian then [] else
+let perms=symmetric_group(rd.ss_rank) then
+C=rd.Cartan_matrix in
+##for P in perms do if P*C=C*P then [P] else [] fi od fi
+
+set outer_automorphism_group(RootDatum rd)=[mat]:
+if rd.is_abelian then [] else
+assert(rd.is_semisimple,"RootDatum is not semisimple (or abelian)");
+let A=simple_roots(rd) then
+A_inverse=rational_inverse(A) in
+##for P in diagram_automorphisms(rd) do
+{P is a permutation, M is in correct basis of X^*}
+let (M,,d)=A*P*A_inverse in if d=1 then [{P}M] else [] fi od fi
 
 set O_action([Param] L)=[Param]:
 let O=outer_automorphism_group(L[0].real_form)~[0] in

@@ -98,7 +98,7 @@ struct LieType : public std::vector<SimpleLieType>
   int Cartan_entry(unsigned int i,unsigned int j) const;
   int_Matrix true_Cartan_matrix() const; // square of size |semisimple_rank()|
   unsigned int Cartan_determinant() const; // determinant of |Cartan_matrix|
-  int_Matrix transpose_Cartan_matrix() const;
+  int_Matrix transpose_Cartan_matrix() const; // square of size |rank()|
   int_Matrix Smith_basis(CoeffList& invf) const;
 
   LieType& append (const LieType& tail)
