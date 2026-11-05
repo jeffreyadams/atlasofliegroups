@@ -963,6 +963,13 @@ set required_solution ((mat,vec) system) = vec: system.solve.requisition
 {system (A,B) means solving AX = B}
 set required_solution ((mat,mat) system) = mat: system.solve.requisition
 
+{Solve AX=B (from basic.at)}
+set right_solve(mat A,mat B) = Maybe<mat>: solve(A,B)
+
+{Solve XA=B}
+set left_solve(mat A,mat B) = Maybe<mat>:
+   case solve(^A,^B) | none: none() | some(sol): (^sol).some esac
+
 { multiplicative order of a matrix, hangs unless finite }
 set order (mat !M) = int:
   let (n,):p =shape(M) in assert(@: =p,"Matrix is not square");
@@ -1220,6 +1227,9 @@ set all_simples (RootDatum rd) = [int]: #semisimple_rank(rd)
 set all_posroots (RootDatum rd) = [int]: #nr_of_posroots(rd)
 set all_roots (RootDatum rd) = [int]: let npr = rd.nr_of_posroots in
     for i: 2*npr from -npr do i od
+
+set in_weight_lattice(RootDatum rd,ratvec v)=bool:is_integer(v*rd.simple_coroots)
+set in_coweight_lattice(RootDatum rd,ratvec v)=bool:is_integer(v*rd.simple_roots)
 
 { the following uses that root_index(rd,v)=nr_of_posroots(rd) for a non-root v }
 set is_root ((RootDatum,vec) (rd,):p) = bool:
@@ -1715,6 +1725,18 @@ set ^ = (WeylElt,int->WeylElt):
     fi
   in (WeylElt w,int n) WeylElt:
   if n>0 then power(w,n) elif =n then id_W(root_datum(w)) else /power(w,-n) fi
+
+
+set is_orthogonal (RootDatum rd, vec alpha, vec beta) = bool: =alpha*coroot(rd,beta)
+
+set to_dominant(RootDatum rd, vec wt)=(WeylElt,vec):
+ let (w,wt_dom)=from_dominant(rd,wt) in (inverse(w),wt_dom)  {w*wt=wt_dom}
+set to_dominant( vec cowt,RootDatum rd)=(vec,WeylElt):
+ let (cowt_dom,w)=from_dominant(cowt,rd) in (cowt_dom,inverse(w))  {w*wt=wt_dom}
+set to_dominant (RootDatum rd, ratvec wt) = (WeylElt,ratvec):
+  let (n,d)=%wt then (w,v)=to_dominant(rd,n) in (w,v/d)
+set to_dominant (ratvec cowt,RootDatum rd) = (ratvec,WeylElt):
+  let (n,d)=%cowt then (v,w)=to_dominant(n,rd) in (v/d,w)
 
 set matrix (WeylElt w) = mat:
    let n=w.root_datum.rank in n # for c in id_mat(n) do w*c od
@@ -2618,6 +2640,20 @@ set delete (mat M, int j) = mat: M[:j] ## M[j+1:]
 }
 
 set in_string_list (string s,[string] S) = bool: s.(is_member(S))
+
+
+{eliminate duplicates from list}
+set remove_duplicates([vec] list)=[vec]:
+let rv=[vec]:[] in
+for v in list do
+ if find(rv,v)=-1 then rv#:=v fi
+od;rv
+
+{remove zero vector from list}
+set remove_zeros([vec] list)=[vec]:
+##for v in list do if =v then [] else [v] fi od
+
+{prune (removing duplicates and zeros) is prune@mat in restricted_roots.at}
 
 set positive_imaginary_roots_and_coroots = imaginary_sys@(RootDatum,mat)
 set positive_imaginary_roots_and_coroots = imaginary_sys@KGBElt

@@ -14,8 +14,6 @@
   NOTE: result of |unnormalized_torus_factor| is not $\theta-fixed$
   probably better not to use |unnormalized_torus_factor|
 }
-set unnormalized_torus_factor (KGBElt x) = ratvec:
-  (torus_factor(x)+rho_check(real_form(x)))/2
 
 { compute xi^2 and test if it is central
   this is formula when v= unnormalized_torus_factor
@@ -40,7 +38,12 @@ set square2 (InnerClass ic,mat theta,ratvec tf) = ratvec:
 
 { the following is the same as central_cocharacter@RealForm in Vogan-dual.at }
 set square (RealForm G) = ratvec: (base_grading_vector(G)+rho_check(G))%1
-set square (KGBElt x) = ratvec: square(real_form(x))
+
+{include testing!}
+set square (KGBElt x) = ratvec:
+let square1=square(real_form(x)) then
+square2=square2(x.inner_class,x.involution,x.torus_factor) in
+assert(2*square1=square2,"error in calculating square");square1
 
 { tf=normalized torus_factor: xi=exp(\pi i(tf\rho^v))\sigma_w\xi_0
   so square_is_central(ic,theta(x),torus_factor(x)) should always be true
@@ -48,6 +51,10 @@ set square (KGBElt x) = ratvec: square(real_form(x))
 set square_is_central (InnerClass ic,mat theta,ratvec tf) = bool:
   let sq = square(ic,theta,tf), alpha = simple_roots(ic) in
   all(n_columns(alpha), (int i): is_integer(sq*alpha[i]) )
+
+set is_pure(KGBElt x)=bool:square(x)=square(quasisplit_form(x.real_form))
+set is_pure(RealForm G)=bool:square(G)=square(quasisplit_form(G))
+
 
 set parity (Param p,vec alpha_hat) = bool: { parity condition }
 ( let x = x(p), gamma=infinitesimal_character(p) in
@@ -129,10 +136,6 @@ set choose_g (Param p) = ratvec:
   choose_g(real_form(p),dual(integrality_datum(p)))
 
 {contragredient of a parameter}
-set tits(KGBElt x)=Tits_elt:(x.real_form,x.unnormalized_torus_factor,x.involution)
-set KGB_elt (Tits_elt t)=KGB_elt(t.root_datum,t.theta,2*t.torus_part-t.root_datum.rho_check)
-set inverse(KGBElt x)=KGB_elt(x.tits.inverse)
-
 {contragredient: (x,lambda,nu) -> (w_0\times x,-w_0\lambda,-w_0\nu)
  sketch: the contragredient is given by the Chevalley involution (of the real group)
  which acts by -1 on lambda,nu, but keeps the same x (it doesn't change the "group")
@@ -141,6 +144,8 @@ set inverse(KGBElt x)=KGB_elt(x.tits.inverse)
 }
 set contragredient(Param p)=Param:
 let w=p.root_datum.w0 in parameter(cross(w,p.x),-w*p.lambda,-w*p.nu)
+
+set contragredient([Param] params)=[Param]: for p in params do contragredient(p) od
 
 { gamma=infinitesimal character to combine with x, found from real_form(y) }
 set parameter (KGBElt x,KGBElt y,ratvec gamma)=Param:

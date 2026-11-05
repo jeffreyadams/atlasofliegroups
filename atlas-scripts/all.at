@@ -49,6 +49,7 @@
 {this is slow to load:
  <unipotent_representations_exceptional.at
 }
+<hash.at
 <certificate.at
 <geck_generic.at
 <lusztig_cells.at
@@ -59,4 +60,15 @@
 <G2_unitary_dual.at
 <adams_johnson.at
 <speh.at
+<twisted_endoscopic_lifting.at
+<endoscopic_groups.at
+<strong_real_forms.at
+<arthur_sp.at
+<structure_constants2.at
+<L_hom.at
+<synthetic2.at
+<homomorphism.at
+<endoscopic_lifting.at
+<base_change.at
+<wedgeP.at
 <cell_graph.at

@@ -1,5 +1,6 @@
 <Vogan-dual.at
 <KL_polynomial_matrices.at
+<strong_real_forms
 
 {this is a convenient function, should be moved elsewhere
 group list of parameters by block;
@@ -18,13 +19,7 @@ for p in list do
  od;
  for i:#blocks do (blocks[i], subsets[i]) od
 
-
-set is_valid(KGBElt_gen y,ratvec gamma)=bool:is_integer(square(y)-gamma)
-
 set parameter(KGBElt x,KGBElt_gen y,ratvec gamma)=Param:parameter(x,gamma-y.torus_factor,gamma)
-
-set y_gen(Param p)=KGBElt_gen: let y=(dual(p.inner_class),-^p.x.involution,p.infinitesimal_character-p.lambda) in
-assert(is_valid(y,p.infinitesimal_character),"y_gen(p) is not valid");y
 
 set simple_imaginary_roots(KGBElt x)=mat:
 let (simple_imaginary_roots,)=simple_imaginary_subsystem(x) in simple_imaginary_roots
@@ -35,23 +30,25 @@ for alpha in simple_imaginary_roots(x) do root_reflection(x.root_datum,alpha) od
 set fiber(KGBElt x)=[KGBElt]:
 for (y,) in cross_sub_orbit(simple_imaginary_reflections(x),x) do y od
 
-{if G is quasisplit this is guaranteed to work
+{this needs to be fixed
+ if G is quasisplit this is guaranteed to work
  if not, it will fail with an error if there is no x with x.involution=theta}
-set fiber(RealForm G,mat theta)=[KGBElt]:
+set fiber_old(RealForm G,mat theta)=[KGBElt]:
 fiber(KGB_elt(G,theta,G.base_grading_vector))
+{this is terrible but will do for now:}
+{assumes all x with same theta are consecutive}
+set fiber(RealForm G,mat theta)=[KGBElt]:
+let found=false, done=false then
+rv=[KGBElt]:[] in 
+for x in KGB(G) do
+ if x.involution=theta then
+  rv#:=x;
+  found:=true
+ else
+  if found=true then break fi
+ fi
+od;rv 
 
-{given G, gamma,y -> defines an L-homomorphism phi: W_R -> LG}
-
-{We think of an L-packet as a set of *parameters*
- these should always be sorted according to the order given by monomials@Param
- If we want to specify a set of irreducibles or standards we make this explicit}
-set L_packet(RealForm G,ratvec gamma, KGBElt_gen y_gen)=[Param]:
-assert(is_valid(y_gen,gamma), "(y_gen,gamma) is not valid");
-let fiber=fiber(G,-^y_gen.involution) in
-##for x in fiber do
- let p=parameter(x,y_gen,gamma)  then
- P=finalize(p) in
- monomials(P) od
 
 {L-packet of parameters, containing p}
 set L_packet(Param p)=[Param]:
@@ -81,6 +78,15 @@ for p in params do
  if find(representatives,rep)=-1 then representatives#:=rep fi
  od;
 for p in representatives do L_packet(p) od
+
+set L_packets(RealForm G,ratvec gamma)=[[Param]]:
+L_packets(all_parameters_gamma(G,gamma))
+
+set L_packets(InnerClass ic,ratvec gamma)=[[Param]]:
+##for G in strong_real_forms(ic) do L_packets(G,gamma)  od
+
+set pure_L_packets(InnerClass ic,ratvec gamma)=[[Param]]:
+##for G in pure_strong_real_forms(ic) do L_packets(G,gamma)  od
 
 {P is a sum of standards:}
 set is_stable_std(ParamPol P)=bool:
@@ -239,7 +245,10 @@ set show_stable_sums_irr([Param] list)=void:
 show(stable_sums_irr_mat(list))
 
 
-set q(RealForm G)=int:rat_as_int((dimension(G) - dimension(K_0(G)))/2)
+set q(RealForm G)=rat:
+let Gder=derived(G) in (dimension(Gder) - dimension(K_0(Gder)))/2
+
+set q_diff(RealForm G,RealForm H)=int:rat_as_int(q(G)-q(H))
 
 set kottwitz_invariant(RealForm G)=int:rat_as_int(q(quasisplit_form(G))-q(G))
 
@@ -278,6 +287,16 @@ set inner_lift(ParamPol P,int i)=ParamPol: inner_lift(P,P.real_form.real_forms[i
 
 
 {p=parameter(p.x,p.y_gen,p.infinitesimal_character) should true}
+
+set print_sum_of_standards_by_packet(ParamPol P)=
+assert(is_stable_std(P),"P (considered as a sum of standard modules) is not stable");
+let ()=prints(new_line,"Here are the monomials of the ParamPol by L-packet:") in 
+let ()=for params in L_packets(monomials(P)) do
+   prints(); for q in params do prints(q) od od in 
+let ()=prints(new_line, "Here is the ParamPol with the Whittaker terms indicated by *") in 
+for (c,p) in %P do
+ let star=if =p.x.torus_factor then " *" else "" fi in prints(split_format(c), "*", p,  star)
+ od
 
 
 

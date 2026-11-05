@@ -4,26 +4,21 @@
 <sort.at
 <parameters.at
 <lattice.at
+<strong_real_forms.at
 
 { G is a RealForm
   pi0(G)=order of component group of G(R)
   H1(G)=order of Galois cohomology H^1(Gamma,G)
 }
 
-{ square_classes(ic) =
-  list of all square classes of inner class, each a list of real form numbers
-  square_classes(G) = list of all square classes of inner class of G
-}
-set square_classes (InnerClass ic) = [[int]]:
-  square_classes(Cartan_class(ic,0)) { the most compact Cartan }
-{ for a RealForm just convert it to its InnerClass, Cartan(0) is the same }
 
 { list of integer labels of real forms, each repeated for strong real forms}
 set strong_real_forms_indices(InnerClass ic) = [int]:
   sort(##square_classes(fundamental_Cartan(ic)))
 
+{this function is now defined in strong_real_forms, this one has been renamed}
 { list of real forms, each repeated for strong real forms }
-set strong_real_forms(InnerClass ic) = [RealForm]:
+set strong_real_forms_old(InnerClass ic) = [RealForm]:
 let rf=ic.real_forms in for i in ic.strong_real_forms_indices do rf[i] od
 
 { assume you want all strong real forms, i.e. Cartan 0 }

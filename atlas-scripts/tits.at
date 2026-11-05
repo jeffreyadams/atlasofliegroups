@@ -10,6 +10,19 @@
   multiplications by elements of W (where w represents the canonical lift
   \sigma_w) and we do have a well defined notion of length change for such
   operations, in terms of counting roots in the \theta image of the poscoroots.
+  
+
+{Note for debugging purposes: here is the beginning of the comment before a recent modification:
+  An element of the (\delta-extended) Tits group is represented by
+  (RootDatum rd,ratvec v,mat theta) representing \exp(2i\pi v) \sigma_w d
+  where \theta is the the action of wd on X^*, with w\in W and d is a
+  distinguished involution of that lattice (we need to allow both d=\delta and
+  d=identity in order to get a group, with multiplication and inverse). We can
+  do without explicitly representing d, since we shall work with the image
+  under \theta of the set of positive (co)roots, which set d stabilises.}
+
+  NOTE: sigma=(rd,v,theta) means v is the "unnormalized torus factor" of sigma, in the
+        terminology of KGBElt and KGBElt_gen. Thath is x=(inner_cl
 
   So v is a rational coweight taken modulo 1; theta need not be an involution.
   Note that theta is defined as operating from left on X^*; for left action of
@@ -28,18 +41,68 @@
 
 set_type [ Tits_elt = (RootDatum root_datum,ratvec torus_part,mat theta) ]
 
-{ equality test assumes the root data agree, without check (though it could) }
-set = (Tits_elt(,v,theta),Tits_elt(,u,eta)) = bool: =(v-u)%1 and theta=eta
+{Caution: given a Tits_element sigma=(G,v,theta)
+ this represents an element:
+    \exp(2\pi i v)\sigma_w of G OR
+    \exp(2\pi i v)\sigma_w\delta of G\delta
+ thus the action of sigma on the torus is by w OR w*\delta; in the latter case this might not be the action of an element of W
+ to distinguish these we define
+ w@Tits_element -> WeylElt: taking w(sigma)\in W satisfies sigma acts on T by w, i.e. sigma is the Tits lift of w up to a torus factor
+ w@(Tits_element, mat) -> WeylElt: w(sigma,delta)\in W satisfies: sigma acts on T by w*delta
+}
+
+set w(Tits_elt (rd,t,theta))=WeylElt:W_elt(rd,theta)
+set w(Tits_elt (rd,t,theta), mat delta)=WeylElt:W_elt(rd,theta*delta)
+
+set tits_element(RootDatum G,ratvec torus_part, mat theta)=Tits_elt:(G,torus_part,theta)
+set tits_element(RootDatum G,ratvec torus_part, WeylElt w)=Tits_elt:
+ assert(G=w.root_datum,"root data don't match");
+ tits_element(G,torus_part,w.matrix)
+set tits_element(RootDatum G,WeylElt w)=Tits_elt:tits_element(G,null(rank(G)),w)
+set tits_element(RootDatum G,mat theta)=Tits_elt:tits_element(G,null(rank(G)),theta)
+
+set unnormalized_torus_factor (KGBElt x) = ratvec:(torus_factor(x)+rho_check(real_form(x)))/2
+
+set torus_factor(Tits_elt t)=ratvec:torus_part(t)
+set unnormalized_torus_factor(Tits_elt t)=ratvec:(torus_factor(t)+rho_check(root_datum(t)))/2
+
+set tits_element(KGBElt x)=Tits_elt:(x.root_datum,x.unnormalized_torus_factor,x.involution)
+{set KGB_elt (Tits_elt t)=KGB_elt(t.root_datum,t.theta,2*t.torus_part-t.root_datum.rho_check)}
+set KGB_elt (Tits_elt t)=KGB_elt(t.root_datum,t.theta,(2*t.torus_part-t.root_datum.rho_check)*(1+t.theta)/2)
+
+{sigma is a synonyn for tits_element}
+set sigma(RootDatum G,ratvec torus_part, mat theta)=Tits_elt:tits_element(G,torus_part,theta)
+set sigma(RootDatum G,ratvec torus_part, WeylElt w)=Tits_elt:tits_element(G,torus_part,w)
+set sigma(RootDatum G,WeylElt w)=Tits_elt:tits_element(G,w)
+
+set tits_simple_reflection(RootDatum G, ratvec torus_part,int i)=Tits_elt:
+assert(0<=i and i<rank(G),"i must be index of a simple reflection");
+(G,torus_part,reflection(G,i))
+set sigma(RootDatum G, ratvec torus_part,int i)=Tits_elt:tits_simple_reflection(G,torus_part,i)
+
+set tits_simple_reflection(RootDatum G, int i)=Tits_elt:tits_simple_reflection(G,null(rank(G)),i)
+set sigma(RootDatum G,int i)=Tits_elt:tits_simple_reflection(G,null(rank(G)),i)
+
+set tits_simple_reflection(RootDatum G,vec alpha)=Tits_elt:
+let i=root_index(G,alpha) in tits_simple_reflection(G,i) 
+set sigma(RootDatum G,int i)=Tits_elt:tits_simple_reflection(G,i)
+
+
+
+{ equality test assumes the root data agree, without check (though it could)  BAD IDEA}
+set = (Tits_elt(rd1,v,theta),Tits_elt(rd2,u,eta)) = bool: rd1=rd2 and =(v-u)%1 and theta=eta
 set != ((Tits_elt,Tits_elt)p) = bool: not =p
 
 { identity in Tits group }
 set tits_identity (RootDatum rd) = Tits_elt:
   let r=rank(rd) in (rd,ratvec:null(r),id_mat(r))
+{recall in the Tits group there is no normalized torus factor,
+ so tits_identity=exp(2\pi i*0)=identity in G}
 
 { element (torus factor=1)*delta in twisted Tits group }
 set tits_delta (RootDatum rd,mat delta) = Tits_elt: (rd,null(rank(rd)),delta)
-set tits_delta (RealForm G) = Tits_elt:
-  tits_delta(RootDatum:G,distinguished_involution(InnerClass:G))
+set tits_delta (InnerClass ic) = Tits_elt:
+  tits_delta(ic.root_datum,distinguished_involution(ic))
 
 { right multiplication by sigma_s, where s must index a simple root }
 set right (Tits_elt(rd,v,theta), int s) = Tits_elt:
@@ -72,15 +135,21 @@ set right (Tits_elt xi, WeylElt w) = Tits_elt:
   assert(@:w.root_datum=xi.root_datum);
   for s in w.word do xi:=right(xi,s) od; xi
 
-{ left multiply by simple generator with a torus part: \exp(2i\pi v)\sigma_s }
+{ left multiply by torus part \exp(2i\pi v)\sigma_s }
 set left ((ratvec,int)(v,s), Tits_elt xi) = Tits_elt:
   let (rd,u,phi) = left(s,xi) in (rd,(u+v)%1,phi)
 
-{ right multiply by simple generator with a torus part: \exp(2i\pi v)\sigma_s }
+{ right multiply by torus part \exp(2i\pi v)\sigma_s }
 set right (Tits_elt xi, (ratvec,int)(v,s)) = Tits_elt:
   let (rd,u,phi) = right(xi,s) in (rd,(v*xi.theta.inverse+u)%1,phi)
 
-{ conjugate by simple generator sigma_s }
+{ left multiply by torus part \exp(2i\pi v) }
+set left (ratvec v, Tits_elt xi) = Tits_elt:(xi.root_datum,xi.torus_part+v,xi.theta)
+
+{ right multiply by torus part \exp(2i\pi v) }
+set right (Tits_elt xi, ratvec v)=Tits_elt:(xi.root_datum,xi.torus_part+ v*xi.theta.inverse,xi.theta)
+
+{ conjugate by simple reflection }
 set conjugate (int s, Tits_elt xi) = Tits_elt:
   let sigma_s_inv = (ratvec,int): (coroot(xi.root_datum,s)/2 {=m_s},s) in
   right(left(s,xi),sigma_s_inv)
@@ -112,31 +181,85 @@ set conjugate (WeylElt w, Tits_elt xi) = Tits_elt:
   half-sum of the columns modulo 1). The action of \theta,\eta on such a matrix
   is then by left multiplication by the transpose inverse (a right-action).
 }
-set multiply (Tits_elt(rd,v,theta), Tits_elt({assume rd},u,eta)) = Tits_elt:
-  let tt1 = ^theta.inverse
+set multiply(Tits_elt(rd,v,theta), Tits_elt({assume rd},u,eta)) = Tits_elt:
+let tt1 = ^theta.inverse
   , neg_crs = columns_with(is_negative_coroot(rd),^eta.inverse*poscoroots(rd))
   in
   ( rd
-  , ( v + tt1*u + sum(columns_with(is_positive_coroot(rd),tt1*neg_crs))/2 ) % 1
+{  , ( v + tt1*u + sum(columns_with(is_positive_coroot(rd),tt1*neg_crs))/2 )%1  NO %1 is wrong?}
+    , ( v + tt1*u + sum(columns_with(is_positive_coroot(rd),tt1*neg_crs))/2 )%1
   , theta*eta
   )
 
+{this makes no sense:
+set multiply_wrong(Tits_elt t1, Tits_elt t2) = Tits_elt:
+  assert(t1.root_datum=t2.root_datum,"root data don't match in multiplying Tits elements");
+  let rd=t1.root_datum then
+  theta1=t1.theta then
+  theta2=t2.theta then
+  mu1=unnormalized_torus_factor(t1) then
+  mu2=unnormalized_torus_factor(t2) then
+  tt1 = ^theta1.inverse then
+  neg_crs = columns_with(is_negative_coroot(rd),^theta2.inverse*poscoroots(rd)) then
+  mu3=mu1 + tt1*mu2 + sum(columns_with(is_positive_coroot(rd),tt1*neg_crs))/2 then
+  theta3=theta1*theta2 then
+  tau3=((2*mu3-rd.rho_check)*theta3)%1 in
+  ( t1.root_datum,tau3,theta3)
+}
+
 set * = multiply@(Tits_elt,Tits_elt)
 
+set product (RootDatum rd, [Tits_elt] L) = Tits_elt:
+  let p = tits_identity(rd) in for w in L do p *:= w od; p
+
 { inverse uses the bicycle lemma (note the (2\.../2) "bicycle" structure):
+
    sigma_w*sigma_{w^{-1}} = exp(2\pi i(rho^vee-rho^vee*w^{-1})/2)
    {this is a joke; the two 2's cancel, but doing so destroys the bicycle image}
   whence
    inverse(Tits_elt:(0,theta)) = Tits_elt:(rho_check*(1-theta)/2,inverse(theta))
   (this formula remains valid in both cosets of W)
   and inverse(Tits_elt:(v,theta))=inverse(Tits_elt:(0,theta))*\exp(2\pi i * -v)
-    = Tits_elt:(rho_check*(1-theta)/2-v*theta,inverse(theta))
-}
-set inverse (Tits_elt(rd,v,theta)) = Tits_elt:
+    = Tits_elt:(rho_check*(1-theta)/2-v*theta,inverse(theta))  [No: v*theta should be v*inverse(theta)
+CORRECTION:
+inverse(Tits_elt:(v,theta))=inverse(Tits_elt:(0,theta))*\exp(2\pi i * -v)
+                           =Tits_elt((rho_check*(1-theta)/2),inverse(theta))*\exp(2\pi i *-v)
+                           =Tits_elt((rho_check*(1-theta)/2) - v*inverse(theta)}
+
+{this formula is wrong: the last theta should be inverse(theta)}
+set inverse_old (Tits_elt(rd,v,theta)) = Tits_elt:
   (rd, (rho_check(rd)*(1-theta)/2 - v*theta) % 1, theta.inverse)
+
+{corrected formula}
+set inverse(Tits_elt(rd,v,theta))=Tits_elt:
+  (rd, (rho_check(rd)*(1-theta)/2 - v*inverse(theta)) % 1, theta.inverse)
+
+set inverse(KGBElt x)=KGB_elt(x.tits_element.inverse)
 
 { canonical lift of Weyl group element, assumed reduced, to Tits group }
 set lift (WeylElt w) = Tits_elt: left(w,tits_identity(w.root_datum))
+
+{write Tits_elt as product of tits simple reflections, where the first one 
+ can have a non-zero torus factor 
+ in other words suppose sigma=tits_element (G,t,w) 
+ write word(w)=[i1,...,in] then return
+ tits_element(G,t,i1)*tits_element(G,i2)*...*tits_element(G,in)
+}
+set simple_expression(Tits_elt sigma)=[Tits_elt]:
+let (G,v,theta)=sigma then
+rv=[Tits_elt]:[] then
+w=W_elt(G,theta) in
+if length(w)=0 then {special case: no Weyl element but there is a torus element}
+ rv:=[left(sigma.torus_part,tits_identity(G))]
+else
+for i@j in word(w) do
+ rv#:=
+  if j=0 then tits_simple_reflection(G,v,i)
+         else tits_simple_reflection(G,i)
+  fi
+ od
+fi;
+rv
 
 { canonical lift of Weyl group element to \delta-twisted Tits group }
 set lift (mat delta, WeylElt w) = Tits_elt:
@@ -156,3 +279,11 @@ set ^ (Tits_elt !xi, int n) = Tits_elt:
 set order (Tits_elt xi) = int:
   let id=tits_identity(xi.root_datum), d=order(xi.theta)
   in if xi^d=id then d elif xi^(2*d)=id then 2*d else error() fi
+
+set square(Tits_elt (rd,tf,theta))=ratvec:tf+rho_check(rd)
+
+set show(Tits_elt sigma)=void:
+prints(sigma.root_datum);
+prints("theta=",sigma.theta);
+prints("mu=",sigma.torus_factor);
+prints("rho_check=", rho_check(sigma.root_datum))
