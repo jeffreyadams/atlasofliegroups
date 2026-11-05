@@ -1,6 +1,8 @@
 <basic.at
 <weak_packets.at { for |weak_packet|, |parameters|, |dual_orbits| }
 <BMSZ.at         { for |label_and_datum|, |pbp|, |A_bar|, |bmsz_dual_partition| }
+<L_packet.at     { for |inner_lift| }
+<twisted_endoscopy_D.at { for |Arthur_packet_distribution_ABC|, |endoscopic| }
 
 { test_arthur.at: compare different computations of Arthur packets
   for real classical groups.
@@ -16,9 +18,11 @@
 
   Contents so far:
     Section 1: Pi_weak_atlas, Pi_weak_bmsz, and comparison of their orders
+    Section 2: Pi_aam, Pi_weak_aam, and comparison of Pi_weak_aam with Pi_weak_atlas
 
   BMSZ applies to O^v of good parity only, and to G of type
   SO(p,q), Sp(2n,R), Sp(p,q), SO^*(2n).
+  AAM is used here for the inner forms of Sp(2n,R), SO(n+1,n) and SO(n,n), all O^v.
 }
 
 { --------------  Section 1: orders of Pi_weak_bmsz and Pi_weak_atlas  -------------- }
@@ -90,4 +94,154 @@ count(int v)=int:#(##for r in results do if r=v then [r] else [] fi od) in
 prints("compare_weak_bmsz_atlas: ", #results, " dual orbits: ",
        count(1), " agree, ", count(0), " mismatch(es), ",
        count(-1), " skipped (not good parity)");
+count(0)=0
+
+{ --------------  Section 2: Pi_weak_aam versus Pi_weak_atlas  -------------- }
+
+{ Usage:
+    compare_weak_aam_atlas(Sp(4,R), Sp(4,R).dual_orbits[2])   { one orbit }
+    compare_weak_aam_atlas(SO(4,1))                           { all dual orbits of G }
+
+  AAM: Arthur packets by twisted endoscopic transfer from GL(N)
+  (twisted_endoscopy_D.at). This is done on the quasisplit form H of G:
+    type C: H=Sp(2n,R)   from GL(2n+1,R)   |Arthur_packet_distribution_ABC|
+    type B: H=SO(n+1,n)  from GL(2n,R)     |Arthur_packet_distribution_ABC|
+    type D: H=SO(n,n)    from GL(2n,R)     as in |Arthur_packet_BCD|
+  Other groups are not treated; in particular not the inner class of SO(n+1,n-1).
+  If G is not quasisplit the packets for G are obtained from those of H
+  by |inner_lift| (L_packet.at).
+
+  Type D: AAM only gives the union of a packet and its image under the outer
+  automorphism coming from O(2n) (the distribution eta_psi + eta_{psi o O}).
+  So in type D
+    - each list in Pi_aam(G,O^v) is such a union of two packets (or a single
+      packet stable under the outer automorphism)
+    - Pi_weak_aam(G,O^v) is the weak packet of the O(2n)-orbit of O^v.
+      This is O^v itself unless O^v is very even; then it consists of O^v and
+      the other orbit with the same partition, and Pi_weak_aam(G,O^v) is
+      compared with the union of the two atlas weak packets.
+
+  The unipotent Arthur parameters psi for O^v are found through their Langlands
+  parameters: as in |unipotent_packets_ABC|, the starting points are the
+  parameters of Pi_weak_atlas(H,O^v) attached to the split Cartan subgroup of H.
+  So Pi_weak_aam is not completely independent of Pi_weak_atlas.
+
+  There is no good parity condition here: all O^v are compared.
+  Both sides are lists of atlas parameters, so the sets themselves are compared,
+  not only their orders.
+}
+
+{ the classical type "B", "C" or "D" of G, for G an inner form of
+  SO(n+1,n), Sp(2n,R) or SO(n,n): the groups for which AAM is implemented here }
+set aam_type(RealForm G)=string:
+let H=quasisplit_form(G) then n=rank(H) in
+if H=Sp(2*n,R) then "C"
+elif H=SO(n+1,n) then "B"
+elif H=SO(n,n) then "D"
+else error("AAM packets are only implemented for inner forms of Sp(2n,R), SO(n+1,n) and SO(n,n)")
+fi
+
+{ partition of O^v, in the classical type of the dual group of G }
+set aam_dual_partition(RealForm G, ComplexNilpotent Ov)=Partition:
+let type=aam_type(G) in
+if type="C" then partition_of_orbit_B(Ov)
+elif type="B" then partition_of_orbit_C(Ov)
+else let (P,)=partition_of_orbit_D(Ov) in P
+fi
+
+{ the orbits in the O(2n)-orbit of O^v (type D), in the order of G.dual_orbits:
+  O^v, and if O^v is very even also the other orbit with the same partition.
+  In types B and C this is just [O^v]. }
+set O_orbit(RealForm G, ComplexNilpotent Ov)=[ComplexNilpotent]:
+if aam_type(G)!="D" then [Ov]
+else
+  let P=aam_dual_partition(G,Ov) in
+  ##for O in G.dual_orbits do if aam_dual_partition(G,O)=P then [O] else [] fi od
+fi
+
+{ H quasisplit: the parameters of Pi_weak_atlas(H,O^v) on the split Cartan subgroup;
+  these are the Langlands parameters of the unipotent Arthur parameters for O^v }
+set aam_seeds(RealForm H, ComplexNilpotent Ov)=[Param]:
+let wp=Pi_weak_atlas(H,Ov) then
+all=all_parameters_x_gamma(KGB(H)~[0],Ov.H/2) in
+##for p in all do if first(for q in wp do q=p od)=-1 then [] else [p] fi od
+
+{ type D: the virtual character eta_psi + eta_{psi o O} whose terms are the
+  parameters returned by |Arthur_packet_BCD| }
+set aam_distribution_D(Param p_H,mat M,RealForm GL,mat delta)=ParamPol:
+let ecf=extended_character_formula(Finalize(lift_std(p_H,M,GL)),delta) then
+P=twisted_character(ecf) then
+Pw=twisted_character_whittaker(P,delta) in
+composition_series(inverse_lift_std_orbit(Pw,p_H.real_form,M,p_H.infinitesimal_character))
+
+{ H quasisplit: the AAM packets for O^v as (stable) virtual characters, without repetition }
+set aam_packet_characters(RealForm H, ComplexNilpotent Ov)=[ParamPol]:
+let type=aam_type(H) then
+n=rank(H) then
+GL=if type="C" then GL(2*n+1,R) else GL(2*n,R) fi then
+delta=distinguished_involution(GL) then
+(,M0)=endoscopic(GL,delta) then
+M=-M0 then
+rv=[ParamPol]:[] in
+for p in aam_seeds(H,Ov) do
+  let P=if type="D" then aam_distribution_D(p,M,GL,delta)
+        else Arthur_packet_distribution_ABC(p,M,GL,delta) fi in
+  if first(for Q in rv do Q=P od)=-1 then rv#:=P fi
+od;
+rv
+
+{ the AAM packets of G for O^v, one list of parameters for each packet of the
+  quasisplit form (for G not quasisplit some of these lists can be empty).
+  In type D each list is the union of a packet and its image under the outer
+  automorphism. }
+set Pi_aam(RealForm G, ComplexNilpotent Ov)=[[Param]]:
+let H=quasisplit_form(G) then
+chars=aam_packet_characters(H,Ov) in
+if G=H then for P in chars do monomials(P) od
+else for P in chars do monomials(inner_lift(P,G)) od
+fi
+
+set params_union([[Param]] lists)=[Param]:
+let rv=[Param]:[] in
+for list in lists do
+  for p in list do if first(for q in rv do q=p od)=-1 then rv#:=p fi od
+od;
+rv
+
+set params_subset([Param] A,[Param] B)=bool:
+all(for p in A do first(for q in B do q=p od)!=-1 od)
+
+{ the weak packet of O^v according to AAM: the union of the packets Pi_aam(G,O^v)
+  (in type D: the weak packet of the O(2n)-orbit of O^v) }
+set Pi_weak_aam(RealForm G, ComplexNilpotent Ov)=[Param]:
+params_union(Pi_aam(G,Ov))
+
+{ Compare Pi_weak_aam(G,O^v) with Pi_weak_atlas(G,O^v), and print one line.
+  In type D, for O^v very even, Pi_weak_atlas(G,O^v) is replaced by the union
+  of the atlas weak packets of the two orbits with the partition of O^v.
+  Returns 1 if the two sets of parameters are equal, 0 otherwise. }
+set compare_weak_aam_atlas_status(RealForm G, ComplexNilpotent Ov)=int:
+let P=aam_dual_partition(G,Ov) then
+orbits=O_orbit(G,Ov) then
+aam=Pi_weak_aam(G,Ov) then
+atlas=params_union(for O in orbits do Pi_weak_atlas(G,O) od) then
+same=params_subset(aam,atlas) and params_subset(atlas,aam) in
+prints(form_name(G), "  O^v=", P,
+       if #orbits>1 then " (very even, H="+to_string(Ov.H)+"; both orbits)" else "" fi,
+       "  #Pi_weak_atlas=", #atlas, "  #Pi_weak_aam=", #aam,
+       if same then "  ok"
+       elif #aam=#atlas then "  SAME ORDER, DIFFERENT SETS"
+       else "  MISMATCH" fi);
+if same then 1 else 0 fi
+
+{ one pair (G,O^v): true if Pi_weak_aam=Pi_weak_atlas }
+set compare_weak_aam_atlas(RealForm G, ComplexNilpotent Ov)=bool:
+compare_weak_aam_atlas_status(G,Ov)=1
+
+{ all dual orbits of G: true if there is no mismatch }
+set compare_weak_aam_atlas(RealForm G)=bool:
+let results=for Ov in G.dual_orbits do compare_weak_aam_atlas_status(G,Ov) od then
+count(int v)=int:#(##for r in results do if r=v then [r] else [] fi od) in
+prints("compare_weak_aam_atlas: ", #results, " dual orbits: ",
+       count(1), " agree, ", count(0), " mismatch(es)");
 count(0)=0
