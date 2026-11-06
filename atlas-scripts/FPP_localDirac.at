@@ -293,7 +293,8 @@ set pmin(KGBElt x, ratvec lambda) = Param:
 set LGK_time = int:0
 {computes directed graph of local faces. Output GraphData is
 [[int]],[[int]] giving equivalence classes and the graph. Next output
-[vec]s are IUCL and classListByFace}
+[vec]s are IUCL and classListByFace.  IUCL is now always empty: no caller used it, and
+full_down_classes (a transitive closure) was ~3 s of E7_s x_open one_level (6 Nov 2026).}
 {9/25/23: have extra coord in FaceVertsKHash to record # Langlands quotients}
 set localGraphK([[FaceVertsKHash]] LFvertsK) = (GraphData, [vec],[vec]):
     {let () = if face_verbose then prints("start to compute face graph K")
@@ -302,7 +303,7 @@ set localGraphK([[FaceVertsKHash]] LFvertsK) = (GraphData, [vec],[vec]):
     then (eq,gr) = GraphData: up_data(LFvertsK)
     {then() = prints("number of graph equivalence classes = ",#eq)}
     then classListByFace = [vec]: class_lists(LFvertsK,(eq,gr))
-	 , IUCL = full_down_classes(eq,gr) {[vec]:[[]]}
+	 , IUCL = [vec]: []
     then time = elapsed_ms() - start
     { then () = if time_verbose
 	      then prints("     ", print_time_string(time),
@@ -321,7 +322,7 @@ set localGraphK([[FaceVertsKHash]] FDKH, KTypePol_hash pol_hash, int level) =
     {then () = for v in eq do prints(v) od}
     {then() = prints("number of graph equivalence classes to height = ",#eq)}
     then classListByFace = [vec]: class_lists(FDKH,(eq,gr))
-	 , IUCL = full_down_classes(eq,gr)
+	 , IUCL = [vec]: []
     then time = elapsed_ms() - start
     {then () = if time_verbose
 	      then prints("     ", print_time_string(time),

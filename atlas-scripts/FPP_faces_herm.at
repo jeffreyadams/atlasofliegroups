@@ -71,6 +71,10 @@ set sort(RealForm G, LocalVertexData Lvd, [[FaceVertsKHash]] LFDKH, int tail) = 
        else LFDKH
        fi
 
+{sort only the levels from k on (the earlier ones are already sorted), tail 3 as for FaceVertsKHash}
+set sort_from(RealForm G, LocalVertexData Lvd, [[FaceVertsKHash]] LFDKH, int k) = [[FaceVertsKHash]]:
+    if #LFDKH <= k or #LFDKH[0] = 0 then LFDKH else LFDKH[:k] ## sort(G,Lvd,LFDKH[k:],3) fi
+
 set sort(RealForm G, LocalVertexData Lvd, [[FaceVertsKHash]] LFDKH) = [[FaceVertsKHash]]:
     if #LFDKH = 0 or #LFDKH[0]=0 then return LFDKH fi;
     let tail = #LFDKH[0][0]-1
@@ -6896,11 +6900,35 @@ then answer = [vec]:
 in answer
 fi
 
+set superFaces_edges_flag = true
+{Triangles from vertices L0 and edges L1 (vertex lists sorted), same output and order as the general
+ superFaces_plus below with d = 1, which tries every (vertex, edge) pair.  A triangle [m,a,b] (m < a < b)
+ needs m to be a lower neighbour of both a and b, so for each edge [a,b] intersect the lower neighbours
+ of a and b; the edge indices of [m,a] and [m,b] come with them (6 Nov 2026).}
+set superFaces_plus_edges([vec] L0, [vec] L1) = [(vec,vec)]:
+    let n = 1 + max(for v in L0 do v[0] od)
+    then pos = vec: for :n do -1 od
+    then () = for v@i in L0 do pos[v[0]] := i od
+    then lowN = [[int]]: for :n do [] od, lowE = [[int]]: for :n do [] od
+    then () = for E@j in L1 do let b = E[1] in lowN[b] := lowN[b]#E[0]; lowE[b] := lowE[b]#j od
+    then mark = vec: for :n do -1 od
+    then buckets = [[(vec,vec)]]: for :#L0 do [] od
+    in for E@j in L1
+       do let a = E[0], b = E[1]
+       	  in for m@k in lowN[a] do mark[m] := lowE[a][k] od;
+	     for m@k in lowN[b]
+	     do let ea = mark[m]
+	     	in if ea >= 0 then buckets[pos[m]] := buckets[pos[m]] # (vec:[m,a,b], vec:[j,lowE[b][k],ea]) fi
+	     od;
+	     for m in lowN[a] do mark[m] := -1 od
+       od; ##buckets
+
 {record also the locations in Ld of the d+2 faces in Ld from which each d+1 superface arises}
 {e is the number of non-vertex coords in the vec's}
 set superFaces_plus([vec] L0, [vec] Ld, int e) =
     [(vec,vec)]:
 if #Ld = 0 then []
+elif #Ld[0] - e = 2 and superFaces_edges_flag then superFaces_plus_edges(L0,Ld)
 else
 let d = #Ld[0] - e-1 {, start = elapsed_ms()} {dimension of the faces to be extended}
 then lookupsd = index_in(for v in Ld do v[:d+1] od)
@@ -6941,7 +6969,7 @@ set localFD_KHashbt_lookDownGEO \
     then prints(new_line,"start localFD_Khashbt_lookDownGEO, b = ",b,", t = ",t)
     fi;}
     if #LFKH = 0 or #LFKH[0] = 0 then return [] fi;
-    let G = x.real_form, start=elapsed_ms()
+    let G = x.real_form, start=elapsed_ms(), k0 = #LFKH
     then () = for dim:t-#LFKH from #LFKH {b has to be at least 2; dim is the new bigger dim}
 	      do LFKH := LFKH# (let acts = superFaces_plus(LFKH[0],LFKH[dim-1],3)
 				   in [vec]:
@@ -6960,7 +6988,7 @@ set localFD_KHashbt_lookDownGEO \
 				   od.## {[FaceVertsKHash]})
 	 od
     then () = LFKH := if sort_LFD_flag
-		      then sort(G, Lvd, LFKH)
+		      then sort_from(G, Lvd, LFKH, k0)
 		      else LFKH
 		      fi
     then time = elapsed_ms() - start
@@ -6968,10 +6996,7 @@ set localFD_KHashbt_lookDownGEO \
 	      then prints("     ", print_time_string(time),
 				" for localFD_Khashbt to dim ",t-1,
 				"; face counts = ", for list in LFKH do #list od) fi
-    in if sort_LFD_flag
-       then sort(G,Lvd,LFKH)
-       else LFKH
-       fi
+    in LFKH
 
 )
 
@@ -6988,7 +7013,7 @@ set localFD_KHashbt_lookDownGEO \
     if face_verbose
     then prints(new_line,"start localFD_Khashbt_lookDownGEO, b = ",b,", t = ",t)
     fi;
-    let G = x.real_form, start=elapsed_ms()
+    let G = x.real_form, start=elapsed_ms(), k0 = #LFKH
     then () = for dim:t-#LFKH from #LFKH {b has to be at least 2}
 	      do LFKH := LFKH# (let acts = superFaces_plus(LFKH[0],LFKH[dim-1],3)
 				in [vec]:
@@ -7016,7 +7041,7 @@ set localFD_KHashbt_lookDownGEO \
 	       " for localFD_Khashbt to height ", HT, " and dim ",t-1,
 	       "; face counts = ", for list in LFKH do #list od) fi
     in if sort_LFD_flag
-       then sort(G,Lvd,LFKH)
+       then sort_from(G,Lvd,LFKH,k0)
        else LFKH
        fi
 )
