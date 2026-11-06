@@ -1,5 +1,4 @@
 <tabulate.at
-<deform_plus.at
 
 { determine chamber for affine Weyl group of |p.infinitesimal_character| }
 set chamber(Param p) = vec: { of length |p.root_datum.nr_of_posroots| }
