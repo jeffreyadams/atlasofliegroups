@@ -418,12 +418,8 @@ set unipotents_to_hashes(RealForm G, [Param_hash] Uhashes) = void:
     else ()
     fi
 
-{whether to fill in statuses for known unitaries in local_testK_hash
-and local_test_hash}
-{separate flag KUKU_flag in FPP_faces_herm.at controls whether to use known_unitaries
-or KU}
-set KU_flag = false {Not sure why false??} {need to restore it sometimes?}
-    {true helps in E7_s spherical, by eliminating some difficult tests is_unitary(p,33)}
+{KU_flag (whether to fill in statuses for known unitaries in local_testK_hash and local_test_hash)
+ is defined in FPP_faces_herm.at, default true: check the vertices for known unitaries}
 
 {whether to fill in statuses for known unitaries in local_testK_hash*
 and local_test_hash}
@@ -773,7 +769,11 @@ set local_testK_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 {record time for local_testK_hash}
 set LtKH_time = int: 0
 set old_local_testK_flag = false {old has pref_bottom = 8}
-set pref_bottom = int: 64
+{pref_bottom: one test from the top (big faces) per pref_bottom tests from the bottom.  Top tests at
+ this stage are almost all negative and settle only their own class; the bottom settles them anyway.
+ E7_s spherical x_open (Nov 2026, after the propagation fix), testing time by pref_bottom:
+ 8: 323 s, 64: 126 s, 256: 101 s, 1000000000 (no top tests): 87.5 s, same answers. Not measured on E8.}
+set pref_bottom = int: 1000000000
 
 {test candidate classes with (new) tester; delete
  from LFVKH faces established to be nonunitary in this way. Output is new
@@ -2239,7 +2239,10 @@ end
 { Input is candidate faces, and graph info. Output is the tester-unitary ones.
  use and update a complete list Uhash of known tester-unitary faces.
  try to compute and systematically use partial order on faces, working from big faces down}
-{this version appears to be MUCH slower than up (factor of 4)}
+{slower than up: E7_s spherical x_open final stage 107 tests in 90 s against 42 tests in 37 s
+ for up (Nov 2026, after the propagation fix; before it, a factor of 4); a tie on E6_q and F4_s.
+ Most unitary classes are already marked T from the to-HT stage, so the unknown ones are mostly
+ nonunitary (E7_s x_open: 1 unitary of 36 unknown), and a failed top test settles only itself.}
 set local_test_hash_down(
     KGBElt x,
     ratvec lambda,
@@ -2433,7 +2436,9 @@ set pref_top = int: 4
  use and update a complete list Uhash of known tester-unitary faces.
  try to compute and systematically use partial order on faces}
 {Work from top (big faces); after every pref_top of those, do one bottom}
-{This also appears to be slower by factor of two than up_local, so shuuldn't use}
+{slower than up_local: E7_s spherical x_open final stage, pref_top 1: 105 tests in 90 s,
+ pref_top 4: 108 tests in 101 s, against 42 tests in 37 s for up (Nov 2026, after the
+ propagation fix).  pref_top 1 is the most bottom-leaning mix this loop allows.}
 set local_test_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     [[LocalFaceVertsKHash]] LFVH, [[int]] eq, [[int]] gr, [vec] classListByFace,
     (Param->bool) tester, Param_hash Uhash, (Param->bool) fancy_tester) = [Param]:

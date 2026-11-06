@@ -3020,7 +3020,7 @@ set FPP_flags() = void:
     if long_flags
     then prints("     false means do not look up known unitary classes in local_testK_hash")
     fi;
-    prints(new_line,"KNU_flag = ",KU_flag," (default true).");
+    prints(new_line,"KNU_flag = ",KNU_flag," (default false).");
     if long_flags
     then prints("     false means do not look up known nonunitary classes in local_testK_hash")
     fi;
