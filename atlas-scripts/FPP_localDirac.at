@@ -293,7 +293,8 @@ set pmin(KGBElt x, ratvec lambda) = Param:
 set LGK_time = int:0
 {computes directed graph of local faces. Output GraphData is
 [[int]],[[int]] giving equivalence classes and the graph. Next output
-[vec]s are IUCL and classListByFace}
+[vec]s are IUCL and classListByFace.  IUCL is now always empty: no caller used it, and
+full_down_classes (a transitive closure) was ~3 s of E7_s x_open one_level (6 Nov 2026).}
 {9/25/23: have extra coord in FaceVertsKHash to record # Langlands quotients}
 set localGraphK([[FaceVertsKHash]] LFvertsK) = (GraphData, [vec],[vec]):
     {let () = if face_verbose then prints("start to compute face graph K")
@@ -302,7 +303,7 @@ set localGraphK([[FaceVertsKHash]] LFvertsK) = (GraphData, [vec],[vec]):
     then (eq,gr) = GraphData: up_data(LFvertsK)
     {then() = prints("number of graph equivalence classes = ",#eq)}
     then classListByFace = [vec]: class_lists(LFvertsK,(eq,gr))
-	 , IUCL = full_down_classes(eq,gr) {[vec]:[[]]}
+	 , IUCL = [vec]: []
     then time = elapsed_ms() - start
     { then () = if time_verbose
 	      then prints("     ", print_time_string(time),
@@ -321,7 +322,7 @@ set localGraphK([[FaceVertsKHash]] FDKH, KTypePol_hash pol_hash, int level) =
     {then () = for v in eq do prints(v) od}
     {then() = prints("number of graph equivalence classes to height = ",#eq)}
     then classListByFace = [vec]: class_lists(FDKH,(eq,gr))
-	 , IUCL = full_down_classes(eq,gr)
+	 , IUCL = [vec]: []
     then time = elapsed_ms() - start
     {then () = if time_verbose
 	      then prints("     ", print_time_string(time),
@@ -346,49 +347,60 @@ set localGraphK([[FaceVertsKHash]] FDKH, KTypePol_hash pol_hash, int level) =
  integral coroot the parity test of is_parity_fast is A[j] + c[j] odd, c[j] = av*(lambda+rho_r(x))
  (p.lambda is the same for every nu at fixed x, up to (1-theta)X^*, which pairs evenly with real
  coroots).  seat_belt_on compares with reducibility_walls(parameter(x,lambda,nu)).}
-set red_fw_hash = make_vec_hash(), red_fw = [(ratvec,[int],ratvec)]: [] {keyed by vertex list}
+{Per vertex v (Lvd index) the vectors A_v = gamma(v)*poscoroots and B_v = (theta gamma(v))*poscoroots,
+ computed once per (x,lambda,Lvd).  gamma is affine in nu, so for a face F, A(F) and B(F) are the averages of
+ its vertices' vectors, weighted as in face_bary (vertices from pair_start on count twice).  Hence for F1 = F0
+ plus one vertex v, A(F1)[k] = A(F0)[k] iff A_v[k] = A(F0)[k]: the edge F0 -> F1 needs only the walls of F0
+ and A_v (David, 6 Nov 2026).  Top-dimensional faces get nothing ([-1] walls, empty A).}
+set red_fw_hash = make_vec_hash(), red_fw = [(ratvec,[int])]: [] {lower faces, keyed by vertex list}
+set red_fw_vA = [ratvec]: [], red_fw_vB = [ratvec]: [] {per Lvd vertex; [] = not computed}
 set red_fw_x = int: -1, red_fw_rf = RealForm: SL(2,R), red_fw_lambda = ratvec: [], red_fw_Lvd = [ratvec]: []
+set red_fw_clear() = void: red_fw_hash.clear(); red_fw := []; red_fw_vA := []; red_fw_vB := []
 set red_face_walls(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]] FDKH) =
-    [[(ratvec,[int],ratvec)]]:
+    [[(ratvec,[int])]]:
     {vertex numbers mean something only for this (x,lambda,Lvd): clear when they change}
     if x.number != red_fw_x or x.real_form != red_fw_rf or lambda != red_fw_lambda
        or #Lvd.list != #red_fw_Lvd or any(for v@i in Lvd.list do v != red_fw_Lvd[i] od)
-    then red_fw_hash.clear(); red_fw := [];
+    then red_fw_clear();
     	 red_fw_x := x.number; red_fw_rf := x.real_form; red_fw_lambda := lambda; red_fw_Lvd := Lvd.list
+    fi;
+    if #red_fw_vA = 0
+    then red_fw_vA := for :#Lvd.list do ratvec: [] od; red_fw_vB := red_fw_vA
     fi;
     let start = elapsed_ms(), new0 = #red_fw
     then p00 = parameter(x,lambda,0*lambda), theta = x.involution
     then PC = p00.root_datum.poscoroots, gamma0 = p00.infinitesimal_character, rr = rho_r(x)
     then real = for j:#PC do is_real(j,x) od
     then c = for av in PC do av*p00.lambda + av*rr od
-    then A(ratvec nu) = ratvec: (gamma0 + (nu - theta*nu)/2)*PC
-    then walls(ratvec nu) = (ratvec,[int]):
-         let gamma = gamma0 + (nu - theta*nu)/2
-         then A = gamma*PC, B = (theta*gamma)*PC
+    then ps = if hermCenterOldFlag then #Lvd.list else Lvd.pair_start fi
+    then vert(int i) = void:
+         if #red_fw_vA[i] = 0
+	 then let nu = Lvd.list[i] then gamma = gamma0 + (nu - theta*nu)/2
+	      in red_fw_vA[i] := gamma*PC; red_fw_vB[i] := (theta*gamma)*PC
+	 fi
+    then walls(vec F) = (ratvec,[int]):
+         let () = for i in F do vert(i) od
+	 then w = for i in F do if i < ps then 1 else 2 fi od
+	 then A = sum(#PC, for i@j in F do w[j]*red_fw_vA[i] od)/sum(w)
+	    , B = sum(#PC, for i@j in F do w[j]*red_fw_vB[i] od)/sum(w)
          then W = for j:#A
                   do if is_integer(A[j]) and A[j] > 0 and B[j] < 0 and
                         (not real[j] or (let s = A[j]+c[j] in is_integer(s) and floor(s)%2 = 1))
                      then [j] else []
                      fi
                   od.##
-         in assert(@:W = reducibility_walls(parameter(x,lambda,nu)),"red_face_walls: walls disagree");
+         in assert(@:W = reducibility_walls(parameter(x,lambda,face_bary(Lvd,F))),
+	    	   "red_face_walls: walls disagree");
             (A,W)
+    then () = for F in FDKH[0] do vert(F[0]) od
     then ans =
     for L@d in FDKH
-    do let step = max(#L\10,1000)
-       in for F@k in L
-       do if fund_face_verbose and k > 0 and k%step = 0
-       	  then prints("red_face_walls: dim ",d,", face ",k," of ",#L,"; ",#red_fw-new0,
-	       	      " new faces at ",print_time_string(elapsed_ms()-start))
-	  fi;
-	  let i = red_fw_hash.match(F[:d+1]), top = d = #FDKH-1
-          in if i = #red_fw
-	     then let nu = face_bary(Lvd,F[:d+1])
-	     	  in red_fw #:= if top then (A(nu),[-1],nu) else let (a,w) = walls(nu) in (a,w,nu) fi
-	     else let (a,w,nu) = red_fw[i]
-	     	  in if not top and w = [-1] then red_fw[i] := (a,walls(nu).snd,nu) fi
-	     fi; red_fw[i]
-       od
+    do if d = #FDKH-1 then for :#L do (ratvec:[],[-1]) od
+       else for F in L
+       	    do let i = red_fw_hash.match(F[:d+1])
+	       in if i = #red_fw then red_fw #:= walls(F[:d+1]) fi; red_fw[i]
+	    od
+       fi
     od
     in if fund_face_verbose
        then prints("red_face_walls: ",for L in FDKH do #L od," faces (",#red_fw-new0," new) in ",
@@ -410,8 +422,7 @@ set red_K_char_to_ht(Param p, int HT) = KTypePol:
     in if i = #red_kc
        then red_kc #:= to_ht(K_type_pol(character_formula_to_ht(finalize(p),HT)),HT)
        fi; red_kc[i]
-set red_wall_ht_clear() = void: red_wht_hash.clear(); red_wht := []; red_kc_clear();
-    red_fw_hash.clear(); red_fw := []
+set red_wall_ht_clear() = void: red_wht_hash.clear(); red_wht := []; red_kc_clear(); red_fw_clear()
 set red_wall_ht(Param p, int k) = int:
     let n = #p.root_datum.poscoroots then i = red_wht_hash.match(p)*n + k
     in {grow by doubling: one ##:= per new Param copied the whole list, quadratic (E8_s x_open:
@@ -459,17 +470,16 @@ set up_graph_gens_red(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsK
 		     "; ht joins ",red_ht_count-joins0,", wall heights (alpha,t) computed ",simp_H1_misses-rwh0,
 		     " at ",print_time_string(elapsed_ms()-start))
 		fi;
-	     	let (A1,,nu1) = walls[d][j1]
-                in for e:d+1
+	     	for e:d+1
                    do let j0 = lookup(delete(Find,e)[:d])
                       in if j0.>=
                          then edge_gens[index(d-1,j0)] #:= index(d,j1)
-                         ; let (A0,W0,nu0) = walls[d-1][j0]
-                           then S = for k in W0 do if A1[k] != A0[k] then [k] else [] fi od.##
+                         ; let (A0,W0) = walls[d-1][j0], Av = red_fw_vA[Find[e]]
+                           then S = for k in W0 do if Av[k] != A0[k] then [k] else [] fi od.##
                            then join = Find[d+2] = FDKH[d-1][j0][d+1] {same # Langlands quotients}
                                 and (#S = 0 or
                                      (HT >= 0 and
-                                      (let ok = true, p0 = parameter(x,lambda,nu0)
+                                      (let ok = true, p0 = parameter(x,lambda,face_bary(Lvd,FDKH[d-1][j0][:d]))
                                        in for k in S do if ok and red_H1(x,p0.lambda,k,A0[k]) <= HT
                                                         then ok := false fi;
                                                         if red_H1_check_flag and red_H1(x,p0.lambda,k,A0[k]) != red_wall_ht(p0,k)
@@ -480,7 +490,7 @@ set up_graph_gens_red(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsK
                                                      od;
                                           if ok then red_ht_count +:= 1
                                           elif red_hybrid_flag
-                                          then ok := red_K_char_to_ht(p0,HT) = red_K_char_to_ht(parameter(x,lambda,nu1),HT);
+                                          then ok := red_K_char_to_ht(p0,HT) = red_K_char_to_ht(parameter(x,lambda,face_bary(Lvd,Find[:d+1])),HT);
                                                if ok then red_kc_join_count +:= 1 fi
                                           fi; ok)))
                            in if join
@@ -508,7 +518,7 @@ set localGraphRed(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash
     let start = elapsed_ms()
     then (eq,gr) = GraphData: up_data_red(x,lambda,Lvd,FDKH,HT)
     then classListByFace = [vec]: class_lists(FDKH,(eq,gr))
-       , IUCL = full_down_classes(eq,gr)
+       , IUCL = [vec]: []
     in LGK_time+:= elapsed_ms() - start;
        if fund_face_verbose
        then prints("localGraphRed(HT=",HT,"): ",for L in FDKH do #L od," faces, ",#eq," classes in ",
@@ -535,17 +545,22 @@ set red_pad(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsIndex]] LF)
 set localFD_red_lookDown(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]] LFKH,
     int t) = [[FaceVertsKHash]]:
     if #LFKH = 0 or #LFKH[0] = 0 then [] {[[FaceVertsKHash]]}
-    else for dim:t-#LFKH from #LFKH
+    else let one_LKT = #LKTs(parameter(x,lambda,0*lambda)) = 1, k0 = #LFKH
+    in for dim:t-#LFKH from #LFKH
          do LFKH := LFKH # (for (actual,) in superFaces_plus(LFKH[0],LFKH[dim-1],3)
-                            do let ms = monomials(finalize(parameter(x,lambda,face_bary(Lvd,actual))))
+                            do if one_LKT and fewer_reducible_unitary_flag
+			       then {one LKT for every nu: one Langlands quotient, no Param needed}
+			       	    [actual##[-1,1,-1]]
+			       else let ms = monomials(finalize(parameter(x,lambda,face_bary(Lvd,actual))))
                                in if fewer_reducible_unitary_flag or
                                      all(for q in ms do @bool: is_pos_on_LKTs(q) od)
                                   then [actual##[-1,#ms,-1]]
                                   else []
                                   fi
+			       fi
                             od.##)
          od;
-         if sort_LFD_flag then sort(x.real_form,Lvd,LFKH) else LFKH fi
+         if sort_LFD_flag then sort_from(x.real_form,Lvd,LFKH,k0) else LFKH fi
     fi
 
 set look_up_vertices ([ratvec] vertices, [int] face)=[ratvec]:
@@ -5182,6 +5197,33 @@ set red_from_faces(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHas
        fi;
        UParams
 
+{red_012_flag (experiment, David 6 Nov 2026): how much do 2-dimensional faces coarsen the red classes of
+ vertices and edges?  For each (x,lambda) reaching red_from_faces with vertices and edges only, count the
+ red classes of the 0-1 graph, and the classes of the 0-1-2 graph that meet a vertex or an edge.
+ Totals in red_012_totals: [#(x,lambda), #vertices+edges, #2-faces, 0-1 classes, 0-1-2 classes, ms].}
+set red_012_flag = false, red_012_verbose = false
+set red_012_ms = [int]: [0,0,0] {ms: 0-1 graph, 2-faces, 0-1-2 graph}
+set red_012_totals = [int]: [0,0,0,0,0,0]
+set red_012_count(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]] LFDKH) = void:
+    if #LFDKH = 2 and #LFDKH[0] > 1
+    then let start = elapsed_ms()
+         then ((eq01,),,) = localGraphRed(x,lambda,Lvd,LFDKH)
+	 then t1 = elapsed_ms()
+	 then L3 = localFD_red_lookDown(x,lambda,Lvd,LFDKH,3)
+	 then t2 = elapsed_ms()
+	 then (,,CLBF) = localGraphRed(x,lambda,Lvd,L3)
+	 then () = red_012_ms := for t@i in red_012_ms do t + [t1-start,t2-t1,elapsed_ms()-t2][i] od
+	 then seen = make_vec_hash()
+	 then () = for d:2 do for c in CLBF[d] do seen.match([c]) od od
+	 then n2 = if #L3 > 2 then #L3[2] else 0 fi
+	 then row = [1, #LFDKH[0]+#LFDKH[1], n2, #eq01, seen.size(), elapsed_ms()-start]
+	 in red_012_totals := for t@i in red_012_totals do t+row[i] od;
+	    if red_012_verbose and #eq01 > seen.size()
+	    then prints("red_012: x=",x.number," lambda=",lambda," faces ",for L in L3 do #L od,
+	    	        " classes 01 ",#eq01," 012 ",seen.size())
+	    fi
+    fi
+
 set local_test_GEO_hash_red(KGBElt x, ratvec lambda,
     LocalVertexData Lvd, [[FaceVertsIndex]] LF, KTypePol_hash pol_hash,
     Param_hash Uhash, (Param->bool) fancy_tester) = [Param]:
@@ -5195,7 +5237,9 @@ set local_test_GEO_hash_red(KGBElt x, ratvec lambda,
     if {TINY CASE} #LF[0]=1
     then return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]))
     fi;
-    red_from_faces(x,lambda,Lvd,red_pad(x,lambda,Lvd,LF),-1,Uhash,fancy_tester)
+    let LFDKH = red_pad(x,lambda,Lvd,LF)
+    in if red_012_flag then red_012_count(x,lambda,Lvd,LFDKH) fi;
+       red_from_faces(x,lambda,Lvd,LFDKH,-1,Uhash,fancy_tester)
 
 set local_test_GEO_hash_red(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     [[FaceVertsIndex]] LF, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
