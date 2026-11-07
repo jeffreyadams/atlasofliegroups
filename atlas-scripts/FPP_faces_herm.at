@@ -7060,7 +7060,7 @@ set extend_K_characters(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 			     " K-characters in dimension ",d,
 			     " in extend_K_characters")
 	  fi; for v@k in LFKH[d]
-	      ~do if k%(max(#LFKH[d]\10,2))=0 and extend_character_verbose {try tilde}
+	      do if k%(max(#LFKH[d]\10,2))=0 and extend_character_verbose
 		 then prints("calculating K-character on face ",k,
 		      " in time ",print_time_string(elapsed_ms() - start),"; #ktp_hash = ",ktp_hash.size())
 		 fi;
