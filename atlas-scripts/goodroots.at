@@ -2,7 +2,7 @@
 <K.at {for K_0}
 {<hermitian.at} {for is_hermitian}
 <convert_c_form.at {for convert_cform_hermitian}
-<Vogan-dual.at {for dual@Param}
+<dualQ.at {for dual@Param}
 <translate.at {for translate_param_by}
 <kl.at {for composition_series}
 <K_highest_weights.at {for all_parameters_x_gamma}
