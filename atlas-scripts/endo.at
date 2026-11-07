@@ -31,7 +31,7 @@
     5. Translate the answer back by two_rho.
 
   Here the walk is not built explicitly: the recursion endo_rec carries it, so the path
-  is whatever sequence of first-available moves up_move returns.
+  is whatever sequence of first-available moves down_move returns.
 
   WHAT IS VERIFIED.  Over SL(3,R), Sp(6,R), Sp(8,R), SO(4,3), SO(5,4), Spin(4,3),
   SU(2,2), SU(3,2), G2_s and F4_s, at every dominant gamma built from fundamental
