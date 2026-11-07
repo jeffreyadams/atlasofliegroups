@@ -1,5 +1,7 @@
-<Vogan-dual.at
+<synthetic.at { for type KGBElt_gen }
 <KL_polynomial_matrices.at
+<cross_W_orbit.at { for cross_sub_orbit }
+<kl.at { for character_formula }
 
 {this is a convenient function, should be moved elsewhere
 group list of parameters by block;

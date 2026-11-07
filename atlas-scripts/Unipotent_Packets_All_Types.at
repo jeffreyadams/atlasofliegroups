@@ -8,7 +8,7 @@ to change of syntax}
 <basic.at
 <sort.at
 <W_reps_type_BC.at
-<Vogan-dual.at { for |dual_KGB| }
+<dualQ.at { for |dual@Param| }
 <groups.at { for |GL| }
 <finite_dimensional.at { for |is_finite_dimensional| }
 <induction.at { for |induce_irreducible| }
@@ -26,7 +26,7 @@ set find (Block B, (KGBElt x, KGBElt y)) = int:
   first(#B,(int i) bool: let (r,s)=element(B,i) in x=r and y=s)
 
 set find_reps_in_Cells ([[int]] W_cells, Param t) = int:
-  let y = dual_KGB(t,dual_integral(t))
+  let y = dual(t).x
   then index = find(block(real_form(t),real_form(y)) ,(x(t),y))
   in last(#W_cells,(int i)bool: any(for v in W_cells[i] do v=index od))
 

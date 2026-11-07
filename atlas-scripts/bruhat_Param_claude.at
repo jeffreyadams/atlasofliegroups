@@ -3,7 +3,7 @@
 <sort.at
 <basic.at {for integrality datum}
 <groups.at {for trivial_group}
-<Vogan-dual.at {for dual@Param, used by the twisted section}
+<dualQ.at {for dual@Param, used by the twisted section}
 {bruhat order: given x,y\in KGB(G) compute x<=y (boolean)
 in principle this is determined by the covering relations,
 as given by KGB_Hasse}

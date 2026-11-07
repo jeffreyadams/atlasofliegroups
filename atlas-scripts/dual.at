@@ -1,35 +1,31 @@
 <basic.at
 <parameters.at { for parameter@(KGBElt,KGBElt,ratvec) }
 <synthetic.at { for type KGBElt_gen }
-<Vogan-dual.at { for |dual@(Param,InnerClass)| }
+<dualQ.at { for |dual@Param| }
 <polynomial.at { types |i_poly|, |i_poly_mat| }
 <extended.at { for type ExtParam }
 <KL_polynomial_matrices.at
 
-{some similar stuff to Vogan-dual.at, also some extra functionality}
+{some similar stuff to dualQ.at, also some extra functionality}
 
 {-------------------------  dual of a block --------------------------}
 
-{ various functions for constructing dual block:
-  dual(B), dual(B,g), dual(B,g,dual_inner_class), dual(B,dual_inner_class)
-  each returns ([Param] B_vee,[int] permutation)
-  B_vee is block for for G^vee(infinitesimal character)
+{ dual_block(B) returns ([Param] B_vee,[int] permutation)
+  B_vee is the block for G^vee(infinitesimal character) containing dual(B[0])
   Vogan duality is B[i] -> B_vee(permutation[i])
+  dual@Param (dualQ.at) may return value-distinct copies of the dual real form,
+  so each dual(p) is re-attached to the real form of B_vee before comparing.
 }
-set dual_block ([Param] B, InnerClass dual_inner_class) = ([Param],[int]):
-  let B_vee=block_of(dual(B[0],dual_inner_class))
+set dual_block ([Param] B) = ([Param],[int]):
+  let B_vee=block_of(dual(B[0])) then dG = B_vee[0].real_form
   then (perm,success) =
-     let B_dual=for p in B do dual(p,dual_inner_class) od
+     let B_dual=for p in B do let d = dual(p) in parameter(dG,d.x.number,d.lambda,d.nu) od
      in permutation(B_dual,B_vee)
   in assert(@:success,"Parameters not in a single dual block"); (B_vee,perm)
   { B_vee is in length *increasing* order
     B_dual is in length *decreasing* order; B[i]->B_dual[i] is Vogan duality
     B_vee=B_dual up to permutation, roughly reversing order
   }
-
-{don't specify the inner class and/or the dual infinitesimal character}
-set dual_block ([Param] B) = ([Param],[int]):
-  dual_block(B,dual_inner_class(B[0]))
 
 set dual_ExtParameter (
        ExtParam(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)) = ExtParam:

@@ -2,7 +2,7 @@
 <extended.at { for |ext_block_of@Param|, E@(mat,ratvec,...,KGBElt_gen) }
 <extended_misc.at { for |parameter@ExtParam| }
 <parameters.at { for |dual_inner_class@Param| }
-<Vogan-dual.at { for |dual_KGB@(Param,InnerClass)| }
+<dualQ.at { for |dual@Param| }
 <hecke.at { for |y_gen@Param|, |decompose@(int,int,mat,[Param],ratvec)|,
             |test_hecke@(int,int,mat,ratvec,ratvec,[(KGBElt,KGBElt_gen)])|,
 	    |hecke_row@(int,ExtParam,[(KGBElt,KGBElt_gen)]) }
@@ -27,7 +27,7 @@ set gamma=infinitesimal_character(p)
 set g=E.g
 
 set x=p.x
-set y = KGBElt: dual_KGB(p,dual_inner_class(p))
+set y = KGBElt: dual(p).x
 set id=integrality_datum(p)
 set y_gen=y_gen(p)
 set E=E(delta,gamma,x,g,y_gen)
