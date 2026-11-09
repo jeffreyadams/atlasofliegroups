@@ -54,7 +54,10 @@ fi
  where T is a torus
 }
 set is_semisimple_element_conjugate_mod_torus(ratvec v,ratvec w,TwistedRootDatum trd,mat torus)=
-if is_abelian(trd.rd) then is_integer(v-w) else
+{ first the trivial case, v-w in X_* + Lie(torus), the only case for a torus }
+if in_lattice_subspace_sum(id_mat(trd.rd.rank),torus)(v-w) then true
+elif is_abelian(trd.rd) then false
+else
 let ad=affine_datum(trd) then
 (v_dom,)=ad.affine_co_make_dominant(v) then
 (w_dom,)=ad.affine_co_make_dominant(w) then

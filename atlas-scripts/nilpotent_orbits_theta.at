@@ -1,0 +1,262 @@
+<basic.at
+<nilpotent_orbits.at
+<conjugate.at { for |permuting_transporter| }
+<lattice.at { for |in_lattice_subspace_sum| }
+<hash.at { for |make_vec_hash| }
+
+{		Component groups of K-orbits of nilpotent elements of p
+
+  nilpotent_orbits.at lists, for a complex nilpotent orbit O=G.e, the conjugacy
+  classes of A(O)=G^e/(G^e)^0, following Sommers. This file does the same for a
+  K-orbit O_theta=K.e on the nilpotent elements of p, and the group
+  A_K(O_theta)=K^e/(K^e)^0. The description of the conjugacy classes is due to
+  Salah Mehdi, Pavle Pandzic, David Vogan and Roger Zierau; it is the real
+  analogue of Sommers' description.
+
+  Let phi=(H,e,f) be a normal triple (H in k, e and f in p), so that
+  A_K(O_theta)=Z_K(phi)/Z_K(phi)^0. Let s in Z_K(phi) be semisimple, let S be a
+  maximal torus of Z_{Z_K(phi)}(s)^0, and let E=Z_G(sS)^0. Then
+   * E is a theta-stable pseudo-Levi subgroup of G;
+   * S=(Z(E)^theta)^0, s is in Z(E)^theta, and E=Z_G(s S)^0 ("s is regular");
+   * e is noticed in E: Z_{K_E}(phi)^0=(Z(E)^theta)^0, with K_E=E^theta.
+  The conjugacy class of s in A_K(O_theta) corresponds to the K-conjugacy class
+  of the triple (E, s(Z(E)^theta)^0, K_E.e), and every such triple (E a
+  theta-stable pseudo-Levi, s regular in Z(E)^theta, e noticed in E) occurs.
+  In the notation (E_R,q_theta): E_R is the real form of E defined by theta, and
+  q_theta is the theta-stable parabolic of E defined by H, whose open orbit on
+  g_2(H) cap p is the noticed orbit K_E.e.
+
+  Implementation. Each triple is K-conjugate to one in which E contains a
+  theta-stable Cartan T that is fundamental in E (E has no real roots), and the
+  G(R)-conjugacy class of T is determined by the triple. So for each Cartan
+  class of G(R) we fix one involution theta of X^*, and list tuples (x,E,H,t):
+   x  a KGB element with involution theta; x determines K=K_x
+   E  a theta-stable set of roots with no real roots, of the form
+      {alpha | <alpha,u> integral} for some theta-fixed torus element exp(2 pi i u)
+   H  a theta-fixed coweight, neutral element of a K_E-orbit noticed in E,
+      dominant for a fixed theta-stable positive system of E
+   t  a coweight, exp(2 pi i t) regular in Z(E)^theta, taken modulo (Z(E)^theta)^0
+  Two tuples give K-conjugate triples exactly when some w in W^theta (the
+  centralizer of theta in W) carries one to the other (by the cross action on x).
+  The K-orbit of e is |real_nilpotent(H,x)|.
+
+  Noticed test: with l the Levi of H in E,
+     e noticed in E <=> dim(l cap k) - dim(g_2(H) cap p) = dim(z(E)^theta)
+  (the left side is dim Z_{K_E}(phi), since K_E^H.e is open in g_2(H) cap p).
+
+  The natural map A_K(O_theta) -> A(O), O=G.e, takes the class of s to the class
+  of s in A(O); |complex_component_index| finds that class in the list
+  |component_representatives_plus(O)| of nilpotent_orbits.at.
+
+  These computations run over the whole Weyl group, so they are meant for groups
+  of small rank.
+}
+
+{ (x,E,H,t) as above; E is a sorted list of positive root indices of G }
+set_type KNilpotentComponent = (KGBElt x, [int] E, vec H, ratvec t)
+
+{ sorted positive root indices of the roots (columns) |roots| }
+set root_set (RootDatum rd, mat roots) = [int]:
+   sort_u(for a in roots do posroot_index(rd,a) od)
+
+{ the root datum (same X^*) of the subsystem E of rd, positive roots those of rd }
+set datum_of_root_set (RootDatum rd, [int] E) = RootDatum:
+   let flags = for :n_columns(rd.posroots) do false od
+   in for i in E do flags[i] := true od; sub_datum(rd,(int i) bool: flags[i])
+
+{ image under w of the subsystem E }
+set act (WeylElt w, [int] E) = [int]:
+   let rd=w.root_datum in sort_u(for i in E do posroot_index(rd,w*rd.posroots[i]) od)
+
+{ E is theta-stable and has no real roots for theta }
+set is_theta_fundamental (RootDatum rd, mat theta, [int] E) = bool:
+   all(for i in E
+       do let a=rd.posroots[i] then b=theta*a
+       in b != -a and find(E,posroot_index(rd,b))>=0
+       od)
+
+{ all theta-stable subsystems E with no real roots that are conjugate to
+  pseudo-Levi subsystems; |Wlist| is all of W }
+set theta_fundamental_pseudo_Levis (RootDatum rd, mat theta, [WeylElt] Wlist) = [[int]]:
+   let seen = make_vec_hash(), result = [[int]]: []
+   in for L in pseudo_Levi_subgroups(rd)
+      do let S = root_set(rd,L.posroots)
+      in for w in Wlist
+         do let E = act(w,S), N = seen.size()
+	 in if seen.match(E)=N and is_theta_fundamental(rd,theta,E)
+	    then result #:= E
+	    fi
+	 od
+      od; result
+
+{ The finite group Z(E)^theta/(Z(E)^theta)^0, and (Z(E)^theta)^0.
+  A coweight v gives an element exp(2 pi i v) of Z(E)^theta when N*v is
+  integral, N the matrix with rows the simple roots of E and the rows of
+  ^theta-1. The kernel of N is the Lie algebra of (Z(E)^theta)^0, and
+  v -> N*v identifies the finite group with (N Q^n cap Z^m)/N Z^n.
+  Returns (representatives, matrix whose columns span Lie((Z(E)^theta)^0)). }
+set theta_center (RootDatum rd, mat theta, [int] E) = ([ratvec],mat):
+   let n=rd.rank
+   then N = mat: ^(datum_of_root_set(rd,E).simple_roots ## (theta-id_mat(n)))
+   then (B,d) = Smith(N)
+   then gens = for i:#d if d[i]>1 do requisition(solve(N,ratvec:B[i])) fi od
+   ,    ords = for i:#d if d[i]>1 do d[i] fi od
+   then reps =
+      if #gens=0 then [null(n)/1]
+      else for c in all_words(ords)
+           do let v = null(n)/1 in for g@j in gens do v +:= c[j]*g od; v%1
+	   od
+      fi
+   in (reps,kernel(N))
+
+{ exp(2 pi i t) is regular: Z_G(exp(2 pi i t) S)^0 = E, S spanned by |K| }
+set is_regular (RootDatum rd, [int] E, ratvec t, mat K) = bool:
+   for a in rd.posroots do is_integer(t*a) and =a*K od.count = #E
+
+{ is the K_x-orbit with neutral element H noticed in E? |dz|=dim(z(E)^theta) }
+set is_noticed (KGBElt x, [int] E, vec H, int dz) = bool:
+   let rd=x.root_datum, theta=x.involution, cpt=is_compact_imaginary(x)
+   then pr=rd.posroots, n=rd.rank
+   then dim_t = n_columns(kernel(theta-id_mat(n)))
+   then twice_lk = { 2 dim(l cap k) }
+      2*dim_t +
+      for i in E
+      do let a=pr[i] in
+         if !=H*a then 0 elif theta*a!=a then 2 elif cpt(a) then 4 else 0 fi
+      od.sum
+   , twice_g2p = { 2 dim(g_2 cap p), counting roots alpha and -alpha }
+      for i in E
+      do let a=pr[i] then h=H*a in
+         if h!=2 and h!=-2 then 0 elif theta*a!=a then 1 elif cpt(a) then 0 else 2 fi
+      od.sum
+   in twice_lk-twice_g2p = 2*dz
+
+{ E with a theta-stable positive system: the positive roots of E are those
+  positive on x+x*theta, x a generic coweight }
+set theta_positive_datum (RootDatum rd, mat theta, [int] E) = RootDatum:
+   let pr=rd.posroots, pcr=rd.poscoroots, n=rd.rank
+   then M = 1+2*max(0#for i in E do max(0#for c in pr[i]+theta*pr[i] do abs(c) od) od)
+   then x = for j:n do M^j od
+   then v0 = x+x*theta
+   then sg = for i in E do if v0*pr[i]>0 then 1 else -1 fi od
+   in root_datum_from_positive(
+        (n # for i@k in E do sg[k]*pr[i] od, n # for i@k in E do sg[k]*pcr[i] od)
+	,rd.prefers_coroots)
+
+{ theta-fixed coweights H, dominant for the theta-stable positive system of E,
+  which are neutral elements of nilpotent orbits of E }
+set theta_fixed_neutral_elements (RootDatum rd, mat theta, [int] E) = [vec]:
+   if #E=0 then [null(rd.rank)]
+   else for O in nilpotent_orbits(theta_positive_datum(rd,theta,E))
+        if O.H*theta=O.H do O.H fi
+	od
+   fi
+
+{ all tuples (x,E,H,t) for the involution theta (unreduced) }
+set K_component_tuples (RealForm G, mat theta, [WeylElt] Wlist) = [KNilpotentComponent]:
+   let rd=G.root_datum
+   then fiber = for x in KGB(G) if x.involution=theta do x fi od
+   in for E in theta_fundamental_pseudo_Levis(rd,theta,Wlist)
+      do let (reps,K) = theta_center(rd,theta,E)
+         then ts = for t in reps if is_regular(rd,E,t,K) do t fi od
+      in if #ts=0 then []
+         else let dz=n_columns(K) in
+	    for H in theta_fixed_neutral_elements(rd,theta,E)
+	    do for x in fiber
+	       do if is_noticed(x,E,H,dz)
+	          then for t in ts do (x,E,H,t) od
+		  else []
+		  fi
+	       od.##
+	    od.##
+	 fi
+      od.##
+
+{ do (x1,E1,H1,t1) and (x2,E2,H2,t2) (same involution) give K-conjugate triples? }
+set is_equivalent (KNilpotentComponent (x1,E1,H1,t1), KNilpotentComponent (x2,E2,H2,t2),
+                   [WeylElt] Wtheta) = bool:
+   #E1=#E2 and
+   (let rd=x1.root_datum then (,K)=theta_center(rd,x2.involution,E2)
+    then in_SE = in_lattice_subspace_sum(id_mat(rd.rank),K)
+    in any(for w in Wtheta
+           do cross(w,x1)=x2 and H1*inverse(w)=H2 and act(w,E1)=E2
+	      and in_SE(t1*inverse(w)-t2)
+	   od))
+
+{ the conjugacy classes of A_K(O_theta) for every K-orbit O_theta of G:
+  for each orbit in |real_nilpotent_orbits(G)|, a list of KNilpotentComponents,
+  one for each conjugacy class }
+set K_component_data (RealForm G) = [(RealNilpotent,[KNilpotentComponent])]:
+   let rd=G.root_datum, Wall=W(G.root_datum), orbits=real_nilpotent_orbits(G)
+   then classes = for :#orbits do [KNilpotentComponent]:[] od
+   in for c:nr_of_Cartan_classes(G)
+      do let theta=involution(Cartan_class(G,c))
+         then Wtheta = for w in Wall if matrix(w)*theta=theta*matrix(w) do w fi od
+      in for tup in K_component_tuples(G,theta,Wall)
+         do let (x,,H,)=tup then j=find_conjugate(orbits,real_nilpotent(H,x))
+	 in assert(j>=0,"K-orbit of tuple not found");
+	    if none(for c in classes[j]
+	            do c.x.involution=theta and is_equivalent(c,tup,Wtheta)
+		    od)
+	    then classes[j] #:= tup
+	    fi
+	 od
+      od; for O@j in orbits do (O,classes[j]) od
+
+set K_component_data (RealNilpotent O) = [KNilpotentComponent]:
+   let data=K_component_data(O.real_form)
+   then j=first(for (P,) in data do is_conjugate_orbit(O,P) od)
+   in let (,c)=data[j] in c
+
+{ the class of s=exp(2 pi i t) in A(O), O=G.e, as an index into
+  |component_representatives_plus(O)|; -1 if no class (or more than one) matches.
+  The image class is that of the pair (L,s), L the Bala-Carter Levi of e in
+  Z_G(s)^0; it is compared with each (M,H_M,v) after conjugating L to M. }
+set complex_component_index (KNilpotentComponent (x,,H,t)) = int:
+   let rd=x.root_datum then O=complex_nilpotent(rd,H)
+   in if rd.is_abelian then 0
+   else
+   let reps = component_representatives_plus(O)
+   , Ct = centralizer_coweight(rd,t)
+   then (S_L,H_L) = Bala_Carter_Levi_plus(complex_nilpotent(Ct,H))
+   then mamas = for j in S_L do root_index(rd,Ct.simple_roots[j]) od
+   then matches =
+      for (M,H_M,v)@k in reps
+      do let papas = for a in M.simple_roots do root_index(rd,a) od
+      in if #papas!=#mamas then []
+         else case permuting_transporter(rd,mamas,papas)
+              | none: []
+	      | some(w):
+	        let (,Levi_H_M) = Levi_of_coweight(rd,H_M)
+		in if dominant(H_L*inverse(w),M)=dominant(H_M,M) and
+		      is_semisimple_element_conjugate_mod_torus
+		        (t*inverse(w),v,Levi_H_M,radical_basis(M))
+		   then [k] else []
+		   fi
+	      esac
+	 fi
+      od.##
+   in if #matches=1 then matches[0] else -1 fi
+   fi
+
+{ the map on conjugacy classes A_K(O_theta) -> A(O) }
+set K_to_complex_component_map (RealNilpotent O) = [int]:
+   for c in K_component_data(O) do complex_component_index(c) od
+
+{ printing }
+set print_K_component_info (RealForm G) = void:
+   prints("Component groups A_K(O_theta) for ",G);
+   prints("orbit: index in real_nilpotent_orbits(G); H, x: the orbit; dim: of O");
+   prints("for each class: E (theta-stable pseudo-Levi), x and H (q_theta in E),");
+   prints("  t (s=exp(2 pi i t)), A(O): index of image in component_representatives_plus(O)");
+   for (O,cl)@j in K_component_data(G)
+   do prints(new_line,"orbit ",j,": H=",O.H," x=",O.x," dim=",O.dimension,
+             " diagram=",O.complex_orbit.diagram,"  #classes=",#cl,
+	     "  #classes in A(O)=",#component_representatives_plus(O.complex_orbit));
+      tabulate(["E","x","H","t","A(O)"]#
+         for c in cl
+	 do let (x,E,H,t)=c in
+	    [datum_of_root_set(G.root_datum,E).nice_format, (#x).to_string, H.to_string,
+	     t.to_string, complex_component_index(c).to_string]
+	 od)
+   od
