@@ -498,25 +498,33 @@ set weak_packets_fast_flag = false
 set weak_packets_faster_flag = false {until verification and non-dist
 induction added}
 
+{true: the stored lists for F4_s ... E8_q also give the non-Arthur unipotent
+ representations (*_non_Arthur_data in the *_unipdata.at files). Set it before the group
+ (or a form isomorphic to it, or one of its covers) first reaches arthur_hash, or after
+ arthur_hash.clear()}
+set non_Arthur_unip_flag = false
+set unip_data ([(int,ratvec,ratvec)] arthur, [(int,ratvec,ratvec)] non_arthur) =
+    [(int,ratvec,ratvec)]: if non_Arthur_unip_flag then arthur##non_arthur else arthur fi
+
 {the computation itself; unipotent_representations(G) goes through unip_hook, which
  arthur_hash.at sets to read (or fill) arthur_hash}
 set unipotent_representations_compute(RealForm G)=[Param]: {G.weak_packets.parameters}
     if G = F4_s
-    then for (x,lambda,nu) in F4_s_data do parameter(G,x,lambda,nu) od
+    then for (x,lambda,nu) in unip_data(F4_s_data,F4_s_non_Arthur_data) do parameter(G,x,lambda,nu) od
     elif G = E6_s
-    then for (x,lambda,nu) in E6_sc_s_data do parameter(G,x,lambda,nu) od
+    then for (x,lambda,nu) in unip_data(E6_sc_s_data,E6_sc_s_non_Arthur_data) do parameter(G,x,lambda,nu) od
     elif G = E6_q
-    then for (x,lambda,nu) in E6_sc_q_data do parameter(G,x,lambda,nu) od
+    then for (x,lambda,nu) in unip_data(E6_sc_q_data,E6_sc_q_non_Arthur_data) do parameter(G,x,lambda,nu) od
     elif G = E7_s
-    then for (x,lambda,nu) in E7_sc_s_data do parameter(G,x,lambda,nu) od
+    then for (x,lambda,nu) in unip_data(E7_sc_s_data,E7_sc_s_non_Arthur_data) do parameter(G,x,lambda,nu) od
     elif G = E7_q
-    then for (x,lambda,nu) in E7_sc_q_data do parameter(G,x,lambda,nu) od
+    then for (x,lambda,nu) in unip_data(E7_sc_q_data,E7_sc_q_non_Arthur_data) do parameter(G,x,lambda,nu) od
     elif G = E7_h
-    then for (x,lambda,nu) in E7_sc_h_data do parameter(G,x,lambda,nu) od
+    then for (x,lambda,nu) in unip_data(E7_sc_h_data,E7_sc_h_non_Arthur_data) do parameter(G,x,lambda,nu) od
     elif G = E8_s
-    then for (x,lambda,nu) in E8_s_data do parameter(G,x,lambda,nu) od
+    then for (x,lambda,nu) in unip_data(E8_s_data,E8_s_non_Arthur_data) do parameter(G,x,lambda,nu) od
     elif G = E8_q
-    then for (x,lambda,nu) in E8_q_data do parameter(G,x,lambda,nu) od
+    then for (x,lambda,nu) in unip_data(E8_q_data,E8_q_non_Arthur_data) do parameter(G,x,lambda,nu) od
     elif unip_gentau_flag
     then unipotent_representations_gentau(G)
     elif unip_alt_fast_flag
