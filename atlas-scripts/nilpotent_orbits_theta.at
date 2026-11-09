@@ -14,17 +14,21 @@
   analogue of Sommers' description.
 
   Let phi=(H,e,f) be a normal triple (H in k, e and f in p), so that
-  A_K(O_theta)=Z_K(phi)/Z_K(phi)^0. Let s in Z_K(phi) be semisimple, let S be a
-  maximal torus of Z_{Z_K(phi)}(s)^0, and let E=Z_G(sS)^0. Then
-   * E is a theta-stable pseudo-Levi subgroup of G;
-   * S=(Z(E)^theta)^0, s is in Z(E)^theta, and E=Z_G(s S)^0 ("s is regular");
-   * e is noticed in E: Z_{K_E}(phi)^0=(Z(E)^theta)^0, with K_E=E^theta.
+  A_K(O_theta)=Z_K(phi)/Z_K(phi)^0, and let C=Z_G(phi), a theta-stable reductive
+  group with C^theta=Z_K(phi). Let s in Z_K(phi) be semisimple, let S be a
+  fundamental (maximally compact) theta-stable maximal torus of Z_C(s)^0, and let
+  E=Z_G(sS)^0. Then
+   * E is a theta-stable pseudo-Levi subgroup of G (a "real pseudo-Levi" E_R);
+   * S=Z(E)^0, s is in Z(E)^theta, and E=Z_G(s Z(E)^0)^0 ("s is regular");
+   * e is distinguished in E (Bala-Carter): Z_E(phi)^0=Z(E)^0;
+   * S fundamental: (Z(E)^theta)^0 is a maximal torus of Z_K(phi,s)^0.
   The conjugacy class of s in A_K(O_theta) corresponds to the K-conjugacy class
-  of the triple (E, s(Z(E)^theta)^0, K_E.e), and every such triple (E a
-  theta-stable pseudo-Levi, s regular in Z(E)^theta, e noticed in E) occurs.
+  of the triple (E, s(Z(E)^theta)^0, K_E.e), K_E=E^theta, and every triple with
+  these four properties occurs. Dropping the theta's gives Sommers' triple
+  (E, s, e) for the class of s in A(O), O=G.e.
   In the notation (E_R,q_theta): E_R is the real form of E defined by theta, and
   q_theta is the theta-stable parabolic of E defined by H, whose open orbit on
-  g_2(H) cap p is the noticed orbit K_E.e.
+  g_2(H) cap p is the orbit K_E.e.
 
   Implementation. Each triple is K-conjugate to one in which E contains a
   theta-stable Cartan T that is fundamental in E (E has no real roots), and the
@@ -33,20 +37,29 @@
    x  a KGB element with involution theta; x determines K=K_x
    E  a theta-stable set of roots with no real roots, of the form
       {alpha | <alpha,u> integral} for some theta-fixed torus element exp(2 pi i u)
-   H  a theta-fixed coweight, neutral element of a K_E-orbit noticed in E,
+   H  a theta-fixed coweight, neutral element of a K_E-orbit distinguished in E,
       dominant for a fixed theta-stable positive system of E
-   t  a coweight, exp(2 pi i t) regular in Z(E)^theta, taken modulo (Z(E)^theta)^0
+   t  a coweight, exp(2 pi i t) in Z(E)^theta and regular, modulo (Z(E)^theta)^0
   Two tuples give K-conjugate triples exactly when some w in W^theta (the
   centralizer of theta in W) carries one to the other (by the cross action on x).
   The K-orbit of e is |real_nilpotent(H,x)|.
 
-  Noticed test: with l the Levi of H in E,
-     e noticed in E <=> dim(l cap k) - dim(g_2(H) cap p) = dim(z(E)^theta)
-  (the left side is dim Z_{K_E}(phi), since K_E^H.e is open in g_2(H) cap p).
+  Tests, with l the Levi of H, and dims of complex groups:
+   distinguished: dim l_E - dim g_2(H)_E = dim z(E)    (that is dim Z_E(phi))
+   K_E.e exists:  dim(l_E cap k) - dim(g_2(H)_E cap p) = dim z(E)^theta
+                  (Noel's criterion: the open K_E^H-orbit on g_2(H) cap p has
+                  neutral element H; for distinguished e it says Z_{K_E}(phi)^0
+                  =(Z(E)^theta)^0)
+   S fundamental: with E_K=Z_G(s (Z(E)^theta)^0)^0 (roots integral on t and
+                  vanishing on z(E)^theta), dim l_{E_K} - dim g_2(H)_{E_K} = dim z(E).
+                  Then Z_{E_K}(phi)^0=Z(E)^0, so Z_K(phi,s,(Z(E)^theta)^0)^0
+                  =(Z(E)^theta)^0, and (Z(E)^theta)^0 is a maximal torus of
+                  Z_K(phi,s)^0. (E_K is the pseudo-Levi in which e is noticed;
+                  E is the Bala-Carter Levi of e in E_K.)
 
   The natural map A_K(O_theta) -> A(O), O=G.e, takes the class of s to the class
-  of s in A(O); |complex_component_index| finds that class in the list
-  |component_representatives_plus(O)| of nilpotent_orbits.at.
+  of s in A(O), with Sommers' triple (E,s,e); |complex_component_index| finds
+  that class in the list |component_representatives_plus(O)| of nilpotent_orbits.at.
 
   These computations run over the whole Weyl group, so they are meant for groups
   of small rank.
@@ -109,11 +122,29 @@ set theta_center (RootDatum rd, mat theta, [int] E) = ([ratvec],mat):
       fi
    in (reps,kernel(N))
 
-{ exp(2 pi i t) is regular: Z_G(exp(2 pi i t) S)^0 = E, S spanned by |K| }
-set is_regular (RootDatum rd, [int] E, ratvec t, mat K) = bool:
-   for a in rd.posroots do is_integer(t*a) and =a*K od.count = #E
+{ the roots alpha with <alpha,t> integral that vanish on the columns of |K|: the
+  roots of Z_G(exp(2 pi i t) S)^0, S the torus with Lie algebra spanned by |K| }
+set integral_roots_on (RootDatum rd, ratvec t, mat K) = [int]:
+   for a@i in rd.posroots do if is_integer(t*a) and =a*K then [i] else [] fi od.##
 
-{ is the K_x-orbit with neutral element H noticed in E? |dz|=dim(z(E)^theta) }
+{ exp(2 pi i t) is regular: Z_G(exp(2 pi i t) Z(E)^0)^0 = E; |Z| spans Lie Z(E) }
+set is_regular (RootDatum rd, [int] E, ratvec t, mat Z) = bool:
+   #integral_roots_on(rd,t,Z) = #E
+
+{ columns spanning the Lie algebra of Z(E)^0 }
+set center_of_root_set (RootDatum rd, [int] E) = mat:
+   kernel(^datum_of_root_set(rd,E).simple_roots)
+
+{ dim Z_E(phi) = dim l - dim g_2(H), computed in E; complex groups }
+set centralizer_dim (RootDatum rd, [int] E, vec H) = int:
+   let pr=rd.posroots in
+   rd.rank + for i in E do let h=H*pr[i] in if h=0 then 2 elif h=2 or h=-2 then -1 else 0 fi od.sum
+
+{ is the orbit with neutral element H distinguished in E? |dz|=dim z(E) }
+set is_distinguished (RootDatum rd, [int] E, vec H, int dz) = bool:
+   centralizer_dim(rd,E,H) = dz
+
+{ Noel's test: dim(l cap k) - dim(g_2(H) cap p) = |dz| (=dim(z(E)^theta)) }
 set is_noticed (KGBElt x, [int] E, vec H, int dz) = bool:
    let rd=x.root_datum, theta=x.involution, cpt=is_compact_imaginary(x)
    then pr=rd.posroots, n=rd.rank
@@ -157,19 +188,20 @@ set K_component_tuples (RealForm G, mat theta, [WeylElt] Wlist) = [KNilpotentCom
    let rd=G.root_datum
    then fiber = for x in KGB(G) if x.involution=theta do x fi od
    in for E in theta_fundamental_pseudo_Levis(rd,theta,Wlist)
-      do let (reps,K) = theta_center(rd,theta,E)
-         then ts = for t in reps if is_regular(rd,E,t,K) do t fi od
-      in if #ts=0 then []
-         else let dz=n_columns(K) in
-	    for H in theta_fixed_neutral_elements(rd,theta,E)
-	    do for x in fiber
-	       do if is_noticed(x,E,H,dz)
-	          then for t in ts do (x,E,H,t) od
-		  else []
-		  fi
-	       od.##
-	    od.##
-	 fi
+      do let (reps,Kth) = theta_center(rd,theta,E), Z = center_of_root_set(rd,E)
+         then ts = for t in reps if is_regular(rd,E,t,Z) do t fi od
+	 , dz = n_columns(Z), dzth = n_columns(Kth)
+      in for H in theta_fixed_neutral_elements(rd,theta,E)
+         do if not is_distinguished(rd,E,H,dz) then []
+	    else let ts_H = { S fundamental, tested in E_K }
+	       for t in ts if centralizer_dim(rd,integral_roots_on(rd,t,Kth),H)=dz do t fi od
+	    in if #ts_H=0 then []
+	       else for x in fiber
+	            do if is_noticed(x,E,H,dzth) then for t in ts_H do (x,E,H,t) od else [] fi
+		    od.##
+	       fi
+	    fi
+	 od.##
       od.##
 
 { do (x1,E1,H1,t1) and (x2,E2,H2,t2) (same involution) give K-conjugate triples? }
@@ -210,16 +242,14 @@ set K_component_data (RealNilpotent O) = [KNilpotentComponent]:
 
 { the class of s=exp(2 pi i t) in A(O), O=G.e, as an index into
   |component_representatives_plus(O)|; -1 if no class (or more than one) matches.
-  The image class is that of the pair (L,s), L the Bala-Carter Levi of e in
-  Z_G(s)^0; it is compared with each (M,H_M,v) after conjugating L to M. }
-set complex_component_index (KNilpotentComponent (x,,H,t)) = int:
+  Drop the theta's: the class is that of Sommers' triple (E,s,e), compared with
+  each (M,H_M,v) after conjugating E to M. }
+set complex_component_index (KNilpotentComponent (x,E,H,t)) = int:
    let rd=x.root_datum then O=complex_nilpotent(rd,H)
    in if rd.is_abelian then 0
    else
    let reps = component_representatives_plus(O)
-   , Ct = centralizer_coweight(rd,t)
-   then (S_L,H_L) = Bala_Carter_Levi_plus(complex_nilpotent(Ct,H))
-   then mamas = for j in S_L do root_index(rd,Ct.simple_roots[j]) od
+   , mamas = for a in datum_of_root_set(rd,E).simple_roots do root_index(rd,a) od
    then matches =
       for (M,H_M,v)@k in reps
       do let papas = for a in M.simple_roots do root_index(rd,a) od
@@ -228,7 +258,7 @@ set complex_component_index (KNilpotentComponent (x,,H,t)) = int:
               | none: []
 	      | some(w):
 	        let (,Levi_H_M) = Levi_of_coweight(rd,H_M)
-		in if dominant(H_L*inverse(w),M)=dominant(H_M,M) and
+		in if dominant(H*inverse(w),M)=dominant(H_M,M) and
 		      is_semisimple_element_conjugate_mod_torus
 		        (t*inverse(w),v,Levi_H_M,radical_basis(M))
 		   then [k] else []
