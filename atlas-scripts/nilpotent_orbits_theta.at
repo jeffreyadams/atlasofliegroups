@@ -240,6 +240,15 @@ set K_component_data (RealNilpotent O) = [KNilpotentComponent]:
    then j=first(for (P,) in data do is_conjugate_orbit(O,P) od)
    in let (,c)=data[j] in c
 
+{ the order of the class of s=exp(2 pi i t) in A_K(O_theta): the least n with s^n in
+  (Z(E)^theta)^0, that is, n*t in X_* + Lie((Z(E)^theta)^0) (a coweight plus a theta-fixed
+  vector vanishing on the roots of E). Since (Z(E)^theta)^0 is in Z_K(phi)^0, the class order
+  divides this n; the order of its image in A(O) divides the class order. }
+set component_order (KNilpotentComponent (x,E,,t)) = int:
+   let rd=x.root_datum then (,K) = theta_center(rd,x.involution,E)
+   then in_SE = in_lattice_subspace_sum(id_mat(rd.rank),K), n=1
+   in while not in_SE(n*t) do n+:=1 od; n
+
 { the class of s=exp(2 pi i t) in A(O), O=G.e, as an index into
   |component_representatives_plus(O)|; -1 if no class (or more than one) matches.
   Drop the theta's: the class is that of Sommers' triple (E,s,e), compared with
@@ -273,20 +282,52 @@ set complex_component_index (KNilpotentComponent (x,E,H,t)) = int:
 set K_to_complex_component_map (RealNilpotent O) = [int]:
    for c in K_component_data(O) do complex_component_index(c) od
 
-{ printing }
-set print_K_component_info (RealForm G) = void:
-   prints("Component groups A_K(O_theta) for ",G);
-   prints("orbit: index in real_nilpotent_orbits(G); H, x: the orbit; dim: of O");
-   prints("for each class: E (theta-stable pseudo-Levi), x and H (q_theta in E),");
-   prints("  t (s=exp(2 pi i t)), A(O): index of image in component_representatives_plus(O)");
-   for (O,cl)@j in K_component_data(G)
-   do prints(new_line,"orbit ",j,": H=",O.H," x=",O.x," dim=",O.dimension,
-             " diagram=",O.complex_orbit.diagram,"  #classes=",#cl,
-	     "  #classes in A(O)=",#component_representatives_plus(O.complex_orbit));
-      tabulate(["E","x","H","t","A(O)"]#
-         for c in cl
-	 do let (x,E,H,t)=c in
-	    [datum_of_root_set(G.root_datum,E).nice_format, (#x).to_string, H.to_string,
-	     t.to_string, complex_component_index(c).to_string]
-	 od)
+{ printing, parallel to the ComplexNilpotent functions of nilpotent_orbits.at }
+
+{ orders of the conjugacy classes of A_K(O_theta), in the order of K_component_data }
+set conjugacy_class_orders ([KNilpotentComponent] cl) = [int]:
+   for c in cl do component_order(c) od
+set conjugacy_class_orders (RealNilpotent O) = [int]:
+   conjugacy_class_orders(K_component_data(O))
+
+set number_conjugacy_classes_component_group (RealNilpotent O) = int:
+   #K_component_data(O)
+set number_conjugacy_classes_A = (RealNilpotent->int):
+   number_conjugacy_classes_component_group@RealNilpotent
+
+{ one orbit, with its classes (from K_component_data) }
+set print_component_info (RealNilpotent O, [KNilpotentComponent] cl) = void:
+   prints("Component info for K-orbit:",new_line,"H=",O.H," x=",#O.x," diagram:",
+          O.complex_orbit.diagram," dim:",O.dimension);
+   prints("orders of conj. classes of A_K(O_theta): ",conjugacy_class_orders(cl),
+          "; A(O): ",conjugacy_class_orders(O.complex_orbit));
+   tabulate(["E","x","H","t","order","A(O)"]#
+      for c in cl
+      do let (x,E,H,t)=c in
+         [datum_of_root_set(O.real_form.root_datum,E).nice_format, (#x).to_string, H.to_string,
+          t.to_string, component_order(c).to_string, complex_component_index(c).to_string]
+      od)
+
+set print_component_info (RealNilpotent O) = void:
+   print_component_info(O,K_component_data(O))
+
+{ all K-orbits of G; computes K_component_data(G) once }
+set print_component_info (RealForm G) = void:
+   prints("Component groups A_K(O_theta) of K-orbits of nilpotents in p",new_line,"G=",G);
+   prints("E: theta-stable pseudo-Levi; x, H: q_theta in E; t: s=exp(2 pi i t);");
+   prints("order: of the class; A(O): index of its image in component_representatives_plus(O)");
+   for (O,cl)@i in K_component_data(G)
+   do prints(new_line,"Orbit #",i); print_component_info(O,cl)
    od
+
+set print_K_component_info = (RealForm->void): print_component_info@RealForm
+
+{ one line per K-orbit: index in real_nilpotent_orbits(G), H, x, diagram, dim, class orders
+  of A_K(O_theta) and of A(O) }
+set print_component_info_short (RealForm G) = void:
+   tabulate(["i","H","x","diag","dim","A_K(O_theta)","A(O)"]#
+      for (O,cl)@i in K_component_data(G)
+      do [i.to_string,O.H.to_string,(#O.x).to_string,O.complex_orbit.diagram.to_string,
+          O.dimension.to_string,conjugacy_class_orders(cl).to_string,
+          conjugacy_class_orders(O.complex_orbit).to_string]
+      od)
