@@ -142,16 +142,14 @@ set subspace_injection_matrix ([Param] B,[Param] subset) = mat:
   for j@i in indices(B,subset) do result[i,j]:=1 od; result
 
 set get_y ([Param] B) = [int]:
-  let dual_inner_class=dual_inner_class(B[0]) in
-  for p in B do number(dual_KGB(p,dual_inner_class)) od.sort_u
+  for p in B do number(dual(p).x) od.sort_u
 
 {B is a block}
 set stable_at_regular ([Param] B) = mat:
   let dual_KGB_elements=get_y(B)
-  then dual_inner_class=dual_inner_class(B[0])
   then rv=null(#B,#dual_KGB_elements)
   in
-  for p@i in B do rv[i,number(dual_KGB(p,dual_inner_class))]:=1 od ;
+  for p@i in B do rv[i,number(dual(p).x)]:=1 od ;
   {prints("dimension of stable at regular:", n_columns(rv));}
   rv
 

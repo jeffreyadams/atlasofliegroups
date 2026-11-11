@@ -6,7 +6,7 @@
 <show_nilpotent_orbits.at
 <arthur_parameters.at
 <cells.at { for |parameters_given_AV_infinitesimal_character|, |cells_verbose| }
-<Vogan-dual.at { for |is_dual_Aq| }
+<dualQ.at { for |dual@Param|, used by is_dual_Aq below }
 <L_packet.at {for stable_sums_irr_mat}
 <F4_s_unipdata
 <E6_sc_s_unipdata
@@ -16,6 +16,24 @@
 <E7_sc_s_unipdata
 <E8_s_unipdata
 <E8_q_unipdata
+
+{ moved from Vogan-dual-old.at, now using dual@Param from dualQ.at }
+{dual is an Aq(finite dimensional); regular integral p only}
+set is_dual_Aq (Param p) = bool:
+if not (is_regular(p) and is_integral(p.infinitesimal_character,p.root_datum)) then false
+else is_coh_ind_from_finite_dimensional(dual(p))
+fi
+
+{usually used to see if the dual of a cell has an Aq,
+although the argument isn't required to be a cell}
+set is_dual_Aq([Param] cell)=bool:any(for p in cell do is_dual_Aq(p) od)
+
+{argument is a block of parameters, and a WCell}
+set is_dual_Aq([Param] block,WCell cell)=bool:
+let (param_numbers,,)=cell in
+is_dual_Aq(for i in param_numbers do block[i] od)
+
+set star(bool value)=string:if value then "*" else "" fi
 
 {extract just the parameters from [(int,int,Param)]}
 set parameters([(int,int,Param)] triples)=[Param]:for (,,p) in triples do p od
