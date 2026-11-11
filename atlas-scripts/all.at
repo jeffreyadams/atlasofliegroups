@@ -60,3 +60,5 @@
 <adams_johnson.at
 <speh.at
 <cell_graph.at
+<dualQ.at {new dual@Param (Vogan duality); redefines dual@Param from Vogan-dual.at, so load last}
+<endo.at {endo@Param}
