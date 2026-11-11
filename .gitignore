@@ -1,5 +1,6 @@
 Fokko
 atlas
 atlas-*
+!/atlas-scripts/
 *.[od]
 *.out
