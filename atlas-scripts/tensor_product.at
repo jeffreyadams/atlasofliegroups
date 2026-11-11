@@ -4,6 +4,44 @@
 <K_norm.at
 <nci_nilrad_roots.at
 
+{to_dominant(rd,wt)=(w,wt_dom) with w*wt=wt_dom
+ (inverse of from_dominant(rd,wt), which returns w with wt=w*wt_dom)}
+set to_dominant(RootDatum rd, vec wt)=(WeylElt,vec):
+ let (w,wt_dom)=from_dominant(rd,wt) in (inverse(w),wt_dom)  {w*wt=wt_dom}
+
+set to_dominant( vec cowt,RootDatum rd)=(vec,WeylElt):
+ let (cowt_dom,w)=from_dominant(cowt,rd) in (cowt_dom,inverse(w))  {w*wt=wt_dom}
+
+set to_dominant (RootDatum rd, ratvec wt) = (WeylElt,ratvec):
+  let (n,d)=%wt then (w,v)=to_dominant(rd,n) in (w,v/d)
+set to_dominant (ratvec cowt,RootDatum rd) = (ratvec,WeylElt):
+  let (n,d)=%cowt then (v,w)=to_dominant(n,rd) in (v/d,w)
+
+{NOTE:
+ KType is (KGBElt, ratvec)
+ Typical KType is written mu=(x,lambda) for lambda a ratvec; mu.lambda=lambda
+ HOWEVER
+ but K_type(x,tau) is only defined for tau a vec  (better to use tau not lambda here)
+ mu=K_type(x,tau) => mu.lambda=tau+rho
+ mu=(x,lambda) => mu=K_type(x,ratvec_as_vec(lambda-rho))
+ for example: K_type(x,[0,...,0])=(x,rho)
+}
+
+{K_type(x,tau)=(x,tau+rho)  *all tau \in X^**
+ (x,lambda)=K_type(x,lambda-rho)          *all lambda in X^*+\rho
+ K_type(x,tau)=(x,tau+rho)=(wx,w(tau+rho))=K_type(wx,w\tau + (w\rho-rho))
+ Conclusion: w:K_type(x,tau) -> K_type(x,w\tau + (w\rho-rho)) for *any* tau\in X^*
+}
+
+{w*mu: the KType (wx,w lambda) for mu=(x,lambda); this is the same as mu
+ as a (virtual) K-module, see the NOTE above}
+set *(WeylElt w,KType mu)=KType:
+   let x=mu.x then
+   lambda=mu.lambda {ratvec} then
+   rho=mu.root_datum.rho then
+   tau=lambda-rho {vec; mu=K_type(x,tau)}
+   in K_type(cross(w,x),ratvec_as_vec(w*tau + w*rho-rho))
+
 set N=100 {cutoff for branching}
 
 set K_type_formula (KType t) = KTypePol: { without height bound }
