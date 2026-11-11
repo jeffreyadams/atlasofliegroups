@@ -1,4 +1,5 @@
 <nilpotent_centralizer.at
+<nilpotent_orbits_theta.at { for |show_nilpotent_orbits@RealForm| }
 <arthur_parameters.at
 <springer_tables.at
 {
@@ -174,7 +175,7 @@ number_real_nilpotent_orbits(orbit,ic).to_string
 
 {not really necessary}
 set show_nilpotent_orbits_short(RealForm G)=void:show_nilpotent_orbits_short(G.root_datum)
-set show_nilpotent_orbits(RealForm G)=void:show_nilpotent_orbits(G.root_datum)
+{show_nilpotent_orbits(RealForm G): one line per real orbit, in nilpotent_orbits_theta.at}
 
 
 set show_nilpotent_orbits_long(RealForm G)=void:show_nilpotent_orbits_long(nilpotent_orbits(G),G)
@@ -368,7 +369,7 @@ number_real_nilpotent_orbits(orbit,ic).to_string
 
 {not really necessary}
 set show_nilpotent_orbits_short(RealForm G)=void:show_nilpotent_orbits_short(G.root_datum)
-set show_nilpotent_orbits(RealForm G)=void:show_nilpotent_orbits(G.root_datum)
+{show_nilpotent_orbits(RealForm G): one line per real orbit, in nilpotent_orbits_theta.at}
 
 
 set show_nilpotent_orbits_long(RealForm G)=void:show_nilpotent_orbits_long(nilpotent_orbits(G),G)
