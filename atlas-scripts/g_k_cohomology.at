@@ -52,20 +52,9 @@ given:
  a KTypePol P, representing \sum a_i I(p_i) (restricted to K)
  weights: KGBElt->[vec] representing a finite dimensional representation F of K
  return the KTypePol representing \sum a_i I(p_i)\otimes F}
-set add_weights (KTypePol P,(KGBElt ->[vec]) weights) = KTypePol:
-   let ()=if g_k_cohomology_verbose then prints("in add weights with:  P=", P) fi in
-   sum(P.real_form,
-   for coef@t in P do
-   let (x,lr)=%t in
-   for H in weights(x) do
-   let mu=K_type(x,lr+H) then
-   mu_dom=make_dominant(mu) {KTypePol: coherent continuation, see above} in
-   if g_k_cohomology_verbose then prints(coef,"*",mu, " -> ", mu_dom) fi;
-   coef*mu_dom od
-   od.##)
-
-{equivalently: P.null_K_module + [(coef,K_type(x,lr+H))...]; the built-in
- addition of (Split,KType) terms to a KTypePol does the same finalization}
+{add_weights(KTypePol,(KGBElt->[vec])) is defined in tensor_product.at:
+ P.null_K_module + [(coef,K_type(x,lr+H))...]; the built-in addition of
+ (Split,KType) terms to a KTypePol does the same finalization as make_dominant}
 
 {\g = \k\oplus \p  (Cartan decomposition of \g=Lie(G) with respect to theta (\g,\k,\p are complex vector spaces)
 given KGBElt x -> involution theta_x of H
@@ -101,15 +90,7 @@ algorithm: write mu=\sum a_i I(p_i) (i.e. K_type_formula(mu))
  compute \sum a_i I(p_i)\otimes F (using add_weights)
  compute the branching of this to K (this is a finite sum)
 }
-set tensor_product(KType t,(KGBElt -> [vec]) weights)=KTypePol:
-let Q=add_weights(K_type_formula(t),weights) in
-let ()=if g_k_cohomology_verbose then prints("t=",t,new_line, " Q=",Q) fi in 
-   if height(Q)=-1
-       then
-          if g_k_cohomology_verbose then prints("Q=",Q, " ", height(Q))fi;null_K_module(t.real_form)
-       else
-          branch_std(Q,height(Q	))
-   fi
+{this is tensor_product(KType,(KGBElt->[vec])) in tensor_product.at}
 
 set dimension_wedge_P(RealForm G,int k)=int:binom(dimension(G)-dimension(K_0(G)),k)
 
@@ -152,11 +133,16 @@ set subset_sums ([vec] gens,int n) = [vec]:
  the unique term (with coefficient 1) of wedge_P(G,dim p).
  det is trivial iff K acts on p by orientation preserving transformations
  (always if K is connected); e.g. for PGL(2,R) or SO(4,1) it is nontrivial}
-set det_K_type (RealForm G) = KType:
-   let W=wedge_P(G,dimension(G)-dimension(K_0(G))) then
-   (c,mu)=first_term(W) in
+set det_K_type (KTypePol W) = KType: {W=wedge^{dim p}(p)}
+   let (c,mu)=first_term(W) in
    if #W!=1 or split_as_int(c)!=1 then error("wedge^top(p) is not a single K-type") fi;
    mu
+
+set det_K_type (RealForm G) = KType:
+   det_K_type(wedge_P(G,dimension(G)-dimension(K_0(G))))
+
+{given W=wedge_P_all(L), reuse its last term wedge^{dim(l\cap p)}(l\cap p)}
+set det_K_type ([KTypePol] W) = KType: det_K_type(W[#W-1])
 
 set contains ([KType] list,KType t) = bool: any(for s in list do s=t od)
 
@@ -228,13 +214,17 @@ set character_name (KType pi,KType triv,KType det) = string:
    elif pi=det then "det"
    else let (x,lr)=%pi in "K_type("+to_string(#x)+","+to_string(lr)+")"
    fi
+{det_K_type(L) is expensive and is only needed if pi is not trivial}
 set character_name (RealForm L,KType pi) = string:
-   character_name(pi,trivial_K_type(L),det_K_type(L))
+   if pi=trivial_K_type(L) then "triv"
+   else character_name(pi,trivial_K_type(L),det_K_type(L))
+   fi
 
 {Levi is form_name(L), u_p=dim(u\cap p), l_p=dim(l\cap p), pi_L as in character_name}
 set show (RealForm G,[(Parabolic,KType,[int])] data) = void:
 prints(new_line,"levi: Levi factor of theta-stable parabolic",new_line,
-"u_p:  dimension(u\cap p)", new_line, "u_k:  dimension(u\cap k)",
+"u_p:  dimension(u\cap p)", new_line, "l_p:  dimension(l\cap p)", new_line,
+"pi_L: character of L/L_0: triv, det, or K_type(x,lambda-rho)",
 new_line,
 "cohomology: dimension of H^i(g,K,pi) for i=0,...,dim(p)=", dimension(G)-dimension(K_0(G))
 );
@@ -343,7 +333,7 @@ set test_g_k_cohomology (RealForm G) = bool:
    ## for P in theta_stable_parabolics(G) do
       let L=Levi(P) then R=dim_u_cap_p(P) then m=dimension(L)-dimension(K_0(L)) then
       W=wedge_P_all(L) then  {wedge^j(l\cap p) as K-modules}
-      triv=trivial_K_type(L) then det=det_K_type(L) then
+      triv=trivial_K_type(L) then det=det_K_type(W) then
       chars=characters_of_component_group(L) then
       {tests depending only on L}
       dim_ok= all(for j:m+1 do dimension(W[j])=binom(m,j) od) then

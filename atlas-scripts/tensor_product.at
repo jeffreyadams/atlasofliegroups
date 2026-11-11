@@ -81,7 +81,8 @@ set tensor_product(KType t,(KGBElt -> [vec]) weights,int bound) = KTypePol:
 
 {choose the bound appropriately: not at all sure this is right}
 set tensor_product(KType t,(KGBElt -> [vec]) weights)=KTypePol:
-   let P=add_weights(t,weights) in branch_std(P,height(P))
+   let P=add_weights(t,weights) in
+   if height(P)=-1 {P=0} then null_K_module(t.real_form) else branch_std(P,height(P)) fi
 
 {The Main Function
  L=Levi(P), P=theta-stable parabolic in G
