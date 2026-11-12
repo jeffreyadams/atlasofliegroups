@@ -1,0 +1,1136 @@
+\documentclass[11pt,leqno]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{booktabs}
+\usepackage{verbatim}
+
+\renewcommand{\labelenumi}{(\arabic{enumi})}
+\emergencystretch=3em
+
+\newtheorem{theorem}[equation]{Theorem}
+\newtheorem{corollary}[equation]{Corollary}
+\newtheorem{lemma}[equation]{Lemma}
+\newtheorem{proposition}[equation]{Proposition}
+\theoremstyle{definition}
+\newtheorem{definition}[equation]{Definition}
+\newtheorem{observation}[equation]{Observation}
+\newtheorem{heuristic}[equation]{Working hypothesis}
+\newtheorem{remark}[equation]{Remark}
+\newtheorem{example}[equation]{Example}
+\numberwithin{equation}{section}
+
+\newcommand{\K}{\mathrm{K}}
+\newcommand{\nil}{\mathcal N}
+\newcommand{\Ob}{\mathcal O}
+\newcommand{\fg}{\mathfrak g}
+\newcommand{\fk}{\mathfrak k}
+\newcommand{\fs}{\mathfrak s}
+\newcommand{\fq}{\mathfrak q}
+\newcommand{\fu}{\mathfrak u}
+\newcommand{\fl}{\mathfrak l}
+\newcommand{\ft}{\mathfrak t}
+\newcommand{\Z}{\mathbb Z}
+\newcommand{\Q}{\mathbb Q}
+\newcommand{\R}{\mathbb R}
+\newcommand{\C}{\mathbb C}
+\newcommand{\ch}[1]{#1^\vee}
+\newcommand{\AV}{\mathrm{AV}}
+\newcommand{\AC}{\mathrm{AC}}
+\newcommand{\dom}{\mathrm{dom}}
+\newcommand{\at}[1]{\texttt{#1}}
+\newcommand{\mi}{\medskip\noindent}
+
+\begin{document}
+\title{The $K$-nilpotent algorithm with smaller matrices}
+\author{Draft prepared with Claude for J.~Adams}
+\date{November 2026}
+\maketitle
+
+These notes propose a modification of the $K$-nilpotent algorithm of
+\cite{AV}, as implemented in \at{K\_Nilpotent.at} and described in
+\at{knilpotent.tex} (referred to below as \cite{KN}).  The notation is that of
+\cite{KN}.  Everything here was tested in \at{atlas}; the test code is in
+Appendix~\ref{s:code}.  Statements are labelled according to their status:
+\emph{Theorem}, \emph{Proposition} and \emph{Lemma} are proved (a proof
+or a sketch is given); an \emph{Observation} is an experimental fact;
+a \emph{Working hypothesis} is a rule that the algorithm tries first, and
+which it does not need to be true.
+
+\section{Summary}
+\label{s:summary}
+
+The current implementation fixes a bound $N$, computes $\Phi(\Ob,\sigma)$ for
+\emph{every} real nilpotent orbit $\Ob$ and every $L\cap K$-type $\sigma$ of
+norm at most $2N$, keeps those all of whose terms have $K$-norm at most $N$,
+and then does lattice computations (intersections, quotients) with the
+matrices $T$, $Y$, $Q$, $P_X$ of \cite[Section~12]{KN}.  Measurements
+(Section~\ref{s:cost}) show that the rows of these matrices are not the
+problem; the columns are.  There are four to twelve times as many columns as
+rows, and eighty to ninety percent of the $\Phi(\Ob,\sigma)$ that are
+computed are thrown away.
+
+The proposal consists of four changes.
+
+\begin{enumerate}
+\item \textbf{Read the answer off any solution} (Section~\ref{s:mult}).
+If
+$[\pi]=\sum a_{\Ob,\sigma}\,\Phi(\Ob,\sigma)$ is \emph{any} expression of
+$[\pi]$ in terms of orbits of dimension at most $d$, with rational
+coefficients, then the multiplicity of $\overline\Ob$ in the associated cycle
+of $\pi$ is $\sum_\sigma a_{\Ob,\sigma}\dim\sigma$ for every orbit of
+dimension $d$ (Theorem~\ref{t:mult}).  So there is no need for the matrices
+$Y$, $Q$ and $P_X$, no need for integer (Smith form) linear algebra, and no
+need to know that all relevant $\sigma$ have been found: one linear system
+$Tv=w$ over $\Q$ is solved, and the answer certifies itself.  As a bonus the
+algorithm returns the multiplicities, not only the associated variety.
+
+\item \textbf{Use only the orbits of the right dimension}
+(Section~\ref{s:top}).  The Gelfand--Kirillov dimension of $\pi$ is available
+from the $W$-cell of $\pi$ (\at{GK\_dim}).  In most cases $[\pi]$ is a
+combination of the $\Phi(\Ob,\sigma)$ with $\dim\Ob=2\,\mathrm{GKdim}(\pi)$
+alone.  When it is not, smaller orbits are added, largest first.
+
+\item \textbf{The cone argument} (Section~\ref{s:cone}).  Order the $K$-types
+by \emph{dominance} of the weight $\gamma(\mu)=(1+\theta_x)\lambda$ rather
+than by the single number $\|\mu\|=\langle\gamma(\mu),\ch\rho\rangle$.  The
+$K$-type formula, branching to $K$, standardization, and $\Phi$ are all
+triangular for this finer order.  Only the $K$-types lying between the
+lowest and the highest terms of $[\pi]$ are used (the intersection of an
+upward cone and a downward cone), and a $\sigma$ is discarded, before
+$\Phi(\Ob,\sigma)$ is computed, if the leading term of $\Phi(\Ob,\sigma)$ is
+outside this region.
+
+\item \textbf{An additive bound on $\sigma$} (Section~\ref{s:bound}).  The
+$\sigma$ that can matter have norm at most $N+c_\Ob$ for an explicit constant
+$c_\Ob$, in place of the bound $2N$ of the current code.  This is the form of
+the bound in \cite[Proposition~8.9]{AV}.  The bound $2N$ is wasteful when $N$
+is large, and \emph{too small} when $N$ is small: see Example~\ref{e:wrong},
+where the current code returns a wrong answer.
+\end{enumerate}
+
+Because of (1), the rules in (2)--(4) do not have to be theorems.  They decide
+which columns are tried first.  If the linear system has a solution, the
+answer is correct; if not, the rules are relaxed and the computation repeated
+with more columns.
+
+The effect is summarized in Table~\ref{tab:blocks} of Section~\ref{s:exp}.
+For the block of the trivial representation of $SU(2,2)$ the time goes from
+81 seconds to 3.2 seconds, for $SO(4,3)$ from 136 to 34, and for
+$SL(5,\R)$ from 68 to 11.  For $Sp(6,\R)$ the current code did not finish
+in 50 minutes; the new one takes 51 seconds.  For a single representation
+the gain is larger: a large discrete series of $F_4$, $Sp(8,\R)$ or $SO(5,4)$
+leads to a linear system of size at most $2\times 2$.
+
+\section{The current algorithm, and where the time goes}
+\label{s:cost}
+
+We recall the setting briefly.  Let $M=\K^K(\nil_\theta)$.  It has the basis
+$\{[\mu]\}$ indexed by $K$-types, $[\mu]$ being the class of the standard
+tempered final limit module with lowest $K$-type $\mu$.  For a real nilpotent
+orbit $\Ob=K\cdot E$, with $\theta$-stable parabolic $Q=LU$ defined by the
+semisimple element $H$ of a normal triple, there is the map
+\[
+\Phi(\Ob,\cdot)\colon R(L\cap K)\longrightarrow M ,
+\]
+computed by the formula of \cite[Section~6]{KN}.  The \emph{dimension} of a real orbit
+always means the dimension of the complex orbit $G\cdot\Ob$, as in the
+software (it is twice the dimension of $\Ob$ as a $K$-orbit).  The class of an
+irreducible $\pi=J(p)$ is $w=[\pi]$, given in the basis $\{[\mu]\}$ by
+\at{character\_formula(p)*0}.
+
+The current algorithm sets $N=\|w\|$, lets $W(N)$ be the span of the $[\mu]$
+with $\|\mu\|\le N$, and computes for every real orbit all $\sigma$ with
+$\|\sigma\|\le 2N$ and $\Phi(\Ob,\sigma)\in W(N)$.
+
+Table~\ref{tab:old} records, for the block of the trivial representation, the
+number $m$ of $K$-types of norm at most $N$ (the number of rows), the number
+of $\Phi(\Ob,\sigma)$ that are computed, and the number that are kept (the
+number of columns).
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{lrrrrrr}
+\toprule
+$G$ & block & $N$ & rows $m$ & $\Phi$ computed & $\Phi$ kept & time (s)\\
+\midrule
+$SL(2,\R)$ & 3 & 1 & 5 & 17 & 7 & 0.01\\
+$SU(2,1)$ & 6 & 4 & 16 & 226 & 48 & 0.2\\
+$SL(3,\R)$ & 6 & 4 & 4 & 24 & 10 & 0.03\\
+$Sp(4,\R)$ & 12 & 7 & 25 & 522 & 97 & 1.0\\
+$G_2$ split & 12 & 16 & 16 & 558 & 105 & 1.8\\
+$SL(4,\R)$ & 15 & 10 & 21 & 824 & 137 & 3.2\\
+$SU(2,2)$ & 21 & 10 & 95 & 7395 & 698 & 81\\
+$SO(4,3)$ & 53 & 22 & 55 & 6564 & 612 & 136\\
+$SL(5,\R)$ & 55 & 20 & 21 & 1390 & 240 & 68\\
+$Sp(6,\R)$ & 53 & 22 & 146 & 29083 &  & $>3000$\\
+$SU(3,2)$ & 55 & 20 & 413 & 221514 &  & $>3000$\\
+\bottomrule
+\end{tabular}
+\caption{The current algorithm on the block of the trivial representation.
+The time is for filling the data and computing the associated variety of
+every irreducible in the block. For the last two groups the computation was
+stopped after 50 minutes.}
+\label{tab:old}
+\end{table}
+
+Three things stand out.
+
+\begin{itemize}
+\item The number of rows is modest.  Even for split $F_4$ there are only 606
+$K$-types of norm at most $N=\langle 2\rho,\ch\rho\rangle=110$, and for
+$Sp(8,\R)$ there are 973.
+\item Most of the work is computing $\Phi(\Ob,\sigma)$ for $\sigma$ that are
+then discarded because some term has norm bigger than $N$.
+\item The columns that are kept are highly redundant.  For the principal orbit
+of split $G_2$ there are 33 columns, and the matrix $Q$ has one row; for the
+principal orbit of $SO(4,3)$ there are 165 columns and $Q$ has two rows.
+\end{itemize}
+
+\section{Multiplicities from any solution}
+\label{s:mult}
+
+For $d\ge 0$ let $Z_d\subset\nil_\theta$ be the union of the $K$-orbits of
+dimension at most $d$.  It is closed.  By \cite[Theorem~4.5]{AV}
+the map $\K^K(Z_d)\to\K^K(\nil_\theta)$ is injective, with free
+cokernel; write $F_d\subset M$ for its image.  By
+\cite[Corollary~12.2 and Algorithm~12.4]{AV}, $F_d$ is the span of the
+$\Phi(\Ob,\sigma)$ with $\dim\Ob\le d$.
+
+\begin{lemma}
+\label{l:rank}
+Let $\Ob=K\cdot E$ be an orbit of dimension $d$.  There is a homomorphism
+\[
+m_\Ob\colon F_d\longrightarrow \Z
+\]
+with the following properties.
+\begin{enumerate}
+\item $m_\Ob(\Phi(\Ob,\sigma))=\dim\sigma$ for every virtual representation
+$\sigma$ of $L\cap K$.
+\item $m_\Ob(\Phi(\Ob',\sigma'))=0$ for every orbit $\Ob'\ne\Ob$ of dimension
+at most $d$.
+\item If $X$ is a $(\fg,K)$-module of finite length with $\dim\AV(X)\le d$,
+then $[X]\in F_d$, and $m_\Ob([X])$ is the multiplicity of $\overline\Ob$ in
+the associated cycle of $X$.  It is nonnegative, and it is positive if and
+only if $\overline\Ob$ is an irreducible component of $\AV(X)$.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+The orbit $\Ob$ is open in $Z_d$.  Restriction to an open set is exact, so it
+defines $\K^K(Z_d)\to\K^K(\Ob)\simeq R(K^E)$; let $m_\Ob$ be the composition
+of this map with the dimension $R(K^E)\to\Z$.  Statement~(1) is
+\cite[(12.4d)]{AV}: the map $\mu\colon K\times_{Q\cap K}\fs[\ge 2]\to
+\overline\Ob$ is an isomorphism over $\Ob$, and restriction to $\Ob$ commutes
+with $\mu_*$.  For (2), $\Phi(\Ob',\sigma')$ is supported on $\overline{\Ob'}$,
+which does not meet $\Ob$.  Statement~(3) is the definition of the
+associated cycle \cite[Definition~5.2]{AV}: $m_\Ob([X])$ is the rank of the
+coherent sheaf $\mathrm{gr}X$ at a point of $\Ob$.
+\end{proof}
+
+\begin{theorem}
+\label{t:mult}
+Let $X$ be a $(\fg,K)$-module of finite length.  Suppose that for some $d$
+\begin{equation}
+\label{e:expr}
+[X]=\sum_{\dim\Ob'\le d}\ \sum_{\sigma}a_{\Ob',\sigma}\,\Phi(\Ob',\sigma)
+\qquad(a_{\Ob',\sigma}\in\Q),
+\end{equation}
+a finite sum.  For each orbit $\Ob$ of dimension $d$ set
+\[
+m_\Ob=\sum_\sigma a_{\Ob,\sigma}\dim\sigma .
+\]
+\begin{enumerate}
+\item $\dim\AV(X)\le d$, and $m_\Ob$ is the multiplicity of $\overline\Ob$ in
+the associated cycle of $X$.  In particular $m_\Ob$ is a nonnegative integer
+which does not depend on the expression \eqref{e:expr}.
+\item If $m_\Ob\ne0$ for some $\Ob$ of dimension $d$, then $\dim\AV(X)=d$ and
+the components of $\AV(X)$ of dimension $d$ are the $\overline\Ob$ with
+$m_\Ob\ne 0$.  If $X$ is irreducible these are all the components of
+$\AV(X)$.
+\item If $m_\Ob=0$ for all $\Ob$ of dimension $d$, then $\dim\AV(X)<d$.
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+By \eqref{e:expr}, $[X]\in F_d\otimes\Q$, hence $[X]\in F_d$ because $M/F_d$
+is free.  Suppose $\AV(X)$ had a component $\overline{\Ob''}$ of dimension
+$d''>d$, with $d''$ maximal.  Then $m_{\Ob''}$ is defined on $F_{d''}$ and is
+positive on $[X]$ by Lemma~\ref{l:rank}(3), but it vanishes on
+$F_{d''-1}\supset F_d$ by Lemma~\ref{l:rank}(2).  So $\dim\AV(X)\le d$.  Now
+apply $m_\Ob\otimes\Q$ to \eqref{e:expr} and use Lemma~\ref{l:rank}.  This
+gives (1), and (2) and (3) follow from (1) and Lemma~\ref{l:rank}(3).  The last
+statement of (2) is \cite[Theorem~8.4]{Vogan91}: the components of the
+associated variety of an irreducible module all have the same dimension.
+\end{proof}
+
+\begin{remark}
+\label{r:consequences}
+Here is what Theorem~\ref{t:mult} does for the algorithm.
+
+\smallskip\noindent
+(a) The matrices $Y$, $Q$, $P_X$ of \cite[Section~12]{KN}, and the
+computation of \at{intersection} and \at{mod\_image\_projector}, are not
+needed.  One solves $Tv=w$, where the columns of $T$ are whatever
+$\Phi(\Ob',\sigma)$ have been computed.
+
+\smallskip\noindent
+(b) Rational coefficients suffice, so $Tv=w$ can be solved by Gaussian
+elimination (\at{solve} with a \at{ratvec} right hand side).
+
+\smallskip\noindent
+(c) The conjecture in \cite[Section~11]{KN} that the spaces $Z(\Ob_i,N)$ are
+linearly independent is not needed, and neither is the completeness of
+$V(\Ob,N)$ and $Y(\Ob,N)$.  \emph{Any} set of columns for which $Tv=w$ has a
+solution gives the right answer.  Which columns to compute becomes a question
+of efficiency only.
+
+\smallskip\noindent
+(d) The test ``the block of $v$ belonging to $\Ob_i$ is nonzero'' in
+\at{av\_from\_av\_ann} is replaced by ``$m_{\Ob_i}\ne0$''.  These are different.
+For the irreducible $J(x=10,\lambda=[3,2],\nu=[2,1])$ of $Sp(4,\R)$ the
+smallest solution we found uses columns from all three real forms of the
+orbit of dimension $6$, and the multiplicities are $(0,0,1)$.
+
+\smallskip\noindent
+(e) The answer checks itself: the $m_\Ob$ must be nonnegative integers, not
+all zero.  If they all vanish, the true associated variety is smaller, and
+the columns used for the smaller orbits were insufficient.
+\end{remark}
+
+\begin{example}
+\label{e:wrong}
+Let $G=Sp(4,\R)$ and let $\pi=J(p)$ be the limit of holomorphic discrete
+series with $x=3$ and $\lambda=(1,0)$, at the singular infinitesimal character
+$(1,0)$.  Here $w=[\pi]$ is a single term, of norm $N=3$, and
+\at{GK\_dim(p)}$=3$, so $\AV(\pi)$ has dimension $6$.  With $N=3$ the current
+code gives
+\begin{verbatim}
+atlas> set p=parameter(KGB(G,3),[1,0],[0,0])
+atlas> set d=fill(initialize_KNilpotent(G,3))
+atlas> av(d,p)
+Value: [ 7 ]
+\end{verbatim}
+which is a principal orbit, of dimension $8$.  With $N\ge 5$ it gives
+$[4]$, which is correct.  What happens with $N=3$ is that $w$ is not in the
+span of the columns that were computed for the orbits of dimension $6$,
+because the needed $\sigma$ have norm $9$, which is bigger than $2N=6$
+(see Section~\ref{s:bound}); but it is in the span once the columns of the
+principal orbits are added.  The multiplicities
+of that solution are $(0,0)$, so Theorem~\ref{t:mult}(3) detects the problem.
+So the statement in \cite[Section~10]{KN} that one may take $N=\|P\|_v$ is
+not safe, and with the current code there is no way to tell from the output
+whether $N$ was big enough.  For $SL(2,\R)$ at infinitesimal character $0$
+one has $N=0$, and the current code returns nothing for the two limits of
+discrete series and for the spherical principal series.
+\end{example}
+
+\section{Which orbits}
+\label{s:top}
+
+Let $\pi$ be irreducible and $d=2\,\mathrm{GKdim}(\pi)$.  The function
+\at{GK\_dim} (in \at{associated\_variety\_}\allowbreak\at{annihilator.at}) computes
+$\mathrm{GKdim}(\pi)$ from the special representation of the $W$-cell of
+$\pi$; given the Kazhdan--Lusztig data that \at{character\_formula} needs
+anyway, this costs nothing.  So the search of \cite[Section~10.1]{KN} over
+complex orbits in increasing order can be skipped, and no orbit of dimension
+greater than $d$ is ever needed.
+
+\begin{observation}
+\label{o:top}
+In most cases $[\pi]$ is a rational combination of the $\Phi(\Ob,\sigma)$ with
+$\dim\Ob=d$ exactly; no smaller orbits are needed.
+\end{observation}
+
+For the block of the trivial representation this holds for every irreducible
+for $SL(2,\R)$, $SU(2,1)$, $SL(3,\R)$, $Sp(4,\R)$, split $G_2$, $SL(4,\R)$,
+$SU(2,2)$ and $Sp(6,\R)$, for 47 of the 53 irreducibles for $SO(4,3)$, and
+for 43 of the 55 for $SL(5,\R)$: in all, for 218 of 236
+(Table~\ref{tab:blocks}).
+
+It is not a theorem.  The image of $\Phi(\Ob,\cdot)$ is the image of
+\[
+\mu_*\colon \K^K(K\times_{Q\cap K}\fs[\ge 2])\longrightarrow
+\K^K(\overline\Ob).
+\]
+This maps onto $\K^K(\overline\Ob)/\K^K(\partial\Ob)$, but it need not contain
+$\K^K(\partial\Ob)$: over a boundary orbit $\Ob'=K\cdot E'$ the fibre of $\mu$
+is a projective variety on which $K^{E'}$ acts, and $\mu_*$ produces only the
+Euler characteristics of equivariant sheaves on that fibre.
+
+\begin{example}
+\label{e:so43}
+Let $G=SO(4,3)$.  The complex orbit with partition $[3,3,1]$ has two real
+forms, numbered 5 and 6 by \at{real\_nilpotent\_orbits(G)}.  There are six
+irreducibles in the block of the trivial representation whose associated
+variety is $\overline{\Ob_5}\cup\overline{\Ob_6}$ (with multiplicities
+$(1,1)$, $(4,4)$ and $(5,5)$).  For these, $[\pi]$ is not in the span of the
+$\Phi(\Ob_5,\sigma)$ and $\Phi(\Ob_6,\sigma)$.  It is in the span after the
+columns of orbit number 2 are added; this is a real form of the orbit
+$[3,1^4]$, of dimension 10.  For every irreducible in the block whose
+associated variety is $\overline{\Ob_5}$ alone, or $\overline{\Ob_6}$ alone,
+the top orbits suffice.  These six are the only irreducibles in the block
+with a reducible associated variety, and the only ones for which the top
+orbits do not suffice.
+
+A reducible associated variety is not the only cause.  In the block of the
+trivial representation of $SL(5,\R)$ there are twelve irreducibles, each with
+an irreducible associated variety, for which the orbits of the next smaller
+dimension are needed.
+\end{example}
+
+So the rule is: try the orbits of dimension $d$; if $Tv=w$ has no solution,
+add the orbits of the next smaller dimension, and so on.  By
+Theorem~\ref{t:mult} nothing is lost by trying.  It would be better to add
+only the orbits in the closure of at least two of the orbits found so far,
+but this requires the closure order on real nilpotent orbits.
+
+\section{The cone argument}
+\label{s:cone}
+
+\subsection{The dominance order on $K$-types}
+
+\begin{definition}
+For a $K$-type $\mu=(x,\lambda)$ let
+\[
+\gamma(\mu)=\dom\big((1+\theta_x)\lambda\big)\in X^*\otimes\Q,
+\]
+the dominant element of the $W$-orbit of $(1+\theta_x)\lambda$.  For dominant
+$\gamma,\gamma'$ write $\gamma\preceq\gamma'$ if $\gamma'-\gamma$ is a
+nonnegative rational combination of simple roots.
+\end{definition}
+
+The $K$-norm of \cite[Section~8]{KN} is
+$\|\mu\|=\langle\gamma(\mu),\ch\rho\rangle$, and more generally
+$\|\mu\|_v=\langle\gamma(\mu),v\rangle$.  Since $\gamma\preceq\gamma'$ if and
+only if $\langle\gamma,v\rangle\le\langle\gamma',v\rangle$ for all dominant
+$v$ (and equality for central $v$), the dominance order uses all the norms
+$\|\cdot\|_v$ at once.  For a dominant weight $\Lambda$,
+\begin{align*}
+\{\gamma\ \text{dominant}\mid\gamma\preceq\Lambda\}
+&=\{\text{dominant weights}\}\cap\big(\Lambda-\mathrm{cone}(\Delta^+)\big)\\
+&=\{\text{dominant weights in the convex hull of }W\Lambda\}.
+\end{align*}
+This is a cone condition.  It has two advantages over $\|\mu\|\le N$.  It is
+sharper: the simplex $\{\gamma\mid\langle\gamma,\ch\rho\rangle\le N\}$ is
+replaced by a polytope with vertex $\Lambda$.  And it is finite even when $G$
+has a compact central torus, since the central character is fixed; no
+auxiliary vector $v$ is needed.
+
+For $w=\sum_\mu c_\mu[\mu]\in M$ let $\Gamma_{\max}(w)$ and
+$\Gamma_{\min}(w)$ be the sets of maximal and minimal elements of
+$\{\gamma(\mu)\mid c_\mu\ne 0\}$, and define the \emph{cone} and the
+\emph{interval} of $w$:
+\begin{align*}
+C(w)&=\{\mu\mid\gamma(\mu)\preceq\gamma_+\text{ for some
+}\gamma_+\in\Gamma_{\max}(w)\},\\
+I(w)&=\{\mu\in C(w)\mid\gamma_-\preceq\gamma(\mu)\text{ for some
+}\gamma_-\in\Gamma_{\min}(w)\}.
+\end{align*}
+The lowest $K$-types of $\pi$ give elements of $\Gamma_{\min}([\pi])$.
+
+Table~\ref{tab:cone} compares the number of $K$-types of norm at most
+$N=\langle 2\rho,\ch\rho\rangle$ with the number in the cone below $2\rho$
+(which is $\Gamma_{\max}([\pi])$ for most $\pi$ of infinitesimal character
+$\rho$).  The cone by itself removes between five and fifty percent of the
+rows.  The
+interval removes many more when the lowest $K$-type of $\pi$ is large: for a
+discrete series of $Sp(4,\R)$ the interval contains 4 of the 25 $K$-types, for
+split $G_2$ it contains 3 of 16, and for a fundamental series of $SL(4,\R)$ it
+contains 2 of 21.
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{lrrr}
+\toprule
+$G$ & $N$ & $\|\mu\|\le N$ & $\gamma(\mu)\preceq 2\rho$\\
+\midrule
+$SU(2,2)$ & 10 & 95 & 63\\
+$SO(4,3)$ & 22 & 55 & 52\\
+$Sp(6,\R)$ & 22 & 146 & 132\\
+$SU(3,2)$ & 20 & 413 & 209\\
+$SO(5,4)$ & 50 & 328 & 264\\
+$Sp(8,\R)$ & 50 & 973 & 731\\
+$F_4$ split & 110 & 606 & 544\\
+\bottomrule
+\end{tabular}
+\caption{Number of $K$-types of norm at most $N$, and in the cone below
+$2\rho$.}
+\label{tab:cone}
+\end{table}
+
+\subsection{Triangularity}
+
+The reason to expect the cone and the interval to be respected is that every
+operation that enters the computation of $[\pi]$ and of $\Phi(\Ob,\sigma)$ is
+triangular with respect to $\preceq$.  The current algorithm uses only the
+consequence of this for the single functional
+$\langle\,\cdot\,,\ch\rho\rangle$.
+
+\begin{observation}[$K$-type formula and branching]
+\label{o:branch}
+Every term $[\mu']$ of the $K$-type formula of $\mu$ satisfies
+$\gamma(\mu)\preceq\gamma(\mu')$.  Every $K$-type $\mu'$ of the standard module
+with lowest $K$-type $\mu$ satisfies $\gamma(\mu)\preceq\gamma(\mu')$.
+\end{observation}
+
+This was checked on all $K$-types up to a bound for the groups $SL(2,\R)$,
+$SU(2,1)$, $SL(3,\R)$, $Sp(4,\R)$, $G_2$, $SL(4,\R)$, $SU(2,2)$, $SO(4,3)$,
+$Sp(6,\R)$: about 5500 terms of $K$-type formulas and 5000 branching
+multiplicities, with no exception.  It refines the fact that
+\at{K\_type\_formula} and \at{branch} are triangular for the height.  We expect
+that it follows from Vogan's theory of lowest $K$-types, since
+$\gamma(\mu)=2\lambda_a(\mu)$, but we have not written a proof.
+
+\begin{lemma}[standardization]
+\label{l:std}
+Let $x$ be a KGB element and $\lambda\in\rho+X^*$, not necessarily standard
+or final, and let $[I(x,\lambda)]=\sum_j c_j[\mu_j]$ be the expression of the
+continued standard module in the basis of $M$.  Then
+$\gamma(\mu_j)\preceq\dom((1+\theta_x)\lambda)$ for all $j$.
+\end{lemma}
+
+\begin{proof}[Sketch of proof]
+The set of $\gamma$ with $\dom(\gamma)\preceq\Lambda$ is the convex hull of
+$W\Lambda$, so it is convex and $W$-stable.  The parameter is made standard
+and final by a sequence of steps of four kinds.  Reflection in a compact
+imaginary simple root, and the cross action of a complex root, replace
+$(1+\theta_x)\lambda$ by a $W$-conjugate.  The Hecht--Schmid identity for a
+noncompact imaginary simple root $\alpha$ replaces $(x,\lambda)$ by terms
+at $s_\alpha\times x$, where $(1+\theta)\lambda$ is replaced by its reflection,
+and at the Cayley transform of $x$, where it is replaced by
+$(1+\theta_x)\lambda-\langle\lambda,\ch\alpha\rangle\alpha$, the midpoint of
+$(1+\theta_x)\lambda$ and its reflection in $\alpha$.  Finally the inverse
+Cayley transform through a real root satisfying the parity condition (the
+step that makes a parameter final) does not change $(1+\theta)\lambda$.
+\end{proof}
+
+Lemma~\ref{l:std} was also tested: for every $\sigma$ of norm at most $2N$
+for $Sp(4,\R)$, $SL(4,\R)$, $G_2$ and $SU(2,1)$ (about 2000 in all), whenever
+the terms of $\Phi(\Ob,\sigma)$ before standardization all lie below
+$2\rho$, so do the terms after standardization.
+
+The third statement is about $\Phi$, and it is the one that says that each
+orbit has its own cone.  Fix a real orbit $\Ob=K\cdot E$ with normal triple
+$(H,E,F)$, $H\in\ft\subset\fk$, and $\fq=\fl+\fu$.  Choose a positive
+system for $\ft$ in $\fk$ containing the roots of $\fu\cap\fk$, so that $H$ is
+dominant for $K$.  For a $K$-type with highest weight $\gamma$ write
+\[
+h_\Ob(\gamma)=\langle\gamma,H\rangle .
+\]
+The element $H$ is central in $\fl\cap\fk$, so it acts on an irreducible
+representation $\sigma$ of $L\cap K$ by a scalar, written $\sigma(H)$.
+
+\begin{proposition}
+\label{p:cone}
+Let $\sigma$ be an irreducible representation of $L\cap K$ with highest
+weight $\tau$.
+\begin{enumerate}
+\item As a virtual representation of $K$,
+\[
+\Phi(\Ob,\sigma)|_K=\sum_{k\ge 0}\ \sum_i(-1)^i\,
+\mathcal R^i_{\fq\cap\fk}\big(\sigma\otimes S^k(\fs[\ge 2])\big),
+\]
+where $\mathcal R^i_{\fq\cap\fk}$ is cohomological induction from $L\cap K$ to
+$K$, normalized so that the irreducible representation of $L\cap K$ of
+highest weight $\nu$ goes to $\pm$ the irreducible representation of $K$ of
+highest weight $w(\nu+\rho_K)-\rho_K$, or to zero.
+\item Every $K$-type of $\Phi(\Ob,\sigma)$, of highest weight $\gamma$,
+satisfies $h_\Ob(\gamma)\ge\sigma(H)$.
+\item Equality holds in (2) for at most one $K$-type.  It holds if and only
+if $\tau$ is dominant for $K$ and $\gamma=\tau$, and then the multiplicity is
+one.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+By the definition of $\Phi$ in \cite[Section~6]{KN}, in the form in which it is implemented (see Remark~\ref{r:sign}),
+\[
+\Phi(\Ob,\sigma)=\sum_j(-1)^j\big[\mathcal R\big(Q,\sigma\otimes
+\textstyle\bigwedge^j\fs[1]\otimes\bigwedge^{\rm top}(\fu\cap\fs)^*\big)\big].
+\]
+By Zuckerman's Blattner formula \cite[Proposition~11.7]{AV}, with the
+normalization of cohomological induction used in \at{atlas}, the restriction
+to $K$ of $\sum_i(-1)^i\mathcal R^i_\fq(Z)$ is
+$\sum_i(-1)^i\mathcal R^i_{\fq\cap\fk}(Z\otimes\bigwedge^{\rm
+top}(\fu\cap\fs)\otimes S(\fu\cap\fs))$.  Now
+$\fu\cap\fs=\fs[1]\oplus\fs[\ge 2]$ and
+$\sum_j(-1)^j\bigwedge^j\fs[1]\otimes S(\fs[1])=1$, which gives (1).
+
+Let $\nu$ be the highest weight of a constituent of
+$\sigma\otimes S^k(\fs[\ge 2])$.  Then $\langle\nu,H\rangle\ge\sigma(H)+2k$.
+If this constituent contributes a $K$-type, its highest weight is
+$\gamma=w(\nu+\rho_K)-\rho_K$ with $w(\nu+\rho_K)$ dominant for $K$.  Since
+$H$ is dominant, $\langle w(\nu+\rho_K),H\rangle\ge\langle\nu+\rho_K,H\rangle$,
+so $h_\Ob(\gamma)\ge\langle\nu,H\rangle\ge\sigma(H)+2k$.  This is (2).
+
+If equality holds then $k=0$, $\nu=\tau$, and
+$\beta=w(\tau+\rho_K)-(\tau+\rho_K)$ is a nonnegative combination of positive
+roots of $\fk$ which is orthogonal to $H$, hence a combination of positive
+roots of $\fl\cap\fk$.  As $\tau+\rho_K$ is dominant for $L\cap K$ we have
+$\langle\tau+\rho_K,\beta\rangle\ge 0$, and
+$|\tau+\rho_K+\beta|=|\tau+\rho_K|$ forces $\beta=0$.  So $\tau+\rho_K$ is
+dominant and regular for $K$, that is, $\tau$ is dominant for $K$, and
+$\gamma=\tau$.  The converse is clear, and this is (3).
+\end{proof}
+
+Proposition~\ref{p:cone} was tested with \at{branch} on every column in the
+data for $SL(2,\R)$, $SL(3,\R)$, $SU(2,1)$, $Sp(4,\R)$ and $G_2$: among about
+10000 $K$-types of the various $\Phi(\Ob,\sigma)$ none has
+$h_\Ob(\gamma)<\sigma(H)$, and no $\sigma$ has two $K$-types with
+$h_\Ob(\gamma)=\sigma(H)$.  This also confirms the sign conventions.
+
+\begin{remark}
+\label{r:sign}
+The formula in \cite[Section~6]{KN} has $-2\rho(A)$, which corresponds to
+$\bigwedge^j\fs[1]^*$; the code (\at{Phi} in \at{K\_Nilpotent.at}) adds
+$2\rho(A)$, which corresponds to $\bigwedge^j\fs[1]$.
+Proposition~\ref{p:cone} is stated, and was tested, for the formula as it is
+implemented.  With $\bigwedge^j\fs[1]^*$ the cancellation against
+$S(\fs[1])$ in the proof would not take place, and the lowest $K$-type of
+$\Phi(\Ob,\sigma)$ would be shifted by $-2\rho(\fs[1])$ when $\Ob$ is not
+even.  This is the point about signs raised in \cite[Section~6]{KN}.
+\end{remark}
+
+So the $K$-types of $\Phi(\Ob,\sigma)$ lie in the half space
+$h_\Ob\ge\sigma(H)$, more precisely in the cone with vertex $\tau$ spanned by
+the weights of $\fs[\ge 2]$, folded into the dominant chamber; and when $\tau$
+is dominant for $K$ the vertex is itself a $K$-type of $\Phi(\Ob,\sigma)$,
+the unique one at the lowest level of $h_\Ob$.
+
+\subsection{The restricted system}
+
+\begin{heuristic}
+\label{h:interval}
+$[\pi]$ is a rational combination of those $\Phi(\Ob,\sigma)$, $\dim\Ob=d$,
+all of whose terms lie in the interval $I([\pi])$.
+\end{heuristic}
+
+The reasoning is the usual one for triangular systems.  By
+Observation~\ref{o:branch} the $K$-types of $\pi$ lie above
+$\Gamma_{\min}([\pi])$, and by Proposition~\ref{p:cone} the $K$-types of a
+column lie above its vertex.  So the lowest terms of $[\pi]$ should be
+accounted for by columns that start there; after subtracting those columns
+the same holds for the remainder; and the process should not need to go above
+the top of $[\pi]$.  This is not a proof, because columns can
+cancel against each other outside the interval, and
+Working hypothesis~\ref{h:interval} is not always true.  It does not have to be:
+if the restricted system has a solution, Theorem~\ref{t:mult} applies.
+
+The evidence is as follows.  Of the 236 irreducibles in the blocks of
+Table~\ref{tab:blocks}, the top orbits suffice for 218.  For 212 of these the
+system restricted to the interval $I([\pi])$ has a solution (stages 0--2 of
+Section~\ref{s:alg}); for the other 6 the interval is too small, and the
+system restricted to the cone $C([\pi])$ has a solution.  For the 18 that need
+smaller orbits, the columns of all the orbits used can again be restricted to
+the cone $C([\pi])$.
+
+When the infinitesimal character is not $\rho$ the cone can be too small.
+
+\begin{example}
+\label{e:sl2}
+Let $G=SL(2,\R)$, with KGB elements $x=0,1$ for the compact Cartan and $x=2$
+for the split one.  The spherical principal series at $\nu=0$ is
+$w=[(2,1)]$, a single term with $\gamma=0$.  It is
+\[
+w=\Phi(\Ob_1,\sigma_0)+\Phi(\Ob_2,\sigma_2),\qquad
+\Phi(\Ob_1,\sigma_0)=[(2,1)]-[(1,1)],\quad\Phi(\Ob_2,\sigma_2)=[(1,1)].
+\]
+The term $[(1,1)]$, a discrete series, has $\gamma=2\ne0$.  So the columns
+must be allowed to reach above $\Gamma_{\max}(w)$.  The same happens for any
+irreducible principal series, for example the spherical principal series of
+$Sp(4,\R)$ at $\nu=2\rho$.
+\end{example}
+
+For this reason the cone is enlarged when necessary: $C_k(w)$ is defined like
+$C(w)$ with $\gamma_+$ replaced by $\gamma_++2k\rho$.  In all the cases tried
+$k\le 1$ was enough.  At infinitesimal character $\rho$ the terms of $[\pi]$
+on the fundamental Cartan already have $\gamma=2\rho$, the largest value that
+can occur for the standard modules of the block, and $k=0$ has always been
+enough.
+
+\subsection{Choosing $\sigma$ before computing $\Phi(\Ob,\sigma)$}
+\label{s:bound}
+
+Computing $\Phi(\Ob,\sigma)$ is expensive: it requires the $K$-type formula
+of $\sigma$ on $L$, a sum over subsets of the weights of $\fs[1]$, and a
+standardization on $G$ for every term.  So one wants to know \emph{before}
+computing it whether its terms can lie in the region $R$ (an interval or a
+cone) under consideration.
+
+\begin{definition}
+Let $\sigma$ be an $L\cap K$-type, with standard final limit parameter
+$(x_L,\lambda_L)$ for $L$.  The \emph{leading term} of $\Phi(\Ob,\sigma)$ is
+the pair
+\[
+(x_G,\lambda_{\rm lead}),\qquad
+\lambda_{\rm lead}=\lambda_L-2\rho(\fu\cap\fs)+\rho(\fu),
+\]
+where $x_G$ is the image of $x_L$ in the KGB set of $G$.  Put
+$\gamma_{\rm lead}(\sigma)=\dom((1+\theta_{x_G})\lambda_{\rm lead})$.
+\end{definition}
+
+This is the term with $A=\emptyset$ in the formula for $\Phi$ of \cite[Section~6]{KN}, coming
+from the leading term of the $K$-type formula of $\sigma$, before
+standardization.  It costs one call of
+\at{twist\_by\_minus\_2rho\_u\_cap\_s}.  When the pair
+$(x_G,\lambda_{\rm lead})$ is a standard parameter it is typically the lowest
+term of $\Phi(\Ob,\sigma)$ (compare Proposition~\ref{p:cone}(3)).
+
+The algorithm uses the leading term in three ways.
+\begin{enumerate}
+\item $\Phi(\Ob,\sigma)$ is computed only if $\gamma_{\rm lead}(\sigma)$ lies
+in the region $R$.
+\item In the first stages only those $\sigma$ are used for which
+$(x_G,\lambda_{\rm lead})$ is standard.  For a principal orbit of an
+equal rank group, where $L$ is a compact torus, this selects one Weyl chamber
+out of $|W|$.  For a discrete series it leaves one or two $\sigma$.
+\item It gives the range of $\sigma$ to enumerate.  Since
+$\gamma\mapsto\langle\dom(\gamma),\ch\rho\rangle$ is convex and homogeneous,
+\[
+\|\sigma\|_{\ch\rho(G)}\le
+\langle\gamma_{\rm lead}(\sigma),\ch\rho\rangle+c_\Ob,\qquad
+c_\Ob=\max_{x_L}\big\langle\dom\big((1+\theta_{x_G})
+(\rho(\fu)-2\rho(\fu\cap\fs))\big),\ch\rho\big\rangle .
+\]
+So if $N_R$ is the largest norm of a $K$-type in $R$, only the $\sigma$ with
+$\|\sigma\|_{\ch\rho(G)}\le N_R+c_\Ob$ can pass test (1).  This replaces the
+bound $2N$ of \at{Phi\_upto}; compare the conjecture in \cite[Section~8]{KN},
+which asks for a bound of the form $cN$.  The natural bound is additive.
+In Example~\ref{e:wrong} one has $N=3$ and $c_\Ob=6$, and the system becomes
+solvable exactly when the $\sigma$ of norm $9=N+c_\Ob$ are included; the
+bound $2N=6$ is too small.
+\end{enumerate}
+
+\section{The algorithm}
+\label{s:alg}
+
+\textbf{Input:} a real group $G$ and a list of parameters $p$ (for example a
+block).  \textbf{Output:} for each $p$ the real orbits in $\AV(J(p))$ with
+their multiplicities in the associated cycle.
+
+\begin{enumerate}
+\item Compute the real nilpotent orbits.  For each orbit $\Ob$ compute, when
+it is first needed, the parabolic, the constant $c_\Ob$, the list of
+$\sigma$ with $\|\sigma\|\le N_{\max}+c_\Ob$, and for each of them the
+leading term.  The $\Phi(\Ob,\sigma)$ are computed on demand and stored, so
+that each is computed at most once for the whole list of parameters.
+\item For each $p$: let $w$ be \at{character\_formula(p)*0},
+$d=2\,$\at{GK\_dim(p)}, and let the \emph{top} orbits be the real orbits of
+dimension $d$.  Compute $\Gamma_{\max}(w)$, $\Gamma_{\min}(w)$.
+\item Try the following column sets in turn, until $Tv=w$ has a rational
+solution $v$.  In every stage a column $\Phi(\Ob,\sigma)$ is used only if all
+its terms lie in the stated region.
+
+\smallskip
+\begin{tabular}{rlll}
+stage & orbits & region & condition on the leading term\\
+\midrule
+0 & top & interval $I(w)$ & standard, and $\gamma_{\rm lead}\in\Gamma_{\min}(w)$\\
+1 & top & interval $I(w)$ & standard, and in the region\\
+2 & top & interval $I(w)$ & in the region\\
+3 & top & cone $C(w)$ & in the region\\
+4 & top & cone $C(w)$ & none\\
+$5+j$ & dimension $\ge d_{j+1}$ & cone $C(w)$ & in the region
+\end{tabular}
+
+\smallskip\noindent
+Here $d=d_0>d_1>d_2>\dots$ are the dimensions of the real orbits.  If no stage
+succeeds, repeat stages $3,4,5,\dots$ with $C(w)$ replaced by $C_1(w)$, then
+$C_2(w)$.
+\item From the solution $v$ compute
+$m_\Ob=\sum_\sigma v_{\Ob,\sigma}\dim\sigma$ for each top orbit.  Check that
+these are nonnegative integers, not all zero.  The associated cycle is
+$\sum m_\Ob\overline\Ob$.
+\end{enumerate}
+
+By Theorem~\ref{t:mult} the output is correct whenever step (3) succeeds and
+the check in step (4) passes.  The rows of $T$ are the $K$-types occurring in
+$w$ and in the columns used; nothing else needs to be enumerated.
+
+\section{Experiments}
+\label{s:exp}
+
+The prototype of Appendix~\ref{s:code} was run on the block of the trivial
+representation for the groups of Table~\ref{tab:old}.  Table~\ref{tab:blocks}
+gives the number of $\Phi(\Ob,\sigma)$ computed, the size of the largest
+linear system solved, the number of irreducibles solved at each stage, and
+the time for the whole block.  For each group the old and the new time were
+measured one after the other on the same machine.  (For $SU(3,2)$, where the
+current code was stopped after 50 minutes, the prototype was stopped after
+10 minutes without having finished.  Judging from Table~\ref{tab:single},
+the time goes into listing the candidate $\sigma$: the current code lists
+221514 of them for this group (Table~\ref{tab:old}), and the prototype lists
+them in the same way; see Section~\ref{s:further}(1).  Presumably for the
+same reason, a single large discrete series of $SU(3,3)$ did not finish in
+10 minutes.)
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{lrrrrcrrrrr}
+\toprule
+ & & & \multicolumn{2}{c}{$\Phi$ computed} & largest
+ & \multicolumn{3}{c}{solved at stage} & \multicolumn{2}{c}{time (s)}\\
+$G$ & block & orbits & old & new & system & 0--2 & 3--4 & $\ge 5$ & old & new\\
+\midrule
+$SL(2,\R)$ & 3 & 3 & 17 & 5 & $2\times 2$ & 3 & 0 & 0 & 0.01 & 0.02\\
+$SU(2,1)$ & 6 & 4 & 226 & 14 & $4\times 3$ & 6 & 0 & 0 & 0.2 & 0.1\\
+$SL(3,\R)$ & 6 & 3 & 24 & 5 & $3\times 1$ & 6 & 0 & 0 & 0.03 & 0.02\\
+$Sp(4,\R)$ & 12 & 8 & 522 & 53 & $25\times 34$ & 12 & 0 & 0 & 1.0 & 0.3\\
+$G_2$ split & 12 & 6 & 558 & 55 & $16\times 40$ & 12 & 0 & 0 & 1.8 & 0.4\\
+$SL(4,\R)$ & 15 & 7 & 824 & 78 & $21\times 24$ & 15 & 0 & 0 & 3.2 & 0.7\\
+$SU(2,2)$ & 21 & 10 & 7395 & 357 & $30\times 10$ & 21 & 0 & 0 & 81 & 3.2\\
+$SO(4,3)$ & 53 & 10 & 6564 & 980 & $52\times 212$ & 45 & 2 & 6 & 136 & 34\\
+$SL(5,\R)$ & 55 & 7 & 1390 & 254 & $19\times 70$ & 41 & 2 & 12 & 68 & 11\\
+$Sp(6,\R)$ & 53 & 19 & 29083 & 2035 & $132\times 188$ & 51 & 2 & 0 & $>3000$ & 51\\
+\bottomrule
+\end{tabular}
+\caption{The new algorithm on the block of the trivial representation.
+``Orbits'' is the number of real nilpotent orbits; ``largest system'' is the
+size (rows $\times$ columns) of the largest linear system solved for an
+irreducible in the block.  Stages 0--2 use the top orbits and the interval,
+stages 3--4 the top orbits and the cone, and stages $\ge 5$ smaller orbits as
+well (Section~\ref{s:alg}).  The times are for the whole block.}
+\label{tab:blocks}
+\end{table}
+
+\mi\textbf{Agreement.}  The associated varieties were compared with the output
+of the current code (\at{av}) for every irreducible of infinitesimal
+character $\rho$ of $SL(2,\R)$, $SU(2,1)$, $SL(3,\R)$, $Sp(4,\R)$, $SO(4,1)$,
+$Sp(1,1)$, $SU(3,1)$, split $G_2$, $SL(4,\R)$, $SL(2,\C)$, $SL(3,\C)$,
+$Sp(4,\C)$, and for the block of the trivial representation of $SU(2,2)$,
+$SO(4,3)$ and $SL(5,\R)$: 238 irreducibles in all.  They agree in
+every case.  In every case the multiplicities are nonnegative integers.  They
+were also compared at some singular and nonintegral infinitesimal characters
+for $SL(2,\R)$, $SL(3,\R)$, $SU(2,1)$, $Sp(4,\R)$ and $G_2$; there the only
+differences are those of Example~\ref{e:wrong}, where the current code is
+wrong.
+
+\mi\textbf{Multiplicities.}  The current code does not compute the associated
+cycle.  Some values, at infinitesimal character $\rho$: for split $G_2$ the
+irreducibles $J(x,\rho,\nu)$ with $x=3,7$ have multiplicity $3$, and those
+with $x=5,6$ have multiplicity $2$, on a real form of the subregular orbit;
+for $SL(4,\R)$, $J(x=12,\lambda=[3,3,2],\nu=\rho)$ has associated cycle
+$3\,\overline{\Ob_2}+3\,\overline{\Ob_3}$; in the block of the trivial
+representation the largest multiplicity is $6$ for $SO(4,3)$, $5$ for
+$SL(5,\R)$ and $10$ for $Sp(6,\R)$.
+
+\mi\textbf{Single representations.}  Table~\ref{tab:single} is for a single
+irreducible of a larger group.  For a discrete series the linear system has
+one or two unknowns, and one or two $\Phi(\Ob,\sigma)$ are computed.  Almost
+all of the time is now spent in listing the candidate $\sigma$ and their
+leading terms, which the prototype does in the same way as the current code
+(all $\sigma$ up to a norm bound); see Section~\ref{s:further}(1).
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{lrrrcr}
+\toprule
+representation & orbits & $\sigma$ listed & $\Phi$ computed & system & time (s)\\
+\midrule
+$SO(4,3)$, large discrete series & 10 & 281 & 1 & $1\times 1$ & 0.2\\
+$Sp(6,\R)$, large discrete series & 19 & 1250 & 2 & $2\times 2$ & 0.5\\
+$Sp(6,\R)$, trivial & 19 & 146 & 7 & $60\times 1$ & 0.3\\
+$SO(5,4)$, large discrete series & 21 & 5593 & 1 & $1\times 1$ & 7.2\\
+$Sp(8,\R)$, large discrete series & 41 & 24498 & 2 & $2\times 2$ & 56\\
+$Sp(8,\R)$, trivial & 41 & 973 & 9 & $285\times 1$ & 5.3\\
+$F_4$ split, trivial & 27 & 606 & 3 & $290\times 1$ & 5.1\\
+$F_4$ split, large discrete series & 27 & 28369 & 1 & $1\times 1$ & 106\\
+\bottomrule
+\end{tabular}
+\caption{The new algorithm on single representations.  All are solved at
+stage 0.}
+\label{tab:single}
+\end{table}
+
+\section{Further improvements}
+\label{s:further}
+
+\begin{enumerate}
+\item \emph{Enumerate $\sigma$ from the region.}  The prototype lists all
+$\sigma$ with $\|\sigma\|\le N_R+c_\Ob$ and then tests the leading term.  It
+would be much better to go the other way: list the dominant weights $\gamma$
+in the region $R$, for each one the $L$-dominant $W$-conjugates $\gamma'$, and
+solve $(1+\theta_{x_L})(\lambda_L-2\rho(\fu\cap\fs)+\rho(\fu))=\gamma'$ for
+$\lambda_L$.  This is what \at{lambda\_rho\_from\_dominant\_height\_upto} does,
+with the list of $\gamma$ given by the region instead of a norm bound.  For a
+discrete series of $F_4$ this lists at most $|W|=1152$ candidates instead of
+28369.
+\item \emph{Speed up $\Phi$.}  In \at{Phi}, the list \at{rho\_shifts(O,x)}
+depends only on the orbit and on $x$, but it is recomputed for every term of
+every $\sigma$ (including a call of \at{dominant(O)}).  The prototype
+computes it once for each $x$.  The same applies to
+\at{parabolic\_of\_orbit(O)} and its Levi factor.  For the zero orbit,
+$\Phi(0,\sigma)$ is just \at{K\_type\_formula}.
+\item \emph{Closure order.}  When the top orbits do not suffice
+(Example~\ref{e:so43}) the prototype adds all orbits of the next dimension.
+With the closure order on real orbits one would add only the maximal orbits
+in the intersection of the closures of two top orbits.
+\item \emph{Reductive groups.}  The region $R$ is finite without a choice of
+$v$.  With the enumeration of (1) the vector $v$ of \cite[Section~8]{KN} would
+disappear from the algorithm.
+\item \emph{Translation.}  Translation between two regular infinitesimal
+characters in the same chamber is an equivalence and does not change the
+associated variety.  At infinitesimal character $\rho$ the cone never had to
+be enlarged (Example~\ref{e:sl2} shows that elsewhere it must be), and the
+norms are smallest, so for a regular parameter far from the walls it may be
+cheaper to translate first.  This gives the associated variety but not the
+multiplicities.
+\item \emph{What should be proved.}  Observation~\ref{o:branch}; a precise
+form of Working hypothesis~\ref{h:interval} with the cone $C_k(w)$ and an explicit
+$k$; and a description of the image of $\mu_*$ that explains
+Example~\ref{e:so43}.
+\end{enumerate}
+
+\appendix
+\section{The prototype}
+\label{s:code}
+
+The following is the file \at{K\_Nilpotent\_improved.at} with which the
+experiments were done.  It uses \at{K\_Nilpotent.at} for $\Phi$ and for the
+enumeration of $L\cap K$-types.  The main functions are
+\at{kf\_associated\_cycles(G,params)} and \at{kf\_associated\_cycle(p)}.  For
+example:
+\begin{verbatim}
+atlas> set G=Sp(4,R)
+atlas> kf_associated_cycle(parameter(KGB(G,9),[2,1],[3,3]/2))
+Value: [(([ 1, 1 ],KGB element #0,()),2)]
+\end{verbatim}
+
+{\footnotesize
+\begin{verbatim}
+<K_Nilpotent.at
+<associated_variety_annihilator.at { for GK_dim@Param }
+
+{ Prototype of the improved K-nilpotent algorithm; see knilpotentImproved.tex.
+  Main functions:
+    kf_associated_cycles(G,[Param])  associated cycles of a list of irreducibles
+    kf_associated_cycle(Param)       associated cycle of one irreducible
+}
+
+set kf_verbose=false
+set kf_max_margin=2
+
+{ gamma(mu): the dominant weight (1+theta_x)lambda attached to a K-type }
+set kf_gamma (KType t) = ratvec:
+  dominant(t.root_datum,(1+involution(t.x))*t.lambda)
+
+{ dominance order: g <= L iff L-g is a nonnegative combination of simple roots }
+set kf_leq (RootDatum rd) = (ratvec,ratvec->bool):
+  let fcw=fundamental_coweights(rd), rb=radical_basis(rd) in
+  (ratvec g,ratvec L) bool:
+    let diff=L-g in all(for cw in fcw do diff*cw>=0 od) and =(diff*rb)
+
+set kf_maximal (RootDatum rd,[ratvec] S) = [ratvec]:
+  let leq=kf_leq(rd) in
+  ##for g@i in S do
+     if any(for h@j in S do j!=i and leq(g,h) and (not leq(h,g) or j<i) od)
+     then [] else [g] fi od
+
+set kf_minimal (RootDatum rd,[ratvec] S) = [ratvec]:
+  let leq=kf_leq(rd) in
+  ##for g@i in S do
+     if any(for h@j in S do j!=i and leq(h,g) and (not leq(g,h) or j<i) od)
+     then [] else [g] fi od
+
+{ the leading raw term of Phi(O,sigma): the parameter obtained from the STFL
+  parameter of sigma by the twist and theta-induction, before standardization.
+  Returns its gamma, and whether it is already a standard parameter of G }
+set kf_lead (RealForm G,Parabolic P,ratvec shift_u,KType mu_L) = (ratvec,bool):
+  let q=twist_by_minus_2rho_u_cap_s(P,mu_L.param)
+  then x_G=embed_KGB(x(q),G), lam=lambda(q)+shift_u
+  in ( dominant(G.root_datum,(1+involution(x_G))*lam)
+     , is_standard(parameter(x_G,lam,null(rank(G)))) )
+
+{ the constant c_O: if the leading term of Phi(O,sigma) has norm <= N then
+  sigma has G-norm <= N + c_O }
+set kf_shift_bound (RealForm G,Parabolic P) = int:
+  let L=Levi(P), rd=G.root_datum, v=rho_check(G) then shift=rho(G)-rho(L) in
+  max(0)(for x_L in KGB(L) do
+     let x_G=embed_KGB(x_L,G)
+     then s=(1+involution(x_G))*(shift-two_rho_u_cap_s(P,x_G))
+     in ceil(dominant(rd,s)*v) od)
+
+{ the list of (sum of A, #A), A a subset of the restricted roots of s[1] }
+set kf_rho_shifts (RealNilpotent O_dom,KGBElt x_G) = [(vec,int)]:
+  let r=rank(O_dom.root_datum) in
+  [(vec:null(r),0)] ##
+  for A in subsets_of_s_one_nc_cx_restricted_roots(O_dom,x_G)
+  do (sum(r # A),#A) od
+
+{ same as Phi@(RealNilpotent,KType) of K_Nilpotent.at, with the data that
+  depends only on the orbit precomputed }
+set kf_Phi (RealForm G,Parabolic P,[[(vec,int)]] shifts,KType mu_L) = KTypePol:
+  let Ktw=twist_by_minus_2rho_u_cap_s(P,K_type_formula(mu_L))
+  , result=null_K_module(G) in
+  for c@p_L in Ktw do
+    for (shift,j) in shifts[#x(p_L)] do
+      let q=K_type(x(p_L),lambda_rho(p_L)+shift) in
+      result+:=minus_1^j*c*theta_induce_standard(param(q),G).K_type_pol
+    od
+  od; result
+
+{ solve sum a(i,sigma) Phi(O_i,sigma) = P over Q; cols[i] are the columns of
+  the i-th orbit. Returns m_i = sum_sigma a(i,sigma) dim(sigma), i<ntop }
+set kf_solve ([[(KType,KTypePol)]] cols,int ntop,KTypePol P) =
+      (bool,[rat],int,int):
+  let flat=##for c in cols do for (,Q) in c do Q od od in
+  if #flat=0 then (=P,for i:ntop do rat:0 od,#P,0) else
+  let basis=monomials(flat#P)
+  then M=mat: for Q in flat do Vector(basis,Q) od
+  then v0=solve(M,ratvec: Vector(basis,P)) in
+  if not succeeds(v0) then (false,[rat]:[],#basis,#flat) else
+  let v=requisition(v0), offs=0 in
+  ( true
+  , for c@i in cols do
+      let m=rat:0 in
+      for (s,)@j in c do m+:=v[offs+j]*dimension(s) od; offs+:=#c;
+      if i<ntop then [m] else [] fi
+    od.##
+  , #basis, #flat) fi fi
+
+{ result for one parameter: solved?, indices of the orbits of dimension
+  2*GK_dim, their multiplicities, stage at which a solution was found,
+  size of the linear system }
+set_type KF_result =
+  (bool solved,[int] top,[rat] mults,int stage,int ncols,int nrows)
+
+{ one pass, with the cone enlarged by margin*2rho }
+set kf_associated_cycles_margin \
+   ([RealNilpotent] orbits,RealForm G,[Param] params,int margin) =
+      ([KF_result],[int]):
+  let rd=G.root_datum, v=rho_check(G)
+  then extra=margin*two_rho(rd)
+  then n=#orbits, leq=kf_leq(rd)
+  then Ps=for p in params do character_formula(p).K_type_pol od
+  then Nmax=max(0)(for P in Ps do K_norm(P) od)+rat_as_int(extra*v)
+  { per-orbit caches }
+  then ready=for i:n do false od
+  , pars=for O in orbits do parabolic_of_orbit(O) od
+  , sigs=for i:n do [KType]:[] od
+  , leads=for i:n do [ratvec]:[] od
+  , leadstd=for i:n do [bool]:[] od
+  , shifts=for i:n do [[(vec,int)]]:[] od
+  , phis=for i:n do [KTypePol]:[] od
+  , phig=for i:n do [[ratvec]]:[] od  { gammas of the terms of each Phi }
+  , done=for i:n do [bool]:[] od
+  , nphi=0, nenum=0
+  then prepare(int i)=void:
+    if not ready[i] then
+      let P=pars[i] then L=Levi(P), O_dom=dominant(orbits[i])
+      then shift_u=rho(G)-rho(L)
+      then ss=K_parameters_norm_upto(L,G,Nmax+kf_shift_bound(G,P),v)
+      then ld=for s in ss do kf_lead(G,P,shift_u,s) od in
+      sigs[i]:=ss; nenum+:=#ss;
+      leads[i]:=for (g,) in ld do g od;
+      leadstd[i]:=for (,b) in ld do b od;
+      shifts[i]:=for x_L in KGB(L) do kf_rho_shifts(O_dom,embed_KGB(x_L,G)) od;
+      phis[i]:=for s in ss do null_K_module(G) od;
+      phig[i]:=for s in ss do [ratvec]:[] od;
+      done[i]:=for s in ss do false od;
+      ready[i]:=true
+    fi
+  { columns of orbit i: those sigma whose leading term satisfies lead_ok (and
+    is standard, if std_only) and all of whose terms satisfy term_ok }
+  then columns(int i,bool std_only,(ratvec->bool) lead_ok,
+               (ratvec->bool) term_ok) = [(KType,KTypePol)]:
+    prepare(i);
+    let ph=phis[i], pg=phig[i], dn=done[i], ld=leads[i], lstd=leadstd[i]
+    then cols=
+    ##for s@k in sigs[i] do
+       if (std_only and not lstd[k]) or not lead_ok(ld[k]) then [] else
+         if not dn[k] then
+           let Q=kf_Phi(G,pars[i],shifts[i],s) in
+           ph[k]:=Q; pg[k]:=for @t in Q do kf_gamma(t) od; dn[k]:=true;
+           nphi+:=1
+         fi;
+         if #pg[k]>0 and all(for g in pg[k] do term_ok(g) od)
+         then [(s,ph[k])] else [] fi
+       fi od
+    in phis[i]:=ph; phig[i]:=pg; done[i]:=dn; cols
+  then results=
+  for p@ip in params do
+    let P=Ps[ip] then dm=2*GK_dim(p)
+    then top=##for O@i in orbits do if dimension(O)=dm then [i] else [] fi od
+    then lowdims=
+      sort_u(##for O in orbits
+               do if dimension(O)<dm then [dimension(O)] else [] fi od).reverse
+    then gs=for @t in P do kf_gamma(t) od
+    then tops=kf_maximal(rd,gs), bots=kf_minimal(rd,gs)
+    then below(ratvec g)=bool: any(for L in tops do leq(g,L+extra) od)
+    then between(ratvec g)=bool: below(g) and any(for L in bots do leq(L,g) od)
+    , lowest(ratvec g)=bool: any(for L in bots do g=L od)
+    , always(ratvec g)=bool: true
+    then res=KF_result:(false,top,[rat]:[],-1,0,0)
+    then try(int stage,[int] orbs,bool std,(ratvec->bool) lead_ok,
+             (ratvec->bool) term_ok)=void:
+      if not res.solved then
+        let (ok,m,nr,nc)=
+          kf_solve(for i in orbs do columns(i,std,lead_ok,term_ok) od,#top,P)
+        in if ok then res:=(true,top,m,stage+20*margin,nc,nr) fi
+      fi
+    in
+    if margin=0 then
+      try(0,top,true,lowest,between);   { leading term a lowest term of P }
+      try(1,top,true,between,between);  { interval, standard leading term }
+      try(2,top,false,between,between)  { interval }
+    fi;
+    try(3,top,false,below,below);       { cone }
+    try(4,top,false,always,below);      { cone, any leading term }
+    let use=top in                      { add smaller orbits }
+    for dl@k in lowdims do
+      use##:=##for O@i in orbits do if dimension(O)=dl then [i] else [] fi od;
+      try(5+k,use,false,below,below)
+    od;
+    if kf_verbose then
+      prints("kf: parameter ",ip," stage ",res.stage," system ",
+             res.nrows,"x",res.ncols) fi;
+    res
+  od
+  in (results,[nenum,nphi])
+
+{ driver: margin 0 first; parameters that remain unsolved are retried with
+  larger margins. Returns the real orbits, one KF_result per parameter, and
+  [number of sigma enumerated, number of Phi(O,sigma) computed] }
+set kf_associated_cycles (RealForm G,[Param] params) =
+      ([RealNilpotent],[KF_result],[int]):
+  let orbits=real_nilpotent_orbits(G)
+  then (results,stats)=kf_associated_cycles_margin(orbits,G,params,0)
+  , margin=1 in
+  while margin<=kf_max_margin and any(for r in results do not r.solved od) do
+    let todo=##for r@k in results do if r.solved then [] else [k] fi od
+    then (res2,st2)=
+      kf_associated_cycles_margin(orbits,G,for k in todo do params[k] od,margin)
+    in for k@j in todo do results[k]:=res2[j] od;
+    stats:=[stats[0]+st2[0],stats[1]+st2[1]]; margin+:=1
+  od; (orbits,results,stats)
+
+{ associated cycle of one irreducible: the orbits in AV(J(p)), each with its
+  multiplicity }
+set kf_associated_cycle (Param p) = [(RealNilpotent,int)]:
+  let (orbits,res,)=kf_associated_cycles(p.real_form,[p]) then r=res[0] in
+  assert(r.solved,"no solution found; increase kf_max_margin");
+  assert(any(for m in r.mults do !=m od),"all multiplicities vanish");
+  ##for i@k in r.top do
+     if !=r.mults[k] then [(orbits[i],rat_as_int(r.mults[k]))] else [] fi od
+\end{verbatim}
+}
+
+\begin{thebibliography}{9}
+
+\bibitem[AV]{AV}
+J.~Adams and D.~Vogan, \emph{Associated varieties for real reductive
+groups}, arXiv:2103.11836.
+
+\bibitem[KN]{KN}
+J.~Adams, \emph{$K$-nilpotent algorithm}, notes (\at{knilpotent.tex}).
+
+\bibitem[V]{Vogan91}
+D.~Vogan, \emph{Associated varieties and unipotent representations}, in:
+Harmonic analysis on reductive groups (Brunswick, ME, 1989), Progr.\ Math.\
+\textbf{101}, Birkh\"auser, 1991, 315--388.
+
+\end{thebibliography}
+
+\end{document}
