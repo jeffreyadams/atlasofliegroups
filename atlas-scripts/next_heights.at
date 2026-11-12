@@ -189,7 +189,7 @@ set next_heights(KType mu, int D) = [int]:
        	       od;
 	       NKThtLists[m]:=answer next next_height_timeF+:=elapsed_ms()-start
        fi;
-       answer[:D]
+       answer[:min(D,#answer)] {[] when mu is alone in its standard}
 
 {if this produces -1, then the (hermitian) p is automatically unitary}
 {used to be big_unitary_hash.K_type_formula_to_ht(mu, height(p)}
