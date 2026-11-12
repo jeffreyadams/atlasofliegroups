@@ -1,0 +1,214 @@
+<K_Nilpotent.at
+<associated_variety_annihilator.at { for GK_dim@Param }
+
+{ Prototype of the improved K-nilpotent algorithm; see knilpotentImproved.tex.
+  Main functions:
+    kf_associated_cycles(G,[Param])  associated cycles of a list of irreducibles
+    kf_associated_cycle(Param)       associated cycle of one irreducible
+}
+
+set kf_verbose=false
+set kf_max_margin=2
+
+{ gamma(mu): the dominant weight (1+theta_x)lambda attached to a K-type }
+set kf_gamma (KType t) = ratvec:
+  dominant(t.root_datum,(1+involution(t.x))*t.lambda)
+
+{ dominance order: g <= L iff L-g is a nonnegative combination of simple roots }
+set kf_leq (RootDatum rd) = (ratvec,ratvec->bool):
+  let fcw=fundamental_coweights(rd), rb=radical_basis(rd) in
+  (ratvec g,ratvec L) bool:
+    let diff=L-g in all(for cw in fcw do diff*cw>=0 od) and =(diff*rb)
+
+set kf_maximal (RootDatum rd,[ratvec] S) = [ratvec]:
+  let leq=kf_leq(rd) in
+  ##for g@i in S do
+     if any(for h@j in S do j!=i and leq(g,h) and (not leq(h,g) or j<i) od)
+     then [] else [g] fi od
+
+set kf_minimal (RootDatum rd,[ratvec] S) = [ratvec]:
+  let leq=kf_leq(rd) in
+  ##for g@i in S do
+     if any(for h@j in S do j!=i and leq(h,g) and (not leq(g,h) or j<i) od)
+     then [] else [g] fi od
+
+{ the leading raw term of Phi(O,sigma): the parameter obtained from the STFL
+  parameter of sigma by the twist and theta-induction, before standardization.
+  Returns its gamma, and whether it is already a standard parameter of G }
+set kf_lead (RealForm G,Parabolic P,ratvec shift_u,KType mu_L) = (ratvec,bool):
+  let q=twist_by_minus_2rho_u_cap_s(P,mu_L.param)
+  then x_G=embed_KGB(x(q),G), lam=lambda(q)+shift_u
+  in ( dominant(G.root_datum,(1+involution(x_G))*lam)
+     , is_standard(parameter(x_G,lam,null(rank(G)))) )
+
+{ the constant c_O: if the leading term of Phi(O,sigma) has norm <= N then
+  sigma has G-norm <= N + c_O }
+set kf_shift_bound (RealForm G,Parabolic P) = int:
+  let L=Levi(P), rd=G.root_datum, v=rho_check(G) then shift=rho(G)-rho(L) in
+  max(0)(for x_L in KGB(L) do
+     let x_G=embed_KGB(x_L,G)
+     then s=(1+involution(x_G))*(shift-two_rho_u_cap_s(P,x_G))
+     in ceil(dominant(rd,s)*v) od)
+
+{ the list of (sum of A, #A), A a subset of the restricted roots of s[1] }
+set kf_rho_shifts (RealNilpotent O_dom,KGBElt x_G) = [(vec,int)]:
+  let r=rank(O_dom.root_datum) in
+  [(vec:null(r),0)] ##
+  for A in subsets_of_s_one_nc_cx_restricted_roots(O_dom,x_G)
+  do (sum(r # A),#A) od
+
+{ same as Phi@(RealNilpotent,KType) of K_Nilpotent.at, with the data that
+  depends only on the orbit precomputed }
+set kf_Phi (RealForm G,Parabolic P,[[(vec,int)]] shifts,KType mu_L) = KTypePol:
+  let Ktw=twist_by_minus_2rho_u_cap_s(P,K_type_formula(mu_L))
+  , result=null_K_module(G) in
+  for c@p_L in Ktw do
+    for (shift,j) in shifts[#x(p_L)] do
+      let q=K_type(x(p_L),lambda_rho(p_L)+shift) in
+      result+:=minus_1^j*c*theta_induce_standard(param(q),G).K_type_pol
+    od
+  od; result
+
+{ solve sum a(i,sigma) Phi(O_i,sigma) = P over Q; cols[i] are the columns of
+  the i-th orbit. Returns m_i = sum_sigma a(i,sigma) dim(sigma), i<ntop }
+set kf_solve ([[(KType,KTypePol)]] cols,int ntop,KTypePol P) =
+      (bool,[rat],int,int):
+  let flat=##for c in cols do for (,Q) in c do Q od od in
+  if #flat=0 then (=P,for i:ntop do rat:0 od,#P,0) else
+  let basis=monomials(flat#P)
+  then M=mat: for Q in flat do Vector(basis,Q) od
+  then v0=solve(M,ratvec: Vector(basis,P)) in
+  if not succeeds(v0) then (false,[rat]:[],#basis,#flat) else
+  let v=requisition(v0), offs=0 in
+  ( true
+  , for c@i in cols do
+      let m=rat:0 in
+      for (s,)@j in c do m+:=v[offs+j]*dimension(s) od; offs+:=#c;
+      if i<ntop then [m] else [] fi
+    od.##
+  , #basis, #flat) fi fi
+
+{ result for one parameter: solved?, indices of the orbits of dimension
+  2*GK_dim, their multiplicities, stage at which a solution was found,
+  size of the linear system }
+set_type KF_result =
+  (bool solved,[int] top,[rat] mults,int stage,int ncols,int nrows)
+
+{ one pass, with the cone enlarged by margin*2rho }
+set kf_associated_cycles_margin \
+   ([RealNilpotent] orbits,RealForm G,[Param] params,int margin) =
+      ([KF_result],[int]):
+  let rd=G.root_datum, v=rho_check(G)
+  then extra=margin*two_rho(rd)
+  then n=#orbits, leq=kf_leq(rd)
+  then Ps=for p in params do character_formula(p).K_type_pol od
+  then Nmax=max(0)(for P in Ps do K_norm(P) od)+rat_as_int(extra*v)
+  { per-orbit caches }
+  then ready=for i:n do false od
+  , pars=for O in orbits do parabolic_of_orbit(O) od
+  , sigs=for i:n do [KType]:[] od
+  , leads=for i:n do [ratvec]:[] od
+  , leadstd=for i:n do [bool]:[] od
+  , shifts=for i:n do [[(vec,int)]]:[] od
+  , phis=for i:n do [KTypePol]:[] od
+  , phig=for i:n do [[ratvec]]:[] od  { gammas of the terms of each Phi }
+  , done=for i:n do [bool]:[] od
+  , nphi=0, nenum=0
+  then prepare(int i)=void:
+    if not ready[i] then
+      let P=pars[i] then L=Levi(P), O_dom=dominant(orbits[i])
+      then shift_u=rho(G)-rho(L)
+      then ss=K_parameters_norm_upto(L,G,Nmax+kf_shift_bound(G,P),v)
+      then ld=for s in ss do kf_lead(G,P,shift_u,s) od in
+      sigs[i]:=ss; nenum+:=#ss;
+      leads[i]:=for (g,) in ld do g od;
+      leadstd[i]:=for (,b) in ld do b od;
+      shifts[i]:=for x_L in KGB(L) do kf_rho_shifts(O_dom,embed_KGB(x_L,G)) od;
+      phis[i]:=for s in ss do null_K_module(G) od;
+      phig[i]:=for s in ss do [ratvec]:[] od;
+      done[i]:=for s in ss do false od;
+      ready[i]:=true
+    fi
+  { columns of orbit i: those sigma whose leading term satisfies lead_ok (and
+    is standard, if std_only) and all of whose terms satisfy term_ok }
+  then columns(int i,bool std_only,(ratvec->bool) lead_ok,
+               (ratvec->bool) term_ok) = [(KType,KTypePol)]:
+    prepare(i);
+    let ph=phis[i], pg=phig[i], dn=done[i], ld=leads[i], lstd=leadstd[i]
+    then cols=
+    ##for s@k in sigs[i] do
+       if (std_only and not lstd[k]) or not lead_ok(ld[k]) then [] else
+         if not dn[k] then
+           let Q=kf_Phi(G,pars[i],shifts[i],s) in
+           ph[k]:=Q; pg[k]:=for @t in Q do kf_gamma(t) od; dn[k]:=true;
+           nphi+:=1
+         fi;
+         if #pg[k]>0 and all(for g in pg[k] do term_ok(g) od)
+         then [(s,ph[k])] else [] fi
+       fi od
+    in phis[i]:=ph; phig[i]:=pg; done[i]:=dn; cols
+  then results=
+  for p@ip in params do
+    let P=Ps[ip] then dm=2*GK_dim(p)
+    then top=##for O@i in orbits do if dimension(O)=dm then [i] else [] fi od
+    then lowdims=
+      sort_u(##for O in orbits
+               do if dimension(O)<dm then [dimension(O)] else [] fi od).reverse
+    then gs=for @t in P do kf_gamma(t) od
+    then tops=kf_maximal(rd,gs), bots=kf_minimal(rd,gs)
+    then below(ratvec g)=bool: any(for L in tops do leq(g,L+extra) od)
+    then between(ratvec g)=bool: below(g) and any(for L in bots do leq(L,g) od)
+    , lowest(ratvec g)=bool: any(for L in bots do g=L od)
+    , always(ratvec g)=bool: true
+    then res=KF_result:(false,top,[rat]:[],-1,0,0)
+    then try(int stage,[int] orbs,bool std,(ratvec->bool) lead_ok,
+             (ratvec->bool) term_ok)=void:
+      if not res.solved then
+        let (ok,m,nr,nc)=
+          kf_solve(for i in orbs do columns(i,std,lead_ok,term_ok) od,#top,P)
+        in if ok then res:=(true,top,m,stage+20*margin,nc,nr) fi
+      fi
+    in
+    if margin=0 then
+      try(0,top,true,lowest,between);   { leading term a lowest term of P }
+      try(1,top,true,between,between);  { interval, standard leading term }
+      try(2,top,false,between,between)  { interval }
+    fi;
+    try(3,top,false,below,below);       { cone }
+    try(4,top,false,always,below);      { cone, any leading term }
+    let use=top in                      { add smaller orbits }
+    for dl@k in lowdims do
+      use##:=##for O@i in orbits do if dimension(O)=dl then [i] else [] fi od;
+      try(5+k,use,false,below,below)
+    od;
+    if kf_verbose then
+      prints("kf: parameter ",ip," stage ",res.stage," system ",
+             res.nrows,"x",res.ncols) fi;
+    res
+  od
+  in (results,[nenum,nphi])
+
+{ driver: margin 0 first; parameters that remain unsolved are retried with
+  larger margins. Returns the real orbits, one KF_result per parameter, and
+  [number of sigma enumerated, number of Phi(O,sigma) computed] }
+set kf_associated_cycles (RealForm G,[Param] params) =
+      ([RealNilpotent],[KF_result],[int]):
+  let orbits=real_nilpotent_orbits(G)
+  then (results,stats)=kf_associated_cycles_margin(orbits,G,params,0)
+  , margin=1 in
+  while margin<=kf_max_margin and any(for r in results do not r.solved od) do
+    let todo=##for r@k in results do if r.solved then [] else [k] fi od
+    then (res2,st2)=
+      kf_associated_cycles_margin(orbits,G,for k in todo do params[k] od,margin)
+    in for k@j in todo do results[k]:=res2[j] od;
+    stats:=[stats[0]+st2[0],stats[1]+st2[1]]; margin+:=1
+  od; (orbits,results,stats)
+
+{ associated cycle of one irreducible: the orbits in AV(J(p)), each with its
+  multiplicity }
+set kf_associated_cycle (Param p) = [(RealNilpotent,int)]:
+  let (orbits,res,)=kf_associated_cycles(p.real_form,[p]) then r=res[0] in
+  assert(r.solved,"no solution found; increase kf_max_margin");
+  assert(any(for m in r.mults do !=m od),"all multiplicities vanish");
+  ##for i@k in r.top do
+     if !=r.mults[k] then [(orbits[i],rat_as_int(r.mults[k]))] else [] fi od
