@@ -676,6 +676,85 @@ set mbef_wu_unitary(Param p0, [Param] derpL0js) = void:
        fi;
        mbef_wu_time +:= elapsed_ms()-start
 
+{gr_status: unitarity of the final hermitian p0 from (weakly) good range cohomological induction,
+ for Qmin and each maximal theta-stable Q containing it (max_Qps), with pL hermitian:
+   weakly good, every derived factor of pL unitary:  p0 unitary (R_q(pL) is irreducible or zero
+       and unitary; it contains p0) -> umatch, 1;
+   good, some derived factor of pL nonunitary:       p0 nonunitary (good range detects
+       unitarity) -> numatch, -1 (full nonunitarity: no height);
+   otherwise 0.
+ Factor unitarity: compact, else status(d,-1) (which knows the unipotent representations,
+ status_seed). Memoized on p0. Example: E8_s x=195055 lambda [1,1,1,1,1,1,1,0] nu
+ [1,0,1,2,0,2,0,-13], height 810, ~6 h of interrupted to_ht tests in E8_s run1: weakly good from
+ the maximal Q with Levi E7.GL(1), pL one-dimensional (11/12/26). The FPP contains coh_ind_irr(pL,G)
+ for every unipotent pL of every theta-stable Levi, in the good range (David).}
+set gr_flag = true
+set gr_hash = make_FPP_Param_hash()
+set gr_vals = [int]: []
+set gr_count = [int]: [0,0,0,0] {Params computed, (weakly) good from some proper Q, unitary, nonunitary}
+set gr_time = int: 0
+set gr_caught_list = [Param]: [] {the p0 that gr_status recorded unitary, in order}
+set gr_clear() = void: gr_hash := make_FPP_Param_hash(); gr_vals := []
+{print gr_caught_list as an atlas file defining [Param] gr_caught (> gr_caught.at write_gr_caught());
+ each real form is written once, as in write_real_form (writeFiles.at), named G_gr_k}
+set write_gr_caught() = void:
+    let rfs = [RealForm]: []
+    then () = for p in gr_caught_list
+    	 do if none(for G in rfs do G = p.real_form od) then rfs #:= p.real_form fi od
+    in for G@k in rfs
+       do prints("set rd_saved = RootDatum: root_datum(mat: ");
+          prints(for alpha in G.simple_roots do alpha od, ", mat:");
+	  prints(for betavee in G.simple_coroots do betavee od);
+	  prints(",",G.prefers_coroots,")");
+	  prints("set DI_saved = mat: ");
+	  prints(for col in G.distinguished_involution do col od);
+	  prints("set IC_saved = inner_class(rd_saved, DI_saved)");
+	  prints("set G_gr_", k, " = real_form(IC_saved, DI_saved,", KGB(G,0).torus_factor, ")")
+       od;
+       prints("set gr_caught = [Param]: [");
+       for p@i in gr_caught_list
+       do let k = first(for G in rfs do G = p.real_form od), l = p.lambda, n = p.nu
+          in prints("  parameter(KGB(G_gr_", k, ",", #p.x, "),", numer(l), "/", denom(l), ",",
+	     	    numer(n), "/", denom(n), ")", if i < #gr_caught_list-1 then "," else "" fi)
+       od;
+       prints("]")
+set gr_factor_status(Param d) = int: if is_compact(d.real_form) then 1 else status(d,-1) fi
+set gr_status(Param p0) = int:
+    if not gr_flag then return 0 fi;
+    let i = gr_hash.lookup(p0)
+    in if i >= 0 then return gr_vals[i] fi;
+    let start = elapsed_ms(), G = p0.real_form, (Q0,pL0) = theta_stable_quasi_data(p0)
+    then qps = [(KGPElt,Param)]:
+    	 if #(Q0.S) >= G.semisimple_rank then [] else (Q0,pL0) # max_Qps(p0) fi
+    then ans = 0, seen = false
+    then () = for (Q,pL) in qps
+    	 do if ans = 0 and #(Q.S) < G.semisimple_rank and is_hermitian(pL)
+	    then let (g,wg,) = max_goodness(p0,[(Q,pL)])[0]
+	    	 in if wg
+		    then seen := true;
+		    	 let us = for d in derived_factor_params0(pL) do gr_factor_status(d) od
+		    	 in if all(for u in us do u > 0 od)
+			    then assert(@:first_param(theta_induce_irreducible(pL,G)) = p0,
+			    	 	"gr_status: p0 is not R_q(pL)");
+			    	 ans := 1
+			    elif g and any(for u in us do u < 0 od)
+			    then ans := -1
+			    fi
+		    fi
+	    fi
+	 od
+    in if seen then gr_count[1] +:= 1 fi;
+       if ans > 0 then big_unitary_hash.umatch(p0); gr_count[2] +:= 1; gr_caught_list #:= p0
+       elif ans < 0 then big_unitary_hash.numatch(p0); gr_count[3] +:= 1
+       fi;
+       gr_count[0] +:= 1; gr_hash.match(p0); gr_vals #:= ans;
+       gr_time +:= elapsed_ms() - start;
+       ans
+set gr_string() = string:
+    "gr_status: " + gr_count[0].to_string + " Params, " + gr_count[1].to_string +
+    " (weakly) good from a proper Q, " + gr_count[2].to_string + " recorded unitary, " +
+    gr_count[3].to_string + " nonunitary, in " + print_time_string(gr_time)
+
 {The answer depends only on p0, so each p0 is tested once: p0 caught are in good_hash, p0 allowed
  in mbef_pass_hash.  Then actual_test_count counts different Params, as good_hash.size() does;
  mbef_repeat_count counts the calls answered from the two hashes.  A repeat does not rerun the
@@ -875,7 +954,8 @@ set min_bottom_elim_factors_test(Param p0) = bool:
    	     then good_hash.match(p0);
 	     	  big_unitary_hash.numatch_witness(p0,fail_tau)
 	     else mbef_pass_hash.match(p0);
-	     	  if mbef_wu_flag then mbef_wu_unitary(p0,derpL0js) fi
+	     	  if mbef_wu_flag then mbef_wu_unitary(p0,derpL0js) fi;
+		  if gr_flag and big_unitary_hash.ulookup(p0) < 0 then let ignore = gr_status(p0) in () fi
 	     fi;
    	     mbefTime +:= elapsed_ms()-start;
  	     if every_MBEF_flag then prints("  ",answer) fi;
@@ -890,11 +970,15 @@ set mbef_count_string() = string:
     (if mbef_lift_mode > 0 then "; witness lift caught " + mbef_lift_count[1].to_string + " of " +
     	mbef_lift_count[0].to_string + " tried (" + print_time_string(mbef_lift_time) + ")" else "" fi)
 
-set min_bottom_elim_factors(Param p0) = bool:
-    if good_hash.lookup(p0) >= 0 then mbef_repeat_count +:= 1; false
-    elif mbef_pass_hash.lookup(p0) >= 0 then mbef_repeat_count +:= 1; true
-    else min_bottom_elim_factors_test(p0)
-    fi
+{-1: p0 nonunitary (a bottom-layer witness); 1: p0 unitary (recorded in big_unitary_hash, by
+ mbef_wu_unitary, gr_status or earlier); 0: don't know. Callers treat -1 as false used to be
+ treated and 0 as true; 1 is known unitarity, also recorded for status (11/12/26).}
+set min_bottom_elim_factors(Param p0) = int:
+    let pass = if good_hash.lookup(p0) >= 0 then mbef_repeat_count +:= 1; false
+    	       elif mbef_pass_hash.lookup(p0) >= 0 then mbef_repeat_count +:= 1; true
+    	       else min_bottom_elim_factors_test(p0)
+    	       fi
+    in if not pass then -1 elif big_unitary_hash.ulookup(p0) >= 0 then 1 else 0 fi
 
 {signature on min bottom layer K-types. Guaranteed pos on mu.}
 set min_bottom_sig(Param p0) = KTypePol:
@@ -1619,7 +1703,7 @@ set more_bottom_factors(KType mu, KGPElt Q) = LK_data:
 set more_L_count = [0,0] {p0 tested, p0 found nonunitary by signatures}
 set more_L_calls = 0 {p0 not already in more_good_hash}
 set more_L_time = int: 0 {all of more_L_elim, the lift included}
-set more_L_elim(Param p0, int bound) = bool:
+set more_L_elim_bool(Param p0, int bound) = bool:
     if more_good_hash.lookup(p0) >= 0 then false else
     let start = elapsed_ms()
     in more_L_calls +:= 1;
@@ -1652,12 +1736,33 @@ set more_L_elim(Param p0, int bound) = bool:
        fi
     fi fi
 
+{-1: p0 nonunitary (an L-side bottom-layer witness of height at most bound); 1: p0 known unitary
+ (in big_unitary_hash); 0: don't know. As min_bottom_elim_factors (11/12/26).}
+set more_L_elim(Param p0, int bound) = int:
+    if not more_L_elim_bool(p0,bound) then -1 elif big_unitary_hash.ulookup(p0) >= 0 then 1 else 0 fi
+
 {for the reports}
 set more_L_string() = string:
     "Time in more_L_elim = " + print_time_string(more_L_time) + " for " + more_L_calls.to_string +
     " Params (factors " + print_time_string(more_bf_time) + ", lift " + print_time_string(more_lift_time) +
     "); lift caught " + more_lift_count[1].to_string + " of " + more_lift_count[0].to_string +
     " tried; signatures caught " + more_L_count[1].to_string + " of " + more_L_count[0].to_string
+
+{the test slow_status (FPP_faces_herm.at) runs before a long is_unitary or is_unitary_to_ht: good
+ range induction, then min_bottom, then more_bottom from the L side to height HT (GAM(p) for the
+ full question). Each records its answers in big_unitary_hash, so the answer is read back with
+ simple_status_c, with the convention of status at HT.}
+set bl_slow_test(Param p, int HT) = int:
+    if not is_final(p) or components_rank(p.real_form) != 0 or height(p) = 0 then return 0 fi;
+    let g = gr_status(p)
+    in if g > 0 or (g < 0 and HT < 0) then return g fi;
+    let q = herm_center(p)
+    then () = let ignore = min_bottom_elim_factors(p) in ()
+    then st = simple_status_c(q,HT)
+    in if st != 0 then return st fi;
+    let () = let ignore = more_L_elim(p, if HT < 0 then GAM(p) else HT fi) in ()
+    in simple_status_c(q,HT)
+slow_status_tests := [bl_slow_test@(Param,int)]
 
 {need to be sure nQs does not include a Borel}
 {add computation of D = max heights(mu in datas); just do good range sigs to D.}

@@ -546,33 +546,17 @@ set unipotent_representations(RealForm G)=[Param]:
 
 set unipotents(RealForm G)=[Param]:unipotent_representations(G)
 
-{if big_unitary_hash has trivial(G), assume it has all unipotents of G}
-set big_unitary_hash_flag = true
-
-{calculate one derived simple factor at a time}
+{calculate one derived simple factor at a time. (These used to read big_unitary_hash.uhash(dL)
+ when it contained dL.trivial, "assuming it has all unipotents of dL": wrong, since the uhash holds
+ every unitary representation found for dL, and unneeded, since big_unitary_hash is seeded with the
+ unipotent representations of each real form and unipotent_representations is cached (arthur_hash).
+ big_unitary_hash_flag removed, 11/12/26.)}
 
 set factor_unipotent_representations(RealForm G) = [Param]:
-    let dLs = derived_simple_factorsRF(G)
-    then unip_lists = for dL in dLs
-    	 	      do let dL_hash = big_unitary_hash.uhash(dL)
-		      	 in if big_unitary_hash_flag and dL_hash.lookup(dL.trivial).>=
-			    then dL_hash.list()
-			    else let list_dL = unipotent_representations(dL)
-			      	 then () = for p_dL in list_dL do dL_hash.match(p_dL) od
-    				 in list_dL
-			    fi
-		      od
-    in glue_params(G,unip_lists)
+    glue_params(G, for dL in derived_simple_factorsRF(G) do unipotent_representations(dL) od)
 
 set factor_unipotent_representations(RealForm G, ratvec v) = [Param]:
-    let dLs = derived_simple_factorsRF(G)
-    then unip_lists = for dL in dLs
-    	 	      do if big_unitary_hash_flag and big_unitary_hash.uhash(dL).lookup(dL.trivial).>=
-		      	 then big_unitary_hash.uhash(dL).list()
-			 else unipotent_representations(dL)
-			 fi
-		      od
-    in glue_params(G,unip_lists,v)
+    glue_params(G, for dL in derived_simple_factorsRF(G) do unipotent_representations(dL) od, v)
 
 {whether my_unitary_hash is filled?}
 set my_unitary_hash_flag = false

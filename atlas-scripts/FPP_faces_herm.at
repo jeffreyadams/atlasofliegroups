@@ -360,6 +360,18 @@ set impure_witnesses(KTypePol P) = [KType]:
 	  fi
        fi
 
+{new_real_form_hooks: run on each real form when big_unitary_hash first sees it (and again after
+ clearG), after its tables exist, so a hook may use the hash. FPP_localDirac.at installs the
+ unipotent representations (unipotent_representations: the non-Arthur ones too when
+ non_Arthur_unip_flag; they come herm_centered), so the uhash of every G starts with them and, for
+ instance, the trivial representation of a derived factor is known (David, 11/12/26). A list, as
+ status_last_tests: unipotent_representations is defined in files loaded after this one.}
+set new_real_form_hooks = [(RealForm -> void)]: []
+set new_real_form_time = int: 0
+set new_real_form_seed(RealForm rf) = void:
+    let start = elapsed_ms()
+    in for h in new_real_form_hooks do h(rf) od; new_real_form_time +:= elapsed_ms() - start
+
 set make_big_unitary_hash() = big_unitary_hash_table:
 (   let real_form_hash = make_RealForm_hash()
     {one-entry memo for add_real_form, which every access goes through: = on RealForm costs
@@ -474,6 +486,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 						 and #nu_wits = #x_known
 						 and #u_downs = #x_known,
 						 "big_unitary_hash damaged")
+	  then () = if i = I then new_real_form_seed(rf) fi
 	  in i
     then add_real_form(RealForm rf) = int:
 	 if last_rf_i >= 0 and last_rf[0] = rf then last_rf_i
@@ -982,7 +995,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		 x_known[i] := 0;
 		 x_step_known[i] := for :step_tops[i] do 0 od;
 		 xl_step_keys[i].clear();
-		 xl_step_vals[i] := []
+		 xl_step_vals[i] := [];
+		 new_real_form_seed(rf) {the unipotents again}
 	    fi
       then numatch_height(Param p,int H) = int:
       let i = add_real_form(p.real_form)
@@ -2657,7 +2671,44 @@ set race_log = [(Param,[int])]: []
 set race_log_add(Param p, [int] v) = void: if race_log_flag then race_log #:= (p,v) fi
 set dump_race_log() = void:
     for (p,v) in race_log do prints("RL ", v, " ", p.x.number, " ", height(p), " ", p) od
+{slow_status: a second chance for an easy answer, after status (which has already said 0), when the
+ test about to start is predicted to be long: predicted >= slow_status_ms. Runs the tests in
+ slow_status_tests (bottom_layer.at installs (weakly) good range induction, min_bottom and
+ more_bottom from the L side), each with the convention of status: 1 unitary to HT, -1 nonunitary
+ to HT, 0 don't know; each records what it learns in big_unitary_hash. Called from race_u (HT = -1)
+ and race_h; only where predictor_flag gives predictions. A Param is not retried at a height it has
+ already been tried at (slow_tried: largest HT tried, -1 meaning full).}
+set slow_status_flag = true
+set slow_status_ms = int: 30000
+set slow_status_tests = [((Param,int) -> int)]: []
+set slow_status_count = [int]: [0,0,0] {Params tried, answered 1, answered -1}
+set slow_status_time = int: 0
+set slow_tried_hash = make_FPP_Param_hash()
+set slow_tried_hts = [int]: []
+set slow_status_clear() = void: slow_tried_hash := make_FPP_Param_hash(); slow_tried_hts := []
+set slow_status(Param p, int HT, int predicted) = int:
+    if not slow_status_flag or predicted < slow_status_ms or #slow_status_tests = 0 then return 0 fi;
+    if HT >= GAM(p) then HT := -1 fi;
+    let i = slow_tried_hash.lookup(p)
+    in if i >= 0 and (slow_tried_hts[i] < 0 or (HT >= 0 and HT <= slow_tried_hts[i])) then return 0 fi;
+       let start = elapsed_ms(), ans = 0
+       in for test in slow_status_tests do if ans = 0 then ans := test(p,HT) fi od;
+       	  if i < 0 then slow_tried_hash.match(p); slow_tried_hts #:= HT
+	  elif HT < 0 or slow_tried_hts[i] >= 0 and HT > slow_tried_hts[i] then slow_tried_hts[i] := HT
+	  fi;
+	  slow_status_count[0] +:= 1;
+	  if ans > 0 then slow_status_count[1] +:= 1 elif ans < 0 then slow_status_count[2] +:= 1 fi;
+	  slow_status_time +:= elapsed_ms() - start;
+	  ans
+set slow_status_string() = string:
+    "slow_status: " + slow_status_count[0].to_string + " Params tried (predicted >= " +
+    print_time_string(slow_status_ms) + "), " + slow_status_count[1].to_string + " unitary, " +
+    slow_status_count[2].to_string + " nonunitary, in " + print_time_string(slow_status_time) +
+    "; unipotent seeding " + print_time_string(new_real_form_time)
+
 set race_u(int site, int ht, int u_time, int to_ht_time, int test_time, Param p, int budget) = int:
+    let s = slow_status(p,-1,u_time)
+    in if s != 0 then race_log_add(p, [site,0,ht,u_time,to_ht_time,0,0,s]); return s fi;
     let (decline, b) = if site > 0 then race_lazy_check(p, to_ht_time, budget) else (false, budget) fi
     in if decline then race_log_add(p, [site,0,ht,u_time,to_ht_time,0,0,0]); return 0 fi;
        budget := b;
@@ -3189,6 +3240,8 @@ set next_test_height(Param p, int ht, int top_ht, int last_test_ms) = int:
 {"step" is how many steps up in to_ht list to start}
 {to_ht branch of the races, logged like race_u when race_log_flag}
 set race_h(int site, int ht, int u_time, int to_ht_time, Param p, int budget) = int:
+    let s = slow_status(p,ht,max(u_time,to_ht_time))
+    in if s != 0 then race_log_add(p, [site,1,ht,u_time,to_ht_time,0,0,s]); return s fi;
     let t = elapsed_ms() then r = is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,budget)
     in race_log_add(p, [site,1,ht,u_time,to_ht_time,budget,elapsed_ms()-t,r]); r
 

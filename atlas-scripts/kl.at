@@ -147,8 +147,35 @@ set full_block_to_ht(Param p, int HT) = [Param]:
        fi
     od
 
+{number of elements of height <= HT in the full block of p, without listing the block: heights
+ decrease roughly along the full block (the end of the block has the smallest heights), so binary
+ search for the first element of height <= HT; an estimate when the heights are not monotone.
+ Uses the built-ins full_block_size_index and full_block_height (cheap once the block exists).}
+{low_char_count_flag (David, 11/14/26): low_char and KL_predictor_to_ht count the elements of
+ height <= HT by binary search (full_block_count_to_ht) instead of listing full_block(p).
+ low_char then compares the two KL predictions (to height: count^2; full: (index of p + 1)^2
+ times (3/4)^rk, as in KL_predictor_to_ht and KL_predictor) instead of asking whether p lies in
+ the last tenth of its block.  E8_s x=304575, HT 148: p at 89.5% of a block of 453060, so the
+ probe said "full sum" (1193 s); 7207 elements have height <= 148 and to height took 2.9 s.}
+set low_char_count_flag = true
+set full_block_count_to_ht(Param p, int HT) = int:
+    let (n,) = full_block_size_index(p), lo = 0
+    then hi = n
+    in while lo < hi
+       do let mid = (lo+hi)\2
+       	  in if full_block_height(p,mid) > HT then lo := mid+1 else hi := mid fi
+       od; n - lo
+
+{index_down_size_flag (David, 11/14/26): the size of the part of the full block below p is
+ estimated by p's index in the full block, plus 1 (an upper bound: everything before p in the
+ block order). easy_full_size_flag used p.x.number, which does not see the block at all
+ (E8_s x=304575: the same 974003 ms for a Param with KL_sum_at_s 1193 s and one with a block
+ of 468 elements); the 2*rho-translate below needs a partial_block (26 s for that Param).}
+set index_down_size_flag = true
 set full_block_down_size(Param p) = int:
-    if easy_full_size_flag
+    if index_down_size_flag
+    then let (,i) = full_block_size_index(p) in i+1
+    elif easy_full_size_flag
     then p.x.number
     else let tworho = two_rho(p.real_form)
     	 then q0 = parameter(p.x,p.lambda +tworho, p.nu+tworho)
@@ -728,7 +755,8 @@ set KL_predictor_to_ht(Param p, int HT) = int:
     {if not low_char(p,HT)
     then KL_predictor(p)
     {let rk = semisimple_rank(integrality_datum(p))}
-    else} floor((#full_block_to_ht(p,HT))^2 * {3^rk*}KL_rate/2{/2^({2*rk+}1)})
+    else} floor((if low_char_count_flag then full_block_count_to_ht(p,HT) else #full_block_to_ht(p,HT) fi)^2
+    	   * {3^rk*}KL_rate/2{/2^({2*rk+}1)})
     {fi}
 
 set low_KL_char(Param p, int HT) = bool:
@@ -963,6 +991,16 @@ set integral_probe(Param p, int HT) = bool:
     in integral_probe_counts[if ans then 0 else 1 fi] +:= 1;
        ans next integral_probe_time +:= elapsed_ms() - start
 
+set count_probe_counts = [int]: [0,0] {to height, full}
+set count_probe(Param p, int HT) = bool:
+    let start = elapsed_ms(), c = full_block_count_to_ht(p,HT), d = full_block_down_size(p)
+    then rk = semisimple_rank(integrality_datum_hash(p))
+    then ans = c^2*2^(2*rk) < d^2*3^rk {KL_predictor_to_ht(p,HT) < KL_predictor(p)}
+    in count_probe_counts[if ans then 0 else 1 fi] +:= 1;
+       ans next integral_probe_time +:= elapsed_ms() - start
+set low_probe(Param p, int HT) = bool:
+    if low_char_count_flag then count_probe(p,HT) else integral_probe(p,HT) fi
+
 {probe_only_flag (David, 2 Nov 2026): go to height iff x is in the top probe_only_frac of KGB and the
  integral probe says so, for every gamma.  The probe costs ~3 us once the full block exists
  (E7_s, warm), so callers may decide per parameter; the old rule below needs sampling.}
@@ -975,9 +1013,9 @@ set low_char(Param p, int HT) = bool:
     elif not low_char_flag
     then true {ALWAYS do to_height}
     elif probe_only_flag
-    then p.x.number > probe_only_frac*KGB_size(p.real_form) and integral_probe(p,HT)
+    then p.x.number > probe_only_frac*KGB_size(p.real_form) and low_probe(p,HT)
     elif p.x.number < diff_KGB_char_frac*KGB_size(p.real_form) then false
-    elif integral_probe_flag and is_integral_gamma(p) then integral_probe(p,HT)
+    elif integral_probe_flag and is_integral_gamma(p) then low_probe(p,HT)
     elif kl_block_gate(p) then kl_block_gate_count +:= 1; false
     elif prefer_KL_char_flag {default false}
     then low_KL_char(p,HT)

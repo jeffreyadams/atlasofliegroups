@@ -24,8 +24,8 @@ set FD_time = int:0
 {whether to compute full_deform with jagged_deform.at}
 set jag_flag = false
 
-{even if jag_flag, only use jagged_deform above this KGB level}
-set jag_KGB_frac = 3/4
+{even if jag_flag, only use jagged_deform above this KGB level (0: every x; was 3/4 until 11/14/26)}
+set jag_KGB_frac = 0/1
 
 set jag_count = int:0
 set jag_time = int:0
@@ -2576,7 +2576,7 @@ set UKLH_mult = int: 10
 set uklh_gate_rank = int: 8
 set uklh_gate_count = int: 0
 
-set u_predictor_to_ht(Param p, int HT, int time) = int:
+set u_predictor_to_ht_base(Param p, int HT, int time) = int:
     if u_predictor_old_flag then return u_predictor_to_ht_old(p,HT,time) fi;
     if HT < 0 then return u_predictor(p) fi;
     if not predictor_flag
@@ -2670,6 +2670,22 @@ set u_predictor_to_ht(Param p, int HT, int time) = int:
 	 if pred_log_flag then prints("PREDLOG ",p.root_datum.rank," ",p," HT=",HT," pred=",pred," hist=",hist_pred," sampled=",
 	    sum(for j in unknown_indices do pred_list[j] od) + ((#list-#unknown_indices+10)*interrupt_base_time)\10) fi;
 	 pred
+
+{kl_full_cost_flag (David, 11/14/26): a to_ht test with low_char(p,HT) false computes the FULL
+ KL_sum_at_s(p) first (KL_sum_at_s_to_ht, and the timed KL_sum_at_s_to_ht_inter), so unless that
+ sum is stored the prediction must include it.  E8_s x=304575: is_unitary_to_ht(p,148) took
+ 1698 s, 1193 s of it the full KL sum, against predictions of 32 s and 3 s without it.}
+set kl_full_cost_flag = true
+set kl_full_cost_count = int: 0
+set u_predictor_to_ht(Param p, int HT, int time) = int:
+    let r = u_predictor_to_ht_base(p,HT,time)
+    in if kl_full_cost_flag and HT >= 0 and not low_char(p,HT)
+       then case stored_KL_sum_at_s(p)
+       	    | none: kl_full_cost_count +:= 1; r + KL_predictor(p)
+	    | some(KLS): r
+	    esac
+       else r
+       fi
 
 {predicted time in milliseconds to complete is_unitary{to_ht}(p,{HT})}
 set u_predictor_to_ht(Param p, int HT) = int:
