@@ -231,33 +231,37 @@ set (red_points_rp_avbd, report_rpavbd) = (((KGBElt, ratvec, vec, int, rat) -> [
     then answers = [[[[int]]]]: [] {one list of computed reducibility hyperplanes for each ((x,lambda),av,HT)}
     in (((KGBElt, ratvec, vec, int, rat) -> [int]): (KGBElt x, ratvec lambda, vec av, int HT, rat avbd) [int]:
        {this is the function red_points_rp_avbd}
+    {Interrupt safety (Nov 2026): a new (x,lambda) enters xl_hash only after all its data are
+     computed, and a new HT enters hts[n] only after answers[n] has been extended for it.}
     let N = xl_hash.size(), start = elapsed_ms()
-    then n = xl_hash.match(x,lambda)
+    then n0 = xl_hash.lookup(x,lambda)
+    then n = if n0 >= 0 then n0 else N fi
     then m = -1 {location of av in av_hashes[n]}
     then h = -1 {location of HT in hts[n]}
     then new_ht_flag = false {whether this is a new HT, need to add answers for all coroots}
-    in if n=N {haven't seen (x,lambda) before}
-       then av_hashes #:= make_vec_hash(red_coroots_rp(x,lambda));
-       	    hts #:= [HT];
-	    m := av_hashes[n].match(av);
-	    avbds #:= (let add = for av0 in av_hashes[n].list()
-	    	      	      	 do x.real_form.rho*av0
-				    {codex said this should be av0, not av; probably correct}
-				 od
-	    	       in add[m]:=avbd;
-		      	  add);
-       	    answers #:= for av0@m0 in av_hashes[n].list() {codex said insert m0 here; probably correct}
-	    	    	do [red_points_rp_base(x,lambda,av0,HT,avbds[n][m0])]
-			od;
+    in if n0 < 0 {haven't seen (x,lambda) before}
+       then let avh = make_vec_hash(red_coroots_rp(x,lambda))
+       	    then () = m := avh.match(av)
+	    then add = for av0 in avh.list()
+	    	       do x.real_form.rho*av0
+		       	  {codex said this should be av0, not av; probably correct}
+		       od
+	    then () = add[m]:=avbd
+	    then ans = for av0@m0 in avh.list() {codex said insert m0 here; probably correct}
+	    	       do [red_points_rp_base(x,lambda,av0,HT,add[m0])]
+		       od
+	    in n := xl_hash.match(x,lambda);
+	       assert(@:n = N,"red_points_rp_avbd: (x,lambda) entered during its own computation");
+	       av_hashes #:= avh; hts #:= [HT]; avbds #:= add; answers #:= ans;
 	    h:=0
        else m := av_hashes[n].match(av);
        	    h := first(for H in hts[n] do H=HT od); {saw (x,lambda) before}
        	    if h < 0 {haven't seen this HT before at (x,lambda)}
 	    then h:= #hts[n];
-		 hts[n]#:=HT;
 		 new_ht_flag :=true
-		 {can't yet update answers, because don't have all av's}
-	    fi; {now h is location of HT in hts[n]}
+		 {can't yet update answers, because don't have all av's; HT goes into hts[n]
+		  only after that (interrupt safety)}
+	    fi; {now h is location of HT in hts[n], once it is added}
 	        {saw ((x,lambda) before, just need to adjust avbds[n][m]}
 	    if avbd > avbds[n][m] {need to increase avbd, recompute answers for av at (x,lambda) #n}
 	    then let ansn = answers[n], {type [[[int]]], one list for each av and ht}
@@ -269,14 +273,14 @@ set (red_points_rp_avbd, report_rpavbd) = (((KGBElt, ratvec, vec, int, rat) -> [
 		    answers[n]:=ansn;
 		    avbds[n]:=avbdsn
 	     fi;
-	     if new_ht_flag {means HT is last in hts[n]}
-	     then let ansn = answers[n] {type [[[int]]], one list for each av and ht}
+	     if new_ht_flag {HT is not yet in hts[n]; it goes last}
+	     then let ansn = answers[n], H = #hts[n] {type [[[int]]], one list for each av and ht}
 		  in for av0@m0 in av_hashes[n].list()
-		     do if #ansn[m0] < #hts[n]
-		     	then ansn[m0] #:= red_points_rp_base(x,lambda,av0,HT,avbds[n][m0])
-		     	fi
-		     od; {now each ansn[m0] has length #hts[n]}
-		     answers[n]:=ansn
+		     do ansn[m0] := ansn[m0][:H] {drop leftovers of an interrupted call};
+		     	ansn[m0] #:= red_points_rp_base(x,lambda,av0,HT,avbds[n][m0])
+		     od; {now each ansn[m0] has length H+1}
+		     answers[n]:=ansn;
+		     hts[n]#:=HT
 	      fi;
 	      assert(@:all(for m:av_hashes[n].size() do #answers[n][m] = #hts[n] od));
 	      let N1 = xl_hash.size()

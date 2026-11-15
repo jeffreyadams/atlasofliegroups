@@ -616,14 +616,22 @@ set make_Lvd_Perm2_table() = Lvd_Perm2_table:
 	 then () = Perm2s := []
 	 then () = entries := []
 	 in ()
+    {Interrupt safety (Nov 2026): an inner class enters inner_class_hash only after its data are
+     computed; add_cands builds the lamthlam hash privately and installs it (the "done" marker)
+     only after Perm2s and entries are set.}
     then add_inner_class(InnerClass ic) = int:
-	 let I = inner_class_hash.size()
-	 then i = inner_class_hash.match(ic)
-	 then () = if i = I {haven't seen this inner class before}
-		   then inv_hashes #:= make_mat_hash();
-			vertex_datas #:= FPP_vertex_data(ic);
-			FELs #:= FPP_flippable_edge_lookup(ic);
-			FPP_local_verts #:= FPP_local_vertices(ic, vertex_datas[i].list, FELs[i]);
+	 let i = inner_class_hash.lookup(ic)
+	 then () = if i < 0 {haven't seen this inner class before}
+		   then let vd = FPP_vertex_data(ic)
+		   	then fel = FPP_flippable_edge_lookup(ic)
+			then flv = FPP_local_vertices(ic, vd.list, fel)
+			then I = inner_class_hash.size()
+			in i := inner_class_hash.match(ic);
+			assert(@:i = I,"Lvd_Perm2 table: inner class entered during its own computation");
+			inv_hashes #:= make_mat_hash();
+			vertex_datas #:= vd;
+			FELs #:= fel;
+			FPP_local_verts #:= flv;
 {			cands #:= [];}
 			lamthlam_hashess #:= ([vec_hash]:[]);
 			Perm2s #:= ([[PermOrderTwo]]:[]);
@@ -647,15 +655,19 @@ set make_Lvd_Perm2_table() = Lvd_Perm2_table:
 	 then entriesi = entries[i]
 	 then () = if {#cands[i][j] > 0} lamthlam_hashess[i][j].size() > 0
 		   then return (i,j)
-		   else let Perm2cands = cands_hash(ic,theta, lamthlam_hashess[i][j])
+		   else let H = make_vec_hash()
+		   	then Perm2cands = cands_hash(ic,theta, H)
 		   {this  writes to the hash table the possible lamthlam}
 			then () = tempPerm2si[j] := Perm2cands
-			then () = entriesi[j] := for lamthlam@k in lamthlam_hashess[i][j].list()
+			then () = entriesi[j] := for lamthlam@k in H.list()
 					    do let Perm2 = Perm2cands[k]
 					       in Perm2_to_LPm(ic,Perm2)
 					    od
 			then () = Perm2s[i] :=tempPerm2si
 			then () = entries[i] := entriesi
+			then hs = lamthlam_hashess[i]
+			then () = hs[j] := H
+			then () = lamthlam_hashess[i] := hs
 			in ()
 		    fi
 	 in (i,j)
@@ -828,12 +840,14 @@ set make_FPP_lambda_table() = FPP_lambda_table:
 	 then () = short_done := []
 	 in ()
     then add_real_form_hashed(RealForm rf) = int:
-	 let I = real_form_hash.size()
-	 then i = real_form_hash.match(rf)
-	 then () = if i = I {haven't seen this real form before}
-		   then lambda_hashess #:= for x in KGB(rf) do make_ratvec_hash() od;
-			short_hashess #:= for x in KGB(rf) do make_ratvec_hash() od;
-			short_done #:= for x in KGB(rf) do make_ratvec_hash() od
+	 {rf enters real_form_hash only together with its lists (interrupt safety, Nov 2026)}
+	 let i = real_form_hash.lookup(rf)
+	 then () = if i < 0 {haven't seen this real form before}
+		   then let a = for x in KGB(rf) do make_ratvec_hash() od
+		   	then b = for x in KGB(rf) do make_ratvec_hash() od
+			then c = for x in KGB(rf) do make_ratvec_hash() od
+			in i := real_form_hash.match(rf);
+			   lambda_hashess #:= a; short_hashess #:= b; short_done #:= c
 		   fi
 	  in i
     then add_real_form(RealForm rf) = int:
@@ -854,11 +868,14 @@ set make_FPP_lambda_table() = FPP_lambda_table:
 					else []
 					fi
 				     od.##
-			in for l0 in list0
-			   do for tau in twists
-			      do lambda_hashess[i][n].match(parameter(x,l0+tau,zeroNu).lambda)
-			      od
-			   od.##
+			{all the lambdas first, then the (fast) entry into the hash, whose being
+			 nonempty marks x as done: an interrupt while computing must not leave a
+			 partial list that is later taken as complete (Nov 2026)}
+			then lams = [ratvec]:
+			     for l0 in list0
+			     do for tau in twists do parameter(x,l0+tau,zeroNu).lambda od
+			     od.##
+			in for lam in lams do lambda_hashess[i][n].match(lam) od
 		     fi
 	  in n
     then add_short(KGBElt x) = int:

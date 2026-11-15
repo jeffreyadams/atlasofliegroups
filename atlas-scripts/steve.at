@@ -312,12 +312,15 @@ set make_steve_hash_small() = steve_hash_small_table:
 	      	    do location(rp[j],av*gamma)
 	    	    od
 	 then VECNUM = vechash.size()
-	 then vecnum = vechash.match(loc)
+	 {loc enters vechash only together with its values (interrupt safety, Nov 2026)}
+	 then vecnum0 = vechash.lookup(loc)
+	 then vecnum = if vecnum0 >= 0 then vecnum0 else VECNUM fi
 	 {then () = prints("vechashes[htnum] = ",vechashes[htnum].list())
 	 then () = prints("loc = ",loc)}
-	 then () = if vecnum = VECNUM {new location rel hyperplanes}
+	 then () = if vecnum0 < 0 {new location rel hyperplanes}
 	      	   then let (boo,v) = pos_tester_Kchar(xSHS, lambdaSHS, htSHS, gamma)
-			in statuses #:=boo;
+			in vechash.match(loc);
+			   statuses #:=boo;
 			   charvecs #:=v
 		   fi
 	 in vecnum
@@ -330,12 +333,16 @@ set make_steve_hash_small() = steve_hash_small_table:
 	      	    do location(rp[j],av*gamma)
 	    	    od
 	 then VECNUM = vechash.size()
-	 then vecnum = vechash.match(loc)
+	 {loc enters vechash only together with its values (interrupt safety, Nov 2026)}
+	 then vecnum0 = vechash.lookup(loc)
+	 then vecnum = if vecnum0 >= 0 then vecnum0 else VECNUM fi
 	 {then () = prints("vechashes[htnum] = ",vechashes[htnum].list())
 	 then () = prints("loc = ",loc)}
-	 in if vecnum = VECNUM {new location rel hyperplanes}
-	    then statuses #:=boo;
-		 charvecs #:= Kchar_vec(xSHS,lambdaSHS,htSHS,gamma)
+	 in if vecnum0 < 0 {new location rel hyperplanes}
+	    then let kv = Kchar_vec(xSHS,lambdaSHS,htSHS,gamma)
+	    	 in vechash.match(loc);
+		    statuses #:=boo;
+		    charvecs #:= kv
 	    fi;
 	    vecnum
     then SHthruple_known_Kchar(ratvec gamma, vec Kcv) = int:
@@ -349,10 +356,12 @@ set make_steve_hash_small() = steve_hash_small_table:
 	      	    do location(rp[j],av*gamma)
 	    	    od
 	 then VECNUM = vechash.size()
-	 then vecnum = vechash.match(loc)
+	 {loc enters vechash only together with its values (interrupt safety, Nov 2026)}
+	 then vecnum0 = vechash.lookup(loc)
+	 then vecnum = if vecnum0 >= 0 then vecnum0 else VECNUM fi
 	 {then () = prints("vechash = ",vechash.list())
 	 then () = prints("loc = ",loc)}
-	 then () = if vecnum = VECNUM {new location rel hyperplanes}
+	 then () = if vecnum0 < 0 {new location rel hyperplanes}
 	      	   then	let start = elapsed_ms() {if min_flag, check on L}
 			then def_tester = is_def_tester(loc)
 			then (boo,v) = (bool,vec): (false,[])
@@ -395,6 +404,7 @@ set make_steve_hash_small() = steve_hash_small_table:
 			     	   else} pos_tester(xSHS, lambdaSHS, htSHS, gamma);
 				   {fi;}
 			   v:=Kcv;
+			   vechash.match(loc);
 			   statuses#:=boo;
 			   charvecs#:=v
 		   fi
@@ -410,10 +420,12 @@ set make_steve_hash_small() = steve_hash_small_table:
 	      	    do location(rp[j],av*gamma)
 	    	    od
 	 then VECNUM = vechash.size()
-	 then vecnum = vechash.match(loc)
+	 {loc enters vechash only together with its values (interrupt safety, Nov 2026)}
+	 then vecnum0 = vechash.lookup(loc)
+	 then vecnum = if vecnum0 >= 0 then vecnum0 else VECNUM fi
 	 {then () = prints("vechashes[rfnum][htnum] = ",vechashes[rfnum][xlnum][htnum].list())
 	 then () = prints("loc = ",loc)}
-	 then () = if vecnum = VECNUM {new location rel hyperplanes}
+	 then () = if vecnum0 < 0 {new location rel hyperplanes}
 	      	   then let Kcv = Kchar_vec(xSHS,lambdaSHS,htSHS,gamma)
 			then start = elapsed_ms()
 			then def_tester = is_def_tester(loc)
@@ -461,6 +473,7 @@ set make_steve_hash_small() = steve_hash_small_table:
 				   else pos_tester(xSHS, lambdaSHS, htSHS, gamma)
 				   fi;
 			   v:=Kcv;
+			   vechash.match(loc);
 			   statuses#:=boo;
 			   charvecs#:=v
 		   fi
@@ -476,11 +489,13 @@ set make_steve_hash_small() = steve_hash_small_table:
 	      	    do location(rp[j],av*gamma)
 	    	    od
 	 then VECNUM = vechash.size()
-	 then vecnum = vechash.match(loc)
+	 {loc enters vechash only together with its values (interrupt safety, Nov 2026)}
+	 then vecnum0 = vechash.lookup(loc)
+	 then vecnum = if vecnum0 >= 0 then vecnum0 else VECNUM fi
 	 {then () = prints("vechashes[rfnum][htnum] = ",vechashes[rfnum][xlnum][htnum].list())
 	 then () = prints("loc = ",loc)}
-	 then () = if vecnum = VECNUM {new location rel hyperplanes}
-	      	   then charvecs #:= KCv
+	 then () = if vecnum0 < 0 {new location rel hyperplanes}
+	      	   then vechash.match(loc); charvecs #:= KCv
 		   fi
 	 in vecnum
     then SHthruple_no_stat(ratvec gamma) = int:
@@ -494,12 +509,14 @@ set make_steve_hash_small() = steve_hash_small_table:
 	      	    do location(rp[j],av*gamma)
 	    	    od
 	 then VECNUM = vechash.size()
-	 then vecnum = vechash.match(loc)
+	 {loc enters vechash only together with its values (interrupt safety, Nov 2026)}
+	 then vecnum0 = vechash.lookup(loc)
+	 then vecnum = if vecnum0 >= 0 then vecnum0 else VECNUM fi
 	 {then () = prints("vechashes[rfnum][htnum] = ",vechashes[rfnum][xlnum][htnum].list())
 	 then () = prints("loc = ",loc)}
-	 then () = if vecnum = VECNUM {new location rel hyperplanes}
+	 then () = if vecnum0 < 0 {new location rel hyperplanes}
 	      	   then let KCv = Kchar_vec(xSHS,lambdaSHS,htSHS,gamma)
-			in charvecs #:= KCv
+			in vechash.match(loc); charvecs #:= KCv
 		   fi
 	 in vecnum
       in

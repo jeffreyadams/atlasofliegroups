@@ -444,11 +444,15 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 then () = xl_step_vals := []
 	 in ()
     then add_real_form_hashed(RealForm rf) = int:
+	 {rf enters real_form_hash only after the slow parts of its setup (KGB_size, top) are
+	  computed (interrupt safety, Nov 2026)}
 	 let I = real_form_hash.size()
-	 then i = real_form_hash.match(rf)
-	 then () = if i = I {haven't seen this real form before}
+	 then i = real_form_hash.lookup(rf)
+	 then () = if i < 0 {haven't seen this real form before}
 		   then	let empty = [int]: nullint(KGB_size(rf))
                         then null_list=[int]:[] 
+			then top = floor(sum(rf.rank,rf.highest_coroots)*rf.rho)
+			then () = i := real_form_hash.match(rf)
 			then () = K_type_hashes #:= make_KType_hash();
 			     K_type_pol_hashes #:= make_KTypePol_hash();
 			     formulas #:= null(0);
@@ -465,7 +469,6 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 			then () = xl_known #:= empty {null(KGB_size(rf))}
 			then () = x_known #:= 0
 			then () = x_partial #:= 0
-			then top = floor(sum(rf.rank,rf.highest_coroots)*rf.rho)
 			then () = step_tops #:= top
 			then () = x_step_known #:= for :top do 0 od
 			then () = xl_step_keys #:= make_vec_hash()
@@ -6671,13 +6674,15 @@ set edge_peel_reset() = void: edge_peel_stat_hash := make_Param_hash(); edge_pee
 {2 if q is known nonunitary to HT, 1 if only known nonunitary (which suffices to make the edge
  nonunitary), 0 else}
 set edge_peel_bad_param(Param q, int HT) = int:
-    let i = edge_peel_stat_hash.match(q)
-    in if i = #edge_peel_stats
-       then edge_peel_stats #:= if status(q,HT) < 0 then 2
-				elif HT >= 0 and status(q,-1) < 0 then 1
-				else 0
-				fi
-       fi; edge_peel_stats[i]
+    {q enters the hash only together with its value (interrupt safety, Nov 2026)}
+    let i = edge_peel_stat_hash.lookup(q)
+    in if i >= 0 then edge_peel_stats[i]
+       else let v = if status(q,HT) < 0 then 2
+		    elif HT >= 0 and status(q,-1) < 0 then 1
+		    else 0
+		    fi
+	    in if edge_peel_stat_hash.match(q) = #edge_peel_stats then edge_peel_stats #:= v fi; v
+       fi
 
 {CF is the character formula of the edge v[:2] in Lvd, complete to height hCF; p0 is the edge
  parameter; ends are the endpoint faces (vertex vecs, with their charhash indices)}

@@ -336,9 +336,9 @@ set (simp_dlambdas,simp_dlambdas_report) =
        fi;
        let (,,,M,) = Levix_simp(x,av)
        then key = simp_key(av,M*lambda,t)
-       then J = vechashes[n].size()
-       then j = vechashes[n].match(key)
-       in if j=J
+       {key enters vechashes[n] only together with its value (interrupt safety, Nov 2026)}
+       then j = vechashes[n].lookup(key)
+       in if j<0
 	  then simp_dl_misses+:=1;
 	       let (QL,) = ind_quo_simp(x,lambda,av,t)
 	       then dls = [ratvec]: []
@@ -346,6 +346,7 @@ set (simp_dlambdas,simp_dlambdas_report) =
 	       	  do let v = ratvec: parameter(tauL).d_lambda
 		     in if none(#dls,(int i)bool: dls[i]=v) then dls#:=v fi
 		  od;
+		  j := vechashes[n].match(key);
 		  answers[n]#:= dls
 	  else simp_dl_hits+:=1
 	  fi;
@@ -374,13 +375,13 @@ set (simp_H1,simp_H1_report) = (((KGBElt,ratvec,vec,rat)->rat),(void -> void)):
        	    answers#:= ([rat]:[])
        fi;
        let key = simp_key(av,lambda,t)
-       then J = vechashes[n].size()
-       then j = vechashes[n].match(key)
-       in if j=J
+       {key enters vechashes[n] only together with its value (interrupt safety, Nov 2026)}
+       then j = vechashes[n].lookup(key)
+       in if j<0
        	  then simp_H1_misses+:=1;
 	       let dls = simp_dlambdas(x,lambda,av,t)
 	       in if #dls=0
-	       	  then answers[n]#:= (rat: -1)
+	       	  then j := vechashes[n].match(key); answers[n]#:= (rat: -1)
 		  else let G = x.real_form, (,,,M,) = Levix_simp(x,av)
 		       then (Jl,d) = simp_lift(G,M)
 		       then dlambda = (lambda+x.involution*lambda)/2
@@ -390,6 +391,7 @@ set (simp_H1,simp_H1_report) = (((KGBElt,ratvec,vec,rat)->rat),(void -> void)):
 		       	  do let h = dominant(G,lambda0+(Jl*v)/d)*(G.two_rho_check)
 			     in if m < 0 or h < m then m := h fi
 			  od;
+			  j := vechashes[n].match(key);
 			  answers[n]#:= m
 		  fi
 	  else simp_H1_hits+:=1
