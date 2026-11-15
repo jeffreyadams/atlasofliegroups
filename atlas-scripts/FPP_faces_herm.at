@@ -705,7 +705,9 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	then pc = herm_center(p) {was the barycenter of global_vertices, inline}
 	{then phc = herm_center(p)}
 	then () = p:=parameter(rf, p.x.number, p.lambda, pc.nu)
-	then pnum = phashes[rfnum].match(p)
+	{p is entered in phashes only AFTER its form is computed (Nov 2026): matching first left
+	 phashes longer than sigs/sig_heights when the computation was interrupted}
+	then pnum = let l = phashes[rfnum].lookup(p) in if l >= 0 then l else PNUM fi
 	then () = if pnum = PNUM {haven't computed with p before}
 		  then let sig = if uhashes[rfnum].lookup(p).>=
 				 then K_type_pol(character_formula(p))
@@ -713,6 +715,9 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 				      in if #r > 0 then r[0] else hermitian_form_irreducible(p) fi
 				 fi
 		       then sig_ind = K_type_pol_hashes[rfnum].match(sig)
+		       then () = pnum := phashes[rfnum].match(p)
+		       then () = assert(@:#sigs[rfnum] = pnum and #sig_heights[rfnum] = pnum,
+		       	    	 	"big_unitary_hash damaged")
 		       then () = sigs[rfnum] #:= sig_ind
 		       then () = sig_heights[rfnum] #:= {height(p)} - 1
 		       then H = impure_height(sig)
@@ -757,7 +762,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	then pc = herm_center(p) {was the barycenter of global_vertices, inline}
 	{then phc = herm_center(p)}
 	then () = p:=parameter(rf, p.x.number, p.lambda, pc.nu)
-	then pnum = phashes[rfnum].match(p)
+	{p enters phashes only after its form is computed; see add_param_inf}
+	then pnum = let l = phashes[rfnum].lookup(p) in if l >= 0 then l else PNUM fi
 	then () = if pnum = PNUM {haven't computed with p before}
 		  then let sigD = if uhashes[rfnum].lookup(p).>=
 				  then let ans = K_type_pol(character_formula(p))
@@ -778,6 +784,9 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 			     fi {H = -1}
 						 {uhashes[rfnum].lookup(p).>=}
 		       then sigD_ind = K_type_pol_hashes[rfnum].match(sigD)
+		       then () = pnum := phashes[rfnum].match(p)
+		       then () = assert(@:#sigs[rfnum] = pnum and #sig_heights[rfnum] = pnum,
+		       	    	 	"big_unitary_hash damaged")
 		       then () = sigs[rfnum] #:= sigD_ind
 		       then () = sig_heights[rfnum] #:= D
 		       then () = assert(@:real_form_hash.size() = #phashes,"big_unitary_hash damaged")

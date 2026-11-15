@@ -93,10 +93,10 @@ set next_heights = (RealForm -> int):
        then 0
        elif is_abelian(L)
        then 0
-       else let I = ichash.size()
-       	    then i = ichash.match(L)
-	    then ()= if i = I {haven't yet seen L}
-		     then nhs#:=max(for p in all_parameters_gamma(L, null(L.rank))
+       else let i = ichash.lookup(L)
+	    {L enters ichash only after its value is computed (interrupt safety, Nov 2026)}
+	    then ()= if i < 0 {haven't yet seen L}
+		     then let v = max(for p in all_parameters_gamma(L, null(L.rank))
     	     	      	       	    do let nh = next_heights(p, max(1, floor((semisimple_rank(L) + 1)*NH_factor)))
 				       {(semisimple_rank(L) + 1)\2)}
 				       {with next_xl_heights_flag nh may be short: use the highest height found.
@@ -104,6 +104,8 @@ set next_heights = (RealForm -> int):
 					(e.g. SU(2,1), x=0, lambda=0), so p adds nothing to the bound}
 				       in if #nh = 0 then height(p) else nh~[0] fi
 	     	     	       	    od)
+			  then I = ichash.size()
+			  in i := ichash.match(L); if i = I then nhs #:= v fi
     	    	     fi
 	    in nhs[i]
        fi
@@ -433,11 +435,14 @@ set make_min_bottom_data () = min_bottom_data:
        then () = Lheights :=[]
        in ()
    then enter(KType mu) = int:
-       let M = K_type_hash.size()
-       then m = K_type_hash.match(mu)
-       then () = if m = M
+       {mu enters K_type_hash only after min_bottom_factors(mu) is done (interrupt safety, Nov 2026)}
+       let m = K_type_hash.lookup(mu)
+       then () = if m < 0
 	     	 then let start = elapsed_ms()
 		      then mbf = min_bottom_factors(mu) {LK_data}
+		      then M = K_type_hash.size()
+		      then () = m := K_type_hash.match(mu)
+		      then () = assert(@:m = M,"min_bottom_data: mu entered during its own computation")
 		      then () = bottom_data#:= mbf
 		      then () = heights#:= height(mbf)
 		      {heightmax(for (tau,) in mbf
@@ -701,7 +706,8 @@ set write_gr_caught() = void:
     let rfs = [RealForm]: []
     then () = for p in gr_caught_list
     	 do if none(for G in rfs do G = p.real_form od) then rfs #:= p.real_form fi od
-    in for G@k in rfs
+    in prints("<basic.at {for parameter@(KGBElt,ratvec,ratvec)}");
+       for G@k in rfs
        do prints("set rd_saved = RootDatum: root_datum(mat: ");
           prints(for alpha in G.simple_roots do alpha od, ", mat:");
 	  prints(for betavee in G.simple_coroots do betavee od);
@@ -764,8 +770,9 @@ set mbef_repeat_count = int: 0
 
 {per-mu data for the lift: as stored by min_bottom_factors(mu), else computed the same way}
 set bl_lift_pre(KType mu) = bl_lift_data:
-    let n = #bl_lift_vals, k = bl_lift_keys.match(mu)
-    in if k < n then bl_lift_vals[k] else
+    {mu enters bl_lift_keys only together with its value (interrupt safety, Nov 2026)}
+    let k = bl_lift_keys.lookup(mu)
+    in if k >= 0 then bl_lift_vals[k] else
     let p = parameter(mu)
     then (Q,pL) = theta_stable_quasi_data(p), G = p.real_form
     then muL = LKT(pL), L = Q.Levi
@@ -776,7 +783,7 @@ set bl_lift_pre(KType mu) = bl_lift_data:
     	      derived_factor_K_types0(muL), derLs,
 	      for derL in derLs do right_inverse(projection_to_K_matrix(derL)) od,
 	      xcG, derived_factor_KGBs0(xcL), K0_param(mu,xcG).lambda_minus_rho, K_0(xcG))
-    in bl_lift_vals #:= v; v fi
+    in bl_lift_store(mu,v); v fi
 
 {the first K_0-dominant lift of (wits[i] on derived factor jbad, LKT factor of muL elsewhere), from the
  per-(mu,Q) data (bl_lift_pre for Q minimal, more_lift_pre otherwise), as in
@@ -1665,9 +1672,10 @@ set more_L_ht(KType dermuLj) = int:
 
 set more_bottom_factors(KType mu, KGPElt Q) = LK_data:
     let k = more_bf_keys.match(mu), S = Q.S
+    {the (empty) value list goes in right after the match (interrupt safety, Nov 2026)}
+    then () = if k = #more_bf_vals then more_bf_vals #:= ([([int],LK_data)]: []) fi
     then (G,ProjK,SFRP,dermuLs,derLs,derProjKinvs,xcG,derxcLs,muwt,K0) = more_lift_pre(mu,Q)
     then hts = for dermuLj in dermuLs do more_L_ht(dermuLj) od {in the memo key: they vary with x}
-    then () = if k = #more_bf_vals then more_bf_vals #:= ([([int],LK_data)]: []) fi
     then i = first(#more_bf_vals[k], (int i) bool: let (s,) = more_bf_vals[k][i] in s = S##hts)
     in if i >= 0 then let (,v) = more_bf_vals[k][i] in v else
     let start = elapsed_ms()

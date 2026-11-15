@@ -685,7 +685,16 @@ set make_deformation_hash_time () = deformation_hash_time:
   then clearDHT() = void:
        param_hash.clear();
        time_list :=[]
+  {Interrupt safety (Nov 2026).  add_param enters p in param_hash (match) BEFORE the possibly
+   very long deformation, and appends to time_list only after it.  A ctrl-C (or runtime error) in
+   between leaves param_hash longer than time_list, and later accesses fail with "index out of
+   range".  sync() pads time_list with -3 ("tried for 0 ms without success"), which makes the next
+   request for p compute it again.  It is called at the start of every access.}
+  then sync() = void:
+       let n = param_hash.size() then m = #time_list
+       in if m < n then time_list := time_list ## (vec: for :n-m do -3 od) fi
   then add_param(Param p) = (KTypePol,int):
+       sync();
        let I = param_hash.size(), delta = p.inner_class.distinguished_involution
        then i = param_hash.match(p), start = elapsed_ms()
        in if i=I {haven't considered p} or time_list[i] <= -3
@@ -741,6 +750,7 @@ set make_deformation_hash_time () = deformation_hash_time:
 	  fi; {end of i=I or time_list[i] <= -3}
 	  (FD,i)
   then maybe_add_param(Param p, int time) = (maybe_KTP,int): {full_deform, loc of p in param_hash}
+       sync();
        let I = param_hash.size(), delta = p.inner_class.distinguished_involution
        then i = param_hash.match(p), start = elapsed_ms(), c=Split: 1
        in  if i=I or time_list[i] <= -3
@@ -811,7 +821,7 @@ set make_deformation_hash_time () = deformation_hash_time:
     let (,j) = maybe_add_param(p,time)
     in time_list[j]
   , (Param -> int): {time_lookup}  (Param p):
-    let j = param_hash.lookup(p)
+    sync(); let j = param_hash.lookup(p)
     in if j<0 then -2 else time_list[j] fi
   , (Param -> int): {param_lookup} (Param p): param_hash.lookup(p)
   , (Param -> KTypePol): {full_deform} (Param p):
@@ -819,11 +829,11 @@ set make_deformation_hash_time () = deformation_hash_time:
   , ((Param,int) -> maybe_KTP): {maybe_full_deform} (Param p, int time):
     let (mFD,) = maybe_add_param(p,time) in mFD
   , (Param -> bool): {is_full_deformed} (Param p):
-    let j = param_hash.lookup(p) in j>=0 and time_list[j] >= -1
+    sync(); let j = param_hash.lookup(p) in j>=0 and time_list[j] >= -1
   , (int -> Param): {param_index} (int j): param_hash.index(j)
-  , (int -> int): {time_index} (int j): time_list[j]
+  , (int -> int): {time_index} (int j): sync(); time_list[j]
   , ( -> Param_hash): {ParamHash} @Param_hash: param_hash
-  , ( -> vec): {timeList} @vec: time_list
+  , ( -> vec): {timeList} @vec: sync(); time_list
   )
   )
 
@@ -892,7 +902,36 @@ set make_deformation_hash_height_time () = deformation_hash_height_time:
        heights_list := [];
        trial_time_list := [];
        trial_height_list:= []
+  {Interrupt safety (Nov 2026).  add_param/maybe_add_param enter p in param_hash (match) BEFORE
+   the possibly very long deformation, and append to the five parallel lists only after it.  A
+   ctrl-C (or runtime error) in between, or between two of the appends, leaves lists shorter than
+   param_hash, and later accesses fail with "index out of range".  sync() cuts all five lists to
+   their common length and pads them to param_hash.size() with the "not yet deformed, never tried"
+   entry (pol -1, no heights or times, trial height and time -1), so the next request for such a
+   p computes it again.  pending marks a known entry whose times and heights vectors are being
+   extended together; if that was interrupted, sync() cuts the two back to equal length.
+   sync() is called at the start of every access.}
+  then pending = minus_1
+  then sync() = void:
+       let n = param_hash.size()
+       then m = min(min(min(#pol_list,#times_list),min(#heights_list,#trial_time_list)),#trial_height_list)
+       in if m < n or #pol_list > m or #times_list > m or #heights_list > m
+       	     or #trial_time_list > m or #trial_height_list > m
+       	  then let k = n-m
+	       in pol_list := pol_list[:m] ## (vec: for :k do -1 od);
+	          times_list := times_list[:m] ## for :k do vec:[] od;
+	          heights_list := heights_list[:m] ## for :k do vec:[] od;
+	          trial_time_list := trial_time_list[:m] ## (vec: for :k do -1 od);
+	          trial_height_list := trial_height_list[:m] ## (vec: for :k do -1 od)
+	  fi;
+	  if pending >= 0 and pending < n
+	  then let l = min(#times_list[pending],#heights_list[pending])
+	       in times_list[pending] := times_list[pending][:l];
+	          heights_list[pending] := heights_list[pending][:l]
+	  fi;
+	  pending := minus_1
   then add_param(Param p, int HT) = (KTypePol,int):
+       sync();
        let I = param_hash.size(), delta = p.inner_class.distinguished_involution
        then i = param_hash.match(p), start = elapsed_ms()
        in if i=I or (#heights_list[i] = 0 or heights_list[i]~[0] < HT)
@@ -939,9 +978,11 @@ set make_deformation_hash_height_time () = deformation_hash_height_time:
 	       	       heights_list #:= (vec: [HT]); {henceforth heights_list[i]~[0] < HT}
 		       trial_time_list #:= -1;
 		       trial_height_list #:= -1
-		  else times_list[i]#:= if start < 0 then -1 else elapsed_ms() - start fi; {known Param, prev unfinished at HT}
+		  else pending := i;
+		       times_list[i]#:= if start < 0 then -1 else elapsed_ms() - start fi; {known Param, prev unfinished at HT}
 		       pol_list[i]:=pol_hash.match(FDH);
-		       heights_list[i]#:=HT
+		       heights_list[i]#:=HT;
+		       pending := minus_1
 		  fi;
 		  {badrat:= if p = badp
 		  	   then 1/0
@@ -952,6 +993,7 @@ set make_deformation_hash_height_time () = deformation_hash_height_time:
 	       {we already deformed to a greater height}
 	  fi
   then maybe_add_param(Param p, int HT, int time) = (maybe_KTP,int):
+       sync();
        p:=herm_center(p);
        let I = param_hash.size(), delta = p.inner_class.distinguished_involution  {always HT >= 0}
        then i = param_hash.match(p), start = elapsed_ms()
@@ -1032,14 +1074,16 @@ set make_deformation_hash_height_time () = deformation_hash_height_time:
 				      trial_time_list#:=elapsed_ms() - start
 			 esac
 		    else case mFDH {known p, HT not prev finished}
-		    	 | done(FDH): times_list[i]#:= if start = -2
+		    	 | done(FDH): pending := i;
+			 	      times_list[i]#:= if start = -2
 			   	      		       then -1
 						       elif start = -1
 			   	      		       then -1
 						       else (elapsed_ms() - start)
 						       fi;
 			   	      pol_list[i] := pol_hash.match(FDH);
-		       	 	      heights_list[i]#:=HT
+		       	 	      heights_list[i]#:=HT;
+				      pending := minus_1
 			 | timed_out: trial_height_list[i]:=HT;
 			   	      trial_time_list[i]:=elapsed_ms() - start
 			 esac
@@ -1074,7 +1118,7 @@ set make_deformation_hash_height_time () = deformation_hash_height_time:
      without success}
     if HT < 0 then return defHashTime.time_lookup(p) fi;
     if HT < height(p) then return interrupt_base_time fi;
-    let j = param_hash.lookup(p)
+    sync(); let j = param_hash.lookup(p)
     in if j<0
        then -2 {p not known to defHashTime}
        elif #heights_list[j] = 0 or heights_list[j]~[0] < HT
@@ -1099,19 +1143,20 @@ set make_deformation_hash_height_time () = deformation_hash_height_time:
     let (mFD,) = maybe_add_param(p,HT,time) in mFD
   , ((Param,int) -> bool): {is_deformed_to_height} (Param p, int HT):
     if HT < 0 then return defHashTime.is_full_deformed(p) fi;
-    let j = param_hash.lookup(p)
+    sync(); let j = param_hash.lookup(p)
     in j >= 0 and #heights_list[j] > 0 and heights_list[j]~[0] >= HT
   , (int -> Param): {param_index} (int j): param_hash.index(j)
-  , (int -> vec): {heights_index} (int j): heights_list[j]
-  , (int -> int): {trial_height} (int j): trial_height_list[j]
-  , (int -> vec): {times_index} (int j): times_list[j]
-  , (int -> int): {trial_time} (int j): trial_time_list[j]
+  , (int -> vec): {heights_index} (int j): sync(); heights_list[j]
+  , (int -> int): {trial_height} (int j): sync(); trial_height_list[j]
+  , (int -> vec): {times_index} (int j): sync(); times_list[j]
+  , (int -> int): {trial_time} (int j): sync(); trial_time_list[j]
   , ( -> Param_hash): {ParamHash} @Param_hash: param_hash
-  , ( -> [vec]): {heightsList} @[vec]: heights_list
-  , ( -> [vec]): {timesList} @[vec]: times_list
-  , ( -> vec): {polList} @vec: pol_list
+  , ( -> [vec]): {heightsList} @[vec]: sync(); heights_list
+  , ( -> [vec]): {timesList} @[vec]: sync(); times_list
+  , ( -> vec): {polList} @vec: sync(); pol_list
   , ( -> KTypePol_hash): {PolHash} @KTypePol_hash: pol_hash
   , ((Param,KTypePol,int) -> ): {load_known} (Param p, KTypePol FD, int HT):
+    sync();
     let I = param_hash.size()
     then i = param_hash.match(p)
     in if i = I
@@ -1224,8 +1269,9 @@ set next_xl_vals = [[(KGBElt,ratvec)]]: []
 
 set next_xl(KGBElt x, ratvec lambda) = [(KGBElt, ratvec)]:
     let (x,lambda) = xl_no_Cplus(x,lambda)
-    then N = next_xl_keys.size(), k = next_xl_keys.match(x,lambda)
-    in if k < N then next_xl_vals[k]
+    {(x,lambda) enters next_xl_keys only together with its value (interrupt safety, Nov 2026)}
+    then k = next_xl_keys.lookup(x,lambda)
+    in if k >= 0 then next_xl_vals[k]
        else let theta = x.involution, G = x.real_form, j = int: 0
        then xl_hash=make_xlambda_hash(), HT = height(x,lambda)
        then add(Param q) = void:
@@ -1248,8 +1294,8 @@ set next_xl(KGBElt x, ratvec lambda) = [(KGBElt, ratvec)]:
 		  in add(cp); add(cross(alpha,cp))
 	     fi {is complex}
 	  od; {av in red_coroots}
-	  next_xl_vals #:= xl_hash.list();
-	  next_xl_vals~[0]
+	  let v = xl_hash.list(), N = next_xl_keys.size()
+	  in if next_xl_keys.match(x,lambda) = N then next_xl_vals #:= v fi; v
        fi
 
 {iterate next_xl from (x,lambda), always expanding a pair of least height; every pair from
@@ -1286,9 +1332,12 @@ set next_xls(KGBElt x, ratvec lambda, int n) = [(KGBElt,ratvec)]:
 set next_xl_heights_keys = make_xlambda_hash()
 set next_xl_heights_vals = [(int,[int])]: [] {(largest n computed, its answer)}
 set next_xl_heights(KGBElt x, ratvec lambda, int n) = [int]:
-    let N = next_xl_heights_keys.size(), k = next_xl_heights_keys.match(xl_no_Cplus(x,lambda))
+    {the key enters next_xl_heights_keys only together with its value (interrupt safety, Nov 2026)}
+    let key = xl_no_Cplus(x,lambda) then k = next_xl_heights_keys.lookup(key)
     then compute() = [int]: (for (y,mu) in next_xls(x,lambda,n) do xl_height(y,mu) od).sort_u
-    in if k = N then let a = compute() in next_xl_heights_vals #:= (n,a); a
+    in if k < 0
+       then let a = compute(), N = next_xl_heights_keys.size()
+       	    in if next_xl_heights_keys.match(key) = N then next_xl_heights_vals #:= (n,a) fi; a
        else let (m,a) = next_xl_heights_vals[k]
        	    in if n <= m or #a < m then a[:min(n,#a)]
 	       else let b = compute() in next_xl_heights_vals[k] := (n,b); b

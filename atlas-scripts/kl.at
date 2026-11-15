@@ -1208,14 +1208,17 @@ set KT_char_hts = vec: []  {jth entry: greatest height Param #j has been compute
 set char_to_ht_hashed(Param p, int HT, int HTup) = KTypePol:
     if HT < 0 then return K_type_pol(character_formula(p)) fi;
     let top = max(HT,HTup)
-    then I = KT_char_params.size()
-    then j = KT_char_params.match(p)
-    in if j < I and KT_char_hts[j] >= HT
+    then j = KT_char_params.lookup(p)
+    in if j >= 0 and KT_char_hts[j] >= HT
        then KT_char_hit +:= 1;
        	    to_ht(KT_char_pols.index(KT_char_loc[j]),HT)
        else KT_char_miss +:= 1;
        	    let ans = K_type_pol(character_formula_to_ht(p,top))
 	    then m = KT_char_pols.match(ans)
+	    {enter p only now, after the long computation: an interrupt during it must not
+	     leave p in KT_char_params without entries in KT_char_loc/KT_char_hts}
+	    then I = KT_char_params.size()
+	    then j = KT_char_params.match(p)
 	    in if j = I
 	       then KT_char_loc #:= m; KT_char_hts #:= top
 	       else KT_char_loc[j] := m; KT_char_hts[j] := top
