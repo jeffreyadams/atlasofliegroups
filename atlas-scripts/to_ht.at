@@ -106,7 +106,29 @@ set START = int:0
 
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
 {.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
+{is_unitary_verbose output for the untimed to_ht path, parallel to
+ c_form_irreducible_verbose in hermitian.at}
+set c_form_irreducible_to_ht_verbose (Param p,int HT) = KTypePol:
+   let startc = elapsed_ms()
+   then () = prints("is_unitary_to_ht: p = ",p,", height(p) = ",height(p),", HT = ",HT)
+   then P = oriented_KL_sum_to_ht(HT)(p)
+   then nP = #P, count = 0
+   then step = max(1,min(10,nP\20))
+   then () = prints("KL sum to height ",HT,": ",nP," terms, in time ",
+   	     	    print_time_string(elapsed_ms() - startc))
+   then f(Param q) = KTypePol:
+   	if count < 11 or count%step = 0 or nP-count <= 10
+	then prints("Term ",count,": ",q,", height ",height(q));
+	     prints("      ",defHashHtTime.size()," to_ht deformations stored, in time ",
+	     	    print_time_string(elapsed_ms() - startc))
+	fi; count +:= 1; c_form_std_to_ht(HT)(q)
+   in prints("Deforming ",nP," terms to height ",HT);
+      let ans = if back_form_ht_flag then back_map(f, P) else map(f, P) fi
+      in prints("Done deforming to height ",HT,", total time ",
+      	 	print_time_string(elapsed_ms() - startc)); ans
+
 set c_form_irreducible_to_ht (Param p,int HT) = KTypePol:
+  if is_unitary_verbose then return c_form_irreducible_to_ht_verbose(p,HT) fi;
   {if p = p1
   then prints("starting CFTH to ",HT);
        START := elapsed_ms();
@@ -172,15 +194,16 @@ set twisted_c_form_irreducible_to_ht (Param p,int HT) = KTypePol:
 ( let (fixed,unfixed)=twisted_c_form_irreducible_contributions_to_ht(p,HT)
 { |1+s| divides |unfixed|, no need for |scale_extended|; take half at |nu=0| }
   in
-  if not herm_report
+  if not (herm_report or is_unitary_verbose)
   then if back_form_ht_flag
        then back_map(twisted_c_form_std_to_ht(HT),fixed)+half(unfixed.K_type_pol)
        else map(twisted_c_form_std_to_ht(HT),fixed)+half(unfixed.K_type_pol)
        fi
-  else let nf = #fixed, count=0
+  else let nf = #fixed, count=0, startc = elapsed_ms()
   then 
     f(Param p) = if count<11 or count%10=0 or nf-count<=10
-                 then prints("Term ",count,": ",p)
+                 then prints("Term ",count,": ",p,", height ",height(p));
+		      prints("      in time ",print_time_string(elapsed_ms() - startc))
 		 fi; count+:=1; twisted_full_deform_to_ht(p,HT)
     in prints("Fully twisted deforming ",nf," terms (",#unfixed,
     " unfixed).");
