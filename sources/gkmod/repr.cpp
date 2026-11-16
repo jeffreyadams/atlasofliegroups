@@ -2209,30 +2209,40 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
       }
   }
 
-  int_Matrix signed_P = inverse_upper_triangular(Q_mat);
-  BitMap odd_length(signed_P.n_rows());
+  const unsigned int n_ret = Q_mat.n_rows();
+  BitMap odd_length(n_ret);
   { unsigned int i=0;
     for (const BlockElt z : retained)
       odd_length.set_to(i++,block.length(z)%2!=0);
   }
-  const BitMap even_length = ~odd_length;
 
-  matrix::Vector<Split_integer> coef(signed_P.n_rows()); // working array
+/* The inverse of |Q_mat| holds the signed $P$-polynomials at $q=-1$, but only
+   its products with single vectors are used below. Rather than inverting the
+   whole matrix (cubic in |n_ret|), for each term we solve one unitriangular
+   system by back-substitution (quadratic in its position).
+*/
+  std::vector<int> w(n_ret); // working vector for back-substitution
+  matrix::Vector<Split_integer> coef(n_ret); // working array
   auto pos = result.size()-1; // distance from |it| to final element of |result|
   for (auto it=result.begin(); not result.at_end(it); ++it,--pos)
     if (not it->second.is_zero())
     { // incorporate deformation terms from |*it|
-      std::fill(&coef[0],&coef[pos],Split_integer(0)); // clear range to be used
-    /* compute into |coef| the matrix product of extracted columns of |signed_P|
-       up to |pos| and with parity opposite it, with vector extracted from
-       column |pos| of |Q_mat| at the corresponding (row) positions  */
-      for (auto j : // values with opposite bit as |pos| in |odd_length|
-	     (odd_length.isMember(pos) ? even_length : odd_length))
-      { if (j>=pos)
-	  break;
-	for (unsigned i=0; i<=j; ++i)
-	  coef[i] += signed_P(i,j)*Q_mat(j,pos);
+    /* compute into |coef| the product of the leading |pos| by |pos| block of
+       the inverse of |Q_mat| with the vector extracted from column |pos| of
+       |Q_mat|, restricted to rows whose length parity is opposite to |pos|;
+       that block of the inverse is the inverse of the block of |Q_mat|,
+       so we solve $Q_mat[0:pos,0:pos]\cdot coef = w$ by back-substitution */
+      const bool pos_odd = odd_length.isMember(pos);
+      for (unsigned j=0; j<pos; ++j)
+	w[j] = odd_length.isMember(j)!=pos_odd ? Q_mat(j,pos) : 0;
+      for (unsigned i=pos; i-->0; )
+      { int sum = w[i];
+	for (unsigned k=i+1; k<pos; ++k)
+	  sum -= Q_mat(i,k)*w[k];
+	w[i] = sum;
       }
+      for (unsigned i=0; i<pos; ++i)
+	coef[i] = Split_integer(w[i]);
       { // now add contributions computed in |coef| to |result| beyond |it|
 	auto our_orient = orientation_number(it->first);
 	auto j = pos-1;
@@ -2388,13 +2398,22 @@ SR_poly Rep_table::KL_column_at_s_to_height (StandardRepr p, level height_bound)
 	Q_mat(i,j) = value_at_s(KL_Q_tab.KL_pol_index(top-*jt,top-*it));
   }
 
-  auto signed_P = inverse_upper_triangular(Q_mat);
+  // only column |j| of the inverse of |Q_mat| is needed: rather than inverting
+  // the whole matrix, solve $Q_mat\cdot c = e_j$ by back-substitution
   // with signs in place, the alternating sum is obtained without any effort
 
   { const unsigned int j = retained.position(start); // final column
+    std::vector<Split_integer> c(j+1);
+    c[j] = Split_integer(1);
+    for (unsigned int i=j; i-->0; )
+    { Split_integer sum(0);
+      for (unsigned int k=i+1; k<=j; ++k)
+	sum += Q_mat(i,k)*c[k];
+      c[i] = -sum;
+    }
     auto it = retained.begin();
     for (unsigned int i=0; i<=j; ++i,++it)
-      result.add_term(block.sr(*it,bm,gamma),signed_P(i,j));
+      result.add_term(block.sr(*it,bm,gamma),c[i]);
   }
 
   return result;
