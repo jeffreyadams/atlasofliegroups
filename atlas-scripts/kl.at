@@ -994,10 +994,16 @@ set integral_probe(Param p, int HT) = bool:
        ans next integral_probe_time +:= elapsed_ms() - start
 
 set count_probe_counts = [int]: [0,0] {to height, full}
+{count_probe (Nov 17 2026): to height iff c < d, where c = #{height <= HT} in the full block of p
+ (the elements KL_sum_at_s_to_height fills) and d = full_block_below_size(p).fst, the Bruhat
+ interval below p in the full block, finals and non-finals (the elements KL_sum_at_s fills).
+ Before, d was the index of p plus 1 and the test c^2*4^rk < d^2*3^rk.  The index overstated
+ the interval 1.45x (E8_s x=304575) and 11.6x (x=220459); (4/3)^rk overstated to height ~10x
+ in rank 8.  Cold asimov, E8_s x=304575: full 3375 s, to ht 250/286/320/400 (c/d .35/.55/.81/1.22)
+ 136/330/709/4115 s; x=220459: full 34 s, to ht 380/426 (c/d 10.2/12.7) 1075/2705 s.}
 set count_probe(Param p, int HT) = bool:
-    let start = elapsed_ms(), c = full_block_count_to_ht(p,HT), d = full_block_down_size(p)
-    then rk = semisimple_rank(integrality_datum_hash(p))
-    then ans = c^2*2^(2*rk) < d^2*3^rk {KL_predictor_to_ht(p,HT) < KL_predictor(p)}
+    let start = elapsed_ms(), c = full_block_count_to_ht(p,HT)
+    then ans = c < full_block_below_size(p).fst
     in count_probe_counts[if ans then 0 else 1 fi] +:= 1;
        ans next integral_probe_time +:= elapsed_ms() - start
 set low_probe(Param p, int HT) = bool:
