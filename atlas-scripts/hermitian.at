@@ -2728,10 +2728,10 @@ set kl_full_cost_flag = true
 set kl_full_cost_count = int: 0
 set u_predictor_to_ht(Param p, int HT, int time) = int:
     let r = u_predictor_to_ht_base(p,HT,time)
-    in if kl_full_cost_flag and HT >= 0 and not low_char(p,HT)
-       then case stored_KL_sum_at_s(p)
-       	    | none: kl_full_cost_count +:= 1; r + KL_predictor(p)
-	    | some(KLS): r
+    in if kl_full_cost_flag and HT >= 0
+       then case stored_KL_sum_at_s(p) {stored first: then low_char is not needed (Nov 17 2026)}
+       	    | some(KLS): r
+       	    | none: if low_char(p,HT) then r else kl_full_cost_count +:= 1; r + KL_predictor(p) fi
 	    esac
        else r
        fi

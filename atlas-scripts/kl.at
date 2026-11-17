@@ -1083,17 +1083,27 @@ set KL_sum_at_s_to_ht_new(int HT) = (Param p) ParamPol: {should check whether li
 {switch back to true after making invocation depend on low_char}
 set KL_sum_to_ht_new_flag = true {false}
 
-{should test that x is pretty big??}
-set KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol: 
-    let start = elapsed_ms()
-    in if HT < 0
-       then KL_sum_at_s(p)
-       elif low_char(p,HT)
-       then KL_sum_at_s_to_ht_new(HT)(p)
-       else let (below,) = height_split(KL_sum_at_s(p),HT) {this records char_counter, time?}
-    	    in KL_false_low_count+:=1;
-	       below
-       fi
+{KL_sum_at_s_to_ht and KL_sum_at_s_to_ht_inter look up the library's stored full sum FIRST
+ (Nov 17 2026) and truncate it if present; low_char is asked only when nothing is stored.
+ Same answers.  Full E7_s on the laptop (44aee6b7): low_char ran 6,478,580 times for 381.6 s
+ (count_probe 368.5 s), and 717,851 of the 793,809 to-height choices found the full sum stored
+ anyway, so the gate decided nothing there.}
+set KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol:
+    if HT < 0
+    then KL_sum_at_s(p)
+    else case stored_KL_sum_at_s(p)
+         | some(KLS): let start = elapsed_ms() then (below,) = height_split(KLS,HT)
+	   	      in stored_count +:= 1; charTimeToHt +:= elapsed_ms() - start;
+		         char_counter_to_ht.use(); below
+         | none: if low_char(p,HT)
+	         then let start = elapsed_ms() then ans = KL_sum_at_s_to_height(p,HT)
+		      in unstored_count +:= 1; charTimeToHt +:= elapsed_ms() - start;
+		         char_counter_to_ht.use(); ans
+		 else let (below,) = height_split(KL_sum_at_s(p),HT) {KL_sum_at_s records char time}
+		      in KL_false_low_count +:= 1; below
+		 fi
+         esac
+    fi
 
 set KL_new_inter_count = int:0
 
@@ -1115,7 +1125,7 @@ set KL_sum_at_s_to_ht_new_inter(int HT) = (Param p,int time) maybe_PP:
         fi next KL_new_inter_count +:=1
 
 {should test that x is pretty big??}
-set KL_sum_at_s_to_ht_inter(int HT) = (Param p,int time) maybe_PP:
+set KL_sum_at_s_to_ht_inter_gated(int HT) = (Param p,int time) maybe_PP:
     let start = elapsed_ms()
     in if low_char(p,HT)
        then KL_sum_at_s_to_ht_new_inter(HT)(p,time) {in "else" HT >= 0, but we're required to truncate}
@@ -1127,6 +1137,17 @@ set KL_sum_at_s_to_ht_inter(int HT) = (Param p,int time) maybe_PP:
 	       | some(ans): truncate_above_height(ans,HT).some
 	       esac
        fi
+
+set KL_sum_at_s_to_ht_inter(int HT) = (Param p,int time) maybe_PP:
+    if HT < 0
+    then KL_sum_at_s_to_ht_inter_gated(HT)(p,time)
+    else case stored_KL_sum_at_s(p)
+         | some(KLS): let start = elapsed_ms() then (below,) = height_split(KLS,HT)
+    		      in stored_count +:= 1; KL_new_inter_count +:= 1; char_counter_to_ht.use();
+		         charTimeToHt +:= elapsed_ms() - start; below.some
+         | none: KL_sum_at_s_to_ht_inter_gated(HT)(p,time)
+         esac
+    fi
 
 set twisted_KL_sum_at_s(Param p) = ParamPol:
     let start = elapsed_ms()
