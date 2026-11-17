@@ -70,19 +70,6 @@ set regularize(Param p) = Param:
     else translate_param_by (p, p.root_datum.two_rho)
     fi
 
-set dualPBTime = int: 0
-
-{first return is partial block above p; second is dual, for predicting time for KL_sum_at_s_to_height}
-set dual_partial_block_sizes(Param p, int HT) = (int,int):
-    let start = elapsed_ms(), p2r = p.root_datum.two_rho
-    then preg = translate_param_by (p, p2r)
-    then (Breg,m) = block(preg)
-    then M = m-first(for j:m+1 do height(translate_param_by(Breg[m-j],-p2r)) > HT od)
-    in (m, if M > m
-       	   then #Breg - m
-       	   else #Breg - M
-       	   fi) next dualPBTime +:= elapsed_ms() - start
-
 {whether to turn on u_predictor and u_predictor_to_ht in hermitian.at}
 set predictor_flag = false {evening 12/21/25; was false until 12/19, when something went wrong}
 
@@ -151,12 +138,10 @@ set full_block_to_ht(Param p, int HT) = [Param]:
  decrease roughly along the full block (the end of the block has the smallest heights), so binary
  search for the first element of height <= HT; an estimate when the heights are not monotone.
  Uses the built-ins full_block_size_index and full_block_height (cheap once the block exists).}
-{low_char_count_flag (David, 11/14/26): low_char and KL_predictor_to_ht count the elements of
- height <= HT by binary search (full_block_count_to_ht) instead of listing full_block(p).
- low_char then compares the two KL predictions (to height: count^2; full: (index of p + 1)^2
- times (3/4)^rk, as in KL_predictor_to_ht and KL_predictor) instead of asking whether p lies in
- the last tenth of its block.  E8_s x=304575, HT 148: p at 89.5% of a block of 453060, so the
- probe said "full sum" (1193 s); 7207 elements have height <= 148 and to height took 2.9 s.}
+{low_char_count_flag (David, 11/14/26): KL_predictor_to_ht counts the elements of height <= HT
+ by binary search (full_block_count_to_ht) instead of listing full_block(p).  (count_probe, the
+ low_char gate, always counts this way.)  E8_s x=304575, HT 148: p at 89.5% of a block of 453060;
+ 7207 elements have height <= 148 and to height took 2.9 s, against 1193 s for the full sum.}
 set low_char_count_flag = true
 set full_block_count_to_ht(Param p, int HT) = int:
     let (n,) = full_block_size_index(p), lo = 0
@@ -537,45 +522,6 @@ set red_walls_to_ht_int(Param p, int HT) = int:
        od;
        answer\1 next rwhiTIME +:= elapsed_ms() - start
 
-set prefer_red_char_flag = true
-
-{how much should to_ht win by to use to_ht?}
-set red_mult_char = rat:3/2
-
-{How many reducibility walls are needed to make to_ht worth considering?}
-set red_NUM_char = int: 10
-
-{low_red_char (David, 2026-10-16): one pass over the walls for both counts.  The walls
- (av*gamma a positive integer, av*theta*gamma < 0) come from two matrix products with the
- poscoroots; they are counted as in red_walls_int (real with parity 1, complex 1/2).  A wall
- counts below HT when one parameter built from it has height <= HT (no is_standard, no is_zero):
- complex av: parameter(x,lambda-(av*theta*gamma)*alpha,0); real av (parity only):
- Cayley(alpha,parameter(x,lambda,(av*gamma/2)*alpha)).  This replaces red_walls_to_ht_int,
- whose test() builds std_quo on a small Levi: same gate decision on 1014/1021 recorded E7_s
- calls, gate time 552 s -> 147 s and full E7_s 11692 s -> 11284 s.}
-set low_red_char(Param p, int HT) = bool:
-    if HT < 0 then return true fi;
-    let x = p.x, lambda = p.lambda, gamma = p.infinitesimal_character, rd = p.root_datum
-    then theta = x.involution, PC = rd.poscoroots, PR = rd.posroots, rr = rho_r(p.x)
-    then A = gamma*PC, B = (theta*gamma)*PC
-    then W = for j:#A do if is_integer(A[j]) and A[j] > 0 and B[j] < 0 then [j] else [] fi od.##
-    then real = for j in W do is_real(j,x) od
-    then par = for j@k in W do real[k] and is_parity_fast(p,PR[j],PC[j],rr) od
-    then RWI = (sum(for j@k in W do if real[k] then (if par[k] then 2 else 0 fi) else 1 fi od))\2
-    in if RWI <= red_NUM_char then false
-       else let T = sum(for j@k in W
-       	      	    do let H = if real[k]
-		       	       then if par[k]
-			       	    then height(Cayley(PR[j],parameter(x,lambda,(A[j]/2)*PR[j])))
-				    else HT+1 fi
-			       else height(parameter(x,lambda-B[j]*PR[j],0*lambda))
-			       fi
-		       in if H > HT then 0 elif real[k] then 2 else 1 fi
-		    od)\2
-	    in T*red_mult_char < RWI
-       fi
-
-
 {If NU (nu part) > LAM (lambda part) *nu_frac, then figure to_ht could work better}
 set nu_frac = 1/1
 
@@ -592,22 +538,6 @@ set gamma_frac = 1/4
 So largest reasonable target height is (1/(diff_mult*rank))*GAM + LAM.
 DECREASE to use to_ht more often, range is (0,infty)}
 set diff_mult = rat: 3/2 {switch from 1/1 8/11/26}
-
-{if target height < GAM*diff_char_frac, then figure
-{formerly (GAM - LAM)*diff_frac}
-is_unitary_to_ht could be faster. So largest reasonable target height
-is (GAM-LAM)*diff_frac. INCREASE to use to_ht more often}
-{3/4 best for Spin(6,6) after 3/31/26 MvL improvements}
-set diff_char_frac = rat: 1/9 {1/10}{1/6, 1/4 much worse for E7 4/2/26}
-    		   {1/8 and 1/12 used a bit more memory and time in
-    		     	       spherical E7_s}
-
-{if diff_char_mult*rank*(HT - LAM) >= GAM then don't try char_to_ht.
-So largest reasonable target height is (1/(diff_char_mult*rank))*GAM + LAM.
-DECREASE to use char_to_ht more often, range is (0,infty)}
-set diff_char_mult = rat: 2/1
-
-set diff_KGB_char_frac = rat: 1/2 {9/10} {switch 4/2/26 based on Spin(6,6), E7_s near 17000}
 
 {if lam_mult*LAM >= GAM (big lambda), don't try to_ht
 In range [1/1,infty). DECREASE to use to_ht more often.}
@@ -686,56 +616,6 @@ set low_red(Param p, int HT) = bool:
     let RW = red_walls(p)
     in RW > red_NUM and red_walls_to_ht(p,HT)*red_mult < RW
 
-set low_diff_char_mult = rat: 1
-set low_diff_char_old_flag = true
-set low_diff_char_time = int:0
-
-{true if we're SURE KL_sum_at_s_to_ht is faster}
-set low_diff_char_def_ht(Param p, int HT) = bool:
-    if (HT < 0) then return  false fi;
-    let start = elapsed_ms()
-    then ans = p.x.number > diff_KGB_char_frac*KGB_size(p.real_form)
-	       and (HT < (1/2)*diff_char_frac*GAM(p)) {forces LAM < diff_char_frac*GAM}
-    in ans {next low_diff_char_time +:= (elapsed_ms() - start)}
-
-{false if we're SURE KL_sum_at_s is faster}
-set low_diff_char_def_inf(Param p, int HT) = bool:
-    if (HT < 0) then return  false fi;
-    let start = elapsed_ms()
-    then ans = p.x.number > diff_KGB_char_frac*KGB_size(p.real_form)
-	       and (HT < 2*diff_char_frac*GAM(p)) {forces LAM < diff_char_frac*GAM}
-    in ans {next low_diff_char_time +:= (elapsed_ms() - start)}
-
-
-{if true, allow KL_sum_at_s_to_height}
-{when true, use KL_sum_at_s_to_height; when false, truncate the full KL_sum_at_s.
- The height condition says the span HT-height(p) to be covered is small next to GAM(p),
- i.e. truncation is preferred for SMALL gamma and LARGE height, to_ht otherwise.  The
- x.number condition is a separate restriction to large x; drop_x_char_gate removes it, so
- the criterion rests on gamma and height alone.}
-set drop_x_char_gate = false
-
-set low_diff_char_old(Param p, int HT) = bool: {false {ALWAYS use KL_sum_at_s}}
-    if (HT < 0) then return  false fi;
-    let start = elapsed_ms(), rk = p.real_form.rank
-    then ans = (drop_x_char_gate or
-    	        p.x.number > diff_KGB_char_frac*KGB_size(p.real_form))
-	       and diff_char_mult*rk*(HT-height(p)) < GAM(p)
-    in ans next low_diff_char_time +:= (elapsed_ms() - start)
-
-{how to-ht estimate should win by to choose KL_sum_at_s_to_height}
-set KL_char_mult = rat:18/1 {4 seems too small E7 spherical; 16 beats 12}
-
-{if true, allow KL_sum_at_s_to_height}
-set low_diff_char(Param p, int HT) = bool: {false {ALWAYS use KL_sum_at_s}}
-    if low_diff_char_old_flag then return low_diff_char_old(p,HT) fi;
-    if (HT < 0) then return  false fi;
-    if low_diff_char_def_ht(p,HT) then return true fi;
-    if not low_diff_char_def_inf(p,HT) then return false fi;
-    let start = elapsed_ms()
-    in low_diff_char_mult*red_walls_to_ht_int(p,HT) < red_walls_int(p)\
-       next low_diff_char_time +:= (elapsed_ms() - start)
-
 {predicted time in milliseconds to compute KL in block of p}
 set KL_predictor_full(Param p) = int:
     let rk = semisimple_rank(integrality_datum_hash(p)), (n,) = full_block_size_index(p)
@@ -760,14 +640,6 @@ set KL_predictor_to_ht(Param p, int HT) = int:
     else} floor((if low_char_count_flag then full_block_count_to_ht(p,HT) else #full_block_to_ht(p,HT) fi)^2
     	   * {3^rk*}KL_rate/2{/2^({2*rk+}1)})
     {fi}
-
-set low_KL_char(Param p, int HT) = bool:
-    {prints("we're in low_KL_char at ",p);}
-    KL_predictor_to_ht(p,HT) < KL_predictor(p)
-{
-    p.x.number > diff_KGB_char_frac*KGB_size(p.real_form) and
-    (let (T,TH) = dual_partial_block_sizes(p,HT) in TH*KL_char_mult < T)
-}
 
 set quick_frac = rat: 1/6 {1/10: 406 seconds for E7 ht 27} {change from 1/5 8/8/26}
 
@@ -797,18 +669,6 @@ set low_quick(Param p, int HT) = bool:
      in (LAMreg+HT) < quick_frac*(GAMreg - LAMreg)
 }
 
-{How small the to_ht block should be vs orig block for to_ht to be faster}
-set quick_char_frac = rat: 1/9
-
-{KL for p works in block fraction [GAMreg LAMreg]. For dual (to_ht), range is [LAMreg+HT,0].
-So to_ht fast means GAMreg-LAMreg much bigger than LAMreg+HT.}
-set low_quick_char(Param p, int HT) = bool:
-    let (LAM,,GAM) = low(p)
-    in (LAM+HT) < quick_char_frac*(GAM - LAM)
-{    let preg = translate_param_by(p,p.real_form.two_rho) {dropped this 17:00 4.27.26}
-    then (LAMreg,,GAMreg) = low(preg)
-    in (LAMreg+HT) < quick_char_frac*(GAMreg - LAMreg)}
-
 {Switching to HT -LAM 1/26 didn't work well; adding the small LAM condition is meant to alleviate??}
 
 {bad experiences Jan 26 suggested this version}
@@ -821,12 +681,8 @@ set prefer_red_flag = true {changed 8/4/26, back to false 8/7/26, true 8/13}
 
 set prefer_quick_flag = false {true; changed 6/5/26 evening back 8/8/26}
 
-set prefer_quick_char_flag = false {terrible luck with true on x_open(E7_s)}
-
 set prefer_dual_flag = false {try true again with short_dual_diffs}
 
-set prefer_KL_flag = false
-set prefer_KL_char_flag = false {switch to false 8/13/26}
 
 set prefer_diff_flag = false {true used to give true for parameter(E7_s,773,[0,1,1,1,1,1,0]/1,
     [-3,0,0,0,6,-6,0]/2) and HT 327, leading to a very slow is_unitary_to_ht}
@@ -838,42 +694,8 @@ set prefer_lam_flag = false
 {whether to apply test to switcb from is_unitary_to_ht to is_unitary}
 set low_flag = true
 
-{whether to apply test to switcb from KL_sum_to_ht to KL_sum}
-{ false makes low_char return true throughout, i.e. ALWAYS compute to height.
-  Was true, which let low_diff_char promote truncated KL sums to full ones.  On E7_s
-  spherical (x_open, lambda = rho) that promotion fired 243720 times and a stored
-  KL_sum_at_s was reused only 9 times, so the extra work was never recovered.  Turning it
-  off takes that case from 2212sec to 1020sec: character time rises in aggregate
-  (475sec of char_to_ht against 91sec of char calcs) but the to_ht UNITARITY tests fall
-  from 1748sec to 427sec, because the promotion was inflating the character work done
-  inside them, which is billed to to_ht rather than to char calcs.  Reuse of a stored
-  KL_sum_at_s also inverts, 9 -> 1717.  Character cost grows with x, so a gain at x_open
-  is the case that matters most.
-  Worth revisiting whether the gate can be made valuable rather than simply disabled. }
-{ REVERTED to true.  Setting it false (always compute to height) helped E7_s spherical
-  (2212 -> 1020sec) and the small whole groups E6_s and SO(5,6), but that evidence was
-  drawn entirely from x_open and from groups small enough that every x is "large".  On a
-  full E7_s run at KGBElt 8001 -- 38% of the way through KGB, hence BELOW the
-  diff_KGB_char_frac threshold of x > 10463 -- it costs 769sec of character work against
-  175sec, a 4.4x loss: 402451 promotions become 0, and the work moves from 175sec of char
-  to 74sec + 695sec of char_to_ht.
-  The existing gate already has the right shape: low_diff_char_old uses to_ht only when
-  x.number > diff_KGB_char_frac*KGB_size, which is the large-x regime where character
-  calculations are dear.  The spherical gain should be recovered by tuning that gate --
-  diff_KGB_char_frac or diff_char_mult -- not by disabling it. }
+{low_char_flag false makes low_char always say "to height" (never truncate a full KL_sum_at_s)}
 set low_char_flag = true
-
-{
- Decide low_char once per KGB element rather than per parameter.  Measured on E7_s:
- uniformly truncating (low_char_flag false) costs 64.2sec at x in [7990,8010] but only
- 988sec at x_open, against 54.0sec and 2243sec for the uniform full-sum default -- so each
- setting wins in one regime.  But MIXING them per parameter is worse than either
- (diff_char_mult:=1/2 gave 3892sec at x_open), which looks like a caching effect: a
- truncated sum cannot serve a later full request nor the reverse, so a per-parameter gate
- leaves neither store warm.  Deciding per x keeps whichever store is being filled warm for
- the whole element.  Large x truncates, small x computes full sums, using the same
- diff_KGB_char_frac boundary the old gate already used. }
-set low_char_per_x_flag = true
 
 set TRUELISTht = [(Param,int)]:[]
 set TRUELISTu = [(Param,int)]:[]
@@ -949,50 +771,7 @@ set low_char_time = int: 0
 set low_char_count = int: 0
 
 {whether to consider replacing KL_sum_to_ht with KL_sum}
-{KL block gate (big Claude, Oct 8 2026).  KL_sum_at_s_to_height(p,HT) fills every element of
- height <= HT of p's WHOLE integral block, while KL_sum_at_s(p) needs only the part below p.  In
- rank 8 with a huge block the to-height call loses badly: E8_s x=220459 lambda [1,1,1,1,1,1,1,-7]
- nu [2,2,0,0,2,0,2,-13]/2 (block 453060): KL_sum_at_s 9 s; to height 380/403/426: 948/1591/2510 s,
- 11/16/24 GB (height(p) = 377).  So low_char is false (use the full sum) when the big block of p's
- integral inner class has at least kl_block_gate_min elements in rank >= kl_block_gate_min_rank.
- Tests (01f527ea + this gate): same answers; E8_q lengths 20/36 and E8_s x 85850 unchanged in time;
- E8_s x=220459 lambda #832: 1.75 h / 11 GB (without: > 2.5 h / 38 GB).}
-set kl_block_gate_flag = true
-set kl_block_gate_min_rank = 8
-set kl_block_gate_min = int: 100000
-set kl_block_gate_count = int: 0
-
-set kl_block_size(Param p) = int:
-    full_block_size_index(p).fst
-
-set kl_block_gate(Param p) = bool:
-    kl_block_gate_flag and semisimple_rank(p.real_form) >= kl_block_gate_min_rank and
-    kl_block_size(p) >= kl_block_gate_min
-
-{Integral probe (David, 1 Nov 2026).  At gamma integral for every root, choose
- KL_sum_at_s_to_height only if p lies near the end of its full block (index >= (1-f)*size)
- and the block element at floor((1-f)*size) has height > HT; heights decrease roughly along
- the block, so then roughly less than a fraction f of the block is at height <= HT.
- Uses the built-ins of a1e10e38: < 1 ms per call once the block family exists.}
-set integral_probe_flag = true
-set integral_probe_frac = rat: 1/10
-set integral_probe_counts = [int]: [0,0]  {to height, full}
-
-{Possible later (not done): #full_block_to_ht(p,HT) by a binary search with full_block_height,
- since heights decrease roughly along the full block; an approximate count is good enough for
- KL_predictor_to_ht and ht_saving.}
-set integral_probe_time = int: 0
-
-set is_integral_gamma(Param p) = bool:
-    (p.infinitesimal_character*p.root_datum.poscoroots).denom = 1
-
-set integral_probe(Param p, int HT) = bool:
-    let start = elapsed_ms() then (n,i) = full_block_size_index(p)
-    then k = floor(n*(1-integral_probe_frac))
-    then ans = k < n and i >= k and full_block_height(p,k) > HT
-    in integral_probe_counts[if ans then 0 else 1 fi] +:= 1;
-       ans next integral_probe_time +:= elapsed_ms() - start
-
+set count_probe_time = int: 0
 set count_probe_counts = [int]: [0,0] {to height, full}
 {count_probe (Nov 17 2026): to height iff c < d, where c = #{height <= HT} in the full block of p
  (the elements KL_sum_at_s_to_height fills) and d = full_block_below_size(p).fst, the Bruhat
@@ -1005,35 +784,15 @@ set count_probe(Param p, int HT) = bool:
     let start = elapsed_ms(), c = full_block_count_to_ht(p,HT)
     then ans = c < full_block_below_size(p).fst
     in count_probe_counts[if ans then 0 else 1 fi] +:= 1;
-       ans next integral_probe_time +:= elapsed_ms() - start
-set low_probe(Param p, int HT) = bool:
-    if low_char_count_flag then count_probe(p,HT) else integral_probe(p,HT) fi
+       ans next count_probe_time +:= elapsed_ms() - start
 
-{probe_only_flag (David, 2 Nov 2026): go to height iff x is in the top probe_only_frac of KGB and the
- integral probe says so, for every gamma.  The probe costs ~3 us once the full block exists
- (E7_s, warm), so callers may decide per parameter; the old rule below needs sampling.}
-set probe_only_flag = true
-set probe_only_frac = rat: 0 {In E7_s, fact that probe is cheap j}
-
+{low_char(p,HT): compute KL_sum_at_s(p) to height HT (true) rather than truncate the full sum.
+ Callers ask only when the full sum is not stored (Nov 17 2026).}
 set low_char(Param p, int HT) = bool:
     let start=elapsed_ms() in
     if HT < 0 then false
-    elif not low_char_flag
-    then true {ALWAYS do to_height}
-    elif probe_only_flag
-    then p.x.number > probe_only_frac*KGB_size(p.real_form) and low_probe(p,HT)
-    elif p.x.number < diff_KGB_char_frac*KGB_size(p.real_form) then false
-    elif integral_probe_flag and is_integral_gamma(p) then low_probe(p,HT)
-    elif kl_block_gate(p) then kl_block_gate_count +:= 1; false
-    elif prefer_KL_char_flag {default false}
-    then low_KL_char(p,HT)
-    elif prefer_red_flag {true}
-    then low_red_char(p,HT)
-    elif prefer_quick_char_flag {false 8/4/26; true 4/29/26}
-    then low_quick_char(p,HT)
-    elif prefer_diff_flag
-    then low_diff_char(p,HT)
-    else false{ALWAYS truncate to KL_sum}
+    elif not low_char_flag then true
+    else count_probe(p,HT)
     fi next low_char_time +:= elapsed_ms() - start; low_char_count+:=1
 
 set to_ht (KTypePol P,int N) = KTypePol:

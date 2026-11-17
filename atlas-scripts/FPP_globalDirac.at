@@ -2123,9 +2123,6 @@ fancy_tester) = void:
 	      let (x_sc,lambda_sc) = xlambdas_sc[k]
 	      in
 	        predictor_flag:= x_sc.number > adjust_frac_for(Gsc)*KGB_size(Gsc);
-		{if low_char_per_x_flag
-		then low_char_flag := not (x_sc.number > diff_KGB_char_frac*KGB_size(Gsc))
-		fi;}
 		test_next(x_sc);
 		test_edge(x_sc);
 		CUH := Uhash.size();
@@ -2485,9 +2482,6 @@ this for a long time, leading to wrong answers for PSU(2,2).}
 	 then every_lambda_flag:=true
 	 fi;}
 	 predictor_flag:= x_sc.number > adjust_frac_for(Gsc)*KGB_size(Gsc);
-		{if low_char_per_x_flag
-		then low_char_flag := not (x_sc.number > diff_KGB_char_frac*KGB_size(Gsc))
-		fi;}
 	 test_next(x_sc);
 	 test_edge(x_sc);
 	 if twist(x) != x
