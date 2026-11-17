@@ -2138,126 +2138,190 @@ sl_list<std::pair<StandardRepr,int> > Rep_table::deformation_terms
   return result;
 } // |deformation_terms|, common block version
 
-// a function trying to take advantage of a height bound; its milage varies
+namespace {
+
+// Fill the KL table of |block| for the columns in the union of the Bruhat
+// intervals below the members of |tops| (whose maximum is |y_max|), and return
+// that union; like |fill_KL_below| other columns are left as holes
+BitMap fill_KL_below_set
+  (blocks::common_block& block, const BitMap& tops, BlockElt y_max,
+   KL_hash_Table* hash)
+{
+  BitMap below(y_max+1);
+  for (BlockElt z : tops)
+    below.insert(z);
+  const auto& Bruhat = block.bruhatOrder();
+  for (BlockElt z=y_max+1; z-->0; ) // Hasse diagram lists smaller elements only
+    if (below.isMember(z))
+      for (auto x : Bruhat.hasse(z))
+	below.insert(x);
+
+  kl::KL_table& tab = block.KL_tab(hash,1); // create table if needed
+  bool complete = true;
+  for (BlockElt z : tops)
+    if (tab.is_hole(z))
+    { complete = false; break; }
+  if (complete)
+    return below; // all columns in |below| are present
+
+  std::vector<BlockElt> plugged;
+  for (BlockElt z=tab.first_hole(); z<y_max; ++z)
+    if (tab.is_hole(z) and not below.isMember(z))
+    { tab.plug_hole(z); plugged.push_back(z); }
+  try { tab.fill(y_max+1); }
+  catch (...) // restore the holes, so that later fills compute those columns
+  { for (auto z : plugged) tab.unplug_hole(z);
+    throw;
+  }
+  for (auto z : plugged)
+    tab.unplug_hole(z);
+  return below;
+}
+
+} // |namespace|
+
+/*
+  Deformation to height using the ordinary KL table (P polynomials) of |block|,
+  filled only on the Bruhat interval below the terms being deformed, instead of
+  the dual table (Q polynomials) of the whole block.
+
+  On the final elements of height at most |height_bound| below the terms, let
+  $M$ be the matrix of signed $P$-polynomials at $q=-1$, pushed to final
+  elements by |contributions| (as in |deformation_terms|); it is unitriangular
+  and its inverse is the matrix of $Q$-polynomials used by the dual method. With
+  $T=diag(s^{l(z)})$ and $\Sigma=diag(s^{\lfloor orientation(z)/2\rfloor})$,
+  deforming the terms $q$ and then (recursively) all terms produced inside
+  the block gives $x=\Sigma T M T M^{-1}\Sigma q$: one back-substitution with
+  $M$ and one product with $M$.
+*/
 sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
   (StandardRepr p, SR_poly& queue, level height_bound)
-// we assume that |queue| contains no terms of height exceeding |height_bound|
 {
   BlockElt start; block_modifier bm;
   const auto& gamma = p.gamma();
   assert(is_dominant_ratweight(root_datum(),gamma));
   auto& block = lookup_full_block(p,start,bm); // also makes |p| dominant
-  kl::KL_table& KL_Q_tab // table of KL $Q$-polynomials; empty table first time
-    = block.dual_KL_tab(&KL_poly_hash); // share the |block| polynomial pool
+  const RankFlags singular = block.singular(bm,gamma); // singular simple coroots
 
   // record heights for the block, and extract block terms from |queue|
   std::vector<level> heights(block.size());
-  level low_mark = height_bound+1; // lowest height of any term in |queue|
-  BitMap retained(block.size());
-  sl_list<SR_poly::value_type> result;
-  // where that |value_type| is |std::pair<const StandardRepr,Split_integer>|
+  BitMap tops(block.size()); // block elements with nonzero coefficient
+  std::vector<Split_integer> q_coef(block.size());
+  BlockElt y_max = 0;
   for (BlockElt z=0; z<block.size(); ++z)
   { StandardRepr q = sr(block.representative(z),bm,gamma);
-    if (retained.set_to(z,((heights[z]=q.height()) <= height_bound)))
-    {
-      KL_Q_tab.unplug_hole(block.size()-1-z); // interested in this parameter
-      auto it = queue.find(q);
-      if (it==queue.end()) // then ensure a term for any |retained| is present
-	result.emplace_back(std::move(q),Split_integer(0));
-      else
-      {
-	if (q.height()<low_mark)
-	  low_mark = q.height();
-	result.emplace_back(std::move(q),it->second); // push |(q,queue[q])|
+    if ((heights[z]=q.height()) <= height_bound)
+    { auto it = queue.find(q);
+      if (it!=queue.end())
+      { if (not it->second.is_zero())
+	{ tops.insert(z); q_coef[z] = it->second; y_max = z; }
 	queue.erase(it); // and remove that term it from the |queue|
       }
     }
-    else
-      KL_Q_tab.plug_hole(block.size()-1-z); // not interested in this parameter
   }
-  KL_Q_tab.fill(); // fill whole table; we might go beyond |size()-1-start|
 
-  const RankFlags singular = block.singular(bm,gamma); // singular simple coroots
-  auto it = result.begin();
-  for (BlockElt z : retained) // run over block elements recorded in |result|
-    // now |it->first == sr(block.representative(z),bm,gamma)|
-    { if (heights[z]>=low_mark and block.survives(z,singular))
-	++it; // leave survivors at |gamma|
-      else
-      { assert(it->second.is_zero()); // |queue| cannot have non final parameter
-	retained.remove(z);
-	result.erase(it); // drop term; |it| now points to next term
-      }
+  sl_list<SR_poly::value_type> result;
+  if (tops.empty())
+    return result;
+
+  const BitMap below = fill_KL_below_set(block,tops,y_max,&KL_poly_hash);
+  const kl::KL_table& kl_tab = block.KL_tab(&KL_poly_hash,1);
+  const std::vector<BlockElt_pol> contrib = // to-final mapping up to |y_max|
+    contributions(block,singular,y_max);
+
+  // window: elements below the terms, of height at most |height_bound|
+  std::vector<BlockElt> window; // increasing
+  std::vector<BlockElt> fin; // final elements in |window|, increasing
+  std::vector<unsigned int> index(y_max+1,~0u); // position in |fin|, if any
+  for (BlockElt z : below)
+    if (heights[z]<=height_bound)
+    { window.push_back(z);
+      if (not contrib[z].empty() and contrib[z].front().first==z)
+      { index[z]=fin.size(); fin.push_back(z); }
     }
-  result.reverse(); // we shall need to traverse elements downwards in |block|
+  const unsigned int n = fin.size();
 
-  // viewed from |block|, the |KL_Q_tab| is lower triangular
-  // build its transpose, restricted to |retained|, and evaluated at $q=-1$
-
-  int_Matrix Q_mat (retained.size()); // initialise to identity matrix
-  { // Since |KL_Q_tab| shares full polynomial pool, DO NOT tablulate all their
-    // evaluations. Don't bother even to memoize; juste recompute for each $i,j$
-    unsigned int i=0,j;
-    unsigned int const top=block.size()-1;
-    for (auto it=retained.begin(); it(); ++it,++i)
-      for (auto jt=(j=i+1,std::next(it)); jt(); ++jt,++j)
-      { int val = 0;
-	const auto& entry = KL_Q_tab.KL_pol(top-*jt,top-*it);
-	for (unsigned d=entry.size(); d-->0;) // Horner evaluate |entry| at -1
-	  val = static_cast<int>(entry[d])-val;
-	Q_mat(i,j) = val;
-      }
-  }
-
-  const unsigned int n_ret = Q_mat.n_rows();
-  BitMap odd_length(n_ret);
-  { unsigned int i=0;
-    for (const BlockElt z : retained)
-      odd_length.set_to(i++,block.length(z)%2!=0);
-  }
-
-/* The inverse of |Q_mat| holds the signed $P$-polynomials at $q=-1$, but only
-   its products with single vectors are used below. Rather than inverting the
-   whole matrix (cubic in |n_ret|), for each term we solve one unitriangular
-   system by back-substitution (quadratic in its position).
-*/
-  std::vector<int> w(n_ret); // working vector for back-substitution
-  matrix::Vector<Split_integer> coef(n_ret); // working array
-  auto pos = result.size()-1; // distance from |it| to final element of |result|
-  for (auto it=result.begin(); not result.at_end(it); ++it,--pos)
-    if (not it->second.is_zero())
-    { // incorporate deformation terms from |*it|
-    /* compute into |coef| the product of the leading |pos| by |pos| block of
-       the inverse of |Q_mat| with the vector extracted from column |pos| of
-       |Q_mat|, restricted to rows whose length parity is opposite to |pos|;
-       that block of the inverse is the inverse of the block of |Q_mat|,
-       so we solve $Q_mat[0:pos,0:pos]\cdot coef = w$ by back-substitution */
-      const bool pos_odd = odd_length.isMember(pos);
-      for (unsigned j=0; j<pos; ++j)
-	w[j] = odd_length.isMember(j)!=pos_odd ? Q_mat(j,pos) : 0;
-      for (unsigned i=pos; i-->0; )
-      { int sum = w[i];
-	for (unsigned k=i+1; k<pos; ++k)
-	  sum -= Q_mat(i,k)*w[k];
-	w[i] = sum;
-      }
-      for (unsigned i=0; i<pos; ++i)
-	coef[i] = Split_integer(w[i]);
-      { // now add contributions computed in |coef| to |result| beyond |it|
-	auto our_orient = orientation_number(it->first);
-	auto j = pos-1;
-	for (auto jt = std::next(it); not result.at_end(jt); ++jt,--j)
-	{ coef[j] *= it->second;
-	  auto diff = our_orient - orientation_number(jt->first);
-	  assert(diff%2==0);
-	  coef[j].times_1_s();
-	  if (diff%4!=0)
-	    coef[j].times_s(); // equivalently |coef[j].negate|
-	  jt->second += coef[j]; // deformation contribution within block
+  // sparse columns of $M$, strictly above the (unit) diagonal
+  std::vector<std::vector<std::pair<unsigned int,int> > > col(n);
+  { std::vector<int> acc(n,0);
+    std::vector<unsigned int> touched;
+    auto wit = window.begin();
+    for (unsigned int k=0; k<n; ++k)
+    { const BlockElt z = fin[k];
+      while (*wit<z) ++wit; // now |*wit==z|
+      const auto z_length = block.length(z);
+      for (auto xit = window.begin(); xit!=wit; ++xit) // |x<z| in |window|
+      { const BlockElt x = *xit;
+	const kl::KLPol& pol = kl_tab.KL_pol(x,z); // regular KL polynomial
+	int eval = 0;
+	for (polynomials::Degree d=pol.size(); d-->0; )
+	  eval = static_cast<int>(pol[d]) - eval; // evaluate at $q = -1$
+	if (eval==0)
+	  continue;
+	if ((z_length-block.length(x))%2!=0)
+	  eval=-eval;
+	for (auto jt=contrib[x].wcbegin(); not contrib[x].at_end(jt); ++jt)
+	{ const BlockElt f = jt->first;
+	  if (f>y_max or index[f]==~0u)
+	    continue; // final above |height_bound|: cannot affect the result
+	  const auto i = index[f];
+	  if (acc[i]==0)
+	    touched.push_back(i);
+	  acc[i] += eval*jt->second;
 	}
       }
+      auto& c = col[k];
+      for (auto i : touched)
+	if (acc[i]!=0)
+	{ assert(i<k);
+	  c.emplace_back(i,acc[i]);
+	  acc[i]=0;
+	}
+      touched.clear();
+    }
   }
 
+  std::vector<bool> odd(n), sigma(n);
+  std::vector<StandardRepr> srs; srs.reserve(n);
+  for (unsigned int i=0; i<n; ++i)
+  { odd[i] = block.length(fin[i])%2!=0;
+    srs.push_back(sr(block.representative(fin[i]),bm,gamma));
+    sigma[i] = (orientation_number(srs.back())/2)%2!=0;
+  }
+
+  std::vector<Split_integer> v(n);
+  for (unsigned int i=0; i<n; ++i)
+  { v[i] = q_coef[fin[i]];
+    if (sigma[i])
+      v[i].times_s();
+  }
+#ifndef NDEBUG
+  for (BlockElt z : tops)
+    assert(index[z]!=~0u); // terms of |queue| must be final
+#endif
+
+  // $u=M^{-1}v$ in place in |v|, by columns from the top
+  for (unsigned int k=n; k-->0; )
+    if (not v[k].is_zero())
+      for (const auto& e : col[k])
+	v[e.first] -= v[k]*e.second;
+  for (unsigned int k=0; k<n; ++k) // apply $T$
+    if (odd[k])
+      v[k].times_s();
+  std::vector<Split_integer> w = v; // $w=Mv$, unit diagonal
+  for (unsigned int k=0; k<n; ++k)
+    if (not v[k].is_zero())
+      for (const auto& e : col[k])
+	w[e.first] += v[k]*e.second;
+
+  for (unsigned int i=n; i-->0; ) // descending, as the dual method did
+  { if (odd[i])
+      w[i].times_s();
+    if (sigma[i])
+      w[i].times_s();
+    if (not w[i].is_zero())
+      result.emplace_back(std::move(srs[i]),w[i]);
+  }
   return result;
 } // |Rep_table::block_deformation_to_height|
 

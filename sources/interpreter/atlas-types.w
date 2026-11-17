@@ -7039,7 +7039,10 @@ function |full_block_size_index| returns the size of that block and the index
 of (the normalised form of) the parameter in it, and |full_block_height|
 returns the height of one element of the block, at the infinitesimal character
 of the given parameter. Only the first call for a block family builds the
-block; later calls are cheap.
+block; later calls are cheap. The function |full_block_below_size| returns the
+size of the Bruhat interval below the parameter in that block (the elements
+over which |KL_sum_at_s| fills KL polynomials, non-final ones included), and
+the number of those elements that are final at the infinitesimal character.
 
 @< Local function def...@>=
 void full_block_size_index_wrapper(eval_level l)
@@ -7071,6 +7074,30 @@ void full_block_height_wrapper(eval_level l)
   const auto& gamma = p->val.gamma();
   push_value(std::make_shared<int_value>
     (p->rc().sr(block.representative(k),bm,gamma).height()));
+}
+@)
+void full_block_below_size_wrapper(eval_level l)
+{ own_module_parameter p = get_own<module_parameter_value>();
+  test_standard(*p,"Cannot generate block");
+  if (l==eval_level::no_value)
+    return;
+  BlockElt start; repr::block_modifier bm;
+  auto& block = p->rt().lookup_full_block(p->val,start,bm);
+  unsigned long n=start+1;
+  BitMap below(n);
+  below.insert(start);
+  while (below.back_up(n)) // compute downward closure
+    for (BlockElt y : block.bruhatOrder().hasse(n))
+      below.insert(y);
+  const RankFlags singular = block.singular(bm,p->val.gamma());
+  int finals=0;
+  for (auto z : below)
+    if (block.survives(z,singular))
+      ++finals;
+  push_value(std::make_shared<int_value>(below.size()));
+  push_value(std::make_shared<int_value>(finals));
+  if (l==eval_level::single_value)
+    wrap_tuple<2>();
 }
 
 @ There are also functions that compute just a partial block. We generate
@@ -7809,6 +7836,8 @@ install_function(full_block_size_index_wrapper,@|"full_block_size_index"
                 ,"(Param->int,int)");
 install_function(full_block_height_wrapper,@|"full_block_height"
                 ,"(Param,int->int)");
+install_function(full_block_below_size_wrapper,@|"full_block_below_size"
+                ,"(Param->int,int)");
 install_function(partial_common_block_wrapper,@|"partial_block"
                 ,"(Param->[Param])");
 install_function(param_length_wrapper,@|"length","(Param->int)");

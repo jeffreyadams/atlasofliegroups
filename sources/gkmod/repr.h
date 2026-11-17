@@ -671,8 +671,10 @@ class Rep_table : public Rep_context
    block at once, so that the resulting terms can all be deformed towards
    $\nu=0$ until (maybe) hitting a reducibility determined by another block.
 
-   Implementation is using dual block, like |KL_column_at_s_to_height|, and
-   obtained results are not tabled. Might well be slower than height-unlimited.
+   Implementation uses the ordinary KL table of the block (as |deformation|
+   does), filled only on the Bruhat interval below the terms being deformed,
+   so it shares that table with |KL_column_at_s|. Results are not tabled.
+   Terms with coefficient zero are not returned.
 
    Compute the signed multi-set of final parameters "post deformation"
    (subsequently they will be deformed towards zero without reduction here)
