@@ -4440,6 +4440,42 @@ set ht_bound_one_param(Param p) = [Param]:
        ans
 {set hash_one_levelCounter = make_counter()}
 
+{skip_all_known_flag (Nov 18 2026): in local_test_GEO_hash_one_level and _one_level_end, when every
+ finalized constituent of every face still unitary to one_ht is already in Uhash, the full
+ K-characters (extend_K_characters) and the final local_test_hash_full can decide nothing: they
+ only propagate unitarity along the face graph.  (E8_s x=319818, lambda=[1,5,5,-1,1,1,2,-3]: the
+ full K-characters of 43 unitary faces took 3197 s of the lambda's 4746 s.)}
+set skip_all_known_flag = true
+set skip_all_known_count = int: 0
+set all_faces_known_unitary(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]] LFDKH,
+    Param_hash Uhash) = bool:
+    let ok = true
+    in for list@d in LFDKH
+       do for v in list
+       	  do for q in monomials(finalize(parameter(x,lambda,face_bary(Lvd,v[:d+1]))))
+	     do if Uhash.lookup(q) < 0 then ok := false; break fi
+	     od; if not ok then break fi
+	  od; if not ok then break fi
+       od; ok
+
+{the Params of the faces in LFDKH, all unitary: as local_test_hash returns them (and recording
+ their finalized constituents in Uhash, and ParamsByDim when long_out_flag)}
+set known_face_params(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]] LFDKH,
+    Param_hash Uhash) = [Param]:
+    for list@d in LFDKH
+    do for v in list
+       do let p = parameter(x,lambda, face_bary(Lvd, v[:d+1]))
+	  then () = for p1 in monomials(finalize(p))
+		    do Uhash.match(p1);
+		       if deform_flag then for q in face_deformed_new(p1) do Uhash.match(q) od fi
+		    od
+	  then () = if long_out_flag
+		    then ParamsByDim[d] := ParamsByDim[d]#p; LFDKHByDim[d] := LFDKHByDim[d]#v
+		    fi
+	  in p
+       od
+    od.##
+
 {assume local faces to dim 1 are recorded in LF, already herm and pos on LKTs}
 set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda,
     LocalVertexData Lvd, [[FaceVertsIndex]] LF, KTypePol_hash pol_hash,
@@ -4644,6 +4680,15 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda,
     then () = if one_two_reverse_flag
     	      then LFDKH := for list in LFDKH do [vec]: for v in list ~do v od od
 	      fi
+    then () = if skip_all_known_flag and not hash_deform_flag
+    	      	 and all_faces_known_unitary(x,lambda,Lvd,LFDKH,Uhash)
+	      then long_out_flag := long_out_temp_flag; skip_all_known_count +:= 1;
+	      	   if test_verbose
+    	      	   then prints("all ",sum(for list in LFDKH do #list od),
+		   	" unitary candidates are known unitary: no full K-characters")
+		   fi;
+		   return known_face_params(x,lambda,Lvd,LFDKH,Uhash)
+	      fi
     then () = LFDKH := extend_K_characters(x, lambda, Lvd, LFDKH, pol_hash)
     {anti_sort(x.real_form, Lvd, extend_K_characters(x, lambda, Lvd, LFDKH, pol_hash))} {this is worse in spherical E7_s}
     then start=elapsed_ms()
@@ -4824,8 +4869,17 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
     then start=elapsed_ms()
     then () = long_out_flag := long_out_temp_flag
     {then () = if test_verbose then prints("one_ht = ",one_ht) fi}
+    then all_known = one_ht >= 0 and skip_all_known_flag and not hash_deform_flag
+    	 	     and all_faces_known_unitary(x,lambda,Lvd,LFDKH,Uhash)
+    then () = if all_known
+    	      then skip_all_known_count +:= 1;
+	      	   if test_verbose
+    	      	   then prints("all ",sum(for list in LFDKH do #list od),
+		   	" unitary candidates are known unitary: no full K-characters")
+		   fi
+	      fi
     then UParams = [Param]:
-         if one_ht >=  0
+         if one_ht >=  0 and not all_known
          then let () = LFDKH := extend_K_characters(x,lambda,Lvd,LFDKH,pol_hash)
 	      then () = if one_two_reverse_flag
     	      	      	then LFDKH := for list in LFDKH do [vec]: for v in list ~do v od od
