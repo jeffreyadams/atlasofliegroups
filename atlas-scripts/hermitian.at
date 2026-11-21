@@ -2759,6 +2759,31 @@ set adjust_to_ht_over_uC(Param p,int HT) = (int,int):
     then th = u_predictor_to_ht(p, HT){, min(ut+10, {2*}interrupt_base_time))}
     in (ut, th)
 
+{To use chat_GPT's suggestion about not deforming terms with coeff c*(1+s)}
+set chat_form_flag = true
+
+{The c-form on J(p) is a sum of c*F(q) over the terms c@q of an oriented KL sum, F = full_deform,
+ twisted_full_deform or a to_ht version. F(q) = chat_nu0(q) + (1-s)*(...), where chat_nu0(q) is what
+ the deformation hash stores at height(q): K_type_pol(q) in equal rank, K_type_pol_extended(q,delta)
+ otherwise (NOT K_type_pol(q)). When 1+s divides c, (1+s)(1-s) = 0 gives c*F(q) = c*chat_nu0(q).
+ chat_split(P) = (D,R): R = the terms of P whose coefficient 1+s divides, D = the rest (R = 0 when
+ chat_form_flag is off). chat_map(F,P,HT) = sum over D of c*F(q), plus to_ht(chat_nu0(R),HT)
+ (HT < 0: no cut).}
+set chat_split (ParamPol P) = (ParamPol,ParamPol):
+    if not chat_form_flag then (P, P.real_form.null_module)
+    else let D = P.real_form.null_module +
+    	     ##for c@q in P do if (c*(1-s)).= then [] else [(c,q)] fi od
+    	 in (D, P-D)
+    fi
+
+set chat_nu0 (ParamPol R) = KTypePol:
+    if is_equal_rank(R.real_form) then K_type_pol(R)
+    else sum(R.real_form,
+    	     for c@q in R do c*K_type_pol_extended(q,q.inner_class.distinguished_involution) od)
+    fi
+
+set chat_map ((Param->KTypePol) F, ParamPol P, int HT) = KTypePol:
+    let (D,R) = chat_split(P) in map(F,D) + to_ht(chat_nu0(R),HT)
 
 {.write c-invariant form on standard module as a KTypePol }
 { never involves |twisted_full_deform| }
@@ -2811,7 +2836,9 @@ set c_form_irreducible_verbose (Param p) = KTypePol:
 		     	  prints("      ",defHashTime.size()," deformations stored, in time ",
 			  	print_time_string(elapsed_ms() - startc))
 		     fi; count+:=1; c_form_std(q)
-   in  prints("Fully deforming ",nP," terms"); map(f, oriented_KL_sum)
+   then (D,) = chat_split(oriented_KL_sum)
+   in  prints("Fully deforming ",#D," of ",nP," terms (the others: 1+s divides the coefficient)");
+       chat_map(f, oriented_KL_sum, -1)
 
 
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
@@ -2823,7 +2850,7 @@ set c_form_irreducible (Param p) = KTypePol:
    then oriented_KL_sum = ParamPol: null_module(p) +
       for c@q in KL_sum_at_s(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
 in if back_form_flag then back_map(c_form_std@Param, oriented_KL_sum )
-   else map(c_form_std@Param, oriented_KL_sum )
+   else chat_map(c_form_std@Param, oriented_KL_sum, -1)
    fi
    fi
 
@@ -2839,7 +2866,7 @@ set c_form_irreducible_cut (Param p,int HT) = KTypePol:
       for c@q in KL_sum_at_s_to_ht(HT)(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
    then cfsc = (Param -> KTypePol): (Param qi) KTypePol: c_form_std_cut(HT)(qi)
 in to_ht(if back_form_ht_flag then back_map(cfsc, oriented_KL_sum)
-   	 else map(cfsc, oriented_KL_sum)
+   	 else chat_map(cfsc, oriented_KL_sum, HT)
 	 fi ,HT) {next if p = p1 then prints("ending CFIC to ",HT,", after ",
 	    print_time_string(elapsed_ms() - START)) fi}
 
@@ -2902,7 +2929,7 @@ set twisted_c_form_irreducible_unnormalized (Param p) = KTypePol:
 ( let (fixed,unfixed)=twisted_c_form_irreducible_contributions(p)
 { |1+s| divides |unfixed|, no need for |scale_extended|; take half at |nu=0| }
   in if back_form_flag then back_map(twisted_c_form_std@Param,fixed)+half(unfixed.K_type_pol)
-     else map(twisted_c_form_std@Param,fixed)+half(unfixed.K_type_pol)
+     else chat_map(twisted_c_form_std@Param,fixed,-1)+half(unfixed.K_type_pol)
      fi
 )
 
@@ -3250,13 +3277,22 @@ set back_map ((Param->maybe_KTP)f, ParamPol P) = maybe_KTP:
       od
      ).done
 
+{timed chat_map: see chat_split}
+set chat_map ((Param->maybe_KTP) F, ParamPol P, int HT) = maybe_KTP:
+    let (D,R) = chat_split(P)
+    in case map(F,D)
+       | timed_out: timed_out()
+       | done(r): done(r + to_ht(chat_nu0(R),HT))
+       esac
+
 { guaranteed to deform at least one term}
 {finishes without interruption if all terms already deformed}
 set c_form_irreducible (Param p,int time) = maybe_KTP:
    let ori_nr_p = orientation_nr(p), expiration = elapsed_ms() + time, dummy = [K_type_pol(p).done]
    then oriented_KL_sum = ParamPol: null_module(p) +
       for c@q in KL_sum_at_s(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
-   then list = monomials(oriented_KL_sum)
+   then (D,) = chat_split(oriented_KL_sum)
+   then list = monomials(D)
    then unknown_indices = for q@j in list if defHashTime.time_lookup(q) <= -2 do j fi od
    in if #unknown_indices >= 16
       then dummy := for j:4 do full_deform(list[unknown_indices~[j]], time\4) od
@@ -3272,12 +3308,12 @@ set c_form_irreducible (Param p,int time) = maybe_KTP:
       	 fi
       	 , oriented_KL_sum
       	 )
-       else map( (Param q) maybe_KTP:
+       else chat_map( (Param q) maybe_KTP:
       	 if expiration - elapsed_ms() < 0
       	 then timed_out()
       	 else full_deform(q, expiration - elapsed_ms())
       	 fi
-      	 , oriented_KL_sum
+      	 , oriented_KL_sum, -1
       	 )
        fi
 
@@ -3286,7 +3322,8 @@ set c_form_irreducible_cut (Param p,int HT, int time) = maybe_KTP:
    let ori_nr_p = orientation_nr(p), expiration = elapsed_ms() + time, dummy = K_type_pol(p).done
    then oriented_KL_sum = ParamPol: null_module(p) +
       for c@q in KL_sum_at_s_to_ht(HT)(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
-   then list = monomials(oriented_KL_sum)
+   then (D,) = chat_split(oriented_KL_sum)
+   then list = monomials(D)
    then unknown_indices = for q@j in list if defHashHtTime.time_lookup_to_ht(q,HT) <= -2 do j fi od
    in if #unknown_indices > 0
       then dummy := full_deform_to_ht(list[unknown_indices~[0]],HT, time);
@@ -3299,12 +3336,12 @@ set c_form_irreducible_cut (Param p,int HT, int time) = maybe_KTP:
       	 fi
       	 , oriented_KL_sum
       	 )
-      else map( (Param q) maybe_KTP:
+      else chat_map( (Param q) maybe_KTP:
       	 if expiration - elapsed_ms() < 0
       	 then timed_out()
       	 else {deformedHash.maybe_entry}full_deform_to_ht(q,HT,expiration - elapsed_ms())
       	 fi
-      	 , oriented_KL_sum
+      	 , oriented_KL_sum, HT
       	 )
       fi
 
@@ -3312,7 +3349,8 @@ set c_form_irreducible_cut (Param p,int HT, int time) = maybe_KTP:
 set twisted_c_form_irreducible_unnormalized (Param p,int time) = maybe_KTP:
 ( let (fixed,unfixed)=twisted_c_form_irreducible_contributions(p)
   , expiration = elapsed_ms() + time, dummy = K_type_pol(p).done
-  then list = monomials(fixed)
+  then (D,) = chat_split(fixed)
+  then list = monomials(D)
   then unknown_indices = for q@j in list if defHashTime.time_lookup(q) <= -2 do j fi od
   in if #unknown_indices > 0
      then dummy:= twisted_full_deform(list[unknown_indices~[0]],time)
@@ -3327,12 +3365,12 @@ set twisted_c_form_irreducible_unnormalized (Param p,int time) = maybe_KTP:
      	     fi
 	     , fixed
 	     )
-	  else map( (Param q) maybe_KTP:
+	  else chat_map( (Param q) maybe_KTP:
      	     if expiration - elapsed_ms() < 0
       	     then timed_out()
      	     else twisted_full_deform(q, expiration - elapsed_ms())
      	     fi
-	     , fixed
+	     , fixed, -1
 	     )
 	  fi
      | timed_out: timed_out()
@@ -3453,7 +3491,9 @@ set twisted_c_form_irreducible_long (Param p) =
   let (fixed,unfixed) = twisted_c_form_irreducible_contributions(p)
   then G=p.real_form
   , fixed_contribs = [(Param,Split,KTypePol)]:
-      for c@q in fixed do (q,c,c*twisted_full_deform(q)) od
+      for c@q in fixed
+      do (q,c,if chat_form_flag and (c*(1-s)).= then chat_nu0(c*q) else c*twisted_full_deform(q) fi)
+      od
   , unfixed_contribs = [(Param,Split,KType)]:
       for c@q in unfixed
       do { now |1+s| divides |c|, which justifies not using |scale_extended|: }
@@ -3635,8 +3675,10 @@ set analyse_hermitian_form_irreducible (Param p) = void:
     if !=fixed then prints("Twist-fixed contributions:") fi
   ; c_form+:=
     for c@q in fixed
-    do let contribution = c*twisted_full_deform(q) in
-      prints(c,"* form on I(",q,"), fully deformed:",contribution,new_line)
+    do let chat = chat_form_flag and (c*(1-s)).=
+       then contribution = if chat then chat_nu0(c*q) else c*twisted_full_deform(q) fi in
+      prints(c,"* form on I(",q,"), ",if chat then "1+s divides c, at nu=0:" else "fully deformed:" fi,
+        contribution,new_line)
     ; contribution
     od
   ; if !=unfixed then prints(new_line,"Non twist-fixed terms:") fi
@@ -3677,7 +3719,7 @@ set hermitian_form_is_pure (Param p) = bool:
     else cur_unfix:=G.null_module
     fi
   ; result +:= if back_form_flag then back_map(twisted_full_deform@Param,cur_fix)
-    	       else map(twisted_full_deform@Param,cur_fix)
+    	       else chat_map(twisted_full_deform@Param,cur_fix,-1)
 	       fi
     	      +K_type_pol(cur_unfix)
   ; let (cur_result,later_result)=height_split(result,height) in

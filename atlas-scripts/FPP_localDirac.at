@@ -5,6 +5,7 @@
 <to_ht.at { for is_unitary_to_ht }
 <unity.at { for is_unitary_test }
 <bottom_layer.at {for bottom layer unitarity tests}
+<real_ind_signature.at {for real_ind_sig_nonunitary (ind_mult_flag)}
 <springer_tables_reductive.at {for Springer_table }
 <associated_variety_annihilator.at { for GK_dim, used in identifying unipotent reps }
 <weak_packets.at {for unipotent_representations}

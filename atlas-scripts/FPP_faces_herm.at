@@ -2599,6 +2599,69 @@ set real_ind_form(Param p, int D) = [KTypePol]:
 	       fi
        fi
 set real_ind_form_hook := [real_ind_form@(Param,int)]
+
+{ind_mult_flag: nonunitarity certificate from real induction (David, 11/20/26). For a candidate
+ (q,tau,nu_c) of real_ind_cands(p), J(p) is the constituent of Ind(J(q)) containing its lowest
+ K-type, which has multiplicity one in Ind(J(q)); so J(p) occurs once, and its form is the
+ induced form restricted to a submodule, modulo the radical. Hence for every K-type mu,
+ (positive part of the form of J(p) at mu) <= (positive part a(mu) of the induced form at mu).
+ If mult_p(mu) > a(mu) for some mu of height <= HT, J(p) is nonunitary to HT. No irreducibility
+ criterion is needed. Off by default.}
+{real_ind_sig_hook: real_ind_signature.at (the cached version of this test) sets it; ind_mult_new
+ chooses it over the prototype below when present}
+set real_ind_sig_hook = [(Param,int->bool)]: []
+set ind_mult_new = true
+set ind_mult_flag = false
+{ind_mult_race_hook: real_ind_signature.at sets it; called in the race testers right after their
+ predictions (u_time,to_ht_time) = adjust_to_ht_over_u(p,..), with pred = min(u_time,to_ht_time).
+ true: J(p) certified nonunitary to HT.}
+set ind_mult_race_hook = [(Param,int,int->bool)]: []
+set ind_mult_race(Param p, int HT, int pred) = bool:
+    ind_mult_flag and #ind_mult_race_hook > 0 and ind_mult_race_hook[0](p,HT,pred)
+set ind_mult_count = [int]: [0,0,0,0] {calls, with candidates, certified nonunitary, induced forms}
+set ind_mult_ms = [int]: [0,0,0] {ms in: candidates, induced forms, comparisons}
+set ind_mult_hash = make_Param_hash()
+set im_pairs = [[(Param,vec,ratvec)]]: []
+set im_forms = [[[KTypePol]]]: [] {per candidate: [] if not computed yet, else [induced form]}
+set ind_mult_clear() = void: ind_mult_hash := make_Param_hash(); im_pairs := []; im_forms := []
+set ind_mult_entry(Param p) = int: {p = herm_center(p)}
+    let i = ind_mult_hash.lookup(p)
+    in if i >= 0 then i
+       else let t = elapsed_ms() then (,pairs) = real_ind_cands(p)
+	    in ind_mult_ms[0] +:= elapsed_ms()-t;
+	       im_pairs #:= pairs; im_forms #:= for pair in pairs do [KTypePol]: [] od;
+	       ind_mult_hash.match(p)
+       fi
+set ind_mult_induced(int i, int k, RealForm G) = KTypePol:
+    let fs = im_forms[i] in
+    if #fs[k] > 0 then fs[k][0]
+    else let t = elapsed_ms(), (q,,) = im_pairs[i][k]
+	 then F = real_induce_standard(hermitian_form_irreducible(q),G) {may recurse}
+	 then fs = im_forms[i]
+	 in fs[k] := [F]; im_forms[i] := fs;
+	    ind_mult_count[3] +:= 1; ind_mult_ms[1] +:= elapsed_ms()-t; F
+    fi
+{true: J(p) certified nonunitary to height HT; false: no information}
+set ind_mult_nonunitary(Param p, int HT) = bool:
+    if not ind_mult_flag or HT < height(p) then return false fi;
+    if ind_mult_new and #real_ind_sig_hook > 0 then return real_ind_sig_hook[0](p,HT) fi;
+    ind_mult_count[0] +:= 1;
+    let p = herm_center(p) then i = ind_mult_entry(p) then n = #im_pairs[i]
+    in if n = 0 then false
+       else ind_mult_count[1] +:= 1;
+	    let mp = branch_std(char_to_ht_hashed(p,HT),HT), G = p.real_form
+	    then ans = any(for k:n
+	    	       do let F = branch_std(to_ht(ind_mult_induced(i,k,G),HT),HT), t = elapsed_ms()
+			  then r = any(for c@mu in mp
+				       do let (m,) = %c, (a,) = %F[mu] in m > a od)
+			  in ind_mult_ms[2] +:= elapsed_ms()-t; r
+		       od)
+	    in if ans then ind_mult_count[2] +:= 1 fi; ans
+       fi
+set ind_mult_report() = void:
+    prints("ind_mult: ",ind_mult_count[0]," calls, ",ind_mult_count[1]," with candidates, ",
+	   ind_mult_count[2]," certified nonunitary, ",ind_mult_count[3]," induced forms; ms: cands ",
+	   ind_mult_ms[0],", forms ",ind_mult_ms[1],", compare ",ind_mult_ms[2])
 set real_ind_form_report() = void:
     prints("real_ind_form: ",real_ind_form_count[0]," params, ",real_ind_form_count[1],
 	   " with candidates, ",real_ind_form_count[2]," pass full criterion; answers full ",
@@ -2959,7 +3022,8 @@ set is_unitary_hash_big_SIMPLE_Lucas(Param p) = int:
     then alphavs = for alphav@j in rd.simple_coroots
 		   do let c = gamma*alphav
 		      in if c < 1 then [j]
-			 elif denom(c) != 1 then [] {not integral, so not in tau(p)}
+		      	 elif c > 1 then []
+			 {elif denom(c) != 1 then []} {not integral, so not in tau(p)}
 			 elif status(sr[j],p) < 4 then [j] {alpha_j in tau(p); see DMB_core}
 			 else []
 			 fi
@@ -3825,6 +3889,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
 	    fi
   then () = p := herm_center(p)
   then (u_time,to_ht_time) = adjust_to_ht_over_u(p,HT)
+  then () = if ind_mult_race(p,HT,min(u_time,to_ht_time)) then return false fi
   then () = if wiggle_cod_one_race_flag and min(u_time,to_ht_time) > stat_factor*G.rank * interrupt_base_time and
        	       (stat_holder:=wiggle_status_cod_one(p,HT))!= 0
 	    then return stat_holder > 0
@@ -3916,6 +3981,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
   then () = p := herm_center(p)
   then result = 0, test_time = int:0
   then (u_time,to_ht_time) = adjust_to_ht_over_u(p,HT)
+  then () = if ind_mult_race(p,HT,min(u_time,to_ht_time)) then return false fi
   then () = if print_int_flag
        	    then prints("starting to_ht_time = ", print_time_string(to_ht_time),
 	    	        ", u_time = ", print_time_string(u_time))
@@ -4054,6 +4120,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
   then () = p := herm_center(p)
   then result = 0, HTfirst = HTs[0], HTlast = HTs~[0]
   then (u_time,to_ht_time) = adjust_to_ht_over_u(p,HTfirst), test_time = int:0
+  then () = if ind_mult_race(p,HTlast,min(u_time,to_ht_time)) then return false fi
   then () = if wiggle_cod_one_race_flag and predictor_flag and min(u_time,to_ht_time) > stat_factor*G.rank * interrupt_base_time and
        	       (stat_holder:=wiggle_status_cod_one(p,HTlast))!= 0
 	    then return stat_holder > 0
@@ -4163,6 +4230,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_Ufirst(Param p, [int] HTs) = bool:
   then () = p := herm_center(p)
   then result = 0, HTfirst = HTs[0], HTlast = HTs~[0]
   then (u_time,to_ht_time) = adjust_to_ht_over_u(p,HTfirst), test_time = int:0
+  then () = if ind_mult_race(p,HTlast,min(u_time,to_ht_time)) then return false fi
   then () = if wiggle_cod_one_race_flag and predictor_flag and min(u_time,to_ht_time) > stat_factor*G.rank * interrupt_base_time and
        	       (stat_holder:=wiggle_status_cod_one(p,HTlast))!= 0
 	    then return stat_holder > 0
