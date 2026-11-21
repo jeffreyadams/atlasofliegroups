@@ -1,0 +1,145 @@
+<FPP_faces_herm.at {real_ind_cands, big_unitary_hash, branch_std_hash, herm_center, real_ind_sig_hook}
+
+{real_ind_signature.at: a nonunitarity certificate from real parabolic induction (David, 11/20/26);
+ the real-parabolic analogue of bottom_layer.at.
+
+ Let q be a hermitian parameter on a real Levi M (a candidate of real_ind_cands(p)), so that J(p) is
+ the constituent of Ind_P^G(J(q)) containing its lowest K-type. That K-type has multiplicity one in
+ Ind(J(q)), so J(p) occurs once, and its form is the induced form restricted to a submodule, modulo
+ the radical. Hence at every K-type tau
+	(positive part of the form of J(p) at tau) <= a(tau) := (positive part of Ind form at tau),
+ and if mult_p(tau) > a(tau) for some tau of height <= HT, J(p) is nonunitary to height HT.
+
+ Computing a(tau). Write the form of q to height HT on M as a sum of standard K_M-modules,
+ sum_j (a_j + b_j s) S_M(kappa_j). Real induction carries S_M(kappa_j) to the standard K-module
+ S_G(Ind kappa_j) (real_induce_standard), so the induced form at tau is
+ sum_j (a_j + b_j s) [S_G(Ind kappa_j) : tau] = a(tau) + b(tau) s. The form of J(p) is + or - the
+ induced form (sign fixed at p's LKT, which has multiplicity one), so the certificate compares
+ mult_p(tau) with a(tau) if the induced form is 1 at that LKT, with b(tau) if it is s. Heights:
+	ht_G(Ind kappa) = <dominant_G(d_lambda), 2rho_vee_G>,  d_lambda = (1+theta)(mu+rho_M)/2,
+ the sum over coroots positive on d_lambda; the M-coroots are a subset, so ht_M(kappa) <=
+ ht_G(Ind kappa). So the form of q to M-height HT (big_unitary_hash.sig_entry(q,HT), cached) holds
+ every kappa_j that can matter, and kappa_j with ht_G(Ind kappa_j) > HT are dropped before inducing.
+ The multiplicities come from big_unitary_hash.branch (branch_std_hash), cached per K-type.}
+
+set real_ind_sig_count = [int]: [0,0,0,0] {calls, with candidates, certified nonunitary, standards induced}
+set real_ind_sig_ms = [int]: [0,0,0,0,0,0] {ms in: candidates, forms on M, K-char of p, branching, compare, predicting}
+set real_ind_sig_hash = make_Param_hash()
+set ris_qs = [[Param]]: [] {candidates with nu_c = 0 (Ind(I(q)) = I(p)), per herm_center(p)}
+set ris_p0 = [Param]: [] {the p0 of real_ind_cands(p)}
+set ris_def = [[(Param,vec,ratvec)]]: [] {candidates (q,tau,nu_c) with nu_c /= 0}
+set real_ind_sig_clear() = void:
+    real_ind_sig_hash := make_Param_hash(); ris_qs := []; ris_p0 := []; ris_def := []
+
+set ris_entry(Param p) = int: {p = herm_center(p)}
+    let i = real_ind_sig_hash.lookup(p)
+    in if i >= 0 then i
+       else let t = elapsed_ms() then (p0,pairs) = real_ind_cands(p)
+	    in real_ind_sig_ms[0] +:= elapsed_ms()-t;
+	       ris_qs #:= for (q,,nu_c) in pairs do if =nu_c then [q] else [] fi od.##;
+	       ris_p0 #:= p0;
+	       ris_def #:= for (q,tau,nu_c) in pairs do if =nu_c then [] else [(q,tau,nu_c)] fi od.##;
+	       real_ind_sig_hash.match(p)
+       fi
+
+{height on G of the lowest K-type of the standard K-module real_induce_standard(kappa,G)}
+set ris_ht_G(KType kappa, RealForm G) = rat:
+    let (x,mu) = %kappa then M = real_form(x)
+    then dl = (1+involution(x))*(mu+rho(M))/2
+    in dominant(G.root_datum,dl)*two_rho_check(G.root_datum,for i:G.semisimple_rank do i od)
+
+set real_ind_sig_gated = int: 0 {race calls where the certificate was predicted not to pay}
+
+{true: some q in qs certifies J(p) nonunitary to height HT. Each q must be a hermitian final
+ parameter on a real Levi with J(p) a constituent of Ind(J(q)) containing p's lowest K-types
+ (e.g. Ind(I(q)) = I(p), or Ind(I(q)) = I(p0) with p a term of finalize(p0)).}
+set real_ind_sig_cert(Param p, [Param] qs, int HT) = bool:
+    let G = p.real_form, t = elapsed_ms()
+    then mp = branch_std_hash(char_to_ht_hashed(p,HT),HT)
+    then () = real_ind_sig_ms[2] +:= elapsed_ms()-t
+    then lkts = LKTs(p)
+    in any(for q in qs
+	   do let t0 = elapsed_ms() then FM = big_unitary_hash.sig_entry(q,HT)
+	      then t1 = elapsed_ms()
+	      then A = null_K_module(G) +
+		       ##for c@kappa in FM
+			 do if c = 0 or ris_ht_G(kappa,G) > HT then []
+			    else real_ind_sig_count[3] +:= 1; [(c,real_induce_standard(kappa,G))]
+			    fi
+			 od
+	      then B = branch_std_hash(A,HT)
+	      then t2 = elapsed_ms()
+	      {J(p)'s form is normalized positive on its lowest K-types; the induced form may be
+	       normalized negative there (q's form is s on its LKT). Every LKT of p has multiplicity
+	       one in Ind(J(q)), so B is 1 or s there; compare with the part of B having the sign B
+	       takes on the first LKT of p. (If B had opposite signs on two LKTs of p, the comparison
+	       fails at one of them: correctly nonunitary.)}
+	      then () = for lkt in lkts
+			do let (a,b) = %B[lkt]
+			in if a+b != 1 or a < 0 or b < 0
+			   then prints("REAL_IND_SIG WARNING: induced form at LKT ",lkt," is ",B[lkt],
+				       ", expected 1 or s; p = ",p,", q = ",q)
+			   fi
+			od
+	      then (a0,b0) = %B[lkts[0]]
+	      then r = if a0 = 1 and b0 = 0
+		       then any(for c@tau in mp do let (m,) = %c, (a,) = %B[tau] in m > a od)
+		       elif a0 = 0 and b0 = 1
+		       then any(for c@tau in mp do let (m,) = %c, (,b) = %B[tau] in m > b od)
+		       else false {after the warning above: no certificate from bad data}
+		       fi
+	      in real_ind_sig_ms[1] +:= t1-t0; real_ind_sig_ms[3] +:= t2-t1;
+		 real_ind_sig_ms[4] +:= elapsed_ms()-t2; r
+	   od)
+
+{nu_c /= 0 candidates usable to height HT: q induces I(p) with nu shifted by -nu_c; if the
+ deformation of the central character from nu_c to 0 crosses no reducibility affecting K-types of
+ height <= HT (real_ind_crit = real_ind_irr_suff_path, FPP_lambdas.at), the form induced from J(q)
+ IS the form of J(p) to height HT, so the comparison below is exact there.}
+set ris_def_count = [int]: [0,0] {nu_c /= 0 candidates examined, passing the path criterion}
+set ris_def_qs(int i, int HT) = [Param]:
+    let p0 = ris_p0[i], t = elapsed_ms()
+    then r = for (q,tau,nu_c) in ris_def[i]
+	     do ris_def_count[0] +:= 1;
+		if real_ind_crit(p0,tau,nu_c,HT) then ris_def_count[1] +:= 1; [q] else [] fi
+	     od.##
+    in real_ind_sig_ms[0] +:= elapsed_ms()-t; r
+
+{true: J(p) certified nonunitary to height HT; false: no information}
+set real_ind_sig_nonunitary(Param p, int HT) = bool:
+    if HT < height(p) then return false fi;
+    real_ind_sig_count[0] +:= 1;
+    let p = herm_center(p) then i = ris_entry(p) then qs = ris_qs[i] ## ris_def_qs(i,HT)
+    in if #qs = 0 then false
+       else real_ind_sig_count[1] +:= 1;
+	    let ans = real_ind_sig_cert(p,qs,HT)
+	    in if ans then real_ind_sig_count[2] +:= 1 fi; ans
+       fi
+
+set real_ind_sig_report() = void:
+    prints("real_ind_sig: ",real_ind_sig_gated," predicted not to pay, ",real_ind_sig_count[0]," calls, ",real_ind_sig_count[1]," with candidates, ",
+	   real_ind_sig_count[2]," certified nonunitary, ",real_ind_sig_count[3],
+	   " standards induced; ms: cands ",real_ind_sig_ms[0],", forms on M ",real_ind_sig_ms[1],
+	   ", K-char of p ",real_ind_sig_ms[2],", branch ",real_ind_sig_ms[3],", compare ",real_ind_sig_ms[4],
+	   ", predicting ",real_ind_sig_ms[5],"; nu_c candidates examined/passing ",ris_def_count)
+
+set real_ind_sig_hook := [real_ind_sig_nonunitary@(Param,int)]
+
+{ind_mult_factor: called from the race testers after their predictions; pred = min(u_time,to_ht_time)
+ for the test of p. Try the certificate only if pred > ind_mult_factor * (predicted time of its main
+ cost, the forms of the candidates q to height HT on their Levis, from the same predictor). No
+ absolute times: both sides are predictions.}
+set ind_mult_factor = rat: 2
+set ris_pred(Param q, int HT) = int: min(u_predictor_to_ht(q,HT),u_predictor(q))
+set real_ind_sig_race(Param p, int HT, int pred) = bool:
+    if HT < height(p) then return false fi;
+    let p = herm_center(p) then i = ris_entry(p)
+    then qs = ris_qs[i] ## for (q,,) in ris_def[i] do q od
+    in if #qs = 0 then false
+       else let t = elapsed_ms() then c = sum(for q in qs do ris_pred(q,HT) od)
+	    in real_ind_sig_ms[5] +:= elapsed_ms()-t;
+	       if pred <= ind_mult_factor*c then real_ind_sig_gated +:= 1; false
+	       else real_ind_sig_nonunitary(p,HT)
+	       fi
+       fi
+set ind_mult_race_hook := [real_ind_sig_race@(Param,int,int)]
