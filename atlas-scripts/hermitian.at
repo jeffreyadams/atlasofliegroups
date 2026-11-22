@@ -1920,6 +1920,10 @@ set report_tested(string label) = void:
     then prints("KL_sum_at_s_to_ht_new entered ",stored_count+unstored_count," times (",
               stored_count," with the library sum stored, ",unstored_count," without); ",
 	      KL_false_low_count," KL_sum_at_s_to_ht calcs -> full KL_sum_at_s (low_char false)") fi;
+    {the gate runs before the char timers start, so its time is not in the char calcs above}
+    prints("low_char gate: ",low_char_count," calls in ",print_time_string(low_char_time),
+    	   "; count_probe ",print_time_string(count_probe_time)," (",count_probe_counts[0],
+	   " to height, ",count_probe_counts[1]," full)");
     {prints("time for up_mu = ",print_time_string(up_mu_time), ", mu_time_mult = ",mu_time_mult,
     	   ", shift_frac = ",shift_frac, ", min_ht_mult = ", min_ht_mult);}
     {prints({"LAGAmax = ",LAGAmax,", GARLAGmin = ",GARLAGmin, ", GARmin = ", GARmin,}
@@ -2055,6 +2059,10 @@ set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(v
     then prints("KL_sum_at_s_to_ht_new entered ",stored_count+unstored_count," times (",
               stored_count," with the library sum stored, ",unstored_count," without); ",
 	      KL_false_low_count," KL_sum_at_s_to_ht calcs -> full KL_sum_at_s (low_char false)") fi;
+    {the gate runs before the char timers start, so its time is not in the char calcs above}
+    prints("low_char gate: ",low_char_count," calls in ",print_time_string(low_char_time),
+    	   "; count_probe ",print_time_string(count_probe_time)," (",count_probe_counts[0],
+	   " to height, ",count_probe_counts[1]," full)");
     if IDH_flag then IDH_report() fi;
     for f in report_peel_wiggle do f(0) od;
     prints("  ----------------")

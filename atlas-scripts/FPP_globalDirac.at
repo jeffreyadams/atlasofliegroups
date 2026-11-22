@@ -2109,7 +2109,7 @@ fancy_tester) = void:
 	      fi}
     then current = elapsed_ms(), oldUhash = UhashG.size(), currentUhash = Uhash.size(), formerUhash = Uhash.size(),
     	 oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count(),
-	 currentUtime = unitaryTime, currentCtime = charTime, currentCTHtime = charTime,
+	 oldUtime = unitaryTime, currentUtime = unitaryTime, currentCtime = charTime, currentCTHtime = charTime,
 	 oldCcounter = char_counter.use_count(), currentCcounter = char_counter.use_count(),
 	 oldCTHcounter = char_counter_to_ht.use_count(), currentCTHcounter = char_counter_to_ht.use_count()
     then CUH = currentUhash
@@ -2342,7 +2342,7 @@ fancy_tester) = void:
        	       then prints(new_line,"Total time = ", print_time_string(current-start),
        	      "; max time = ",print_time_string(xlambdatimes[longest]),
 	      " for (x,lambda) = (",  xlambdas[longest], {",", lambdas[longest],}")");
-	    prints("Time spent in is_unitary = ",print_time_string(unitaryTime), ", #unitarity tests = ",
+	    prints("Time spent in is_unitary = ",print_time_string(unitaryTime - oldUtime), ", #unitarity tests = ",
        		unitary_test_counter.use_count() - oldUcounter, ", #K-types studied = ", minBottomData.size());
 	    report_char_calcs(charTime, char_counter.use_count() - oldCcounter,
 	      charTimeToHt, char_counter_to_ht.use_count() - oldCTHcounter); {both times reset at start}
