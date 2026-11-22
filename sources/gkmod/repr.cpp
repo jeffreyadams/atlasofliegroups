@@ -15,6 +15,10 @@
 #include <cassert>
 #include <map> // used in computing |reducibility_points|
 #include <iostream> // for progress reports and easier debugging
+#include <chrono>
+#include <set>
+#include <limits>
+#include <stdexcept>
 #include "error.h"
 
 #include "arithmetic.h"
@@ -1524,7 +1528,20 @@ Rep_table::Rep_table(RealReductiveGroup &G)
 , block_list(), place()
 , KTF_table()
 {}
-Rep_table::~Rep_table() = default;
+namespace {
+using TwistedEdges = std::vector<std::pair<unsigned long, long long>>;
+using TwistedGraph = std::map<unsigned long, TwistedEdges>;
+
+// Registry allocation survives static teardown. Each graph is erased when
+// its representation table is destroyed. The pilot uses the serial engine.
+auto& twisted_graphs()
+{
+  static auto* graphs = new std::map<const Rep_table*, TwistedGraph>;
+  return *graphs;
+}
+}
+
+Rep_table::~Rep_table() { twisted_graphs().erase(this); }
 
 unsigned short Rep_table::length(StandardRepr sr)
 {
@@ -2733,71 +2750,188 @@ SR_poly Rep_table::twisted_deformation_terms (unsigned long sr_hash)
 const deformation_unit&
   Rep_table::twisted_deformation(StandardRepr z, bool& flip)
 {
-  assert(is_final(z));
-  assert(is_delta_fixed(z));
-  if (z.gamma().denominator() > (1LL<<rank()))
-    z = weyl::alcove_center(*this,z);
-
   const auto& delta = inner_class().distinguished();
 
-  auto h = alcove_hash.match(deformation_unit(*this,z,true));
-  if (not pool[h].is_delta_fixed()) // previous value was from untwisted case
-    pool[h].replace_sample(z); // replace by our value, was tested delta-fixed
-  if (pool[h].has_twdef_contrib())
+  using Clock = std::chrono::steady_clock;
+  enum class Mode { verbose, quiet, profile, shared, shared_profile };
+  static const Mode mode = [] {
+    const char* setting = std::getenv("ATLAS_TWISTED_SCALAR_MODE");
+    if (setting && std::string(setting) == "profile")
+      return Mode::profile;
+    if (setting && std::string(setting) == "shared")
+      return Mode::shared;
+    if (setting && std::string(setting) == "shared_profile")
+      return Mode::shared_profile;
+    if (setting && std::string(setting) == "quiet")
+      return Mode::quiet;
+    return Mode::verbose;
+  }();
+  struct Profile
   {
-    Ext_rep_context ctxt(*this,delta);
-    auto E =
-      ext_block::shifted_default_extension(ctxt,z,pool[h].sample.gamma());
-    flip ^= not ext_block::is_default(E); // switch |flip| if not default
-    return pool[h];
+    Clock::duration discovery {}, accumulation {};
+    std::set<std::pair<const Rep_table*, unsigned long>> states;
+    size_t expansions = 0, roots = 0, hits = 0;
+
+    ~Profile()
+    {
+      using namespace std::chrono;
+      std::cerr << "TWISTED_PROFILE discovery_ns="
+                << duration_cast<nanoseconds>(discovery).count()
+                << " accumulation_ns="
+                << duration_cast<nanoseconds>(accumulation).count()
+                << " expansions=" << expansions << " unique=" << states.size()
+                << " roots=" << roots << " root_hits=" << hits << '\n';
+    }
+  };
+  Profile* profile = nullptr;
+  if (mode == Mode::profile || mode == Mode::shared_profile)
+  {
+    static Profile totals; // benchmark uses one representation table per process
+    profile = &totals;
   }
 
-  KT_nr_pol P { std::less<K_type_nr>() }; // order terms using |K_type_hash|
-  { // compute the LKTs with possible sign flips, using |extended_restrict_to_K|
-    auto z_K = ext_block::extended_restrict_to_K(*this,z,delta);
-    for (auto&& term : z_K) // look up K-types, map coefs to |int|, and reorder
-      P.add_term(K_type_hash.match(std::move(term.first)),
-		 term.second.s_to_minus_1());
-    pool[h].set_LKTs_at_minus_1(std::move(P));
+  const bool reuse = mode == Mode::shared || mode == Mode::shared_profile;
+  TwistedGraph local_graph;
+  auto& graph = reuse ? twisted_graphs()[this] : local_graph;
+  std::vector<unsigned long> expanded;
+  std::set<unsigned long> active;
+  unsigned edges = 0, negative = 0, shared = 0, nested = 0;
+  auto multiply = [](long long a, long long b) {
+    long long result;
+    if (__builtin_mul_overflow(a,b,&result))
+      throw std::overflow_error("twisted scalar weight overflow");
+    return result;
+  };
+  auto add = [](long long& a, long long b) {
+    if (__builtin_add_overflow(a,b,&a))
+      throw std::overflow_error("twisted scalar sum overflow");
+  };
+  auto discover = [&](auto&& self, StandardRepr parameter, bool& flipped)
+      -> unsigned long {
+    assert(is_final(parameter) && is_delta_fixed(parameter));
+    if (parameter.gamma().denominator() > (1LL<<rank()))
+      parameter = weyl::alcove_center(*this,parameter);
+    const auto h = alcove_hash.match(deformation_unit(*this,parameter,true));
+    if (pool[h].has_twdef_contrib() || graph.count(h))
+    {
+      shared += graph.count(h);
+      Ext_rep_context ctxt(*this,delta);
+      auto E = ext_block::shifted_default_extension
+        (ctxt,parameter,pool[h].sample.gamma());
+      flipped ^= !ext_block::is_default(E);
+      return h;
+    }
+
+    if (!active.insert(h).second)
+      throw std::logic_error("cycle in twisted deformation graph");
+    pool[h].replace_sample(parameter);
+    TwistedEdges children;
+    KT_nr_pol lowest { std::less<K_type_nr>() };
+    for (auto&& term : ext_block::extended_restrict_to_K(*this,parameter,delta))
+      lowest.add_term(K_type_hash.match(std::move(term.first)),
+                      term.second.s_to_minus_1());
+    pool[h].set_LKTs_at_minus_1(std::move(lowest));
+    interpreter::check_interrupt();
+    const auto points = reducibility_points(parameter);
+    for (unsigned i=points.size(); i-->0; )
+    {
+      auto scaled = ext_block::scaled_extended_finalise
+        (*this,parameter,delta,points[i]);
+      BlockElt index;
+      block_modifier modifier;
+      auto& block = lookup(scaled.first,index,modifier);
+      auto& extended = block.extended_block(modifier,&poly_hash);
+      for (const auto& term : twisted_deformation_terms
+           (block,extended,index,modifier,scaled.first.gamma()))
+      {
+        bool child_flip = scaled.second;
+        auto child = self(self,term.first,child_flip);
+        const long long coefficient =
+          multiply(term.second, child_flip ? -1 : 1);
+        children.emplace_back(child,coefficient);
+        ++edges;
+        negative += coefficient < 0;
+      }
+    }
+    graph.emplace(h,std::move(children));
+    active.erase(h);
+    expanded.push_back(h);
+    return h;
+  };
+
+  const auto discovery_start = profile ? Clock::now() : Clock::time_point{};
+  const auto root = discover(discover,std::move(z),flip);
+  if (profile)
+    profile->discovery += Clock::now() - discovery_start;
+  if (pool[root].has_twdef_contrib())
+  {
+    if (profile)
+      ++profile->hits;
+    return pool[root];
   }
 
-  interpreter::check_interrupt(); // make this recursive function interruptible
-  P.clear(); // ensure we restart correctly at 0
-  RatNumList rp=reducibility_points(z);
+  const auto accumulation_start = profile ? Clock::now() : Clock::time_point{};
 
-  // compute the deformation terms at all reducibility points
-  for (unsigned i=rp.size(); i-->0; )
+  std::vector<unsigned long> order;
+  if (reuse)
   {
-    std::pair<StandardRepr,bool> p =
-      ext_block::scaled_extended_finalise(*this,z,delta,rp[i]);
-    StandardRepr zi = std::move(p.first);
-    BlockElt index; block_modifier bm;
-    auto& block = lookup(zi,index, bm);
+    std::set<unsigned long> visited;
+    auto visit = [&](auto&& self, unsigned long h) -> void {
+      if (pool[h].has_twdef_contrib() || !visited.insert(h).second)
+        return;
+      for (const auto& edge : graph.at(h))
+        self(self,edge.first);
+      order.push_back(h);
+    };
+    visit(visit,root);
+  }
+  else
+    order = expanded;
 
-#ifndef NDEBUG
+  std::map<unsigned long,long long> weights {{root,1}};
+  std::map<K_type_nr,long long> coefficients;
+  for (auto h=order.rbegin(); h!=order.rend(); ++h)
+  {
+    const auto& children = graph.at(*h);
+    if (*h != root && !children.empty())
+      ++nested;
+    for (const auto& edge : children)
     {
-      auto rep = block.representative(index);
-      shift(bm.shift,rep);
-      transform<false>(bm.w,rep);
-      assert(rep==StandardReprMod::mod_reduce(*this,zi));
+      const auto child = edge.first;
+      const auto weight = multiply(weights[*h],edge.second);
+      for (const auto& term : pool[child].LKTs_at_minus_1())
+        add(coefficients[term.first],multiply(weight,term.second));
+      if (pool[child].has_twdef_contrib())
+        for (const auto& term : pool[child].twisted_deformation_contribution())
+          add(coefficients[term.first],multiply(multiply(2,weight),term.second));
+      else
+        add(weights[child],multiply(2,weight));
     }
-#endif
-    auto& eblock = block.extended_block(bm,&poly_hash);
+  }
 
-    for (auto&& term :
-	   twisted_deformation_terms(block,eblock,index,bm,zi.gamma()))
-    {
-      bool flip_def=p.second; // initialise to flip from scaling |z| by |rp[i]|
-      const auto& def =
-	twisted_deformation(term.first,flip_def); // recursion
-      if (flip_def) term.second = -term.second;
-      P.add_multiple(def.LKTs_at_minus_1(),term.second);
-      P.add_multiple(def.twisted_deformation_contribution(),2*term.second);
-    }
-  } // |for(i)|
-
-  pool[h].set_twisted_contribution(std::move(P));
-  return pool[h];
+  KT_nr_pol result { std::less<K_type_nr>() };
+  for (const auto& term : coefficients)
+  {
+    if (term.second < std::numeric_limits<int>::min() ||
+        term.second > std::numeric_limits<int>::max())
+      throw std::overflow_error("twisted coefficient exceeds Atlas int range");
+    if (term.second != 0)
+      result.add_term(term.first,static_cast<int>(term.second));
+  }
+  pool[root].set_twisted_contribution(std::move(result));
+  if (profile)
+  {
+    profile->accumulation += Clock::now() - accumulation_start;
+    ++profile->roots;
+    profile->expansions += expanded.size();
+    for (const auto h : expanded)
+      profile->states.emplace(this,h);
+  }
+  if (mode == Mode::verbose)
+    std::cerr << "TWISTED_SCALAR nodes=" << graph.size() << " edges=" << edges
+            << " negative=" << negative << " shared=" << shared
+            << " nested=" << nested << '\n';
+  return pool[root];
 
 } // |Rep_table::twisted_deformation (StandardRepr z)|
 
