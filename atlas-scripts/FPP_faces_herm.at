@@ -3332,6 +3332,16 @@ set alt_u_flag = true
 set alt_u_min_mult = rat: 64
 set alt_u_count = int: 0
 
+{u_after_to_ht_flag (Nov 23 2026): in the full-question race, try is_unitary once the to_ht tests on p have
+ cost u_after_to_ht_mult*u_time in all. The per-step comparison u_time <= tuf(p)*to_ht_time can
+ climb a long ladder of cheap positive to_ht tests: Spin(6,7) spent 467 s in 3160 such steps on 188
+ Params whose predicted is_unitary averaged 1.2 s.
+ Whole FPP_unitary_hash_bottom_layer runs, same answers in every case: Spin(6,7) 1153 -> 497 s,
+ Spin(6,8) 2061 -> 1655 s, E7_s 6574 -> 6559 s at mult 1/4.  mult 0 (is_unitary first) costs
+ E7_s 18%: at x_open the to_ht ladder is the cheaper path.}
+set u_after_to_ht_flag = true
+set u_after_to_ht_mult = rat: 1/4
+set u_after_to_ht_count = int: 0
 set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
   if skip_routing(p.real_form) then return is_unitary_hash_big_SIMPLE(p) fi;
   {if old_test_interrupt_flag then return is_unitary_test_big_SIMPLE_interrupt_old(p,step) fi;}
@@ -3353,7 +3363,7 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
   then () = if ht < 0 {p is finite-dimensional; we're in FPP, so 1-diml}
        	    then return true
 	    fi
-  then old_ht = ht, u_count = 0, to_ht_count=0
+  then old_ht = ht, u_count = 0, to_ht_count=0, ht_spent = 0
   then top_ht = GAM
        {floor((p.infinitesimal_character)*G.two_rho_check)}
        {unitary to top_ht implies unitary}
@@ -3377,10 +3387,12 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
 	    	        ", u_time = ", print_time_string(u_time))
 	    fi
   then () = while result = 0
-       	    do if{A} u_time <= tuf(p)*to_ht_time
-	       then u_count+:=1;
+       	    do let u_due = u_after_to_ht_flag and ht_spent >= u_after_to_ht_mult*u_time
+	    in if{A} u_time <= tuf(p)*to_ht_time or u_due
+	       then u_count+:=1; if u_due then u_after_to_ht_count +:= 1 fi;
 	       	    let start_u = elapsed_ms()
-	       	    then () = result := race_u(1,ht,u_time,to_ht_time,test_time,p,u_budget(p,u_time,to_ht_time))
+	       	    then () = result := race_u(1,ht,u_time,to_ht_time,test_time,p,
+			      if u_due then floor(u_factor*u_time) else u_budget(p,u_time,to_ht_time) fi)
 		    in test_time:= elapsed_ms() - start_u;
 		       if print_int_flag
 		       then prints("result ",result," from is_unitary, in time ",
@@ -3403,6 +3415,7 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
 			fi;
 		     	result := race_h(1,ht,u_time,to_ht_time,p,floor(to_ht_factor*to_ht_time));
 	       	    	test_time:=elapsed_ms() - start_to_ht;
+			ht_spent +:= test_time;
 	       		if print_int_flag
 	       	       	then prints("result ", result, " from to_ht ",ht,", in time ",
 			      	   print_time_string(test_time),
