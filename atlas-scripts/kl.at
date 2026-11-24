@@ -939,11 +939,10 @@ set reducibility_walls(Param p) = [int]:
           fi
        od.##
 
-{next two never try not to_ht}
 set character_formula_to_height(Param p, int HT) = ParamPol:
     if #reducibility_walls(p) = 0
     then height_split(null_module(p.real_form) + p,HT).fst
-    else s_to_1(KL_sum_at_s_to_height(p,HT))
+    else s_to_1(KL_sum_at_s_to_ht_new(HT)(p))
     fi
 
 set character_formula_to_height (ParamPol P, int HT) = ParamPol:
