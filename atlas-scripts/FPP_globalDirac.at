@@ -198,9 +198,13 @@ set adjust_frac_rank8 = rat: 1/6
 set adjust_frac_for(RealForm G) = rat:
     if semisimple_rank(G) >= 8 then adjust_frac_rank8 else adjust_frac fi
 
-{if more_KGB_frac_flag and x between these fractions of KGB, use more}
-set start_more_KGB_frac = rat: 4/5
-set end_more_KGB_frac = rat: 49/50
+{in rank >= bl_more_min_rank, use more_shift(most_more(G)) for x of length >= more_min_length.
+ Nov 2026 Utah replays of E8_s run1 tasks (66 tasks, same output in every arm), change in task time
+ against the old gate (more on for 4/5 < x/#KGB < 49/50): more on from length 26-27: -0.3%;
+ 28: -4%; 29-31: -9%; 32-33: -11%; 34-35: -6%; 36-39: -1%; more off above 4/5 (lengths 39-51):
+ +1%, noise (the more step was called in 2 of 17 tasks there).  Length 28 is x/#KGB ~0.46 in
+ E8_s, about half the largest length (57).  Not measured in E8_q.}
+set more_min_length = 28
 
 {if true, use test_bl to decide about bottom_layer}
 set hard_test_flag = false
@@ -256,7 +260,7 @@ set bl_more_min_rank = 8
 
 {returning "true" means bottom layer ought to be used}
 {start messing again 11/5/25. This version  sets more_shift to be zero
-unless x.number >= (KGB_size)*start_more_KGB_frac, and L(x,lambda) is not maximal.}
+unless length(x) >= more_min_length, and L(x,lambda) is not maximal.}
 set hard_test_bl_old(KGBElt x, ratvec lambda) = bool:
     let G = x.real_form
     then rk = G.semisimple_rank
@@ -270,7 +274,7 @@ set hard_test_bl_old(KGBElt x, ratvec lambda) = bool:
        if not test_more_flag then return true fi;
        let start = elapsed_ms(), G=x.real_form,
            N = KGB_size(x.real_form), n = x.number
-       then () = if n < start_more_KGB_frac*N
+       then () = if length(x) < more_min_length
     	       	 then more_shift(0);
 	      	      test_bl_time +:= elapsed_ms() - start;
 	      	      return true
@@ -294,9 +298,7 @@ set easy_test_bl(KGBElt x) = bool:
        then false
        elif bl_KGB_frac_flag and n < frac*N
        then false
-       elif r >= bl_more_min_rank and
-       	    n > start_more_KGB_frac*N and
-       	    n < end_more_KGB_frac*N
+       elif r >= bl_more_min_rank and length(x) >= more_min_length
        then more_shift(most_more(G));
        	    true
        else more_shift(0);
