@@ -8653,6 +8653,8 @@ struct Counts
   Integer wall_points = 0;
   Integer peak_pending = 0;
   Integer merges = 0;
+  Integer centered = 0; // parameters moved to their alcove center
+  Integer pruned = 0; // parameters dropped for height above the bound
 };
 
 class Frontier
@@ -8664,6 +8666,20 @@ class Frontier
   Grade initial_bound{0, 1};
   Integer pending_count = 0;
   Counts counts;
+  int height_bound; // negative: no bound
+
+  // as in |Rep_table::deformation|: if gamma has a large denominator, replace the
+  // parameter by its alcove center, which has the same deformation, the same
+  // |deformation_unit| key and the same compact grade (only nu changes).
+  // Returns whether the parameter was moved.
+  bool center(StandardRepr& parameter)
+  {
+    if (parameter.gamma().denominator() <= (1LL<<table.rank()))
+      return false;
+    parameter = weyl::alcove_center(table,parameter);
+    ++counts.centered;
+    return true;
+  }
 
   Node& enqueue(StandardRepr parameter, Grade grade)
   {
@@ -8726,17 +8742,34 @@ class Frontier
         if (term.second == 0)
           continue;
         ++counts.edges;
-        const auto measure = measures(table, term.first);
-        if (!(grade < measure.compact) || initial_bound < measure.full)
+        if (height_bound >= 0)
+        {
+          // a deformation term is a composition factor of the standard module at
+          // the wall, so its K-types are K-types of |node|: its height cannot drop
+          if (term.first.height() < node.parameter.height())
+            throw std::runtime_error("scalar deformation edge decreases height");
+          if (term.first.height() > height_bound)
+          {
+            ++counts.pruned;
+            continue;
+          }
+        }
+        StandardRepr parameter = term.first;
+        const bool moved = center(parameter);
+        const auto measure = measures(table, parameter);
+        // moving nu to the alcove center changes the full norm, so that part of
+        // the check applies only to parameters that were not moved
+        if (!(grade < measure.compact) || (!moved && initial_bound < measure.full))
           throw std::runtime_error("scalar deformation edge violates the norm order");
-        auto& child = enqueue(term.first, measure.compact);
+        auto& child = enqueue(std::move(parameter), measure.compact);
         child.incoming = add(child.incoming, mul(weight, term.second));
       }
     }
   }
 
 public:
-  explicit Frontier(Rep_table& representation_table) : table(representation_table)
+  explicit Frontier(Rep_table& representation_table, int height_bound = -1)
+    : table(representation_table), height_bound(height_bound)
   {
     const auto& root_datum = table.root_datum();
     if (root_datum.rank() != root_datum.semisimple_rank()
@@ -8755,10 +8788,17 @@ public:
       {
         const auto& final = *it;
         ++counts.seed_finals;
-        const auto measure = measures(table, final.first);
+        if (height_bound >= 0 and final.first.height() > height_bound)
+        {
+          ++counts.pruned;
+          continue;
+        }
+        StandardRepr parameter = final.first;
+        center(parameter);
+        const auto measure = measures(table, parameter);
         if (initial_bound < measure.full)
           initial_bound = measure.full;
-        auto& node = enqueue(final.first, measure.compact);
+        auto& node = enqueue(std::move(parameter), measure.compact);
         node.e = add(node.e, mul(term.second.e(), final.second));
         node.s = add(node.s, mul(term.second.s(), final.second));
       }
@@ -8777,6 +8817,7 @@ public:
       for (const auto& bin : bucket)
         for (const auto& node : bin.second)
         {
+          interpreter::check_interrupt(); // user interrupt, or time limit
           --pending_count;
           ++counts.processed;
           append_base(node);
@@ -8805,7 +8846,8 @@ public:
             atlas_int(counts.edges), atlas_int(counts.processed),
             atlas_int(counts.expanded), atlas_int(counts.canceled),
             atlas_int(counts.wall_points), atlas_int(counts.peak_pending),
-            atlas_int(counts.merges)};
+            atlas_int(counts.merges), atlas_int(counts.centered),
+            atlas_int(counts.pruned)};
   }
 };
 
@@ -8826,6 +8868,56 @@ void phase2_scalar_deform_wrapper(eval_level level)
   push_value(std::make_shared<vector_value>(frontier.stats()));
   if (level == eval_level::single_value)
     wrap_tuple<2>();
+}
+
+// the same, keeping only K-types of height at most |HT| (no bound if |HT<0|)
+void phase2_scalar_deform_to_ht_wrapper(eval_level level)
+{
+  const int HT = get<int_value>()->int_val();
+  const auto terms = get<virtual_module_value>();
+  if (level == eval_level::no_value)
+    return;
+
+  auto& table = terms->rt();
+  phase2_frontier::Frontier frontier(table,HT);
+  frontier.seed(terms->val);
+  const auto result = frontier.run();
+  push_value(std::make_shared<K_type_pol_value>(
+    terms->rf, export_K_type_pol(table, result)));
+  push_value(std::make_shared<vector_value>(frontier.stats()));
+  if (level == eval_level::single_value)
+    wrap_tuple<2>();
+}
+
+// the same with a time limit in milliseconds, as the timed |full_deform|
+void timed_phase2_scalar_deform_to_ht_wrapper(eval_level level)
+{
+  auto period = get<int_value>()->long_val();
+  const int HT = get<int_value>()->int_val();
+  const auto terms = get<virtual_module_value>();
+  if (level == eval_level::no_value)
+    return;
+
+  auto& table = terms->rt();
+  phase2_frontier::Frontier frontier(table,HT);
+  repr::K_type_nr_poly result;
+  set_timer(period);
+  try
+  {
+    frontier.seed(terms->val);
+    result = frontier.run();
+  }
+  catch (const time_out& e)
+  { auto nil = std::make_shared<tuple_value>(0); // the void
+    push_value(std::make_shared<union_value>(0,std::move(nil),
+               main_hash_table->match_literal("timed_out")));
+    return;
+  }
+  clear_timer();
+  auto value = std::make_shared<K_type_pol_value>
+    (terms->rf,export_K_type_pol(table,result));
+  push_value(std::make_shared<union_value>(1,std::move(value),
+             main_hash_table->match_literal("done")));
 }
 
 void full_deform_wrapper(eval_level l)
@@ -9407,6 +9499,8 @@ install_function(twisted_deform_wrapper,@|"twisted_deform" ,"(Param->ParamPol)")
 install_function(block_deform_wrapper,@|"block_deform"
                 ,"(Param,ParamPol,int->ParamPol,ParamPol)");
 install_function(phase2_scalar_deform_wrapper,"phase2_scalar_deform","(ParamPol->KTypePol,vec)");
+install_function(phase2_scalar_deform_to_ht_wrapper,"phase2_scalar_deform_to_ht","(ParamPol,int->KTypePol,vec)");
+install_function(timed_phase2_scalar_deform_to_ht_wrapper,"phase2_scalar_deform_to_ht","(ParamPol,int,int->|KTypePol)");
 install_function(full_deform_wrapper,@|"full_deform","(Param->KTypePol)");
 install_function(twisted_full_deform_wrapper,@|"twisted_full_deform"
                 ,"(Param->KTypePol)");
