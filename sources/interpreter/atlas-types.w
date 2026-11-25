@@ -40,6 +40,8 @@ programming language of that name, which is independent of the Atlas library.
 @s atlas x
 
 @c
+#include <map>
+#include <stdexcept>
 namespace atlas { namespace interpreter {
 @< Global variable definitions @>@;
 namespace {@; @< Local function definitions @>@; }
@@ -8540,6 +8542,292 @@ within the |real_form_value|.
 @s K_type_poly vector
 
 @< Local function def...@>=
+#define PHASE2_SCALAR_MAX_RANK 8
+// Included inside the Atlas interpreter's implementation namespace.
+// Equal-rank, semisimple workstation experiment.
+namespace phase2_frontier {
+
+using Integer = long long;
+
+Integer add(Integer a, Integer b)
+{
+  Integer result;
+  if (__builtin_add_overflow(a, b, &result))
+    throw std::overflow_error("scalar deformation addition overflow");
+  return result;
+}
+
+Integer mul(Integer a, Integer b)
+{
+  Integer result;
+  if (__builtin_mul_overflow(a, b, &result))
+    throw std::overflow_error("scalar deformation multiplication overflow");
+  return result;
+}
+
+int atlas_int(Integer value)
+{
+  if (value < std::numeric_limits<int>::min()
+      || value > std::numeric_limits<int>::max())
+    throw std::overflow_error("scalar deformation exceeds Atlas output width");
+  return static_cast<int>(value);
+}
+
+struct Grade
+{
+  Integer numerator;
+  Integer denominator;
+
+  bool operator<(Grade other) const
+  {
+    return static_cast<__int128>(numerator) * other.denominator
+      < static_cast<__int128>(other.numerator) * denominator;
+  }
+};
+
+struct Measures
+{
+  Grade compact;
+  Grade full;
+};
+
+Measures measures(const Rep_table& table, const StandardRepr& parameter)
+{
+  const auto& root_datum = table.root_datum();
+  const auto& gamma = parameter.gamma();
+  const auto& numerator = gamma.numerator();
+  const auto& theta = table.involution_table().matrix(
+    table.kgb().inv_nr(parameter.x()));
+
+  std::vector<Integer> compact_numerator(table.rank());
+  for (unsigned i = 0; i < table.rank(); ++i)
+  {
+    compact_numerator[i] = numerator[i];
+    for (unsigned j = 0; j < table.rank(); ++j)
+      compact_numerator[i] = add(compact_numerator[i],
+                                  mul(theta(i, j), numerator[j]));
+  }
+
+  Integer compact_norm = 0;
+  Integer full_norm = 0;
+  for (auto root : root_datum.posroot_set())
+  {
+    const auto& coroot = root_datum.coroot(root);
+    Integer compact_eval = 0;
+    Integer full_eval = 0;
+    for (unsigned i = 0; i < table.rank(); ++i)
+    {
+      compact_eval = add(compact_eval, mul(coroot[i], compact_numerator[i]));
+      full_eval = add(full_eval, mul(coroot[i], numerator[i]));
+    }
+    compact_norm = add(compact_norm, mul(compact_eval, compact_eval));
+    full_norm = add(full_norm, mul(full_eval, full_eval));
+  }
+
+  const Integer denominator = gamma.denominator();
+  const Integer square = mul(denominator, denominator);
+  return {{compact_norm, mul(4, square)}, {full_norm, square}};
+}
+
+struct Node
+{
+  StandardRepr parameter;
+  repr::deformation_unit key;
+  Integer e = 0;
+  Integer s = 0;
+  Integer incoming = 0;
+
+  Node(Rep_table& table, StandardRepr representative)
+    : parameter(std::move(representative)), key(table, parameter, false)
+  {}
+};
+
+struct Counts
+{
+  Integer seed_terms = 0;
+  Integer seed_finals = 0;
+  Integer edges = 0;
+  Integer processed = 0;
+  Integer expanded = 0;
+  Integer canceled = 0;
+  Integer wall_points = 0;
+  Integer peak_pending = 0;
+  Integer merges = 0;
+};
+
+class Frontier
+{
+  using Bucket = std::map<size_t, std::vector<Node>>;
+  Rep_table& table;
+  std::map<Grade, Bucket> pending;
+  std::map<repr::K_type_nr, std::pair<Integer, Integer>> final_terms;
+  Grade initial_bound{0, 1};
+  Integer pending_count = 0;
+  Counts counts;
+
+  Node& enqueue(StandardRepr parameter, Grade grade)
+  {
+    Node candidate(table, std::move(parameter));
+    auto& collisions = pending[grade][candidate.key.hashCode(1ul << 24)];
+    for (auto& current : collisions)
+      if (!(current.key != candidate.key))
+      {
+        ++counts.merges;
+        return current;
+      }
+
+    collisions.push_back(std::move(candidate));
+    ++pending_count;
+    counts.peak_pending = std::max(counts.peak_pending, pending_count);
+    return collisions.back();
+  }
+
+  void append_base(const Node& node)
+  {
+    const auto coefficient_e = add(node.e, node.incoming);
+    const auto coefficient_s = add(node.s, mul(-1, node.incoming));
+    if (coefficient_e == 0 && coefficient_s == 0)
+      return;
+
+    for (const auto& term : node.key.LKTs())
+    {
+      auto& out = final_terms[term.first];
+      out.first = add(out.first, mul(coefficient_e, term.second));
+      out.second = add(out.second, mul(coefficient_s, term.second));
+    }
+  }
+
+  void propagate(const Node& node, Grade grade)
+  {
+    const auto weight = add(add(node.e, mul(-1, node.s)),
+                            mul(2, node.incoming));
+    if (weight == 0)
+    {
+      ++counts.canceled;
+      return;
+    }
+    ++counts.expanded;
+
+    const auto wall_points = table.reducibility_points(node.parameter);
+    for (auto wall = wall_points.rbegin(); wall != wall_points.rend(); ++wall)
+    {
+      ++counts.wall_points;
+      auto at_wall = table.scale(node.parameter, *wall);
+      table.deform_readjust(at_wall);
+      if (!table.is_final(at_wall))
+        throw std::runtime_error("scalar deformation wall parameter is not final");
+
+      BlockElt index;
+      repr::block_modifier modifier;
+      auto& block = table.lookup(at_wall, index, modifier);
+      for (const auto& term : table.deformation_terms(
+             block, index, modifier, at_wall.gamma()))
+      {
+        if (term.second == 0)
+          continue;
+        ++counts.edges;
+        const auto measure = measures(table, term.first);
+        if (!(grade < measure.compact) || initial_bound < measure.full)
+          throw std::runtime_error("scalar deformation edge violates the norm order");
+        auto& child = enqueue(term.first, measure.compact);
+        child.incoming = add(child.incoming, mul(weight, term.second));
+      }
+    }
+  }
+
+public:
+  explicit Frontier(Rep_table& representation_table) : table(representation_table)
+  {
+    const auto& root_datum = table.root_datum();
+    if (root_datum.rank() != root_datum.semisimple_rank()
+        || root_datum.rank() > PHASE2_SCALAR_MAX_RANK
+        || table.inner_class().distinguished() != int_Matrix(table.rank()))
+      throw std::runtime_error("scalar deformation requires a semisimple equal-rank fixture within the compiled rank limit");
+  }
+
+  void seed(const SR_poly& input)
+  {
+    for (const auto& term : input)
+    {
+      ++counts.seed_terms;
+      const auto finals = table.finals_for(term.first);
+      for (auto it = finals.begin(); !finals.at_end(it); ++it)
+      {
+        const auto& final = *it;
+        ++counts.seed_finals;
+        const auto measure = measures(table, final.first);
+        if (initial_bound < measure.full)
+          initial_bound = measure.full;
+        auto& node = enqueue(final.first, measure.compact);
+        node.e = add(node.e, mul(term.second.e(), final.second));
+        node.s = add(node.s, mul(term.second.s(), final.second));
+      }
+    }
+  }
+
+  repr::K_type_nr_poly run()
+  {
+    while (!pending.empty())
+    {
+      interpreter::check_interrupt();
+      auto first = pending.begin();
+      const auto grade = first->first;
+      auto bucket = std::move(first->second);
+      pending.erase(first);
+      for (const auto& bin : bucket)
+        for (const auto& node : bin.second)
+        {
+          --pending_count;
+          ++counts.processed;
+          append_base(node);
+          propagate(node, grade);
+        }
+    }
+
+    repr::K_type_nr_poly result;
+    for (const auto& term : final_terms)
+    {
+      const auto e = term.second.first;
+      const auto s = term.second.second;
+      if (e == 0 && s == 0)
+        continue;
+      // Split_integer stores evaluations at +1 and -1 as ints.
+      atlas_int(add(e, s));
+      atlas_int(add(e, mul(-1, s)));
+      result.add_term(term.first, Split_integer(atlas_int(e), atlas_int(s)));
+    }
+    return result;
+  }
+
+  std::vector<int> stats() const
+  {
+    return {atlas_int(counts.seed_terms), atlas_int(counts.seed_finals),
+            atlas_int(counts.edges), atlas_int(counts.processed),
+            atlas_int(counts.expanded), atlas_int(counts.canceled),
+            atlas_int(counts.wall_points), atlas_int(counts.peak_pending),
+            atlas_int(counts.merges)};
+  }
+};
+
+} // namespace phase2_frontier
+
+void phase2_scalar_deform_wrapper(eval_level level)
+{
+  const auto terms = get<virtual_module_value>();
+  if (level == eval_level::no_value)
+    return;
+
+  auto& table = terms->rt();
+  phase2_frontier::Frontier frontier(table);
+  frontier.seed(terms->val);
+  const auto result = frontier.run();
+  push_value(std::make_shared<K_type_pol_value>(
+    terms->rf, export_K_type_pol(table, result)));
+  push_value(std::make_shared<vector_value>(frontier.stats()));
+  if (level == eval_level::single_value)
+    wrap_tuple<2>();
+}
+
 void full_deform_wrapper(eval_level l)
 { shared_module_parameter p = get_own<module_parameter_value>();
   if (l==eval_level::no_value)
@@ -9118,6 +9406,7 @@ install_function(deform_wrapper,@|"deform" ,"(Param->ParamPol)");
 install_function(twisted_deform_wrapper,@|"twisted_deform" ,"(Param->ParamPol)");
 install_function(block_deform_wrapper,@|"block_deform"
                 ,"(Param,ParamPol,int->ParamPol,ParamPol)");
+install_function(phase2_scalar_deform_wrapper,"phase2_scalar_deform","(ParamPol->KTypePol,vec)");
 install_function(full_deform_wrapper,@|"full_deform","(Param->KTypePol)");
 install_function(twisted_full_deform_wrapper,@|"twisted_full_deform"
                 ,"(Param->KTypePol)");
