@@ -5933,22 +5933,38 @@ from the |main| function, so it must be exported.
 
 @< Declarations of exported functions @>=
 void elapsed_wrapper(eval_level l);
+void elapsed_us_wrapper(eval_level l);
 
 @ The function |elapsed_wrapper| provides a timer for the program execution,
 using a static variable of a type |Timer| defined in the utility
 file \.{timer.h}. Since a function-local static variable is initialised (which
 here implies the timer is started) the first time its declaration is executed,
 this function should be called once at program start-up, typically with
-|l==eval_level::no_value|, preferably after initial set up is done.
+|l==eval_level::no_value|, preferably after initial set up is done. The function
+|elapsed_us_wrapper| reads the same timer in microseconds, for timing short
+computations.
 
 @h "timer.h"
 
 @< Global function def... @>=
+const time::Timer& stopwatch()
+{
+  static time::Timer timer;
+  return timer;
+}
+@)
 void elapsed_wrapper(eval_level l)
 {
-  static time::Timer stopwatch;
+  const auto& timer = stopwatch();
   if (l!=eval_level::no_value)
-    push_value(std::make_shared<int_value>(stopwatch.elapsed_ms()));
+    push_value(std::make_shared<int_value>(timer.elapsed_ms()));
+}
+@)
+void elapsed_us_wrapper(eval_level l)
+{
+  const auto& timer = stopwatch();
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<int_value>(timer.elapsed_us()));
 }
 
 @ The function |query| provides a means to obtain an interactive response from
@@ -6031,6 +6047,7 @@ macros that come with the |wait| call to get relevant information from the
 @ And we must install the function
 @< Initialise... @>=
 install_function(elapsed_wrapper,"elapsed_ms","(->int)");
+install_function(elapsed_us_wrapper,"elapsed_us","(->int)");
 install_function(query_wrapper,"query","(string->string)");
 install_function(system_wrapper,"system","(string->|int,string)");
 

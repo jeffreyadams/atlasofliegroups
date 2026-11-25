@@ -31,6 +31,11 @@ public:
     using namespace std::literals::chrono_literals;
     return (std::chrono::steady_clock::now()-start)/1ms;
   }
+  long long int elapsed_us() const // number of microseconds since construction
+  {
+    using namespace std::literals::chrono_literals;
+    return (std::chrono::steady_clock::now()-start)/1us;
+  }
 }; // class |Timer|
 
 } // |namespace time|
