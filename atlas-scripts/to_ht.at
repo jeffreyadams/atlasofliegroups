@@ -134,14 +134,14 @@ set c_form_irreducible_to_ht_verbose (Param p,int HT) = KTypePol:
 {frontier_to_ht_flag: c_form_irreducible_to_ht (equal rank) deforms the whole oriented KL sum to
  height HT in one built-in, phase2_scalar_deform_to_ht (Jeff's frontier, pruned at HT), instead
  of deforming its terms one at a time with stored per-term deformations.  It stores nothing,
- so a later call (for instance at a larger HT) starts again from scratch.  The built-in
- requires a semisimple root datum of rank <= 8.  frontier_to_ht_count counts its calls.}
-set frontier_to_ht_flag = false
+ so a later call (for instance at a larger HT) starts again from scratch.  Only for p with
+ frontier_ok(p) (equal rank, rank <= 16).  frontier_to_ht_count counts its calls.}
+set frontier_to_ht_flag = true
 set frontier_to_ht_count = 0
 
 set c_form_irreducible_to_ht (Param p,int HT) = KTypePol:
   if is_unitary_verbose then return c_form_irreducible_to_ht_verbose(p,HT) fi;
-  if frontier_to_ht_flag and HT >= 0
+  if frontier_to_ht_flag and HT >= 0 and frontier_ok(p)
   then frontier_to_ht_count +:= 1;
        let (F,) = phase2_scalar_deform_to_ht(oriented_KL_sum_to_ht(HT)(p),HT) in return F
   fi;
@@ -163,7 +163,7 @@ set c_form_irreducible_to_ht (Param p,int HT) = KTypePol:
  race's to_ht budget could be overrun by a factor up to the number of terms}
 set c_form_irreducible_to_ht (Param p,int HT, int time) = maybe_KTP:
   if HT < 0 then return c_form_irreducible(p, time) fi;
-  if frontier_to_ht_flag
+  if frontier_to_ht_flag and frontier_ok(p)
   then frontier_to_ht_count +:= 1;
        let expiration = elapsed_ms() + time
        then P = oriented_KL_sum_to_ht(HT)(p)

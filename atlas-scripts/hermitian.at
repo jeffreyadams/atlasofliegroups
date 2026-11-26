@@ -2859,16 +2859,22 @@ set c_form_irreducible_verbose (Param p) = KTypePol:
  in one call of Jeff's frontier built-in (phase2_scalar_deform, or phase2_scalar_deform_to_ht with
  HT = -1 for the timed form), instead of term by term through stored per-term deformations.
  Nothing is stored, so an interrupted attempt is redone from scratch.  The built-in requires a
- semisimple root datum of rank <= 8.  frontier_u_count counts its calls.}
+ root datum of rank <= 16 (frontier_ok).  frontier_u_count counts its calls.}
 set frontier_u_flag = false
 set frontier_u_count = 0
+
+{frontier_ok(p): the frontier built-ins accept p's group (equal rank, rank <= 16);
+ otherwise the frontier flags leave p to the stock code}
+set frontier_ok (Param p) = bool:
+    let rd = p.root_datum
+    in is_equal_rank(p.real_form.inner_class) and rank(rd) <= 16
 
 {frontier_u_min_pred: with frontier_u_flag, use the frontier only for p whose latest u_predictor
  value is at least this many ms; the cheaper ones go the stock way and store their deformations,
  which the frontier then reads.  0: every p.}
 set frontier_u_min_pred = 0
 set use_frontier_u (Param p) = bool:
-    frontier_u_flag and
+    frontier_u_flag and frontier_ok(p) and
     (frontier_u_min_pred = 0 or (last_u_pred >= frontier_u_min_pred and last_u_pred_param = p))
 
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
