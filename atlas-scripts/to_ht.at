@@ -211,12 +211,22 @@ set twisted_c_form_irreducible_contributions_to_ht(Param p,int HT) =
 }
 {.twisted c-invariant form to height HT on an irreducible in terms of
 standardrepKs.}
+{frontier_tw_to_ht_flag: twisted_c_form_irreducible_to_ht (both forms) deforms the whole fixed part
+ to height HT in one call of the twisted frontier built-in phase2_twisted_deform_to_ht, instead of
+ term by term; for rank <= 16.  frontier_tw_to_ht_count counts its calls.}
+set frontier_tw_to_ht_flag = true
+set frontier_tw_to_ht_count = 0
+set use_frontier_tw (Param p) = bool: frontier_tw_to_ht_flag and p.root_datum.rank <= 16
+
 {p must be fixed by standard involution!}
 set twisted_c_form_irreducible_to_ht (Param p,int HT) = KTypePol:
 ( let (fixed,unfixed)=twisted_c_form_irreducible_contributions_to_ht(p,HT)
 { |1+s| divides |unfixed|, no need for |scale_extended|; take half at |nu=0| }
   in
-  if not (herm_report or is_unitary_verbose)
+  if use_frontier_tw(p)
+  then frontier_tw_to_ht_count +:= 1;
+       let (F,) = phase2_twisted_deform_to_ht(fixed,HT) in F + half(unfixed.K_type_pol)
+  elif not (herm_report or is_unitary_verbose)
   then if back_form_ht_flag
        then back_map(twisted_c_form_std_to_ht(HT),fixed)+half(unfixed.K_type_pol)
        else chat_map(twisted_c_form_std_to_ht(HT),fixed,HT)+half(unfixed.K_type_pol)
@@ -240,7 +250,10 @@ set twisted_c_form_irreducible_to_ht (Param p,int HT, int time) = maybe_KTP:
   !empty_K = null_K_module(p.real_form), flag = true
 { |1+s| divides |unfixed|, no need for |scale_extended|; take half at |nu=0| }
 {fixed has the role of P in c_form_irreducible_to_ht_MvL}
-   then Q = if back_form_ht_flag
+   then Q = if use_frontier_tw(p)
+   	    then frontier_tw_to_ht_count +:= 1;
+	    	 phase2_twisted_deform_to_ht(fixed,HT,max(start + time - elapsed_ms(),1))
+	    elif back_form_ht_flag
        	    then back_map(twisted_c_form_std_to_ht_MvL(HT,time),fixed)
        	    else chat_map(twisted_c_form_std_to_ht_MvL(HT,time),fixed,HT)
 	    fi
