@@ -694,6 +694,14 @@ class Rep_table : public Rep_context
   // the stored full deformation of the alcove of |key|; |nullptr| if not computed
   const deformation_unit* stored_deformation(const deformation_unit& key) const;
   unsigned int K_type_height(K_type_nr i) const { return K_type_pool[i].height(); }
+  // the stored twisted deformation of the alcove of |key|, |nullptr| if none;
+  // |flip| tells whether the default extension of |z| (in that alcove) differs
+  // from that of the stored sample, as in |twisted_deformation|
+  const deformation_unit* stored_twisted_deformation
+    (const deformation_unit& key, const StandardRepr& z, bool& flip);
+  // whether the default extension of |z| differs from that of |sample|, both
+  // delta-fixed and in the same alcove
+  bool extension_flip(const StandardRepr& z, const StandardRepr& sample);
   K_type_nr_poly full_deformation(StandardRepr& z);
 
   // like |deformation_terms|; caller multiplies returned coefficients by $1-s$

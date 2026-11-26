@@ -2557,6 +2557,23 @@ const deformation_unit*
   return h!=alcove_hash.empty and pool[h].has_def_contrib() ? &pool[h] : nullptr;
 }
 
+bool Rep_table::extension_flip(const StandardRepr& z, const StandardRepr& sample)
+{
+  Ext_rep_context ctxt(*this,inner_class().distinguished());
+  auto E = ext_block::shifted_default_extension(ctxt,z,sample.gamma());
+  return not ext_block::is_default(E);
+}
+
+const deformation_unit* Rep_table::stored_twisted_deformation
+  (const deformation_unit& key, const StandardRepr& z, bool& flip)
+{
+  auto h=alcove_hash.find(key);
+  if (h==alcove_hash.empty or not pool[h].has_twdef_contrib())
+    return nullptr;
+  flip = extension_flip(z,pool[h].sample);
+  return &pool[h];
+}
+
 K_type_nr_poly Rep_table::full_deformation(StandardRepr& z)
 // that |z| is dominant and final is a precondition assured in the recursion
 // for more general |z|, do the preconditioning outside the recursion

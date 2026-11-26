@@ -8656,6 +8656,7 @@ struct Counts
   Integer centered = 0; // parameters moved to their alcove center
   Integer pruned = 0; // parameters dropped for height above the bound
   Integer stored = 0; // nodes whose full deformation the table had stored
+  Integer flips = 0; // twisted: merges and stored hits with extension flip
 };
 
 class Frontier
@@ -8875,6 +8876,254 @@ public:
   }
 };
 
+// The twisted (delta-fixed) analogue, for any inner class: the frontier form of
+// |Rep_table::twisted_full_deformation|.  For a delta-fixed final |z| that is
+// the sample of its alcove, with $L$ its lowest K-types, $L_-$ their extended
+// version at $s=-1$, and $T(z)=L_-(z)+2D(z)$, the library computes
+// $((1+s)L(z)+(1-s)T(z))/2$, where $D(z)=\sum a\epsilon T(z')$ over the twisted
+// deformation terms $a z'$ of $z$ at its walls, $\epsilon=\pm1$ the extension
+// flip of $z'$.  A node keeps $U$, the sum of its seed coefficients (for the
+// untwisted half), and |t2|, twice the coefficient of $(1-s)T$; everything
+// is accumulated doubled and halved at the end.  Signs: a parameter merged into
+// a node whose sample has a different default extension enters with sign -1.
+class Twisted_frontier
+{
+  struct Node
+  {
+    StandardRepr parameter; // sample of the alcove for this frontier
+    repr::deformation_unit key;
+    Integer ue = 0, us = 0; // seed coefficient (split integer)
+    Integer t2 = 0;
+    Node(Rep_table& table, StandardRepr representative)
+      : parameter(std::move(representative)), key(table, parameter, false)
+    {}
+  };
+  using Bucket = std::map<size_t, std::vector<Node>>;
+  Rep_table& table;
+  const WeightInvolution& delta;
+  std::map<Grade, Bucket> pending;
+  std::map<repr::K_type_nr, std::pair<Integer, Integer>> final_terms; // doubled
+  Integer pending_count = 0;
+  Counts counts;
+  int height_bound; // negative: no bound
+
+  bool center(StandardRepr& parameter)
+  {
+    if (parameter.gamma().denominator() <= (1LL<<14))
+      return false;
+    parameter = weyl::alcove_center(table,parameter);
+    ++counts.centered;
+    return true;
+  }
+
+  // the node for |parameter|, and whether |parameter| enters it with sign -1
+  std::pair<Node*,bool> enqueue(StandardRepr parameter, Grade grade)
+  {
+    Node candidate(table, std::move(parameter));
+    auto& collisions = pending[grade][candidate.key.hashCode(1ul << 24)];
+    for (auto& current : collisions)
+      if (!(current.key != candidate.key))
+      {
+        ++counts.merges;
+        const bool flip =
+          table.extension_flip(candidate.parameter,current.parameter);
+        if (flip)
+          ++counts.flips;
+        return { &current, flip };
+      }
+    collisions.push_back(std::move(candidate));
+    ++pending_count;
+    counts.peak_pending = std::max(counts.peak_pending, pending_count);
+    return { &collisions.back(), false };
+  }
+
+  bool too_high(repr::K_type_nr k) const
+  { return height_bound >= 0 and table.K_type_height(k) > height_bound; }
+
+  // add |c*(1-s)| times |P| (doubled accumulation)
+  void add_one_minus_s(const repr::KT_nr_pol& P, Integer c)
+  {
+    for (const auto& term : P)
+      if (not too_high(term.first))
+      {
+        auto& out = final_terms[term.first];
+        const auto v = mul(c, term.second);
+        out.first = add(out.first, v);
+        out.second = add(out.second, mul(-1, v));
+      }
+  }
+
+  void process(const Node& node, Grade grade)
+  {
+    { // the untwisted half: $U(1+s)L$, doubled
+      const auto u = add(node.ue, node.us);
+      if (u != 0)
+        for (const auto& term : node.key.LKTs())
+          if (not too_high(term.first))
+          {
+            auto& out = final_terms[term.first];
+            const auto v = mul(u, term.second);
+            out.first = add(out.first, v);
+            out.second = add(out.second, v);
+          }
+    }
+    if (node.t2 == 0)
+    {
+      ++counts.canceled;
+      return;
+    }
+
+    bool flip = false;
+    if (const auto* stored =
+          table.stored_twisted_deformation(node.key, node.parameter, flip))
+    {
+      ++counts.stored;
+      if (flip)
+        ++counts.flips;
+      const Integer c = flip ? mul(-1, node.t2) : node.t2;
+      add_one_minus_s(stored->LKTs_at_minus_1(), c);
+      add_one_minus_s(stored->twisted_deformation_contribution(), mul(2, c));
+      return;
+    }
+    ++counts.expanded;
+
+    { // $(1-s)t_2L_-$
+      repr::KT_nr_pol L_minus;
+      for (auto&& term :
+             ext_block::extended_restrict_to_K(table, node.parameter, delta))
+        L_minus.add_term(table.match(std::move(term.first)),
+                         term.second.s_to_minus_1());
+      add_one_minus_s(L_minus, node.t2);
+    }
+
+    const auto wall_points = table.reducibility_points(node.parameter);
+    for (auto wall = wall_points.rbegin(); wall != wall_points.rend(); ++wall)
+    {
+      ++counts.wall_points;
+      auto scaled = ext_block::scaled_extended_finalise
+        (table, node.parameter, delta, *wall);
+      StandardRepr at_wall = std::move(scaled.first);
+      BlockElt index;
+      repr::block_modifier modifier;
+      auto& block = table.lookup(at_wall, index, modifier);
+      auto& eblock = block.extended_block(modifier, table.shared_poly_table());
+      for (auto&& term : table.twisted_deformation_terms
+             (block, eblock, index, modifier, at_wall.gamma()))
+      {
+        if (term.second == 0)
+          continue;
+        ++counts.edges;
+        if (height_bound >= 0)
+        {
+          if (term.first.height() < node.parameter.height())
+            throw std::runtime_error("twisted deformation edge decreases height");
+          if (term.first.height() > height_bound)
+          {
+            ++counts.pruned;
+            continue;
+          }
+        }
+        StandardRepr parameter = std::move(term.first);
+        center(parameter);
+        const auto measure = measures(table, parameter);
+        if (!(grade < measure.compact))
+          throw std::runtime_error("twisted deformation edge violates the norm order");
+        auto child = enqueue(std::move(parameter), measure.compact);
+        const bool negative = scaled.second != child.second;
+        const auto v = mul(mul(2, term.second), node.t2);
+        child.first->t2 = add(child.first->t2, negative ? mul(-1, v) : v);
+      }
+    }
+  }
+
+public:
+  Twisted_frontier(Rep_table& representation_table, int height_bound = -1)
+    : table(representation_table)
+    , delta(representation_table.inner_class().distinguished())
+    , height_bound(height_bound)
+  {
+    if (table.root_datum().rank() > PHASE2_SCALAR_MAX_RANK)
+      throw std::runtime_error("twisted scalar deformation requires rank within the compiled limit");
+  }
+
+  // |input|: delta-fixed parameters, as the fixed part of a twisted c-form
+  void seed(const SR_poly& input)
+  {
+    for (const auto& term : input)
+    {
+      ++counts.seed_terms;
+      if (not table.is_delta_fixed(term.first))
+        throw std::runtime_error("twisted scalar deformation: parameter not delta-fixed");
+      for (auto&& final : ext_block::extended_finalise(table, term.first, delta))
+      {
+        ++counts.seed_finals;
+        if (height_bound >= 0 and final.first.height() > height_bound)
+        {
+          ++counts.pruned;
+          continue;
+        }
+        Integer ce = term.second.e(), cs = term.second.s();
+        if (final.second) // the extended parameter carries a factor $s$
+          std::swap(ce, cs);
+        StandardRepr parameter = std::move(final.first);
+        center(parameter);
+        const auto measure = measures(table, parameter);
+        auto node = enqueue(std::move(parameter), measure.compact);
+        node.first->ue = add(node.first->ue, ce);
+        node.first->us = add(node.first->us, cs);
+        const auto w = add(ce, mul(-1, cs));
+        node.first->t2 = add(node.first->t2, node.second ? mul(-1, w) : w);
+      }
+    }
+  }
+
+  repr::K_type_nr_poly run()
+  {
+    while (!pending.empty())
+    {
+      interpreter::check_interrupt();
+      auto first = pending.begin();
+      const auto grade = first->first;
+      auto bucket = std::move(first->second);
+      pending.erase(first);
+      for (const auto& bin : bucket)
+        for (const auto& node : bin.second)
+        {
+          interpreter::check_interrupt(); // user interrupt, or time limit
+          --pending_count;
+          ++counts.processed;
+          process(node, grade);
+        }
+    }
+
+    repr::K_type_nr_poly result;
+    for (const auto& term : final_terms)
+    {
+      const auto e = term.second.first;
+      const auto s = term.second.second;
+      if (e == 0 && s == 0)
+        continue;
+      if (e % 2 != 0 or s % 2 != 0)
+        throw std::runtime_error("twisted scalar deformation: odd doubled coefficient");
+      atlas_int(add(e/2, s/2));
+      atlas_int(add(e/2, mul(-1, s/2)));
+      result.add_term(term.first, Split_integer(atlas_int(e/2), atlas_int(s/2)));
+    }
+    return result;
+  }
+
+  std::vector<int> stats() const
+  {
+    return {atlas_int(counts.seed_terms), atlas_int(counts.seed_finals),
+            atlas_int(counts.edges), atlas_int(counts.processed),
+            atlas_int(counts.expanded), atlas_int(counts.canceled),
+            atlas_int(counts.wall_points), atlas_int(counts.peak_pending),
+            atlas_int(counts.merges), atlas_int(counts.centered),
+            atlas_int(counts.pruned), atlas_int(counts.stored),
+            atlas_int(counts.flips)};
+  }
+};
+
 } // namespace phase2_frontier
 
 void phase2_scalar_deform_wrapper(eval_level level)
@@ -8911,6 +9160,57 @@ void phase2_scalar_deform_to_ht_wrapper(eval_level level)
   push_value(std::make_shared<vector_value>(frontier.stats()));
   if (level == eval_level::single_value)
     wrap_tuple<2>();
+}
+
+// twisted analogue: |terms| are delta-fixed (the fixed part of a twisted
+// c-form); the result is the sum of their twisted full deformations, keeping
+// only K-types of height at most |HT| (no bound if |HT<0|)
+void phase2_twisted_deform_to_ht_wrapper(eval_level level)
+{
+  const int HT = get<int_value>()->int_val();
+  const auto terms = get<virtual_module_value>();
+  if (level == eval_level::no_value)
+    return;
+
+  auto& table = terms->rt();
+  phase2_frontier::Twisted_frontier frontier(table,HT);
+  frontier.seed(terms->val);
+  const auto result = frontier.run();
+  push_value(std::make_shared<K_type_pol_value>(
+    terms->rf, export_K_type_pol(table, result)));
+  push_value(std::make_shared<vector_value>(frontier.stats()));
+  if (level == eval_level::single_value)
+    wrap_tuple<2>();
+}
+
+void timed_phase2_twisted_deform_to_ht_wrapper(eval_level level)
+{
+  auto period = get<int_value>()->long_val();
+  const int HT = get<int_value>()->int_val();
+  const auto terms = get<virtual_module_value>();
+  if (level == eval_level::no_value)
+    return;
+
+  auto& table = terms->rt();
+  phase2_frontier::Twisted_frontier frontier(table,HT);
+  repr::K_type_nr_poly result;
+  set_timer(period);
+  try
+  {
+    frontier.seed(terms->val);
+    result = frontier.run();
+  }
+  catch (const time_out& e)
+  { auto nil = std::make_shared<tuple_value>(0); // the void
+    push_value(std::make_shared<union_value>(0,std::move(nil),
+               main_hash_table->match_literal("timed_out")));
+    return;
+  }
+  clear_timer();
+  auto value = std::make_shared<K_type_pol_value>
+    (terms->rf,export_K_type_pol(table,result));
+  push_value(std::make_shared<union_value>(1,std::move(value),
+             main_hash_table->match_literal("done")));
 }
 
 // the same with a time limit in milliseconds, as the timed |full_deform|
@@ -9525,6 +9825,8 @@ install_function(block_deform_wrapper,@|"block_deform"
 install_function(phase2_scalar_deform_wrapper,"phase2_scalar_deform","(ParamPol->KTypePol,vec)");
 install_function(phase2_scalar_deform_to_ht_wrapper,"phase2_scalar_deform_to_ht","(ParamPol,int->KTypePol,vec)");
 install_function(timed_phase2_scalar_deform_to_ht_wrapper,"phase2_scalar_deform_to_ht","(ParamPol,int,int->|KTypePol)");
+install_function(phase2_twisted_deform_to_ht_wrapper,"phase2_twisted_deform_to_ht","(ParamPol,int->KTypePol,vec)");
+install_function(timed_phase2_twisted_deform_to_ht_wrapper,"phase2_twisted_deform_to_ht","(ParamPol,int,int->|KTypePol)");
 install_function(full_deform_wrapper,@|"full_deform","(Param->KTypePol)");
 install_function(twisted_full_deform_wrapper,@|"twisted_full_deform"
                 ,"(Param->KTypePol)");
