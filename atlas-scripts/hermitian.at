@@ -2435,7 +2435,7 @@ set u_head(Param p, int time) = int:
        pred
 
 {predicted time in milliseconds to complete is_unitary(p)}
-set u_predictor(Param p, int time) = int:
+set u_predictor_calc(Param p, int time) = int:
     if u_predictor_old_flag then return u_predictor_old(p,time) fi;
     if not predictor_flag
     then return max(worst_so_far_u(p),interrupt_base_time\4) {change \10 to \5 4/5/26 remove 4/17/26}
@@ -2538,6 +2538,12 @@ set u_predictor(Param p, int time) = int:
 	if pred_log_flag then prints("UPREDLOG ",p.root_datum.rank," ",p," N=",N," un=",un," unk=",
 	   sum(for j in unknown_indices do pred_list[j] od)," pred=",pred) fi;
        	pred
+
+{the latest prediction, for the frontier_u gate in c_form_irreducible}
+set last_u_pred_param = trivial(GL(1,R))
+set last_u_pred = 0
+set u_predictor(Param p, int time) = int:
+    let r = u_predictor_calc(p,time) in last_u_pred_param := p; last_u_pred := r; r
 
 set u_predictor(Param p) = int:
     u_predictor(p,ceil(uIBT_factor*interrupt_base_time)) {change 5 to 10 4/7/26; 20 4/9; 2 4/18}
@@ -2849,9 +2855,33 @@ set c_form_irreducible_verbose (Param p) = KTypePol:
        chat_map(f, oriented_KL_sum, -1)
 
 
+{frontier_u_flag: c_form_irreducible (equal rank, both forms) deforms the whole oriented KL sum
+ in one call of Jeff's frontier built-in (phase2_scalar_deform, or phase2_scalar_deform_to_ht with
+ HT = -1 for the timed form), instead of term by term through stored per-term deformations.
+ Nothing is stored, so an interrupted attempt is redone from scratch.  The built-in requires a
+ semisimple root datum of rank <= 8.  frontier_u_count counts its calls.}
+set frontier_u_flag = false
+set frontier_u_count = 0
+
+{frontier_u_min_pred: with frontier_u_flag, use the frontier only for p whose latest u_predictor
+ value is at least this many ms; the cheaper ones go the stock way and store their deformations,
+ which the frontier then reads.  0: every p.}
+set frontier_u_min_pred = 0
+set use_frontier_u (Param p) = bool:
+    frontier_u_flag and
+    (frontier_u_min_pred = 0 or (last_u_pred >= frontier_u_min_pred and last_u_pred_param = p))
+
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
 {.c-invariant form on irreducible module of p as KTypePol }
 set c_form_irreducible (Param p) = KTypePol:
+    if use_frontier_u(p)
+    then frontier_u_count +:= 1;
+    	 let ori_nr_p = orientation_nr(p)
+	 then P = ParamPol: null_module(p) +
+	      for c@q in KL_sum_at_s(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
+	 then (F,) = phase2_scalar_deform(P)
+	 in return F
+    fi;
     if is_unitary_verbose
     then c_form_irreducible_verbose(p)
     else let ori_nr_p = orientation_nr(p)
@@ -3296,6 +3326,13 @@ set chat_map ((Param->maybe_KTP) F, ParamPol P, int HT) = maybe_KTP:
 { guaranteed to deform at least one term}
 {finishes without interruption if all terms already deformed}
 set c_form_irreducible (Param p,int time) = maybe_KTP:
+   if use_frontier_u(p)
+   then frontier_u_count +:= 1;
+   	let expiration = elapsed_ms() + time, ori_nr_p = orientation_nr(p)
+	then P = ParamPol: null_module(p) +
+	     for c@q in KL_sum_at_s(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
+	in return phase2_scalar_deform_to_ht(P,-1,max(expiration - elapsed_ms(),1))
+   fi;
    let ori_nr_p = orientation_nr(p), expiration = elapsed_ms() + time, dummy = [K_type_pol(p).done]
    then oriented_KL_sum = ParamPol: null_module(p) +
       for c@q in KL_sum_at_s(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
