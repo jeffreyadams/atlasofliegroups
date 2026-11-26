@@ -8655,6 +8655,7 @@ struct Counts
   Integer merges = 0;
   Integer centered = 0; // parameters moved to their alcove center
   Integer pruned = 0; // parameters dropped for height above the bound
+  Integer stored = 0; // nodes whose full deformation the table had stored
 };
 
 class Frontier
@@ -8722,6 +8723,24 @@ class Frontier
       ++counts.canceled;
       return;
     }
+
+    // if the table has stored the full deformation of this node (computed by the
+    // library |deformation|), add |weight| times its contribution and stop here
+    if (const auto* stored = table.stored_deformation(node.key))
+    {
+      ++counts.stored;
+      for (const auto& term : stored->deformation_contribution())
+      {
+        if (height_bound >= 0 and table.K_type_height(term.first) > height_bound)
+          continue;
+        auto& out = final_terms[term.first];
+        const auto c = mul(weight, term.second);
+        out.first = add(out.first, c);
+        out.second = add(out.second, mul(-1, c));
+      }
+      return;
+    }
+
     ++counts.expanded;
 
     const auto wall_points = table.reducibility_points(node.parameter);
@@ -8847,7 +8866,7 @@ public:
             atlas_int(counts.expanded), atlas_int(counts.canceled),
             atlas_int(counts.wall_points), atlas_int(counts.peak_pending),
             atlas_int(counts.merges), atlas_int(counts.centered),
-            atlas_int(counts.pruned)};
+            atlas_int(counts.pruned), atlas_int(counts.stored)};
   }
 };
 

@@ -2550,6 +2550,13 @@ bool Rep_table::has_deformation(const StandardRepr& z)
   return h!=alcove_hash.empty and pool[h].has_def_contrib();
 }
 
+const deformation_unit*
+  Rep_table::stored_deformation(const deformation_unit& key) const
+{
+  auto h=alcove_hash.find(key);
+  return h!=alcove_hash.empty and pool[h].has_def_contrib() ? &pool[h] : nullptr;
+}
+
 K_type_nr_poly Rep_table::full_deformation(StandardRepr& z)
 // that |z| is dominant and final is a precondition assured in the recursion
 // for more general |z|, do the preconditioning outside the recursion

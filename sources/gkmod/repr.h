@@ -691,6 +691,9 @@ class Rep_table : public Rep_context
   const deformation_unit& // warning: transient reference (into |pool| vector)
     deformation(StandardRepr& z);
   bool has_deformation(const StandardRepr& z);
+  // the stored full deformation of the alcove of |key|; |nullptr| if not computed
+  const deformation_unit* stored_deformation(const deformation_unit& key) const;
+  unsigned int K_type_height(K_type_nr i) const { return K_type_pool[i].height(); }
   K_type_nr_poly full_deformation(StandardRepr& z);
 
   // like |deformation_terms|; caller multiplies returned coefficients by $1-s$
