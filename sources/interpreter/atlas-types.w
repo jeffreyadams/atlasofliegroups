@@ -8542,7 +8542,7 @@ within the |real_form_value|.
 @s K_type_poly vector
 
 @< Local function def...@>=
-#define PHASE2_SCALAR_MAX_RANK 8
+#define PHASE2_SCALAR_MAX_RANK 16
 // Included inside the Atlas interpreter's implementation namespace.
 // Equal-rank, semisimple workstation experiment.
 namespace phase2_frontier {
@@ -8672,10 +8672,14 @@ class Frontier
   // as in |Rep_table::deformation|: if gamma has a large denominator, replace the
   // parameter by its alcove center, which has the same deformation, the same
   // |deformation_unit| key and the same compact grade (only nu changes).
+  // The threshold is fixed, not 2^rank as in the library: an alcove center has
+  // denominator at most about 30(r+1)^2 (r the semisimple rank), below 2^14 for
+  // r <= 16, so centered parameters are never centered again, and denominators up
+  // to 2^14 keep the norms in |measures| far from 64-bit overflow.
   // Returns whether the parameter was moved.
   bool center(StandardRepr& parameter)
   {
-    if (parameter.gamma().denominator() <= (1LL<<table.rank()))
+    if (parameter.gamma().denominator() <= (1LL<<14))
       return false;
     parameter = weyl::alcove_center(table,parameter);
     ++counts.centered;
@@ -8791,10 +8795,11 @@ public:
     : table(representation_table), height_bound(height_bound)
   {
     const auto& root_datum = table.root_datum();
-    if (root_datum.rank() != root_datum.semisimple_rank()
-        || root_datum.rank() > PHASE2_SCALAR_MAX_RANK
+    // a center is allowed: the compact grade still increases strictly along
+    // deformation edges (David Vogan, Nov 2026)
+    if (root_datum.rank() > PHASE2_SCALAR_MAX_RANK
         || table.inner_class().distinguished() != int_Matrix(table.rank()))
-      throw std::runtime_error("scalar deformation requires a semisimple equal-rank fixture within the compiled rank limit");
+      throw std::runtime_error("scalar deformation requires an equal-rank inner class within the compiled rank limit");
   }
 
   void seed(const SR_poly& input)
