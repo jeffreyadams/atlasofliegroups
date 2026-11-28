@@ -179,7 +179,10 @@ set FPP_def_adjust(KGBElt x) = void:
        {prints("At x = ",x,", FPP_def_flag = ",FPP_def_flag)}
 
 {if x is greater than this fraction of KGB, then turn on predictor_flag}
-set adjust_frac = rat:  2/3
+set adjust_frac = rat:  1/2
+{1/2 from 27 Nov 2026 (was 2/3), with th_ratio_flag (hermitian.at) on and the frontier: full E7_s,
+ four concurrent arms: 2/3 6365 s, 1/2 6309 s, 1/3 6312 s, 1/4 6341 s.  Earlier starts cut is_unitary
+ time (517 -> 427 s) but predictor sampling grows (168 -> 212 s).  Tested on E7_s only.}
 {was 0 since 6/4/26} {0/1} {2/3} {3/2} {5/6}
 {turn predictor by default back ON 2/18/26. Needs OFF for steve? done 2/19/26}
 {on is a problem in E8_q from 45000 to 50000?; so change default to 5/6 2/19/26}

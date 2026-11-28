@@ -3319,7 +3319,9 @@ set race_h(int site, int ht, int u_time, int to_ht_time, Param p, int budget) = 
     let s = slow_status(p,ht,max(u_time,to_ht_time))
     in if s != 0 then race_log_add(p, [site,1,ht,u_time,to_ht_time,0,0,s]); return s fi;
     let t = elapsed_ms() then r = is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,budget)
-    in race_log_add(p, [site,1,ht,u_time,to_ht_time,budget,elapsed_ms()-t,r]); r
+    then T = elapsed_ms()-t
+    in race_log_add(p, [site,1,ht,u_time,to_ht_time,budget,T,r]);
+       if r != 0 then th_ratio_record(p,to_ht_time,T) fi; r
 
 {alt_u_flag (Oct 9 2026).  An interrupted is_unitary keeps almost all its work, an interrupted
  is_unitary_to_ht loses it (E8_s x=229906, lambda [1,3,1,1,3,1,-17,22], nu [6,2,2,2,2,4,-33,35]/6:

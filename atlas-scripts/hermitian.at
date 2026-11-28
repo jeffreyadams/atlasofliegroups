@@ -2740,7 +2740,7 @@ set u_predictor_to_ht_base(Param p, int HT, int time) = int:
  1698 s, 1193 s of it the full KL sum, against predictions of 32 s and 3 s without it.}
 set kl_full_cost_flag = true
 set kl_full_cost_count = int: 0
-set u_predictor_to_ht(Param p, int HT, int time) = int:
+set u_predictor_to_ht_raw(Param p, int HT, int time) = int:
     let r = u_predictor_to_ht_base(p,HT,time)
     in if kl_full_cost_flag and HT >= 0
        then case stored_KL_sum_at_s(p) {stored first: then low_char is not needed (Nov 17 2026)}
@@ -2749,6 +2749,43 @@ set u_predictor_to_ht(Param p, int HT, int time) = int:
 	    esac
        else r
        fi
+
+{th_ratio_flag (Nov 27 2026): scale the to_ht prediction by a running ratio sum(actual)/sum(raw prediction)
+ over completed to_ht race tests (race_h) on real forms of about the same size (th_index).  The raw
+ prediction is built from stock per-term deformation times; the frontier (frontier_to_ht_flag) is
+ several times faster, so without this the races are steered away from to_ht.  E7_s [17000:17100]:
+ actual/predicted for to_ht tests 1/6.7 with the frontier, 1/2.0 without.  Applied once
+ th_ratio_min_count tests are recorded; the factor is kept in [1/th_ratio_clamp, th_ratio_clamp].
+ Full E7_s (frontier on): the ratio settles near 1/25, so a clamp of 16 binds; 64 does not.
+ With adjust_frac 1/2: total 6309 s against 6365 s with the flag off and 2/3; is_unitary 452 s against 517 s.}
+set th_ratio_flag = true
+set th_ratio_min_count = int: 20
+set th_ratio_clamp = int: 64
+set th_ratio_A = [int]: null(th_num_keys)
+set th_ratio_P = [int]: null(th_num_keys)
+set th_ratio_n = [int]: null(th_num_keys)
+{the factor num/den applied to raw predictions on real form index i (1/1 until enough tests), clamped}
+set th_ratio_factor(int i) = (int,int):
+    if not th_ratio_flag or th_ratio_n[i] < th_ratio_min_count or th_ratio_A[i] <= 0 then (1,1)
+    else let A = th_ratio_A[i], P = th_ratio_P[i]
+    	 in if A*th_ratio_clamp < P then (1,th_ratio_clamp)
+	    elif A > P*th_ratio_clamp then (th_ratio_clamp,1)
+	    else (A,P)
+	    fi
+    fi
+set th_ratio_scale(Param p, int r) = int:
+    let (num,den) = th_ratio_factor(th_index(p.real_form)) in max((r*num + den - 1)\den,1)
+{record a completed to_ht test: pred is the (scaled) prediction the race used, T the actual time;
+ undo the current factor (with its clamp) to recover the raw prediction}
+set th_ratio_record(Param p, int pred, int T) = void:
+    if th_ratio_flag and pred > 0
+    then let i = th_index(p.real_form)
+    	 then (num,den) = th_ratio_factor(i)
+	 in th_ratio_A[i] +:= T; th_ratio_P[i] +:= max((pred*den)\num,1); th_ratio_n[i] +:= 1
+    fi
+set u_predictor_to_ht(Param p, int HT, int time) = int:
+    let r = u_predictor_to_ht_raw(p,HT,time)
+    in if HT >= 0 and predictor_flag then th_ratio_scale(p,r) else r fi
 
 {predicted time in milliseconds to complete is_unitary{to_ht}(p,{HT})}
 set u_predictor_to_ht(Param p, int HT) = int:
