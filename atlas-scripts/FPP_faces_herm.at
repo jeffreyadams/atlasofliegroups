@@ -4096,11 +4096,16 @@ set low_def_u_full_ms = int: 0
 set next_red_check_flag = false
 set next_red_skipped = int: 0
 set next_red_dropped = int: 0
+{record what a skipped test has shown: p unitary (no walls, or next_red above GAM(p), where
+ unitary to height GAM means unitary), else unitary to height nr-1, as a computed test would}
+set next_red_record(Param p, int nr) = void:
+    next_red_skipped +:= 1;
+    add_to_u_to_ht(p, if nr < 0 or nr > GAM(p) then -1 else nr-1 fi)
 set is_unitary_to_ht_big_SIMPLE_interrupt(Param p, int HT) = bool:
-       if next_red_check_flag and HT >= height(p) and
-       	  (let nr = next_red(p,HT) in nr < 0 or nr > HT)
-       then next_red_skipped +:= 1; true
-       elif (stat_holder:= simple_status(p,HT, is_unitary_to_ht_hash_big_SIMPLE_Lucas)).!=
+       if next_red_check_flag and HT >= height(p)
+       then let nr = next_red(p,HT) in if nr < 0 or nr > HT then next_red_record(p,nr); return true fi
+       fi;
+       if (stat_holder:= simple_status(p,HT, is_unitary_to_ht_hash_big_SIMPLE_Lucas)).!=
        then stat_holder > 0
        {elif u_is_cheap(p.real_form)
        	    {We have MEASURED that is_unitary is cheap on this group, so run it: asking
@@ -4351,9 +4356,9 @@ set is_unitary_to_hts_big_SIMPLE_interrupt(Param p, [int] HTs) = bool:
     if #HTs = 0 then return true fi; {no heights requested: vacuously unitary to them}
     if next_red_check_flag
     then let nr = next_red(p,HTs[0])
-    	 in if nr < 0 then next_red_skipped +:= 1; return true fi;
+    	 in if nr < 0 then next_red_record(p,nr); return true fi;
 	    let n = #HTs in HTs := for HT in HTs if HT >= nr do HT fi od;
-	    if #HTs = 0 then next_red_skipped +:= 1; return true fi;
+	    if #HTs = 0 then next_red_record(p,nr); return true fi;
 	    next_red_dropped +:= n - #HTs
     fi;
     if print_int_flag
