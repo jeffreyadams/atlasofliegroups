@@ -470,6 +470,32 @@ set red_walls_to_ht(Param p, int HT) = int:
        od;
        answer\1 next rwhTIME:=elapsed_ms() - start
 
+{next_red(p,H) (Nov 28 2026): a height below which the form of J(p) agrees with its K-type
+ multiplicities (all signs positive).  Deforming p*t from t=0 (tempered, pure) to t=1, the form
+ changes only at reducibility walls 0<t<1, and there (Gindikin-Karpelevic) only on K-types induced
+ from the Levi quotients for the reducible restricted roots av; simp_H1(x,lambda,av,t) is the lowest
+ G-height of those.  So next_red = min over walls of simp_H1, or -1 if there are no walls (then J(p)
+ is unitary).  A wall through gamma itself (t=1) does not change the form of J(p) and is skipped.
+ Walls are enumerated as in red_walls_to_ht.  Stops as soon as some wall has height <= H (and
+ returns that height): callers only need to know whether next_red exceeds H.}
+set next_red_time = int: 0
+set next_red(Param p, int H) = int:
+    let start = elapsed_ms(), x = p.x, lambda = p.lambda, theta = p.x.involution
+    then gamma = p.infinitesimal_character, cvs = p.root_datum.poscoroots, m = rat: -1, i = 0
+    in while i < #cvs and (m < 0 or m > H)
+       do let av = cvs[i] then a = av*gamma, b = av*theta*gamma
+       	  then pos = floor(a), neg = ceil(b)
+	  in if pos >= 1 and neg <= -1
+	     then for t: min(pos,-neg) from 1
+	     	  do if not (a = t and b = -t)
+		     then let h = simp_H1(x,lambda,av,t) in if h >= 0 and (m < 0 or h < m) then m := h fi
+		     fi
+		  od
+	     fi;
+	     i +:= 1
+       od;
+       (if m < 0 then -1 else ceil(m) fi) next next_red_time +:= elapsed_ms() - start
+
 
 {gamma meant to be dominant. count reducibility hyperplanes (gamma0,alphav) >0 int,
 (gamma0,theta*alphav) <0 int). Estimates cost of KL_sum_at_s(x,gamma)}

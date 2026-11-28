@@ -4086,8 +4086,21 @@ set low_def_u_full_flag = true
 set low_def_u_full_count = int: 0
 set low_def_u_full_ms = int: 0
 
+{next_red_check_flag (Nov 28 2026): before a to_ht test of p, compute next_red(p,HT) (kl.at); no
+ K-type of height below it can have a negative sign, so heights below it are dropped from the test,
+ and a test with none left (or with no walls at all) is answered true without computing anything.
+ next_red_skipped counts tests answered that way, next_red_dropped heights dropped from the rest.
+ E7_s, same faces both ways, but no gain: [3000:3100] 25.0 -> 25.7 s (136 skipped, 303 dropped),
+ [17000:17100] 46.5 -> 47.0 s (26 dropped), [20890:20925] 986 -> 998 s (118 skipped, 5.2 s in
+ next_red).  Default off; to be tried on mid-range E8_s.}
+set next_red_check_flag = false
+set next_red_skipped = int: 0
+set next_red_dropped = int: 0
 set is_unitary_to_ht_big_SIMPLE_interrupt(Param p, int HT) = bool:
-       if (stat_holder:= simple_status(p,HT, is_unitary_to_ht_hash_big_SIMPLE_Lucas)).!=
+       if next_red_check_flag and HT >= height(p) and
+       	  (let nr = next_red(p,HT) in nr < 0 or nr > HT)
+       then next_red_skipped +:= 1; true
+       elif (stat_holder:= simple_status(p,HT, is_unitary_to_ht_hash_big_SIMPLE_Lucas)).!=
        then stat_holder > 0
        {elif u_is_cheap(p.real_form)
        	    {We have MEASURED that is_unitary is cheap on this group, so run it: asking
@@ -4336,6 +4349,13 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_Ufirst(Param p, [int] HTs) = bool:
 set is_unitary_to_hts_big_SIMPLE_interrupt(Param p, [int] HTs) = bool:
     HTs:=for HT in HTs if HT >= height(p) do HT fi od;
     if #HTs = 0 then return true fi; {no heights requested: vacuously unitary to them}
+    if next_red_check_flag
+    then let nr = next_red(p,HTs[0])
+    	 in if nr < 0 then next_red_skipped +:= 1; return true fi;
+	    let n = #HTs in HTs := for HT in HTs if HT >= nr do HT fi od;
+	    if #HTs = 0 then next_red_skipped +:= 1; return true fi;
+	    next_red_dropped +:= n - #HTs
+    fi;
     if print_int_flag
     then prints("starting iuthbsi for ",p.infinitesimal_character,", ",HTs);
        	 prints("predictor_flag = ",predictor_flag)
